@@ -21,18 +21,18 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-base-100 border-b border-base-300 px-6 py-4">
-      <div className="flex items-center justify-between">
+    <header className="px-6 py-4 border-b-3 bg-base-100 border-neutral/20">
+      <div className="flex justify-between items-center">
         {/* Search Bar */}
         <div className="flex-1 max-w-md">
           <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-base-content/40 w-4 h-4" />
+            <FaSearch className="absolute left-3 top-1/2 w-4 h-4 transform -translate-y-1/2 text-base-content/40" />
             <input
               type="text"
               placeholder="Search Patient"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input input-bordered w-full pl-10 focus:input-primary"
+              className="pl-10 w-full input input-bordered focus:input-primary"
             />
           </div>
         </div>
@@ -54,12 +54,12 @@ const Header = () => {
           {/* Notifications */}
           <button
             onClick={handleNotifications}
-            className="btn btn-ghost btn-circle relative"
+            className="relative btn btn-ghost btn-circle"
             title="Notifications"
           >
             <FaBell className="w-5 h-5" />
             {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full"></span>
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-error"></span>
           </button>
 
           {/* Add Patient Button */}

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { IoIosColorPalette, IoMdClose } from 'react-icons/io';
 import { FaCheck } from 'react-icons/fa';
@@ -27,7 +28,7 @@ const ThemeSwitcher = () => {
         className="cursor-pointer p-3 rounded-lg border-2 transition-all hover:scale-105"
         style={{
           backgroundColor: getThemeColors(theme).base100,
-          borderColor: currentTheme === theme ? '#00943C' : getThemeColors(theme).base300,
+          borderColor: currentTheme === theme ? '#22c55e' : getThemeColors(theme).base300,
           color: getThemeColors(theme).baseContent
         }}
         onClick={() => handleThemeChange(theme)}
@@ -65,7 +66,7 @@ const ThemeSwitcher = () => {
   // Comprehensive DaisyUI theme color mapping
   const getThemeColors = (theme) => {
     const themeColorMap = {
-      light: { primary: '#00943C', secondary: '#f000b8', accent: '#00943C', neutral: '#3d4451', base100: '#ffffff', base300: '#00943C', baseContent: '#1f2937' },
+      light: { primary: '#00943C', secondary: '#f000b8', accent: '#00943C', neutral: '#3d4451', base100: '#ffffff', base300: '#d1d5db', baseContent: '#1f2937' },
       dark: { primary: '#22c55e', secondary: '#f000b8', accent: '#37cdbe', neutral: '#2a2e37', base100: '#1f2937', base300: '#374151', baseContent: '#f9fafb' },
       cupcake: { primary: '#65c3c8', secondary: '#ef9fbc', accent: '#eeaf3a', neutral: '#291334', base100: '#faf7f5', base300: '#e7e2df', baseContent: '#291334' },
       bumblebee: { primary: '#f9d71c', secondary: '#df7e07', accent: '#181830', neutral: '#181a2a', base100: '#fffbeb', base300: '#e4e4e7', baseContent: '#181a2a' },

@@ -2,7 +2,7 @@
 // For now using placeholder URLs - replace with your actual imports when you add the images
 
 // Example of how to import local images:
-// import carouselImage1 from './carouselImage1.jpg';
+import carouselImage1 from './image1.png';
 // import carouselImage2 from './carouselImage2.jpg';
 // import carouselImage3 from './carouselImage3.jpg';
 // import carouselImage4 from './carouselImage4.jpg';
@@ -13,7 +13,7 @@ export const carouselImages = [
   {
     id: 1,
     // src: carouselImage1, // Use this when you add local images
-    src: "https://images.unsplash.com/photo-1584432743501-7d5c27a39189?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+    src: carouselImage1,
     alt: "Medical professional with globe"
   },
   {

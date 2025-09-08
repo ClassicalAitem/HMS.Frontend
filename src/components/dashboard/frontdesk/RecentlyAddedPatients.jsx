@@ -1,7 +1,14 @@
-import React from 'react';
+/* eslint-disable no-unused-vars */
+import React, { useMemo, useState } from 'react';
+import { IoSearch, IoClose } from "react-icons/io5";
+import { DataTable } from '../../common';
 
 const RecentlyAddedPatients = () => {
-  const patients = [
+  // State for search bar visibility
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const patients = useMemo(() => [
     {
       id: '01',
       name: 'Jane Cooper',
@@ -112,99 +119,156 @@ const RecentlyAddedPatients = () => {
       status: 'Emergency',
       statusColor: 'bg-red-500'
     }
-  ];
+  ], []);
+
+  // Filter patients based on search term
+  const filteredPatients = useMemo(() => {
+    if (!searchTerm) return patients;
+    
+    return patients.filter(patient =>
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.phone.includes(searchTerm) ||
+      patient.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.gender.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.id.includes(searchTerm)
+    );
+  }, [patients, searchTerm]);
+
+  // Handle search icon click
+  const handleSearchToggle = () => {
+    setShowSearchBar(!showSearchBar);
+    if (showSearchBar) {
+      setSearchTerm(''); // Clear search when hiding
+    }
+  };
 
   const StatusBadge = ({ status, color }) => {
     const getBadgeClass = (status) => {
       switch (status) {
         case 'Urgent':
-          return 'badge badge-warning';
+          return 'badge badge-warning w-full';
         case 'Emergency':
-          return 'badge badge-error';
+          return 'badge badge-error w-full';
         case 'Not Urgent':
-          return 'badge badge-success';
+          return 'badge badge-success w-full';
         case 'Passaway':
-          return 'badge badge-neutral';
+          return 'badge badge-neutral w-full';
         default:
-          return 'badge badge-info';
+          return 'badge badge-info w-full';
       }
     };
 
     return (
-      <span className={getBadgeClass(status)}>
+      <span className={getBadgeClass(status)} >
         {status}
       </span>
     );
   };
 
+  // Define table columns
+  const columns = useMemo(() => [
+    {
+      key: 'id',
+      title: 'S/n',
+      className: 'text-base-content'
+    },
+    {
+      key: 'name',
+      title: 'Patient Name',
+      className: 'font-medium text-base-content'
+    },
+    {
+      key: 'gender',
+      title: 'Gender',
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'age',
+      title: 'Age',
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'phone',
+      title: 'Phone Number',
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'address',
+      title: 'Address',
+      className: 'text-base-content/70',
+      truncate: true,
+      render: (value) => (
+        <span className="block max-w-xs truncate" title={value}>
+          {value}
+        </span>
+      )
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      className: 'text-base-content/70',
+      render: (value, row) => <StatusBadge status={value} color={row.statusColor} />
+    }
+  ], []);
+
   return (
-    <div className="card bg-base-100 shadow-xl">
+    <div className="shadow-xl card bg-base-100">
       {/* Header */}
-      <div className="card-body pb-0">
-        <div className="flex items-center justify-between mb-4">
+      <div className="pb-0 card-body">
+        <div className="flex justify-between items-center mb-2">
           <h3 className="text-lg font-semibold text-base-content">Recently Added Patients</h3>
-          <button className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
-            See All
-          </button>
+          <div className="flex gap-4 items-center">
+            <button
+              onClick={handleSearchToggle}
+              className="transition-colors text-secondary hover:text-primary/80"
+            >
+              {showSearchBar ? (
+                <IoClose className="w-4 h-4 cursor-pointer" />
+              ) : (
+                <IoSearch className="w-4 h-4 cursor-pointer" />
+              )}
+            </button>
+            <button className="text-sm font-medium transition-colors cursor-pointer text-secondary hover:text-primary/80">
+              See All
+            </button>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-        <table className="table table-zebra w-full">
-          <thead>
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                S/n
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                Patient Name
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                Gender
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                Age
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                Phone Number
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                Address
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {patients.map((patient) => (
-              <tr key={patient.id} className="hover">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content">
-                  {patient.id}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-base-content">
-                  {patient.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content/70">
-                  {patient.gender}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content/70">
-                  {patient.age}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content/70">
-                  {patient.phone}
-                </td>
-                <td className="px-6 py-4 text-sm text-base-content/70 max-w-xs truncate">
-                  {patient.address}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-base-content/70">
-                  <StatusBadge status={patient.status} color={patient.statusColor} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
+        {/* Search Bar */}
+        {showSearchBar && (
+          <div className="mb-4 transition-all duration-300 ease-in-out">
+            <div className="flex relative items-center max-w-md">
+              <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+                <IoSearch className="w-4 h-4 text-base-content/50" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search patients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-full input input-bordered input-sm"
+                autoFocus
+              />
+               <IoClose 
+                 onClick={handleSearchToggle}
+                 className="ml-2 w-8 h-auto text-xl font-bold text-red-500 rounded-full cursor-pointer hover:bg-secondary/70" 
+               />
+            </div>
+          </div>
+        )}
+
+        {/* DataTable Component */}
+        <DataTable
+          data={filteredPatients}
+          columns={columns}
+          searchable={false}
+          sortable={true}
+          paginated={true}
+          initialEntriesPerPage={5}
+          maxHeight="max-h-96"
+          showEntries={true}
+        />
       </div>
     </div>
   );
