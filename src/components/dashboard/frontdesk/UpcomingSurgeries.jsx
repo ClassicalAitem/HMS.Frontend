@@ -1,5 +1,6 @@
 import React from 'react';
-import { FaEllipsisH, FaClock } from 'react-icons/fa';
+import { IoMdMore } from 'react-icons/io';
+import { GiFirstAidKit } from "react-icons/gi";
 
 const UpcomingSurgeries = () => {
   const surgeries = [
@@ -24,28 +25,30 @@ const UpcomingSurgeries = () => {
   ];
 
   return (
-    <div className="card bg-base-100 shadow-xl">
+    <div className="shadow-xl shadow-secondary/10 card bg-base-100">
       <div className="card-body">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-base-200 rounded-full flex items-center justify-center">
-            <FaClock className="w-5 h-5 text-base-content/60" />
+        <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center space-x-4">      
+          <div className="flex justify-center items-center p-2 rounded-full bg-secondary/70">
+            <div className="flex justify-center items-center p-2 rounded-2xl bg-base-200">
+              <GiFirstAidKit className="w-6 h-auto text-primary" />
+            </div>
           </div>
-          <h3 className="text-lg font-semibold text-base-content">Upcoming Surgeries</h3>
+          <h3 className="text-xl font-regular text-base-content">Upcoming Surgeries</h3>
         </div>
-        <button className="p-2 text-base-content/40 hover:text-base-content/60 transition-colors">
-          <FaEllipsisH className="w-4 h-4" />
+        <button className="p-2 transition-colors text-base-content/40 hover:text-base-content/60">
+          <IoMdMore className="w-4 h-4 font-bold text-base-content" />
         </button>
       </div>
 
       {/* Surgery List */}
       <div className="space-y-4">
         {surgeries.map((surgery) => (
-          <div key={surgery.id} className="flex items-center justify-between">
+          <div key={surgery.id} className="flex justify-between items-center p-2 px-4 rounded-lg bg-secondary/50">
             <div className="flex items-center space-x-3">
               {/* Status Indicator */}
-              <div className={`w-3 h-3 rounded-full ${surgery.color}`}></div>
+              <div className={`w-2 h-2 rounded-full ${surgery.color}`}></div>
               
               {/* Patient Info */}
               <div>
@@ -60,8 +63,8 @@ const UpcomingSurgeries = () => {
       </div>
 
       {/* View All Link */}
-      <div className="mt-6 pt-4 border-t border-base-300">
-        <button className="text-sm text-primary hover:text-primary/80 font-medium transition-colors">
+      <div className="pt-4 mt-6 border-t border-base-300">
+        <button className="text-sm font-medium transition-colors text-primary hover:text-primary/80">
           View All Surgeries
         </button>
         </div>

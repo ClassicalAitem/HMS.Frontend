@@ -9,18 +9,18 @@ import {
 
 const FrontdeskDashboard = () => {
   return (
-    <div className="flex h-screen bg-base-200">
+    <div className="flex h-screen bg-neutral/10">
       {/* Sidebar */}
       <Sidebar />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex overflow-hidden flex-col flex-1">
         {/* Header */}
         <Header />
         
         {/* Dashboard Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="overflow-y-auto flex-1 p-4 py-2">
+          <div className="grid grid-cols-1 gap-6 mb-2 lg:grid-cols-2">
             {/* Upcoming Surgeries */}
             <UpcomingSurgeries />
             
