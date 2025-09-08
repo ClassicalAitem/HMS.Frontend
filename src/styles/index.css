@@ -1,24 +1,33 @@
 @import "tailwindcss";
-@plugin "daisyui";
-
-/* Custom styles */
-.bg-grid-pattern {
-  background-image: linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald,
+    corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest,
+    aqua, lofi, pastel, fantasy, wireframe, black, luxury, dracula, cmyk, autumn,
+    business, acid, lemonade, night, coffee, winter, dim, nord, sunset;
 }
 
-/* Custom animations */
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+/* Note: Theme colors are now handled by DaisyUI themes in tailwind.config.js */
+/* Removed conflicting :root CSS variables that were overriding theme switching */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  --color-primary: #00943c;
+  --color-secondary: #8cd5ab;
+  --color-accent: #00943c;
+  --color-neutral: #3d4451;
+  --color-base100: #ffffff;
+  --color-base300: #aeaaae;
+  --color-baseContent: #1f2937;
 }
 
-.animate-float {
-  animation: float 3s ease-in-out infinite;
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  --color-primary: #00943c;
+  --color-secondary: #8cd5ab;
+  --color-accent: #00943c;
+  --color-neutral: #3d4451;
+  --color-base100: #1f2937;
+  --color-base300: #aeaaae;
+  --color-baseContent: #f9fafb;
 }

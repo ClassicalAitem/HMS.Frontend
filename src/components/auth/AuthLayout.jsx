@@ -19,20 +19,20 @@ const AuthLayout = ({
       )}
 
       {/* Right Side - Content */}
-      <div className={`${showCarousel ? 'w-full lg:w-1/2' : 'w-full'} flex items-center justify-center p-8 bg-white`}>
+      <div className={`${showCarousel ? 'w-full lg:w-1/2' : 'w-full'} flex items-center justify-center p-8 bg-base-100`}>
         <div className="w-full max-w-md">
           {/* Logo and Header */}
           <div className="text-center mb-12">
             <AuthLogo className="mb-8" />
             
             {title && (
-              <h1 className="text-3xl font-bold text-green-500 mb-2">
+              <h1 className="text-3xl font-bold text-primary mb-2">
                 {title}
               </h1>
             )}
             
             {subtitle && (
-              <p className="text-gray-600">{subtitle}</p>
+              <p className="text-base-content/70">{subtitle}</p>
             )}
           </div>
 
@@ -41,7 +41,7 @@ const AuthLayout = ({
 
           {/* Footer */}
           <div className="text-center mt-12">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-base-content/50">
               © Kolak Hospital Management System 2025
             </p>
           </div>
