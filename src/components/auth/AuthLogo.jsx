@@ -9,8 +9,8 @@ const AuthLogo = ({ className = "" }) => {
           <span className="text-white text-xs">h</span>
         </div>
         <div>
-          <span className="text-3xl font-bold text-gray-800">Kolak</span>
-          <div className="text-sm text-gray-600 -mt-1">Hospital</div>
+          <span className="text-3xl font-bold text-base-content">Kolak</span>
+          <div className="text-sm text-base-content/70 -mt-1">Hospital</div>
         </div>
       </div>
     </div>
