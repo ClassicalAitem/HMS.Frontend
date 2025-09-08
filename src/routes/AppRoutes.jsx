@@ -1,29 +1,26 @@
 import React from 'react';
-import { Route, Routes } from 'react-router-dom';
-import { paths } from './paths';
-import PublicPagesLayout from '@/pages/PublicPages/PublicPagesLayout';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Login from '../pages/auth/Login';
+import ForgotPassword from '../pages/auth/ForgotPassword';
+import Dashboard from '../pages/dashboard/Dashboard';
 
-export const AppRoutes = () => (
-  <Routes>
-    <Route path={paths.index} element={<PublicPagesLayout />}>
+const AppRoutes = () => {
+  return (
+    <Routes>
+      {/* Default route - redirect to login */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
+      
+      {/* Auth Routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      
+      {/* Dashboard Route */}
+      <Route path="/dashboard" element={<Dashboard />} />
+      
+      {/* Catch all route - redirect to login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+};
 
-    </Route>
-
-    {/* Company Route */}
-    <Route path={paths.companyIndex} element={<CompanyLayout />}>
-
-    </Route>
-    {/* Auth Pages */}
-    {/* <Route path={paths.index} element={<AuthPageLayout />}>
-      <Route path={paths.login} element={<Login />} />
-      <Route path={paths.register} element={<Register />} />
-      <Route path={paths.otp} element={<VerifyOtp />} />
-      <Route path={paths.resendOtp} element={<ResendOTP />} />
-      <Route path={paths.forgotPassword} element={<ForgotPassword />} />
-      <Route path={`${paths.resetPassword}/:userId/:token`} element={<ResetPassword />} />
-    </Route> */}
-
-
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
+export default AppRoutes;
