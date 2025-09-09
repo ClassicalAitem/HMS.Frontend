@@ -1,73 +1,80 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FaEye, FaEyeSlash, FaUser, FaLock } from 'react-icons/fa';
-import { AnimatePresence } from 'framer-motion';
-import { AuthLayout, AuthInput } from '@/components/auth';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { FaEye, FaEyeSlash, FaUser, FaLock } from "react-icons/fa";
+import { AnimatePresence, motion } from "framer-motion";
+import { AuthLayout, AuthInput } from "@/components/auth";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { loginSchema } from "../../../utils/formValidator";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
+  // const [formData, setFormData] = useState({
+  //   username: "",
+  //   password: "",
+  // });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (error) {
-      setError('');
-    }
-  };
+  // const handleInputChange = (e) => {
+  //   const { name, value } = e.target;
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [name]: value,
+  //   }));
 
-  const handleClearInput = (fieldName) => {
-    setFormData(prev => ({
-      ...prev,
-      [fieldName]: ''
-    }));
-  };
+  // Clear error when user starts typing
+  //   if (error) {
+  //     setError("");
+  //   }
+  // };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.username || !formData.password) {
-      return;
-    }
+  // const handleClearInput = (fieldName) => {
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [fieldName]: "",
+  //   }));
+  // };
 
+  //Made use of yupResolver for validation
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
+    resolver: yupResolver(loginSchema),
+  });
+
+  const onSubmit = async (data) => {
     setIsLoading(true);
-    setError('');
-    
+    setError("");
+
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
       // Simulate wrong password error for demo
-      if (formData.password === 'wrong') {
-        setError('Wrong Password, try again.');
+      if (data.password === "wrong") {
+        setError("Wrong Password, try again.");
         setIsLoading(false);
         return;
       }
-      
+
       // Show success modal
       setShowSuccessModal(true);
-      
+
       // Navigate to dashboard after delay
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate("/dashboard");
       }, 2000);
-      
     } catch {
-      setError('Login failed. Please try again.');
+      setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
+      reset();
     }
   };
 
@@ -84,13 +91,15 @@ const Login = () => {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 text-center"
+            className="bg-[#EAFFF3] rounded-2xl p-8 max-w-sm w-full mx-4 text-center"
           >
             <div className="w-20 h-20 bg-gray-800 rounded-full mx-auto mb-6"></div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">Welcome Back,</h3>
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+              Welcome Back,
+            </h3>
             <h3 className="text-2xl font-bold text-gray-800 mb-6">FOLAKE</h3>
-            <button 
-              onClick={() => navigate('/dashboard')}
+            <button
+              onClick={() => navigate("/dashboard")}
               className="flex items-center justify-center w-full bg-gray-800 text-white py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors"
             >
               <span className="mr-2">→</span>
@@ -109,32 +118,35 @@ const Login = () => {
       showCarousel={true}
     >
       {/* Login Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {/* Username Field */}
         <AuthInput
           type="text"
-          name="username"
-          value={formData.username}
-          onChange={handleInputChange}
-          placeholder="Enter Your Username"
+          name="email"
+          // value={formData.username}
+          // onChange={handleInputChange}
+          placeholder="Enter Your Email"
           icon={FaUser}
           showClearButton={true}
-          onClear={() => handleClearInput('username')}
+          {...register("email")}
+          // onClear={() => handleClearInput("username")}
         />
+        <p className="text-red-500 text-sm mt-1">{errors.email?.message}</p>
 
         {/* Password Field */}
         <AuthInput
-          type={showPassword ? 'text' : 'password'}
+          type={showPassword ? "text" : "password"}
           name="password"
-          value={formData.password}
-          onChange={handleInputChange}
+          // value={formData.password}
+          // onChange={handleInputChange}
           placeholder="Enter Your Password"
           icon={FaLock}
+          {...register("password")}
           rightIcon={showPassword ? <FaEyeSlash /> : <FaEye />}
           onRightIconClick={() => setShowPassword(!showPassword)}
-          error={!!error}
-          errorMessage={error}
+          error={errors.password || !!error}
         />
+        <p className="text-red-500 text-sm mt-1">{errors.password?.message}</p>
 
         {/* Forgot Password */}
         <div className="text-right">
@@ -142,18 +154,18 @@ const Login = () => {
             to="/forgot-password"
             className="text-green-500 hover:text-green-600 text-sm transition-colors"
           >
-            Forget Password?
+            Forgot Password?
           </Link>
         </div>
 
         {/* Submit Button */}
         <button
           type="submit"
-          disabled={isLoading || !formData.username || !formData.password}
+          disabled={isLoading}
           className={`w-full py-4 rounded-lg font-semibold text-white transition-all duration-200 ${
-            isLoading || !formData.username || !formData.password
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-green-500 hover:bg-green-600 active:scale-95'
+            isLoading
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-green-500 hover:bg-green-600 active:scale-95"
           }`}
         >
           {isLoading ? (
@@ -162,7 +174,7 @@ const Login = () => {
               Signing in...
             </div>
           ) : (
-            'Sign In'
+            "Sign In"
           )}
         </button>
       </form>

@@ -15,8 +15,9 @@ const AuthInput = ({
   disabled = false,
   onClear,
   showClearButton = false,
-  className = ''
-}) => {
+  className = '',
+  ...register
+}, ref ) => {
   return (
     <div className={className}>
       <div className="relative">
@@ -27,12 +28,14 @@ const AuthInput = ({
         
         {/* Input Field */}
         <input
+        ref={ref}
           type={type}
           name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
           disabled={disabled}
+          {...register}
           className={`w-full ${Icon ? 'pl-12' : 'pl-4'} pr-12 py-4 border-b-2 ${
             error ? 'border-red-500' : 'border-gray-200'
           } focus:border-green-500 focus:outline-none transition-colors bg-transparent text-gray-800 placeholder-gray-400 ${
