@@ -6,9 +6,11 @@ import { AuthLayout, AuthInput } from "@/components/auth";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { loginSchema } from "../../../utils/formValidator";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const {currentTheme} = useTheme()
   // const [formData, setFormData] = useState({
   //   username: "",
   //   password: "",
@@ -130,6 +132,8 @@ const Login = () => {
           showClearButton={true}
           {...register("email")}
           // onClear={() => handleClearInput("username")}
+          error={errors.email || !!error}
+          theme={currentTheme}
         />
         <p className="text-red-500 text-sm mt-1">{errors.email?.message}</p>
 
@@ -145,6 +149,7 @@ const Login = () => {
           rightIcon={showPassword ? <FaEyeSlash /> : <FaEye />}
           onRightIconClick={() => setShowPassword(!showPassword)}
           error={errors.password || !!error}
+          theme={currentTheme}
         />
         <p className="text-red-500 text-sm mt-1">{errors.password?.message}</p>
 

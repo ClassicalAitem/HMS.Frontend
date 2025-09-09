@@ -5,6 +5,7 @@ import { AuthLayout, AuthInput } from "@/components/auth";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useForm } from "react-hook-form";
 import { updateYourPasswordSchema } from "../../../utils/formValidator";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const ForgotPassword = () => {
   // const [formData, setFormData] = useState({
@@ -28,9 +29,12 @@ const ForgotPassword = () => {
   // };
 
 
+  
 
-//Made use of yupResolver for validation
+  //White text theme for Dark Background
+  const { currentTheme } = useTheme();
 
+  //Made use of yupResolver for validation
   const {
     register,
     handleSubmit,
@@ -62,6 +66,7 @@ const ForgotPassword = () => {
           rightIcon={<FaTimes />}
           disabled={true}
           value={"Folake Oluwaseun"}
+          theme={currentTheme}
         />
 
         {/* New Password Field */}
@@ -75,6 +80,7 @@ const ForgotPassword = () => {
           rightIcon={<FaTimes />}
           {...register("newPassword")}
           error={!!errors.newPassword}
+          theme={currentTheme}
         />
         <p className="text-red-500 text-sm mt-1">
           {errors.newPassword?.message}
@@ -91,6 +97,7 @@ const ForgotPassword = () => {
           rightIcon={<FaTimes />}
           {...register("confirmPassword")}
           error={!!errors.confirmPassword}
+          theme={currentTheme}
         />
         <p className="text-red-500 text-sm mt-1">
           {errors.confirmPassword?.message}
