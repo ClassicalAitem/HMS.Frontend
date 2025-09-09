@@ -1,5 +1,5 @@
-import image1 from "./image1.png";
-import HealthWorld2 from "./HealthWorld2.jpg";
+import carouselImage1 from "./carouselImage1.jpg";
+import carouselImage2 from "./carouselImage2.png"
 
 // Import your carousel images here
 // For now using placeholder URLs - replace with your actual imports when you add the images
@@ -18,25 +18,25 @@ export const carouselImages = [
   {
     id: 1,
     // src: carouselImage1, // Use this when you add local images
-    src: image1,
+    src: carouselImage1,
     alt: "Medical professional with globe",
   },
   {
     id: 2,
     // src: carouselImage2,
-    src: HealthWorld2,
+    src: carouselImage2,
     alt: "Doctor with stethoscope",
   },
   {
     id: 3,
     // src: carouselImage3,
-    src: image1,
+    src: carouselImage1,
     alt: "Medical team",
   },
   {
     id: 4,
     // src: carouselImage4,
-    src: HealthWorld2,
+    src: carouselImage2,
     alt: "Healthcare professional",
   },
 ];

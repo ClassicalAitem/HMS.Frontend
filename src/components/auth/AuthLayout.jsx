@@ -43,7 +43,10 @@ const AuthLayout = ({
 
           {/* Footer */}
           <div className="text-center mt-12">
-            <p className="text-sm text-base-content/50  ">
+            <p
+              style={{ color: "#004A1E" }}
+              className="text-sm text-base-content/50  "
+            >
               © Kolak Hospital Management System 2025
             </p>
           </div>
