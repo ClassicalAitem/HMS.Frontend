@@ -213,15 +213,15 @@ const RecentlyAddedPatients = () => {
   ], []);
 
   return (
-    <div className="shadow-xl card bg-base-100">
+    <div className="h-[--webkit-fill-available] bg-base-100  shadow-xl card flex w-full pb-2">
       {/* Header */}
-      <div className="pb-0 card-body">
+      <div className="flex pb-0 h-full card-body">
         <div className="flex justify-between items-center mb-2">
-          <h3 className="text-lg font-semibold text-base-content">Recently Added Patients</h3>
+          <h3 className="text-base font-semibold 2xl:text-lg text-base-content">Recently Added Patients</h3>
           <div className="flex gap-4 items-center">
             <button
               onClick={handleSearchToggle}
-              className="transition-colors text-secondary hover:text-primary/80"
+              className="transition-colors text-primary hover:text-primary/80"
             >
               {showSearchBar ? (
                 <IoClose className="w-4 h-4 cursor-pointer" />
@@ -229,7 +229,7 @@ const RecentlyAddedPatients = () => {
                 <IoSearch className="w-4 h-4 cursor-pointer" />
               )}
             </button>
-            <button className="text-sm font-medium transition-colors cursor-pointer text-secondary hover:text-primary/80">
+            <button className="text-sm font-medium transition-colors cursor-pointer text-primary hover:text-primary/80">
               See All
             </button>
           </div>
@@ -239,8 +239,8 @@ const RecentlyAddedPatients = () => {
         {showSearchBar && (
           <div className="mb-4 transition-all duration-300 ease-in-out">
             <div className="flex relative items-center max-w-md">
-              <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
-                <IoSearch className="w-4 h-4 text-base-content/50" />
+              <div className="flex absolute inset-y-0 left-0 z-10 items-center pl-3 pointer-events-none">
+                <IoSearch className="w-4 h-4 text-base-content/80" />
               </div>
               <input
                 type="text"
@@ -266,8 +266,9 @@ const RecentlyAddedPatients = () => {
           sortable={true}
           paginated={true}
           initialEntriesPerPage={5}
-          maxHeight="max-h-96"
+          maxHeight="max-h-48 sm:max-h-56 md:max-h-64 lg:max-h-72 xl:max-h-110"
           showEntries={true}
+          className="flex flex-col justify-between h-[-webkit-fill-available]"
         />
       </div>
     </div>

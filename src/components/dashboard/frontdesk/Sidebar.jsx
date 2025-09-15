@@ -40,32 +40,32 @@ const Sidebar = () => {
   const MenuItem = ({ icon: Icon, label, path, active }) => (
     <Link
       to={path}
-      className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+      className={`flex items-center space-x-3 px-4 2xl:py-3 py-2 text-sm font-medium rounded-lg transition-colors ${
         active
           ? 'bg-primary text-primary-content'
           : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
       }`}
     >
-      <Icon className="w-5 h-5" />
-      <span>{label}</span>
+      <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
+      <span className="text-xs 2xl:text-sm">{label}</span>
     </Link>
   );
 
   return (
-    <div className="flex flex-col pb-8 w-64 border-r-2 bg-base-100 border-neutral/20">
+    <div className="flex flex-col pb-8 w-52 border-r-2 2xl:w-64 bg-base-100 border-neutral/20">
       {/* Logo */}
-      <div className="p-3 border-b-4 border-neutral/20">
+      <div className="p-1 border-b-4 2xl:p-3 border-neutral/20">
         <div className="flex justify-center items-center">
           <img src="/src/assets/images/logo.png" alt="Kolak" className="hidden w-auto h-10" />
 
           {/* Kolak logo adaptive*/}
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-12" />
+              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold">Kolak</span>
-              <span className="text-sm text-base-content/70">- Hospital -</span>
+              <span className="font-bold text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-xs text-base-content/70 2xl:text-base">- Hospital -</span>
             </div>
           </div>
         </div>
@@ -90,13 +90,13 @@ const Sidebar = () => {
           to="/change-password"
           className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
-          <CiLock className="w-5 h-5" />
-          <span>Change Password</span>
+          <CiLock className="w-4 h-4 2xl:w-5 2xl:h-5" />
+          <span className="text-xs 2xl:text-sm">Change Password</span>
         </Link>
 
         <button className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content">
-          <CiLogout  className="w-5 h-5" />
-          <span>Log Out</span>
+          <CiLogout  className="w-4 h-4 2xl:w-5 2xl:h-5" />
+          <span className="text-xs 2xl:text-sm">Log Out</span>
         </button>
       </div>
 
