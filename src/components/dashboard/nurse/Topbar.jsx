@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
+import { useState } from "react";
 import { FaSearch, FaBell, FaSync, FaUserPlus } from "react-icons/fa";
 import ThemeSwitcher from "./ThemeSwitcher";
 
-const Header = () => {
+const Topbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleAddPatient = () => {
@@ -21,18 +22,18 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-base-100 border-b border-base-300 px-6 py-4 ">
-      <div className="flex items-center justify-between">
+    <header className="bg-base-100 border-b border-base-300 px-6 py-4 w-full ">
+      <div className="flex items-center justify-between mt-3">
         {/* Search Bar */}
         <div className="flex-1 max-w-md">
           <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 w-4 h-4 transform -translate-y-1/2 text-base-content/40" />
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
             <input
               type="text"
               placeholder="Search Patient"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full input input-bordered focus:input-primary"
+              className="input input-bordered w-full pl-10 focus:input-primary"
             />
           </div>
         </div>
@@ -54,12 +55,12 @@ const Header = () => {
           {/* Notifications */}
           <button
             onClick={handleNotifications}
-            className="relative btn btn-ghost btn-circle"
+            className="btn btn-ghost btn-circle relative"
             title="Notifications"
           >
             <FaBell className="w-5 h-5" />
             {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-error"></span>
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full"></span>
           </button>
 
           {/* Add Patient Button */}
@@ -73,4 +74,4 @@ const Header = () => {
   );
 };
 
-export default Header;
+export default Topbar;
