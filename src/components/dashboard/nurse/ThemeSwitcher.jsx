@@ -107,10 +107,10 @@ const ThemeSwitcher = () => {
       {/* Theme Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative"
+        className="btn btn-ghost btn-circle"
         title="Change Theme"
       >
-        <IoIosColorPalette className="w-7 h-7" />
+        <IoIosColorPalette className="w-5 h-5" />
       </button>
 
       {/* Theme Selector Modal */}

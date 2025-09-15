@@ -10,10 +10,10 @@ const DataTable = ({
   sortable = true, 
   paginated = true,
   initialEntriesPerPage = 5,
-  maxHeight = "max-h-96",
   className = "",
   searchPlaceholder = "Search...",
-  showEntries = true
+  showEntries = true,
+  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-96" // Responsive default
 }) => {
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,39 +111,43 @@ const DataTable = ({
 
   return (
     <div className={`w-full ${className}`}>
-      {/* Search and Controls */}
-      {(searchable || (paginated && showEntries)) && (
+      {/* Search Controls */}
+      {searchable && (
         <div className="flex gap-4 justify-between items-center mb-4">
           {/* Search */}
-          {searchable && (
-            <div className="hidden relative flex-1 max-w-md">
-              <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
-                <FaSearch className="w-4 h-4 text-secondary" />
-              </div>
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full input input-bordered input-sm"
-              />
-              <IoClose className="w-4 h-4 bg-red-500 cursor-pointer text-primary" />
+          <div className="relative flex-1 max-w-md">
+            <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
+              <FaSearch className="w-4 h-4 text-base-content/50" />
             </div>
-          )}
-
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 w-full input input-bordered input-sm"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transition-colors transform -translate-y-1/2 text-base-content/50 hover:text-base-content"
+              >
+                <IoClose className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Scrollable Table */}
-      <div className="overflow-x-auto rounded-lg border border-base-300">
-        <div className={`overflow-y-auto ${maxHeight}`}>
+      <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+        <div className={`overflow-auto ${maxHeight}`}>
           <table className="table w-full table-zebra">
             <thead className="sticky top-0 z-10 bg-base-200">
-              <tr>
+              <tr className="">
                 {columns.map((column) => (
                   <th
                     key={column.key}
-                    className={`px-4 py-3 text-left text-xs font-medium text-base-content/60 uppercase tracking-wider ${
+                    className={`border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider ${
                       sortable && column.sortable !== false 
                         ? 'cursor-pointer hover:bg-base-300 transition-colors' 
                         : ''
@@ -161,11 +165,11 @@ const DataTable = ({
             <tbody>
               {currentData.length > 0 ? (
                 currentData.map((item, index) => (
-                  <tr key={item.id || index} className="transition-colors hover:bg-base-200/50">
+                  <tr key={item.id || index} className="text-xs transition-colors hover:bg-base-200/50">
                     {columns.map((column) => (
                       <td
                         key={column.key}
-                        className={`px-4 py-3 text-sm ${column.className || 'text-base-content/70'} ${
+                        className={`border border-base-300 px-4 py-3 2xl:text-sm text-xs ${column.className || 'text-base-content/70'} ${
                           column.truncate ? 'max-w-xs truncate' : 'whitespace-nowrap'
                         }`}
                       >
@@ -186,78 +190,83 @@ const DataTable = ({
         </div>
       </div>
 
-      {/* Pagination */}
-      {paginated && totalPages > 1 && (
+      {/* Pagination and Info - Always show when paginated */}
+      {paginated && (
         <div className="flex justify-between items-center px-2 mt-4">
           <div className="text-sm text-base-content/70">
             Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} entries
           </div>
-
-          {/* Entries per page */}
-          {paginated && showEntries && (
-            <div className="flex gap-2 items-center">
-              <span className="text-sm text-base-content/70">Show</span>
-              <select
-                value={entriesPerPage}
-                onChange={(e) => handleEntriesChange(Number(e.target.value))}
-                className="select select-bordered select-sm"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <span className="text-sm text-base-content/70">entries</span>
-            </div>
-          )}
           
-          <div className="flex gap-2 items-center">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="btn btn-sm btn-circle btn-ghost disabled:opacity-50"
-            >
-              <FaChevronLeft className="w-3 h-3" />
-            </button>
+          <div className="flex gap-4 items-center">
+            {/* Show Entries - Always visible when paginated */}
+            {showEntries && (
+              <div className="flex flex-shrink-0 gap-2 items-center">
+                <span className="text-sm text-base-content/70">Show</span>
+                <select
+                  value={entriesPerPage}
+                  onChange={(e) => handleEntriesChange(Number(e.target.value))}
+                  className="w-20 select select-bordered select-sm"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-base-content/70">entries</span>
+              </div>
+            )}
             
-            <div className="flex gap-1 items-center">
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                // Show first 5 pages, or pages around current page
-                let page;
-                if (totalPages <= 5) {
-                  page = i + 1;
-                } else if (currentPage <= 3) {
-                  page = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  page = totalPages - 4 + i;
-                } else {
-                  page = currentPage - 2 + i;
-                }
+            {/* Pagination Controls - Only show when multiple pages */}
+            {totalPages > 1 && (
+              <div className="flex gap-2 items-center">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="btn btn-sm btn-circle btn-ghost disabled:opacity-50"
+                >
+                  <FaChevronLeft className="w-3 h-3" />
+                </button>
                 
-                return (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`btn btn-sm ${
-                      currentPage === page 
-                        ? 'btn-primary' 
-                        : 'btn-ghost'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
-            </div>
-            
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="btn btn-sm btn-circle btn-ghost disabled:opacity-50"
-            >
-              <FaChevronRight className="w-3 h-3" />
-            </button>
+                <div className="flex gap-1 items-center">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    // Show first 5 pages, or pages around current page
+                    let page;
+                    if (totalPages <= 5) {
+                      page = i + 1;
+                    } else if (currentPage <= 3) {
+                      page = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      page = totalPages - 4 + i;
+                    } else {
+                      page = currentPage - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`btn btn-sm ${
+                          currentPage === page 
+                            ? 'btn-primary' 
+                            : 'btn-ghost'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="btn btn-sm btn-circle btn-ghost disabled:opacity-50"
+                >
+                  <FaChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

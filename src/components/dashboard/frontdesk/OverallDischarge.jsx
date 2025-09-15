@@ -1,10 +1,33 @@
 /* eslint-disable no-unused-vars */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { CiCalendarDate } from 'react-icons/ci';
 import { IoMdMore } from 'react-icons/io';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const OverallDischarge = () => {
+  // Responsive radius hook
+  const [chartRadius, setChartRadius] = useState({ inner: 45, outer: 65 });
+
+  useEffect(() => {
+    const updateRadius = () => {
+      const width = window.innerWidth;
+      
+      if (width > 1400) { // 2xl screens
+        setChartRadius({ inner: 70, outer: 90 });
+      }else { // sm and below
+        setChartRadius({ inner: 45, outer: 55 });
+      }
+    };
+
+    // Initial update
+    updateRadius();
+
+    // Add resize listener
+    window.addEventListener('resize', updateRadius);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', updateRadius);
+  }, []);
   // Pie chart data for Recharts
   const chartData = [
     {
@@ -52,16 +75,16 @@ const OverallDischarge = () => {
 
   return (
     <div className="shadow-2xl card bg-base-100 shadow-secondary/20">
-      <div className="card-body">
+      <div className="py-2 2xl:py-4 card-body">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center 2xl:mb-6">
         <div className="flex items-center space-x-4">      
-          <div className="flex justify-center items-center p-2 rounded-full bg-secondary/70">
-            <div className="flex justify-center items-center p-2 rounded-2xl bg-base-200">
-              <CiCalendarDate className="w-6 h-auto font-bold text-primary" />
+        <div className="flex justify-center items-center p-1 rounded-full 2xl:p-2 bg-secondary/70">
+        <div className="flex justify-center items-center p-1 rounded-2xl 2xl:p-2 bg-base-200">
+              <CiCalendarDate className="w-4 h-auto font-bold 2xl:w-6 text-primary" />
             </div>
           </div>
-          <h3 className="text-xl font-regular text-base-content">Overall Discharge</h3>
+          <h3 className="text-base 2xl:text-xl font-regular text-base-content">Overall Discharge</h3>
         </div>
         <button className="p-2 transition-colors text-base-content/40 hover:text-base-content/60">
           <IoMdMore className="w-4 h-4 font-bold text-base-content" />
@@ -71,15 +94,15 @@ const OverallDischarge = () => {
       {/* Chart and Legend */}
       <div className="flex flex-col justify-between items-center">
         {/* Recharts Pie Chart */}
-        <div className="relative w-44 h-44">
+        <div className="relative w-32 h-32 2xl:w-44 2xl:h-44">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                innerRadius={70}
-                outerRadius={85}
+                innerRadius={chartRadius.inner}
+                outerRadius={chartRadius.outer}
                 paddingAngle={6}
                 dataKey="value"
                 labelLine={false}
@@ -96,20 +119,20 @@ const OverallDischarge = () => {
           {/* Center percentage text */}
           <div className="relative -top-[50%] left-[50%] transform -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
             <div className="text-center">
-              <div className="text-4xl font-regular text-base-content">100%</div>
+              <div className="text-2xl 2xl:text-4xl font-regular text-base-content">100%</div>
             </div>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex justify-center items-center mt-4 space-x-4">
+        <div className="flex justify-center items-center mt-1 space-x-4 2xl:mt-4">
           {chartData.map((item, index) => (
             <div key={index} className="flex items-center space-x-2">
               <div 
-                className="w-3 h-3 rounded-full" 
+                className="w-2 h-2 rounded-full 2xl:w-3 2xl:h-3" 
                 style={{ backgroundColor: item.color }}
               ></div>
-              <span className="text-sm text-base-content/70">
+              <span className="text-xs 2xl:text-base text-base-content/70">
                 {item.value} {item.shortName}
               </span>
             </div>

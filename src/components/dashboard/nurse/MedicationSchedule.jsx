@@ -32,51 +32,49 @@ const MedicationSchedule = () => {
 
   const bgChange = (medications) => {
     if (medications === "Administered") {
-      return "bg-[#D0EEA6] text-[#467206] w-[140px] h-[30px] rounded-[20px]";
+      return "bg-success/20 text-success border border-success/30 px-4 py-1 rounded-full text-sm font-medium";
     }
     if (medications === "Due") {
-      return "bg-[#D6EDFE] text-[#106AA6] w-[79px] h-[34px] rounded-[100px]";
+      return "bg-info/20 text-info border border-info/30 px-4 py-1 rounded-full text-sm font-medium";
     }
     if (medications === "Missed") {
-      return "bg-[#F2DFD5] text-[#B50D05] w-[119px] h-[33px] rounded-[20px]";
+      return "bg-error/20 text-error border border-error/30 px-4 py-1 rounded-full text-sm font-medium";
     }
   };
   return (
     <div className="p-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-[40px]">Medication Schedule</h1>
-        <button className="flex justify-center items-center h-[60px] w-[80px] bg-[#FFFFFF]">
-          {<IoAddOutline size={42} />}
+        <h1 className="text-2xl font-semibold text-base-content">Medication Schedule</h1>
+        <button className="btn btn-primary btn-circle btn-lg">
+          <IoAddOutline size={24} />
         </button>
       </div>
 
-      <div className="flex  flex-col mt-4 gap-[24px]">
+      <div className="flex flex-col mt-4 gap-6">
         {medications.map((medication, index) => {
           return (
             <div
               key={index}
-              className="mt-4 py-[16px] px-[24px] h-[97px]  bg-[#FFFFFF] rounded-[6px]"
+              className="card bg-base-100 shadow-sm border border-base-300 p-6"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-[400] text-[16px]">
+                  <p className="font-medium text-base text-base-content">
                     {medication.drugsTypes}
                   </p>
-                  <p className="font-[400] text-[12px]">
+                  <p className="text-sm text-base-content/70">
                     Patient: {medication.patientName}
                   </p>
                 </div>
 
-                <div className="flex flex-col items-end gap-[8px]">
-                  <button
-                    className={` ${bgChange(
-                      medication.status
-                    )} text-[16px] font-[400]`}
+                <div className="flex flex-col items-end gap-2">
+                  <span
+                    className={bgChange(medication.status)}
                   >
                     {medication.status}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <BsClock />
+                  </span>
+                  <div className="flex items-center gap-2 text-base-content/60 text-sm">
+                    <BsClock className="w-4 h-4" />
                     {medication.time}
                   </div>
                 </div>

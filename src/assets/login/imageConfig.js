@@ -1,11 +1,15 @@
-import carouselImage1 from "./carouselImage1.jpg";
-import carouselImage2 from "./carouselImage2.png"
+import carouselImage1 from "./carouselImage1.png";
+import carouselImage2 from "./carouselImage2.png";
+import carouselImage3 from "./carouselImage3.png";
+import carouselImage4 from "./carouselImage4.png";
+import carouselImage5 from "./carouselImage5.png";
+import carouselImage6 from "./carouselImage6.png";
 
 // Import your carousel images here
 // For now using placeholder URLs - replace with your actual imports when you add the images
 
 // Example of how to import local images:
-import carouselImage1 from './image1.png';
+// import carouselImage1 from './carouselImage1.jpg';
 // import carouselImage2 from './carouselImage2.jpg';
 // import carouselImage3 from './carouselImage3.jpg';
 // import carouselImage4 from './carouselImage4.jpg';
@@ -30,14 +34,26 @@ export const carouselImages = [
   {
     id: 3,
     // src: carouselImage3,
-    src: carouselImage1,
-    alt: "Medical team",
+    src: carouselImage3,
+    alt: "Doctor consultation",
   },
   {
     id: 4,
     // src: carouselImage4,
-    src: carouselImage2,
-    alt: "Healthcare professional",
+    src: carouselImage4,
+    alt: "Medical personnel with stethoscope",
+  },
+  {
+    id: 5,
+    // src: carouselImage5,
+    src: carouselImage5,
+    alt: "Nurse with globe sideview",
+  },
+  {
+    id: 6,
+    // src: carouselImage6,
+    src: carouselImage6,
+    alt: "Ayellow stethoscope",
   },
 ];
 

@@ -2,6 +2,8 @@ import React from "react";
 import { useState } from "react";
 import { FaSearch, FaBell, FaSync, FaUserPlus } from "react-icons/fa";
 import ThemeSwitcher from "./ThemeSwitcher";
+import { SlRefresh } from "react-icons/sl";
+import { BsBell } from "react-icons/bs";
 
 const Topbar = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,18 +24,18 @@ const Topbar = () => {
   };
 
   return (
-    <header className="bg-base-100 border-b border-base-300 px-6 py-4 w-full ">
-      <div className="flex items-center justify-between mt-3">
+    <header className="px-6 py-4 w-full border-b bg-base-100 border-base-300">
+      <div className="flex justify-between items-center mt-3">
         {/* Search Bar */}
         <div className="flex-1 max-w-md">
           <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <FaSearch className="absolute left-3 top-1/2 w-4 h-4 transform -translate-y-1/2 pointer-events-none text-base-content/50" />
             <input
               type="text"
               placeholder="Search Patient"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="input input-bordered w-full pl-10 focus:input-primary"
+              className="pl-10 w-full input input-bordered focus:input-primary"
             />
           </div>
         </div>
@@ -49,18 +51,18 @@ const Topbar = () => {
             className="btn btn-ghost btn-circle"
             title="Refresh"
           >
-            <FaSync className="w-5 h-5" />
+            <SlRefresh className="w-5 h-5" />
           </button>
 
           {/* Notifications */}
           <button
             onClick={handleNotifications}
-            className="btn btn-ghost btn-circle relative"
+            className="relative btn btn-ghost btn-circle"
             title="Notifications"
           >
-            <FaBell className="w-5 h-5" />
+            <BsBell className="w-5 h-5" />
             {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-error rounded-full"></span>
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-error"></span>
           </button>
 
           {/* Add Patient Button */}
