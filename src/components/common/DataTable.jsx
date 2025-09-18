@@ -13,7 +13,7 @@ const DataTable = ({
   className = "",
   searchPlaceholder = "Search...",
   showEntries = true,
-  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-96" // Responsive default
+  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-94 2xl:max-h-140" // Responsive default
 }) => {
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,7 +169,7 @@ const DataTable = ({
                     {columns.map((column) => (
                       <td
                         key={column.key}
-                        className={`border border-base-300 px-4 py-3 2xl:text-sm text-xs ${column.className || 'text-base-content/70'} ${
+                        className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${column.className || 'text-base-content/70'} ${
                           column.truncate ? 'max-w-xs truncate' : 'whitespace-nowrap'
                         }`}
                       >
@@ -192,15 +192,15 @@ const DataTable = ({
 
       {/* Pagination and Info - Always show when paginated */}
       {paginated && (
-        <div className="flex justify-between items-center px-2 mt-4">
-          <div className="text-sm text-base-content/70">
+        <div className="flex flex-col justify-between items-center px-2 mt-4 lg:flex-row">
+          <div className="py-2 text-sm text-base-content/70">
             Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} entries
           </div>
           
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-4 justify-center items-center">
             {/* Show Entries - Always visible when paginated */}
             {showEntries && (
-              <div className="flex flex-shrink-0 gap-2 items-center">
+              <div className="flex flex-shrink-0 gap-1 items-center lg:gap-2">
                 <span className="text-sm text-base-content/70">Show</span>
                 <select
                   value={entriesPerPage}

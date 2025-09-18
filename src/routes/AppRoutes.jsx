@@ -3,8 +3,10 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/auth/Login";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import Dashboard from "../pages/dashboard/Dashboard";
-import FrontdeskDashboard from "../pages/dashboard/frontdesk/Dashboard";
-import NurseDashboard from "../pages/dashboard/nurse/NurseDashboard";
+import FrontdeskDashboard from "../pages/frontdesk/dashboard/Dashboard";
+import Patients from "../pages/frontdesk/patients/Patients";
+import Appointments from "../pages/frontdesk/appointments/Appointments";
+import NurseDashboard from "../pages/nurse/dashboard/NurseDashboard";
 
 const AppRoutes = () => {
   return (
@@ -20,6 +22,10 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<FrontdeskDashboard />} />
       <Route path="/dashboard/old" element={<Dashboard />} />
       <Route path="/dashboard/nurse" element={<NurseDashboard />} />
+      
+      {/* Frontdesk Routes */}
+      <Route path="/patients" element={<Patients />} />
+      <Route path="/appointments" element={<Appointments />} />
 
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />

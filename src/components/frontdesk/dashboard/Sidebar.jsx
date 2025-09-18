@@ -7,7 +7,7 @@ import { GoPerson } from "react-icons/go";
 import { CiLock, CiLogout } from "react-icons/ci";
 import { Link, useLocation } from 'react-router-dom';
 
-const Sidebar = () => {
+const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
 
   const menuItems = [
@@ -40,6 +40,7 @@ const Sidebar = () => {
   const MenuItem = ({ icon: Icon, label, path, active }) => (
     <Link
       to={path}
+      onClick={onCloseSidebar}
       className={`flex items-center space-x-3 px-4 2xl:py-3 py-2 text-sm font-medium rounded-lg transition-colors ${
         active
           ? 'bg-primary text-primary-content'
@@ -52,27 +53,27 @@ const Sidebar = () => {
   );
 
   return (
-    <div className="flex flex-col pb-8 w-52 border-r-2 2xl:w-64 bg-base-100 border-neutral/20">
+    <div className="flex flex-col h-full w-64 bg-base-100 border-r-2 border-neutral/20">
       {/* Logo */}
-      <div className="p-1 border-b-4 2xl:p-3 border-neutral/20">
+      <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
           <img src="/src/assets/images/logo.png" alt="Kolak" className="hidden w-auto h-10" />
 
           {/* Kolak logo adaptive*/}
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-8 2xl:h-12" />
+              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-bold text-md 2xl:text-3xl">Kolak</span>
-              <span className="text-xs text-base-content/70 2xl:text-base">- Hospital -</span>
+              <span className="font-bold text-lg lg:text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">- Hospital -</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-12 space-y-2">
+      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
@@ -88,13 +89,17 @@ const Sidebar = () => {
       <div className="p-4 space-y-2 border-t border-base-300">
         <Link
           to="/change-password"
+          onClick={onCloseSidebar}
           className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
           <CiLock className="w-4 h-4 2xl:w-5 2xl:h-5" />
           <span className="text-xs 2xl:text-sm">Change Password</span>
         </Link>
 
-        <button className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content">
+        <button 
+          onClick={onCloseSidebar}
+          className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+        >
           <CiLogout  className="w-4 h-4 2xl:w-5 2xl:h-5" />
           <span className="text-xs 2xl:text-sm">Log Out</span>
         </button>

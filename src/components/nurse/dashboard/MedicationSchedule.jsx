@@ -43,23 +43,23 @@ const MedicationSchedule = () => {
   };
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-base-content">Medication Schedule</h1>
         <button className="btn btn-primary btn-circle btn-lg">
           <IoAddOutline size={24} />
         </button>
       </div>
 
-      <div className="flex flex-col mt-4 gap-6">
+      <div className="flex flex-col gap-6 mt-4">
         {medications.map((medication, index) => {
           return (
             <div
               key={index}
-              className="card bg-base-100 shadow-sm border border-base-300 p-6"
+              className="p-6 border shadow-sm card bg-base-100 border-base-300"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between items-center">
                 <div>
-                  <p className="font-medium text-base text-base-content">
+                  <p className="text-base font-medium text-base-content">
                     {medication.drugsTypes}
                   </p>
                   <p className="text-sm text-base-content/70">
@@ -67,13 +67,13 @@ const MedicationSchedule = () => {
                   </p>
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col gap-2 items-end">
                   <span
                     className={bgChange(medication.status)}
                   >
                     {medication.status}
                   </span>
-                  <div className="flex items-center gap-2 text-base-content/60 text-sm">
+                  <div className="flex gap-2 items-center text-sm text-base-content/60">
                     <BsClock className="w-4 h-4" />
                     {medication.time}
                   </div>

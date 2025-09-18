@@ -1,8 +1,10 @@
 import React from "react";
-import Sidebar from "../../../components/dashboard/nurse/Sidebar";
-import Header from "../../../components/dashboard/nurse/Topbar";
-import TaskAssigned from "@/components/dashboard/nurse/TaskAssigned";
-import MeditationSchedule from "@/components/dashboard/nurse/MedicationSchedule";
+import { Header } from "@/components/common";
+import {
+  Sidebar,
+  TaskAssigned, 
+  MedicationSchedule
+} from "@/components/nurse";
 
 const NurseDashboard = () => {
   return (
@@ -14,7 +16,7 @@ const NurseDashboard = () => {
 
         <div className="overflow-y-auto flex-1">
           <TaskAssigned />
-          <MeditationSchedule />
+          <MedicationSchedule />
         </div>
       </div>
     </div>
