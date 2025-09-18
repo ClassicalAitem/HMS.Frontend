@@ -4,7 +4,7 @@ import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
 import { IoMenu } from "react-icons/io5";
 import { MdLockOutline } from "react-icons/md";
 import { Link, useLocation } from "react-router-dom";
-import missFolake from "../../../assets/images/missFolake.jpg"
+import missFolake from "@/assets/images/missFolake.jpg"
 
 const Sidebar = () => {
   const location = useLocation();

@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { IoIosColorPalette, IoMdClose } from 'react-icons/io';
 import { FaCheck } from 'react-icons/fa';
-import { useTheme } from '../../../contexts/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const ThemeSwitcher = () => {
@@ -24,16 +25,16 @@ const ThemeSwitcher = () => {
   const ThemePreview = ({ theme }) => {
     return (
       <div
-        className="cursor-pointer p-3 rounded-lg border-2 transition-all hover:scale-105"
+        className="p-3 rounded-lg border-2 transition-all cursor-pointer hover:scale-105"
         style={{
           backgroundColor: getThemeColors(theme).base100,
-          borderColor: currentTheme === theme ? '#00943C' : getThemeColors(theme).base300,
+          borderColor: currentTheme === theme ? '#22c55e' : getThemeColors(theme).base300,
           color: getThemeColors(theme).baseContent
         }}
         onClick={() => handleThemeChange(theme)}
       >
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-medium text-sm">{themeDisplayNames[theme]}</span>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm font-medium">{themeDisplayNames[theme]}</span>
           {currentTheme === theme && (
             <FaCheck className="w-4 h-4 text-green-500" />
           )}
@@ -65,7 +66,7 @@ const ThemeSwitcher = () => {
   // Comprehensive DaisyUI theme color mapping
   const getThemeColors = (theme) => {
     const themeColorMap = {
-      light: { primary: '#00943C', secondary: '#f000b8', accent: '#00943C', neutral: '#3d4451', base100: '#ffffff', base300: '#00943C', baseContent: '#1f2937' },
+      light: { primary: '#00943C', secondary: '#f000b8', accent: '#00943C', neutral: '#3d4451', base100: '#ffffff', base300: '#d1d5db', baseContent: '#1f2937' },
       dark: { primary: '#22c55e', secondary: '#f000b8', accent: '#37cdbe', neutral: '#2a2e37', base100: '#1f2937', base300: '#374151', baseContent: '#f9fafb' },
       cupcake: { primary: '#65c3c8', secondary: '#ef9fbc', accent: '#eeaf3a', neutral: '#291334', base100: '#faf7f5', base300: '#e7e2df', baseContent: '#291334' },
       bumblebee: { primary: '#f9d71c', secondary: '#df7e07', accent: '#181830', neutral: '#181a2a', base100: '#fffbeb', base300: '#e4e4e7', baseContent: '#181a2a' },
@@ -107,10 +108,10 @@ const ThemeSwitcher = () => {
       {/* Theme Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="btn btn-ghost btn-circle"
+        className="relative p-2 text-gray-400 transition-colors hover:text-gray-600 btn btn-ghost btn-circle"
         title="Change Theme"
       >
-        <IoIosColorPalette className="w-5 h-5" />
+        <IoIosColorPalette className="w-5 h-5 2xl:w-7 2xl:h-7" />
       </button>
 
       {/* Theme Selector Modal */}
@@ -122,7 +123,7 @@ const ThemeSwitcher = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/20 z-40"
+              className="fixed inset-0 z-40 bg-black/20"
               onClick={() => setIsOpen(false)}
             />
 
@@ -131,21 +132,21 @@ const ThemeSwitcher = () => {
               initial={{ opacity: 0, scale: 0.9, y: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: -20 }}
-              className="absolute right-0 top-12 bg-base-100 rounded-lg shadow-xl border border-base-300 p-6 w-96 max-h-96 overflow-y-auto z-50"
+              className="overflow-y-auto absolute right-0 top-12 z-50 p-6 w-96 max-h-96 rounded-lg border shadow-xl bg-base-100 border-base-300"
             >
               {/* Header */}
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-base-content">Choose Theme</h3>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 text-base-content/40 hover:text-base-content/70 transition-colors"
+            className="p-1 transition-colors text-base-content/40 hover:text-base-content/70"
           >
             <IoMdClose className="w-5 h-5" />
           </button>
         </div>
 
               {/* Current Theme */}
-              <div className="mb-4 p-3 bg-primary/10 rounded-lg">
+              <div className="p-3 mb-4 rounded-lg bg-primary/10">
                 <p className="text-sm text-base-content/70">Current Theme:</p>
                 <p className="font-medium text-primary">{themeDisplayNames[currentTheme]}</p>
               </div>
@@ -153,7 +154,7 @@ const ThemeSwitcher = () => {
               {/* Theme Categories */}
               {Object.entries(themeCategories).map(([category, themes]) => (
                 <div key={category} className="mb-6">
-                  <h4 className="text-sm font-medium text-base-content mb-3">{category}</h4>
+                  <h4 className="mb-3 text-sm font-medium text-base-content">{category}</h4>
                   <div className="grid grid-cols-2 gap-2">
                     {themes.map((theme) => (
                       <ThemePreview key={theme} theme={theme} />
