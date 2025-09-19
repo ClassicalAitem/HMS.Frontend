@@ -4,7 +4,8 @@ import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
 import appointmentsData from '@/data/appointments.json';
-import { FaFilter, FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
+import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
+import { PiSlidersLight } from 'react-icons/pi';
 
 const Appointments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -146,10 +147,10 @@ const Appointments = () => {
           <div className="flex gap-4 justify-between items-center mb-6">
             <div className="flex gap-3 items-center">
               <button 
-                className="flex gap-2 items-center btn btn-outline btn-sm"
+                className="flex gap-2 items-center btn btn-sm"
                 onClick={() => setFilterOpen(!filterOpen)}
               >
-                <FaFilter className="w-3 h-3" />
+                <PiSlidersLight className="w-4 h-4 rotate-90" />
                 <span className="text-xs">Filter</span>
               </button>
             </div>
@@ -195,3 +196,4 @@ const Appointments = () => {
 };
 
 export default Appointments;
+
