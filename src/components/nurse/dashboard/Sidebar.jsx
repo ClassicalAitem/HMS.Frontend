@@ -1,9 +1,10 @@
+/* eslint-disable no-unused-vars */
 import React from "react";
 import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
 import { IoMenu } from "react-icons/io5";
 import { MdLockOutline } from "react-icons/md";
 import { Link, useLocation } from "react-router-dom";
-import missFolake from "../../../assets/images/missFolake.jpg"
+import missFolake from "@/assets/images/missFolake.jpg"
 
 const Sidebar = () => {
   const location = useLocation();
@@ -44,13 +45,13 @@ const Sidebar = () => {
   );
 
   return (
-    <div className="w-64 bg-base-100 border-r border-base-300 flex flex-col">
+    <div className="flex flex-col w-64 border-r bg-base-100 border-base-300">
       <div className="p-6 border-b border-base-300">
-        <div className="flex items-center justify-center">
+        <div className="flex justify-center items-center">
           <img
             src="/src/assets/images/logo.png"
             alt="Kolak"
-            className="w-auto h-10 hidden"
+            className="hidden w-auto h-10"
           />
 
           {/* Kolak logo adaptive*/}
@@ -84,32 +85,32 @@ const Sidebar = () => {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-4 border-t border-base-300 space-y-2">
+      <div className="p-4 space-y-2 border-t border-base-300">
         <Link
           to="/change-password"
-          className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-base-content/70 hover:bg-base-200 hover:text-base-content rounded-lg transition-colors"
+          className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
           <MdLockOutline className="w-5 h-5" />
           <span>Change Password</span>
         </Link>
 
-        <button className="flex items-center space-x-3 px-4 py-3 text-sm font-medium text-base-content/70 hover:bg-base-200 hover:text-base-content rounded-lg transition-colors w-full text-left">
+        <button className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content">
           <FaSignOutAlt className="w-5 h-5" />
           <span>Log Out</span>
         </button>
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-base-300 ">
-        <div className="flex items-center space-x-3 bg-[#EAFFF3] h-[58px]">
-          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+      <div className="p-4 border-t border-base-300 lg:mb-16 2xl:mb-26">
+        <div className="flex items-center space-x-3 h-[58px]">
+          <div className="flex justify-center items-center w-10 h-10 rounded-full">
             <img
               src={missFolake}
               alt="Folake Flakes"
-              className="w-10 h-10 rounded-full object-cover"
+              className="object-cover w-10 h-10 rounded-full"
             />
           </div>
-          <div className="flex-1 ">
+          <div className="flex-1">
             <p className="text-sm font-medium text-base-content">
               Folake Flakes
             </p>

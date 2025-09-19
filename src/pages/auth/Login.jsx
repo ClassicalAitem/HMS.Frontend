@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash, FaUser, FaLock } from "react-icons/fa";
@@ -87,7 +88,7 @@ const Login = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          className="flex fixed inset-0 z-50 justify-center items-center bg-black/50"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -95,14 +96,14 @@ const Login = () => {
             exit={{ scale: 0.8, opacity: 0 }}
             className="bg-[#EAFFF3] rounded-2xl p-8 max-w-sm w-full mx-4 text-center"
           >
-            <div className="w-20 h-20 bg-gray-800 rounded-full mx-auto mb-6"></div>
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+            <div className="mx-auto mb-6 w-20 h-20 bg-gray-800 rounded-full"></div>
+            <h3 className="mb-2 text-2xl font-bold text-gray-800">
               Welcome Back,
             </h3>
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">FOLAKE</h3>
+            <h3 className="mb-6 text-2xl font-bold text-gray-800">FOLAKE</h3>
             <button
               onClick={() => navigate("/dashboard")}
-              className="flex items-center justify-center w-full bg-gray-800 text-white py-3 rounded-lg font-medium hover:bg-gray-700 transition-colors"
+              className="flex justify-center items-center py-3 w-full font-medium text-white bg-gray-800 rounded-lg transition-colors hover:bg-gray-700"
             >
               <span className="mr-2">→</span>
               Proceed To Dashboard
@@ -134,8 +135,9 @@ const Login = () => {
           // onClear={() => handleClearInput("username")}
           error={errors.email || !!error}
           theme={currentTheme}
+          className="text-sm 2xl:text-base"
         />
-        <p className="text-red-500 text-sm mt-1">{errors.email?.message}</p>
+        <p className="mt-1 text-sm text-red-500">{errors.email?.message}</p>
 
         {/* Password Field */}
         <AuthInput
@@ -150,14 +152,15 @@ const Login = () => {
           onRightIconClick={() => setShowPassword(!showPassword)}
           error={errors.password || !!error}
           theme={currentTheme}
+          className="text-sm 2xl:text-base"
         />
-        <p className="text-red-500 text-sm mt-1">{errors.password?.message}</p>
+        <p className="mt-1 text-sm text-red-500">{errors.password?.message}</p>
 
         {/* Forgot Password */}
         <div className="text-right">
           <Link
             to="/forgot-password"
-            className="text-green-500 hover:text-green-600 text-sm transition-colors"
+            className="text-sm transition-colors 2xl:text-base text-primary hover:text-green-600"
           >
             Forgot Password?
           </Link>
@@ -167,15 +170,15 @@ const Login = () => {
         <button
           type="submit"
           disabled={isLoading}
-          className={`w-full py-4 rounded-lg font-semibold text-white transition-all duration-200 ${
+          className={`w-full py-3 2xl:py-4 rounded-lg font-semibold text-white transition-all duration-200 ${
             isLoading
               ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-500 hover:bg-green-600 active:scale-95"
+              : "bg-primary hover:bg-green-500 active:scale-95"
           }`}
         >
           {isLoading ? (
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+            <div className="flex justify-center items-center">
+              <div className="mr-2 w-5 h-5 rounded-full border-b-2 border-white animate-spin"></div>
               Signing in...
             </div>
           ) : (
