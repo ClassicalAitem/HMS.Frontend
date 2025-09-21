@@ -1,0 +1,31 @@
+import * as yup from "yup";
+
+// * Form Validation User's Login
+export const loginSchema = yup.object().shape({
+  email: yup
+    .string()
+    .email("Email must be a valid email address")
+    .required("Email is required")
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email is invalid"),
+
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(8, "Password must be at least 8 characters"),
+});
+
+
+
+// * Form Validation For Update New User's Password
+
+export const updateYourPasswordSchema = yup.object().shape({
+  newPassword: yup
+    .string()
+    .required("Please enter your new password")
+    .min(8, "Password must be at lease 8 characters"),
+
+  confirmPassword: yup
+    .string()
+    .required("Please confirm your new password")
+    .oneOf([yup.ref("newPassword"), null], "Password must match"),
+});

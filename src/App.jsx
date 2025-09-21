@@ -1,8 +1,18 @@
 import React from 'react';
-import { AppRoutes } from './routes';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import AppRoutes from './routes/AppRoutes';
 
-const App = () => {
-  return <AppRoutes />;
-};
+function App() {
+  return (
+    <ThemeProvider>
+      <Router>
+        <div className="App">
+          <AppRoutes />
+        </div>
+      </Router>
+    </ThemeProvider>
+  );
+}
 
 export default App;

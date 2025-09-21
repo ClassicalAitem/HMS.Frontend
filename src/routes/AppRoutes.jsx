@@ -1,29 +1,36 @@
-import React from 'react';
-import { Route, Routes } from 'react-router-dom';
-import { paths } from './paths';
-import PublicPagesLayout from '@/pages/PublicPages/PublicPagesLayout';
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Login from "../pages/auth/Login";
+import ForgotPassword from "../pages/auth/ForgotPassword";
+import Dashboard from "../pages/dashboard/Dashboard";
+import FrontdeskDashboard from "../pages/frontdesk/dashboard/Dashboard";
+import Patients from "../pages/frontdesk/patients/Patients";
+import Appointments from "../pages/frontdesk/appointments/Appointments";
+import NurseDashboard from "../pages/nurse/dashboard/NurseDashboard";
 
-export const AppRoutes = () => (
-  <Routes>
-    <Route path={paths.index} element={<PublicPagesLayout />}>
+const AppRoutes = () => {
+  return (
+    <Routes>
+      {/* Default route - redirect to login */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
-    </Route>
+      {/* Auth Routes */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
-    {/* Company Route */}
-    <Route path={paths.companyIndex} element={<CompanyLayout />}>
+      {/* Dashboard Routes */}
+      <Route path="/dashboard" element={<FrontdeskDashboard />} />
+      <Route path="/dashboard/old" element={<Dashboard />} />
+      <Route path="/dashboard/nurse" element={<NurseDashboard />} />
+      
+      {/* Frontdesk Routes */}
+      <Route path="/patients" element={<Patients />} />
+      <Route path="/appointments" element={<Appointments />} />
 
-    </Route>
-    {/* Auth Pages */}
-    {/* <Route path={paths.index} element={<AuthPageLayout />}>
-      <Route path={paths.login} element={<Login />} />
-      <Route path={paths.register} element={<Register />} />
-      <Route path={paths.otp} element={<VerifyOtp />} />
-      <Route path={paths.resendOtp} element={<ResendOTP />} />
-      <Route path={paths.forgotPassword} element={<ForgotPassword />} />
-      <Route path={`${paths.resetPassword}/:userId/:token`} element={<ResetPassword />} />
-    </Route> */}
+      {/* Catch all route - redirect to login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
+  );
+};
 
-
-    <Route path="*" element={<NotFound />} />
-  </Routes>
-);
+export default AppRoutes;
