@@ -6,6 +6,7 @@ import Dashboard from "../pages/dashboard/Dashboard";
 import FrontdeskDashboard from "../pages/frontdesk/dashboard/Dashboard";
 import Patients from "../pages/frontdesk/patients/Patients";
 import Appointments from "../pages/frontdesk/appointments/Appointments";
+import ChangePassword from "../pages/frontdesk/ChangePassword";
 import NurseDashboard from "../pages/nurse/dashboard/NurseDashboard";
 
 const AppRoutes = () => {
@@ -26,6 +27,7 @@ const AppRoutes = () => {
       {/* Frontdesk Routes */}
       <Route path="/patients" element={<Patients />} />
       <Route path="/appointments" element={<Appointments />} />
+      <Route path="/change-password" element={<ChangePassword />} />
 
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />

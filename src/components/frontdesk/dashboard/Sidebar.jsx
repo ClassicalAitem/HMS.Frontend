@@ -90,7 +90,11 @@ const Sidebar = ({ onCloseSidebar }) => {
         <Link
           to="/change-password"
           onClick={onCloseSidebar}
-          className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          className={`flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors ${
+            location.pathname === '/change-password'
+              ? 'bg-primary text-primary-content'
+              : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+          }`}
         >
           <CiLock className="w-4 h-4 2xl:w-5 2xl:h-5" />
           <span className="text-xs 2xl:text-sm">Change Password</span>
