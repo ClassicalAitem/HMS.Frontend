@@ -16,32 +16,26 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/dashboard/superadmin'
     },
     {
+      icon: MdAnalytics,
+      label: 'Generate Reports',
+      path: '/superadmin/reports',
+      active: location.pathname === '/superadmin/reports'
+    },
+    {
       icon: MdSupervisorAccount,
-      label: 'User Management',
+      label: 'Manage Users',
       path: '/superadmin/users',
       active: location.pathname === '/superadmin/users'
     },
     {
       icon: MdSecurity,
-      label: 'Security',
-      path: '/superadmin/security',
-      active: location.pathname === '/superadmin/security'
-    },
-    {
-      icon: MdStorage,
-      label: 'System Backup',
-      path: '/superadmin/backup',
-      active: location.pathname === '/superadmin/backup'
-    },
-    {
-      icon: MdAnalytics,
-      label: 'Analytics',
-      path: '/superadmin/analytics',
-      active: location.pathname === '/superadmin/analytics'
+      label: 'Registration',
+      path: '/superadmin/registration',
+      active: location.pathname === '/superadmin/registration'
     },
     {
       icon: MdSettings,
-      label: 'System Settings',
+      label: 'Settings',
       path: '/superadmin/settings',
       active: location.pathname === '/superadmin/settings'
     }

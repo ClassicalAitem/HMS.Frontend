@@ -11,6 +11,10 @@ import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import SuperAdminDashboard from "@/pages/superadmin/dashboard/SuperAdminDashboard";
+import GenerateReports from "@/pages/superadmin/reports/GenerateReports";
+import ManageUsers from "@/pages/superadmin/users/ManageUsers";
+import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
+import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
 import ChangePassword from "@/pages/auth/ChangePassword";
 
@@ -31,6 +35,10 @@ const AppRoutes = () => {
       <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
       <Route path="/dashboard/admin" element={<AdminDashboard />} />
       <Route path="/dashboard/superadmin" element={<SuperAdminDashboard />} />
+      <Route path="/superadmin/reports" element={<GenerateReports />} />
+      <Route path="/superadmin/users" element={<ManageUsers />} />
+      <Route path="/superadmin/registration" element={<SuperAdminRegistration />} />
+      <Route path="/superadmin/settings" element={<SuperAdminSettings />} />
       <Route path="/dashboard/cashier" element={<CashierDashboard />} />
 
       {/* Frontdesk Routes */}
