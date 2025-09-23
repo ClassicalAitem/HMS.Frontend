@@ -1,10 +1,12 @@
 /* eslint-disable no-unused-vars */
 import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IoSearch, IoClose } from "react-icons/io5";
 import { DataTable } from '@/components/common';
 import patientsData from '@/data/patients.json';
 
 const RecentlyAddedPatients = () => {
+  const navigate = useNavigate();
   // State for search bar visibility
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -70,7 +72,20 @@ const RecentlyAddedPatients = () => {
     {
       key: 'name',
       title: 'Patient Name',
-      className: 'font-medium text-base-content'
+      className: 'font-medium text-base-content',
+      render: (value, row) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(`/patients/${row.id}`);
+          }}
+          className="text-primary hover:text-primary/80 hover:underline font-medium bg-transparent border-none cursor-pointer"
+        >
+          {value}
+        </button>
+      )
     },
     {
       key: 'gender',

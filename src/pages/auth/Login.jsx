@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { loginSchema } from "../../../utils/formValidator";
 import { useTheme } from "../../contexts/ThemeContext";
+import usersData from "@/data/users.json";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loggedInUser, setLoggedInUser] = useState(null);
 
   // const handleInputChange = (e) => {
   //   const { name, value } = e.target;
@@ -59,19 +61,29 @@ const Login = () => {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Simulate wrong password error for demo
-      if (data.password === "wrong") {
-        setError("Wrong Password, try again.");
+      // Find user in users data
+      const user = usersData.find(u => u.username === data.email && u.password === data.password);
+      
+      if (!user) {
+        setError("Invalid email or password. Please try again.");
         setIsLoading(false);
         return;
       }
 
-      // Show success modal
-      setShowSuccessModal(true);
+        // Store user data in localStorage
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('authToken', 'mock-jwt-token-' + user.id);
 
-      // Navigate to dashboard after delay
+        // Store logged-in user for success modal
+        setLoggedInUser(user);
+
+        // Show success modal
+        setShowSuccessModal(true);
+
+      // Navigate to role-specific dashboard after delay
       setTimeout(() => {
-        navigate("/dashboard");
+        const dashboardPath = getDashboardPath(user.role);
+        navigate(dashboardPath);
       }, 2000);
     } catch {
       setError("Login failed. Please try again.");
@@ -79,6 +91,34 @@ const Login = () => {
       setIsLoading(false);
       reset();
     }
+  };
+
+  const getDashboardPath = (role) => {
+    switch (role) {
+      case 'frontdesk':
+        return '/dashboard/frontdesk';
+      case 'nurse':
+        return '/dashboard/nurse';
+      case 'doctor':
+        return '/dashboard/doctor';
+      case 'admin':
+        return '/dashboard/admin';
+      case 'superAdmin':
+        return '/dashboard/superadmin';
+      case 'cashier':
+        return '/dashboard/cashier';
+      default:
+        return '/dashboard/frontdesk';
+    }
+  };
+
+  const getUserInitials = (name) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length >= 2) {
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+    return name[0].toUpperCase();
   };
 
   const SuccessModal = () => (
@@ -96,14 +136,31 @@ const Login = () => {
             exit={{ scale: 0.8, opacity: 0 }}
             className="bg-[#EAFFF3] rounded-2xl p-8 max-w-sm w-full mx-4 text-center"
           >
-            <div className="mx-auto mb-6 w-20 h-20 bg-gray-800 rounded-full"></div>
-            <h3 className="mb-2 text-2xl font-bold text-gray-800">
+            <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-primary flex items-center justify-center overflow-hidden">
+              {loggedInUser?.avatar ? (
+                <img 
+                  src={loggedInUser.avatar} 
+                  alt={loggedInUser.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl font-bold text-white">
+                  {getUserInitials(loggedInUser?.name)}
+                </span>
+              )}
+            </div>
+            <h3 className="mb-2 text-2xl font-bold text-primary">
               Welcome Back,
             </h3>
-            <h3 className="mb-6 text-2xl font-bold text-gray-800">FOLAKE</h3>
+            <h3 className="mb-6 text-2xl font-bold text-gray-800">
+              {loggedInUser?.name?.toUpperCase() || 'USER'}
+            </h3>
             <button
-              onClick={() => navigate("/dashboard")}
-              className="flex justify-center items-center py-3 w-full font-medium text-white bg-gray-800 rounded-lg transition-colors hover:bg-gray-700"
+              onClick={() => {
+                const dashboardPath = getDashboardPath(loggedInUser?.role);
+                navigate(dashboardPath);
+              }}
+              className="flex justify-center items-center py-3 w-full font-medium rounded-lg transition-colors text-base-100 bg-primary hover:bg-primary/80"
             >
               <span className="mr-2">→</span>
               Proceed To Dashboard
