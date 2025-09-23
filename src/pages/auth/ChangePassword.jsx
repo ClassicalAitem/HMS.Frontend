@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
@@ -6,6 +7,8 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { changePasswordSchema } from '../../../utils/formValidator';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MdLockOpen } from 'react-icons/md';
+import { FiEye } from 'react-icons/fi';
 
 const ChangePassword = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -73,15 +76,15 @@ const ChangePassword = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="flex fixed inset-0 z-50 justify-center items-center bg-black/50"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className="bg-base-100 rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-xl"
+            className="p-8 mx-4 w-full max-w-sm text-center rounded-2xl shadow-xl bg-base-100"
           >
-            <div className="mx-auto mb-6 w-20 h-20 bg-success rounded-full flex items-center justify-center">
+            <div className="flex justify-center items-center mx-auto mb-6 w-20 h-20 rounded-full bg-success">
               <FaCheck className="w-10 h-10 text-white" />
             </div>
             <h3 className="mb-2 text-2xl font-bold text-base-content">
@@ -92,7 +95,7 @@ const ChangePassword = () => {
             </p>
             <button
               onClick={() => setShowSuccessModal(false)}
-              className="w-full py-3 font-medium text-white bg-primary rounded-lg transition-colors hover:bg-primary/90"
+              className="py-3 w-full font-medium text-white rounded-lg transition-colors bg-primary hover:bg-primary/90"
             >
               Continue
             </button>
@@ -143,124 +146,121 @@ const ChangePassword = () => {
           {/* Page Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-primary 2xl:text-4xl">Change Password</h1>
-            <p className="text-base-content/70 2xl:text-lg">Update your password to keep your account secure.</p>
+            <p className="text-sm text-base-content/70 2xl:text-base">Update your password to keep your account secure.</p>
           </div>
 
           {/* Change Password Form */}
-          <div className="max-w-2xl">
+          <div className="space-y-6 max-w-2xl">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Password Settings Card */}
-              <div className="card bg-base-100 shadow-lg">
-                <div className="card-body p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <FaLock className="w-5 h-5 text-primary" />
-                    </div>
-                    <h2 className="text-xl font-semibold text-base-content">Password Settings</h2>
+              <div className="p-6 rounded-lg shadow-lg bg-base-100">
+                <div className="flex items-center mb-6 space-x-3">
+                  <div className="flex justify-center items-center w-8 h-8 rounded-lg bg-primary/10">
+                    <MdLockOpen className="w-5 h-5 text-primary" />
                   </div>
-                  
-                  <p className="text-base-content/70 mb-6">
-                    Choose a strong password that you haven't used before.
-                  </p>
+                  <div>
+                    <h2 className="text-lg font-semibold text-base-content">Password Settings</h2>          
+                    <p className="text-sm text-base-content/70">
+                      Choose a strong password that you haven't used before.
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="space-y-4">
-                    {/* Current Password */}
-                    <div>
-                      <label className="block text-sm font-medium text-base-content mb-2">
-                        Current Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPasswords.current ? "text" : "password"}
-                          placeholder="Enter your current password"
-                          className="input input-bordered w-full pr-12"
-                          {...register('currentPassword')}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => togglePasswordVisibility('current')}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70"
-                        >
-                          {showPasswords.current ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                      </div>
-                      {errors.currentPassword && (
-                        <p className="mt-1 text-sm text-error">{errors.currentPassword.message}</p>
-                      )}
+                <div className="space-y-5">
+                  {/* Current Password */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-base-content">
+                      Current Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPasswords.current ? "text" : "password"}
+                        placeholder="Enter your current Password"
+                        className="px-3 py-2 w-full rounded-none border-0 border-b 2xl:py-3 text-base-content bg-base-200 border-base-300 focus:border-primary focus:outline-none focus:ring-0"
+                        {...register('currentPassword')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('current')}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 hover:text-base-content/70"
+                      >
+                        {showPasswords.current ? <FaEyeSlash className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    {errors.currentPassword && (
+                      <p className="mt-1 text-sm text-error">{errors.currentPassword.message}</p>
+                    )}
+                  </div>
 
-                    {/* New Password */}
-                    <div>
-                      <label className="block text-sm font-medium text-base-content mb-2">
-                        New Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPasswords.new ? "text" : "password"}
-                          placeholder="Enter your new password"
-                          className="input input-bordered w-full pr-12"
-                          {...register('newPassword')}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => togglePasswordVisibility('new')}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70"
-                        >
-                          {showPasswords.new ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                      </div>
-                      {errors.newPassword && (
-                        <p className="mt-1 text-sm text-error">{errors.newPassword.message}</p>
-                      )}
+                  {/* New Password */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-base-content">
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPasswords.new ? "text" : "password"}
+                        placeholder="Enter your New Password"
+                        className="px-3 py-2 w-full rounded-none border-0 border-b 2xl:py-3 text-base-content bg-base-200 border-base-300 focus:border-primary focus:outline-none focus:ring-0"
+                        {...register('newPassword')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('new')}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 hover:text-base-content/70"
+                      >
+                        {showPasswords.new ? <FaEyeSlash className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    {errors.newPassword && (
+                      <p className="mt-1 text-sm text-error">{errors.newPassword.message}</p>
+                    )}
+                  </div>
 
-                    {/* Confirm New Password */}
-                    <div>
-                      <label className="block text-sm font-medium text-base-content mb-2">
-                        Confirm New Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPasswords.confirm ? "text" : "password"}
-                          placeholder="Confirm your new password"
-                          className="input input-bordered w-full pr-12"
-                          {...register('confirmPassword')}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => togglePasswordVisibility('confirm')}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/40 hover:text-base-content/70"
-                        >
-                          {showPasswords.confirm ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                      </div>
-                      {errors.confirmPassword && (
-                        <p className="mt-1 text-sm text-error">{errors.confirmPassword.message}</p>
-                      )}
+                  {/* Confirm New Password */}
+                  <div>
+                    <label className="block mb-2 text-sm font-medium text-base-content">
+                      Confirm New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPasswords.confirm ? "text" : "password"}
+                        placeholder="Confirm your New Password"
+                        className="px-3 py-2 w-full rounded-none border-0 border-b 2xl:py-3 text-base-content bg-base-200 border-base-300 focus:border-primary focus:outline-none focus:ring-0"
+                        {...register('confirmPassword')}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility('confirm')}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/50 hover:text-base-content/70"
+                      >
+                        {showPasswords.confirm ? <FaEyeSlash className="w-4 h-4" /> : <FiEye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    {errors.confirmPassword && (
+                      <p className="mt-1 text-sm text-error">{errors.confirmPassword.message}</p>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Password Requirements Card */}
-              <div className="card bg-base-100 shadow-lg">
-                <div className="card-body p-6">
-                  <h3 className="text-lg font-semibold text-base-content mb-4">Password Requirements</h3>
-                  
-                  <div className="space-y-3">
-                    <PasswordRequirement 
-                      text="At least 8 characters long" 
-                      isValid={newPassword && newPassword.length >= 8} 
-                    />
-                    <PasswordRequirement 
-                      text="Different from your current password" 
-                      isValid={true} 
-                    />
-                    <PasswordRequirement 
-                      text="Confirmation password matches" 
-                      isValid={watch('confirmPassword') && watch('confirmPassword') === newPassword} 
-                    />
-                  </div>
+              <div className="p-6 rounded-lg shadow-lg bg-base-100">
+                <h3 className="mb-4 text-lg font-semibold text-base-content">Password Requirement</h3>
+                
+                <div className="space-y-3">
+                  <PasswordRequirement 
+                    text="At least 8 charatcers long" 
+                    isValid={newPassword && newPassword.length >= 8} 
+                  />
+                  <PasswordRequirement 
+                    text="Different from your current passwords" 
+                    isValid={true} 
+                  />
+                  <PasswordRequirement 
+                    text="Confirmation password matches" 
+                    isValid={watch('confirmPassword') && watch('confirmPassword') === newPassword} 
+                  />
                 </div>
               </div>
 
@@ -270,7 +270,7 @@ const ChangePassword = () => {
                 disabled={isLoading}
                 className={`w-full py-4 rounded-lg font-semibold text-white transition-all duration-200 ${
                   isLoading
-                    ? "bg-base-300 cursor-not-allowed"
+                    ? "cursor-not-allowed bg-base-300"
                     : "bg-primary hover:bg-primary/90 active:scale-95"
                 }`}
               >
