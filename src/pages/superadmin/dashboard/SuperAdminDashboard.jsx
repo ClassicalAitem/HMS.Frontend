@@ -2,6 +2,9 @@
 import React, { useState } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
+import { FaUsers, FaUserMd, FaBuilding, FaFileAlt } from 'react-icons/fa';
+import { PiUsersThreeDuotone, PiUsersFourDuotone, PiBuildingDuotone, PiFileDuotone } from 'react-icons/pi';
+import { IoDocumentsOutline } from "react-icons/io5"; 
 
 const SuperAdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,6 +15,17 @@ const SuperAdminDashboard = () => {
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+  };
+
+  const getCurrentDate = () => {
+    const now = new Date();
+    const options = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    return now.toLocaleDateString('en-US', options);
   };
 
   return (
@@ -40,88 +54,98 @@ const SuperAdminDashboard = () => {
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Super Admin Dashboard</h1>
-            <p className="text-sm text-base-content/60 2xl:text-base">Welcome, Robert Thompson</p>
+          <div className="mb-8">
+            <h1 className="text-lg font-regular text-base-content 2xl:text-2xl">Super Admin Dashboard</h1>
+            <p className="text-xs text-base-content/70 2xl:text-base">
+              Welcome back, Super Admin. Here's a summary of your hospital's current status for {getCurrentDate()}.
+            </p>
           </div>
 
-          {/* Dashboard Content */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {/* System Status */}
-            <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">System Status</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Database</span>
-                    <span className="badge badge-success">Healthy</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">API Services</span>
-                    <span className="badge badge-success">Online</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Backup Status</span>
-                    <span className="badge badge-warning">Pending</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Security</span>
-                    <span className="badge badge-success">Protected</span>
-                  </div>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
+            {/* Total Patients */}
+            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+              <div className="flex flex-col justify-between items-center">
+                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                  <PiUsersThreeDuotone className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex flex-col justify-center items-center">
+                  <p className="text-sm font-medium text-base-content/70">Total Patients</p>
+                  <p className="text-2xl font-regular text-primary">5,234</p>
                 </div>
               </div>
             </div>
 
-            {/* User Analytics */}
-            <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">User Analytics</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Total Users</span>
-                    <span className="font-semibold text-primary">1,247</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Active Today</span>
-                    <span className="font-semibold text-success">89</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">New This Week</span>
-                    <span className="font-semibold text-info">23</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">System Admins</span>
-                    <span className="font-semibold text-warning">5</span>
-                  </div>
+            {/* Total Staff */}
+            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+              <div className="flex flex-col justify-between items-center">
+                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                  <PiUsersFourDuotone className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex flex-col justify-center items-center">
+                  <p className="text-sm font-medium text-base-content/70">Total Staff</p>
+                  <p className="text-2xl font-regular text-primary">875</p>
                 </div>
               </div>
             </div>
 
-            {/* System Actions */}
-            <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">System Actions</h2>
-                <div className="space-y-3">
-                  <button className="w-full btn btn-primary btn-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Backup System
-                  </button>
-                  <button className="w-full btn btn-outline btn-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    System Health Check
-                  </button>
-                  <button className="w-full btn btn-outline btn-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
-                    </svg>
-                    System Settings
-                  </button>
+            {/* Total Departments */}
+            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+              <div className="flex flex-col justify-between items-center">
+                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                  <PiBuildingDuotone className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex flex-col justify-center items-center">
+                  <p className="text-sm font-medium text-base-content/70">Total Departments</p>
+                  <p className="text-2xl font-regular text-primary">32</p>
                 </div>
               </div>
+            </div>
+
+            {/* Pending Reports */}
+            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+              <div className="flex flex-col justify-between items-center">
+                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                  <IoDocumentsOutline className="w-6 h-6 text-primary" />
+                </div>
+                <div className="flex flex-col justify-center items-center">
+                  <p className="text-sm font-medium text-base-content/70">Pending Reports</p>
+                  <p className="text-2xl font-regular text-primary">5</p>
+                </div>
+              </div>
+            </div>
+
+
+
+          </div>
+          
+
+          {/* Recent System Activities */}
+          <div className="p-6 rounded-lg shadow-lg bg-base-100">
+            <div className="mb-6">
+              <h2 className="text-md font-regular text-base-content">Recent System Activities</h2>
+              <p className="text-xs 2xl:text-base text-base-content/70">Latest system notifications and critical events.</p>
+            </div>
+            
+            {/* Activities Table */}
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr>
+                    <th className="text-base-content/70">Type</th>
+                    <th className="text-base-content/70">Description</th>
+                    <th className="text-base-content/70">Status</th>
+                    <th className="text-base-content/70">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colSpan="4" className="py-8 text-center text-base-content/50">
+                      No recent activities to display
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
