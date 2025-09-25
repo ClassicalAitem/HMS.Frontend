@@ -1,10 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
-import { FaThLarge, FaUsers, FaUserPlus, FaCalendarAlt, FaSignOutAlt } from 'react-icons/fa';
-import { SlCalender } from "react-icons/sl";
-import { MdOutlineDashboard, MdFormatListBulletedAdd } from "react-icons/md";
-import { GoPerson } from "react-icons/go";
-import { CiLock, CiLogout } from "react-icons/ci";
+import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics } from "react-icons/md";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 
@@ -16,26 +12,32 @@ const Sidebar = ({ onCloseSidebar }) => {
     {
       icon: MdOutlineDashboard,
       label: 'Dashboard',
-      path: '/dashboard/frontdesk',
-      active: location.pathname === '/dashboard/frontdesk'
+      path: '/dashboard/superadmin',
+      active: location.pathname === '/dashboard/superadmin'
     },
     {
-      icon: GoPerson,
-      label: 'Patients',
-      path: '/patients',
-      active: location.pathname === '/patients'
+      icon: MdAnalytics,
+      label: 'Generate Reports',
+      path: '/superadmin/reports',
+      active: location.pathname === '/superadmin/reports'
     },
     {
-      icon: MdFormatListBulletedAdd,
+      icon: MdSupervisorAccount,
+      label: 'Manage Users',
+      path: '/superadmin/users',
+      active: location.pathname === '/superadmin/users'
+    },
+    {
+      icon: MdSecurity,
       label: 'Registration',
-      path: '/registration',
-      active: location.pathname === '/registration'
+      path: '/superadmin/registration',
+      active: location.pathname === '/superadmin/registration'
     },
     {
-      icon: SlCalender,
-      label: 'Appointments',
-      path: '/appointments',
-      active: location.pathname === '/appointments'
+      icon: MdSettings,
+      label: 'Settings',
+      path: '/superadmin/settings',
+      active: location.pathname === '/superadmin/settings'
     }
   ];
 
@@ -55,19 +57,16 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col h-full w-64 bg-base-100 border-r-2 border-neutral/20">
+    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
       {/* Logo */}
-      <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
+      <div className="hidden p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
-          <img src="/src/assets/images/logo.png" alt="Kolak" className="hidden w-auto h-10" />
-
-          {/* Kolak logo adaptive*/}
           <div className="flex items-center space-x-2">
             <div className="">
               <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-bold text-lg lg:text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>
               <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">- Hospital -</span>
             </div>
           </div>
@@ -98,7 +97,9 @@ const Sidebar = ({ onCloseSidebar }) => {
               : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
           }`}
         >
-          <CiLock className="w-4 h-4 2xl:w-5 2xl:h-5" />
+          <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
           <span className="text-xs 2xl:text-sm">Change Password</span>
         </Link>
 
@@ -106,7 +107,9 @@ const Sidebar = ({ onCloseSidebar }) => {
           onClick={() => setIsLogoutModalOpen(true)}
           className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
-          <CiLogout  className="w-4 h-4 2xl:w-5 2xl:h-5" />
+          <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
           <span className="text-xs 2xl:text-sm">Log Out</span>
         </button>
       </div>
@@ -114,16 +117,16 @@ const Sidebar = ({ onCloseSidebar }) => {
       {/* User Profile */}
       <div className="p-4 border-t border-base-300">
         <div className="flex items-center space-x-3">
-          <div className="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
+          <div className="flex justify-center items-center w-10 h-10 bg-red-100 rounded-full">
             <img
-              src="https://images.unsplash.com/photo-1707303051965-bb814c443aa1?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-              alt="Folake Flakes"
+              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+              alt="Robert Thompson"
               className="object-cover w-10 h-10 rounded-full"
             />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-base-content">Folake Flakes</p>
-            <p className="text-xs text-primary">FrontDesk</p>
+            <p className="text-sm font-medium text-base-content">Robert Thompson</p>
+            <p className="text-xs text-primary">System Admin</p>
           </div>
         </div>
       </div>
