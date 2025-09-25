@@ -1,13 +1,16 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
-import { Header } from '@/components/common';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
-import { FaUsers, FaUserMd, FaBuilding, FaFileAlt } from 'react-icons/fa';
-import { PiUsersThreeDuotone, PiUsersFourDuotone, PiBuildingDuotone, PiFileDuotone } from 'react-icons/pi';
-import { IoDocumentsOutline } from "react-icons/io5"; 
+import { PiUsersThreeDuotone } from 'react-icons/pi';
+import { LuUserRoundCheck } from 'react-icons/lu';
+import { MdOutlineStore } from 'react-icons/md';
+import { FiFileText } from 'react-icons/fi';
+import activitiesData from '@/data/activities.json';
 
 const SuperAdminDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activities, setActivities] = useState([]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -16,6 +19,10 @@ const SuperAdminDashboard = () => {
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+  useEffect(() => {
+    setActivities(activitiesData);
+  }, []);
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -27,6 +34,49 @@ const SuperAdminDashboard = () => {
     };
     return now.toLocaleDateString('en-US', options);
   };
+
+  const getStatusBadgeClass = (statusColor) => {
+    switch (statusColor) {
+      case 'green':
+        return 'bg-green-100 text-green-800';
+      case 'orange':
+        return 'bg-orange-100 text-orange-800';
+      case 'red':
+        return 'bg-red-100 text-red-800';
+      case 'blue':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const columns = useMemo(() => [
+    {
+      key: 'type',
+      title: 'Type',
+      sortable: true,
+      className: 'font-medium text-base-content'
+    },
+    {
+      key: 'description',
+      title: 'Description',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value, row) => <getStatusBadgeClass status={value} color={row.statusColor} />
+    },
+    {
+      key: 'timestamp',
+      title: 'Timestamp',
+      sortable: true,
+      className: 'text-base-content/70'
+    }
+  ], []);
 
   return (
     <div className="flex h-screen">
@@ -80,7 +130,7 @@ const SuperAdminDashboard = () => {
             <div className="p-6 rounded-lg shadow-lg bg-base-100">
               <div className="flex flex-col justify-between items-center">
                 <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <PiUsersFourDuotone className="w-6 h-6 text-primary" />
+                  <LuUserRoundCheck className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Total Staff</p>
@@ -93,7 +143,7 @@ const SuperAdminDashboard = () => {
             <div className="p-6 rounded-lg shadow-lg bg-base-100">
               <div className="flex flex-col justify-between items-center">
                 <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <PiBuildingDuotone className="w-6 h-6 text-primary" />
+                  <MdOutlineStore className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Total Departments</p>
@@ -106,7 +156,7 @@ const SuperAdminDashboard = () => {
             <div className="p-6 rounded-lg shadow-lg bg-base-100">
               <div className="flex flex-col justify-between items-center">
                 <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <IoDocumentsOutline className="w-6 h-6 text-primary" />
+                  <FiFileText className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Pending Reports</p>
@@ -128,25 +178,17 @@ const SuperAdminDashboard = () => {
             </div>
             
             {/* Activities Table */}
-            <div className="overflow-x-auto">
-              <table className="table w-full">
-                <thead>
-                  <tr>
-                    <th className="text-base-content/70">Type</th>
-                    <th className="text-base-content/70">Description</th>
-                    <th className="text-base-content/70">Status</th>
-                    <th className="text-base-content/70">Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colSpan="4" className="py-8 text-center text-base-content/50">
-                      No recent activities to display
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              data={activities}
+              columns={columns}
+              searchable={true}
+              sortable={true}
+              paginated={true}
+              initialEntriesPerPage={5}
+              maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
+              showEntries={true}
+              searchPlaceholder="Search activities..."
+            />
           </div>
         </div>
       </div>
