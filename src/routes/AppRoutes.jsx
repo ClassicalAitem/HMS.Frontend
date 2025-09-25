@@ -16,6 +16,11 @@ import ManageUsers from "@/pages/superadmin/users/ManageUsers";
 import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
 import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
+import Incoming from "@/pages/cashier/incoming/Incoming";
+import CashierPatients from "@/pages/cashier/patients/CashierPatients";
+import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
+import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
+import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 import ChangePassword from "@/pages/auth/ChangePassword";
 
 const AppRoutes = () => {
@@ -40,6 +45,11 @@ const AppRoutes = () => {
       <Route path="/superadmin/registration" element={<SuperAdminRegistration />} />
       <Route path="/superadmin/settings" element={<SuperAdminSettings />} />
       <Route path="/dashboard/cashier" element={<CashierDashboard />} />
+      <Route path="/cashier/incoming" element={<Incoming />} />
+      <Route path="/cashier/patients" element={<CashierPatients />} />
+      <Route path="/cashier/payment-records" element={<PaymentRecords />} />
+      <Route path="/cashier/patient-details" element={<CashierPatientDetails />} />
+      <Route path="/cashier/generate-bill" element={<GenerateBill />} />
 
       {/* Frontdesk Routes */}
       <Route path="/patients" element={<Patients />} />

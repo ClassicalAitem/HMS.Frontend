@@ -1,10 +1,17 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/cashier/dashboard';
+import { FaFileInvoice, FaFileInvoiceDollar } from 'react-icons/fa';
+import cashierData from '@/data/cashierData.json';
 
 const CashierDashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState(null);
+
+  useEffect(() => {
+    setDashboardData(cashierData.dashboard);
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -39,93 +46,83 @@ const CashierDashboard = () => {
         
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Cashier Dashboard</h1>
-            <p className="text-sm text-base-content/60 2xl:text-base">Welcome, Maria Rodriguez</p>
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-base-content 2xl:text-4xl">Welcome, Cashier John!</h1>
+            <p className="text-sm text-base-content/70 2xl:text-base">Manage hospital finances, process payments, and track transactions.</p>
           </div>
 
-          {/* Dashboard Content */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {/* Today's Transactions */}
-            <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">Today's Transactions</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center p-3 rounded-lg bg-base-200">
-                    <div>
-                      <p className="font-medium text-base-content">John Doe</p>
-                      <p className="text-sm text-base-content/70">Consultation Fee</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-success">$150.00</p>
-                      <p className="text-xs text-base-content/70">Paid</p>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center p-3 rounded-lg bg-base-200">
-                    <div>
-                      <p className="font-medium text-base-content">Jane Smith</p>
-                      <p className="text-sm text-base-content/70">Lab Test</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-warning">$75.00</p>
-                      <p className="text-xs text-base-content/70">Pending</p>
-                    </div>
-                  </div>
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
+            {/* Total Payments Today */}
+            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-base-content/70">Total Payments Today</p>
+                  <p className="text-3xl font-bold text-base-content">{dashboardData?.totalPaymentsToday}</p>
+                  <button className="text-sm text-primary hover:underline mt-2">See All</button>
+                </div>
+                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+                  <FaFileInvoice className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </div>
 
-            {/* Payment Summary */}
-            <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">Payment Summary</h2>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Total Collected</span>
-                    <span className="font-semibold text-success">$2,450.00</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Pending Payments</span>
-                    <span className="font-semibold text-warning">$325.00</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Cash Payments</span>
-                    <span className="font-semibold text-info">$1,200.00</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-base-content/70">Card Payments</span>
-                    <span className="font-semibold text-primary">$1,250.00</span>
-                  </div>
+            {/* Pending Invoices */}
+            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-base-content/70">Pending Invoices</p>
+                  <p className="text-3xl font-bold text-base-content">{dashboardData?.pendingInvoices}</p>
+                  <p className="text-sm text-base-content/50 mt-1">{dashboardData?.overdueInvoices} overdue</p>
+                </div>
+                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+                  <FaFileInvoiceDollar className="w-6 h-6 text-primary" />
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Quick Actions */}
-            <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">Quick Actions</h2>
-                <div className="space-y-3">
-                  <button className="w-full btn btn-primary btn-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    New Payment
-                  </button>
-                  <button className="w-full btn btn-outline btn-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Generate Invoice
-                  </button>
-                  <button className="w-full btn btn-outline btn-sm">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    View Reports
-                  </button>
+          {/* Recent Activity */}
+          <div className="p-6 rounded-lg shadow-lg bg-base-100">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-base-content">Recent Activity</h2>
+              <p className="text-sm text-base-content/50">Last Updated 1/1/01 12:00AM</p>
+            </div>
+            
+            {/* Activity Cards */}
+            <div className="space-y-4">
+              {dashboardData?.recentActivity?.map((activity) => (
+                <div key={activity.id} className="flex items-center p-4 rounded-lg bg-base-50 border border-base-200">
+                  {/* Patient Photo */}
+                  <div className="flex-shrink-0 mr-4">
+                    <img
+                      src={activity.patientPhoto}
+                      alt={activity.patientName}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  </div>
+                  
+                  {/* Patient Info */}
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-base-content">{activity.patientName}</h3>
+                        <p className="text-sm text-base-content/70">Received {activity.time}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-base-content/70">{activity.service}</p>
+                        <p className="text-sm text-base-content/70">Status: {activity.status}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-base-content/70">{activity.hmo}</p>
+                        <p className="text-sm text-base-content/70">{activity.hmo}</p>
+                        <p className="text-lg font-bold text-primary">{activity.amount}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>

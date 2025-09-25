@@ -17,27 +17,21 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
     {
       icon: MdPayment,
-      label: 'Process Payments',
-      path: '/cashier/payments',
-      active: location.pathname === '/cashier/payments'
+      label: 'Incoming',
+      path: '/cashier/incoming',
+      active: location.pathname === '/cashier/incoming'
     },
     {
       icon: MdReceipt,
-      label: 'Billing',
-      path: '/cashier/billing',
-      active: location.pathname === '/cashier/billing'
+      label: 'Patients',
+      path: '/cashier/patients',
+      active: location.pathname === '/cashier/patients'
     },
     {
       icon: MdAssessment,
-      label: 'Financial Reports',
-      path: '/cashier/reports',
-      active: location.pathname === '/cashier/reports'
-    },
-    {
-      icon: MdAccountBalance,
-      label: 'Invoice Management',
-      path: '/cashier/invoices',
-      active: location.pathname === '/cashier/invoices'
+      label: 'Payment Record',
+      path: '/cashier/payment-records',
+      active: location.pathname === '/cashier/payment-records'
     }
   ];
 
@@ -117,16 +111,16 @@ const Sidebar = ({ onCloseSidebar }) => {
       {/* User Profile */}
       <div className="p-4 border-t border-base-300">
         <div className="flex items-center space-x-3">
-          <div className="flex justify-center items-center w-10 h-10 bg-yellow-100 rounded-full">
+          <div className="flex justify-center items-center w-10 h-10 bg-primary/10 rounded-full">
             <img
-              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-              alt="Maria Rodriguez"
+              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+              alt="John Cena"
               className="object-cover w-10 h-10 rounded-full"
             />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-base-content">Maria Rodriguez</p>
-            <p className="text-xs text-primary">Finance</p>
+            <p className="text-sm font-medium text-base-content">John Cena</p>
+            <p className="text-xs text-primary">Cashier</p>
           </div>
         </div>
       </div>
