@@ -1,0 +1,350 @@
+{
+  "dashboard": {
+    "totalPaymentsToday": "₦3,000,000",
+    "pendingInvoices": 56,
+    "overdueInvoices": 3,
+    "recentActivity": [
+      {
+        "id": 1,
+        "patientName": "John Cooper",
+        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "service": "X-ray and room payment",
+        "status": "Successful",
+        "hmo": "Medcare",
+        "amount": "₦3,000,000",
+        "time": "12:00AM"
+      },
+      {
+        "id": 2,
+        "patientName": "John Cooper",
+        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "service": "X-ray and room payment",
+        "status": "Successful",
+        "hmo": "Medcare",
+        "amount": "₦3,000,000",
+        "time": "12:00AM"
+      },
+      {
+        "id": 3,
+        "patientName": "John Cooper",
+        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "service": "X-ray and room payment",
+        "status": "Successful",
+        "hmo": "Medcare",
+        "amount": "₦3,000,000",
+        "time": "12:00AM"
+      },
+      {
+        "id": 4,
+        "patientName": "John Cooper",
+        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "service": "X-ray and room payment",
+        "status": "Successful",
+        "hmo": "Medcare",
+        "amount": "₦3,000,000",
+        "time": "12:00AM"
+      },
+      {
+        "id": 5,
+        "patientName": "John Cooper",
+        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "service": "X-ray and room payment",
+        "status": "Successful",
+        "hmo": "Medcare",
+        "amount": "₦3,000,000",
+        "time": "12:00AM"
+      }
+    ]
+  },
+  "incomingPatients": [
+    {
+      "id": 1,
+      "name": "Leslie Alexander",
+      "patientId": "P-2025-002",
+      "photo": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "insurance": "Self-pay",
+      "registeredTime": "09:45 AM",
+      "sentBy": "Doctor"
+    },
+    {
+      "id": 2,
+      "name": "Leslie Alexander",
+      "patientId": "P-2025-002",
+      "photo": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "insurance": "Self-pay",
+      "registeredTime": "09:45 AM",
+      "sentBy": "Front Desk"
+    },
+    {
+      "id": 3,
+      "name": "Leslie Alexander",
+      "patientId": "P-2025-002",
+      "photo": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "insurance": "Self-pay",
+      "registeredTime": "09:45 AM",
+      "sentBy": "Doctor"
+    },
+    {
+      "id": 4,
+      "name": "Leslie Alexander",
+      "patientId": "P-2025-002",
+      "photo": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "insurance": "Self-pay",
+      "registeredTime": "09:45 AM",
+      "sentBy": "Front Desk"
+    },
+    {
+      "id": 5,
+      "name": "Leslie Alexander",
+      "patientId": "P-2025-002",
+      "photo": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "insurance": "Self-pay",
+      "registeredTime": "09:45 AM",
+      "sentBy": "Doctor"
+    },
+    {
+      "id": 6,
+      "name": "Leslie Alexander",
+      "patientId": "P-2025-002",
+      "photo": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "insurance": "Self-pay",
+      "registeredTime": "09:45 AM",
+      "sentBy": "Front Desk"
+    }
+  ],
+  "patients": [
+    {
+      "id": 1,
+      "sno": "01",
+      "name": "Jane Cooper",
+      "gender": "F",
+      "age": 36,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦15000",
+      "phone": "(217) 555-0113",
+      "address": "6391 Elgin St. Celina, Delaware 10299",
+      "status": "Active"
+    },
+    {
+      "id": 2,
+      "sno": "02",
+      "name": "Theresa Webb",
+      "gender": "F",
+      "age": 36,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦300,000",
+      "phone": "(207) 555-0119",
+      "address": "2118 Thornridge Syracuse, 35624",
+      "status": "Not Active"
+    },
+    {
+      "id": 3,
+      "sno": "03",
+      "name": "Albert Flores",
+      "gender": "F",
+      "age": 36,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦15000",
+      "phone": "(217) 555-0113",
+      "address": "3891 Ranchview Richardson, California",
+      "status": "Active"
+    },
+    {
+      "id": 4,
+      "sno": "04",
+      "name": "Robert Fox",
+      "gender": "M",
+      "age": 36,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦15000",
+      "phone": "(480) 555-0103",
+      "address": "3891 Ranchview Richardson, California",
+      "status": "Passaway"
+    },
+    {
+      "id": 5,
+      "sno": "05",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦25000",
+      "phone": "(217) 555-0113",
+      "address": "6391 Elgin St. Celina, Delaware 10299",
+      "status": "Active"
+    },
+    {
+      "id": 6,
+      "sno": "06",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦45000",
+      "phone": "(207) 555-0119",
+      "address": "2118 Thornridge Syracuse, 35624",
+      "status": "Active"
+    },
+    {
+      "id": 7,
+      "sno": "07",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦15000",
+      "phone": "(217) 555-0113",
+      "address": "3891 Ranchview Richardson, California",
+      "status": "Not Active"
+    },
+    {
+      "id": 8,
+      "sno": "08",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦75000",
+      "phone": "(480) 555-0103",
+      "address": "6391 Elgin St. Celina, Delaware 10299",
+      "status": "Active"
+    },
+    {
+      "id": 9,
+      "sno": "09",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦15000",
+      "phone": "(217) 555-0113",
+      "address": "2118 Thornridge Syracuse, 35624",
+      "status": "Passaway"
+    },
+    {
+      "id": 10,
+      "sno": "10",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦35000",
+      "phone": "(207) 555-0119",
+      "address": "3891 Ranchview Richardson, California",
+      "status": "Active"
+    },
+    {
+      "id": 11,
+      "sno": "11",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦15000",
+      "phone": "(217) 555-0113",
+      "address": "6391 Elgin St. Celina, Delaware 10299",
+      "status": "Active"
+    },
+    {
+      "id": 12,
+      "sno": "12",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦55000",
+      "phone": "(480) 555-0103",
+      "address": "2118 Thornridge Syracuse, 35624",
+      "status": "Not Active"
+    },
+    {
+      "id": 13,
+      "sno": "13",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Self Pay",
+      "outstandingBills": "₦15000",
+      "phone": "(217) 555-0113",
+      "address": "3891 Ranchview Richardson, California",
+      "status": "Active"
+    },
+    {
+      "id": 14,
+      "sno": "14",
+      "name": "Annette Black",
+      "gender": "F",
+      "age": 28,
+      "insurance": "Medi Care HMO",
+      "outstandingBills": "₦65000",
+      "phone": "(207) 555-0119",
+      "address": "6391 Elgin St. Celina, Delaware 10299",
+      "status": "Passaway"
+    }
+  ],
+  "paymentRecords": [
+    {
+      "id": 1,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Bank Transfer",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Completed"
+    },
+    {
+      "id": 2,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Cash",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Completed"
+    },
+    {
+      "id": 3,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Bank Transfer",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Completed"
+    },
+    {
+      "id": 4,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Debit Card",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Failed"
+    },
+    {
+      "id": 5,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Bank Transfer",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Pending"
+    },
+    {
+      "id": 6,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Bank Transfer",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Completed"
+    },
+    {
+      "id": 7,
+      "transactionId": "TXN001234",
+      "name": "Janet Olu",
+      "amount": "₦15000",
+      "method": "Bank Transfer",
+      "dateTime": "2024-01-15 14:30",
+      "status": "Completed"
+    }
+  ]
+}
