@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
+import { BookAppointmentModal } from '@/components/modals';
 import appointmentsData from '@/data/appointments.json';
 import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
@@ -12,6 +13,7 @@ const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState('7/18/17');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
 
   // Load appointments data from JSON file
   useEffect(() => {
@@ -104,6 +106,11 @@ const Appointments = () => {
     return today.toLocaleDateString('en-US', options);
   };
 
+  const handleBookAppointment = (appointmentData) => {
+    console.log('New appointment:', appointmentData);
+    // Add logic to save appointment
+  };
+
   return (
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
@@ -135,12 +142,15 @@ const Appointments = () => {
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
             </div>
-            <button className="btn btn-primary btn-sm 2xl:btn-md">
-              <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="text-xs 2xl:text-sm">Book Appointment</span>
-            </button>
+             <button 
+               className="btn btn-primary btn-sm 2xl:btn-md"
+               onClick={() => setIsBookModalOpen(true)}
+             >
+               <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+               </svg>
+               <span className="text-xs 2xl:text-sm">Book Appointment</span>
+             </button>
           </div>
 
           {/* Filter Bar */}
@@ -191,6 +201,13 @@ const Appointments = () => {
           </div>
         </div>
       </div>
+
+      {/* Book Appointment Modal */}
+      <BookAppointmentModal
+        isOpen={isBookModalOpen}
+        onClose={() => setIsBookModalOpen(false)}
+        onSubmit={handleBookAppointment}
+      />
     </div>
   );
 };
