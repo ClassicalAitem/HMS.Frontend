@@ -1,10 +1,13 @@
 /* eslint-disable no-unused-vars */
 import React from "react";
-import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
-import { IoMenu } from "react-icons/io5";
+import { FaThLarge,  FaSignOutAlt } from "react-icons/fa";
+import { TbCalendarPlus } from "react-icons/tb";
+import { GrTask } from "react-icons/gr";
+import { FiUser } from "react-icons/fi";
+import { BsArrowDownLeft } from "react-icons/bs";
 import { MdLockOutline } from "react-icons/md";
 import { Link, useLocation } from "react-router-dom";
-import missFolake from "@/assets/images/missFolake.jpg"
+import missFolake from "@/assets/images/missFolake.jpg";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -17,15 +20,27 @@ const Sidebar = () => {
       active: location.pathname === "/dashboard",
     },
     {
-      icon: FaUsers,
-      label: "Patients Vitals",
-      path: "/patients/nurse",
+      icon: BsArrowDownLeft,
+      label: "Incoming",
+      path: "/dashboard/nurse/incoming",
+      active: location.pathname === "/incoming",
+    },
+    {
+      icon: FiUser,
+      label: "Patients",
+      path: "/dashboard/nurse/patient",
       active: location.pathname === "/patients",
     },
     {
-      icon: IoMenu,
+      icon: GrTask,
       label: "Assigned Task",
-      path: "/appointments/nurse",
+      path: "/dashboard/nurse/assignedTask",
+      active: location.pathname === "/appointments",
+    },
+    {
+      icon: TbCalendarPlus,
+      label: "Appointments",
+      path: "/dashboard/nurse/appointments",
       active: location.pathname === "/appointments",
     },
   ];
@@ -45,7 +60,7 @@ const Sidebar = () => {
   );
 
   return (
-    <div className="flex flex-col w-64 border-r bg-base-100 border-base-300">
+    <div className="flex flex-col w-64 h-full bg-base-100 border-r-2 border-neutral/20">
       <div className="p-6 border-b border-base-300">
         <div className="flex justify-center items-center">
           <img
@@ -72,7 +87,7 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
+      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
@@ -101,7 +116,7 @@ const Sidebar = () => {
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-base-300 lg:mb-16 2xl:mb-26">
+      <div className="p-4 border-t border-base-300 ">
         <div className="flex items-center space-x-3 h-[58px]">
           <div className="flex justify-center items-center w-10 h-10 rounded-full">
             <img
