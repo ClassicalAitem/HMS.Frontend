@@ -1,11 +1,13 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
 import patientsData from '@/data/patientsExtended.json';
 
 const Patients = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [patients, setPatients] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,7 +61,20 @@ const Patients = () => {
       key: 'name',
       title: 'Patient Name',
       sortable: true,
-      className: 'text-base-content font-medium'
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(`/patients/${row.id}`);
+          }}
+          className="text-primary hover:text-primary/80 hover:underline font-medium bg-transparent border-none cursor-pointer"
+        >
+          {value}
+        </button>
+      )
     },
     {
       key: 'gender',
