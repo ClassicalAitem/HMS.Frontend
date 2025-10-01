@@ -46,3 +46,4 @@ export const registrationSchema = yup.object().shape({
   .typeError("Date of Birth must be a valid date")
   .required("Date of Birth is required"),
 });
+
