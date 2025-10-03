@@ -1,8 +1,8 @@
-import React from "react";
+import React from 'react'
 import { Header } from "@/components/common";
 import Sidebar from "../../../components/doctor/dashboard/Sidebar";
 
-const DoctorDashboard = () => {
+const Appointment = () => {
   return (
     <div className="flex h-screen ">
       <Sidebar />
@@ -10,12 +10,10 @@ const DoctorDashboard = () => {
       <div className="flex overflow-hidden flex-col flex-1 ">
         <Header />
 
-        <div className="overflow-y-auto flex-1">
-
-        </div>
+        <div className="overflow-y-auto flex-1"></div>
       </div>
     </div>
   );
-};
+}
 
-export default DoctorDashboard;
+export default Appointment
