@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
 import RouteDebug from './components/common/RouteDebug';
+import TokenExpirationHandler from './components/common/TokenExpirationHandler';
 
 function App() {
   return (
@@ -16,6 +17,10 @@ function App() {
           <Router>
             <div className="App">
               <AppRoutes />
+              
+              {/* Global Token Expiration Handler */}
+              <TokenExpirationHandler />
+              
               <Toaster 
                 position="top-center"
                 toastOptions={{
