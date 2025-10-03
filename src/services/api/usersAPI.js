@@ -58,6 +58,25 @@ export const usersAPI = {
     }
   },
 
+  // Create admin user
+  createAdmin: async (adminData) => {
+    console.log('👑 UsersAPI: Starting createAdmin request');
+    console.log('📤 UsersAPI: Admin data:', adminData);
+    
+    try {
+      const response = await apiClient.post('/user/createAdmin', adminData);
+      console.log('✅ UsersAPI: Create admin response received');
+      console.log('📥 UsersAPI: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ UsersAPI: Create admin error occurred');
+      console.error('📥 UsersAPI: Error response:', error.response);
+      console.error('📥 UsersAPI: Error data:', error.response?.data);
+      console.error('📥 UsersAPI: Error status:', error.response?.status);
+      throw error;
+    }
+  },
+
   // Update user
   updateUser: async (userId, userData) => {
     console.log('✏️ UsersAPI: Starting updateUser request');

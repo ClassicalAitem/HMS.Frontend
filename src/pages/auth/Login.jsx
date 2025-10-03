@@ -92,7 +92,7 @@ const Login = () => {
       // If no intended destination, redirect to user's default dashboard
       if (!redirectPath) {
         const roleRoutes = {
-          'frontdesk': '/dashboard',
+          'frontdesk': '/frontdesk/dashboard',
           'nurse': '/dashboard/nurse',
           'doctor': '/dashboard/doctor',
           'admin': '/dashboard/admin',
@@ -100,7 +100,7 @@ const Login = () => {
           'cashier': '/dashboard/cashier',
         };
         
-        redirectPath = roleRoutes[user.role] || '/dashboard';
+        redirectPath = roleRoutes[user.role] || '/frontdesk/dashboard';
       }
       
       console.log('🔄 Login: Redirecting to:', redirectPath);
@@ -324,13 +324,13 @@ const Login = () => {
       <SuccessModal />
 
       {/* Debug Components - Remove in production */}
-      <div className="fixed bottom-4 right-4 z-50 space-y-4 max-h-96 overflow-y-auto">
+      {/* <div className="hidden overflow-y-auto fixed right-4 bottom-4 z-50 space-y-4 max-h-96">
         <AuthTest />
         <RouteProtectionTest />
         <LoginRedirectTest />
         <LogoutTest />
         <TokenDebug />
-      </div>
+      </div> */}
     </AuthLayout>
   );
 };

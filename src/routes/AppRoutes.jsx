@@ -57,8 +57,32 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       
-      {/* Dashboard Routes */}
-      <Route path="/dashboard" element={<FrontdeskDashboard />} />
+      {/* Frontdesk Dashboard Routes */}
+      <Route path="/frontdesk/dashboard" element={
+        <ProtectedRoute allowedRoles={['frontdesk']}>
+          <FrontdeskDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/patients" element={
+        <ProtectedRoute allowedRoles={['frontdesk']}>
+          <Patients />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/patients/:patientId" element={
+        <ProtectedRoute allowedRoles={['frontdesk']}>
+          <PatientDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/appointments" element={
+        <ProtectedRoute allowedRoles={['frontdesk']}>
+          <Appointments />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/registration" element={
+        <ProtectedRoute allowedRoles={['frontdesk']}>
+          <Registration />
+        </ProtectedRoute>
+      } />
 
       {/* NurseDashboard Routes*/}
       <Route path="/dashboard/nurse" element={

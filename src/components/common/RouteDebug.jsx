@@ -7,7 +7,7 @@ const RouteDebug = () => {
   const { isAuthenticated, user, needsPasswordChange } = useAppSelector((state) => state.auth);
 
   return (
-    <div className="p-4 max-w-md bg-blue-100 rounded-lg">
+    <div className="hidden p-4 max-w-md bg-blue-100 rounded-lg">
       <h3 className="mb-2 text-lg font-semibold">Route Protection Debug</h3>
       <div className="space-y-2 text-sm">
         <div><strong>Current Route:</strong> {location.pathname}</div>

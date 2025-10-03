@@ -4,7 +4,7 @@ import { config } from '../../config/env';
 // Create axios instance
 const apiClient = axios.create({
   baseURL: config.API_BASE_URL,
-  timeout: 30000,
+  timeout: 50000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -81,40 +81,90 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Handle 401 errors (unauthorized)
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        // Try to refresh token
-        const refreshToken = localStorage.getItem('refreshToken') || 
-                           JSON.parse(localStorage.getItem('persist:root') || '{}')?.auth?.refreshToken?.replace(/"/g, '');
+    // Handle 401 errors (unauthorized) - JWT expired or invalid
+    if (error.response?.status === 401) {
+      console.log('🚨 API Client: 401 Unauthorized error detected');
+      console.log('🚨 API Client: Error message:', error.response?.data?.message);
+      
+      // Check if it's a JWT expiration error
+      const errorMessage = error.response?.data?.message?.toLowerCase();
+      const isJwtExpired = errorMessage?.includes('jwt expired') || 
+                          errorMessage?.includes('token expired') ||
+                          errorMessage?.includes('jwt malformed');
+      
+      if (isJwtExpired) {
+        console.log('⏰ API Client: JWT token has expired');
+        console.log('🔄 API Client: Clearing authentication data and redirecting to login');
         
-        if (refreshToken) {
-          const response = await axios.post(`${config.API_BASE_URL}/user/refresh`, {
-            refreshToken,
-          });
-
-          const { token: newToken, refreshToken: newRefreshToken } = response.data;
-          
-          // Update tokens in localStorage
-          localStorage.setItem('token', newToken);
-          localStorage.setItem('refreshToken', newRefreshToken);
-          
-          // Retry original request with new token
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Clear all authentication data
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('persist:root');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        
+        // Show user-friendly error message
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('auth:token-expired', {
+            detail: { message: 'Your session has expired. Please log in again.' }
+          }));
+        }
+        
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+        
+        return Promise.reject(new Error('Session expired. Please log in again.'));
+      }
+      
+      // For other 401 errors, try token refresh if available
+      if (!originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          // Try to refresh token (if refresh endpoint is implemented)
+          const refreshToken = localStorage.getItem('refreshToken') || 
+                             JSON.parse(localStorage.getItem('persist:root') || '{}')?.auth?.refreshToken?.replace(/"/g, '');
+          
+          if (refreshToken) {
+            console.log('🔄 API Client: Attempting token refresh');
+            const response = await axios.post(`${config.API_BASE_URL}/user/refresh`, {
+              refreshToken,
+            });
+
+            const { token: newToken, refreshToken: newRefreshToken } = response.data;
+            
+            // Update tokens in localStorage
+            localStorage.setItem('token', newToken);
+            localStorage.setItem('refreshToken', newRefreshToken);
+            
+            // Retry original request with new token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return apiClient(originalRequest);
+          }
+        } catch (refreshError) {
+          console.log('❌ API Client: Token refresh failed');
+          // Refresh failed, clear auth data and redirect
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('persist:root');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1000);
+          
+          return Promise.reject(refreshError);
+        }
       }
     }
 
+    console.log('❌ API Client: Request failed');
+    console.log('❌ API Client: Error status:', error.response?.status);
+    console.log('❌ API Client: Error message:', error.response?.data?.message);
+    
     return Promise.reject(error);
   }
 );
