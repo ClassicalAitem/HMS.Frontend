@@ -5,6 +5,7 @@ import { DataTable } from '@/components/common';
 import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
+import { AddUserModal, EditUserModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
 import UsersDebug from '../../../components/common/UsersDebug';
 
@@ -109,6 +110,16 @@ const ManageUsers = () => {
     } else {
       toast.error('Failed to update user status');
     }
+  };
+
+  const handleUserAdded = () => {
+    console.log('🔄 ManageUsers: User added, refreshing users list');
+    dispatch(fetchUsers());
+  };
+
+  const handleUserUpdated = () => {
+    console.log('🔄 ManageUsers: User updated, refreshing users list');
+    dispatch(fetchUsers());
   };
 
   const columns = [
@@ -226,7 +237,7 @@ const ManageUsers = () => {
           {/* Page Header */}
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Manage Users</h1>
+              <h1 className="text-2xl font-bold text-primary 2xl:text-3xl">Manage Users</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Manage system users and their permissions</p>
             </div>
             <button
@@ -269,106 +280,19 @@ const ManageUsers = () => {
       </div>
 
       {/* Add User Modal */}
-      {isAddModalOpen && (
-        <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
-          <div className="mx-4 w-full max-w-md shadow-xl card bg-base-100">
-            <div className="p-6 card-body">
-              <h2 className="mb-4 text-xl font-bold text-base-content">Add New User</h2>
-              <div className="space-y-4">
-                <input type="text" placeholder="First Name" className="w-full input input-bordered" />
-                <input type="text" placeholder="Last Name" className="w-full input input-bordered" />
-                <input type="email" placeholder="Email" className="w-full input input-bordered" />
-                <input type="tel" placeholder="Phone Number (optional)" className="w-full input input-bordered" />
-                <select className="w-full select select-bordered">
-                  <option>Select Role</option>
-                  <option value="super-admin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="doctor">Doctor</option>
-                  <option value="nurse">Nurse</option>
-                  <option value="frontdesk">Frontdesk</option>
-                  <option value="cashier">Cashier</option>
-                </select>
-                <input type="password" placeholder="Password" className="w-full input input-bordered" />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 btn btn-outline"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="flex-1 btn btn-primary"
-                >
-                  Add User
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddUserModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onUserAdded={handleUserAdded}
+      />
 
       {/* Edit User Modal */}
-      {isEditModalOpen && selectedUser && (
-        <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
-          <div className="mx-4 w-full max-w-md shadow-xl card bg-base-100">
-            <div className="p-6 card-body">
-              <h2 className="mb-4 text-xl font-bold text-base-content">Edit User</h2>
-              <div className="space-y-4">
-                <input 
-                  type="text" 
-                  defaultValue={selectedUser.firstName}
-                  placeholder="First Name"
-                  className="w-full input input-bordered" 
-                />
-                <input 
-                  type="text" 
-                  defaultValue={selectedUser.lastName}
-                  placeholder="Last Name"
-                  className="w-full input input-bordered" 
-                />
-                <input 
-                  type="email" 
-                  defaultValue={selectedUser.email}
-                  placeholder="Email"
-                  className="w-full input input-bordered" 
-                />
-                <input 
-                  type="tel" 
-                  defaultValue={selectedUser.phoneNumber || ''}
-                  placeholder="Phone Number"
-                  className="w-full input input-bordered" 
-                />
-                <select className="w-full select select-bordered" defaultValue={selectedUser.accountType}>
-                  <option>Select Role</option>
-                  <option value="super-admin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="doctor">Doctor</option>
-                  <option value="nurse">Nurse</option>
-                  <option value="frontdesk">Frontdesk</option>
-                  <option value="cashier">Cashier</option>
-                </select>
-                <input type="password" placeholder="New Password (optional)" className="w-full input input-bordered" />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 btn btn-outline"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 btn btn-primary"
-                >
-                  Update User
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={selectedUser}
+        onUserUpdated={handleUserUpdated}
+      />
 
       {/* Debug Component - Remove in production */}
       <div className="fixed right-4 bottom-4 z-50">
