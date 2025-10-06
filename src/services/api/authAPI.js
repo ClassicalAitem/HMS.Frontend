@@ -44,12 +44,12 @@ export const authAPI = {
   },
 
   // Change password
-  changePassword: async (passwordData, token) => {
-    const response = await apiClient.put(API_ENDPOINTS.CHANGE_PASSWORD, passwordData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  changePassword: async (passwordData, userId) => {
+    console.log('🔄 AuthAPI: Changing password for user:', userId);
+    console.log('📤 AuthAPI: Password data:', passwordData);
+    
+    const response = await apiClient.patch(`/user/changePassword/${userId}`, passwordData);
+    console.log('✅ AuthAPI: Change password response:', response);
     return response;
   },
 

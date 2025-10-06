@@ -63,6 +63,22 @@ export const loginUser = createAsyncThunk(
       console.error('📥 AuthSlice: Error response:', error.response);
       console.error('📥 AuthSlice: Error message:', error.message);
       
+      // Handle 403 default password error
+      if (error.response?.status === 403 && error.response?.data?.message?.message?.includes('Please change your default password')) {
+        console.log('🔒 AuthSlice: Default password detected');
+        const userId = error.response.data.message.data;
+        const message = error.response.data.message.message;
+        console.log('🔒 AuthSlice: User ID:', userId);
+        console.log('🔒 AuthSlice: Message:', message);
+        
+        // Return special error object for default password
+        return rejectWithValue({
+          type: 'default_password',
+          userId: userId,
+          message: message
+        });
+      }
+      
       const errorMessage = error.response?.data?.message || error.message || 'Login failed';
       console.log('📤 AuthSlice: Rejecting with message:', errorMessage);
       return rejectWithValue(errorMessage);
@@ -125,16 +141,31 @@ export const changePassword = createAsyncThunk(
   'auth/changePassword',
   async (passwordData, { getState, rejectWithValue }) => {
     try {
-      const { auth } = getState();
-      const response = await authAPI.changePassword(passwordData, auth.token);
+      console.log('🔄 AuthSlice: Starting changePassword thunk');
+      console.log('📤 AuthSlice: Password data:', passwordData);
+      
+      // Get user ID from localStorage (stored during login redirect)
+      const userId = localStorage.getItem('changePasswordUserId');
+      console.log('🔑 AuthSlice: User ID from localStorage:', userId);
+      
+      if (!userId) {
+        throw new Error('User ID not found. Please log in again.');
+      }
+      
+      const response = await authAPI.changePassword(passwordData, userId);
+      console.log('✅ AuthSlice: Change password response:', response);
       
       // Handle the API response structure
       if (response.data.success) {
+        console.log('✅ AuthSlice: Password changed successfully');
+        // Clear the stored user ID
+        localStorage.removeItem('changePasswordUserId');
         return response.data.data;
       } else {
         throw new Error(response.data.message || 'Password change failed');
       }
     } catch (error) {
+      console.error('❌ AuthSlice: Change password error:', error);
       return rejectWithValue(
         error.response?.data?.message || error.message || 'Password change failed'
       );
@@ -238,7 +269,9 @@ const authSlice = createSlice({
         console.log('❌ AuthSlice: Login rejected - setting error');
         console.log('📦 AuthSlice: Rejection payload:', action.payload);
         state.isLoading = false;
-        state.error = action.payload;
+        // Only store the message string, not the entire object
+        state.error = typeof action.payload === 'string' ? action.payload : 
+                     (action.payload?.message || 'Login failed');
         state.loginAttempts += 1;
         state.lastLoginAttempt = new Date().toISOString();
       })

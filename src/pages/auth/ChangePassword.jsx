@@ -67,7 +67,8 @@ const ChangePassword = () => {
         const getDashboardPath = (role) => {
           switch (role) {
             case 'frontdesk':
-              return '/dashboard/frontdesk';
+            case 'front-desk': // Handle backend role format
+              return '/frontdesk/dashboard';
             case 'nurse':
               return '/dashboard/nurse';
             case 'doctor':
@@ -79,7 +80,7 @@ const ChangePassword = () => {
             case 'cashier':
               return '/dashboard/cashier';
             default:
-              return '/dashboard/frontdesk';
+              return '/frontdesk/dashboard';
           }
         };
         
@@ -308,7 +309,7 @@ const ChangePassword = () => {
 
             {/* Error Display */}
             {error && (
-              <div className="mt-4 p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
+              <div className="p-3 mt-4 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
                 {error}
               </div>
             )}

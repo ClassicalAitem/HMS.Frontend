@@ -163,6 +163,17 @@ const ManageUsers = () => {
       )
     },
     {
+      key: 'isDefaultPassword',
+      title: 'Password',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (
+        <span className={`badge badge-sm ${value ? 'badge-warning' : 'badge-success'}`}>
+          {value ? 'Default' : 'Changed'}
+        </span>
+      )
+    },
+    {
       key: 'lastLoginFormatted',
       title: 'Last Login',
       sortable: true,

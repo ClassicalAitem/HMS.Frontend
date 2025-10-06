@@ -6,7 +6,7 @@ const RouteProtectionTest = () => {
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
 
   const testRoutes = [
-    { path: '/dashboard', name: 'Frontdesk Dashboard', roles: ['frontdesk'] },
+    { path: '/frontdesk/dashboard', name: 'Frontdesk Dashboard', roles: ['frontdesk'] },
     { path: '/dashboard/nurse', name: 'Nurse Dashboard', roles: ['nurse'] },
     { path: '/dashboard/doctor', name: 'Doctor Dashboard', roles: ['doctor'] },
     { path: '/dashboard/admin', name: 'Admin Dashboard', roles: ['admin'] },

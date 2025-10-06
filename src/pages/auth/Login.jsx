@@ -93,6 +93,7 @@ const Login = () => {
       if (!redirectPath) {
         const roleRoutes = {
           'frontdesk': '/frontdesk/dashboard',
+          'front-desk': '/frontdesk/dashboard', // Handle backend role format
           'nurse': '/dashboard/nurse',
           'doctor': '/dashboard/doctor',
           'admin': '/dashboard/admin',
@@ -149,7 +150,22 @@ const Login = () => {
     } else {
       console.log('❌ Login: Login failed or rejected');
       console.log('📥 Login: Error details:', result.payload);
-      toast.error(result.payload || 'Login failed. Please try again.');
+      
+      // Check if it's a default password error (403)
+      if (result.payload && typeof result.payload === 'object' && result.payload.type === 'default_password') {
+        console.log('🔒 Login: Default password detected, redirecting to change password');
+        console.log('🔒 Login: User ID:', result.payload.userId);
+        toast.info('Please change your default password to continue');
+        // Store user ID for change password page
+        localStorage.setItem('changePasswordUserId', result.payload.userId);
+        setTimeout(() => {
+          navigate('/change-password');
+        }, 2000);
+      } else {
+        const errorMessage = typeof result.payload === 'string' ? result.payload : 
+                           (result.payload?.message || 'Login failed. Please try again.');
+        toast.error(errorMessage);
+      }
     }
     // Error handling is done in the Redux slice
   };
@@ -157,7 +173,8 @@ const Login = () => {
   const getDashboardPath = (role) => {
     switch (role) {
       case 'frontdesk':
-        return '/dashboard/frontdesk';
+      case 'front-desk': // Handle backend role format
+        return '/frontdesk/dashboard';
       case 'nurse':
         return '/dashboard/nurse';
       case 'doctor':
@@ -169,7 +186,7 @@ const Login = () => {
       case 'cashier':
         return '/dashboard/cashier';
       default:
-        return '/dashboard/frontdesk';
+        return '/frontdesk/dashboard';
     }
   };
 
@@ -316,7 +333,7 @@ const Login = () => {
       {/* Error Display */}
       {error && (
         <div className="p-3 mt-4 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
-          {error}
+          {typeof error === 'string' ? error : (error?.message || 'An error occurred')}
         </div>
       )}
 
