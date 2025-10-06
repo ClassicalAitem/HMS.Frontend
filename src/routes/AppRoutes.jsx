@@ -1,49 +1,38 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Login from "../pages/auth/Login";
-import ForgotPassword from "../pages/auth/ForgotPassword";
-import Dashboard from "../pages/dashboard/Dashboard";
-
-import FrontdeskDashboard from "../pages/frontdesk/dashboard/Dashboard";
-import Patients from "../pages/frontdesk/patients/Patients";
-import Appointments from "../pages/frontdesk/appointments/Appointments";
-
-import NurseDashboard from "../pages/nurse/dashboard/NurseDashboard";
-import AssignedTask from "../pages/nurse/assignedTask/AssignedTask";
-import PatientVitals from "../pages/nurse/patientVitals/PatientVitals";
-import Incoming from "../pages/nurse/incoming/Incoming";
-import Appointmentss from "../pages/nurse/appointment/Appointment"
-
-import DoctorDashboard from "../pages/doctor/dashboard/DoctorDashboard";
-import PatientVItals from "../pages/doctor/patientVitals/PatientVitals";
-import LabResults from "../pages/doctor/labResults/LabResults";
-import Appointment from "../pages/doctor/appiontments/Appointment";
-import Task from "../pages/doctor/assignTask/Task";
-
-import AdminDashboard from "../pages/admin/dashboard/AdminDashboard";
-import Schedule from "../pages/admin/schedule/Schedule";
-import Stocks from "../pages/admin/stocks/Stocks";
-import Invoice from "../pages/admin/invoice/Invoice";
-import Users from "../pages/admin/users/Users";
-import StaffList from "../pages/admin/users/StaffList";
-import BookAppointmentModal from "@/components/nurse/bookAppointment/BookAppointmentModal";
 import Login from "@/pages/auth/Login";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
+
+import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
+import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
+import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
+import Incoming from "@/pages/nurse/incoming/Incoming";
+import Appointmentss from "@/pages/nurse/appointment/Appointment"
+
+import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
+import PatientVItals from "@/pages/doctor/patientVitals/PatientVitals";
+import LabResults from "@/pages/doctor/labResults/LabResults";
+import Appointment from "@/pages/doctor/appiontments/Appointment";
+import Task from "@/pages/doctor/assignTask/Task";
+
+import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
+import Schedule from "@/pages/admin/schedule/Schedule";
+import Stocks from "@/pages/admin/stocks/Stocks";
+import Invoice from "@/pages/admin/invoice/Invoice";
+import Users from "@/pages/admin/users/Users";
+import StaffList from "@/pages/admin/users/StaffList";
+import BookAppointmentModal from "@/components/nurse/bookAppointment/BookAppointmentModal";
 import FrontdeskDashboard from "@/pages/frontdesk/dashboard/Dashboard";
 import Patients from "@/pages/frontdesk/patients/Patients";
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
 import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import Registration from "@/pages/frontdesk/registration/Registration";
-import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
-import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
-import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import SuperAdminDashboard from "@/pages/superadmin/dashboard/SuperAdminDashboard";
 import GenerateReports from "@/pages/superadmin/reports/GenerateReports";
 import ManageUsers from "@/pages/superadmin/users/ManageUsers";
 import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
 import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
-import Incoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
 import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
@@ -63,7 +52,6 @@ const AppRoutes = () => {
 
       {/* Dashboard Routes */}
       <Route path="/dashboard" element={<FrontdeskDashboard />} />
-      <Route path="/dashboard/old" element={<Dashboard />} />
 
       {/* NurseDashboard Routes*/}
       <Route path="/dashboard/nurse" element={<NurseDashboard />} />
