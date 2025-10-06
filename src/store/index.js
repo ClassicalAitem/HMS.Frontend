@@ -7,7 +7,7 @@ import { combineReducers } from '@reduxjs/toolkit';
 import authSlice from './slices/authSlice';
 import userSlice from './slices/userSlice';
 import usersSlice from './slices/usersSlice';
-import patientSlice from './slices/patientSlice';
+import patientsSlice from './slices/patientsSlice';
 import appointmentSlice from './slices/appointmentSlice';
 
 // Persist config
@@ -22,7 +22,7 @@ const rootReducer = combineReducers({
   auth: authSlice,
   user: userSlice,
   users: usersSlice,
-  patients: patientSlice,
+  patients: patientsSlice,
   appointments: appointmentSlice,
 });
 

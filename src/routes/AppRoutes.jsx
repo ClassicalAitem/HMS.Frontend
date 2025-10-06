@@ -2,6 +2,8 @@ import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/auth/Login";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
+import ChangePassword from "@/pages/auth/ChangePassword";
+import ProtectedRoute from "@/components/common/ProtectedRoute";
 
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
@@ -59,27 +61,27 @@ const AppRoutes = () => {
       
       {/* Frontdesk Dashboard Routes */}
       <Route path="/frontdesk/dashboard" element={
-        <ProtectedRoute allowedRoles={['frontdesk']}>
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <FrontdeskDashboard />
         </ProtectedRoute>
       } />
       <Route path="/frontdesk/patients" element={
-        <ProtectedRoute allowedRoles={['frontdesk']}>
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <Patients />
         </ProtectedRoute>
       } />
       <Route path="/frontdesk/patients/:patientId" element={
-        <ProtectedRoute allowedRoles={['frontdesk']}>
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <PatientDetails />
         </ProtectedRoute>
       } />
       <Route path="/frontdesk/appointments" element={
-        <ProtectedRoute allowedRoles={['frontdesk']}>
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <Appointments />
         </ProtectedRoute>
       } />
       <Route path="/frontdesk/registration" element={
-        <ProtectedRoute allowedRoles={['frontdesk']}>
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <Registration />
         </ProtectedRoute>
       } />

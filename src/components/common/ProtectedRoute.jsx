@@ -19,8 +19,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If user has default password, redirect to change password page
-  if (needsPasswordChange || user?.isDefaultPassword) {
+  // If user needs to change password, redirect to change password page
+  if (needsPasswordChange) {
     console.log('🔒 ProtectedRoute: User needs to change password, redirecting to change password page');
     return <Navigate to="/change-password" replace />;
   }
@@ -36,7 +36,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     console.log('🔒 ProtectedRoute: Role not allowed, redirecting to appropriate dashboard');
     // Redirect to user's default dashboard based on role
     const roleRoutes = {
-      'frontdesk': '/dashboard',
+      'frontdesk': '/frontdesk/dashboard',
+      'front-desk': '/frontdesk/dashboard', // Handle backend role format
       'nurse': '/dashboard/nurse',
       'doctor': '/dashboard/doctor',
       'admin': '/dashboard/admin',
@@ -44,7 +45,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'cashier': '/dashboard/cashier',
     };
     
-    const defaultRoute = roleRoutes[user?.role] || '/dashboard';
+    const defaultRoute = roleRoutes[user?.role] || '/frontdesk/dashboard';
     console.log('🔒 ProtectedRoute: Redirecting to:', defaultRoute);
     return <Navigate to={defaultRoute} replace />;
   }
