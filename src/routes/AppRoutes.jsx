@@ -60,7 +60,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/change-password" element={<ChangePassword />} />
-      
+
       {/* Dashboard Routes */}
       <Route path="/dashboard" element={<FrontdeskDashboard />} />
       <Route path="/dashboard/old" element={<Dashboard />} />
@@ -76,7 +76,7 @@ const AppRoutes = () => {
       <Route path="/dashboard/nurse/appointments" element={<Appointmentss/>} />
       <Route path="/book" element={<BookAppointmentModal/>} />
 
-  
+
 
 
 
