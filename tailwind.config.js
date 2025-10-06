@@ -21,6 +21,12 @@ export default {
           900: '#14532d',
           950: '#052e16',
         }
+      },
+      fontFamily: {
+        // Add Google Fonts - Updated to use Poppins
+        'sans': ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'display': ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'body': ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       }
     },
   },

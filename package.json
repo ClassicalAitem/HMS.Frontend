@@ -33,6 +33,7 @@
     "react-router-dom": "^7.8.2",
     "react-slick": "^0.31.0",
     "react-use": "^17.6.0",
+    "recharts": "^3.1.2",
     "resolver": "^0.1.11",
     "slate": "^0.118.1",
     "slate-react": "^0.117.4",
