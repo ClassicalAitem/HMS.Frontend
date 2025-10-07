@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "@/pages/auth/Login";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ChangePassword from "@/pages/auth/ChangePassword";
+import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
@@ -53,6 +54,7 @@ const AppRoutes = () => {
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/change-password-default" element={<ChangePasswordDefault />} />
       <Route path="/change-password" element={
         <ProtectedRoute>
           <ChangePassword />
