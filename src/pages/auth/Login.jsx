@@ -133,7 +133,7 @@ const Login = () => {
       // Check if user needs to change password
       if (result.payload.needsPasswordChange) {
         console.log('🔒 Login: User needs to change password, redirecting to change password page');
-        toast.info('Please change your default password to continue');
+        toast('Please change your default password to continue', { icon: 'ℹ️' });
         // Redirect to change password page
         setTimeout(() => {
           navigate('/change-password');
@@ -155,11 +155,11 @@ const Login = () => {
       if (result.payload && typeof result.payload === 'object' && result.payload.type === 'default_password') {
         console.log('🔒 Login: Default password detected, redirecting to change password');
         console.log('🔒 Login: User ID:', result.payload.userId);
-        toast.info('Please change your default password to continue');
+        toast('Please change your default password to continue', { icon: 'ℹ️' });
         // Store user ID for change password page
         localStorage.setItem('changePasswordUserId', result.payload.userId);
         setTimeout(() => {
-          navigate('/change-password');
+          navigate('/change-password-default');
         }, 2000);
       } else {
         const errorMessage = typeof result.payload === 'string' ? result.payload : 
