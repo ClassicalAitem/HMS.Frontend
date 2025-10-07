@@ -35,21 +35,30 @@ const SuperAdminDashboard = () => {
     return now.toLocaleDateString('en-US', options);
   };
 
-  const getStatusBadgeClass = (statusColor) => {
-    switch (statusColor) {
-      case 'green':
-        return 'bg-green-100 text-green-800';
-      case 'orange':
-        return 'bg-orange-100 text-orange-800';
-      case 'red':
-        return 'bg-red-100 text-red-800';
-      case 'blue':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const StatusBadge = ({ status, color }) => {
+    const getBadgeClass = (status) => {
+      switch (status) {
+        case 'Completed':
+          return 'badge badge-success w-full';
+        case 'Pending':
+          return 'badge badge-warning w-full';
+        case 'Failed':
+          return 'badge badge-error w-full';
+        case 'In progress':
+          return 'badge badge-info w-full';
+        default:
+          return 'badge badge-neutral w-full';
+      }
+    };
+  
+    return (
+      <span className={getBadgeClass(status)} >
+        {status}
+      </span>
+    );
   };
 
+  // Define table columns
   const columns = useMemo(() => [
     {
       key: 'type',
@@ -66,9 +75,8 @@ const SuperAdminDashboard = () => {
     {
       key: 'status',
       title: 'Status',
-      sortable: true,
       className: 'text-base-content/70',
-      render: (value, row) => <getStatusBadgeClass status={value} color={row.statusColor} />
+      render: (value) => <StatusBadge status={value} />
     },
     {
       key: 'timestamp',
@@ -105,7 +113,7 @@ const SuperAdminDashboard = () => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-lg font-regular text-base-content 2xl:text-2xl">Super Admin Dashboard</h1>
+            <h1 className="text-lg font-medium text-primary 2xl:text-2xl">Super Admin Dashboard</h1>
             <p className="text-xs text-base-content/70 2xl:text-base">
               Welcome back, Super Admin. Here's a summary of your hospital's current status for {getCurrentDate()}.
             </p>
@@ -114,53 +122,53 @@ const SuperAdminDashboard = () => {
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
             {/* Total Patients */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
               <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                <div className="flex justify-start items-center rounded-lg bg-primary/10">
                   <PiUsersThreeDuotone className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Total Patients</p>
-                  <p className="text-2xl font-regular text-primary">5,234</p>
+                  <p className="mt-1 text-2xl font-semibold text-content">5,234</p>
                 </div>
               </div>
             </div>
 
             {/* Total Staff */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
               <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                <div className="flex justify-start items-center rounded-lg bg-primary/10">
                   <LuUserRoundCheck className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Total Staff</p>
-                  <p className="text-2xl font-regular text-primary">875</p>
+                  <p className="mt-1 text-2xl font-semibold text-content">875</p>
                 </div>
               </div>
             </div>
 
             {/* Total Departments */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
               <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                <div className="flex justify-start items-center rounded-lg bg-primary/10">
                   <MdOutlineStore className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Total Departments</p>
-                  <p className="text-2xl font-regular text-primary">32</p>
+                  <p className="mt-1 text-2xl font-semibold text-content">32</p>
                 </div>
               </div>
             </div>
 
             {/* Pending Reports */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
+            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
               <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
+                <div className="flex justify-start items-center rounded-lg bg-primary/10">
                   <FiFileText className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex flex-col justify-center items-center">
                   <p className="text-sm font-medium text-base-content/70">Pending Reports</p>
-                  <p className="text-2xl font-regular text-primary">5</p>
+                  <p className="mt-1 text-2xl font-semibold text-content">5</p>
                 </div>
               </div>
             </div>
@@ -173,7 +181,7 @@ const SuperAdminDashboard = () => {
           {/* Recent System Activities */}
           <div className="p-6 rounded-lg shadow-lg bg-base-100">
             <div className="mb-6">
-              <h2 className="text-md font-regular text-base-content">Recent System Activities</h2>
+              <h2 className="text-lg font-medium text-primary 2xl:text-2xl">Recent System Activities</h2>
               <p className="text-xs 2xl:text-base text-base-content/70">Latest system notifications and critical events.</p>
             </div>
             

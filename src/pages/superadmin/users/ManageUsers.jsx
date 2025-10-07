@@ -1,21 +1,35 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
 import { DataTable } from '@/components/common';
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie } from 'react-icons/fa';
-import usersData from '@/data/users.json';
+import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
+import { AddUserModal, EditUserModal } from '../../../components/modals';
+import toast from 'react-hot-toast';
+import UsersDebug from '../../../components/common/UsersDebug';
 
 const ManageUsers = () => {
+  const dispatch = useAppDispatch();
+  const { users, isLoading, error } = useAppSelector((state) => state.users);
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [users, setUsers] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   useEffect(() => {
-    setUsers(usersData);
-  }, []);
+    console.log('🔄 ManageUsers: Component mounted, fetching users');
+    dispatch(fetchUsers());
+  }, [dispatch]);
+
+  // Show error toast if there's an error
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearUsersError());
+    }
+  }, [error, dispatch]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -25,9 +39,9 @@ const ManageUsers = () => {
     setIsSidebarOpen(false);
   };
 
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case 'superAdmin':
+  const getRoleIcon = (accountType) => {
+    switch (accountType) {
+      case 'super-admin':
         return <FaUserShield className="w-4 h-4" />;
       case 'admin':
         return <FaUserTie className="w-4 h-4" />;
@@ -40,9 +54,9 @@ const ManageUsers = () => {
     }
   };
 
-  const getRoleBadgeClass = (role) => {
-    switch (role) {
-      case 'superAdmin':
+  const getRoleBadgeClass = (accountType) => {
+    switch (accountType) {
+      case 'super-admin':
         return 'badge badge-error';
       case 'admin':
         return 'badge badge-warning';
@@ -59,18 +73,56 @@ const ManageUsers = () => {
     }
   };
 
+  const formatRole = (accountType) => {
+    return accountType
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const processedUsers = users.map(user => ({
     ...user,
-    roleDisplay: user.role.charAt(0).toUpperCase() + user.role.slice(1)
+    name: `${user.firstName} ${user.lastName}`,
+    roleDisplay: formatRole(user.accountType),
+    lastLoginFormatted: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
+    createdAtFormatted: new Date(user.createdAt).toLocaleDateString(),
   }));
 
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      console.log('🗑️ ManageUsers: Deleting user:', userId);
+      const result = await dispatch(deleteUser(userId));
+      
+      if (deleteUser.fulfilled.match(result)) {
+        toast.success('User deleted successfully');
+      } else {
+        toast.error('Failed to delete user');
+      }
+    }
+  };
+
+  const handleToggleUserStatus = async (userId, currentStatus) => {
+    console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
+    const result = await dispatch(toggleUserStatus({ userId, isActive: !currentStatus }));
+    
+    if (toggleUserStatus.fulfilled.match(result)) {
+      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+    } else {
+      toast.error('Failed to update user status');
+    }
+  };
+
+  const handleUserAdded = () => {
+    console.log('🔄 ManageUsers: User added, refreshing users list');
+    dispatch(fetchUsers());
+  };
+
+  const handleUserUpdated = () => {
+    console.log('🔄 ManageUsers: User updated, refreshing users list');
+    dispatch(fetchUsers());
+  };
+
   const columns = [
-    {
-      key: 'id',
-      title: 'ID',
-      sortable: true,
-      className: 'text-base-content font-medium'
-    },
     {
       key: 'name',
       title: 'Name',
@@ -78,13 +130,13 @@ const ManageUsers = () => {
       className: 'text-base-content font-medium'
     },
     {
-      key: 'username',
+      key: 'email',
       title: 'Email',
       sortable: true,
       className: 'text-base-content/70'
     },
     {
-      key: 'role',
+      key: 'accountType',
       title: 'Role',
       sortable: true,
       className: 'text-base-content/70',
@@ -98,8 +150,38 @@ const ManageUsers = () => {
       )
     },
     {
-      key: 'department',
-      title: 'Department',
+      key: 'isActive',
+      title: 'Status',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (
+        <div className="flex items-center space-x-2">
+          <span className={`badge ${value ? 'badge-success' : 'badge-error'}`}>
+            {value ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+      )
+    },
+    {
+      key: 'isDefaultPassword',
+      title: 'Password',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (
+        <span className={`badge badge-sm ${value ? 'badge-warning' : 'badge-success'}`}>
+          {value ? 'Default' : 'Changed'}
+        </span>
+      )
+    },
+    {
+      key: 'lastLoginFormatted',
+      title: 'Last Login',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'createdAtFormatted',
+      title: 'Created',
       sortable: true,
       className: 'text-base-content/70'
     },
@@ -110,21 +192,26 @@ const ManageUsers = () => {
       render: (value, row) => (
         <div className="flex space-x-2">
           <button
+            onClick={() => handleToggleUserStatus(row.id, row.isActive)}
+            className={`btn btn-ghost btn-xs ${row.isActive ? 'text-warning' : 'text-success'}`}
+            title={row.isActive ? 'Deactivate User' : 'Activate User'}
+          >
+            {row.isActive ? <FaToggleOff className="w-3 h-3" /> : <FaToggleOn className="w-3 h-3" />}
+          </button>
+          <button
             onClick={() => {
               setSelectedUser(row);
               setIsEditModalOpen(true);
             }}
             className="btn btn-ghost btn-xs"
+            title="Edit User"
           >
             <FaEdit className="w-3 h-3" />
           </button>
           <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to delete this user?')) {
-                setUsers(users.filter(u => u.id !== row.id));
-              }
-            }}
+            onClick={() => handleDeleteUser(row.id)}
             className="btn btn-ghost btn-xs text-error"
+            title="Delete User"
           >
             <FaTrash className="w-3 h-3" />
           </button>
@@ -161,14 +248,14 @@ const ManageUsers = () => {
           {/* Page Header */}
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Manage Users</h1>
+              <h1 className="text-2xl font-bold text-primary 2xl:text-3xl">Manage Users</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Manage system users and their permissions</p>
             </div>
             <button
               onClick={() => setIsAddModalOpen(true)}
               className="btn btn-primary"
             >
-              <FaPlus className="w-4 h-4 mr-2" />
+              <FaPlus className="mr-2 w-4 h-4" />
               Add User
             </button>
           </div>
@@ -177,17 +264,26 @@ const ManageUsers = () => {
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
-                <DataTable
-                  data={processedUsers}
-                  columns={columns}
-                  searchable={true}
-                  sortable={true}
-                  paginated={true}
-                  initialEntriesPerPage={10}
-                  maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                  showEntries={true}
-                  searchPlaceholder="Search users..."
-                />
+                {isLoading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="flex flex-col items-center space-y-4">
+                      <span className="loading loading-spinner loading-lg"></span>
+                      <p className="text-base-content/70">Loading users...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <DataTable
+                    data={processedUsers}
+                    columns={columns}
+                    searchable={true}
+                    sortable={true}
+                    paginated={true}
+                    initialEntriesPerPage={10}
+                    maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
+                    showEntries={true}
+                    searchPlaceholder="Search users..."
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -195,96 +291,24 @@ const ManageUsers = () => {
       </div>
 
       {/* Add User Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100">
-            <div className="p-6 card-body">
-              <h2 className="mb-4 text-xl font-bold text-base-content">Add New User</h2>
-              <div className="space-y-4">
-                <input type="text" placeholder="Full Name" className="input input-bordered w-full" />
-                <input type="email" placeholder="Email" className="input input-bordered w-full" />
-                <select className="select select-bordered w-full">
-                  <option>Select Role</option>
-                  <option>Super Admin</option>
-                  <option>Admin</option>
-                  <option>Doctor</option>
-                  <option>Nurse</option>
-                  <option>Frontdesk</option>
-                  <option>Cashier</option>
-                </select>
-                <input type="text" placeholder="Department" className="input input-bordered w-full" />
-                <input type="password" placeholder="Password" className="input input-bordered w-full" />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="btn btn-outline flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="btn btn-primary flex-1"
-                >
-                  Add User
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddUserModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onUserAdded={handleUserAdded}
+      />
 
       {/* Edit User Modal */}
-      {isEditModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100">
-            <div className="p-6 card-body">
-              <h2 className="mb-4 text-xl font-bold text-base-content">Edit User</h2>
-              <div className="space-y-4">
-                <input 
-                  type="text" 
-                  defaultValue={selectedUser.name}
-                  className="input input-bordered w-full" 
-                />
-                <input 
-                  type="email" 
-                  defaultValue={selectedUser.username}
-                  className="input input-bordered w-full" 
-                />
-                <select className="select select-bordered w-full" defaultValue={selectedUser.role}>
-                  <option>Select Role</option>
-                  <option>Super Admin</option>
-                  <option>Admin</option>
-                  <option>Doctor</option>
-                  <option>Nurse</option>
-                  <option>Frontdesk</option>
-                  <option>Cashier</option>
-                </select>
-                <input 
-                  type="text" 
-                  defaultValue={selectedUser.department}
-                  className="input input-bordered w-full" 
-                />
-                <input type="password" placeholder="New Password (optional)" className="input input-bordered w-full" />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="btn btn-outline flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="btn btn-primary flex-1"
-                >
-                  Update User
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={selectedUser}
+        onUserUpdated={handleUserUpdated}
+      />
+
+      {/* Debug Component - Remove in production */}
+      <div className="fixed right-4 bottom-4 z-50">
+        <UsersDebug />
+      </div>
     </div>
   );
 };
