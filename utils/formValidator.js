@@ -28,7 +28,7 @@ export const updateYourPasswordSchema = yup.object().shape({
     .oneOf([yup.ref("newPassword"), null], "Password must match"),
 });
 
-// * Form Validation For Change Password (with current password)
+// * Form Validation For Change Password (includes current password)
 export const changePasswordSchema = yup.object().shape({
   currentPassword: yup
     .string()
@@ -42,7 +42,7 @@ export const changePasswordSchema = yup.object().shape({
   confirmPassword: yup
     .string()
     .required("Please confirm your new password")
-    .oneOf([yup.ref("newPassword"), null], "Passwords must match"),
+    .oneOf([yup.ref("newPassword"), null], "Password must match"),
 });
 
 export const registrationSchema = yup.object().shape({

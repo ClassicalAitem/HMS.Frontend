@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaEye, FaEyeSlash, FaLock, FaCheck } from 'react-icons/fa';
@@ -9,15 +10,20 @@ import { changePasswordSchema } from '../../../utils/formValidator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdLockOpen } from 'react-icons/md';
 import { FiEye } from 'react-icons/fi';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { changePassword, passwordChanged } from '../../store/slices/authSlice';
 
 const ChangePassword = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { isLoading, error, user } = useAppSelector((state) => state.auth);
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const toggleSidebar = () => {
@@ -48,25 +54,41 @@ const ChangePassword = () => {
   const newPassword = watch('newPassword');
 
   const onSubmit = async (data) => {
-    setIsLoading(true);
+    // Dispatch change password action
+    const result = await dispatch(changePassword(data));
     
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      
-      // Show success modal
+    if (changePassword.fulfilled.match(result)) {
+      // Password change successful
+      dispatch(passwordChanged());
       setShowSuccessModal(true);
       
-      // Reset form after delay
+      // Navigate to appropriate dashboard after delay
       setTimeout(() => {
-        reset();
-        setShowSuccessModal(false);
+        const getDashboardPath = (role) => {
+          switch (role) {
+            case 'frontdesk':
+            case 'front-desk': // Handle backend role format
+              return '/frontdesk/dashboard';
+            case 'nurse':
+              return '/dashboard/nurse';
+            case 'doctor':
+              return '/dashboard/doctor';
+            case 'admin':
+              return '/dashboard/admin';
+            case 'super-admin':
+              return '/dashboard/superadmin';
+            case 'cashier':
+              return '/dashboard/cashier';
+            default:
+              return '/frontdesk/dashboard';
+          }
+        };
+        
+        const dashboardPath = getDashboardPath(user?.role);
+        navigate(dashboardPath);
       }, 2000);
-    } catch (error) {
-      console.error('Password change failed:', error);
-    } finally {
-      setIsLoading(false);
     }
+    // Error handling is done in the Redux slice
   };
 
   const SuccessModal = () => (
@@ -284,6 +306,13 @@ const ChangePassword = () => {
                 )}
               </button>
             </form>
+
+            {/* Error Display */}
+            {error && (
+              <div className="p-3 mt-4 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
+                {error}
+              </div>
+            )}
           </div>
         </div>
       </div>
