@@ -4,68 +4,42 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { EditPatientModal } from '@/components/modals';
-import patientDetailsData from '@/data/patientDetails.json';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import { FaChevronUp, FaChevronDown } from 'react-icons/fa';
 import { LuPencilLine } from 'react-icons/lu';
 import { IoIosCloseCircleOutline } from 'react-icons/io';
+import toast from 'react-hot-toast';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { currentPatient, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [patient, setPatient] = useState(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [paymentHistoryExpanded, setPaymentHistoryExpanded] = useState(false);
 
+  // Fetch patient data from backend
   useEffect(() => {
-    // Find patient by ID
-    const foundPatient = patientDetailsData.find(p => p.id === patientId);
-    if (foundPatient) {
-      // Add fallback data for missing fields
-      const patientWithFallbacks = {
-        ...foundPatient,
-        // Fallback for missing appointments
-        appointments: foundPatient.appointments || {
-          upcoming: {
-            date: "No upcoming appointment",
-            time: "",
-            doctor: "",
-            department: ""
-          },
-          last: {
-            date: "No previous appointment",
-            doctor: "",
-            department: "",
-            reason: ""
-          }
-        },
-        // Fallback for missing medical history
-        medicalHistory: foundPatient.medicalHistory || {
-          conditions: "No known conditions",
-          allergies: "No known allergies",
-          medications: "No current medications",
-          surgery: "No previous surgeries",
-          lastVisit: "No previous visits"
-        },
-        // Fallback for missing next of kin
-        nextOfKin: foundPatient.nextOfKin || {
-          name: "Not provided",
-          relationship: "Not provided",
-          stateOfOrigin: "Not provided",
-          phoneNumber: "Not provided",
-          address: "Not provided"
-        },
-        // Fallback for missing bills
-        outstandingBills: foundPatient.outstandingBills || [],
-        // Fallback for missing payment history
-        paymentHistory: foundPatient.paymentHistory || []
-      };
-      setPatient(patientWithFallbacks);
-    } else {
-      // Redirect to patients list if patient not found
-      navigate('/patients');
+    if (patientId) {
+      console.log('🔄 PatientDetails: Fetching patient by ID:', patientId);
+      dispatch(fetchPatientById(patientId));
     }
-  }, [patientId, navigate]);
+  }, [patientId, dispatch]);
+
+  // Show error toast if there's an error
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearPatientsError());
+      // Redirect to patients list on error
+      navigate('/frontdesk/patients');
+    }
+  }, [error, dispatch, navigate]);
+
+  // Only redirect on error, not on missing patient (let the component handle it)
+  // The component will show "Patient not found" message instead of redirecting
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -76,14 +50,18 @@ const PatientDetails = () => {
   };
 
   const handleEditPatient = (updatedData) => {
-    console.log('Updated patient data:', updatedData);
-    // Here you would typically update the patient data
+    console.log('✅ PatientDetails: Patient updated successfully:', updatedData);
+    // The modal already handles the update via Redux
+    // We can refresh the patient data here if needed
+    if (patientId) {
+      dispatch(fetchPatientById(patientId));
+    }
     setIsEditModalOpen(false);
   };
 
   const calculateOutstandingBalance = () => {
-    if (!patient) return 0;
-    return patient.outstandingBills.reduce((total, bill) => total + bill.balance, 0);
+    if (!currentPatient) return 0;
+    return currentPatient.outstandingBills?.reduce((total, bill) => total + bill.balance, 0) || 0;
   };
 
   const formatCurrency = (amount) => {
@@ -94,7 +72,16 @@ const PatientDetails = () => {
     }).format(amount);
   };
 
-  if (!patient) {
+  // Debug logging
+  console.log('🔍 PatientDetails: Component render state:', {
+    isLoading,
+    currentPatient: currentPatient ? 'Present' : 'Missing',
+    error,
+    patientId
+  });
+
+  // Show loading state
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
@@ -104,6 +91,28 @@ const PatientDetails = () => {
       </div>
     );
   }
+
+  // Show error state or redirect if no patient
+  if (!currentPatient) {
+    console.log('❌ PatientDetails: No currentPatient, showing not found message');
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <p className="text-base-content/70">Patient not found</p>
+          <p className="text-sm text-base-content/50 mt-2">Patient ID: {patientId}</p>
+          <button 
+            onClick={() => navigate('/frontdesk/patients')}
+            className="btn btn-primary mt-4"
+          >
+            Back to Patients
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Use currentPatient as patient for the rest of the component
+  const patient = currentPatient;
 
   return (
     <div className="flex h-screen">
@@ -145,7 +154,7 @@ const PatientDetails = () => {
                 <LuPencilLine className="w-4 h-4 2xl:w-6 2xl:h-6" />
               </button>
               <button
-                onClick={() => navigate('/patients')}
+                onClick={() => navigate('/frontdesk/patients')}
                 className="btn btn-ghost btn-sm"
               >
                 <IoIosCloseCircleOutline className="w-4 h-4 2xl:w-6 2xl:h-6" />
@@ -164,35 +173,39 @@ const PatientDetails = () => {
                   <div className="flex flex-row items-center space-x-4">
                     <div className="ml-4 avatar">
                       <div className="w-20 h-20 rounded-full border-3 border-primary">
-                        <img src={patient.avatar} alt={patient.name} />
+                        <div className="flex items-center justify-center w-full h-full bg-primary text-primary-content text-2xl font-bold">
+                          {patient.firstName?.[0]}{patient.lastName?.[0]}
+                        </div>
                       </div>
                     </div>
 
                     <div className="flex gap-12 justify-around px-8 w-auto 2xl:gap-0 2xl:w-full">
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Patient Name </span>
-                        <span className="text-xl font-semibold text-base-content">{patient.name}</span>
+                        <span className="text-xl font-semibold text-base-content">
+                          {patient.firstName} {patient.lastName}
+                        </span>
                       </div>
 
                       <div className="w-[1px] h-auto bg-base-content/70"></div>
 
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Gender</span>
-                        <span className="text-xl font-semibold text-base-content">{patient.gender}</span>
+                        <span className="text-xl font-semibold text-base-content capitalize">{patient.gender}</span>
                       </div>
 
                       <div className="w-[1px] h-auto bg-base-content/70"></div>
 
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Phone Number</span>
-                        <span className="text-xl font-semibold text-base-content">{patient.phoneNumber}</span>
+                        <span className="text-xl font-semibold text-base-content">{patient.phone}</span>
                       </div>
 
                       <div className="w-[1px] h-auto bg-base-content/70"></div>
 
                       <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Patient ID</span>
-                        <span className="text-xl font-semibold text-base-content">{patient.patientId}</span>
+                        <span className="text-sm text-base-content/70">Hospital ID</span>
+                        <span className="text-xl font-semibold text-base-content">{patient.hospitalId}</span>
                       </div>
 
                     </div>
@@ -200,12 +213,14 @@ const PatientDetails = () => {
 
                   <div className="flex justify-between items-center px-4 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
                     <div>
-                      <li className="text-sm font-semibold text-base-content">Insurance: {patient.insurance}</li>
+                      <li className="text-sm font-semibold text-base-content">
+                        HMO: {patient.hmos?.length > 0 ? `${patient.hmos[0].provider} (${patient.hmos[0].memberId})` : 'None'}
+                      </li>
                     </div>
 
                     <div>
                       <span className="text-sm font-semibold text-base-content">Status</span>
-                      <span className="px-12 text-sm font-semibold text-base-100 btn btn-xs bg-primary">{patient.status}</span>
+                      <span className="px-12 text-sm font-semibold text-base-100 btn btn-xs bg-primary capitalize">{patient.status}</span>
                     </div>
                   </div>
 
@@ -220,32 +235,38 @@ const PatientDetails = () => {
                   <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-regular text-base-content/70 text-md">Address</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.address}</span>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.address || 'Not provided'}</span>
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Town</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.town}</span>
+                      <p className="font-regular text-base-content/70 text-md">Middle Name</p>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.middleName || 'Not provided'}</span>
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">State of origin</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.stateOfOrigin}</span>
+                      <p className="font-regular text-base-content/70 text-md">Date of Birth</p>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'Not provided'}
+                      </span>
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">LGA</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.lga}</span>
+                      <p className="font-regular text-base-content/70 text-md">Email</p>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.email || 'Not provided'}</span>
                     </div>
 
                     <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Date of birth</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.dateOfBirth}</span>
+                      <p className="font-regular text-base-content/70 text-md">Created</p>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
+                      </span>
                     </div>
                     
                     <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Email</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.email}</span>
+                      <p className="font-regular text-base-content/70 text-md">Last Updated</p>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.updatedAt ? new Date(patient.updatedAt).toLocaleDateString() : 'Not available'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -258,54 +279,61 @@ const PatientDetails = () => {
                   <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <p className="font-regular text-base-content/70 text-md">Next of kin</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.nextOfKin.name}</span>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.nextOfKin?.name || 'Not provided'}
+                      </span>
                     </div>
 
                     <div>
                       <p className="font-regular text-base-content/70 text-md">Relationship</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.nextOfKin.relationship}</span>
-                    </div>
-
-                    <div>
-                      <p className="font-regular text-base-content/70 text-md">State of origin</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.nextOfKin.stateOfOrigin}</span>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.nextOfKin?.relationship || 'Not provided'}
+                      </span>
                     </div>
 
                     <div>
                       <p className="font-regular text-base-content/70 text-md">Phone number</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.nextOfKin.phoneNumber}</span>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.nextOfKin?.phone || 'Not provided'}
+                      </span>
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-3">
                       <p className="font-regular text-base-content/70 text-md">Address</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.nextOfKin.address}</span>
+                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                        {patient.nextOfKin?.address || 'Not provided'}
+                      </span>
                     </div>
                     
                   </div>
                 </div>
               </div>
 
-              {/* Medical History */}
+              {/* HMO & Dependants Info */}
               <div className="shadow-xl card bg-base-100">
                 <div className="p-6 card-body">
-                  <h3 className="mb-4 text-lg font-medium text-primary">Medical History</h3>
+                  <h3 className="mb-4 text-lg font-medium text-primary">HMO & Dependants Information</h3>
                   <div className="flex justify-around 2xl:justify-start">
                      <div className="space-y-3 2xl:pl-12">
                        <div>
-                         <li className="text-sm text-base-content/70"><span className="font-medium">Conditions:</span> {patient.medicalHistory?.conditions || "No known conditions"}</li>
+                         <li className="text-sm text-base-content/70">
+                           <span className="font-medium">HMO Plans:</span> {patient.hmos?.length > 0 ? patient.hmos.map(hmo => `${hmo.provider} (${hmo.memberId})`).join(', ') : "No HMO plans"}
+                         </li>
                        </div>
                        <div>
-                         <li className="text-sm text-base-content/70"><span className="font-medium">Allergies:</span> {patient.medicalHistory?.allergies || "No known allergies"}</li>
+                         <li className="text-sm text-base-content/70">
+                           <span className="font-medium">Dependants:</span> {patient.dependants?.length > 0 ? `${patient.dependants.length} dependant(s)` : "No dependants"}
+                         </li>
                        </div>
-                       <div>
-                         <li className="text-sm text-base-content/70"><span className="font-medium">Medications:</span> {patient.medicalHistory?.medications || "No current medications"}</li>
-                       </div>
-                       <div>
-                         <li className="text-sm text-base-content/70"><span className="font-medium">Surgery:</span> {patient.medicalHistory?.surgery || "No previous surgeries"}</li>
-                       </div>
-                       <div>
-                         <li className="text-sm text-base-content/70"><span className="font-medium">Last Visit:</span> {patient.medicalHistory?.lastVisit || "No previous visits"}</li>
-                       </div>
+                       {patient.dependants?.length > 0 && (
+                         <div className="ml-4">
+                           {patient.dependants.map((dep, index) => (
+                             <li key={index} className="text-sm text-base-content/70">
+                               • {dep.firstName} {dep.lastName} ({dep.relationshipType}) - {dep.gender}
+                             </li>
+                           ))}
+                         </div>
+                       )}
                      </div>
 
                     {/* Right Column - Appointments */}
@@ -322,19 +350,19 @@ const PatientDetails = () => {
                              <div>
                                <h4 className="font-medium text-base-content">Upcoming Appointment:</h4>
                                <p className="text-sm text-base-content/70">
-                                 {patient.appointments?.upcoming?.date || "No upcoming appointment"}
-                                 {patient.appointments?.upcoming?.time && ` - ${patient.appointments.upcoming.time}`}
-                                 {patient.appointments?.upcoming?.doctor && ` | ${patient.appointments.upcoming.doctor}`}
-                                 {patient.appointments?.upcoming?.department && ` (${patient.appointments.upcoming.department})`}
+                                 No upcoming appointment
                                </p>
                              </div>
                              <div>
                                <h4 className="font-medium text-base-content">Last Appointment:</h4>
                                <p className="text-sm text-base-content/70">
-                                 {patient.appointments?.last?.date || "No previous appointment"}
-                                 {patient.appointments?.last?.doctor && ` - ${patient.appointments.last.doctor}`}
-                                 {patient.appointments?.last?.department && ` (${patient.appointments.last.department})`}
-                                 {patient.appointments?.last?.reason && ` | ${patient.appointments.last.reason}`}
+                                 No previous appointment
+                               </p>
+                             </div>
+                             <div>
+                               <h4 className="font-medium text-base-content">Registration Date:</h4>
+                               <p className="text-sm text-base-content/70">
+                                 {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
                                </p>
                              </div>
                            </div>
@@ -350,104 +378,32 @@ const PatientDetails = () => {
             
           </div>
 
-            {/* Outstanding Bills */}
-            {patient.outstandingBills && patient.outstandingBills.length > 0 && (
-              <div className="mt-6 shadow-xl card bg-base-100">
-                <div className="p-6 card-body">
-                  <h3 className="mb-4 text-lg font-medium text-primary">Patient Outstanding Bills</h3>
-                  <div className="overflow-x-auto">
-                    <table className="table w-full table-zebra">
-                      <thead className="border-b-2 border-base-content/70">
-                        <tr>
-                          <th>Invoice No</th>
-                          <th>Date</th>
-                          <th>Service</th>
-                          <th>Amount</th>
-                          <th>Deposited</th>
-                          <th>Balance</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {patient.outstandingBills.map((bill, index) => (
-                          <tr key={index}>
-                            <td>{bill.invoiceNo}</td>
-                            <td>{bill.date}</td>
-                            <td>{bill.service}</td>
-                            <td>{formatCurrency(bill.amount)}</td>
-                            <td>{formatCurrency(bill.deposited)}</td>
-                            <td>{formatCurrency(bill.balance)}</td>
-                            <td>
-                              <div className={`badge ${bill.status === 'Partially Paid' ? 'badge-warning' :
-                                  bill.status === 'Covered by HMO' ? 'badge-info' : 'badge-error'
-                                }`}>
-                                {bill.status}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+            {/* Additional Information */}
+            <div className="mt-6 shadow-xl card bg-base-100">
+              <div className="p-6 card-body">
+                <h3 className="mb-4 text-lg font-medium text-primary">Additional Information</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-sm text-base-content/70">Patient ID</p>
+                    <p className="font-medium">{patient.id}</p>
                   </div>
-                  <div className="flex gap-2 items-center p-3 mt-4 rounded-lg bg-error/10">
-                    <div className="w-3 h-3 rounded-full bg-error"></div>
-                    <p className="font-semibold text-base-content">
-                      Outstanding Balance: {formatCurrency(calculateOutstandingBalance())}
+                  <div>
+                    <p className="text-sm text-base-content/70">Hospital ID</p>
+                    <p className="font-medium">{patient.hospitalId}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-base-content/70">Status</p>
+                    <p className="font-medium capitalize">{patient.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-base-content/70">Last Updated</p>
+                    <p className="font-medium">
+                      {patient.updatedAt ? new Date(patient.updatedAt).toLocaleString() : 'Not available'}
                     </p>
                   </div>
                 </div>
               </div>
-            )}
-
-          {/* Payment History */}
-          {patient.paymentHistory && patient.paymentHistory.length > 0 && (
-            <div className="mt-6 shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-base-content">Payment History</h3>
-                  <button
-                    onClick={() => setPaymentHistoryExpanded(!paymentHistoryExpanded)}
-                    className="btn btn-ghost btn-sm"
-                  >
-                    {paymentHistoryExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                  </button>
-                </div>
-                
-                {paymentHistoryExpanded && (
-                  <div className="overflow-x-auto">
-                    <table className="table w-full table-zebra">
-                      <thead className="border-b-2 border-base-content/70">
-                        <tr>
-                          <th>Receipt No</th>
-                          <th>Date</th>
-                          <th>Service</th>
-                          <th>Amount</th>
-                          <th>Method</th>
-                          <th>Status</th>
-                          <th>Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {patient.paymentHistory.map((payment, index) => (
-                          <tr key={index}>
-                            <td>{payment.receiptNo}</td>
-                            <td>{payment.date}</td>
-                            <td>{payment.service}</td>
-                            <td>{formatCurrency(payment.amount)}</td>
-                            <td>{payment.method}</td>
-                            <td>
-                              <div className="badge badge-success">{payment.status}</div>
-                            </td>
-                            <td>{payment.time}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
             </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex justify-center mt-6 space-x-4">

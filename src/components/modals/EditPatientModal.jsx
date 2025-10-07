@@ -1,89 +1,110 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { useAppDispatch } from '../../store/hooks';
+import { editPatient } from '../../store/slices/patientsSlice';
+import toast from 'react-hot-toast';
 
 const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
+  const dispatch = useAppDispatch();
+  const [isLoading, setIsLoading] = useState(false);
   const [hmoExpanded, setHmoExpanded] = useState(false);
   const [dependentExpanded, setDependentExpanded] = useState(false);
   const [formData, setFormData] = useState({
-    // First Section
-    surname: '',
+    // Patient Basic Info
     firstName: '',
+    lastName: '',
     middleName: '',
+    email: '',
+    phone: '',
     address: '',
-    phoneNumber: '',
-    dateOfBirth: '',
+    dob: '',
     gender: '',
-    stateOfOrigin: '',
-    town: '',
-    lga: '',
     
-    // Second Section - Next of Kin
-    nokFirstName: '',
-    nokLastName: '',
-    nokRelationship: '',
-    nokPhoneNumber: '',
-    nokAddress: '',
+    // Next of Kin
+    nextOfKin: {
+      name: '',
+      phone: '',
+      relationship: '',
+      address: ''
+    },
     
-    // HMO Section
-    hmoProvider: '',
-    hmoNumber: '',
-    hmoPlan: '',
-    hmoExpiringDate: '',
-    
-    // Dependent Section
-    dependentFirstName: '',
-    dependentLastName: '',
-    dependentRelationship: '',
-    dependentPhoneNumber: ''
+    // HMO (for display only - not editable in this modal)
+    hmo: []
   });
 
   // Pre-populate form when patient data is available
   useEffect(() => {
     if (patient) {
       setFormData({
-        surname: patient.surname || 'Malik',
-        firstName: patient.firstName || 'Williamson',
-        middleName: patient.middleName || 'Cameron',
-        address: patient.address || '4517 Washington Ave. Manchester, Kentucky 39495',
-        phoneNumber: patient.phoneNumber || '11111111111',
-        dateOfBirth: patient.dateOfBirth || '08/02/19',
-        gender: patient.gender || 'Female',
-        stateOfOrigin: patient.stateOfOrigin || 'Ogun State',
-        town: patient.town || 'Aba North',
-        lga: patient.lga || 'Aba North',
+        firstName: patient.firstName || '',
+        lastName: patient.lastName || '',
+        middleName: patient.middleName || '',
+        email: patient.email || '',
+        phone: patient.phone || '',
+        address: patient.address || '',
+        dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
+        gender: patient.gender || '',
         
-        nokFirstName: patient.nokFirstName || 'Esther Howard',
-        nokLastName: patient.nokLastName || 'Sister',
-        nokRelationship: patient.nokRelationship || 'Sister',
-        nokPhoneNumber: patient.nokPhoneNumber || '(603) 555-0123',
-        nokAddress: patient.nokAddress || '4517 Washington Ave. Manchester, Kentucky 39495',
+        nextOfKin: {
+          name: patient.nextOfKin?.name || '',
+          phone: patient.nextOfKin?.phone || '',
+          relationship: patient.nextOfKin?.relationship || '',
+          address: patient.nextOfKin?.address || ''
+        },
         
-        hmoProvider: patient.hmoProvider || 'Avon Industries',
-        hmoNumber: patient.hmoNumber || '091919',
-        hmoPlan: patient.hmoPlan || 'Premium',
-        hmoExpiringDate: patient.hmoExpiringDate || 'April 2025',
-        
-        dependentFirstName: patient.dependentFirstName || 'Tosan',
-        dependentLastName: patient.dependentLastName || 'Tosanade',
-        dependentRelationship: patient.dependentRelationship || 'Wife',
-        dependentPhoneNumber: patient.dependentPhoneNumber || '0909000000'
+        hmo: patient.hmos || []
       });
     }
   }, [patient]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle nested nextOfKin fields
+    if (name.startsWith('nextOfKin.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        nextOfKin: {
+          ...prev.nextOfKin,
+          [field]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSave(formData);
-    onClose();
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 EditPatientModal: Updating patient:', patient.id);
+      console.log('📊 EditPatientModal: Update data:', formData);
+      
+      const result = await dispatch(editPatient({
+        patientId: patient.id,
+        updateData: formData
+      }));
+      
+      if (editPatient.fulfilled.match(result)) {
+        toast.success('Patient updated successfully');
+        onSave && onSave(result.payload.data);
+        onClose();
+      } else {
+        toast.error('Failed to update patient');
+      }
+    } catch (error) {
+      console.error('❌ EditPatientModal: Update error:', error);
+      toast.error('Failed to update patient');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -114,24 +135,14 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* First Section */}
+            {/* Patient Information */}
             <div className="p-6 border rounded-lg border-base-300">
-              <h3 className="mb-4 text-lg font-semibold text-base-content">First Section</h3>
+              <h3 className="mb-4 text-lg font-semibold text-base-content">Patient Information</h3>
               
               {/* Names Row */}
               <div className="mb-6">
                 <h4 className="mb-3 text-base font-medium text-base-content">Names</h4>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">Surname</label>
-                    <input
-                      type="text"
-                      name="surname"
-                      value={formData.surname}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
                   <div>
                     <label className="block mb-1 text-sm text-base-content/70">First Name</label>
                     <input
@@ -140,6 +151,18 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                       value={formData.firstName}
                       onChange={handleInputChange}
                       className="w-full input input-bordered"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      className="w-full input input-bordered"
+                      required
                     />
                   </div>
                   <div>
@@ -155,55 +178,69 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                 </div>
               </div>
 
-              {/* Address */}
-              <div className="mb-6">
-                <h4 className="mb-3 text-base font-medium text-base-content">Address</h4>
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
                 <div>
-                  <label className="block mb-1 text-sm text-base-content/70">enter your address</label>
-                  <textarea
-                    name="address"
-                    value={formData.address}
+                  <label className="block mb-1 text-sm text-base-content/70">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleInputChange}
-                    className="w-full textarea textarea-bordered"
-                    rows={3}
+                    className="w-full input input-bordered"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full input input-bordered"
+                    required
                   />
                 </div>
               </div>
 
-              {/* Phone, DOB, Gender Row */}
-              <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-3">
+              {/* Address */}
+              <div className="mb-6">
+                <label className="block mb-1 text-sm text-base-content/70">Address</label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="w-full textarea textarea-bordered"
+                  rows={3}
+                />
+              </div>
+
+              {/* DOB and Gender */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">Phone Number</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">Enter Your Phone Number</label>
+                  <label className="block mb-1 text-sm text-base-content/70">Date of Birth</label>
                   <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
+                    type="date"
+                    name="dob"
+                    value={formData.dob}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
+                    required
                   />
                 </div>
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">Date Of Birth</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">DD/MM/YY</label>
-                  <input
-                    type="text"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    className="w-full input input-bordered"
-                  />
-                </div>
-                <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">Gender</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">M / F</label>
-                  <input
-                    type="text"
+                  <label className="block mb-1 text-sm text-base-content/70">Gender</label>
+                  <select
                     name="gender"
                     value={formData.gender}
                     onChange={handleInputChange}
-                    className="w-full input input-bordered"
-                  />
+                    className="w-full select select-bordered"
+                    required
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
                 </div>
               </div>
 
@@ -248,209 +285,99 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
               </div>
             </div>
 
-            {/* Second Section */}
+            {/* Next of Kin Information */}
             <div className="p-6 border rounded-lg border-base-300">
-              <h3 className="mb-4 text-lg font-semibold text-base-content">Second Section</h3>
+              <h3 className="mb-4 text-lg font-semibold text-base-content">Next of Kin Information</h3>
               
-              {/* Next of Kin */}
-              <div className="mb-6">
-                <h4 className="mb-3 text-base font-medium text-base-content">Next Of Kin</h4>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">First name</label>
-                    <input
-                      type="text"
-                      name="nokFirstName"
-                      value={formData.nokFirstName}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
-                    <input
-                      type="text"
-                      name="nokLastName"
-                      value={formData.nokLastName}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Relationship and Phone */}
               <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">Relationship</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
+                  <label className="block mb-1 text-sm text-base-content/70">Name</label>
                   <input
                     type="text"
-                    name="nokRelationship"
-                    value={formData.nokRelationship}
+                    name="nextOfKin.name"
+                    value={formData.nextOfKin.name}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
                   />
                 </div>
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">Phone Number</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">Enter Your Phone Number</label>
+                  <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
                   <input
                     type="tel"
-                    name="nokPhoneNumber"
-                    value={formData.nokPhoneNumber}
+                    name="nextOfKin.phone"
+                    value={formData.nextOfKin.phone}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
                   />
                 </div>
               </div>
 
-              {/* NOK Address */}
-              <div>
-                <h4 className="mb-3 text-base font-medium text-base-content">Address</h4>
-                <label className="block mb-1 text-sm text-base-content/70">enter your address</label>
-                <textarea
-                  name="nokAddress"
-                  value={formData.nokAddress}
-                  onChange={handleInputChange}
-                  className="w-full textarea textarea-bordered"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            {/* Connected HMO */}
-            <div className="p-6 border rounded-lg border-base-300">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-base-content">Connected HMO</h3>
-                <button
-                  type="button"
-                  className="text-sm btn btn-outline btn-sm text-primary"
-                >
-                  Remove
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="mb-3 text-base font-medium text-base-content">HMO Provider</h4>
-                    <label className="block mb-1 text-sm text-base-content/70">Enter provider</label>
-                    <input
-                      type="text"
-                      name="hmoProvider"
-                      value={formData.hmoProvider}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
-                  <div>
-                    <h4 className="mb-3 text-base font-medium text-base-content">HMO Number</h4>
-                    <label className="block mb-1 text-sm text-base-content/70">Enter HMO Number</label>
-                    <input
-                      type="text"
-                      name="hmoNumber"
-                      value={formData.hmoNumber}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
+                <div>
+                  <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
+                  <select
+                    name="nextOfKin.relationship"
+                    value={formData.nextOfKin.relationship}
+                    onChange={handleInputChange}
+                    className="w-full select select-bordered"
+                  >
+                    <option value="">Select Relationship</option>
+                    <option value="spouse">Spouse</option>
+                    <option value="parent">Parent</option>
+                    <option value="child">Child</option>
+                    <option value="sibling">Sibling</option>
+                    <option value="friend">Friend</option>
+                    <option value="other">Other</option>
+                  </select>
                 </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="mb-3 text-base font-medium text-base-content">HMO plan</h4>
-                    <label className="block mb-1 text-sm text-base-content/70">HMO Plan</label>
-                    <input
-                      type="text"
-                      name="hmoPlan"
-                      value={formData.hmoPlan}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
-                  <div>
-                    <h4 className="mb-3 text-base font-medium text-base-content">Add Expiring Date</h4>
-                    <label className="block mb-1 text-sm text-base-content/70">Enter expiring Date</label>
-                    <input
-                      type="text"
-                      name="hmoExpiringDate"
-                      value={formData.hmoExpiringDate}
-                      onChange={handleInputChange}
-                      className="w-full input input-bordered"
-                    />
-                  </div>
+                <div>
+                  <label className="block mb-1 text-sm text-base-content/70">Address</label>
+                  <textarea
+                    name="nextOfKin.address"
+                    value={formData.nextOfKin.address}
+                    onChange={handleInputChange}
+                    className="w-full textarea textarea-bordered"
+                    rows={2}
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Change or add new dependent */}
-            <div className="p-6 border rounded-lg border-base-300">
-              <button
-                type="button"
-                onClick={() => setDependentExpanded(!dependentExpanded)}
-                className="flex justify-between items-center w-full mb-4 text-lg font-semibold text-left text-base-content"
-              >
-                Change or add new dependent
-                {dependentExpanded ? <FaChevronUp /> : <FaChevronDown />}
-              </button>
-              
-              {dependentExpanded && (
+            {/* HMO Information (Read-only) */}
+            {formData.hmo && formData.hmo.length > 0 && (
+              <div className="p-6 border rounded-lg border-base-300">
+                <h3 className="mb-4 text-lg font-semibold text-base-content">HMO Information</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <h4 className="mb-3 text-base font-medium text-base-content">First Name</h4>
-                      <label className="block mb-1 text-sm text-base-content/70">Name</label>
-                      <input
-                        type="text"
-                        name="dependentFirstName"
-                        value={formData.dependentFirstName}
-                        onChange={handleInputChange}
-                        className="w-full input input-bordered"
-                      />
+                  {formData.hmo.map((hmo, index) => (
+                    <div key={index} className="p-4 bg-base-200 rounded-lg">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="block mb-1 text-sm text-base-content/70">Provider</label>
+                          <p className="text-base-content font-medium">{hmo.provider}</p>
+                        </div>
+                        <div>
+                          <label className="block mb-1 text-sm text-base-content/70">Member ID</label>
+                          <p className="text-base-content font-medium">{hmo.memberId}</p>
+                        </div>
+                        <div>
+                          <label className="block mb-1 text-sm text-base-content/70">Plan</label>
+                          <p className="text-base-content font-medium">{hmo.plan || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="block mb-1 text-sm text-base-content/70">Expires</label>
+                          <p className="text-base-content font-medium">
+                            {hmo.expiresAt ? new Date(hmo.expiresAt).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="mb-3 text-base font-medium text-base-content">Last Name</h4>
-                      <label className="block mb-1 text-sm text-base-content/70">Name</label>
-                      <input
-                        type="text"
-                        name="dependentLastName"
-                        value={formData.dependentLastName}
-                        onChange={handleInputChange}
-                        className="w-full input input-bordered"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <h4 className="mb-3 text-base font-medium text-base-content">Relationship</h4>
-                      <label className="block mb-1 text-sm text-base-content/70">Enter Relationship</label>
-                      <select
-                        name="dependentRelationship"
-                        value={formData.dependentRelationship}
-                        onChange={handleInputChange}
-                        className="w-full select select-bordered"
-                      >
-                        <option value="Wife">Wife</option>
-                        <option value="Husband">Husband</option>
-                        <option value="Son">Son</option>
-                        <option value="Daughter">Daughter</option>
-                      </select>
-                    </div>
-                    <div>
-                      <h4 className="mb-3 text-base font-medium text-base-content">Phone Number</h4>
-                      <label className="block mb-1 text-sm text-base-content/70">Enter Number</label>
-                      <input
-                        type="tel"
-                        name="dependentPhoneNumber"
-                        value={formData.dependentPhoneNumber}
-                        onChange={handleInputChange}
-                        className="w-full input input-bordered"
-                      />
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
+                <p className="mt-2 text-sm text-base-content/60">
+                  Note: HMO information cannot be edited through this form. Contact administration for HMO updates.
+                </p>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex gap-3 justify-center pt-6">
@@ -458,14 +385,23 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                 type="button"
                 onClick={handleCancel}
                 className="btn btn-outline"
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn btn-primary"
+                disabled={isLoading}
               >
-                Save Details
+                {isLoading ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Updating...
+                  </>
+                ) : (
+                  'Save Details'
+                )}
               </button>
             </div>
           </form>
@@ -476,3 +412,4 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
 };
 
 export default EditPatientModal;
+
