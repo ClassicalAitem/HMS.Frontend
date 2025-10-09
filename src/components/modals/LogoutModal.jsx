@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../store/slices/authSlice';
@@ -9,12 +9,20 @@ const LogoutModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isLoading } = useAppSelector((state) => state.auth);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = () => {
+    // Prevent double-clicking
+    if (isLoggingOut || isLoading) {
+      console.log('🚪 LogoutModal: Logout already in progress, ignoring click');
+      return;
+    }
+
     console.log('🚪 LogoutModal: Starting logout process');
+    setIsLoggingOut(true);
     
     // Use toast promise for better UX
-    const logoutPromise = new Promise((resolve) => {
+    const logoutPromise = new Promise((resolve, reject) => {
       const performLogout = async () => {
         try {
           // Dispatch logout action to clear Redux state
@@ -27,6 +35,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
           localStorage.removeItem('persist:root');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
+          localStorage.removeItem('changePasswordUserId'); // Clear any stored user ID
           
           console.log('✅ LogoutModal: Logout successful');
           
@@ -48,6 +57,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
           localStorage.removeItem('persist:root');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
+          localStorage.removeItem('changePasswordUserId');
           
           // Close modal
           onClose();
@@ -58,6 +68,8 @@ const LogoutModal = ({ isOpen, onClose }) => {
             navigate('/login', { replace: true });
             resolve('Logout completed (some cleanup may have failed)');
           }, 300);
+        } finally {
+          setIsLoggingOut(false);
         }
       };
       
@@ -81,7 +93,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
   return (
     <div className="flex fixed inset-0 z-50 justify-center items-center w-[100vw]">
       {/* Backdrop */}
-      <div className="fixed inset-0 w-[100vw] bg-black/80 bg-opacity-50" onClick={handleCancel} />
+      <div className="fixed inset-0 w-[100vw] bg-black/70 backdrop-blur-sm" onClick={handleCancel} />
       
       {/* Modal */}
       <div className="relative z-10 mx-4 w-full max-w-md shadow-xl card bg-base-100">
@@ -101,14 +113,23 @@ const LogoutModal = ({ isOpen, onClose }) => {
             <button
               type="button"
               onClick={handleLogout}
-              className="text-white bg-red-600 border-red-600 btn btn-error"
+              disabled={isLoggingOut || isLoading}
+              className="text-white bg-red-600 border-red-600 btn btn-error disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Log out
+              {isLoggingOut || isLoading ? (
+                <div className="flex items-center">
+                  <div className="mr-2 w-4 h-4 rounded-full border-b-2 border-white animate-spin"></div>
+                  Logging out...
+                </div>
+              ) : (
+                'Log out'
+              )}
             </button>
             <button
               type="button"
               onClick={handleCancel}
-              className="btn btn-outline"
+              disabled={isLoggingOut || isLoading}
+              className="btn btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
