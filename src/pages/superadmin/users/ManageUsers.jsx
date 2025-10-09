@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
-import { Sidebar } from '@/components/superadmin/dashboard';
+import { Sidebar, FilterUsers } from '@/components/superadmin';
 import { DataTable } from '@/components/common';
 import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -17,6 +17,11 @@ const ManageUsers = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
 
   useEffect(() => {
     console.log('🔄 ManageUsers: Component mounted, fetching users');
@@ -38,6 +43,40 @@ const ManageUsers = () => {
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+  // Filter functions
+  const handleRefresh = () => {
+    console.log('🔄 ManageUsers: Refreshing users data');
+    dispatch(fetchUsers());
+    toast.success('Users data refreshed');
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const handleRoleChange = (e) => {
+    setSelectedRole(e.target.value);
+  };
+
+  const handleStatusChange = (e) => {
+    setSelectedStatus(e.target.value);
+  };
+
+  // Filter users based on search term, role, and status
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = searchTerm === '' || 
+      user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesRole = selectedRole === 'all' || user.accountType === selectedRole;
+    const matchesStatus = selectedStatus === 'all' || 
+      (selectedStatus === 'active' && user.isActive) ||
+      (selectedStatus === 'inactive' && !user.isActive);
+    
+    return matchesSearch && matchesRole && matchesStatus;
+  });
 
   const getRoleIcon = (accountType) => {
     switch (accountType) {
@@ -80,7 +119,7 @@ const ManageUsers = () => {
       .join(' ');
   };
 
-  const processedUsers = users.map(user => ({
+  const processedUsers = filteredUsers.map(user => ({
     ...user,
     name: `${user.firstName} ${user.lastName}`,
     roleDisplay: formatRole(user.accountType),
@@ -260,6 +299,18 @@ const ManageUsers = () => {
             </button>
           </div>
 
+          {/* Filter Users Section */}
+          <FilterUsers
+            searchTerm={searchTerm}
+            selectedRole={selectedRole}
+            selectedStatus={selectedStatus}
+            isLoading={isLoading}
+            onSearchChange={handleSearchChange}
+            onRoleChange={handleRoleChange}
+            onStatusChange={handleStatusChange}
+            onRefresh={handleRefresh}
+          />
+
           {/* Users Table */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
@@ -306,9 +357,9 @@ const ManageUsers = () => {
       />
 
       {/* Debug Component - Remove in production */}
-      <div className="fixed right-4 bottom-4 z-50">
+      {/* <div className="hidden fixed right-4 bottom-4 z-50">
         <UsersDebug />
-      </div>
+      </div> */}
     </div>
   );
 };

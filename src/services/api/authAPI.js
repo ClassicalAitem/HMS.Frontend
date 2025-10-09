@@ -26,13 +26,25 @@ export const authAPI = {
   },
 
   // Logout user
-  logout: async (token) => {
-    const response = await apiClient.post(API_ENDPOINTS.LOGOUT, {}, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    return response;
+  logout: async () => {
+    console.log('🚪 AuthAPI: Starting logout request');
+    console.log('🌐 AuthAPI: API endpoint: /user/logout');
+    console.log('🔗 AuthAPI: Full URL:', `${import.meta.env.VITE_API_BASE_URL}/user/logout`);
+    
+    try {
+      const response = await apiClient.post('/user/logout');
+      console.log('✅ AuthAPI: Logout response received');
+      console.log('📥 AuthAPI: Response status:', response.status);
+      console.log('📥 AuthAPI: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ AuthAPI: Logout error occurred');
+      console.error('📥 AuthAPI: Error response:', error.response);
+      console.error('📥 AuthAPI: Error data:', error.response?.data);
+      console.error('📥 AuthAPI: Error status:', error.response?.status);
+      console.error('📥 AuthAPI: Error message:', error.message);
+      throw error;
+    }
   },
 
   // Refresh token
