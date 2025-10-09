@@ -121,14 +121,15 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
-      <div className="mx-4 w-full max-w-md shadow-xl card bg-base-100">
+    <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/70">
+      <div className="mx-4 w-full max-w-md shadow-xl 2xl:max-w-lg card bg-base-100">
         <div className="p-6 card-body">
           {/* Header */}
           <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center space-x-2">
-              <FaUserPlus className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold text-base-content">Add New User</h2>
+            <div className="flex flex-col gap-2 items-start">
+              <FaUserPlus className="hidden w-5 h-5 text-primary" />
+              <h2 className="text-xl font-normal text-primary">Add New User</h2>
+              <p className="text-sm text-base-content/70">Create a new user account and assign a role.</p>
             </div>
             <button
               onClick={handleClose}
@@ -144,7 +145,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             {/* First Name */}
             <div className="form-control">
               <label className="label">
-                <span className="font-medium label-text">First Name</span>
+                <span className="font-medium label-text text-base-content">First Name</span>
               </label>
               <input
                 type="text"
@@ -163,7 +164,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             {/* Last Name */}
             <div className="form-control">
               <label className="label">
-                <span className="font-medium label-text">Last Name</span>
+                <span className="font-medium label-text text-base-content">Last Name</span>
               </label>
               <input
                 type="text"
@@ -182,7 +183,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             {/* Email */}
             <div className="form-control">
               <label className="label">
-                <span className="font-medium label-text">Email Address</span>
+                <span className="font-medium label-text text-base-content">Email Address</span>
               </label>
               <input
                 type="email"
@@ -201,7 +202,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             {/* Role */}
             <div className="form-control">
               <label className="label">
-                <span className="font-medium label-text">Role</span>
+                <span className="font-medium label-text text-base-content">Role</span>
               </label>
               <select
                 className={`select select-bordered w-full ${errors.role ? 'select-error' : ''}`}
@@ -225,7 +226,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             {/* Password */}
             <div className="form-control">
               <label className="label">
-                <span className="font-medium label-text">Password</span>
+                <span className="font-medium label-text text-base-content">Password</span>
               </label>
               <div className="relative">
                 <input
@@ -254,7 +255,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
             {/* Confirm Password */}
             <div className="form-control">
               <label className="label">
-                <span className="font-medium label-text">Confirm Password</span>
+                <span className="font-medium label-text text-base-content">Confirm Password</span>
               </label>
               <div className="relative">
                 <input
@@ -300,14 +301,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 mt-6">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isLoading}
-                className="flex-1 btn btn-outline"
-              >
-                Cancel
-              </button>
+              
               <button
                 type="submit"
                 disabled={isLoading}
@@ -324,6 +318,14 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                     Create User
                   </>
                 )}
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isLoading}
+                className="flex-1 btn btn-outline"
+              >
+                Cancel
               </button>
             </div>
           </form>
