@@ -141,7 +141,7 @@ const Users = () => {
                     <form onSubmit={handleSubmit(onSubmit)}>
                       {/* personal details */}
                       {currentStep === 0 && (
-                        <div>
+                        <div className="w-[800px]">
                           <label className="block">Name</label>
                           <div className="flex justify-between">
                             <div>
@@ -296,7 +296,7 @@ const Users = () => {
                                 </label>
                                 <select
                                   name="gender"
-                                  className=" border rounded-lg px-[12px] py-[16px]  w-[320px] h-[59px] "
+                                  className=" border rounded-lg px-[12px] py-[16px]  w-[370px] h-[59px] "
                                 >
                                   <option value="married">Married</option>
                                   <option value="single">Single</option>
@@ -318,7 +318,7 @@ const Users = () => {
 
                                 <select
                                   name="gender"
-                                  className=" border rounded-lg px-[12px] py-[16px]  w-[320px] h-[59px] flex gap-[8px] "
+                                  className=" border rounded-lg px-[12px] py-[16px]  w-[370px] h-[59px] flex gap-[8px] "
                                 >
                                   <option value="married">Married</option>
                                   <option value="single">Single</option>
