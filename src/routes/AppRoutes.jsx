@@ -21,11 +21,14 @@ import Appointment from "../pages/doctor/appiontments/Appointment";
 import Task from "../pages/doctor/assignTask/Task";
 import IncomingDoctor from "../pages/doctor/incoming/IncomingDoctor"
 
+
+//Admin Dashboard
 import AdminDashboard from "../pages/admin/dashboard/AdminDashboard";
+
+import Users from "../pages/admin/users/Users";
 import Schedule from "../pages/admin/schedule/Schedule";
 import Stocks from "../pages/admin/stocks/Stocks";
 import Invoice from "../pages/admin/invoice/Invoice";
-import Users from "../pages/admin/users/Users";
 import StaffList from "../pages/admin/users/StaffList";
 import BookAppointmentModal from "@/components/nurse/bookAppointment/BookAppointmentModal";
 
