@@ -1,6 +1,10 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
-import { MdOutlineDashboard, MdPeople, MdBusiness, MdAssessment, MdSettings, MdSupervisorAccount } from "react-icons/md";
+import { MdOutlineDashboard,  } from "react-icons/md";
+import { TbCalendarPlus } from "react-icons/tb";
+import { TiDocumentText } from "react-icons/ti";
+import { HiOutlineArchiveBox } from "react-icons/hi2";
+import { FiUser } from "react-icons/fi";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 
@@ -16,28 +20,28 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/dashboard/admin'
     },
     {
-      icon: MdPeople,
-      label: 'User Management',
-      path: '/admin/users',
-      active: location.pathname === '/admin/users'
+      icon: TbCalendarPlus,
+      label: 'Schedule',
+      path: '/dashboard/admin/schedule',
+      active: location.pathname === '/admin/schedule'
     },
     {
-      icon: MdBusiness,
-      label: 'Departments',
-      path: '/admin/departments',
-      active: location.pathname === '/admin/departments'
+      icon: HiOutlineArchiveBox,
+      label: 'Stocks',
+      path: '/dashboard/admin/stocks',
+      active: location.pathname === 'dashboard/stocks'
     },
     {
-      icon: MdAssessment,
-      label: 'Reports',
-      path: '/admin/reports',
-      active: location.pathname === '/admin/reports'
+      icon: TiDocumentText,
+      label: 'Invoice',
+      path: '/dashboard/admin/invoice',
+      active: location.pathname === 'dashboard/admin/reports'
     },
     {
-      icon: MdSettings,
-      label: 'System Settings',
-      path: '/admin/settings',
-      active: location.pathname === '/admin/settings'
+      icon: FiUser,
+      label: 'Users',
+      path: '/dashboard/admin/users',
+      active: location.pathname === 'dashboard/admin/users'
     }
   ];
 

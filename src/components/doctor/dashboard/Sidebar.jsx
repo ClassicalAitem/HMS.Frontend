@@ -1,6 +1,7 @@
 import React from "react";
 import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
 import { GoChecklist } from "react-icons/go";
+import { FaSuitcaseMedical } from "react-icons/fa6";
 import { IoMenu } from "react-icons/io5";
 import { SlCalender } from "react-icons/sl";
 import { Link, useLocation } from "react-router-dom";
@@ -18,10 +19,16 @@ const Sidebar = () => {
       active: location.pathname === "/dashboard",
     },
     {
-      icon: FaUsers,
-      label: "Patients Vitals",
-      path: "/dashboard/doctor/patientVitals",
-      active: location.pathname === "/patients",
+      icon: FaSuitcaseMedical,
+      label: "Incoming",
+      path: "/dashboard/doctor/incoming",
+      active: location.pathname === "/incoming",
+    },
+    {
+      icon: SlCalender,
+      label: "Appointments",
+      path: "/dashboard/doctor/appointments",
+      active: location.pathname === "/appointments",
     },
     {
       icon: GoChecklist,
@@ -30,11 +37,12 @@ const Sidebar = () => {
       active: location.pathname === "/patients",
     },
     {
-      icon: SlCalender,
-      label: "Appointments",
-      path: "/dashboard/doctor/appointments",
-      active: location.pathname === "/appointments",
+      icon: FaUsers,
+      label: "All Patients",
+      path: "/dashboard/doctor/allPatients",
+      active: location.pathname === "/patients",
     },
+
     {
       icon: IoMenu,
       label: "Assigned Task",
