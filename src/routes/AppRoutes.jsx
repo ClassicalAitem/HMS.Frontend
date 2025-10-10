@@ -1,5 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+
 import Login from "@/pages/auth/Login";
 import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ChangePassword from "@/pages/auth/ChangePassword";
@@ -18,6 +19,7 @@ import LabResults from "@/pages/doctor/labResults/LabResults";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import Task from "@/pages/doctor/assignTask/Task";
 
+//Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import Schedule from "@/pages/admin/schedule/Schedule";
 import Stocks from "@/pages/admin/stocks/Stocks";
@@ -26,9 +28,12 @@ import Users from "@/pages/admin/users/Users";
 import StaffList from "@/pages/admin/users/StaffList";
 import FrontdeskDashboard from "@/pages/frontdesk/dashboard/Dashboard";
 import Patients from "@/pages/frontdesk/patients/Patients";
+
+
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
-import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import Registration from "@/pages/frontdesk/registration/Registration";
+
+
 import SuperAdminDashboard from "@/pages/superadmin/dashboard/SuperAdminDashboard";
 import GenerateReports from "@/pages/superadmin/reports/GenerateReports";
 import ManageUsers from "@/pages/superadmin/users/ManageUsers";
@@ -44,6 +49,7 @@ import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 
 // Modals
 import { BookAppointmentModal } from "@/components/modals";
+import BookAppointmentModal from "@/components/nurse/bookAppointment/BookAppointmentModal";
 
 const AppRoutes = () => {
   return (
@@ -54,6 +60,7 @@ const AppRoutes = () => {
       {/* Auth Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+
       <Route path="/change-password-default" element={<ChangePasswordDefault />} />
       <Route path="/change-password" element={
         <ProtectedRoute>
