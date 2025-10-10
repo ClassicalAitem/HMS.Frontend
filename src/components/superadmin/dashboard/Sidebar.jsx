@@ -4,6 +4,7 @@ import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSetti
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
+import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -94,7 +95,7 @@ const Sidebar = ({ onCloseSidebar }) => {
         <div className="flex justify-center items-center">
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
+              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
               <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>
