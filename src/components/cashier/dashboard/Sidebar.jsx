@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { MdOutlineDashboard, MdPayment, MdReceipt, MdAssessment, MdAccountBalance } from "react-icons/md";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
+import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -51,16 +52,16 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col h-full w-64 bg-base-100 border-r-2 border-neutral/20">
+    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
       {/* Logo */}
       <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
+              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-bold text-lg lg:text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>
               <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">- Hospital -</span>
             </div>
           </div>
@@ -111,7 +112,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       {/* User Profile */}
       <div className="p-4 border-t border-base-300">
         <div className="flex items-center space-x-3">
-          <div className="flex justify-center items-center w-10 h-10 bg-primary/10 rounded-full">
+          <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
             <img
               src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
               alt="John Cena"

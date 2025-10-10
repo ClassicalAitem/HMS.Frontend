@@ -7,6 +7,7 @@ import { SlCalender } from "react-icons/sl";
 import { Link, useLocation } from "react-router-dom";
 import { MdLockOutline } from "react-icons/md";
 import missFolake from "@/assets/images/missFolake.jpg";
+import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = () => {
   const location = useLocation();
@@ -64,7 +65,7 @@ const Sidebar = () => {
       <span>{label}</span>
     </Link>
   );
-  return <div className="flex flex-col w-64 h-full bg-base-100 border-r-2 border-neutral/20">
+  return <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
         <div className="p-6 border-b border-base-300">
           <div className="flex justify-center items-center">
             <img
@@ -77,7 +78,7 @@ const Sidebar = () => {
             <div className="flex items-center space-x-2">
               <div className="">
                 <img
-                  src="/src/assets/images/favicon.svg"
+                  src={HospitalFavicon}
                   alt="Kolak logo"
                   className="w-auto h-12"
                 />
@@ -120,7 +121,7 @@ const Sidebar = () => {
         </div>
   
         {/* User Profile */}
-        <div className="p-4 border-t border-base-300 ">
+        <div className="p-4 border-t border-base-300">
           <div className="flex items-center space-x-3 h-[58px]">
             <div className="flex justify-center items-center w-10 h-10 rounded-full">
               <img
