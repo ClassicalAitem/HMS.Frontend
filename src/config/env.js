@@ -27,6 +27,8 @@ export const API_ENDPOINTS = {
   // Users
   USERS: '/user',
   USER_PROFILE: '/users/profile',
+  CREATE_STAFF: '/user/createStaff',
+  CREATE_ADMIN: '/user/createAdmin',
   
  
   // Appointments
