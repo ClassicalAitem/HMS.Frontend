@@ -6,7 +6,7 @@ import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaEye, FaEyeSlash, FaLock, FaCheck } from 'react-icons/fa';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { changePasswordSchema } from '../../../utils/formValidator';
+import { updateYourPasswordSchema } from '../../../utils/formValidator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdLockOpen } from 'react-icons/md';
 import { FiEye } from 'react-icons/fi';
@@ -48,7 +48,7 @@ const ChangePassword = () => {
     reset,
     watch
   } = useForm({
-    resolver: yupResolver(changePasswordSchema),
+    resolver: yupResolver(updateYourPasswordSchema),
   });
 
   const newPassword = watch('newPassword');

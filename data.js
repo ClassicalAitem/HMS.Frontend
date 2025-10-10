@@ -723,3 +723,182 @@ export const listOfStaffs = [
     stateOfOrigin: "Ogun State",
   },
 ];
+
+import users from "./src/assets/images/users.png";
+
+export const incomingUpdate = [
+  {
+    img: users,
+    notifications: "Today's Appointments",
+    data: "12",
+  },
+  {
+    img: users,
+    notifications: "Pending Lab Results",
+    data: "12",
+  },
+  {
+    img: users,
+    notifications: "Total Patients Discharged",
+    data: "12",
+  },
+];
+
+export const upComingAppointments = [
+  {
+    time: "09:00 AM",
+    patientName: "Cameron Williamson",
+    AppointmentsType: "Delivery",
+    status: "Active",
+  },
+  {
+    time: "09:00 AM",
+    patientName: "Cameron Williamson",
+    AppointmentsType: "Delivery",
+    status: "Active",
+  },
+  {
+    time: "09:00 AM",
+    patientName: "Cameron Williamson",
+    AppointmentsType: "Delivery",
+    status: "Active",
+  },
+  {
+    time: "09:00 AM",
+    patientName: "Cameron Williamson",
+    AppointmentsType: "Delivery",
+    status: "Active",
+  },
+  {
+    time: "09:00 AM",
+    patientName: "Cameron Williamson",
+    AppointmentsType: "Delivery",
+    status: "Active",
+  },
+  {
+    time: "09:00 AM",
+    patientName: "Cameron Williamson",
+    AppointmentsType: "Delivery",
+    status: "Active",
+  },
+];
+
+import incomingLogo from "./src/assets/images/incomingLogo.jpg";
+
+export const incomingFromDoctor = [
+  {
+    sentBy: "Nurse",
+    img: incomingLogo,
+    name: "Leslie Alexander",
+    patientId: "P-2025-002",
+    insurance: "Self Pay",
+    Registered: "09:05Am",
+    paymentDetails: "View Patient Payment Details",
+  },
+  {
+    sentBy: "Nurse",
+    img: incomingLogo,
+    name: "Leslie Alexander",
+    patientId: "P-2025-002",
+    insurance: "Self Pay",
+    Registered: "09:05Am",
+    paymentDetails: "View Patient Payment Details",
+  },
+  {
+    sentBy: "Front Desk",
+    img: incomingLogo,
+    name: "Leslie Alexander",
+    patientId: "P-2025-002",
+    insurance: "Self Pay",
+    Registered: "09:05Am",
+    paymentDetails: "View Patient Payment Details",
+  },
+  {
+    sentBy: "Front Desk",
+    img: incomingLogo,
+    name: "Leslie Alexander",
+    patientId: "P-2025-002",
+    insurance: "Self Pay",
+    Registered: "09:05Am",
+    paymentDetails: "View Patient Payment Details",
+  },
+  {
+    sentBy: "Nurse",
+    img: incomingLogo,
+    name: "Leslie Alexander",
+    patientId: "P-2025-002",
+    insurance: "Self Pay",
+    Registered: "09:05Am",
+    paymentDetails: "View Patient Payment Details",
+  },
+  {
+    sentBy: "Nurse",
+    img: incomingLogo,
+    name: "Leslie Alexander",
+    patientId: "P-2025-002",
+    insurance: "Self Pay",
+    Registered: "09:05Am",
+    paymentDetails: "View Patient Payment Details",
+  },
+];
+
+export const appointmentsWithDoctor = [
+  {
+    header: "Today’s Appointment",
+    value: "30",
+    status: "Confirmed",
+  },
+  {
+    header: "Pending",
+    value: "2",
+    status: "Awaiting Confirmation",
+  },
+  {
+    header: "Today’s Appointment",
+    value: "5",
+    status: "Ready To Proceed",
+  },
+  {
+    header: "Cancelled",
+    value: "2",
+    status: "Cancelled Today",
+  },
+];
+
+export const doctorsAppointmentsPatients = [
+  {
+    name: "Jane Cooper",
+    date: "7/18/17",
+    Time: "09:00 AM",
+    purpose: "Stomach Ulcer",
+    status: "Not Urgent",
+  },
+  {
+    name: "Jane Cooper",
+    date: "7/18/17",
+    Time: "09:00 AM",
+    purpose: "Stomach Ulcer",
+    status: "Not Urgent",
+  },
+  {
+    name: "Jane Cooper",
+    date: "7/18/17",
+    Time: "09:00 AM",
+    purpose: "Stomach Ulcer",
+    status: "Not Urgent",
+  },
+  {
+    name: "Jane Cooper",
+    date: "7/18/17",
+    Time: "09:00 AM",
+    purpose: "Stomach Ulcer",
+    status: "Emergency",
+  },
+  {
+    name: "Jane Cooper",
+    date: "7/18/17",
+    Time: "09:00 AM",
+    purpose: "Stomach Ulcer",
+    status: "Not Urgent",
+  },
+];
