@@ -16,26 +16,26 @@ const Sidebar = ({ onCloseSidebar }) => {
     {
       icon: MdOutlineDashboard,
       label: 'Dashboard',
-      path: '/dashboard/frontdesk',
-      active: location.pathname === '/dashboard/frontdesk'
+      path: '/frontdesk/dashboard',
+      active: location.pathname === '/frontdesk/dashboard'
     },
     {
       icon: GoPerson,
       label: 'Patients',
-      path: '/patients',
-      active: location.pathname === '/patients'
+      path: '/frontdesk/patients',
+      active: location.pathname === '/frontdesk/patients'
     },
     {
       icon: MdFormatListBulletedAdd,
       label: 'Registration',
-      path: '/registration',
-      active: location.pathname === '/registration'
+      path: '/frontdesk/registration',
+      active: location.pathname === '/frontdesk/registration'
     },
     {
       icon: SlCalender,
       label: 'Appointments',
-      path: '/appointments',
-      active: location.pathname === '/appointments'
+      path: '/frontdesk/appointments',
+      active: location.pathname === '/frontdesk/appointments'
     }
   ];
 
@@ -55,7 +55,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col h-full w-64 bg-base-100 border-r-2 border-neutral/20">
+    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
       {/* Logo */}
       <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
@@ -67,7 +67,7 @@ const Sidebar = ({ onCloseSidebar }) => {
               <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-bold text-lg lg:text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>
               <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">- Hospital -</span>
             </div>
           </div>
