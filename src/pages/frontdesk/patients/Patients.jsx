@@ -230,7 +230,7 @@ const Patients = () => {
       </div>
 
           {/* Debug Component - Remove in production */}
-          <PatientsDebug />
+          {/* <PatientsDebug /> */}
         </div>
       );
     };
