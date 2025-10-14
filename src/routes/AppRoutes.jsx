@@ -9,12 +9,9 @@ import ProtectedRoute from "@/components/common/ProtectedRoute";
 
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
-import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
-import Incoming from "@/pages/nurse/incoming/Incoming";
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
-import PatientVItals from "@/pages/doctor/patientVitals/PatientVitals";
 import LabResults from "@/pages/doctor/labResults/LabResults";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import Task from "@/pages/doctor/assignTask/Task";
@@ -39,9 +36,15 @@ import GenerateReports from "@/pages/superadmin/reports/GenerateReports";
 import ManageUsers from "@/pages/superadmin/users/ManageUsers";
 import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
 import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
+import HospitalSetup from "@/pages/superadmin/settings/HospitalSetup";
+import BillingFinance from "@/pages/superadmin/settings/BillingFinance";
+import SecuritySettings from "@/pages/superadmin/settings/SecuritySettings";
+import SecurityPreferences from "@/pages/superadmin/settings/SecurityPreferences";
+import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
+import Incoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
 import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
@@ -49,7 +52,8 @@ import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 
 // Modals
 import { BookAppointmentModal } from "@/components/modals";
-import BookAppointmentModal from "@/components/nurse/bookAppointment/BookAppointmentModal";
+import Appointments from "@/pages/frontdesk/appointments/Appointments";
+import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
 
 const AppRoutes = () => {
   return (
@@ -57,7 +61,11 @@ const AppRoutes = () => {
       {/* Default route - redirect to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* Auth Routes */}
+      {/*==============================================================================================================
+      
+      ====================================  Auth Route ==============================================================
+      
+      ================================================================================================================*/}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
@@ -67,8 +75,13 @@ const AppRoutes = () => {
           <ChangePassword />
         </ProtectedRoute>
       } />
+
       
-      {/* Frontdesk Dashboard Routes */}
+      {/*==============================================================================================================
+      
+      ====================================  Frontdesk DashBoard Route =====================================================
+      
+      ================================================================================================================*/}
       <Route path="/frontdesk/dashboard" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <FrontdeskDashboard />
@@ -95,7 +108,12 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      {/* NurseDashboard Routes*/}
+
+      {/*==============================================================================================================
+      
+      ====================================  Nurse DashBoard Route =====================================================
+      
+      ================================================================================================================*/}
       <Route path="/dashboard/nurse" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <NurseDashboard />
@@ -128,7 +146,12 @@ const AppRoutes = () => {
       } />
 
 
-      {/*Doctor Dashboard Routes*/}
+
+      {/*==============================================================================================================
+      
+      ====================================  Doctor DashBoard Route =====================================================
+      
+      ================================================================================================================*/}
       <Route path="/dashboard/doctor" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <DoctorDashboard />
@@ -136,7 +159,7 @@ const AppRoutes = () => {
       } />
       <Route path="/dashboard/doctor/patientVitals" element={
         <ProtectedRoute allowedRoles={['doctor']}>
-          <PatientVItals />
+          <PatientVitals />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/doctor/LabResults" element={
@@ -155,7 +178,12 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      {/*Admin DashBoard Routes */}
+
+      {/*==============================================================================================================
+      
+      ====================================  Admin DashBoard Route =====================================================
+      
+      ================================================================================================================*/}
       <Route path="/dashboard/admin" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminDashboard />
@@ -187,7 +215,13 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      {/* Super Admin Routes */}
+
+      {/*=============================================================================================================
+
+       ====================================  Super Admin Route =======================================================
+
+      ================================================================================================================*/}
+
       <Route path="/dashboard/superadmin" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperAdminDashboard />
@@ -213,9 +247,41 @@ const AppRoutes = () => {
           <SuperAdminSettings />
         </ProtectedRoute>
       } />
+      <Route path="/superadmin/settings/hospital-setup" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <HospitalSetup />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/billing-finance" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <BillingFinance />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/security" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SecuritySettings />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/security-preferences" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SecurityPreferences />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/audit-logs" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <AuditLogs />
+        </ProtectedRoute>
+      } />
 
-      {/* Cashier Routes */}
-      <Route path="/dashboard/cashier" element={
+
+
+      {/*=============================================================================================================
+
+       ====================================  Cashier Route ===========================================================
+       
+      ================================================================================================================*/}
+
+      <Route path="/cashier/dashboard" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierDashboard />
         </ProtectedRoute>
