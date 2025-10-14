@@ -11,7 +11,7 @@ const RouteProtectionTest = () => {
     { path: '/dashboard/doctor', name: 'Doctor Dashboard', roles: ['doctor'] },
     { path: '/dashboard/admin', name: 'Admin Dashboard', roles: ['admin'] },
     { path: '/dashboard/superadmin', name: 'Super Admin Dashboard', roles: ['super-admin'] },
-    { path: '/dashboard/cashier', name: 'Cashier Dashboard', roles: ['cashier'] },
+    { path: '/cashier/dashboard', name: 'Cashier Dashboard', roles: ['cashier'] },
     { path: '/superadmin/users', name: 'Manage Users', roles: ['super-admin'] },
     { path: '/change-password', name: 'Change Password', roles: [] },
   ];
@@ -23,11 +23,11 @@ const RouteProtectionTest = () => {
   };
 
   return (
-    <div className="p-4 bg-green-100 rounded-lg max-w-md">
-      <h3 className="text-lg font-semibold mb-2">Route Protection Test</h3>
+    <div className="p-4 max-w-md bg-green-100 rounded-lg">
+      <h3 className="mb-2 text-lg font-semibold">Route Protection Test</h3>
       <div className="space-y-2 text-sm">
         {testRoutes.map((route) => (
-          <div key={route.path} className="flex items-center justify-between">
+          <div key={route.path} className="flex justify-between items-center">
             <Link 
               to={route.path}
               className={`underline ${canAccess(route.roles) ? 'text-green-600' : 'text-red-600'}`}
@@ -40,7 +40,7 @@ const RouteProtectionTest = () => {
           </div>
         ))}
       </div>
-      <div className="mt-4 p-2 bg-gray-200 rounded text-xs">
+      <div className="p-2 mt-4 text-xs bg-gray-200 rounded">
         <strong>Current User:</strong> {user ? `${user.firstName} ${user.lastName} (${user.role})` : 'Not logged in'}
       </div>
     </div>
