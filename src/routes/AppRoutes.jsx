@@ -9,7 +9,6 @@ import ProtectedRoute from "@/components/common/ProtectedRoute";
 
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
-import Incoming from "@/pages/nurse/incoming/Incoming";
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
@@ -45,6 +44,7 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
+import Incoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
 import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
@@ -281,7 +281,7 @@ const AppRoutes = () => {
        
       ================================================================================================================*/}
 
-      <Route path="/dashboard/cashier" element={
+      <Route path="/cashier/dashboard" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierDashboard />
         </ProtectedRoute>

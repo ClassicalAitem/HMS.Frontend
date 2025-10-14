@@ -287,7 +287,7 @@ const ManageUsers = () => {
           {/* Page Header */}
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-primary 2xl:text-3xl">Manage Users</h1>
+              <h1 className="text-2xl font-normal text-primary 2xl:text-3xl">Manage Users</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Manage system users and their permissions</p>
             </div>
             <button
