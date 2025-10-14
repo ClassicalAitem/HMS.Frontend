@@ -7,6 +7,7 @@ import { GoPerson } from "react-icons/go";
 import { CiLock, CiLogout } from "react-icons/ci";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
+import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -64,7 +65,7 @@ const Sidebar = ({ onCloseSidebar }) => {
           {/* Kolak logo adaptive*/}
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
+              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
               <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>

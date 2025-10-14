@@ -25,33 +25,36 @@ const LogoutModal = ({ isOpen, onClose }) => {
     const logoutPromise = new Promise((resolve, reject) => {
       const performLogout = async () => {
         try {
-          // Dispatch logout action to clear Redux state
-          console.log('🔄 LogoutModal: Dispatching logoutUser action');
+          // Step 1: Send logout request to backend API first
+          console.log('🔄 LogoutModal: Sending logout request to backend');
           await dispatch(logoutUser());
           
-          // Clear any additional localStorage items
+          // Step 2: Only after API call succeeds, clear localStorage
+          console.log('🧹 LogoutModal: API logout successful, clearing local storage');
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('persist:root');
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
-          localStorage.removeItem('changePasswordUserId'); // Clear any stored user ID
+          localStorage.removeItem('changePasswordUserId');
           
-          console.log('✅ LogoutModal: Logout successful');
+          console.log('✅ LogoutModal: Logout process completed successfully');
           
-          // Close modal first
+          // Step 3: Close modal and navigate
           onClose();
           
           // Small delay to allow modal to close smoothly
           setTimeout(() => {
-            // Navigate to login page
             navigate('/login', { replace: true });
             resolve('Logged out successfully');
           }, 300);
           
         } catch (error) {
-          console.error('❌ LogoutModal: Logout error:', error);
-          // Even if logout fails, we should still clear local state and redirect
+          console.error('❌ LogoutModal: Logout API call failed:', error);
+          
+          // If API call fails, we still need to clear local state for security
+          // But we'll show a different message to the user
+          console.log('🧹 LogoutModal: API failed, clearing local storage anyway for security');
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('persist:root');
@@ -64,9 +67,8 @@ const LogoutModal = ({ isOpen, onClose }) => {
           
           // Small delay to allow modal to close smoothly
           setTimeout(() => {
-            // Navigate to login page
             navigate('/login', { replace: true });
-            resolve('Logout completed (some cleanup may have failed)');
+            resolve('Logged out (connection issue, but session cleared locally)');
           }, 300);
         } finally {
           setIsLoggingOut(false);
