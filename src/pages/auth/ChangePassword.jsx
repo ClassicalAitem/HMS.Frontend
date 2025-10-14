@@ -78,7 +78,7 @@ const ChangePassword = () => {
             case 'super-admin':
               return '/dashboard/superadmin';
             case 'cashier':
-              return '/dashboard/cashier';
+              return '/cashier/dashboard';
             default:
               return '/frontdesk/dashboard';
           }

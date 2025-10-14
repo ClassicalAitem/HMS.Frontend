@@ -1,30 +1,35 @@
-/* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/cashier/dashboard';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { CashierLayout } from '@/layouts/cashier';
 import { FaTimes, FaFileInvoice } from 'react-icons/fa';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
+import toast from 'react-hot-toast';
 
 const CashierPatientDetails = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { patientId } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { selectedPatient, isLoading, error } = useAppSelector((state) => state.patients);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  // Fetch patient details from backend
+  useEffect(() => {
+    if (patientId) {
+      console.log('🔄 CashierPatientDetails: Fetching patient details for ID:', patientId);
+      dispatch(fetchPatientById(patientId));
+    }
+  }, [dispatch, patientId]);
 
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  // Show error toast if there's an error
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      dispatch(clearPatientsError());
+    }
+  }, [error, dispatch]);
 
-  // Sample patient data - in real app this would come from props or API
-  const patient = {
-    id: "P-2025-002",
-    name: "Leslie Alexander",
-    photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    gender: "Female",
-    phone: "09127911395",
-    insurance: "MedCare HMO",
-    status: "Active"
-  };
+  // Use patient data from Redux store
+  const patient = selectedPatient;
 
   const outstandingBills = [
     {
@@ -90,35 +95,70 @@ const CashierPatientDetails = () => {
     return sum + parseInt(bill.balance.replace(/[₦,]/g, ''));
   }, 0);
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <CashierLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="loading loading-spinner loading-lg text-primary"></div>
+        </div>
+      </CashierLayout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <CashierLayout>
+        <div className="flex flex-col justify-center items-center h-64 text-center">
+          <div className="text-error text-lg font-semibold mb-2">Error Loading Patient</div>
+          <div className="text-base-content/70 mb-4">{error}</div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => dispatch(fetchPatientById(patientId))}
+              className="btn btn-primary btn-sm"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate('/cashier/patients')}
+              className="btn btn-outline btn-sm"
+            >
+              Back to Patients
+            </button>
+          </div>
+        </div>
+      </CashierLayout>
+    );
+  }
+
+  // Show not found state
+  if (!patient) {
+    return (
+      <CashierLayout>
+        <div className="flex flex-col justify-center items-center h-64 text-center">
+          <div className="text-base-content text-lg font-semibold mb-2">Patient Not Found</div>
+          <div className="text-base-content/70 mb-4">The patient you're looking for doesn't exist.</div>
+          <button
+            onClick={() => navigate('/cashier/patients')}
+            className="btn btn-primary btn-sm"
+          >
+            Back to Patients
+          </button>
+        </div>
+      </CashierLayout>
+    );
+  }
+
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+    <CashierLayout>
           {/* Page Header */}
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-base-content 2xl:text-4xl">Patient Details</h1>
-            <button className="btn btn-ghost btn-circle">
+            <button 
+              onClick={() => navigate('/cashier/patients')}
+              className="btn btn-ghost btn-circle"
+            >
               <FaTimes className="w-5 h-5" />
             </button>
           </div>
@@ -126,26 +166,30 @@ const CashierPatientDetails = () => {
           {/* Patient Identification Card */}
           <div className="p-6 rounded-lg shadow-lg bg-base-100 mb-6">
             <div className="flex items-center space-x-6">
-              <img
-                src={patient.photo}
-                alt={patient.name}
-                className="w-20 h-20 rounded-full object-cover"
-              />
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-2xl font-bold text-primary">
+                  {patient?.firstName?.charAt(0)}{patient?.lastName?.charAt(0)}
+                </span>
+              </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-base-content">{patient.name}</h2>
+                <h2 className="text-2xl font-bold text-base-content">
+                  {patient?.firstName} {patient?.lastName}
+                </h2>
                 <div className="grid grid-cols-2 gap-4 mt-2">
                   <div>
-                    <p className="text-sm text-base-content/70">Gender: {patient.gender}</p>
-                    <p className="text-sm text-base-content/70">Phone: {patient.phone}</p>
+                    <p className="text-sm text-base-content/70">Email: {patient?.email}</p>
+                    <p className="text-sm text-base-content/70">Phone: {patient?.phone}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-base-content/70">Patient ID: {patient.id}</p>
-                    <p className="text-sm text-base-content/70">Insurance: {patient.insurance}</p>
+                    <p className="text-sm text-base-content/70">Patient ID: {patient?.patientId}</p>
+                    <p className="text-sm text-base-content/70">Status: {patient?.status}</p>
                   </div>
                 </div>
               </div>
               <div className="text-right">
-                <span className="badge badge-info">Active</span>
+                <span className={`badge ${patient?.status?.toLowerCase() === 'active' ? 'badge-success' : 'badge-neutral'}`}>
+                  {patient?.status || 'Unknown'}
+                </span>
               </div>
             </div>
           </div>
@@ -241,9 +285,7 @@ const CashierPatientDetails = () => {
               </table>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </CashierLayout>
   );
 };
 
