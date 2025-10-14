@@ -42,7 +42,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'doctor': '/dashboard/doctor',
       'admin': '/dashboard/admin',
       'super-admin': '/dashboard/superadmin',
-      'cashier': '/dashboard/cashier',
+      'cashier': '/cashier/dashboard',
     };
     
     const defaultRoute = roleRoutes[user?.role] || '/frontdesk/dashboard';

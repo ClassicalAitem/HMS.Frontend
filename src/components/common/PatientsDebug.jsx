@@ -5,7 +5,7 @@ const PatientsDebug = () => {
   const { patients, currentPatient, isLoading, error, lastFetch } = useAppSelector((state) => state.patients);
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 max-w-sm">
+    <div className="hidden fixed right-4 bottom-4 z-50 max-w-sm">
       <div className="p-3 text-xs rounded-lg border shadow-lg bg-base-100 border-base-300">
         <div className="mb-2 font-bold text-primary">🔍 Patients Debug</div>
         

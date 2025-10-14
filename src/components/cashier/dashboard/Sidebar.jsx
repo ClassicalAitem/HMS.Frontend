@@ -1,35 +1,67 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
-import { MdOutlineDashboard, MdPayment, MdReceipt, MdAssessment, MdAccountBalance } from "react-icons/md";
+import { MdOutlineDashboard } from "react-icons/md";
+import { GoArrowDownLeft, GoPerson, GoCreditCard } from "react-icons/go";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
+import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
+
+  // Function to generate initials from first and last name
+  const generateInitials = (firstName, lastName) => {
+    if (!firstName && !lastName) return 'U';
+    const firstInitial = firstName ? firstName.charAt(0).toUpperCase() : '';
+    const lastInitial = lastName ? lastName.charAt(0).toUpperCase() : '';
+    return firstInitial + lastInitial;
+  };
+
+  // Function to format role for display
+  const formatRole = (role) => {
+    switch (role) {
+      case 'super-admin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'doctor':
+        return 'Doctor';
+      case 'nurse':
+        return 'Nurse';
+      case 'frontdesk':
+      case 'front-desk':
+        return 'Front Desk';
+      case 'cashier':
+        return 'Cashier';
+      default:
+        return role || 'User';
+    }
+  };
 
   const menuItems = [
     {
       icon: MdOutlineDashboard,
       label: 'Dashboard',
-      path: '/dashboard/cashier',
-      active: location.pathname === '/dashboard/cashier'
+      path: '/cashier/dashboard',
+      active: location.pathname === '/cashier/dashboard' || location.pathname === '/cashier/dashboard'
     },
     {
-      icon: MdPayment,
+      icon: GoArrowDownLeft,
       label: 'Incoming',
       path: '/cashier/incoming',
       active: location.pathname === '/cashier/incoming'
     },
     {
-      icon: MdReceipt,
+      icon: GoPerson,
       label: 'Patients',
       path: '/cashier/patients',
       active: location.pathname === '/cashier/patients'
     },
     {
-      icon: MdAssessment,
+      icon: GoCreditCard,
       label: 'Payment Record',
       path: '/cashier/payment-records',
       active: location.pathname === '/cashier/payment-records'
@@ -113,15 +145,26 @@ const Sidebar = ({ onCloseSidebar }) => {
       <div className="p-4 border-t border-base-300">
         <div className="flex items-center space-x-3">
           <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
-            <img
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-              alt="John Cena"
-              className="object-cover w-10 h-10 rounded-full"
-            />
+            {user?.profilePicture ? (
+              <img
+                src={user.profilePicture}
+                alt={`${user.firstName} ${user.lastName}`}
+                className="object-cover w-10 h-10 rounded-full"
+              />
+            ) : (
+              <span className="text-sm font-semibold text-primary">
+                {generateInitials(user?.firstName, user?.lastName)}
+              </span>
+            )}
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-base-content">John Cena</p>
-            <p className="text-xs text-primary">Cashier</p>
+            <p className="text-sm font-medium text-base-content">
+              {user?.firstName && user?.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : 'User'
+              }
+            </p>
+            <p className="text-xs text-primary">{formatRole(user?.role)}</p>
           </div>
         </div>
       </div>
