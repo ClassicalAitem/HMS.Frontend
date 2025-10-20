@@ -10,6 +10,7 @@ import { FaChevronUp, FaChevronDown } from 'react-icons/fa';
 import { LuPencilLine } from 'react-icons/lu';
 import { IoIosCloseCircleOutline } from 'react-icons/io';
 import toast from 'react-hot-toast';
+import { Skeleton } from '@heroui/skeleton';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -80,20 +81,12 @@ const PatientDetails = () => {
     patientId
   });
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-          <p className="mt-4 text-base-content/70">Loading patient details...</p>
-        </div>
-      </div>
-    );
-  }
+  const isTransitionLoading = isLoading || (currentPatient && String(currentPatient.id) !== String(patientId));
 
-  // Show error state or redirect if no patient
-  if (!currentPatient) {
+  // Loading handled via Skeleton overlays; do not early return.
+
+  // Show error state or redirect if no patient (only when not loading)
+  if (!currentPatient && !isTransitionLoading) {
     console.log('❌ PatientDetails: No currentPatient, showing not found message');
     return (
       <div className="flex justify-center items-center h-screen">
@@ -112,7 +105,7 @@ const PatientDetails = () => {
   }
 
   // Use currentPatient as patient for the rest of the component
-  const patient = currentPatient;
+  const patient = (!isTransitionLoading && currentPatient) ? currentPatient : {};
 
   return (
     <div className="flex h-screen">
@@ -173,39 +166,49 @@ const PatientDetails = () => {
                   <div className="flex flex-row items-center space-x-4">
                     <div className="ml-4 avatar">
                       <div className="w-20 h-20 rounded-full border-3 border-primary">
-                        <div className="flex items-center justify-center w-full h-full bg-primary text-primary-content text-2xl font-bold">
-                          {patient.firstName?.[0]}{patient.lastName?.[0]}
-                        </div>
+                          <Skeleton isLoaded={!isTransitionLoading} className="w-full h-full rounded-full">
+                            <div className="flex items-center justify-center w-full h-full bg-primary text-primary-content text-2xl font-bold">
+                              {getInitials(patient.firstName, patient.lastName)}
+                            </div>
+                          </Skeleton>
                       </div>
                     </div>
 
                     <div className="flex gap-12 justify-around px-8 w-auto 2xl:gap-0 2xl:w-full">
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Patient Name </span>
-                        <span className="text-xl font-semibold text-base-content">
-                          {patient.firstName} {patient.lastName}
-                        </span>
+                        <Skeleton isLoaded={!isTransitionLoading}>
+                          <span className="text-xl font-semibold text-base-content">
+                            {(patient.firstName || '')} {(patient.lastName || '')}
+                          </span>
+                        </Skeleton>
                       </div>
 
                       <div className="w-[1px] h-auto bg-base-content/70"></div>
 
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Gender</span>
-                        <span className="text-xl font-semibold text-base-content capitalize">{patient.gender}</span>
+                        <Skeleton isLoaded={!isTransitionLoading}>
+                          <span className="text-xl font-semibold text-base-content capitalize">{patient.gender || ''}</span>
+                        </Skeleton>
                       </div>
 
                       <div className="w-[1px] h-auto bg-base-content/70"></div>
 
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Phone Number</span>
-                        <span className="text-xl font-semibold text-base-content">{patient.phone}</span>
+                        <Skeleton isLoaded={!isTransitionLoading}>
+                          <span className="text-xl font-semibold text-base-content">{patient.phone || ''}</span>
+                        </Skeleton>
                       </div>
 
                       <div className="w-[1px] h-auto bg-base-content/70"></div>
 
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Hospital ID</span>
-                        <span className="text-xl font-semibold text-base-content">{patient.hospitalId}</span>
+                        <Skeleton isLoaded={!isTransitionLoading}>
+                          <span className="text-xl font-semibold text-base-content">{patient.hospitalId || ''}</span>
+                        </Skeleton>
                       </div>
 
                     </div>
@@ -213,14 +216,18 @@ const PatientDetails = () => {
 
                   <div className="flex justify-between items-center px-4 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
                     <div>
-                      <li className="text-sm font-semibold text-base-content">
-                        HMO: {patient.hmos?.length > 0 ? `${patient.hmos[0].provider} (${patient.hmos[0].memberId})` : 'None'}
-                      </li>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <li className="text-sm font-semibold text-base-content">
+                          HMO: {patient.hmos?.length > 0 ? `${patient.hmos[0]?.provider || ''} (${patient.hmos[0]?.memberId || ''})` : 'None'}
+                        </li>
+                      </Skeleton>
                     </div>
 
                     <div>
                       <span className="text-sm font-semibold text-base-content">Status</span>
-                      <span className="px-12 text-sm font-semibold text-base-100 btn btn-xs bg-primary capitalize">{patient.status}</span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="px-12 text-sm font-semibold text-base-100 btn btn-xs bg-primary capitalize">{patient.status || ''}</span>
+                      </Skeleton>
                     </div>
                   </div>
 
@@ -235,38 +242,50 @@ const PatientDetails = () => {
                   <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-regular text-base-content/70 text-md">Address</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.address || 'Not provided'}</span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.address || 'Not provided'}</span>
+                      </Skeleton>
                     </div>
 
                     <div className="flex flex-col space-y-1">
                       <p className="font-regular text-base-content/70 text-md">Middle Name</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.middleName || 'Not provided'}</span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.middleName || 'Not provided'}</span>
+                      </Skeleton>
                     </div>
 
                     <div className="flex flex-col space-y-1">
                       <p className="font-regular text-base-content/70 text-md">Date of Birth</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'Not provided'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'Not provided'}
+                        </span>
+                      </Skeleton>
                     </div>
 
                     <div className="flex flex-col space-y-1">
                       <p className="font-regular text-base-content/70 text-md">Email</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.email || 'Not provided'}</span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.email || 'Not provided'}</span>
+                      </Skeleton>
                     </div>
 
                     <div className="flex flex-col space-y-1">
                       <p className="font-regular text-base-content/70 text-md">Created</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
+                        </span>
+                      </Skeleton>
                     </div>
                     
                     <div className="flex flex-col space-y-1">
                       <p className="font-regular text-base-content/70 text-md">Last Updated</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.updatedAt ? new Date(patient.updatedAt).toLocaleDateString() : 'Not available'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.updatedAt ? new Date(patient.updatedAt).toLocaleDateString() : 'Not available'}
+                        </span>
+                      </Skeleton>
                     </div>
                   </div>
                 </div>
@@ -279,30 +298,38 @@ const PatientDetails = () => {
                   <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
                     <div>
                       <p className="font-regular text-base-content/70 text-md">Next of kin</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.nextOfKin?.name || 'Not provided'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.nextOfKin?.name || 'Not provided'}
+                        </span>
+                      </Skeleton>
                     </div>
 
                     <div>
                       <p className="font-regular text-base-content/70 text-md">Relationship</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.nextOfKin?.relationship || 'Not provided'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.nextOfKin?.relationship || 'Not provided'}
+                        </span>
+                      </Skeleton>
                     </div>
 
                     <div>
                       <p className="font-regular text-base-content/70 text-md">Phone number</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.nextOfKin?.phone || 'Not provided'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.nextOfKin?.phone || 'Not provided'}
+                        </span>
+                      </Skeleton>
                     </div>
 
                     <div className="md:col-span-3">
                       <p className="font-regular text-base-content/70 text-md">Address</p>
-                      <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                        {patient.nextOfKin?.address || 'Not provided'}
-                      </span>
+                      <Skeleton isLoaded={!isTransitionLoading}>
+                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
+                          {patient.nextOfKin?.address || 'Not provided'}
+                        </span>
+                      </Skeleton>
                     </div>
                     
                   </div>
@@ -316,21 +343,27 @@ const PatientDetails = () => {
                   <div className="flex justify-around 2xl:justify-start">
                      <div className="space-y-3 2xl:pl-12">
                        <div>
-                         <li className="text-sm text-base-content/70">
-                           <span className="font-medium">HMO Plans:</span> {patient.hmos?.length > 0 ? patient.hmos.map(hmo => `${hmo.provider} (${hmo.memberId})`).join(', ') : "No HMO plans"}
-                         </li>
+                         <Skeleton isLoaded={!isTransitionLoading}>
+                           <li className="text-sm text-base-content/70">
+                             <span className="font-medium">HMO Plans:</span> {patient.hmos?.length > 0 ? patient.hmos.map(hmo => `${hmo.provider} (${hmo.memberId})`).join(', ') : "No HMO plans"}
+                           </li>
+                         </Skeleton>
                        </div>
                        <div>
-                         <li className="text-sm text-base-content/70">
-                           <span className="font-medium">Dependants:</span> {patient.dependants?.length > 0 ? `${patient.dependants.length} dependant(s)` : "No dependants"}
-                         </li>
+                         <Skeleton isLoaded={!isTransitionLoading}>
+                           <li className="text-sm text-base-content/70">
+                             <span className="font-medium">Dependants:</span> {patient.dependants?.length > 0 ? `${patient.dependants.length} dependant(s)` : "No dependants"}
+                           </li>
+                         </Skeleton>
                        </div>
                        {patient.dependants?.length > 0 && (
                          <div className="ml-4">
                            {patient.dependants.map((dep, index) => (
-                             <li key={index} className="text-sm text-base-content/70">
-                               • {dep.firstName} {dep.lastName} ({dep.relationshipType}) - {dep.gender}
-                             </li>
+                             <Skeleton key={index} isLoaded={!isTransitionLoading}>
+                               <li className="text-sm text-base-content/70">
+                                 • {dep.firstName} {dep.lastName} ({dep.relationshipType}) - {dep.gender}
+                               </li>
+                             </Skeleton>
                            ))}
                          </div>
                        )}
@@ -349,21 +382,27 @@ const PatientDetails = () => {
                            <div className="space-y-4">
                              <div>
                                <h4 className="font-medium text-base-content">Upcoming Appointment:</h4>
-                               <p className="text-sm text-base-content/70">
-                                 No upcoming appointment
-                               </p>
+                               <Skeleton isLoaded={!isTransitionLoading}>
+                                 <p className="text-sm text-base-content/70">
+                                   No upcoming appointment
+                                 </p>
+                               </Skeleton>
                              </div>
                              <div>
                                <h4 className="font-medium text-base-content">Last Appointment:</h4>
-                               <p className="text-sm text-base-content/70">
-                                 No previous appointment
-                               </p>
+                               <Skeleton isLoaded={!isTransitionLoading}>
+                                 <p className="text-sm text-base-content/70">
+                                   No previous appointment
+                                 </p>
+                               </Skeleton>
                              </div>
                              <div>
                                <h4 className="font-medium text-base-content">Registration Date:</h4>
-                               <p className="text-sm text-base-content/70">
-                                 {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
-                               </p>
+                               <Skeleton isLoaded={!isTransitionLoading}>
+                                 <p className="text-sm text-base-content/70">
+                                   {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
+                                 </p>
+                               </Skeleton>
                              </div>
                            </div>
                         </div>
@@ -385,21 +424,29 @@ const PatientDetails = () => {
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
                     <p className="text-sm text-base-content/70">Patient ID</p>
-                    <p className="font-medium">{patient.id}</p>
+                    <Skeleton isLoaded={!isLoading}>
+                      <p className="font-medium">{patient.id || ''}</p>
+                    </Skeleton>
                   </div>
                   <div>
                     <p className="text-sm text-base-content/70">Hospital ID</p>
-                    <p className="font-medium">{patient.hospitalId}</p>
+                    <Skeleton isLoaded={!isLoading}>
+                      <p className="font-medium">{patient.hospitalId || ''}</p>
+                    </Skeleton>
                   </div>
                   <div>
                     <p className="text-sm text-base-content/70">Status</p>
-                    <p className="font-medium capitalize">{patient.status}</p>
+                    <Skeleton isLoaded={!isLoading}>
+                      <p className="font-medium capitalize">{patient.status || ''}</p>
+                    </Skeleton>
                   </div>
                   <div>
                     <p className="text-sm text-base-content/70">Last Updated</p>
-                    <p className="font-medium">
-                      {patient.updatedAt ? new Date(patient.updatedAt).toLocaleString() : 'Not available'}
-                    </p>
+                    <Skeleton isLoaded={!isLoading}>
+                      <p className="font-medium">
+                        {patient.updatedAt ? new Date(patient.updatedAt).toLocaleString() : 'Not available'}
+                      </p>
+                    </Skeleton>
                   </div>
                 </div>
               </div>
@@ -429,3 +476,13 @@ const PatientDetails = () => {
 };
 
 export default PatientDetails;
+
+// Helper: compute initials from first/last name with fallback
+const getInitials = (firstName, lastName) => {
+  const f = (firstName || '').trim();
+  const l = (lastName || '').trim();
+  if (!f && !l) return 'U';
+  const firstInitial = f ? f.charAt(0).toUpperCase() : '';
+  const lastInitial = l ? l.charAt(0).toUpperCase() : '';
+  return `${firstInitial}${lastInitial}` || 'U';
+};

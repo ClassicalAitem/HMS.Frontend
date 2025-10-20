@@ -7,11 +7,43 @@ import { GoPerson } from "react-icons/go";
 import { CiLock, CiLogout } from "react-icons/ci";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
+import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
+
+  // Function to generate initials from first and last name
+  const generateInitials = (firstName, lastName) => {
+    if (!firstName && !lastName) return 'U';
+    const firstInitial = firstName ? firstName.charAt(0).toUpperCase() : '';
+    const lastInitial = lastName ? lastName.charAt(0).toUpperCase() : '';
+    return firstInitial + lastInitial;
+  };
+
+  // Function to format role for display
+  const formatRole = (role) => {
+    switch (role) {
+      case 'super-admin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'doctor':
+        return 'Doctor';
+      case 'nurse':
+        return 'Nurse';
+      case 'frontdesk':
+      case 'front-desk':
+        return 'Front Desk';
+      case 'cashier':
+        return 'Cashier';
+      default:
+        return role || 'User';
+    }
+  };
+
 
   const menuItems = [
     {
@@ -24,7 +56,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: GoPerson,
       label: 'Patients',
       path: '/frontdesk/patients',
-      active: location.pathname === '/frontdesk/patients'
+      active: location.pathname.startsWith('/frontdesk/patients')
     },
     {
       icon: MdFormatListBulletedAdd,
@@ -115,16 +147,26 @@ const Sidebar = ({ onCloseSidebar }) => {
       {/* User Profile */}
       <div className="p-4 border-t border-base-300">
         <div className="flex items-center space-x-3">
-          <div className="flex justify-center items-center w-10 h-10 bg-green-100 rounded-full">
-            <img
-              src="https://images.unsplash.com/photo-1707303051965-bb814c443aa1?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-              alt="Folake Flakes"
-              className="object-cover w-10 h-10 rounded-full"
-            />
+          <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
+            {user?.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt={`${user.firstName} ${user.lastName}`}
+                className="object-cover w-10 h-10 rounded-full"
+              />
+            ) : (
+              <div className="flex justify-center items-center w-10 h-10 text-sm font-semibold rounded-full bg-primary text-primary-content">
+                {generateInitials(user?.firstName, user?.lastName)}
+              </div>
+            )}
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-base-content">Folake Flakes</p>
-            <p className="text-xs text-primary">FrontDesk</p>
+            <p className="text-sm font-medium text-base-content">
+              {user ? `${user.firstName} ${user.lastName}` : 'User'}
+            </p>
+            <p className="text-xs text-primary">
+              {formatRole(user?.role)}
+            </p>
           </div>
         </div>
       </div>
