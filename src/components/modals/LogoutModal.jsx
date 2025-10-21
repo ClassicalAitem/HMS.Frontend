@@ -11,12 +11,82 @@ const LogoutModal = ({ isOpen, onClose }) => {
   const { isLoading } = useAppSelector((state) => state.auth);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    // Prevent double-clicking
-    if (isLoggingOut || isLoading) {
-      console.log('🚪 LogoutModal: Logout already in progress, ignoring click');
-      return;
-    }
+  // const handleLogout = () => {
+  //   // Prevent double-clicking
+  //   if (isLoggingOut || isLoading) {
+  //     console.log('🚪 LogoutModal: Logout already in progress, ignoring click');
+  //     return;
+  //   }
+
+  //   console.log('🚪 LogoutModal: Starting logout process');
+  //   setIsLoggingOut(true);
+    
+  //   // Use toast promise for better UX
+  //   const logoutPromise = new Promise((resolve, reject) => {
+  //     const performLogout = async () => {
+  //       try {
+  //         // Step 1: Send logout request to backend API first
+  //         console.log('🔄 LogoutModal: Sending logout request to backend');
+  //         await dispatch(logoutUser());
+          
+  //         // Step 2: Only after API call succeeds, clear localStorage
+  //         console.log('🧹 LogoutModal: API logout successful, clearing local storage');
+  //         localStorage.removeItem('token');
+  //         localStorage.removeItem('refreshToken');
+  //         localStorage.removeItem('persist:root');
+  //         localStorage.removeItem('authToken');
+  //         localStorage.removeItem('user');
+  //         localStorage.removeItem('changePasswordUserId');
+          
+  //         console.log('✅ LogoutModal: Logout process completed successfully');
+          
+  //         // Step 3: Close modal and navigate
+  //         onClose();
+          
+  //         // Small delay to allow modal to close smoothly
+  //         setTimeout(() => {
+  //           navigate('/login', { replace: true });
+  //           resolve('Logged out successfully');
+  //         }, 300);
+          
+  //       } catch (error) {
+  //         console.error('❌ LogoutModal: Logout API call failed:', error);
+          
+  //         // If API call fails, we still need to clear local state for security
+  //         // But we'll show a different message to the user
+  //         console.log('🧹 LogoutModal: API failed, clearing local storage anyway for security');
+  //         localStorage.removeItem('token');
+  //         localStorage.removeItem('refreshToken');
+  //         localStorage.removeItem('persist:root');
+  //         localStorage.removeItem('authToken');
+  //         localStorage.removeItem('user');
+  //         localStorage.removeItem('changePasswordUserId');
+          
+  //         // Close modal
+  //         onClose();
+          
+  //         // Small delay to allow modal to close smoothly
+  //         setTimeout(() => {
+  //           navigate('/login', { replace: true });
+  //           resolve('Logged out (connection issue, but session cleared locally)');
+  //         }, 300);
+  //       } finally {
+  //         setIsLoggingOut(false);
+  //       }
+  //     };
+      
+  //     performLogout();
+  //   });
+
+  //   // Show toast promise
+  //   toast.promise(logoutPromise, {
+  //     loading: 'Logging you out...',
+  //     success: (message) => message,
+  //     error: (error) => `Logout failed: ${error}`,
+  //   });
+  // };
+
+   const handleLogout = () => {
 
     console.log('🚪 LogoutModal: Starting logout process');
     setIsLoggingOut(true);
@@ -42,6 +112,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
           
           // Step 3: Close modal and navigate
           onClose();
+          setIsLoggingOut(false);
           
           // Small delay to allow modal to close smoothly
           setTimeout(() => {
@@ -64,6 +135,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
           
           // Close modal
           onClose();
+          setIsLoggingOut(false);
           
           // Small delay to allow modal to close smoothly
           setTimeout(() => {
@@ -85,7 +157,6 @@ const LogoutModal = ({ isOpen, onClose }) => {
       error: (error) => `Logout failed: ${error}`,
     });
   };
-
   const handleCancel = () => {
     onClose();
   };
@@ -111,7 +182,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 justify-center">
+          {/* <div className="flex gap-3 justify-center">
             <button
               type="button"
               onClick={handleLogout}
@@ -135,7 +206,25 @@ const LogoutModal = ({ isOpen, onClose }) => {
             >
               Cancel
             </button>
+          </div> */}
+
+
+          <div className="flex gap-3 justify-center">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-white bg-red-600 border-red-600 btn btn-error disabled:opacity-50 disabled:cursor-not-allowed"
+            >Log out </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="btn btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
           </div>
+
+
         </div>
       </div>
     </div>
