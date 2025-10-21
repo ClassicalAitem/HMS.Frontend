@@ -12,6 +12,7 @@ import { IoIosCloseCircleOutline } from 'react-icons/io';
 import toast from 'react-hot-toast';
 import { Skeleton } from '@heroui/skeleton';
 import { IoAddCircleOutline } from 'react-icons/io5';
+import { MdEditNote } from 'react-icons/md';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -342,9 +343,15 @@ const PatientDetails = () => {
                 <div className="p-6 card-body">
                   <h3 className="mb-4 text-lg font-medium text-primary flex items-center justify-between">
                     HMO & Dependants Information 
-                    <span>
+                    <span className='flex items-center gap-2'>
                       {/* Add Icons*/}
-                      <IoAddCircleOutline className='font-bold'/>
+                      <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
+                        <IoAddCircleOutline className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300'/>
+                      </div>
+                      {/*Edit Icons*/}
+                      <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit HMO Plan">
+                        <MdEditNote className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300'/>
+                      </div>
                     </span>
                   </h3>
                   <div className="flex justify-around 2xl:justify-start">
