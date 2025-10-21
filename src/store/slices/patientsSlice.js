@@ -141,6 +141,7 @@ const patientsSlice = createSlice({
       .addCase(fetchPatientById.pending, (state) => {
         state.isLoading = true;
         state.error = null;
+        state.currentPatient = null;
       })
       .addCase(fetchPatientById.fulfilled, (state, action) => {
         state.isLoading = false;
