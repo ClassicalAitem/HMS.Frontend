@@ -11,6 +11,7 @@ import { LuPencilLine } from 'react-icons/lu';
 import { IoIosCloseCircleOutline } from 'react-icons/io';
 import toast from 'react-hot-toast';
 import { Skeleton } from '@heroui/skeleton';
+import { IoAddCircleOutline } from 'react-icons/io5';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -165,9 +166,9 @@ const PatientDetails = () => {
 
                   <div className="flex flex-row items-center space-x-4">
                     <div className="ml-4 avatar">
-                      <div className="w-20 h-20 rounded-full border-3 border-primary">
-                          <Skeleton isLoaded={!isTransitionLoading} className="w-full h-full rounded-full">
-                            <div className="flex items-center justify-center w-full h-full bg-primary text-primary-content text-2xl font-bold">
+                      <div className="w-20 h-20 rounded-full border-3 border-primary/80 flex items-center justify-center overflow-hidden p-[2px]">
+                          <Skeleton isLoaded={!isTransitionLoading} className="w-full h-full rounded-full flex items-center justify-center bg-primary">
+                            <div className="w-full h-full grid place-items-center bg-primary text-primary-content text-2xl font-bold">
                               {getInitials(patient.firstName, patient.lastName)}
                             </div>
                           </Skeleton>
@@ -223,7 +224,7 @@ const PatientDetails = () => {
                       </Skeleton>
                     </div>
 
-                    <div>
+                    <div className="flex justify-center items-center gap-1">
                       <span className="text-sm font-semibold text-base-content">Status</span>
                       <Skeleton isLoaded={!isTransitionLoading}>
                         <span className="px-12 text-sm font-semibold text-base-100 btn btn-xs bg-primary capitalize">{patient.status || ''}</span>
@@ -339,7 +340,13 @@ const PatientDetails = () => {
               {/* HMO & Dependants Info */}
               <div className="shadow-xl card bg-base-100">
                 <div className="p-6 card-body">
-                  <h3 className="mb-4 text-lg font-medium text-primary">HMO & Dependants Information</h3>
+                  <h3 className="mb-4 text-lg font-medium text-primary flex items-center justify-between">
+                    HMO & Dependants Information 
+                    <span>
+                      {/* Add Icons*/}
+                      <IoAddCircleOutline className='font-bold'/>
+                    </span>
+                  </h3>
                   <div className="flex justify-around 2xl:justify-start">
                      <div className="space-y-3 2xl:pl-12">
                        <div>
