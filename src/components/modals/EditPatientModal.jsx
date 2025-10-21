@@ -85,23 +85,53 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     
     try {
       console.log('🔄 EditPatientModal: Updating patient:', patient.id);
-      console.log('📊 EditPatientModal: Update data:', formData);
-      
-      const result = await dispatch(editPatient({
+      console.log('📊 EditPatientModal: Raw form data:', formData);
+
+      // Construct backend-compliant payload
+      const updatePayload = {
+        hospitalId: patient.hospitalId || '',
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        middleName: formData.middleName || '',
+        dob: formData.dob, // already in YYYY-MM-DD
+        gender: formData.gender,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        nextOfKin: {
+          name: formData.nextOfKin.name,
+          phone: formData.nextOfKin.phone,
+          relationship: formData.nextOfKin.relationship,
+        },
+        status: patient.status || 'registered',
+      };
+
+      console.log('📦 EditPatientModal: PATCH payload:', updatePayload);
+
+      const savePromise = dispatch(editPatient({
         patientId: patient.id,
-        updateData: formData
-      }));
-      
-      if (editPatient.fulfilled.match(result)) {
-        toast.success('Patient updated successfully');
-        onSave && onSave(result.payload.data);
-        onClose();
-      } else {
-        toast.error('Failed to update patient');
-      }
+        updateData: updatePayload
+      })).unwrap();
+
+      // Show a loading toast that resolves into success/error
+      toast.promise(
+        savePromise,
+        {
+          loading: 'Saving changes...',
+          success: 'Patient updated successfully',
+          error: (err) => err?.response?.data?.message || 'Failed to update patient',
+        },
+        {
+          duration: 3000,
+        }
+      );
+
+      const saved = await savePromise;
+      onSave && onSave(saved?.data || saved);
+      onClose();
     } catch (error) {
       console.error('❌ EditPatientModal: Update error:', error);
-      toast.error('Failed to update patient');
+      // No additional toast here since toast.promise handles error messaging
     } finally {
       setIsLoading(false);
     }
