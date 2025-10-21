@@ -94,7 +94,7 @@ const OverallDischarge = () => {
       {/* Chart and Legend */}
       <div className="flex flex-col justify-between items-center">
         {/* Recharts Pie Chart */}
-        <div className="relative w-32 h-32 2xl:w-44 2xl:h-44">
+        <div className="relative w-32 h-32 2xl:w-46 2xl:h-46">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
