@@ -98,7 +98,7 @@ export const logoutUser = createAsyncThunk(
       if (auth.token) {
         console.log('🌐 AuthSlice: Attempting to call logout API');
         try {
-          await authAPI.logout(auth.token);
+          await authAPI.logout();
           console.log('✅ AuthSlice: Logout API call successful');
         } catch (apiError) {
           console.warn('⚠️ AuthSlice: Logout API call failed, but continuing with local logout:', apiError);

@@ -213,7 +213,7 @@ const Registration = () => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Add Patients Information</h1>
+            <h1 className="pl-6 text-2xl font-normal text-primary 2xl:text-3xl">Add Patients Information</h1>
           </div>
 
           {/* Registration Form */}
