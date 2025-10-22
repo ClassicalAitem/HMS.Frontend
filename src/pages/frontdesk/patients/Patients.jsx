@@ -8,6 +8,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import PatientsDebug from '../../../components/common/PatientsDebug';
+import { Skeleton } from '@heroui/skeleton';
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -204,10 +205,32 @@ const Patients = () => {
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
                 {isLoading ? (
-                  <div className="flex justify-center items-center h-64">
-                    <div className="flex flex-col items-center space-y-4">
-                      <span className="loading loading-spinner loading-lg"></span>
-                      <p className="text-base-content/70">Loading patients...</p>
+                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+                    <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
+                      <table className="table w-full table-zebra">
+                        <thead className="sticky top-0 z-10 bg-base-200">
+                          <tr>
+                            {columns.map((column) => (
+                              <th key={column.key} className="border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider">
+                                {column.title || column.key}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: 10 }).map((_, idx) => (
+                            <tr key={idx} className="text-xs">
+                              {columns.map((col) => (
+                                <td key={`${idx}-${col.key}`} className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${col.className || 'text-base-content/70'}`}>
+                                  <Skeleton>
+                                    <div className="h-3 w-24 rounded bg-base-300"></div>
+                                  </Skeleton>
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 ) : (
@@ -230,7 +253,7 @@ const Patients = () => {
       </div>
 
           {/* Debug Component - Remove in production */}
-          <PatientsDebug />
+          {/* <PatientsDebug /> */}
         </div>
       );
     };
