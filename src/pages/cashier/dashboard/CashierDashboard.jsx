@@ -1,51 +1,17 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/cashier/dashboard';
+import { CashierLayout } from '@/layouts/cashier';
 import { FaFileInvoice, FaFileInvoiceDollar } from 'react-icons/fa';
 import cashierData from '@/data/cashierData.json';
 
 const CashierDashboard = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
 
   useEffect(() => {
     setDashboardData(cashierData.dashboard);
   }, []);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+    <CashierLayout>
           {/* Welcome Section */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-base-content 2xl:text-4xl">Welcome, Cashier John!</h1>
@@ -125,9 +91,7 @@ const CashierDashboard = () => {
               ))}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </CashierLayout>
   );
 };
 

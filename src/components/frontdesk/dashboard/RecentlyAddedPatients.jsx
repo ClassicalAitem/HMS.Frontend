@@ -3,35 +3,55 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoSearch, IoClose } from "react-icons/io5";
 import { DataTable } from '@/components/common';
-import patientsData from '@/data/patients.json';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchPatients, clearPatientsError } from '@/store/slices/patientsSlice';
+import { Skeleton } from '@heroui/skeleton';
 
 const RecentlyAddedPatients = () => {
   const navigate = useNavigate();
   // State for search bar visibility
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [patients, setPatients] = useState([]);
+  const dispatch = useAppDispatch();
+  const { patients, isLoading, error } = useAppSelector((state) => state.patients);
 
-  // Load patients data from JSON file
+  // Fetch patients from API via Redux
   useEffect(() => {
-    setPatients(patientsData);
-  }, []);
+    dispatch(fetchPatients());
+  }, [dispatch]);
 
-  const processedPatients = useMemo(() => patients.map(patient => ({
+  const calculateAge = (dob) => {
+    if (!dob) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const processedPatients = useMemo(() => patients.map((patient, index) => ({
     ...patient,
+    serialNumber: index + 1,
+    name: `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
+    age: calculateAge(patient.dob),
+    phone: patient.phone || patient.phoneNumber || 'N/A',
+    address: patient.address || patient.homeAddress || 'N/A',
+    status: patient.status || 'Registered',
   })), [patients]);
 
   // Filter patients based on search term
   const filteredPatients = useMemo(() => {
     if (!searchTerm) return processedPatients;
-    
-    return processedPatients.filter(patient =>
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.phone.includes(searchTerm) ||
-      patient.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.gender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.id.includes(searchTerm)
+    return processedPatients.filter((patient) =>
+      (patient.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (patient.phone || '').includes(searchTerm) ||
+      (patient.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (patient.status || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (patient.gender || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(patient.serialNumber || '').includes(searchTerm)
     );
   }, [processedPatients, searchTerm]);
 
@@ -65,7 +85,7 @@ const RecentlyAddedPatients = () => {
   // Define table columns
   const columns = useMemo(() => [
     {
-      key: 'id',
+      key: 'serialNumber',
       title: 'S/n',
       className: 'text-base-content'
     },
@@ -79,7 +99,7 @@ const RecentlyAddedPatients = () => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            navigate(`/patients/${row.id}`);
+            navigate(`/frontdesk/patients/${row.id}`);
           }}
           className="text-primary hover:text-primary/80 hover:underline font-medium bg-transparent border-none cursor-pointer"
         >
@@ -119,7 +139,7 @@ const RecentlyAddedPatients = () => {
       className: 'text-base-content/70',
       render: (value, row) => <StatusBadge status={value} color={row.statusColor} />
     }
-  ], []);
+  ], [navigate]);
 
   return (
     <div className="h-[--webkit-fill-available] bg-base-100  shadow-xl card flex w-full 2xl:pb-2 pb-8">
@@ -138,11 +158,18 @@ const RecentlyAddedPatients = () => {
                 <IoSearch className="w-4 h-4 cursor-pointer" />
               )}
             </button>
-            <button className="text-sm font-medium transition-colors cursor-pointer text-primary hover:text-primary/80">
+            <button onClick={() => navigate('/frontdesk/patients')} className="text-sm font-medium transition-colors cursor-pointer text-primary hover:text-primary/80">
               See All
             </button>
           </div>
         </div>
+
+        {/* Inline basic error display */}
+        {error && (
+          <div className="mb-3 alert alert-error">
+            <span className="text-xs">Failed to load patients. Please try again.</span>
+          </div>
+        )}
 
         {/* Search Bar */}
         {showSearchBar && (
@@ -167,18 +194,49 @@ const RecentlyAddedPatients = () => {
           </div>
         )}
 
-        {/* DataTable Component */}
-        <DataTable
-          data={filteredPatients}
-          columns={columns}
-          searchable={false}
-          sortable={true}
-          paginated={true}
-          initialEntriesPerPage={5}
-          maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-          showEntries={true}
-          className="flex flex-col justify-between h-[-webkit-fill-available]"
-        />
+        {/* Loader / Table */}
+        {isLoading ? (
+          <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+            <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
+              <table className="table w-full table-zebra">
+                <thead className="sticky top-0 z-10 bg-base-200">
+                  <tr>
+                    {columns.map((column) => (
+                      <th key={column.key} className="border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider">
+                        {column.title || column.key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={idx} className="text-xs">
+                      {columns.map((col, cIdx) => (
+                        <td key={`${idx}-${col.key}`} className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${col.className || 'text-base-content/70'}`}>
+                          <Skeleton>
+                            <div className="h-3 w-20 rounded bg-base-300"></div>
+                          </Skeleton>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <DataTable
+            data={filteredPatients}
+            columns={columns}
+            searchable={false}
+            sortable={true}
+            paginated={true}
+            initialEntriesPerPage={5}
+            maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+            showEntries={true}
+            className="flex flex-col justify-between h-[-webkit-fill-available]"
+          />
+        )}
       </div>
     </div>
   );

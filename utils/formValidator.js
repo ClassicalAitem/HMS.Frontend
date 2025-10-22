@@ -59,8 +59,8 @@ export const registrationSchema = yup.object().shape({
     .email("Email must be a valid email address")
     .required("Email is required")
     .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email is invalid"),
-  dateOfBirth: yup.date()
-  .typeError("Date of Birth must be a valid date")
-  .required("Date of Birth is required"),
+  dateOfBirth: yup
+    .date()
+    .typeError("Date of Birth must be a valid date")
+    .required("Date of Birth is required"),
 });
-

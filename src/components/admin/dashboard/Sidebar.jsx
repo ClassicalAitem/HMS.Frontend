@@ -1,8 +1,13 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
-import { MdOutlineDashboard, MdPeople, MdBusiness, MdAssessment, MdSettings, MdSupervisorAccount } from "react-icons/md";
+import { MdOutlineDashboard,  } from "react-icons/md";
+import { TbCalendarPlus } from "react-icons/tb";
+import { TiDocumentText } from "react-icons/ti";
+import { HiOutlineArchiveBox } from "react-icons/hi2";
+import { FiUser } from "react-icons/fi";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
+import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -16,28 +21,28 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/dashboard/admin'
     },
     {
-      icon: MdPeople,
-      label: 'User Management',
-      path: '/admin/users',
-      active: location.pathname === '/admin/users'
+      icon: TbCalendarPlus,
+      label: 'Schedule',
+      path: '/dashboard/admin/schedule',
+      active: location.pathname === '/admin/schedule'
     },
     {
-      icon: MdBusiness,
-      label: 'Departments',
-      path: '/admin/departments',
-      active: location.pathname === '/admin/departments'
+      icon: HiOutlineArchiveBox,
+      label: 'Stocks',
+      path: '/dashboard/admin/stocks',
+      active: location.pathname === 'dashboard/stocks'
     },
     {
-      icon: MdAssessment,
-      label: 'Reports',
-      path: '/admin/reports',
-      active: location.pathname === '/admin/reports'
+      icon: TiDocumentText,
+      label: 'Invoice',
+      path: '/dashboard/admin/invoice',
+      active: location.pathname === 'dashboard/admin/reports'
     },
     {
-      icon: MdSettings,
-      label: 'System Settings',
-      path: '/admin/settings',
-      active: location.pathname === '/admin/settings'
+      icon: FiUser,
+      label: 'Users',
+      path: '/dashboard/admin/users',
+      active: location.pathname === 'dashboard/admin/users'
     }
   ];
 
@@ -57,16 +62,16 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col h-full w-64 bg-base-100 border-r-2 border-neutral/20">
+    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
       {/* Logo */}
       <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src="/src/assets/images/favicon.svg" alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
+              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="font-bold text-lg lg:text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>
               <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">- Hospital -</span>
             </div>
           </div>

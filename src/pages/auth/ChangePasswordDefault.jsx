@@ -149,13 +149,23 @@ const ChangePasswordDefault = () => {
 
   return (
     <AuthLayout>
-      <div className="flex">
+      <div className="min-h-screen flex">
+        {/* Left Side - Carousel */}
+        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary-focus">
+          <CarouselComponent />
+        </div>
+
         {/* Right Side - Change Password Form */}
-        <div className="flex justify-center items-center w-full lg:w-full bg-base-100">
-          <div className="w-full">
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-base-100">
+          <div className="w-full max-w-md">
+            {/* Logo */}
+            <div className="text-center mb-8">
+              <AuthLogo />
+            </div>
+
             {/* Header */}
-            <div className="mb-4 text-center">
-              <h1 className="mb-2 text-3xl font-bold text-base-content">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-base-content mb-2">
                 Change Your Password
               </h1>
               <p className="text-base-content/70">
@@ -167,28 +177,28 @@ const ChangePasswordDefault = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Current Password */}
               <div className="form-control">
-                <label className="block mb-2 text-sm font-medium text-base-content">
+                <label className="block text-sm font-medium text-base-content mb-2">
                   Current Password
                 </label>
                 <div className="relative">
-                  <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
-                    <FaLock className="w-5 h-5 text-base-content/40" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaLock className="h-5 w-5 text-base-content/40" />
                   </div>
                   <input
                     type={showCurrentPassword ? "text" : "password"}
                     {...register('currentPassword')}
-                    className="py-3 pr-10 pl-10 w-full rounded-lg border transition-colors border-base-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-base-100"
+                    className="w-full pl-10 pr-10 py-3 border border-base-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors bg-base-100"
                     placeholder="Enter your current password"
                   />
                   <button
                     type="button"
-                    className="flex absolute inset-y-0 right-0 items-center pr-3"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   >
                     {showCurrentPassword ? (
-                      <FaEyeSlash className="w-5 h-5 text-base-content/40" />
+                      <FaEyeSlash className="h-5 w-5 text-base-content/40" />
                     ) : (
-                      <FaEye className="w-5 h-5 text-base-content/40" />
+                      <FaEye className="h-5 w-5 text-base-content/40" />
                     )}
                   </button>
                 </div>
@@ -199,28 +209,28 @@ const ChangePasswordDefault = () => {
 
               {/* New Password */}
               <div className="form-control">
-                <label className="block mb-2 text-sm font-medium text-base-content">
+                <label className="block text-sm font-medium text-base-content mb-2">
                   New Password
                 </label>
                 <div className="relative">
-                  <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
-                    <FaLock className="w-5 h-5 text-base-content/40" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaLock className="h-5 w-5 text-base-content/40" />
                   </div>
                   <input
                     type={showNewPassword ? "text" : "password"}
                     {...register('newPassword')}
-                    className="py-3 pr-10 pl-10 w-full rounded-lg border transition-colors border-base-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-base-100"
+                    className="w-full pl-10 pr-10 py-3 border border-base-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors bg-base-100"
                     placeholder="Enter your new password"
                   />
                   <button
                     type="button"
-                    className="flex absolute inset-y-0 right-0 items-center pr-3"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                   >
                     {showNewPassword ? (
-                      <FaEyeSlash className="w-5 h-5 text-base-content/40" />
+                      <FaEyeSlash className="h-5 w-5 text-base-content/40" />
                     ) : (
-                      <FaEye className="w-5 h-5 text-base-content/40" />
+                      <FaEye className="h-5 w-5 text-base-content/40" />
                     )}
                   </button>
                 </div>
@@ -231,28 +241,28 @@ const ChangePasswordDefault = () => {
 
               {/* Confirm Password */}
               <div className="form-control">
-                <label className="block mb-2 text-sm font-medium text-base-content">
+                <label className="block text-sm font-medium text-base-content mb-2">
                   Confirm New Password
                 </label>
                 <div className="relative">
-                  <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
-                    <FaLock className="w-5 h-5 text-base-content/40" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaLock className="h-5 w-5 text-base-content/40" />
                   </div>
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     {...register('confirmPassword')}
-                    className="py-3 pr-10 pl-10 w-full rounded-lg border transition-colors border-base-300 focus:ring-2 focus:ring-primary focus:border-transparent bg-base-100"
+                    className="w-full pl-10 pr-10 py-3 border border-base-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-colors bg-base-100"
                     placeholder="Confirm your new password"
                   />
                   <button
                     type="button"
-                    className="flex absolute inset-y-0 right-0 items-center pr-3"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? (
-                      <FaEyeSlash className="w-5 h-5 text-base-content/40" />
+                      <FaEyeSlash className="h-5 w-5 text-base-content/40" />
                     ) : (
-                      <FaEye className="w-5 h-5 text-base-content/40" />
+                      <FaEye className="h-5 w-5 text-base-content/40" />
                     )}
                   </button>
                 </div>
@@ -266,11 +276,11 @@ const ChangePasswordDefault = () => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-4 py-3 w-full font-medium rounded-lg shadow-md transition-colors bg-primary hover:bg-primary-focus text-primary-content focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                  className="w-full bg-primary hover:bg-primary-focus text-primary-content font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 shadow-md"
                 >
                   {isLoading ? (
-                    <span className="flex justify-center items-center">
-                      <svg className="mr-3 -ml-1 w-5 h-5 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -284,11 +294,11 @@ const ChangePasswordDefault = () => {
             </form>
 
             {/* Back to Login */}
-            <div className="mt-6 text-center">
+            <div className="text-center mt-6">
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="flex justify-center items-center mx-auto transition-colors text-primary hover:text-primary-focus"
+                className="text-primary hover:text-primary-focus transition-colors flex items-center justify-center mx-auto"
               >
                 <FaArrowLeft className="mr-2" /> Back to Login
               </button>
@@ -299,11 +309,11 @@ const ChangePasswordDefault = () => {
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
-          <div className="p-8 w-full max-w-md rounded-lg shadow-xl bg-base-100">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-base-100 p-8 rounded-lg shadow-xl max-w-md w-full">
             <div className="text-center">
-              <div className="flex justify-center items-center mx-auto w-16 h-16 rounded-full bg-success/20">
-                <svg className="w-8 h-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-success/20">
+                <svg className="h-8 w-8 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                 </svg>
               </div>
@@ -315,7 +325,7 @@ const ChangePasswordDefault = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/login')}
-                  className="inline-flex justify-center px-6 py-2 text-sm font-medium rounded-md shadow-md text-primary-content bg-primary hover:bg-primary-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary"
+                  className="inline-flex justify-center px-6 py-2 text-sm font-medium text-primary-content bg-primary rounded-md hover:bg-primary-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary shadow-md"
                 >
                   Go to Login
                 </button>
