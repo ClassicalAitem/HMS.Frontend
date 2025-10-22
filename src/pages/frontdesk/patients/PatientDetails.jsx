@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
-import { EditPatientModal } from '@/components/modals';
+import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal } from '@/components/modals';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import { FaChevronUp, FaChevronDown } from 'react-icons/fa';
@@ -13,6 +13,8 @@ import toast from 'react-hot-toast';
 import { Skeleton } from '@heroui/skeleton';
 import { IoAddCircleOutline } from 'react-icons/io5';
 import { MdEditNote } from 'react-icons/md';
+import { RiUserAddLine } from 'react-icons/ri';
+import { CiEdit } from 'react-icons/ci';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -22,6 +24,10 @@ const PatientDetails = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [paymentHistoryExpanded, setPaymentHistoryExpanded] = useState(false);
+  const [isAddHmoOpen, setIsAddHmoOpen] = useState(false);
+  const [isEditHmoOpen, setIsEditHmoOpen] = useState(false);
+  const [isAddDependantOpen, setIsAddDependantOpen] = useState(false);
+  const [isEditDependantOpen, setIsEditDependantOpen] = useState(false);
 
   // Fetch patient data from backend
   useEffect(() => {
@@ -344,47 +350,108 @@ const PatientDetails = () => {
                   <h3 className="mb-4 text-lg font-medium text-primary flex items-center justify-between">
                     HMO & Dependants Information 
                     <span className='flex items-center gap-2'>
-                      {/* Add Icons*/}
-                      <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
-                        <IoAddCircleOutline className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300'/>
-                      </div>
-                      {/*Edit Icons*/}
-                      <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit HMO Plan">
-                        <MdEditNote className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300'/>
-                      </div>
+                      {/* HMO ICONS */}
+                        <label className="label text-base-content text-sm">HMO</label>
+                        {/* Add Icons*/}
+                        <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
+                          <IoAddCircleOutline className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300' onClick={() => setIsAddHmoOpen(true)}/>
+                        </div>
+                        {/*Edit Icons*/}
+                        <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit HMO Plan">
+                          <MdEditNote className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300' onClick={() => setIsEditHmoOpen(true)}/>
+                        </div>
+
+                        <div>
+                          <label className="label text-base-content text-sm">: | :</label>
+                        </div>
+
+                      {/* Dependants ICONS */}
+                        {/* Add Dependant */}
+                        <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add Dependant">
+                          <RiUserAddLine className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300' onClick={() => setIsAddDependantOpen(true)}/>
+                        </div>
+                        {/* Edit Dependant */}
+                        <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit Dependant">
+                          <CiEdit className='font-bold cursor-pointer text-xl hover:text-primary transition-colors duration-300' onClick={() => setIsEditDependantOpen(true)}/>
+                        </div>
+                        <label className="label text-base-content text-sm">Dependants</label>
                     </span>
                   </h3>
-                  <div className="flex justify-around 2xl:justify-start">
-                     <div className="space-y-3 2xl:pl-12">
+                  <div className="flex flex-col lg:flex-row lg:justify-between gap-6">
+                     {/* Left Column - HMO & Dependants */}
+                     <div className="space-y-6 w-full lg:w-7/12 2xl:pl-12">
+                       {/* HMO Plans */}
                        <div>
                          <Skeleton isLoaded={!isTransitionLoading}>
-                           <li className="text-sm text-base-content/70">
-                             <span className="font-medium">HMO Plans:</span> {patient.hmos?.length > 0 ? patient.hmos.map(hmo => `${hmo.provider} (${hmo.memberId})`).join(', ') : "No HMO plans"}
-                           </li>
+                           <div className="mb-2 text-sm text-base-content/70">
+                             <span className="font-medium">HMO Plans:</span> {patient.hmos?.length > 0 ? `${patient.hmos.length} plan(s)` : "No HMO plans"}
+                           </div>
+                           {patient.hmos?.length > 0 && (
+                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                               {patient.hmos.map((hmo, index) => (
+                                 <div key={index} className="p-4 rounded-lg border border-base-300">
+                                   <div className="text-sm font-semibold text-primary">
+                                     {hmo.planName || hmo.plan || hmo.planType || 'Unknown Plan'}
+                                   </div>
+                                   <div className="mt-2 space-y-1">
+                                     <div className="text-xs text-base-content/70">
+                                       <span className="font-medium">Provider:</span> {hmo.provider || '—'}
+                                     </div>
+                                     <div className="text-xs text-base-content/70">
+                                       <span className="font-medium">Member ID:</span> {hmo.memberId || '—'}
+                                     </div>
+                                     <div className="text-xs text-base-content/70">
+                                       <span className="font-medium">Expires:</span> {hmo.expirationDate ? new Date(hmo.expirationDate).toLocaleDateString('en-US') : '—'}
+                                     </div>
+                                   </div>
+                                 </div>
+                               ))}
+                             </div>
+                           )}
                          </Skeleton>
                        </div>
+
+                       {/* Dependants */}
                        <div>
                          <Skeleton isLoaded={!isTransitionLoading}>
-                           <li className="text-sm text-base-content/70">
+                           <div className="mb-2 text-sm text-base-content/70">
                              <span className="font-medium">Dependants:</span> {patient.dependants?.length > 0 ? `${patient.dependants.length} dependant(s)` : "No dependants"}
-                           </li>
+                           </div>
                          </Skeleton>
+                         {patient.dependants?.length > 0 && (
+                           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                             {patient.dependants.map((dep, index) => {
+                               const middleInitial = dep.middleName ? ` ${dep.middleName.charAt(0)}.` : '';
+                               const fullName = `${dep.lastName || ''}, ${dep.firstName || ''}${middleInitial}`.trim();
+                               const dobFormatted = dep.dob ? new Date(dep.dob).toLocaleDateString('en-US') : '—';
+                               const relationship = dep.relationshipType || dep.relationship || '—';
+                               const statusText = dep.status || 'Unknown';
+                               const statusColor = dep.status === 'Active' ? 'bg-green-500' : dep.status === 'Inactive' ? 'bg-gray-400' : dep.status === 'Pending' ? 'bg-yellow-500' : 'bg-base-300';
+                               return (
+                                 <Skeleton key={index} isLoaded={!isTransitionLoading}>
+                                   <div className="p-4 rounded-lg border border-base-300">
+                                     <div className="text-sm font-semibold text-primary">{fullName}</div>
+                                     <div className="mt-2 grid grid-cols-2 gap-y-1 gap-x-3">
+                                       <div className="text-xs text-base-content/70"><span className="font-medium">DOB:</span> {dobFormatted}</div>
+                                       <div className="text-xs text-base-content/70"><span className="font-medium">Gender:</span> {dep.gender || '—'}</div>
+                                       <div className="text-xs text-base-content/70"><span className="font-medium">Relationship:</span> {relationship}</div>
+                                       <div className="text-xs text-base-content/70 flex items-center">
+                                         <span className="font-medium mr-2">Status:</span>
+                                         <span className={`w-2 h-2 rounded-full mr-2 ${statusColor}`}></span>
+                                         <span>{statusText}</span>
+                                       </div>
+                                     </div>
+                                   </div>
+                                 </Skeleton>
+                               );
+                             })}
+                           </div>
+                         )}
                        </div>
-                       {patient.dependants?.length > 0 && (
-                         <div className="ml-4">
-                           {patient.dependants.map((dep, index) => (
-                             <Skeleton key={index} isLoaded={!isTransitionLoading}>
-                               <li className="text-sm text-base-content/70">
-                                 • {dep.firstName} {dep.lastName} ({dep.relationshipType}) - {dep.gender}
-                               </li>
-                             </Skeleton>
-                           ))}
-                         </div>
-                       )}
                      </div>
 
                     {/* Right Column - Appointments */}
-                    <div className="">
+                    <div className="w-full lg:w-5/12">
                       {/* Appointments */}
                       <div className="shadow-xl card">
                         <div className="py-0 card-body">
@@ -484,6 +551,50 @@ const PatientDetails = () => {
         onClose={() => setIsEditModalOpen(false)}
         patient={patient}
         onSave={handleEditPatient}
+      />
+      <AddHmoModal
+        isOpen={isAddHmoOpen}
+        onClose={() => setIsAddHmoOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsAddHmoOpen(false);
+        }}
+      />
+      <EditHmoModal
+        isOpen={isEditHmoOpen}
+        onClose={() => setIsEditHmoOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsEditHmoOpen(false);
+        }}
+      />
+      <AddDependantModal
+        isOpen={isAddDependantOpen}
+        onClose={() => setIsAddDependantOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsAddDependantOpen(false);
+        }}
+      />
+      <EditDependantModal
+        isOpen={isEditDependantOpen}
+        onClose={() => setIsEditDependantOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsEditDependantOpen(false);
+        }}
       />
     </div>
   );
