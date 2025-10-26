@@ -6,6 +6,8 @@ import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
+import BillingList from "@/pages/cashier/billing/BillingList";
+import BillingDetails from "@/pages/cashier/billing/BillingDetails";
 
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
@@ -301,14 +303,24 @@ const AppRoutes = () => {
           <PaymentRecords />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/patient-details" element={
+      <Route path="/cashier/patient-details/:patientId" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierPatientDetails />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/generate-bill" element={
+      <Route path="/cashier/generate-bill/:patientId" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <GenerateBill />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/billing" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <BillingList />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/billing/:billingId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <BillingDetails />
         </ProtectedRoute>
       } />
 
