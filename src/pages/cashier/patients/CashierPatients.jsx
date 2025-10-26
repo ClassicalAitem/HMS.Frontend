@@ -12,6 +12,9 @@ const CashierPatients = () => {
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
 
+  // console log retrieved patients
+  console.log('🔍 CashierPatients: Retrieved patients', patients);
+
   // Fetch patients from backend
   useEffect(() => {
     console.log('🔄 CashierPatients: Component mounted, fetching patients');
@@ -49,7 +52,7 @@ const CashierPatients = () => {
 
   const columns = useMemo(() => [
     {
-      key: 'patientId',
+      key: 'id',
       title: 'Patient ID',
       sortable: true,
       className: 'text-base-content font-medium'
@@ -139,7 +142,7 @@ const CashierPatients = () => {
                     sortable={true}
                     paginated={true}
                     initialEntriesPerPage={14}
-                    maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
+                    maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
                     showEntries={true}
                     searchPlaceholder="Search patients..."
                   />
