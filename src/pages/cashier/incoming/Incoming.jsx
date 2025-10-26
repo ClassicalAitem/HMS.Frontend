@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { CashierLayout } from '@/layouts/cashier';
 import { Md6FtApart } from 'react-icons/md';
 import cashierData from '@/data/cashierData.json';
+import { useNavigate } from 'react-router-dom';
 
 const Incoming = () => {
   const [incomingPatients, setIncomingPatients] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const patientsPerPage = 9;
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIncomingPatients(cashierData.incomingPatients);
@@ -19,6 +21,12 @@ const Incoming = () => {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
+  };
+
+  const handleViewDetails = (patient) => {
+    const id = patient?.patientId || patient?.id;
+    if (!id) return;
+    navigate(`/cashier/patient-details/${id}`);
   };
 
   return (
@@ -58,7 +66,7 @@ const Incoming = () => {
 
                 {/* Action Link */}
                 <div className="flex justify-center items-center mt-6 border-t border-primary/20">
-                  <button className="text-sm font-medium text-primary/80 hover:underline hover:text-primary">
+                  <button className="text-sm font-medium text-primary/80 hover:underline hover:text-primary" onClick={() => handleViewDetails(patient)}>
                     View Patient Payment Details
                   </button>
                 </div>

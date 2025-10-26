@@ -4,9 +4,11 @@ import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
 import { BookAppointmentModal } from '@/components/modals';
-import appointmentsData from '@/data/appointments.json';
+// import appointmentsData from '@/data/appointments.json';
 import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
+import { toast } from 'react-hot-toast';
+import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
 
 const Appointments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -15,9 +17,35 @@ const Appointments = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
 
-  // Load appointments data from JSON file
+  // Load appointments data from backend
   useEffect(() => {
-    setAppointments(appointmentsData);
+    const load = async () => {
+      try {
+        const res = await toast.promise(
+          getAllAppointments(),
+          {
+            loading: 'Loading appointments...',
+            success: 'Appointments loaded',
+            error: 'Failed to load appointments'
+          }
+        );
+        const raw = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+        const mapped = list.map((a, idx) => ({
+          id: idx + 1,
+          patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+          date: a?.appointmentDate || a?.date,
+          time: a?.appointmentTime || a?.time,
+          appointmentType: a?.department || a?.appointmentType || 'General',
+          status: a?.status || 'Active',
+        }));
+        setAppointments(mapped);
+      } catch (err) {
+        console.error('Load appointments error', err);
+        // Fallback: keep existing state
+      }
+    };
+    load();
   }, []);
 
   const toggleSidebar = () => {
@@ -106,9 +134,33 @@ const Appointments = () => {
     return today.toLocaleDateString('en-US', options);
   };
 
-  const handleBookAppointment = (appointmentData) => {
-    console.log('New appointment:', appointmentData);
-    // Add logic to save appointment
+  const handleBookAppointment = async (appointmentData) => {
+    try {
+      await toast.promise(
+        createAppointment(appointmentData),
+        {
+          loading: 'Saving appointment...',
+          success: 'Appointment saved',
+          error: (e) => e?.message || 'Failed to save appointment'
+        }
+      );
+      setIsBookModalOpen(false);
+      // Refresh list
+      const res = await getAllAppointments();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+      const mapped = list.map((a, idx) => ({
+        id: idx + 1,
+        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+        date: a?.appointmentDate || a?.date,
+        time: a?.appointmentTime || a?.time,
+        appointmentType: a?.department || a?.appointmentType || 'General',
+        status: a?.status || 'Active',
+      }));
+      setAppointments(mapped);
+    } catch (err) {
+      console.error('Create appointment error', err);
+    }
   };
 
   return (
@@ -122,10 +174,9 @@ const Appointments = () => {
       )}
       
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <div className={`${
+        'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0'
+      } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
       
