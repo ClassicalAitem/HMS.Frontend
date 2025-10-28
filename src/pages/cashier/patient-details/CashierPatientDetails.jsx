@@ -155,12 +155,21 @@ const CashierPatientDetails = () => {
           {/* Page Header */}
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-base-content 2xl:text-4xl">Patient Details</h1>
-            <button 
-              onClick={() => navigate('/cashier/patients')}
-              className="btn btn-ghost btn-circle"
-            >
-              <FaTimes className="w-5 h-5" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => navigate(`/cashier/generate-bill/${patientId}`)}
+                className="btn btn-primary btn-sm"
+              >
+                <FaFileInvoice className="w-4 h-4 mr-2" />
+                Generate Bill
+              </button>
+              <button 
+                onClick={() => navigate('/cashier/patients')}
+                className="btn btn-ghost btn-circle"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Patient Identification Card */}

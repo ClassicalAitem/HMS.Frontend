@@ -8,7 +8,7 @@ import TotalStaff from "@/components/admin/dashboard/TotalStaff";
 
 const AdminDashboard = () => {
   return (
-    <div className="flex h-screen bg-base-200">
+    <div className="flex h-screen ">
       <SideBar />
 
       <div className="flex overflow-hidden flex-col flex-1">
@@ -17,7 +17,7 @@ const AdminDashboard = () => {
         <div className="overflow-y-auto flex-1">
           <AdminDashboardOverview />
 
-          <div className="grid grid-cols-1 gap-3 mb-3 sm:gap-4  lg:grid-cols-2 ">
+          <div className="flex gap-3 mb-3 sm:gap-4 px-4">
             <TotalStaff />
             <StockUpdate />
           </div>
