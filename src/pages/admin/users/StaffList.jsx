@@ -11,6 +11,7 @@ const StaffList = ({ refreshKey = 0 }) => {
   const [loading, setLoading] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const roleLabels = useMemo(() => ({
     "doctor": "Doctors",
@@ -43,13 +44,37 @@ const StaffList = ({ refreshKey = 0 }) => {
   }, [refreshKey, allowedRoles]);
 
   const filtered = useMemo(() => {
-    if (roleFilter === "all") return users;
-    return users.filter((u) => u.accountType === roleFilter);
-  }, [users, roleFilter]);
+    const byRole = roleFilter === "all" ? users : users.filter((u) => u.accountType === roleFilter);
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return byRole;
+    return byRole.filter((u) => {
+      const name = `${u.firstName || ""} ${u.lastName || ""}`.toLowerCase();
+      const email = (u.email || "").toLowerCase();
+      const role = (u.accountType || "").toLowerCase();
+      const address = (u.address || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        role.includes(q) ||
+        address.includes(q)
+      );
+    });
+  }, [users, roleFilter, searchQuery]);
 
   return (
-    <div className=" p-8 rounded-[20px] shadow mt-8">
-      <div className="w-[483px] flex gap-2">
+    <div className=" py-4 rounded-[20px] shadow mt-2">
+      <div className="w-full flex gap-2 items-center">
+        {/* Search Input */}
+        <div className="mt-4 w-full max-w-md">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name, email, role, or address"
+            className="block w-full py-[10px] px-[12px] rounded-[6px] border border-base-300 bg-base-100 focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+
         <div
           className={`hidden flex gap-2 justify-center text-base-content/70 items-center w-[155px] h-[32px] bg-base-200 cursor-pointer ${roleFilter === 'all' ? 'ring-1 ring-primary' : ''}`}
           onClick={() => { setRoleFilter('all'); setIsRoleMenuOpen(false); }}
@@ -125,8 +150,8 @@ const StaffList = ({ refreshKey = 0 }) => {
         )}
         {!loading && filtered.map((staffInfo, index) => {
           return (
-            <div key={index} className="w-full">
-              <div className="flex items-center justify-between rounded-[10px] bg-base-100 h-[258px] px-20 bolder bolder-black bolder-2">
+            <div key={index} className="w-full border border-base-300 rounded-md">
+              <div className="flex items-center justify-between rounded-[10px] bg-base-100 py-6 px-20 bolder bolder-black bolder-2">
                 <div className="p-1 border-4 border-primary rounded-full">
                   <div className="w-[90px] h-[90px] rounded-full border-[3px] border-primary flex items-center justify-center bg-primary text-white text-xl font-semibold">
                     {staffInfo.firstName?.[0] || "S"}

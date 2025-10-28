@@ -14,8 +14,8 @@ const CashierDashboard = () => {
     <CashierLayout>
           {/* Welcome Section */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-base-content 2xl:text-4xl">Welcome, Cashier John!</h1>
-            <p className="text-sm text-base-content/70 2xl:text-base">Manage hospital finances, process payments, and track transactions.</p>
+            <h1 className="text-3xl font-regular text-primary 2xl:text-4xl">Welcome, Cashier John!</h1>
+            <p className="text-sm text-base-content/70 2xl:text-xs">Manage hospital finances, process payments, and track transactions.</p>
           </div>
 
           {/* Metrics Cards */}

@@ -316,7 +316,7 @@ const Users = () => {
                             <label className="block">Staff Role</label>
                             <div className="relative mt-3">
                               <label
-                                className="absolute -top-2 left-3 w-[80px] text-[12px] font-[400] bg-[#FFFBFE] px-[4px]"
+                                className="absolute -top-2 left-3 w-[93px] text-[12px] font-[400] bg-base-100 px-[4px]"
                               >
                                 Select role
                               </label>
