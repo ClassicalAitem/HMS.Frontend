@@ -1,13 +1,61 @@
-import React from "react";
-import { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FiSearch } from "react-icons/fi";
 import doctorIcon from "../../../assets/images/doctorIcon.png";
-import { pharmacyData } from "../../../../data";
-import { laboratoryData } from "../../../../data";
+import apiClient from "../../../services/api/apiClient";
 
 const TabbedTable = () => {
   const [activeTab, setActiveTab] = useState("pharmacy");
-  const data = activeTab === "pharmacy" ? pharmacyData : laboratoryData;
+  const [items, setItems] = useState([]);
+  const [query, setQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Fetch transactions then hydrate with inventory details
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const txRes = await apiClient.get("/inventory/InventoryTransaction/transactions");
+        const transactions = Array.isArray(txRes?.data?.data) ? txRes.data.data : [];
+
+        // NOTE: Temporarily disable fetching /inventory/:id due to permission constraints.
+        // const uniqueIds = [...new Set(transactions.map((t) => t.inventoryId).filter(Boolean))];
+        // const invDetails = await Promise.all(uniqueIds.map(async (id) => { /* fetch details */ }));
+        // const inventories = invDetails.filter(Boolean);
+
+        // Map transactions directly to table rows (design unchanged)
+        const rows = transactions.map((t) => {
+          const status = t.type === "out" ? "Out of Stock" : "In Stock";
+          return {
+            name: t.description || t.batchNumber || t.inventoryId || "-",
+            category: t.type === "in" ? "Restock" : "Dispense",
+            stock: t.quantity ?? "-",
+            vendor: t.batchNumber ?? "-",
+            status,
+            price: t.unitPrice ?? "-",
+          };
+        });
+
+        setItems(rows);
+      } catch (err) {
+        console.error("TabbedTable: failed to load transactions", err);
+        setError("Failed to load inventory data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Filter by search term; keep tabs but same dataset until backend provides category
+  const data = useMemo(() => {
+    const base = items;
+    const q = query.trim().toLowerCase();
+    const filtered = q ? base.filter((x) => String(x.name).toLowerCase().includes(q)) : base;
+    return filtered;
+  }, [items, query]);
 
   // function to return the right badge style
   const bgChange = (status) => {
@@ -20,9 +68,9 @@ const TabbedTable = () => {
     if (status === "Out of Stock") {
       return "border border-error text-error px-2 py-1 rounded-full text-[12px]";
     }
-    b;
-    return null;
-  };
+     // removed stray character
+     return null;
+   };
 
   return (
     <div>
@@ -56,6 +104,8 @@ const TabbedTable = () => {
             type="text"
             placeholder="Search Name"
             className="w-[388px] p-10 pr-4 py-2 border border-base-300 rounded-[100px] focus:outline-none focus:ring-1 focus:ring-primary text-[12px]"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
           />
         </div>
 
@@ -84,6 +134,16 @@ const TabbedTable = () => {
               </tr>
             </thead>
             <tbody>
+              {isLoading && items.length === 0 && (
+                <tr>
+                  <td className="p-3 py-5" colSpan={6}>Loading…</td>
+                </tr>
+              )}
+              {error && !isLoading && items.length === 0 && (
+                <tr>
+                  <td className="p-3 py-5" colSpan={6}>{error}</td>
+                </tr>
+              )}
               {data.map((medics, index) => {
                 return (
                   <tr key={index} className="border-b border-base-300">
