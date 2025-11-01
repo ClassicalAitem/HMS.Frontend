@@ -148,10 +148,10 @@ const ChangePasswordDefault = () => {
   };
 
   return (
-    <AuthLayout>
+    <div>
       <div className="min-h-screen flex">
         {/* Left Side - Carousel */}
-        <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary-focus">
+        <div className="lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary-focus">
           <CarouselComponent />
         </div>
 
@@ -334,7 +334,7 @@ const ChangePasswordDefault = () => {
           </div>
         </div>
       )}
-    </AuthLayout>
+    </div>
   );
 };
 

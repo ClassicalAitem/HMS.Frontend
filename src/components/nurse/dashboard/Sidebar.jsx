@@ -10,7 +10,7 @@ import { Link, useLocation } from "react-router-dom";
 import missFolake from "@/assets/images/missFolake.jpg";
 import HospitalFavicon from "@/assets/images/favicon.svg"
 
-const Sidebar = () => {
+const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
 
   const menuItems = [
@@ -18,37 +18,38 @@ const Sidebar = () => {
       icon: FaThLarge,
       label: "Dashboard",
       path: "/dashboard/nurse",
-      active: location.pathname === "/dashboard",
+      active: location.pathname === "/dashboard/nurse",
     },
     {
       icon: BsArrowDownLeft,
       label: "Incoming",
       path: "/dashboard/nurse/incoming",
-      active: location.pathname === "/incoming",
+      active: location.pathname.startsWith("/dashboard/nurse/incoming"),
     },
     {
       icon: FiUser,
       label: "Patients",
       path: "/dashboard/nurse/patient",
-      active: location.pathname === "/patients",
+      active: location.pathname.startsWith("/dashboard/nurse/patient"),
     },
     {
       icon: GrTask,
       label: "Assigned Task",
       path: "/dashboard/nurse/assignedTask",
-      active: location.pathname === "/appointments",
+      active: location.pathname.startsWith("/dashboard/nurse/assignedTask"),
     },
     {
       icon: TbCalendarPlus,
       label: "Appointments",
       path: "/dashboard/nurse/appointments",
-      active: location.pathname === "/appointments",
+      active: location.pathname.startsWith("/dashboard/nurse/appointments"),
     },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active }) => (
     <Link
       to={path}
+      onClick={onCloseSidebar}
       className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
@@ -104,7 +105,12 @@ const Sidebar = () => {
       <div className="p-4 space-y-2 border-t border-base-300">
         <Link
           to="/change-password"
-          className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          onClick={onCloseSidebar}
+          className={`flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors ${
+            location.pathname === "/change-password"
+              ? "bg-primary text-primary-content"
+              : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          }`}
         >
           <MdLockOutline className="w-5 h-5" />
           <span>Change Password</span>
