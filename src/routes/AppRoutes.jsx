@@ -54,6 +54,7 @@ import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 import { BookAppointmentModal } from "@/components/modals";
 import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
+import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
 import NurseIncoming from "@/pages/nurse/incoming/Incoming";
 
 const AppRoutes = () => {
@@ -128,6 +129,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/nurse/patient" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <PatientVitals />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/patient/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <PatientVitalsDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/nurse/incoming" element={
