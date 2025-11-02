@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { PiUsersThree } from "react-icons/pi";
@@ -9,6 +10,13 @@ const PatientVitals = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  // Search, filters, and pagination
+  const [searchQuery, setSearchQuery] = useState("");
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const navigate = useNavigate();
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -43,6 +51,12 @@ const PatientVitals = () => {
           age: calculateAge(p?.dob),
           blood: p?.bloodGroup || p?.blood || "—",
           status: p?.status || "Active",
+          id: p?.patientId || p?.id || p?.uuid,
+          phone: p?.phone || p?.phoneNumber || "—",
+          hospitalId: p?.hospitalId || p?.patientId || p?.id || p?.uuid,
+          hmos: p?.hmos || [],
+          firstName: p?.firstName,
+          lastName: p?.lastName,
         }));
         if (mounted) setItems(mapped);
       } catch (err) {
@@ -58,19 +72,36 @@ const PatientVitals = () => {
     };
   }, [refreshKey]);
   
-// pagination
-  // const [page, setPage] = useState(1);
-  // const perPage = 8;
+  // Derived filtering & pagination
+  const filteredItems = useMemo(() => {
+    let data = items;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      data = data.filter((p) =>
+        (p.name || "").toLowerCase().includes(q) ||
+        String(p.sn).includes(q) ||
+        (p.blood || "").toLowerCase().includes(q)
+      );
+    }
+    if (genderFilter !== "all") {
+      data = data.filter((p) => (p.gender || "").toLowerCase() === genderFilter);
+    }
+    if (statusFilter !== "all") {
+      data = data.filter((p) => (p.status || "").toLowerCase().includes(statusFilter));
+    }
+    return data;
+  }, [items, searchQuery, genderFilter, statusFilter]);
 
-  // // total pages
-  // const total = patients.length;
-  // const pages = Math.ceil(total / perPage);
+  const pages = Math.max(1, Math.ceil(filteredItems.length / perPage));
+  const shown = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filteredItems.slice(start, start + perPage);
+  }, [filteredItems, page, perPage]);
 
-  // // slice data for current page
-  // const shown = useMemo(() => {
-  //   const start = (page - 1) * perPage;
-  //   return patients.slice(start, start + perPage);
-  // }, [page]);
+  useEffect(() => {
+    // Reset to first page when query or filters change
+    setPage(1);
+  }, [searchQuery, genderFilter, statusFilter, perPage]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -113,8 +144,48 @@ const PatientVitals = () => {
                 <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
               </div>
             </div>
+            {/* Search & Filters */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, S/N, blood group"
+                className="input input-bordered w-full"
+              />
+              <select
+                className="select select-bordered w-full"
+                value={genderFilter}
+                onChange={(e) => setGenderFilter(e.target.value)}
+              >
+                <option value="all">All genders</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+              <select
+                className="select select-bordered w-full"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="deceased">Deceased</option>
+              </select>
+              <select
+                className="select select-bordered w-full"
+                value={perPage}
+                onChange={(e) => setPerPage(Number(e.target.value))}
+              >
+                <option value={10}>10 / page</option>
+                <option value={20}>20 / page</option>
+                <option value={50}>50 / page</option>
+              </select>
+            </div>
 
             <div className="overflow-x-auto rounded-lg shadow mt-6">
+              <div className="max-h-[60vh] overflow-y-auto">
               <table className="w-full text-[16px] rounded-lg overflow-hidden">
                 <thead className="bg-base-200">
                   <tr>
@@ -163,9 +234,25 @@ const PatientVitals = () => {
                         />
                       </td>
                     </tr>
+                  ) : filteredItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8">
+                        <EmptyState
+                          title="No matches"
+                          description="Try adjusting search or filters, or refresh to fetch latest."
+                          actionLabel="Clear Filters"
+                          onAction={() => { setSearchQuery(""); setGenderFilter("all"); setStatusFilter("all"); }}
+                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
+                        />
+                      </td>
+                    </tr>
                   ) : (
-                    items.map((p, index) => (
-                      <tr key={index} className="border-b last:border-b-0">
+                    shown.map((p, index) => (
+                      <tr
+                        key={index}
+                        className="border-b last:border-b-0 cursor-pointer hover:bg-base-200/40"
+                        onClick={() => p?.id && navigate(`/dashboard/nurse/patient/${p.id}`, { state: { patientSnapshot: p } })}
+                      >
                         <td className="px-4 py-4">{String(p.sn).padStart(2, "0")}</td>
                         <td className="text-center">{p.name}</td>
                         <td className="text-center">{p.gender}</td>
@@ -179,7 +266,36 @@ const PatientVitals = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
+
+            {/* Pagination footer */}
+            {!loading && items.length > 0 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-base-content/70">
+                  Showing {filteredItems.length ? (Math.min((page - 1) * perPage + 1, filteredItems.length)) : 0}–{Math.min(page * perPage, filteredItems.length)} of {filteredItems.length}
+                </div>
+                <div className="join">
+                  <button
+                    className="join-item btn btn-sm"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+                  <span className="join-item btn btn-sm no-animation">
+                    Page {page} / {pages}
+                  </span>
+                  <button
+                    className="join-item btn btn-sm"
+                    disabled={page >= pages}
+                    onClick={() => setPage((p) => Math.min(pages, p + 1))}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
 
            
           </section>
