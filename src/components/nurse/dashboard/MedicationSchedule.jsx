@@ -5,14 +5,14 @@ import { EmptyState } from "@/components/common";
 
 const MedicationSchedule = ({ recentActivity = [], loading = false, onRefresh }) => {
   return (
-    <div className="p-8 h-full">
+    <div className="px-8 h-full">
       <div>
         <h1 className="text-2xl font-regular text-base-content">
           Recent Activity
         </h1>
       </div>
 
-      <div className="flex flex-col gap-6 mt-4 bg-base-100 h-[-webkit-fill-available] rounded-2xl">
+      <div className="flex flex-col gap-2 mt-4 bg-base-100 rounded-2xl">
         {loading
           ? Array.from({ length: 4 }).map((_, idx) => (
               <div key={idx} className="p-6 border shadow-sm card bg-base-100 border-base-300">
@@ -41,28 +41,32 @@ const MedicationSchedule = ({ recentActivity = [], loading = false, onRefresh })
                   onAction={onRefresh}
                 />
               </div>
-            ) : recentActivity.map((medication, index) => (
-              <div key={index} className="p-6 border shadow-sm card bg-base-100 border-base-300">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-base font-medium text-base-content">{medication.headingTag}</p>
-                    <p className="text-sm  text-base-content/70">Patient: {medication.name}</p>
-                    <p className="text-sm  text-base-content/70">Patient ID: {medication.patientId}</p>
-                  </div>
-                  <div className="flex flex-col gap-2 items-end">
-                    <div>
-                      <button className="w-[140px] h-[30px] rounded-[20px] text-[#FFFFFF] bg-[#3498DB]">
-                        {medication.status || 'Active'}
-                      </button>
+            ) : (
+              <div className="max-h-122 overflow-y-auto rounded-2xl flex flex-col gap-2 p-1">
+                {recentActivity.slice(0, 5).map((medication, index) => (
+                  <div key={index} className="p-6 border shadow-sm card bg-base-100 border-base-300">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-base font-medium text-base-content">{medication.headingTag}</p>
+                        <p className="text-sm  text-base-content/70">Patient: {medication.name}</p>
+                        <p className="text-sm  text-base-content/70">Patient ID: {medication.patientId}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 items-end">
+                        <div>
+                          <button className="w-[140px] h-[30px] rounded-[20px] text-[#FFFFFF] bg-[#3498DB]">
+                            {medication.status || 'Active'}
+                          </button>
+                        </div>
+                        <div className="flex gap-2 items-center text-sm text-base-content/60">
+                          <BsClock className="w-4 h-4" />
+                          {medication.time}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-2 items-center text-sm text-base-content/60">
-                      <BsClock className="w-4 h-4" />
-                      {medication.time}
-                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
       </div>
     </div>
   );
