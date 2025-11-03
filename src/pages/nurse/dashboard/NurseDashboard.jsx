@@ -18,6 +18,8 @@ const NurseDashboard = () => {
 
   const [recentActivity, setRecentActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
+  // Map of patient identifiers to names for resolving recent activity names
+  const [patientsById, setPatientsById] = useState({});
 
   // Refresh keys to allow manual reloads from child components
   const [refreshIncomingKey, setRefreshIncomingKey] = useState(0);
@@ -40,12 +42,29 @@ const NurseDashboard = () => {
       }
     };
 
+    // Helper: build map of patient identifiers => display name
+    const buildPatientsMap = (patients = []) => {
+      const map = {};
+      patients.forEach((p) => {
+        const name = (p?.fullName || `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.name || "").trim();
+        const ids = [p?.hospitalId, p?.patientId, p?.id];
+        ids.filter(Boolean).forEach((id) => {
+          if (!map[id]) map[id] = name || "Unknown";
+        });
+      });
+      return map;
+    };
+
     // Fetch patients and build Incoming
     const fetchIncoming = async () => {
       try {
         setIncomingLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
+
+        // Update patients map for name resolution across the dashboard
+        const map = buildPatientsMap(patients);
+        if (mounted) setPatientsById(map);
         const statuses = new Set([
           "awaiting_injection",
           "awaiting_sampling",
@@ -84,15 +103,44 @@ const NurseDashboard = () => {
         const res = await getVitalsByNurse(nurseId);
         const vitals = Array.isArray(res?.data) ? res.data : [];
 
-        const mapped = vitals.map((v) => ({
-          headingTag: "New Vitals Recorded",
-          name: v?.patient?.fullName || `${v?.patient?.firstName || ""} ${v?.patient?.lastName || ""}`.trim() || v?.patientName || "Unknown",
-          patientId: v?.patient?.hospitalId || v?.hospitalId || v?.patientId || "—",
-          time: v?.createdAt
-            ? new Date(v.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : "—",
-          status: v?.status || "Active",
-        }));
+        // Sort by createdAt desc and limit to latest 5
+        const sortedVitals = vitals.slice().sort((a, b) => {
+          const aTime = new Date(a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+        const latestFiveVitals = sortedVitals.slice(0, 5);
+
+        // Ensure we have a patients map; if empty, fetch patients once
+        let map = patientsById;
+        if (!map || Object.keys(map).length === 0) {
+          try {
+            const patientsRes = await getPatients();
+            const patientsList = Array.isArray(patientsRes?.data) ? patientsRes.data : [];
+            map = buildPatientsMap(patientsList);
+            if (mounted) setPatientsById(map);
+          } catch (e) {
+            console.warn("NurseDashboard: unable to build patients map", e);
+            map = {};
+          }
+        }
+
+        const mapped = latestFiveVitals.map((v) => {
+          const pid = v?.patient?.hospitalId || v?.patient?.patientId || v?.hospitalId || v?.patientId || v?.patient?.id;
+          const nameFromMap = pid ? map[pid] : undefined;
+          const nameResolved = (
+            v?.patient?.fullName || `${v?.patient?.firstName || ""} ${v?.patient?.lastName || ""}`.trim() || v?.patientName || nameFromMap || "Unknown"
+          );
+          return {
+            headingTag: "New Vitals Recorded",
+            name: nameResolved,
+            patientId: pid || "—",
+            time: v?.createdAt
+              ? new Date(v.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "—",
+            status: v?.status || "Active",
+          };
+        });
 
         if (mounted) setRecentActivity(mapped);
       } catch (err) {
