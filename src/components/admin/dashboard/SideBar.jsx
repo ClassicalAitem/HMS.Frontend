@@ -18,31 +18,31 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: MdOutlineDashboard,
       label: 'Dashboard',
       path: '/dashboard/admin',
-      active: location.pathname === '/dashboard/admin'
+      active: location.pathname.startsWith('/dashboard/admin') && location.pathname === '/dashboard/admin'
     },
     {
       icon: TbCalendarPlus,
       label: 'Schedule',
       path: '/dashboard/admin/schedule',
-      active: location.pathname === '/admin/schedule'
+      active: location.pathname.startsWith('/dashboard/admin/schedule')
     },
     {
       icon: HiOutlineArchiveBox,
       label: 'Stocks',
       path: '/dashboard/admin/stocks',
-      active: location.pathname === 'dashboard/stocks'
+      active: location.pathname.startsWith('/dashboard/admin/stocks')
     },
     {
       icon: TiDocumentText,
       label: 'Invoice',
       path: '/dashboard/admin/invoice',
-      active: location.pathname === 'dashboard/admin/reports'
+      active: location.pathname.startsWith('/dashboard/admin/invoice')
     },
     {
       icon: FiUser,
       label: 'Users',
       path: '/dashboard/admin/users',
-      active: location.pathname === 'dashboard/admin/users'
+      active: location.pathname.startsWith('/dashboard/admin/users')
     }
   ];
 
