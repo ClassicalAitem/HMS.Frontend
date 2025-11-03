@@ -13,7 +13,7 @@ const DataTable = ({
   className = "",
   searchPlaceholder = "Search...",
   showEntries = true,
-  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:max-h-94 2xl:max-h-140" // Responsive default
+  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:min-h-[50vh] 2xl:min-h-[60vh]" // Responsive default
 }) => {
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState('');

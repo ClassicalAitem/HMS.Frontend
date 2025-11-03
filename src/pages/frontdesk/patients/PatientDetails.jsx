@@ -3,15 +3,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
-import { EditPatientModal } from '@/components/modals';
+import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
-import { FaChevronUp, FaChevronDown } from 'react-icons/fa';
-import { LuPencilLine } from 'react-icons/lu';
-import { IoIosCloseCircleOutline } from 'react-icons/io';
-import toast from 'react-hot-toast';
-import { Skeleton } from '@heroui/skeleton';
-import { IoAddCircleOutline } from 'react-icons/io5';
+// Icons and utilities now handled within extracted components
+import PatientPageHeader from '@/components/frontdesk/patients/PatientPageHeader';
+import PatientIdentificationCard from '@/components/frontdesk/patients/PatientIdentificationCard';
+import GeneralInfoCard from '@/components/frontdesk/patients/GeneralInfoCard';
+import AdditionalInfoCard from '@/components/frontdesk/patients/AdditionalInfoCard';
+import HmoDependantsSection from '@/components/frontdesk/patients/HmoDependantsSection';
+import AdditionalInformationCard from '@/components/frontdesk/patients/AdditionalInformationCard';
+import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -20,7 +22,12 @@ const PatientDetails = () => {
   const { currentPatient, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [paymentHistoryExpanded, setPaymentHistoryExpanded] = useState(false);
+  const [isAddHmoOpen, setIsAddHmoOpen] = useState(false);
+  const [isEditHmoOpen, setIsEditHmoOpen] = useState(false);
+  const [isAddDependantOpen, setIsAddDependantOpen] = useState(false);
+  const [isEditDependantOpen, setIsEditDependantOpen] = useState(false);
+  const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
+  const [isSendToCashierOpen, setIsSendToCashierOpen] = useState(false);
 
   // Fetch patient data from backend
   useEffect(() => {
@@ -61,18 +68,7 @@ const PatientDetails = () => {
     setIsEditModalOpen(false);
   };
 
-  const calculateOutstandingBalance = () => {
-    if (!currentPatient) return 0;
-    return currentPatient.outstandingBills?.reduce((total, bill) => total + bill.balance, 0) || 0;
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  // Removed unused helpers to keep file lean
 
   // Debug logging
   console.log('🔍 PatientDetails: Component render state:', {
@@ -134,340 +130,40 @@ const PatientDetails = () => {
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center space-x-4">
-              <div>
-                <h1 className="text-xl font-regular text-base-content/70 2xl:text-2xl">Patient Details</h1>
-              </div>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="btn btn-ghost btn-sm"
-              >
-                <LuPencilLine className="w-4 h-4 2xl:w-6 2xl:h-6" />
-              </button>
-              <button
-                onClick={() => navigate('/frontdesk/patients')}
-                className="btn btn-ghost btn-sm"
-              >
-                <IoIosCloseCircleOutline className="w-4 h-4 2xl:w-6 2xl:h-6" />
-              </button>
-            </div>
-          </div>
+          <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
 
           {/* Patient Information */}
           <div className="grid grid-cols-1 gap-6">
             {/* Left Column - Patient Info */}
             <div className="space-y-6 lg:col-span-2">
               {/* Patient Identification */}
-              <div className="shadow-xl card bg-base-100">
-                <div className="flex flex-col p-6 card-body">
-
-                  <div className="flex flex-row items-center space-x-4">
-                    <div className="ml-4 avatar">
-                      <div className="w-20 h-20 rounded-full border-3 border-primary/80 flex items-center justify-center overflow-hidden p-[2px]">
-                          <Skeleton isLoaded={!isTransitionLoading} className="w-full h-full rounded-full flex items-center justify-center bg-primary">
-                            <div className="w-full h-full grid place-items-center bg-primary text-primary-content text-2xl font-bold">
-                              {getInitials(patient.firstName, patient.lastName)}
-                            </div>
-                          </Skeleton>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-12 justify-around px-8 w-auto 2xl:gap-0 2xl:w-full">
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Patient Name </span>
-                        <Skeleton isLoaded={!isTransitionLoading}>
-                          <span className="text-xl font-semibold text-base-content">
-                            {(patient.firstName || '')} {(patient.lastName || '')}
-                          </span>
-                        </Skeleton>
-                      </div>
-
-                      <div className="w-[1px] h-auto bg-base-content/70"></div>
-
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Gender</span>
-                        <Skeleton isLoaded={!isTransitionLoading}>
-                          <span className="text-xl font-semibold text-base-content capitalize">{patient.gender || ''}</span>
-                        </Skeleton>
-                      </div>
-
-                      <div className="w-[1px] h-auto bg-base-content/70"></div>
-
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Phone Number</span>
-                        <Skeleton isLoaded={!isTransitionLoading}>
-                          <span className="text-xl font-semibold text-base-content">{patient.phone || ''}</span>
-                        </Skeleton>
-                      </div>
-
-                      <div className="w-[1px] h-auto bg-base-content/70"></div>
-
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Hospital ID</span>
-                        <Skeleton isLoaded={!isTransitionLoading}>
-                          <span className="text-xl font-semibold text-base-content">{patient.hospitalId || ''}</span>
-                        </Skeleton>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center px-4 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
-                    <div>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <li className="text-sm font-semibold text-base-content">
-                          HMO: {patient.hmos?.length > 0 ? `${patient.hmos[0]?.provider || ''} (${patient.hmos[0]?.memberId || ''})` : 'None'}
-                        </li>
-                      </Skeleton>
-                    </div>
-
-                    <div className="flex justify-center items-center gap-1">
-                      <span className="text-sm font-semibold text-base-content">Status</span>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="px-12 text-sm font-semibold text-base-100 btn btn-xs bg-primary capitalize">{patient.status || ''}</span>
-                      </Skeleton>
-                    </div>
-                  </div>
-
-
-                </div>
-              </div>
+              <PatientIdentificationCard patient={patient} isTransitionLoading={isTransitionLoading} />
 
               {/* General Info */}
-              <div className="shadow-xl card bg-base-100">
-                <div className="p-6 card-body">
-                  <h3 className="mb-4 text-lg font-medium text-primary">General Info</h3>
-                  <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-regular text-base-content/70 text-md">Address</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.address || 'Not provided'}</span>
-                      </Skeleton>
-                    </div>
-
-                    <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Middle Name</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.middleName || 'Not provided'}</span>
-                      </Skeleton>
-                    </div>
-
-                    <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Date of Birth</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'Not provided'}
-                        </span>
-                      </Skeleton>
-                    </div>
-
-                    <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Email</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">{patient.email || 'Not provided'}</span>
-                      </Skeleton>
-                    </div>
-
-                    <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Created</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
-                        </span>
-                      </Skeleton>
-                    </div>
-                    
-                    <div className="flex flex-col space-y-1">
-                      <p className="font-regular text-base-content/70 text-md">Last Updated</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.updatedAt ? new Date(patient.updatedAt).toLocaleDateString() : 'Not available'}
-                        </span>
-                      </Skeleton>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <GeneralInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
 
               {/* Additional Info */}
-              <div className="shadow-xl card bg-base-100">
-                <div className="p-6 card-body">
-                  <h3 className="mb-4 text-lg font-medium text-primary">Additional Info</h3>
-                  <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-                    <div>
-                      <p className="font-regular text-base-content/70 text-md">Next of kin</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.nextOfKin?.name || 'Not provided'}
-                        </span>
-                      </Skeleton>
-                    </div>
-
-                    <div>
-                      <p className="font-regular text-base-content/70 text-md">Relationship</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.nextOfKin?.relationship || 'Not provided'}
-                        </span>
-                      </Skeleton>
-                    </div>
-
-                    <div>
-                      <p className="font-regular text-base-content/70 text-md">Phone number</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.nextOfKin?.phone || 'Not provided'}
-                        </span>
-                      </Skeleton>
-                    </div>
-
-                    <div className="md:col-span-3">
-                      <p className="font-regular text-base-content/70 text-md">Address</p>
-                      <Skeleton isLoaded={!isTransitionLoading}>
-                        <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-                          {patient.nextOfKin?.address || 'Not provided'}
-                        </span>
-                      </Skeleton>
-                    </div>
-                    
-                  </div>
-                </div>
-              </div>
+              <AdditionalInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
 
               {/* HMO & Dependants Info */}
-              <div className="shadow-xl card bg-base-100">
-                <div className="p-6 card-body">
-                  <h3 className="mb-4 text-lg font-medium text-primary flex items-center justify-between">
-                    HMO & Dependants Information 
-                    <span>
-                      {/* Add Icons*/}
-                      <IoAddCircleOutline className='font-bold'/>
-                    </span>
-                  </h3>
-                  <div className="flex justify-around 2xl:justify-start">
-                     <div className="space-y-3 2xl:pl-12">
-                       <div>
-                         <Skeleton isLoaded={!isTransitionLoading}>
-                           <li className="text-sm text-base-content/70">
-                             <span className="font-medium">HMO Plans:</span> {patient.hmos?.length > 0 ? patient.hmos.map(hmo => `${hmo.provider} (${hmo.memberId})`).join(', ') : "No HMO plans"}
-                           </li>
-                         </Skeleton>
-                       </div>
-                       <div>
-                         <Skeleton isLoaded={!isTransitionLoading}>
-                           <li className="text-sm text-base-content/70">
-                             <span className="font-medium">Dependants:</span> {patient.dependants?.length > 0 ? `${patient.dependants.length} dependant(s)` : "No dependants"}
-                           </li>
-                         </Skeleton>
-                       </div>
-                       {patient.dependants?.length > 0 && (
-                         <div className="ml-4">
-                           {patient.dependants.map((dep, index) => (
-                             <Skeleton key={index} isLoaded={!isTransitionLoading}>
-                               <li className="text-sm text-base-content/70">
-                                 • {dep.firstName} {dep.lastName} ({dep.relationshipType}) - {dep.gender}
-                               </li>
-                             </Skeleton>
-                           ))}
-                         </div>
-                       )}
-                     </div>
-
-                    {/* Right Column - Appointments */}
-                    <div className="">
-                      {/* Appointments */}
-                      <div className="shadow-xl card">
-                        <div className="py-0 card-body">
-                          <div className="flex items-center mb-4 space-x-2">
-                            <div className="w-3 h-3 rounded-full bg-primary"></div>
-                            <h3 className="text-lg font-semibold text-base-content">Appointments</h3>
-                          </div>
-                          
-                           <div className="space-y-4">
-                             <div>
-                               <h4 className="font-medium text-base-content">Upcoming Appointment:</h4>
-                               <Skeleton isLoaded={!isTransitionLoading}>
-                                 <p className="text-sm text-base-content/70">
-                                   No upcoming appointment
-                                 </p>
-                               </Skeleton>
-                             </div>
-                             <div>
-                               <h4 className="font-medium text-base-content">Last Appointment:</h4>
-                               <Skeleton isLoaded={!isTransitionLoading}>
-                                 <p className="text-sm text-base-content/70">
-                                   No previous appointment
-                                 </p>
-                               </Skeleton>
-                             </div>
-                             <div>
-                               <h4 className="font-medium text-base-content">Registration Date:</h4>
-                               <Skeleton isLoaded={!isTransitionLoading}>
-                                 <p className="text-sm text-base-content/70">
-                                   {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
-                                 </p>
-                               </Skeleton>
-                             </div>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
+              <HmoDependantsSection
+                patient={patient}
+                isTransitionLoading={isTransitionLoading}
+                onAddHmo={() => setIsAddHmoOpen(true)}
+                onEditHmo={() => setIsEditHmoOpen(true)}
+                onAddDependant={() => setIsAddDependantOpen(true)}
+                onEditDependant={() => setIsEditDependantOpen(true)}
+              />
             </div>
 
             
           </div>
 
             {/* Additional Information */}
-            <div className="mt-6 shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
-                <h3 className="mb-4 text-lg font-medium text-primary">Additional Information</h3>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-base-content/70">Patient ID</p>
-                    <Skeleton isLoaded={!isLoading}>
-                      <p className="font-medium">{patient.id || ''}</p>
-                    </Skeleton>
-                  </div>
-                  <div>
-                    <p className="text-sm text-base-content/70">Hospital ID</p>
-                    <Skeleton isLoaded={!isLoading}>
-                      <p className="font-medium">{patient.hospitalId || ''}</p>
-                    </Skeleton>
-                  </div>
-                  <div>
-                    <p className="text-sm text-base-content/70">Status</p>
-                    <Skeleton isLoaded={!isLoading}>
-                      <p className="font-medium capitalize">{patient.status || ''}</p>
-                    </Skeleton>
-                  </div>
-                  <div>
-                    <p className="text-sm text-base-content/70">Last Updated</p>
-                    <Skeleton isLoaded={!isLoading}>
-                      <p className="font-medium">
-                        {patient.updatedAt ? new Date(patient.updatedAt).toLocaleString() : 'Not available'}
-                      </p>
-                    </Skeleton>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
           {/* Action Buttons */}
-          <div className="flex justify-center mt-6 space-x-4">
-            <button className="btn btn-outline">
-              Send to Cashier
-            </button>
-            <button className="btn btn-primary">
-              Send to Nurse
-            </button>
-          </div>
+          <ActionButtons onSendToCashier={() => setIsSendToCashierOpen(true)} onSendToNurse={() => setIsSendToNurseOpen(true)} />
         </div>
       </div>
 
@@ -478,18 +174,70 @@ const PatientDetails = () => {
         patient={patient}
         onSave={handleEditPatient}
       />
+      <AddHmoModal
+        isOpen={isAddHmoOpen}
+        onClose={() => setIsAddHmoOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsAddHmoOpen(false);
+        }}
+      />
+      <EditHmoModal
+        isOpen={isEditHmoOpen}
+        onClose={() => setIsEditHmoOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsEditHmoOpen(false);
+        }}
+      />
+      <AddDependantModal
+        isOpen={isAddDependantOpen}
+        onClose={() => setIsAddDependantOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsAddDependantOpen(false);
+        }}
+      />
+      <EditDependantModal
+        isOpen={isEditDependantOpen}
+        onClose={() => setIsEditDependantOpen(false)}
+        patient={patient}
+        onSuccess={() => {
+          if (patientId) {
+            dispatch(fetchPatientById(patientId));
+          }
+          setIsEditDependantOpen(false);
+        }}
+      />
+
+      {/* Send to Nurse Modal */}
+      <NurseActionModal
+        isOpen={isSendToNurseOpen}
+        onClose={() => setIsSendToNurseOpen(false)}
+        patientId={patient?.id || patientId}
+        defaultAction={'awaiting_vitals'}
+        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+      />
+
+      {/* Send to Cashier Modal */}
+      <CashierActionModal
+        isOpen={isSendToCashierOpen}
+        onClose={() => setIsSendToCashierOpen(false)}
+        patientId={patient?.id || patientId}
+        defaultStatus={'awaiting_cashier'}
+        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+      />
     </div>
   );
 };
 
 export default PatientDetails;
-
-// Helper: compute initials from first/last name with fallback
-const getInitials = (firstName, lastName) => {
-  const f = (firstName || '').trim();
-  const l = (lastName || '').trim();
-  if (!f && !l) return 'U';
-  const firstInitial = f ? f.charAt(0).toUpperCase() : '';
-  const lastInitial = l ? l.charAt(0).toUpperCase() : '';
-  return `${firstInitial}${lastInitial}` || 'U';
-};
