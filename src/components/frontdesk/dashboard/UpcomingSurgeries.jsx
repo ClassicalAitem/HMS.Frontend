@@ -35,7 +35,7 @@ const UpcomingSurgeries = () => {
               <GiFirstAidKit className="w-4 h-auto 2xl:w-6 text-primary" />
             </div>
           </div>
-          <h3 className="text-baswe 2xl:text-xl font-regular text-base-content">Upcoming Surgeries</h3>
+          <h3 className="text-base 2xl:text-xl font-regular text-base-content">Upcoming Surgeries</h3>
         </div>
         <button className="p-2 transition-colors text-base-content/40 hover:text-base-content/60">
           <IoMdMore className="w-4 h-4 font-bold text-base-content" />

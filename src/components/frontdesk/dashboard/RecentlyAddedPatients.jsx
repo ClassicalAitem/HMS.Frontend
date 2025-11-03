@@ -3,55 +3,65 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoSearch, IoClose } from "react-icons/io5";
 import { DataTable } from '@/components/common';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchPatients, clearPatientsError } from '@/store/slices/patientsSlice';
-import { Skeleton } from '@heroui/skeleton';
+import { getPatients } from '@/services/api/patientsAPI';
 
 const RecentlyAddedPatients = () => {
   const navigate = useNavigate();
   // State for search bar visibility
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const dispatch = useAppDispatch();
-  const { patients, isLoading, error } = useAppSelector((state) => state.patients);
+  const [patients, setPatients] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Fetch patients from API via Redux
+  // Load patients data from backend and sort newest-first
   useEffect(() => {
-    dispatch(fetchPatients());
-  }, [dispatch]);
+    let mounted = true;
+    const load = async () => {
+      try {
+        setIsLoading(true);
+        setError('');
+        const res = await getPatients();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const sorted = (Array.isArray(list) ? list : []).sort((a, b) => {
+          const at = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+          const bt = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+          return bt - at;
+        });
+        if (mounted) setPatients(sorted);
+      } catch (e) {
+        console.error('RecentlyAddedPatients: failed to fetch patients', e);
+        if (mounted) setError('Failed to load patients');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
 
-  const calculateAge = (dob) => {
-    if (!dob) return 'N/A';
-    const today = new Date();
-    const birthDate = new Date(dob);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const processedPatients = useMemo(() => patients.map((patient, index) => ({
-    ...patient,
-    serialNumber: index + 1,
-    name: `${patient.firstName || ''} ${patient.lastName || ''}`.trim(),
-    age: calculateAge(patient.dob),
-    phone: patient.phone || patient.phoneNumber || 'N/A',
-    address: patient.address || patient.homeAddress || 'N/A',
-    status: patient.status || 'Registered',
+  const processedPatients = useMemo(() => patients.map(p => ({
+    id: p?.id || p?.patientId || p?.uuid || p?.hospitalId || '',
+    name: (`${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`).trim() || p?.fullName || p?.name || 'Unknown',
+    gender: (p?.gender || '—').toLowerCase(),
+    age: calculateAge(p?.dob),
+    phone: p?.phone || p?.phoneNumber || '—',
+    address: p?.address || '—',
+    status: p?.status || '—',
   })), [patients]);
 
   // Filter patients based on search term
   const filteredPatients = useMemo(() => {
     if (!searchTerm) return processedPatients;
-    return processedPatients.filter((patient) =>
-      (patient.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (patient.phone || '').includes(searchTerm) ||
-      (patient.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (patient.status || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (patient.gender || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(patient.serialNumber || '').includes(searchTerm)
+    
+    return processedPatients.filter(patient =>
+      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.phone.includes(searchTerm) ||
+      patient.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.gender.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.id.includes(searchTerm)
     );
   }, [processedPatients, searchTerm]);
 
@@ -85,7 +95,7 @@ const RecentlyAddedPatients = () => {
   // Define table columns
   const columns = useMemo(() => [
     {
-      key: 'serialNumber',
+      key: 'id',
       title: 'S/n',
       className: 'text-base-content'
     },
@@ -139,7 +149,7 @@ const RecentlyAddedPatients = () => {
       className: 'text-base-content/70',
       render: (value, row) => <StatusBadge status={value} color={row.statusColor} />
     }
-  ], [navigate]);
+  ], []);
 
   return (
     <div className="h-[--webkit-fill-available] bg-base-100  shadow-xl card flex w-full 2xl:pb-2 pb-8">
@@ -158,18 +168,11 @@ const RecentlyAddedPatients = () => {
                 <IoSearch className="w-4 h-4 cursor-pointer" />
               )}
             </button>
-            <button onClick={() => navigate('/frontdesk/patients')} className="text-sm font-medium transition-colors cursor-pointer text-primary hover:text-primary/80">
+            <button className="text-sm font-medium transition-colors cursor-pointer text-primary hover:text-primary/80">
               See All
             </button>
           </div>
         </div>
-
-        {/* Inline basic error display */}
-        {error && (
-          <div className="mb-3 alert alert-error">
-            <span className="text-xs">Failed to load patients. Please try again.</span>
-          </div>
-        )}
 
         {/* Search Bar */}
         {showSearchBar && (
@@ -194,34 +197,13 @@ const RecentlyAddedPatients = () => {
           </div>
         )}
 
-        {/* Loader / Table */}
+        {/* DataTable Component */}
         {isLoading ? (
           <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-            <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
-              <table className="table w-full table-zebra">
-                <thead className="sticky top-0 z-10 bg-base-200">
-                  <tr>
-                    {columns.map((column) => (
-                      <th key={column.key} className="border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider">
-                        {column.title || column.key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 5 }).map((_, idx) => (
-                    <tr key={idx} className="text-xs">
-                      {columns.map((col, cIdx) => (
-                        <td key={`${idx}-${col.key}`} className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${col.className || 'text-base-content/70'}`}>
-                          <Skeleton>
-                            <div className="h-3 w-20 rounded bg-base-300"></div>
-                          </Skeleton>
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110 p-4 space-y-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="skeleton h-8 w-full" />
+              ))}
             </div>
           </div>
         ) : (
@@ -243,3 +225,17 @@ const RecentlyAddedPatients = () => {
 };
 
 export default RecentlyAddedPatients;
+
+// Helper: calculate age from date of birth
+function calculateAge(dob) {
+  if (!dob) return '—';
+  const birth = new Date(dob);
+  if (Number.isNaN(birth.getTime())) return '—';
+  const now = new Date();
+  let age = now.getFullYear() - birth.getFullYear();
+  const m = now.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+}

@@ -44,7 +44,7 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
-import Incoming from "@/pages/cashier/incoming/Incoming";
+import CashierIncoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
 import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
@@ -54,6 +54,8 @@ import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 import { BookAppointmentModal } from "@/components/modals";
 import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
+import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
+import NurseIncoming from "@/pages/nurse/incoming/Incoming";
 
 const AppRoutes = () => {
   return (
@@ -129,9 +131,14 @@ const AppRoutes = () => {
           <PatientVitals />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/patient/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <PatientVitalsDetails />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/nurse/incoming" element={
         <ProtectedRoute allowedRoles={['nurse']}>
-          <Incoming />
+          <NurseIncoming />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/nurse/appointments" element={
@@ -288,7 +295,7 @@ const AppRoutes = () => {
       } />
       <Route path="/cashier/incoming" element={
         <ProtectedRoute allowedRoles={['cashier']}>
-          <Incoming />
+          <CashierIncoming />
         </ProtectedRoute>
       } />
       <Route path="/cashier/patients" element={
