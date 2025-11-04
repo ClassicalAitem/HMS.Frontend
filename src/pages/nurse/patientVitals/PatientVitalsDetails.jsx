@@ -4,7 +4,7 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { Skeleton } from "@heroui/skeleton";
+// Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
 import { LuDroplet, LuThermometer, LuActivity } from "react-icons/lu";
@@ -14,6 +14,7 @@ const PatientVitalsDetails = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const fromIncoming = location?.state?.from === 'incoming';
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -125,7 +126,12 @@ const PatientVitalsDetails = () => {
               <h1 className="text-2xl font-bold text-base-content">Patient Details</h1>
               <p className="text-sm text-base-content/70">Vitals overview and history</p>
             </div>
-            <button className="btn btn-outline btn-sm" onClick={() => navigate('/dashboard/nurse/patient')}>Back to Patients</button>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => navigate(fromIncoming ? '/dashboard/nurse/incoming' : '/dashboard/nurse/patient')}
+            >
+              {fromIncoming ? 'Back to Incoming' : 'Back to Patients'}
+            </button>
           </div>
 
           {/* Patient card */}
@@ -143,11 +149,13 @@ const PatientVitalsDetails = () => {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                   <div className="ml-4 avatar">
                     <div className="w-20 h-20 rounded-full border-3 border-primary/80 flex items-center justify-center overflow-hidden p-[2px]">
-                      <Skeleton isLoaded={!loading} className="w-full h-full rounded-full flex items-center justify-center bg-primary">
+                      {loading ? (
+                        <div className="skeleton w-full h-full rounded-full" />
+                      ) : (
                         <div className="w-full h-full grid place-items-center bg-primary text-primary-content text-2xl font-bold">
                           {getInitials(patient?.firstName, patient?.lastName)}
                         </div>
-                      </Skeleton>
+                      )}
                     </div>
                   </div>
                   <div className="flex-1">

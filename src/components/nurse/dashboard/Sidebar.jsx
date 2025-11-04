@@ -46,6 +46,8 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   };
 
+  const fromIncoming = location.state && location.state.from === 'incoming';
+
   const menuItems = [
     {
       icon: FaThLarge,
@@ -57,13 +59,13 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: BsArrowDownLeft,
       label: "Incoming",
       path: "/dashboard/nurse/incoming",
-      active: location.pathname.startsWith("/dashboard/nurse/incoming"),
+      active: fromIncoming || location.pathname.startsWith("/dashboard/nurse/incoming"),
     },
     {
       icon: FiUser,
       label: "Patients",
       path: "/dashboard/nurse/patient",
-      active: location.pathname.startsWith("/dashboard/nurse/patient"),
+      active: !fromIncoming && location.pathname.startsWith("/dashboard/nurse/patient"),
     },
     {
       icon: GrTask,
