@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { RiArrowLeftRightFill } from "react-icons/ri";
@@ -6,6 +7,7 @@ import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
 
 const Incoming = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -47,6 +49,9 @@ const Incoming = () => {
         };
 
         const mapped = sorted.map((p) => ({
+          id: p?.id,
+          hospitalId: p?.hospitalId,
+          snapshot: p,
           name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
           patientId: p?.hospitalId || p?.id || '—',
           illness: prettifyStatus(p?.status),
@@ -92,7 +97,7 @@ const Incoming = () => {
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-200">
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-100">
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
@@ -108,7 +113,7 @@ const Incoming = () => {
                 </p>
               </div>
             </div>
-            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 gap-5 p-5 rounded-md">
+            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 rounded-md">
               {loading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
                   <div key={idx} className="h-[216px] card bg-base-100 border border-base-300 shadow-sm">
@@ -152,9 +157,10 @@ const Incoming = () => {
                   return (
                     <div
                       key={index}
-                      className="h-[216px] card bg-base-100 border border-base-300 shadow-sm"
+                      onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                      className="card bg-base-100 border border-base-300 shadow-sm cursor-pointer"
                     >
-                      <div className="flex gap-6 items-center p-5">
+                      <div className="flex gap-6 items-center p-8">
                         <img
                           src={womanLogo}
                           alt=""
@@ -162,7 +168,7 @@ const Incoming = () => {
                         />
 
                         <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
-                          <div className="space-y-1">
+                          <div className="space-y-1 xl:space-y-3">
                             <span className="block">Name: {data.name}</span>
                             <span className="block">Patient ID: {data.patientId}</span>
                             <span className="block">Reason: {data.illness}</span>
