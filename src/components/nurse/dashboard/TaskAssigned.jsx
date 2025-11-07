@@ -7,7 +7,7 @@ const TaskAssigned = ({ tasksCount = 0, incoming = [], loading = false, onRefres
   return (
     <div className="w-full p-7 mt-2">
       <div className="flex flex-col lg:flex-row gap-5 justify-between">
-        <div className="card bg-base-100 shadow-xl w-full lg:w-3/5 rounded-2xl flex flex-col space-y-2 p-8 pr-3">
+        <div className="card bg-base-100 shadow-xl w-full lg:w-3/5 rounded-2xl flex flex-col space-y-2 px-8 py-4 pr-3">
           <div className="flex items-center gap-3">
             <GrTask className="w-[22px] h-[22px] text-primary" />
             <div>
@@ -17,12 +17,12 @@ const TaskAssigned = ({ tasksCount = 0, incoming = [], loading = false, onRefres
           {loading ? (
             <div className="animate-pulse w-24 h-10 rounded bg-base-300" />
           ) : (
-            <h1 className="text-7xl font-semibold ">{tasksCount}</h1>
+            <h1 className="text-8xl font-semibold ">{tasksCount}</h1>
           )}
           <p className="text-base text-base-content/70">See Your Tasks</p>
         </div>
 
-        <div className="card bg-base-100 shadow-xl w-full rounded-[20px] p-8">
+        <div className="card bg-base-100 shadow-xl w-full rounded-[20px] px-8 py-4">
           <div className="flex items-center gap-5 ">
             <RiArrowLeftRightFill size={25} color="#00943C" />
             <h1 className="text-2xl text-primary ">Incoming</h1>
@@ -45,7 +45,7 @@ const TaskAssigned = ({ tasksCount = 0, incoming = [], loading = false, onRefres
               />
             ) : (
               incoming.map((appointment, index) => (
-                <div key={index} className="flex items-center justify-between py-1">
+                <div key={index} className="flex items-center justify-between py-1 ">
                   <div className="flex gap-3">incoming: {appointment.patientName} <span>sent by {appointment.administeredBy}</span></div>
                   <div>{appointment.time}</div>
                 </div>

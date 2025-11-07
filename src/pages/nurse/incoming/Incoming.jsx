@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
-import { RiArrowLeftRightFill } from "react-icons/ri";
+import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
 
@@ -12,6 +12,9 @@ const Incoming = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 9;
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -77,6 +80,11 @@ const Incoming = () => {
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
+  // Reset to first page when search query or items change
+  useEffect(() => {
+    setPage(0);
+  }, [query, items]);
+
   return (
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
@@ -113,6 +121,26 @@ const Incoming = () => {
                 </p>
               </div>
             </div>
+            {/* Minimal search */}
+            <div className="mt-4 flex items-center gap-2">
+              <div className="relative w-full max-w-xs">
+                <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search patients"
+                  className="input input-bordered input-sm pl-9 w-full"
+                />
+              </div>
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  className="btn btn-ghost btn-xs"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 rounded-md">
               {loading ? (
                 Array.from({ length: 4 }).map((_, idx) => (
@@ -139,58 +167,133 @@ const Incoming = () => {
                     </div>
                   </div>
                 ))
-              ) : items.length === 0 ? (
-                <div className="col-span-full">
-                  <EmptyState
-                    title="No incoming patients"
-                    description="You're all clear. Patients assigned to you will appear here."
-                    actionLabel="Refresh"
-                    onAction={onRefresh}
-                  />
-                </div>
               ) : (
-                items.map((data, index) => {
-                  const primary =
-                    data.status === 'awaiting_vitals' ? 'vitals' :
-                    data.status === 'awaiting_sampling' ? 'sampling' :
-                    data.status === 'awaiting_injection' ? 'injection' : '';
-                  return (
-                    <div
-                      key={index}
-                      onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
-                      className="card bg-base-100 border border-base-300 shadow-sm cursor-pointer"
-                    >
-                      <div className="flex gap-6 items-center p-8">
-                        <img
-                          src={womanLogo}
-                          alt=""
-                          className="w-[52px] h-[52px] object-cover rounded-full"
-                        />
+                (() => {
+                  const q = query.trim().toLowerCase();
+                  const filtered = q
+                    ? items.filter((d) => {
+                        const hay = [
+                          d?.name,
+                          d?.patientId,
+                          d?.illness,
+                          d?.insurance,
+                          d?.alert,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")
+                          .toLowerCase();
+                        return hay.includes(q);
+                      })
+                    : items;
 
-                        <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
-                          <div className="space-y-1 xl:space-y-3">
-                            <span className="block">Name: {data.name}</span>
-                            <span className="block">Patient ID: {data.patientId}</span>
-                            <span className="block">Reason: {data.illness}</span>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="block">Insurance: {data.insurance}</span>
-                            <span className="block">Registered: {data.registered}</span>
-                            <span className="block">Alert: {data.alert}</span>
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="col-span-full">
+                        <EmptyState
+                          title="No matches found"
+                          description="Try a different search or clear the filter."
+                          actionLabel={query ? "Clear search" : "Refresh"}
+                          onAction={query ? () => setQuery("") : onRefresh}
+                        />
+                      </div>
+                    );
+                  }
+
+                  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+                  const start = page * pageSize;
+                  const end = start + pageSize;
+                  const visible = filtered.slice(start, end);
+
+                  return visible.map((data, index) => {
+                    const primary =
+                      data.status === 'awaiting_vitals' ? 'vitals' :
+                      data.status === 'awaiting_sampling' ? 'sampling' :
+                      data.status === 'awaiting_injection' ? 'injection' : '';
+                    return (
+                      <div
+                        key={index}
+                        onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                        className="card bg-base-100 border border-base-300 shadow-sm cursor-pointer"
+                      >
+                        <div className="flex gap-6 items-center p-8">
+                          <img
+                            src={womanLogo}
+                            alt=""
+                            className="w-[52px] h-[52px] object-cover rounded-full"
+                          />
+
+                          <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
+                            <div className="space-y-1 xl:space-y-3">
+                              <span className="block">Name: {data.name}</span>
+                              <span className="block">Patient ID: {data.patientId}</span>
+                              <span className="block">Reason: {data.illness}</span>
+                            </div>
+                            <div className="space-y-1">
+                              <span className="block">Insurance: {data.insurance}</span>
+                              <span className="block">Registered: {data.registered}</span>
+                              <span className="block">Alert: {data.alert}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex justify-between px-7 pb-5">
-                        <button className={`px-3 py-1 rounded-full ${primary==='vitals' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Record Vitals</button>
-                        <button className={`px-3 py-1 rounded-full ${primary==='sampling' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Sampling</button>
-                        <button className={`px-3 py-1 rounded-full ${primary==='injection' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Injection</button>
+                        <div className="flex justify-between px-7 pb-5">
+                          <button className={`px-3 py-1 rounded-full ${primary==='vitals' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Record Vitals</button>
+                          <button className={`px-3 py-1 rounded-full ${primary==='sampling' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Sampling</button>
+                          <button className={`px-3 py-1 rounded-full ${primary==='injection' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Injection</button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  });
+                })()
               )}
             </div>
+            {/* Carousel-style pagination dots and controls */}
+            {(() => {
+              const q = query.trim().toLowerCase();
+              const filtered = q
+                ? items.filter((d) => {
+                    const hay = [d?.name, d?.patientId, d?.illness, d?.insurance, d?.alert]
+                      .filter(Boolean)
+                      .join(" ")
+                      .toLowerCase();
+                    return hay.includes(q);
+                  })
+                : items;
+              const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+              if (!loading && filtered.length > pageSize) {
+                return (
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      aria-label="Previous"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    >
+                      <RiArrowLeftSLine />
+                    </button>
+                    <div className="flex items-center gap-2">
+                      {Array.from({ length: totalPages }).map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setPage(i)}
+                          aria-label={`Go to page ${i + 1}`}
+                          className={`w-3 h-3 rounded-full ${
+                            i === page ? 'bg-success' : 'border border-base-300 bg-transparent'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-xs"
+                      aria-label="Next"
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    >
+                      <RiArrowRightSLine />
+                    </button>
+                  </div>
+                );
+              }
+              return null;
+            })()}
           </section>
         </div>
       </div>
