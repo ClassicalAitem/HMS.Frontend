@@ -23,7 +23,7 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="px-3 py-2 w-[-webkit-fill-available] border-b sm:px-6 lg:px-4 2xl:px-6 2xl:py-4 bg-base-100 border-base-300">
+    <header className="px-3 py-[7px] w-[-webkit-fill-available] border-b sm:px-6 lg:px-4 2xl:px-6 2xl:py-[22px] bg-base-100 border-base-300">
       <div className="flex justify-between items-center">
         {/* Mobile Menu Button */}
         <button
