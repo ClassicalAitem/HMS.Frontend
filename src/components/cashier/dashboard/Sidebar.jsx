@@ -52,7 +52,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: GoArrowDownLeft,
       label: 'Incoming',
       path: '/cashier/incoming',
-      active: location.pathname === '/cashier/incoming'
+      active: location.pathname === '/cashier/incoming' || location.pathname.startsWith('/cashier/patient-details')
     },
     {
       icon: GoPerson,
