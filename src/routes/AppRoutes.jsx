@@ -308,7 +308,7 @@ const AppRoutes = () => {
           <PaymentRecords />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/patient-details" element={
+      <Route path="/cashier/patient-details/:patientId" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierPatientDetails />
         </ProtectedRoute>
