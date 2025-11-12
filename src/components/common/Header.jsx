@@ -74,13 +74,13 @@ const Header = ({ onToggleSidebar }) => {
           </button>
 
           {/* Add Patient Button - Hidden on mobile, visible on larger screens */}
-          <button 
+          {/* <button 
             onClick={handleAddPatient} 
             className="hidden btn btn-primary btn-xs sm:flex sm:btn-sm lg:btn-base 2xl:btn-md"
           >
             <FaUserPlus className="w-3 h-3 sm:w-3 sm:h-3 2xl:w-4 2xl:h-4" />
             <span className="hidden text-xs sm:inline lg:text-xs 2xl:text-sm">Add Patient</span>
-          </button>
+          </button> */}
         </div>
       </div>
     </header>
