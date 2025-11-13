@@ -6,13 +6,19 @@ import { LuUserRoundCheck } from 'react-icons/lu';
 import { MdOutlineStore } from 'react-icons/md';
 import { FiFileText } from 'react-icons/fi';
 import activitiesData from '@/data/activities.json';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchMetrics } from '../../../store/slices/metricsSlice';
 
 const SuperAdminDashboard = () => {
   const [activities, setActivities] = useState([]);
+  const dispatch = useAppDispatch();
+  const { metrics, isLoading, error } = useAppSelector((state) => state.metrics);
 
   useEffect(() => {
     setActivities(activitiesData);
-  }, []);
+    // Fetch metrics data
+    dispatch(fetchMetrics());
+  }, [dispatch]);
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -24,6 +30,21 @@ const SuperAdminDashboard = () => {
     };
     return now.toLocaleDateString('en-US', options);
   };
+
+  // Skeleton loader component for metrics cards
+  const MetricsSkeleton = () => (
+    <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+      <div className="flex flex-col justify-between items-center">
+        <div className="flex justify-start items-center rounded-lg bg-primary/10">
+          <div className="w-6 h-6 bg-base-300 animate-pulse rounded"></div>
+        </div>
+        <div className="flex flex-col justify-center items-center mt-2">
+          <div className="h-4 w-24 bg-base-300 animate-pulse rounded mb-2"></div>
+          <div className="h-8 w-16 bg-base-300 animate-pulse rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
 
   const StatusBadge = ({ status, color }) => {
     const getBadgeClass = (status) => {
@@ -89,30 +110,42 @@ const SuperAdminDashboard = () => {
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
             {/* Total Patients */}
-            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-start items-center rounded-lg bg-primary/10">
-                  <PiUsersThreeDuotone className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Total Patients</p>
-                  <p className="mt-1 text-2xl font-semibold text-content">5,234</p>
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <PiUsersThreeDuotone className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Total Patients</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalPatients?.toLocaleString() || '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Total Staff */}
-            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-start items-center rounded-lg bg-primary/10">
-                  <LuUserRoundCheck className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Total Staff</p>
-                  <p className="mt-1 text-2xl font-semibold text-content">875</p>
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <LuUserRoundCheck className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Total Staff</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalActiveStaff?.toLocaleString() || '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Total Departments */}
             <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
