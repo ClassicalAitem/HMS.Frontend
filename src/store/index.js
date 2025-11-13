@@ -9,6 +9,7 @@ import userSlice from './slices/userSlice';
 import usersSlice from './slices/usersSlice';
 import patientsSlice from './slices/patientsSlice';
 import appointmentSlice from './slices/appointmentSlice';
+import metricsSlice from './slices/metricsSlice';
 
 // Persist config
 const persistConfig = {
@@ -24,6 +25,7 @@ const rootReducer = combineReducers({
   users: usersSlice,
   patients: patientsSlice,
   appointments: appointmentSlice,
+  metrics: metricsSlice,
 });
 
 // Persisted reducer
