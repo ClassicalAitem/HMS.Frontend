@@ -5,19 +5,47 @@ import { PiUsersThreeDuotone } from 'react-icons/pi';
 import { LuUserRoundCheck } from 'react-icons/lu';
 import { MdOutlineStore } from 'react-icons/md';
 import { FiFileText } from 'react-icons/fi';
-import activitiesData from '@/data/activities.json';
+
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchMetrics } from '../../../store/slices/metricsSlice';
+import { fetchVitals } from '../../../store/slices/vitalsSlice';
 
 const SuperAdminDashboard = () => {
-  const [activities, setActivities] = useState([]);
+
+  
+  // Skeleton loader for vitals table
+  const VitalsTableSkeleton = () => (
+    <div className="space-y-3">
+      {[...Array(7)].map((_, index) => (
+        <div key={index} className="flex space-x-4 p-3 bg-base-200 rounded-lg animate-pulse">
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+        </div>
+      ))}
+    </div>
+  );
   const dispatch = useAppDispatch();
   const { metrics, isLoading, error } = useAppSelector((state) => state.metrics);
+  const { vitals, isLoading: vitalsLoading, error: vitalsError } = useAppSelector((state) => state.vitals);
+
+  // Debug: Log metrics and vitals data
+  useEffect(() => {
+    console.log('📊 Dashboard - Metrics state:', metrics);
+    console.log('📊 Dashboard - isLoading:', isLoading);
+    console.log('📊 Dashboard - error:', error);
+    console.log('🩺 Dashboard - Vitals state:', vitals);
+    console.log('🩺 Dashboard - vitalsLoading:', vitalsLoading);
+    console.log('🩺 Dashboard - vitalsError:', vitalsError);
+  }, [metrics, isLoading, error, vitals, vitalsLoading, vitalsError]);
 
   useEffect(() => {
-    setActivities(activitiesData);
-    // Fetch metrics data
+    // Fetch both metrics and vitals data
     dispatch(fetchMetrics());
+    dispatch(fetchVitals());
   }, [dispatch]);
 
   const getCurrentDate = () => {
@@ -46,54 +74,54 @@ const SuperAdminDashboard = () => {
     </div>
   );
 
-  const StatusBadge = ({ status, color }) => {
-    const getBadgeClass = (status) => {
-      switch (status) {
-        case 'Completed':
-          return 'badge badge-success w-full';
-        case 'Pending':
-          return 'badge badge-warning w-full';
-        case 'Failed':
-          return 'badge badge-error w-full';
-        case 'In progress':
-          return 'badge badge-info w-full';
-        default:
-          return 'badge badge-neutral w-full';
-      }
-    };
-  
-    return (
-      <span className={getBadgeClass(status)} >
-        {status}
-      </span>
-    );
-  };
-
-  // Define table columns
+  // Define table columns for vitals
   const columns = useMemo(() => [
     {
-      key: 'type',
-      title: 'Type',
+      key: 'patientId',
+      title: 'Patient ID',
       sortable: true,
       className: 'font-medium text-base-content'
     },
     {
-      key: 'description',
-      title: 'Description',
+      key: 'bp',
+      title: 'Blood Pressure',
       sortable: true,
       className: 'text-base-content/70'
     },
     {
-      key: 'status',
-      title: 'Status',
+      key: 'temperature',
+      title: 'Temperature',
+      sortable: true,
       className: 'text-base-content/70',
-      render: (value) => <StatusBadge status={value} />
+      render: (value) => `${value}°F`
     },
     {
-      key: 'timestamp',
-      title: 'Timestamp',
+      key: 'pulse',
+      title: 'Pulse',
       sortable: true,
-      className: 'text-base-content/70'
+      className: 'text-base-content/70',
+      render: (value) => `${value} bpm`
+    },
+    {
+      key: 'weight',
+      title: 'Weight',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => `${value} kg`
+    },
+    {
+      key: 'spo2',
+      title: 'SpO2',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => `${value}%`
+    },
+    {
+      key: 'createdAt',
+      title: 'Recorded At',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => new Date(value).toLocaleString()
     }
   ], []);
 
@@ -106,6 +134,13 @@ const SuperAdminDashboard = () => {
               Welcome back, Super Admin. Here's a summary of your hospital's current status for {getCurrentDate()}.
             </p>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="alert alert-error mb-4">
+              <span>Error loading metrics: {error}</span>
+            </div>
+          )}
 
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
@@ -121,7 +156,7 @@ const SuperAdminDashboard = () => {
                   <div className="flex flex-col justify-center items-center">
                     <p className="text-sm font-medium text-base-content/70">Total Patients</p>
                     <p className="mt-1 text-2xl font-semibold text-content">
-                      {metrics?.totalPatients?.toLocaleString() || '0'}
+                      {metrics?.totalPatients ? metrics.totalPatients.toLocaleString() : '0'}
                     </p>
                   </div>
                 </div>
@@ -140,7 +175,7 @@ const SuperAdminDashboard = () => {
                   <div className="flex flex-col justify-center items-center">
                     <p className="text-sm font-medium text-base-content/70">Total Staff</p>
                     <p className="mt-1 text-2xl font-semibold text-content">
-                      {metrics?.totalActiveStaff?.toLocaleString() || '0'}
+                      {metrics?.totalActiveStaff ? metrics.totalActiveStaff.toLocaleString() : '0'}
                     </p>
                   </div>
                 </div>
@@ -148,55 +183,78 @@ const SuperAdminDashboard = () => {
             )}
 
             {/* Total Departments */}
-            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-start items-center rounded-lg bg-primary/10">
-                  <MdOutlineStore className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Total Departments</p>
-                  <p className="mt-1 text-2xl font-semibold text-content">32</p>
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <MdOutlineStore className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Total Departments</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalDepartments ? metrics.totalDepartments.toLocaleString() : '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Pending Reports */}
-            <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-start items-center rounded-lg bg-primary/10">
-                  <FiFileText className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Pending Reports</p>
-                  <p className="mt-1 text-2xl font-semibold text-content">5</p>
+            {/* Total Admitted Patients */}
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <FiFileText className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Admitted Patients</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalAdmittedPatients ? metrics.totalAdmittedPatients.toLocaleString() : '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
 
 
           </div>
           
 
-          {/* Recent System Activities */}
+          {/* Recent Vitals Data */}
           <div className="p-6 rounded-lg shadow-lg bg-base-100">
             <div className="mb-6">
-              <h2 className="text-lg font-medium text-primary 2xl:text-2xl">Recent System Activities</h2>
-              <p className="text-xs 2xl:text-base text-base-content/70">Latest system notifications and critical events.</p>
+              <h2 className="text-lg font-medium text-primary 2xl:text-2xl">Recent Vitals Data</h2>
+              <p className="text-xs 2xl:text-base text-base-content/70">Latest patient vital signs recorded in the system.</p>
             </div>
             
-            {/* Activities Table */}
-            <DataTable
-              data={activities}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              paginated={true}
-              initialEntriesPerPage={5}
-              maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-              showEntries={true}
-              searchPlaceholder="Search activities..."
-            />
+            {/* Error Display for Vitals */}
+            {vitalsError && (
+              <div className="alert alert-error mb-4">
+                <span>Error loading vitals: {vitalsError}</span>
+              </div>
+            )}
+            
+            {/* Vitals Table */}
+            {vitalsLoading ? (
+              <VitalsTableSkeleton />
+            ) : (
+              <DataTable
+                data={vitals || []}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={5}
+                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-100"
+                showEntries={true}
+                searchPlaceholder="Search vitals..."
+              />
+            )}
           </div>
     </SuperAdminLayout>
   );
