@@ -9,12 +9,19 @@ import RecentActivity from '@/components/cashier/dashboard/RecentActivity';
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import { getMetrics } from '@/services/api/metricsAPI';
+import { getAllBillings } from '@/services/api/billingAPI';
 
 const CashierDashboard = () => {
+  console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
+  console.log("🎯 CashierDashboard: Component rendering - LOG level!");
+  console.warn("🎯 CashierDashboard: Component rendering - WARN level!");
   const [dashboardData, setDashboardData] = useState(null);
   const { user } = useAppSelector((state) => state.auth);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [totalPatients, setTotalPatients] = useState(0);
+  const [billingData, setBillingData] = useState([]);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     setDashboardData(cashierData.dashboard);
@@ -40,6 +47,80 @@ const CashierDashboard = () => {
       mounted = false;
     };
   }, []);
+
+  // Fetch billing data for recent activity
+  useEffect(() => {
+    let mounted = true;
+    const fetchBillingData = async () => {
+      try {
+        setBillingLoading(true);
+        const response = await getAllBillings({ limit: 10, sort: 'createdAt:desc' });
+        
+        if (response.data?.success && mounted) {
+          const billingRecords = response.data.data || [];
+          
+          // Transform billing data to match activity item format
+          const transformedActivities = billingRecords.map((bill, index) => {
+            // Get the first item detail or use a default description
+            const firstItem = bill.itemDetails?.[0];
+            const serviceDescription = firstItem 
+              ? `${firstItem.description || firstItem.code} - ${firstItem.quantity}x`
+              : 'Medical Service';
+            
+            // Format amount with currency
+            const formattedAmount = `₦${Number(bill.totalAmount || 0).toLocaleString()}`;
+            
+            // Determine status based on outstanding bill
+            let status = 'Successful';
+            if (bill.outstandingBill > 0) {
+              status = bill.outstandingBill === bill.totalAmount ? 'Pending' : 'Partial';
+            }
+            
+            // Format date/time
+            const createdDate = new Date(bill.createdAt);
+            const timeString = createdDate.toLocaleTimeString('en-US', { 
+              hour: 'numeric', 
+              minute: '2-digit',
+              hour12: true 
+            });
+            
+            return {
+              id: bill.id || index,
+              patientName: `Patient ${index + 1}`, // Will be replaced with actual patient name when patient API is integrated
+              patientPhoto: `https://randomuser.me/api/portraits/${index % 2 === 0 ? 'men' : 'women'}/${20 + index}.jpg`,
+              service: serviceDescription,
+              status: status,
+              hmo: 'Self-pay', // Will be replaced with actual HMO data when available
+              amount: formattedAmount,
+              time: timeString,
+              createdAt: bill.createdAt
+            };
+          });
+          
+          setBillingData(transformedActivities);
+          setLastUpdated(new Date().toLocaleString());
+        }
+      } catch (error) {
+        console.error('Error fetching billing data:', error);
+        if (mounted) {
+          // Fallback to mock data if API fails
+          setBillingData(dashboardData?.recentActivity || []);
+          setLastUpdated(dashboardData?.lastUpdated || '1/1/01 12:00AM');
+        }
+      } finally {
+        if (mounted) setBillingLoading(false);
+      }
+    };
+
+    // Fetch billing data after dashboard data is loaded
+    if (dashboardData) {
+      fetchBillingData();
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [dashboardData]);
 
   return (
     <CashierLayout>
