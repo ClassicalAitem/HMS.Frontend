@@ -1,48 +1,28 @@
-import React, { useState } from 'react';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { FaPlus, FaEdit } from 'react-icons/fa';
 import { AddServiceChargeModal } from '@/components/modals';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
+import toast from 'react-hot-toast';
 
 const ServiceChargesTab = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const { serviceCharges, isLoading, error } = useAppSelector(
+    (state) => state.serviceCharges
+  );
 
-  // Sample data for service charges
-  const serviceCharges = [
-    {
-      id: 1,
-      name: 'Consultation Fee',
-      category: 'General',
-      amount: 5000,
-      description: 'General consultation with doctor'
-    },
-    {
-      id: 2,
-      name: 'Blood Test',
-      category: 'Laboratory',
-      amount: 15000,
-      description: 'Complete blood count and basic tests'
-    },
-    {
-      id: 3,
-      name: 'X-Ray',
-      category: 'Radiology',
-      amount: 25000,
-      description: 'Chest X-ray examination'
-    },
-    {
-      id: 4,
-      name: 'Surgery',
-      category: 'Surgical',
-      amount: 150000,
-      description: 'Minor surgical procedure'
-    },
-    {
-      id: 5,
-      name: 'Emergency Care',
-      category: 'Emergency',
-      amount: 30000,
-      description: 'Emergency room consultation and treatment'
-    }
-  ];
+  // Fetch service charges on component mount
+  useEffect(() => {
+    dispatch(fetchServiceCharges());
+  }, [dispatch]);
+
+  // Debug: Log service charges data
+  useEffect(() => {
+    console.log('💰 ServiceChargesTab - Service charges:', serviceCharges);
+    console.log('💰 ServiceChargesTab - isLoading:', isLoading);
+    console.log('💰 ServiceChargesTab - error:', error);
+  }, [serviceCharges, isLoading, error]);
 
   const handleAddServiceCharge = () => {
     setIsAddModalOpen(true);
@@ -50,12 +30,7 @@ const ServiceChargesTab = () => {
 
   const handleEditServiceCharge = (serviceCharge) => {
     console.log('Edit service charge:', serviceCharge);
-    // TODO: Implement edit functionality
-  };
-
-  const handleDeleteServiceCharge = (serviceCharge) => {
-    console.log('Delete service charge:', serviceCharge);
-    // TODO: Implement delete functionality
+    toast.success('Edit functionality coming soon!');
   };
 
   const formatCurrency = (amount) => {
@@ -64,6 +39,20 @@ const ServiceChargesTab = () => {
       currency: 'NGN'
     }).format(amount);
   };
+
+  // Skeleton loader for service charges table
+  const ServiceChargesSkeleton = () => (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, index) => (
+        <div key={index} className="flex space-x-4 p-3 bg-base-200 rounded-lg animate-pulse">
+          <div className="h-4 w-32 bg-base-300 rounded"></div>
+          <div className="h-4 w-20 bg-base-300 rounded"></div>
+          <div className="h-4 w-16 bg-base-300 rounded"></div>
+          <div className="h-4 w-48 bg-base-300 rounded"></div>
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="bg-base-100 rounded-lg shadow-lg p-6">
@@ -78,64 +67,76 @@ const ServiceChargesTab = () => {
         </button>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <div className="alert alert-error mb-4">
+          <span>Error loading service charges: {error}</span>
+        </div>
+      )}
+
       {/* Service Charges Table */}
-      <div className="overflow-x-auto">
-        <table className="table table-zebra w-full">
-          <thead>
-            <tr>
-              <th className="text-base-content/70">Service Name</th>
-              <th className="text-base-content/70">Category</th>
-              <th className="text-base-content/70">Amount</th>
-              <th className="text-base-content/70">Description</th>
-              <th className="text-base-content/70">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {serviceCharges.map((serviceCharge) => (
-              <tr key={serviceCharge.id}>
-                <td>
-                  <div className="font-medium text-base-content">
-                    {serviceCharge.name}
-                  </div>
-                </td>
-                <td>
-                  <span className="badge badge-outline">
-                    {serviceCharge.category}
-                  </span>
-                </td>
-                <td>
-                  <div className="font-semibold text-primary">
-                    {formatCurrency(serviceCharge.amount)}
-                  </div>
-                </td>
-                <td>
-                  <div className="text-base-content/70 max-w-xs truncate">
-                    {serviceCharge.description}
-                  </div>
-                </td>
-                <td>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEditServiceCharge(serviceCharge)}
-                      className="btn btn-ghost btn-sm text-primary hover:bg-primary/10"
-                      title="Edit Service Charge"
-                    >
-                      <FaEdit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteServiceCharge(serviceCharge)}
-                      className="btn btn-ghost btn-sm text-error hover:bg-error/10"
-                      title="Delete Service Charge"
-                    >
-                      <FaTrash className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+      {isLoading ? (
+        <ServiceChargesSkeleton />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th className="text-base-content/70">Service Name</th>
+                <th className="text-base-content/70">Category</th>
+                <th className="text-base-content/70">Amount</th>
+                <th className="text-base-content/70">Description</th>
+                <th className="text-base-content/70">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {serviceCharges && serviceCharges.length > 0 ? (
+                serviceCharges.map((serviceCharge) => (
+                  <tr key={serviceCharge.id}>
+                    <td>
+                      <div className="font-medium text-base-content">
+                        {serviceCharge.service}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="badge badge-outline">
+                        {serviceCharge.category}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="font-semibold text-primary">
+                        {formatCurrency(serviceCharge.amount)}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="text-base-content/70 max-w-xs truncate">
+                        {serviceCharge.description || 'No description'}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleEditServiceCharge(serviceCharge)}
+                          className="btn btn-ghost btn-sm text-primary hover:bg-primary/10"
+                          title="Edit Service Charge"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center text-base-content/50 py-8">
+                    No service charges found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Add Service Charge Modal */}
       <AddServiceChargeModal
@@ -143,7 +144,8 @@ const ServiceChargesTab = () => {
         onClose={() => setIsAddModalOpen(false)}
         onServiceChargeAdded={() => {
           setIsAddModalOpen(false);
-          // TODO: Refresh service charges list
+          // Refresh service charges list
+          dispatch(fetchServiceCharges());
         }}
       />
     </div>

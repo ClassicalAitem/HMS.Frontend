@@ -1,96 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import { CashierLayout } from '@/layouts/cashier';
-import { FaFileInvoice, FaFileInvoiceDollar } from 'react-icons/fa';
+import { FaUsers, FaFileInvoiceDollar } from 'react-icons/fa';
+import { GoCreditCard } from "react-icons/go";
+import { LuUser } from "react-icons/lu";
 import cashierData from '@/data/cashierData.json';
+import StatCard from '@/components/cashier/dashboard/StatCard';
+import RecentActivity from '@/components/cashier/dashboard/RecentActivity';
+import { Link } from 'react-router-dom';
+import { useAppSelector } from '@/store/hooks';
+import { getMetrics } from '@/services/api/metricsAPI';
 
 const CashierDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
+  const { user } = useAppSelector((state) => state.auth);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [totalPatients, setTotalPatients] = useState(0);
 
   useEffect(() => {
     setDashboardData(cashierData.dashboard);
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const fetchMetrics = async () => {
+      try {
+        setMetricsLoading(true);
+        const res = await getMetrics();
+        const data = res?.data || {};
+        const count = Number(data.totalPatients) || 0;
+        if (mounted) setTotalPatients(count);
+      } catch (e) {
+        if (mounted) setTotalPatients(0);
+      } finally {
+        if (mounted) setMetricsLoading(false);
+      }
+    };
+    fetchMetrics();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <CashierLayout>
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-regular text-primary 2xl:text-4xl">Welcome, Cashier John!</h1>
-            <p className="text-sm text-base-content/70 2xl:text-xs">Manage hospital finances, process payments, and track transactions.</p>
-          </div>
+      {/* Page Header: actions */}
+      <div className="flex items-center justify-between mb-2 2xl:mb-6">
+        <div className="mb-2">
+          <h1 className="text-lg 2xl:text-2xl font-semibold 2xl:font-regular text-primary">{`Welcome, Cashier: ${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</h1>
+          <p className="text-xs text-base-content/70">Manage hospital finances, process payments, and track transactions.</p>
+        </div>
+        <Link to="/cashier/patients" className=" hidden btn btn-outline btn-sm">
+          All Patients
+        </Link>
+      </div>
 
-          {/* Metrics Cards */}
-          <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2">
-            {/* Total Payments Today */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-base-content/70">Total Payments Today</p>
-                  <p className="text-3xl font-bold text-base-content">{dashboardData?.totalPaymentsToday}</p>
-                  <button className="text-sm text-primary hover:underline mt-2">See All</button>
-                </div>
-                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
-                  <FaFileInvoice className="w-6 h-6 text-primary" />
-                </div>
-              </div>
-            </div>
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 gap-2 2xl:gap-6 mb-4 2xl:mb-8 md:grid-cols-2">
+        <StatCard
+          title="Today's Check-ins"
+          value={`${(totalPatients || dashboardData?.todayCheckIns || 0)} Patients`}
+          subtitle={undefined}
+          icon={LuUser}
+          to="/cashier/patients"
+          loading={metricsLoading}
+        />
+        <StatCard
+          title="Pending Invoices"
+          value={dashboardData?.pendingInvoices ?? 56}
+          subtitle={`${dashboardData?.overdueInvoices ?? 3} overdue`}
+          icon={GoCreditCard}
+          loading={!dashboardData}
+        />
+      </div>
 
-            {/* Pending Invoices */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-base-content/70">Pending Invoices</p>
-                  <p className="text-3xl font-bold text-base-content">{dashboardData?.pendingInvoices}</p>
-                  <p className="text-sm text-base-content/50 mt-1">{dashboardData?.overdueInvoices} overdue</p>
-                </div>
-                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
-                  <FaFileInvoiceDollar className="w-6 h-6 text-primary" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="p-6 rounded-lg shadow-lg bg-base-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-base-content">Recent Activity</h2>
-              <p className="text-sm text-base-content/50">Last Updated 1/1/01 12:00AM</p>
-            </div>
-            
-            {/* Activity Cards */}
-            <div className="space-y-4">
-              {dashboardData?.recentActivity?.map((activity) => (
-                <div key={activity.id} className="flex items-center p-4 rounded-lg bg-base-50 border border-base-200">
-                  {/* Patient Photo */}
-                  <div className="flex-shrink-0 mr-4">
-                    <img
-                      src={activity.patientPhoto}
-                      alt={activity.patientName}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  </div>
-                  
-                  {/* Patient Info */}
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold text-base-content">{activity.patientName}</h3>
-                        <p className="text-sm text-base-content/70">Received {activity.time}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-base-content/70">{activity.service}</p>
-                        <p className="text-sm text-base-content/70">Status: {activity.status}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-base-content/70">{activity.hmo}</p>
-                        <p className="text-sm text-base-content/70">{activity.hmo}</p>
-                        <p className="text-lg font-bold text-primary">{activity.amount}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Recent Activity */}
+      <RecentActivity
+        items={dashboardData?.recentActivity || []}
+        lastUpdated={dashboardData?.lastUpdated || '1/1/01 12:00AM'}
+        loading={!dashboardData}
+      />
     </CashierLayout>
   );
 };
