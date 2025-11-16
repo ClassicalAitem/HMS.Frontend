@@ -14,6 +14,10 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     notes: ''
   });
 
+  // Validation state
+  const [dateError, setDateError] = useState('');
+  const [timeError, setTimeError] = useState('');
+
   // Patient search state
   const [query, setQuery] = useState('');
   const [patients, setPatients] = useState([]);
@@ -117,12 +121,71 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     }
   };
 
+  // Validation functions
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const validateDate = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      setDateError('Appointment date cannot be in the past');
+      return false;
+    }
+    setDateError('');
+    return true;
+  };
+
+  const validateTime = (date, time) => {
+    if (!date || !time) return true;
+    
+    const today = new Date();
+    const todayDateString = getTodayDateString();
+    
+    if (date === todayDateString) {
+      const currentTime = getCurrentTimeString();
+      if (time <= currentTime) {
+        setTimeError('Appointment time cannot be in the past for today');
+        return false;
+      }
+    }
+    setTimeError('');
+    return true;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+
+    // Validate based on field
+    if (name === 'appointmentDate') {
+      validateDate(value);
+      // Revalidate time if date changes
+      if (formData.appointmentTime) {
+        validateTime(value, formData.appointmentTime);
+      }
+    } else if (name === 'appointmentTime') {
+      validateTime(formData.appointmentDate, value);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -155,6 +218,8 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     });
     setQuery('');
     setFilteredResults([]);
+    setDateError('');
+    setTimeError('');
   };
 
   if (!isOpen) return null;
