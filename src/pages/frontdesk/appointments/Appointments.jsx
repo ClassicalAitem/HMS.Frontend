@@ -4,6 +4,7 @@ import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
 import { BookAppointmentModal } from '@/components/modals';
+import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
 // import appointmentsData from '@/data/appointments.json';
 import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
@@ -16,6 +17,8 @@ const Appointments = () => {
   const [selectedDate, setSelectedDate] = useState('7/18/17');
   const [filterOpen, setFilterOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
 
   // Load appointments data from backend
   useEffect(() => {
@@ -31,14 +34,16 @@ const Appointments = () => {
         );
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+        console.log('Raw appointment data:', list);
         const mapped = list.map((a, idx) => ({
-          id: idx + 1,
+          id: a?.id || a?._id || a?.appointmentId || idx + 1, // Use actual appointment ID
           patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
           date: a?.appointmentDate || a?.date,
           time: a?.appointmentTime || a?.time,
           appointmentType: a?.department || a?.appointmentType || 'General',
           status: a?.status || 'Active',
         }));
+        console.log('Mapped appointments:', mapped);
         setAppointments(mapped);
       } catch (err) {
         console.error('Load appointments error', err);
@@ -134,6 +139,20 @@ const Appointments = () => {
     return today.toLocaleDateString('en-US', options);
   };
 
+  const handleRowClick = (appointment) => {
+    console.log('Row clicked:', appointment);
+    // Use the actual appointment ID from the API, or fall back to the mapped ID
+    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
+    console.log('Appointment ID:', appointmentId);
+    if (appointmentId) {
+      setSelectedAppointmentId(appointmentId);
+      setIsDetailsModalOpen(true);
+      console.log('Opening modal with ID:', appointmentId);
+    } else {
+      toast.error('No appointment ID found');
+    }
+  };
+
   const handleBookAppointment = async (appointmentData) => {
     try {
       await toast.promise(
@@ -150,7 +169,7 @@ const Appointments = () => {
       const raw = res?.data?.data ?? res?.data ?? [];
       const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
       const mapped = list.map((a, idx) => ({
-        id: idx + 1,
+        id: a?.id || a?._id || a?.appointmentId || idx + 1, // Use actual appointment ID
         patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
         date: a?.appointmentDate || a?.date,
         time: a?.appointmentTime || a?.time,
@@ -246,6 +265,7 @@ const Appointments = () => {
                   maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
                   showEntries={true}
                   searchPlaceholder="Search appointments..."
+                  onRowClick={handleRowClick}
                 />
               </div>
             </div>
@@ -258,6 +278,13 @@ const Appointments = () => {
         isOpen={isBookModalOpen}
         onClose={() => setIsBookModalOpen(false)}
         onSubmit={handleBookAppointment}
+      />
+
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        appointmentId={selectedAppointmentId}
       />
     </div>
   );
