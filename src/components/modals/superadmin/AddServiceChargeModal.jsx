@@ -4,9 +4,11 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaCreditCard } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { useAppDispatch } from '@/store/hooks';
+import { createServiceCharge } from '@/store/slices/serviceChargesSlice';
 
 const addServiceChargeSchema = yup.object({
-  name: yup
+  service: yup
     .string()
     .required('Service name is required')
     .min(2, 'Service name must be at least 2 characters')
@@ -18,16 +20,12 @@ const addServiceChargeSchema = yup.object({
     .number()
     .required('Amount is required')
     .min(1, 'Amount must be at least ₦1')
-    .max(10000000, 'Amount must not exceed ₦10,000,000'),
-  description: yup
-    .string()
-    .required('Description is required')
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must not exceed 500 characters')
+    .max(10000000, 'Amount must not exceed ₦10,000,000')
 });
 
 const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useAppDispatch();
 
   // Sample categories for dropdown
   const categories = [
@@ -53,14 +51,21 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Service charge added:', data);
+      // Convert amount to string as required by API
+      const payload = {
+        service: data.service,
+        category: data.category,
+        amount: data.amount.toString()
+      };
+      
+      console.log('💰 Creating service charge with payload:', payload);
+      await dispatch(createServiceCharge(payload)).unwrap();
+      
       toast.success('Service charge added successfully!');
       reset();
       onServiceChargeAdded();
     } catch (error) {
-      console.error('Error adding service charge:', error);
+      console.error('❌ Error adding service charge:', error);
       toast.error('Failed to add service charge');
     } finally {
       setIsLoading(false);
@@ -104,13 +109,13 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
               </label>
               <input
                 type="text"
-                {...register('name')}
-                className={`input input-bordered w-full ${errors.name ? 'input-error' : ''}`}
+                {...register('service')}
+                className={`input input-bordered w-full ${errors.service ? 'input-error' : ''}`}
                 placeholder="Enter service name"
                 disabled={isLoading}
               />
-              {errors.name && (
-                <p className="text-error text-xs mt-1">{errors.name.message}</p>
+              {errors.service && (
+                <p className="text-error text-xs mt-1">{errors.service.message}</p>
               )}
             </div>
 
@@ -152,23 +157,6 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
               />
               {errors.amount && (
                 <p className="text-error text-xs mt-1">{errors.amount.message}</p>
-              )}
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-base-content/70 mb-2">
-                Description
-              </label>
-              <textarea
-                {...register('description')}
-                rows={3}
-                className={`textarea textarea-bordered w-full ${errors.description ? 'textarea-error' : ''}`}
-                placeholder="Enter service description"
-                disabled={isLoading}
-              />
-              {errors.description && (
-                <p className="text-error text-xs mt-1">{errors.description.message}</p>
               )}
             </div>
           </div>
