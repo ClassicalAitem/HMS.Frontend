@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { IoMdMore } from 'react-icons/io';
+import { IoMdMore, IoMdAlarm } from 'react-icons/io';
+import { BsInbox } from "react-icons/bs";
 import { GiFirstAidKit } from "react-icons/gi";
 import { getAllSurgeries } from '@/services/api/surgeryAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
@@ -182,8 +183,11 @@ const UpcomingSurgeries = () => {
         {/* Surgery List */}
         <div className="space-y-4">
           {surgeries.length === 0 ? (
-            <div className="text-center text-base-content/60 py-4">
-              <p>No upcoming surgeries scheduled</p>
+            <div className="text-center text-base-content/60 bg-secondary/20 rounded-lg py-6">
+              <div className="w-full flex justify-center items-center">
+                <BsInbox className="w-16 h-16 text-primary" />
+              </div>
+              <p className="mt-2">No upcoming surgeries scheduled</p>
             </div>
           ) : (
             surgeries.map((surgery) => (
