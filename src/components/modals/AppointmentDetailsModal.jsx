@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical, FaIdBadge } from 'react-icons/fa';
 import { getAppointmentById } from '@/services/api/appointmentsAPI';
+import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
 
 const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
   const [appointment, setAppointment] = useState(null);
+  const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
 
   console.log('AppointmentDetailsModal props:', { isOpen, appointmentId });
@@ -13,6 +15,10 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
     console.log('Modal useEffect triggered:', { isOpen, appointmentId });
     if (isOpen && appointmentId) {
       fetchAppointmentDetails();
+    } else if (!isOpen) {
+      // Clean up when modal closes
+      setAppointment(null);
+      setPatient(null);
     }
   }, [isOpen, appointmentId]);
 
@@ -22,13 +28,36 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
       console.log('Fetching appointment details for ID:', appointmentId);
       const response = await getAppointmentById(appointmentId);
       console.log('Appointment details response:', response);
-      console.log('Response data:', response?.data);
+      console.log('Response data:', response?.data?.data);
       
-      if (response?.data) {
-        setAppointment(response.data);
+      if (response?.data?.data) {
+        const appointmentData = response.data.data;
+        setAppointment(appointmentData);
+
+        // Fetch patient details if patientId is available
+        if (appointmentData.patientId) {
+          try {
+            console.log('Fetching patient details for ID:', appointmentData.patientId);
+            const pr = await getPatientById(appointmentData.patientId);
+            console.log('Patient details raw payload:', pr);
+            // getPatientById returns axios.data; backend wraps actual patient in pr.data
+            const patientData = pr?.data ?? pr;
+            if (patientData) {
+              console.log('Resolved patient data:', patientData);
+              setPatient(patientData);
+            } else {
+              console.warn('No patient data found for ID:', appointmentData.patientId);
+              setPatient(null);
+            }
+          } catch (patientError) {
+            console.error('Error fetching patient details:', patientError);
+            setPatient(null);
+          }
+        }
       } else {
         console.error('No data in response');
         setAppointment(null);
+      setPatient(null);
         toast.error('No appointment data found');
       }
     } catch (error) {
@@ -148,7 +177,11 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-base-content/70">Patient Name</label>
-                    <p className="text-base font-medium">{appointment.patientName || 'N/A'}</p>
+                    <p className="text-base font-medium">
+                      {patient
+                        ? `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim() || 'N/A'
+                        : 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -238,7 +271,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
                     type="button"
                     onClick={() => {
                       // Add edit functionality here if needed
-                      toast.success('Edit functionality can be added here');
+                      toast.success('Edit functionality i will add its getting camber some kkk');
                     }}
                     className="btn btn-primary"
                   >
