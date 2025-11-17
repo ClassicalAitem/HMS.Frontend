@@ -25,6 +25,8 @@ import Users from "@/pages/admin/users/Users";
 import StaffList from "@/pages/admin/users/StaffList";
 import FrontdeskDashboard from "@/pages/frontdesk/dashboard/Dashboard";
 import Patients from "@/pages/frontdesk/patients/Patients";
+import Surgeries from "@/pages/frontdesk/surgeries/Surgeries";
+import SurgeryDetails from "@/pages/frontdesk/surgeries/SurgeryDetails";
 
 
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
@@ -107,6 +109,16 @@ const AppRoutes = () => {
       <Route path="/frontdesk/registration" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <Registration />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/surgeries" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <Surgeries />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/surgeries/:surgeryId" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <SurgeryDetails />
         </ProtectedRoute>
       } />
 

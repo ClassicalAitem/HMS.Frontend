@@ -6,31 +6,31 @@ curl --location '/metrics' \
 Example Response:
 
 {
-"success": true,
-"code": 200,
-"message": "Operation Successful",
-"data": {
-"totalPatients": 22,
-"totalDependants": 9,
-"totalAdmittedPatients": 2,
-"totalDischargedPatients": 0,
-"totalPassedPatients": 0,
-"totalPendingReceipt": 0,
-"totalInvestigationRequestsPending": 2,
-"totalInStock": 1,
-"totalLowStock": 0,
-"totalOutOfStock": 0,
-"totalLabResultCritical": 0,
-"totalLabResultHigh": 1,
-"totalLabResultLow": 0,
-"totalLabResultNormal": 0,
-"totalTodayVital": 0,
-"totalPatientsCheckIn": 0,
-"totalRevenueToday": 0,
-"totalMonthlyRevenue": 0,
-"totalTodayAppointment": 0,
-"totalDepartments": 0
-}
+    "success": true,
+    "code": 200,
+    "message": "Operation Successful",
+    "data": {
+        "totalPatients": 22,
+        "totalDependants": 9,
+        "totalAdmittedPatients": 2,
+        "totalDischargedPatients": 0,
+        "totalPassedPatients": 0,
+        "totalPendingReceipt": 0,
+        "totalInvestigationRequestsPending": 2,
+        "totalInStock": 1,
+        "totalLowStock": 0,
+        "totalOutOfStock": 0,
+        "totalLabResultCritical": 0,
+        "totalLabResultHigh": 1,
+        "totalLabResultLow": 0,
+        "totalLabResultNormal": 0,
+        "totalTodayVital": 0,
+        "totalPatientsCheckIn": 0,
+        "totalRevenueToday": 0,
+        "totalMonthlyRevenue": 0,
+        "totalTodayAppointment": 0,
+        "totalDepartments": 0
+    }
 }
 
 ======================================================================================================================
