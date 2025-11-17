@@ -18,6 +18,15 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [dateError, setDateError] = useState('');
   const [timeError, setTimeError] = useState('');
 
+  // Get today's date for min attribute
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Patient search state
   const [query, setQuery] = useState('');
   const [patients, setPatients] = useState([]);
@@ -106,13 +115,13 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   const handleKeyDown = (e) => {
     if (!isOpenList) return;
     if (e.key === 'ArrowDown') {
-      e.preventDefault();
+    e.preventDefault();
       setActiveIndex((idx) => Math.min(idx + 1, filteredResults.length - 1));
     } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
+    e.preventDefault();
       setActiveIndex((idx) => Math.max(idx - 1, 0));
     } else if (e.key === 'Enter') {
-      e.preventDefault();
+    e.preventDefault();
       if (activeIndex >= 0 && filteredResults[activeIndex]) {
         selectPatient(filteredResults[activeIndex]);
       }
@@ -189,20 +198,26 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const handleSubmit = (e) => {
+    // Validate form
+    if (!validateDate(formData.appointmentDate) || !validateTime(formData.appointmentDate, formData.appointmentTime)) {
+      toast.error('Please fix the appointment date and time');
+      return;
+    }
+
     e.preventDefault();
-    onSubmit(formData);
-    onClose();
-    // Reset form
-    setFormData({
-      patientId: '',
-      appointmentDate: '',
-      appointmentTime: '',
-      department: '',
-      appointmentType: 'consultation',
-      notes: ''
-    });
-    setQuery('');
-    setFilteredResults([]);
+      onSubmit(formData);
+      onClose();
+      // Reset form
+      setFormData({
+        patientId: '',
+        appointmentDate: '',
+        appointmentTime: '',
+        department: '',
+        appointmentType: 'consultation',
+        notes: ''
+      });
+      setQuery('');
+      setFilteredResults([]);
   };
 
   const handleCancel = () => {
@@ -298,6 +313,12 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   </ul>
                 )}
               </div>
+                {/* {timeError && (
+                  <p className="mt-1 text-xs text-error">{timeError}</p>
+                )} */}
+                {/* {dateError && (
+                  <p className="mt-1 text-xs text-error">{dateError}</p>
+                )} */}
               {/* Helper text */}
               <p className="mt-2 text-xs text-base-content/60">Selected patient ID: {formData.patientId || 'None'}</p>
             </div>
@@ -314,9 +335,12 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   value={formData.appointmentDate}
                   onChange={handleInputChange}
                   placeholder="MM/DD/YYYY"
-                  className="w-full input input-bordered"
+                  className={`w-full input input-bordered ${dateError ? 'input-error' : ''}`}
                   required
                 />
+                {dateError && (
+                  <p className="mt-1 text-xs text-error">{dateError}</p>
+                )}
               </div>
               <div>
                 <label className="block mb-2 text-sm font-medium text-base-content">
@@ -328,9 +352,12 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   value={formData.appointmentTime}
                   onChange={handleInputChange}
                   placeholder="12:00pm"
-                  className="w-full input input-bordered"
+                  className={`w-full input input-bordered ${timeError ? 'input-error' : ''}`}
                   required
                 />
+                {timeError && (
+                  <p className="mt-1 text-xs text-error">{timeError}</p>
+                )}
               </div>
             </div>
 
@@ -400,7 +427,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!formData.patientId}
+                disabled={!formData.patientId || dateError || timeError}
               >
                 Save Appointment
               </button>
