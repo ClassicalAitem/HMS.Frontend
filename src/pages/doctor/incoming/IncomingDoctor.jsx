@@ -3,8 +3,15 @@ import { Header } from "@/components/common";
 import Sidebar from "../../../components/doctor/dashboard/Sidebar";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 import { incomingFromDoctor } from "../../../../data";
+import PatientDetails from "./PatientDetails";
+import { Link, useNavigate } from "react-router-dom";
 
 const IncomingDoctor = () => {
+  const navigate = useNavigate();
+
+  const handleViewPayment = (id) => {
+    navigate(`/dashboard/incoming/patientdetails/${id}`);
+  };
   return (
     <div className="flex h-screen ">
       <Sidebar />
@@ -56,7 +63,13 @@ const IncomingDoctor = () => {
                     </div>
 
                     <div className="flex justify-center mt-10 underline text0[16px]">
-                      <button>{doctorsRequest.paymentDetails}</button>
+                      <button
+                        onClick={() =>
+                          handleViewPayment(doctorsRequest.patientId)
+                        }
+                      >
+                        {doctorsRequest.paymentDetails}
+                      </button>
                     </div>
                   </div>
                 );

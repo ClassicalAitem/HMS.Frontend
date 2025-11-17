@@ -15,7 +15,9 @@ const DoctorDashboard = () => {
         <div className="overflow-y-auto flex-1">
           <section className="p-7">
             <div className="w-[687px]">
-              <h1 className="text-[32px] font-[500]">Welcome, Doctor John</h1>
+              <h1 className="text-[32px] font-[500] text-[#00943C]">
+                Welcome, Doctor John
+              </h1>
               <p className="text-[12px]">
                 Your dashboard provides a comprehensive overview of your daily
                 tasks and patient information.
@@ -37,7 +39,7 @@ const DoctorDashboard = () => {
             </div>
 
             <div>
-              <UpcomingAppointments/>
+              <UpcomingAppointments />
             </div>
           </section>
         </div>

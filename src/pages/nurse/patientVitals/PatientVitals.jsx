@@ -69,7 +69,7 @@ const PatientVitals = () => {
             <div>
               <div>
                 <div className="flex items-center gap-5 ">
-                  <h1 className="text-[32px] text-[#000000] ">All Patients</h1>
+                  <h1 className="text-[32px] text-[#00943C] ">All Patients</h1>
                   <PiUsersThree size={25} />
                 </div>
                 <p className="text-[12px]">View the list of all Patients.</p>
@@ -104,7 +104,9 @@ const PatientVitals = () => {
                       <td className="text-center ">{p.blood}</td>
                       <td className="text-center  ">{p.diagnosis}</td>
                       <td className="text-center">{p.phone}</td>
-                      <td className="p-3 text-[12px] text-center max-w-[220px]">{p.address}</td>
+                      <td className="p-3 text-[12px] text-center max-w-[220px]">
+                        {p.address}
+                      </td>
                       <td className="text-center ">
                         <span
                           className="w-[102px] h-[24px] rounded-full text-[12px] text-[#FFFFFF] font-medium flex items-center justify-center text-center"
@@ -118,8 +120,6 @@ const PatientVitals = () => {
                 </tbody>
               </table>
             </div>
-
-           
           </section>
         </div>
       </div>

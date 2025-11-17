@@ -30,12 +30,12 @@ const Appointment = () => {
               </div>
             </div>
 
-            <div  className="flex justify-between mt-10">
+            <div  className="flex gap-[20px] justify-between mt-10">
               {appointmentsWithDoctor.map((meetings, index) => {
                 return (
                   <div
                     key={index}
-                    className="w-[300px] h-[150px] bg-[#FFFFFF] shadow p-5"
+                    className="w-[300px] h-[150px] bg-[#FFFFFF] shadow p-5 text-[12px]"
                   >
                     <h1 className="text-[16px] text-[#605D66]">
                       {meetings.header}

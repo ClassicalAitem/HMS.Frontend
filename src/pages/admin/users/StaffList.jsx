@@ -64,16 +64,6 @@ const StaffList = () => {
                     <p>DOB:</p>
                     <span>{staffInfo.dob}</span>
                   </div>
-
-                  {/* <p>
-                    Role: <span>{staffInfo.role}</span>
-                  </p>
-                  <p>
-                    Gender: <span>{staffInfo.gender}</span>
-                  </p>
-                  <p>
-                    DOB: <span>{staffInfo.dob} </span>
-                  </p> */}
                 </div>
 
                 <div className="w-[512px]">
@@ -93,16 +83,6 @@ const StaffList = () => {
                     <p>State Of Origin:</p>
                     <span>{staffInfo.stateOfOrigin}</span>
                   </div>
-
-                  {/* <p>
-                    Email Address: <span>{staffInfo.email}</span>{" "}
-                  </p>
-                  <p>
-                    Marital Status: <span>{staffInfo.MaritalStatus}</span>
-                  </p>
-                  <p>
-                    State Of Origin: <span>{staffInfo.stateOfOrigin}</span>{" "}
-                  </p> */}
                 </div>
               </div>
             </div>
