@@ -117,7 +117,30 @@ const Registration = () => {
       console.log('🔄 Registration: Creating new patient');
       console.log('📊 Registration: Patient data:', formData);
       
-      // Prepare data for API (only include HMO if provider is provided)
+      // Prepare data for API
+      const hasExplicitDependants = Array.isArray(formData.dependants) && formData.dependants.length > 0;
+      const hasSingleDependent = formData.dependent && (
+        formData.dependent.firstName || formData.dependent.lastName || formData.dependent.middleName || formData.dependent.relationship || formData.dependent.dob || formData.dependent.gender
+      );
+
+      const normalize = (s) => (typeof s === 'string' ? s.trim() : '');
+      const normalizeDependant = (d) => ({
+        firstName: normalize(d?.firstName),
+        lastName: normalize(d?.lastName),
+        middleName: normalize(d?.middleName),
+        dob: normalize(d?.dob),
+        gender: normalize(d?.gender),
+        relationshipType: normalize(d?.relationshipType ?? d?.relationship),
+      });
+
+      const dependantsPayload = hasExplicitDependants
+        ? formData.dependants
+            .map(normalizeDependant)
+            .filter((d) => d.firstName || d.lastName || d.relationshipType)
+        : (hasSingleDependent
+            ? [normalizeDependant(formData.dependent)]
+            : undefined);
+
       const patientData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -128,6 +151,7 @@ const Registration = () => {
         dob: formData.dob,
         gender: formData.gender,
         nextOfKin: formData.nextOfKin,
+        ...(dependantsPayload ? { dependants: dependantsPayload } : {}),
         ...(formData.hmos[0].provider && {
           hmos: formData.hmos.filter(hmo => hmo.provider)
         })
