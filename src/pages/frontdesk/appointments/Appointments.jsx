@@ -317,6 +317,12 @@ const Appointments = () => {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
+        onUpdated={(updated) => {
+          setAppointments(prev => prev.map(a => (
+            a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
+              { ...a, status: updated?.status } : a
+          )));
+        }}
       />
     </div>
   );

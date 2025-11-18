@@ -145,8 +145,12 @@ const Registration = () => {
           }]
         })
       };
+
+      console.log('🔄 Registration: Sending data to backend in form:', patientData);
       
       console.log('📤 Registration: Final API data being sent:', JSON.stringify(patientData, null, 2));
+
+      // return;
       
       const result = await dispatch(addPatient(patientData));
       
@@ -653,6 +657,20 @@ const Registration = () => {
                           placeholder="Enter phone number"
                           className="w-full input input-bordered"
                         />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-sm text-base-content/70">Gender</label>
+                        <select
+                          name="dependants.gender"
+                          value={formData.dependants.gender}
+                          onChange={handleInputChange}
+                          className="w-full select select-bordered"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
                       </div>
                     </div>
                   </div>

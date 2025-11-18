@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical, FaIdBadge } from 'react-icons/fa';
-import { getAppointmentById } from '@/services/api/appointmentsAPI';
+import { getAppointmentById, updateAppointment } from '@/services/api/appointmentsAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
 
-const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
+const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) => {
   const [appointment, setAppointment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStatus, setEditStatus] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   console.log('AppointmentDetailsModal props:', { isOpen, appointmentId });
 
@@ -210,7 +213,6 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
                 </div>
               </div>
 
-              {/* Appointment Details */}
               <div className="bg-base-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <FaStethoscope className="text-primary" />
@@ -229,9 +231,23 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-base-content/70">Status</label>
-                    <span className={`badge ${getStatusColor(appointment.status)}`}>
-                      {appointment.status || 'Pending'}
-                    </span>
+                    {isEditing ? (
+                      <select
+                        value={editStatus || appointment.status || ''}
+                        onChange={(e) => setEditStatus(e.target.value)}
+                        className="select select-bordered w-full"
+                      >
+                        <option value="scheduled">scheduled</option>
+                        <option value="confirmed">confirmed</option>
+                        <option value="pending">pending</option>
+                        <option value="completed">completed</option>
+                        <option value="cancelled">cancelled</option>
+                      </select>
+                    ) : (
+                      <span className={`badge ${getStatusColor(appointment.status)}`}>
+                        {appointment.status || 'Pending'}
+                      </span>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-base-content/70">Created</label>
@@ -257,7 +273,6 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
                 </div>
               )}
 
-              {/* Action Buttons */}
               <div className="flex gap-3 justify-end pt-4">
                 <button
                   type="button"
@@ -266,17 +281,67 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId }) => {
                 >
                   Close
                 </button>
-                {appointment.id && (
+                {appointment.id && !isEditing && (
                   <button
                     type="button"
                     onClick={() => {
-                      // Add edit functionality here if needed
-                      toast.success('Edit functionality i will add its getting camber some kkk');
+                      setEditStatus(appointment.status || 'scheduled');
+                      setIsEditing(true);
                     }}
                     className="btn btn-primary"
                   >
                     Edit Appointment
                   </button>
+                )}
+                {appointment.id && isEditing && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          setUpdating(true);
+                          const res = await toast.promise(
+                            updateAppointment(appointment.id, { status: editStatus || appointment.status }),
+                            {
+                              loading: 'Updating appointment...',
+                              success: 'Appointment updated',
+                              error: 'Failed to update appointment'
+                            }
+                          );
+                          const updated = res?.data?.data ?? appointment;
+                          setAppointment(updated);
+                          setIsEditing(false);
+                          setUpdating(false);
+                          if (onUpdated) onUpdated(updated);
+                          onClose();
+                        } catch (err) {
+                          setUpdating(false);
+                          console.error('Update appointment failed', err);
+                        }
+                      }}
+                      className="btn btn-primary"
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        <>
+                          <span className="loading loading-spinner loading-sm"></span>
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Changes'
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditStatus(appointment.status || 'scheduled');
+                      }}
+                      className="btn"
+                      >
+                      Cancel
+                    </button>
+                  </>
                 )}
               </div>
             </div>
