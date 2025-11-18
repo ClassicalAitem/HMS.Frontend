@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/cashier/dashboard';
 import { FaTimes, FaPlus, FaTrash, FaFileInvoice } from 'react-icons/fa';
+import { useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { createBill } from '@/services/api/billingAPI';
 
 const GenerateBill = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,6 +15,7 @@ const GenerateBill = () => {
   ]);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [totalAmount, setTotalAmount] = useState(0);
+  const { patientId } = useParams();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -23,7 +27,7 @@ const GenerateBill = () => {
 
   // Sample patient data
   const patient = {
-    id: "P-2025-002",
+    id: patientId || "P-2025-002",
     name: "Leslie Alexander",
     photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     gender: "Female",
@@ -63,6 +67,28 @@ const GenerateBill = () => {
   React.useEffect(() => {
     calculateTotal();
   }, [billItems]);
+
+  const handleGenerateBill = async () => {
+    try {
+      if (!patientId) {
+        toast.error('Missing patient ID');
+        return;
+      }
+
+      const items = billItems.map(({ category, description, rate }) => ({ category, description, rate }));
+      const payload = { items, paymentMethod };
+      const promise = createBill(patientId, payload);
+
+      await toast.promise(promise, {
+        loading: 'Generating bill...',
+        success: 'Bill generated successfully',
+        error: (err) => err?.response?.data?.message || 'Failed to generate bill',
+      }, { duration: 3000 });
+    } catch (error) {
+      // Errors are handled by toast.promise
+      console.error('GenerateBill: error generating bill', error);
+    }
+  };
 
   return (
     <div className="flex h-screen">
@@ -225,7 +251,7 @@ const GenerateBill = () => {
 
             {/* Generate Bill Button */}
             <div className="mt-8">
-              <button className="btn btn-primary btn-lg w-full">
+              <button className="btn btn-primary btn-lg w-full" onClick={handleGenerateBill}>
                 <FaFileInvoice className="w-5 h-5 mr-2" />
                 Generate Bill
               </button>
