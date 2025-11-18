@@ -1,28 +1,52 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
-import { Header, DataTable } from '@/components/common';
-import { Sidebar } from '@/components/superadmin/dashboard';
+import { DataTable } from '@/components/common';
+import { SuperAdminLayout } from '@/layouts/superadmin';
 import { PiUsersThreeDuotone } from 'react-icons/pi';
 import { LuUserRoundCheck } from 'react-icons/lu';
 import { MdOutlineStore } from 'react-icons/md';
 import { FiFileText } from 'react-icons/fi';
-import activitiesData from '@/data/activities.json';
+
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchMetrics } from '../../../store/slices/metricsSlice';
+import { fetchVitals } from '../../../store/slices/vitalsSlice';
 
 const SuperAdminDashboard = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activities, setActivities] = useState([]);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  
+  // Skeleton loader for vitals table
+  const VitalsTableSkeleton = () => (
+    <div className="space-y-3">
+      {[...Array(7)].map((_, index) => (
+        <div key={index} className="flex space-x-4 p-3 bg-base-200 rounded-lg animate-pulse">
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+          <div className="h-6 w-full bg-base-300 rounded"></div>
+        </div>
+      ))}
+    </div>
+  );
+  const dispatch = useAppDispatch();
+  const { metrics, isLoading, error } = useAppSelector((state) => state.metrics);
+  const { vitals, isLoading: vitalsLoading, error: vitalsError } = useAppSelector((state) => state.vitals);
 
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  // Debug: Log metrics and vitals data
+  useEffect(() => {
+    console.log('📊 Dashboard - Metrics state:', metrics);
+    console.log('📊 Dashboard - isLoading:', isLoading);
+    console.log('📊 Dashboard - error:', error);
+    console.log('🩺 Dashboard - Vitals state:', vitals);
+    console.log('🩺 Dashboard - vitalsLoading:', vitalsLoading);
+    console.log('🩺 Dashboard - vitalsError:', vitalsError);
+  }, [metrics, isLoading, error, vitals, vitalsLoading, vitalsError]);
 
   useEffect(() => {
-    setActivities(activitiesData);
-  }, []);
+    // Fetch both metrics and vitals data
+    dispatch(fetchMetrics());
+    dispatch(fetchVitals());
+  }, [dispatch]);
 
   const getCurrentDate = () => {
     const now = new Date();
@@ -35,164 +59,204 @@ const SuperAdminDashboard = () => {
     return now.toLocaleDateString('en-US', options);
   };
 
-  const getStatusBadgeClass = (statusColor) => {
-    switch (statusColor) {
-      case 'green':
-        return 'bg-green-100 text-green-800';
-      case 'orange':
-        return 'bg-orange-100 text-orange-800';
-      case 'red':
-        return 'bg-red-100 text-red-800';
-      case 'blue':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Skeleton loader component for metrics cards
+  const MetricsSkeleton = () => (
+    <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+      <div className="flex flex-col justify-between items-center">
+        <div className="flex justify-start items-center rounded-lg bg-primary/10">
+          <div className="w-6 h-6 bg-base-300 animate-pulse rounded"></div>
+        </div>
+        <div className="flex flex-col justify-center items-center mt-2">
+          <div className="h-4 w-24 bg-base-300 animate-pulse rounded mb-2"></div>
+          <div className="h-8 w-16 bg-base-300 animate-pulse rounded"></div>
+        </div>
+      </div>
+    </div>
+  );
 
+  // Define table columns for vitals
   const columns = useMemo(() => [
     {
-      key: 'type',
-      title: 'Type',
+      key: 'patientId',
+      title: 'Patient ID',
       sortable: true,
       className: 'font-medium text-base-content'
     },
     {
-      key: 'description',
-      title: 'Description',
+      key: 'bp',
+      title: 'Blood Pressure',
       sortable: true,
       className: 'text-base-content/70'
     },
     {
-      key: 'status',
-      title: 'Status',
+      key: 'temperature',
+      title: 'Temperature',
       sortable: true,
       className: 'text-base-content/70',
-      render: (value, row) => <getStatusBadgeClass status={value} color={row.statusColor} />
+      render: (value) => `${value}°F`
     },
     {
-      key: 'timestamp',
-      title: 'Timestamp',
+      key: 'pulse',
+      title: 'Pulse',
       sortable: true,
-      className: 'text-base-content/70'
+      className: 'text-base-content/70',
+      render: (value) => `${value} bpm`
+    },
+    {
+      key: 'weight',
+      title: 'Weight',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => `${value} kg`
+    },
+    {
+      key: 'spo2',
+      title: 'SpO2',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => `${value}%`
+    },
+    {
+      key: 'createdAt',
+      title: 'Recorded At',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => new Date(value).toLocaleString()
     }
   ], []);
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+    <SuperAdminLayout>
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-lg font-regular text-base-content 2xl:text-2xl">Super Admin Dashboard</h1>
+            <h1 className="text-lg font-medium text-primary 2xl:text-2xl">Super Admin Dashboard</h1>
             <p className="text-xs text-base-content/70 2xl:text-base">
               Welcome back, Super Admin. Here's a summary of your hospital's current status for {getCurrentDate()}.
             </p>
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="alert alert-error mb-4">
+              <span>Error loading metrics: {error}</span>
+            </div>
+          )}
+
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
             {/* Total Patients */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <PiUsersThreeDuotone className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Total Patients</p>
-                  <p className="text-2xl font-regular text-primary">5,234</p>
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <PiUsersThreeDuotone className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Total Patients</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalPatients ? metrics.totalPatients.toLocaleString() : '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Total Staff */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <LuUserRoundCheck className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Total Staff</p>
-                  <p className="text-2xl font-regular text-primary">875</p>
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <LuUserRoundCheck className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Total Staff</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalActiveStaff ? metrics.totalActiveStaff.toLocaleString() : '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Total Departments */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <MdOutlineStore className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Total Departments</p>
-                  <p className="text-2xl font-regular text-primary">32</p>
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <MdOutlineStore className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Total Departments</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalDepartments ? metrics.totalDepartments.toLocaleString() : '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Pending Reports */}
-            <div className="p-6 rounded-lg shadow-lg bg-base-100">
-              <div className="flex flex-col justify-between items-center">
-                <div className="flex justify-center items-center rounded-lg bg-primary/10">
-                  <FiFileText className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex flex-col justify-center items-center">
-                  <p className="text-sm font-medium text-base-content/70">Pending Reports</p>
-                  <p className="text-2xl font-regular text-primary">5</p>
+            {/* Total Admitted Patients */}
+            {isLoading ? (
+              <MetricsSkeleton />
+            ) : (
+              <div className="p-6 rounded-lg border shadow-lg bg-base-100 border-content/40">
+                <div className="flex flex-col justify-between items-center">
+                  <div className="flex justify-start items-center rounded-lg bg-primary/10">
+                    <FiFileText className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center items-center">
+                    <p className="text-sm font-medium text-base-content/70">Admitted Patients</p>
+                    <p className="mt-1 text-2xl font-semibold text-content">
+                      {metrics?.totalAdmittedPatients ? metrics.totalAdmittedPatients.toLocaleString() : '0'}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
 
 
           </div>
           
 
-          {/* Recent System Activities */}
+          {/* Recent Vitals Data */}
           <div className="p-6 rounded-lg shadow-lg bg-base-100">
             <div className="mb-6">
-              <h2 className="text-md font-regular text-base-content">Recent System Activities</h2>
-              <p className="text-xs 2xl:text-base text-base-content/70">Latest system notifications and critical events.</p>
+              <h2 className="text-lg font-medium text-primary 2xl:text-2xl">Recent Vitals Data</h2>
+              <p className="text-xs 2xl:text-base text-base-content/70">Latest patient vital signs recorded in the system.</p>
             </div>
             
-            {/* Activities Table */}
-            <DataTable
-              data={activities}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              paginated={true}
-              initialEntriesPerPage={5}
-              maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-              showEntries={true}
-              searchPlaceholder="Search activities..."
-            />
+            {/* Error Display for Vitals */}
+            {vitalsError && (
+              <div className="alert alert-error mb-4">
+                <span>Error loading vitals: {vitalsError}</span>
+              </div>
+            )}
+            
+            {/* Vitals Table */}
+            {vitalsLoading ? (
+              <VitalsTableSkeleton />
+            ) : (
+              <DataTable
+                data={vitals || []}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={5}
+                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-100"
+                showEntries={true}
+                searchPlaceholder="Search vitals..."
+              />
+            )}
           </div>
-        </div>
-      </div>
-    </div>
+    </SuperAdminLayout>
   );
 };
 

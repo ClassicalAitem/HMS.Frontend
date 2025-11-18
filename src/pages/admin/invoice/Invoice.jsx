@@ -33,7 +33,7 @@ const Invoice = () => {
                 Here's a summary of all generated invoices for Thursday,
                 September 11, 2025.
               </p>
-              <button className="flex items-center gap-2 bg-[#F1F2F1]  border-[#605D67] px-3 py-2 rounded-md text-sm text-[#605D66]">
+              <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70">
                 <img src={doctorIcon} alt="" />
 
                 <p>1/5/12</p>
@@ -46,7 +46,7 @@ const Invoice = () => {
                 return (
                   <div
                     key={index}
-                    className="w-full h-[190px] border border-[#AEAAAE] rounded-[10px] p-4  font-[400]"
+                    className="w-full h-[190px] border border-base-300 rounded-[10px] p-4  font-[400]"
                   >
                     <div className="flex items-center justify-between">
                       <img
@@ -54,7 +54,7 @@ const Invoice = () => {
                         alt="..."
                         className="w-[35px] h-[35px]"
                       />
-                      <span className="text-[#605D66]">{invoice.date}</span>
+                      <span className="text-base-content/70">{invoice.date}</span>
                     </div>
 
                     {/* heading */}
@@ -76,10 +76,10 @@ const Invoice = () => {
               })}
             </div>
             <div className="w-[301px] flex justify-between mx-auto mt-10">
-              <button className="w-[133px] h-[39px] border border-[#AEAAAE] rounded-[20px] ">
+              <button className="w-[133px] h-[39px] border border-base-300 rounded-[20px] ">
                 Back
               </button>
-              <button className="w-[133px] h-[39px] bg-[#00943C] text-[#FFFFFF] rounded-[20px]">
+              <button className="w-[133px] h-[39px] bg-primary text-primary-content rounded-[20px]">
                 Next
               </button>
             </div>
