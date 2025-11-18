@@ -1,47 +1,58 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaUpload, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { useAppDispatch } from '../../../store/hooks';
+import { addPatient } from '../../../store/slices/patientsSlice';
+import toast from 'react-hot-toast';
 
 const Registration = () => {
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hmoExpanded, setHmoExpanded] = useState(false);
   const [dependentExpanded, setDependentExpanded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    // First Section
-    surname: '',
+    // Patient Basic Info (matching backend API)
     firstName: '',
+    lastName: '',
     middleName: '',
+    email: '',
+    phone: '',
     address: '',
-    phoneNumber: '',
-    dateOfBirth: '',
+    dob: '',
     gender: '',
-    stateOfOrigin: '',
-    town: '',
-    lga: '',
     
-    // Second Section - Next of Kin
-    nokFirstName: '',
-    nokLastName: '',
-    nokRelationship: '',
-    nokPhoneNumber: '',
-    nokAddress: '',
+    // Next of Kin (matching backend API structure)
+    nextOfKin: {
+      name: '',
+      phone: '',
+      relationship: ''
+    },
     
     // Patient Photo
     patientPhoto: null,
     
-    // HMO Section
-    hmoProvider: '',
-    hmoNumber: '',
-    hmoPlan: '',
-    hmoExpiringDate: '',
+    // HMO Section (matching backend API structure)
+    hmos: [
+      {
+        provider: '',
+        memberId: '',
+        plan: '',
+        expiresAt: ''
+      }
+    ],
     
-    // Dependent Section
-    dependentFirstName: '',
-    dependentLastName: '',
-    dependentRelationship: '',
-    dependentPhoneNumber: ''
+    // Dependent Section (for future use)
+    dependent: {
+      firstName: '',
+      lastName: '',
+      relationship: '',
+      phone: ''
+    }
   });
 
   const toggleSidebar = () => {
@@ -54,10 +65,40 @@ const Registration = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle nested nextOfKin fields
+    if (name.startsWith('nextOfKin.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        nextOfKin: {
+          ...prev.nextOfKin,
+          [field]: value
+        }
+      }));
+    } else if (name.startsWith('hmo.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        hmos: prev.hmos.map((hmo, index) => 
+          index === 0 ? { ...hmo, [field]: value } : hmo
+        )
+      }));
+    } else if (name.startsWith('dependent.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        dependent: {
+          ...prev.dependent,
+          [field]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleFileChange = (e) => {
@@ -68,10 +109,105 @@ const Registration = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    // Handle form submission logic here
+    setIsLoading(true);
+    
+    try {
+      console.log('🔄 Registration: Creating new patient');
+      console.log('📊 Registration: Patient data:', formData);
+      
+      // Prepare data for API
+      const hasExplicitDependants = Array.isArray(formData.dependants) && formData.dependants.length > 0;
+      const hasSingleDependent = formData.dependent && (
+        formData.dependent.firstName || formData.dependent.lastName || formData.dependent.middleName || formData.dependent.relationship || formData.dependent.dob || formData.dependent.gender
+      );
+
+      const normalize = (s) => (typeof s === 'string' ? s.trim() : '');
+      const normalizeDependant = (d) => ({
+        firstName: normalize(d?.firstName),
+        lastName: normalize(d?.lastName),
+        middleName: normalize(d?.middleName),
+        dob: normalize(d?.dob),
+        gender: normalize(d?.gender),
+        relationshipType: normalize(d?.relationshipType ?? d?.relationship),
+      });
+
+      const dependantsPayload = hasExplicitDependants
+        ? formData.dependants
+            .map(normalizeDependant)
+            .filter((d) => d.firstName || d.lastName || d.relationshipType)
+        : (hasSingleDependent
+            ? [normalizeDependant(formData.dependent)]
+            : undefined);
+
+      const patientData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        middleName: formData.middleName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        dob: formData.dob,
+        gender: formData.gender,
+        nextOfKin: formData.nextOfKin,
+        ...(dependantsPayload ? { dependants: dependantsPayload } : {}),
+        ...(formData.hmos[0].provider && {
+          hmos: formData.hmos.filter(hmo => hmo.provider)
+        })
+      };
+      
+      console.log('📤 Registration: Final API data being sent:', JSON.stringify(patientData, null, 2));
+      
+      const result = await dispatch(addPatient(patientData));
+      
+      if (addPatient.fulfilled.match(result)) {
+        toast.success('Patient registered successfully!');
+        console.log('✅ Registration: Patient created:', result.payload);
+        
+        // Reset form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          middleName: '',
+          email: '',
+          phone: '',
+          address: '',
+          dob: '',
+          gender: '',
+          nextOfKin: {
+            name: '',
+            phone: '',
+            relationship: '',
+          },
+          patientPhoto: null,
+          hmos: [
+            {
+              provider: '',
+              memberId: '',
+              plan: '',
+              expiresAt: ''
+            }
+          ],
+          dependent: {
+            firstName: '',
+            lastName: '',
+            relationship: '',
+            phone: ''
+          }
+        });
+        
+        // Navigate to patients list
+        navigate('/frontdesk/patients');
+      } else {
+        toast.error('Failed to register patient');
+      }
+    } catch (error) {
+      console.error('❌ Registration: Registration error:', error);
+      toast.error('Failed to register patient');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -101,7 +237,7 @@ const Registration = () => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Add Patients Information</h1>
+            <h1 className="pl-6 text-2xl font-normal text-primary 2xl:text-3xl">Add Patients Information</h1>
           </div>
 
           {/* Registration Form */}
@@ -116,25 +252,27 @@ const Registration = () => {
                   <h3 className="mb-3 text-base font-medium text-base-content">Names</h3>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Surname</label>
-                      <input
-                        type="text"
-                        name="surname"
-                        value={formData.surname}
-                        onChange={handleInputChange}
-                        placeholder="Enter Your name"
-                        className="w-full input input-bordered"
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm text-base-content/70">First Name</label>
+                      <label className="block mb-1 text-sm text-base-content/70">First Name *</label>
                       <input
                         type="text"
                         name="firstName"
                         value={formData.firstName}
                         onChange={handleInputChange}
-                        placeholder="Enter Your name"
+                        placeholder="Enter first name"
                         className="w-full input input-bordered"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-sm text-base-content/70">Last Name *</label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        placeholder="Enter last name"
+                        className="w-full input input-bordered"
+                        required
                       />
                     </div>
                     <div>
@@ -144,7 +282,7 @@ const Registration = () => {
                         name="middleName"
                         value={formData.middleName}
                         onChange={handleInputChange}
-                        placeholder="Enter Your name"
+                        placeholder="Enter middle name"
                         className="w-full input input-bordered"
                       />
                     </div>
@@ -167,43 +305,58 @@ const Registration = () => {
                   </div>
                 </div>
 
-                {/* Phone, DOB, Gender Row */}
-                <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-3">
+                {/* Contact Information */}
+                <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">Phone Number</h3>
-                    <label className="block mb-1 text-sm text-base-content/70">Enter Your Phone Number</label>
+                    <label className="block mb-1 text-sm text-base-content/70">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="Enter email address"
+                      className="w-full input input-bordered"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm text-base-content/70">Phone Number *</label>
                     <input
                       type="tel"
-                      name="phoneNumber"
-                      value={formData.phoneNumber}
+                      name="phone"
+                      value={formData.phone}
                       onChange={handleInputChange}
-                      placeholder="Enter Your number"
+                      placeholder="Enter phone number"
                       className="w-full input input-bordered"
+                      required
                     />
                   </div>
+                </div>
+
+                {/* DOB and Gender */}
+                <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">Date Of Birth</h3>
-                    <label className="block mb-1 text-sm text-base-content/70">DD/MM/YY</label>
+                    <label className="block mb-1 text-sm text-base-content/70">Date of Birth *</label>
                     <input
                       type="date"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
+                      name="dob"
+                      value={formData.dob}
                       onChange={handleInputChange}
                       className="w-full input input-bordered"
+                      required
                     />
                   </div>
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">Gender</h3>
-                    <label className="block mb-1 text-sm text-base-content/70">M / F</label>
+                    <label className="block mb-1 text-sm text-base-content/70">Gender *</label>
                     <select
                       name="gender"
                       value={formData.gender}
                       onChange={handleInputChange}
                       className="w-full select select-bordered"
+                      required
                     >
-                      <option value="">male/female</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
+                      <option value="">Select Gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
                     </select>
                   </div>
                 </div>
@@ -265,70 +418,60 @@ const Registration = () => {
                   <h3 className="mb-3 text-base font-medium text-base-content">Next Of Kin</h3>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <label className="block mb-1 text-sm text-base-content/70">First name</label>
+                      <label className="block mb-1 text-sm text-base-content/70">Name</label>
                       <input
                         type="text"
-                        name="nokFirstName"
-                        value={formData.nokFirstName}
+                        name="nextOfKin.name"
+                        value={formData.nextOfKin.name}
                         onChange={handleInputChange}
-                        placeholder="Next of kin"
+                        placeholder="Enter next of kin name"
                         className="w-full input input-bordered"
                       />
                     </div>
                     <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
+                      <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
                       <input
-                        type="text"
-                        name="nokLastName"
-                        value={formData.nokLastName}
+                        type="tel"
+                        name="nextOfKin.phone"
+                        value={formData.nextOfKin.phone}
                         onChange={handleInputChange}
-                        placeholder="Next of kin"
+                        placeholder="Enter phone number"
                         className="w-full input input-bordered"
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Relationship and Phone */}
+                {/* Relationship and Address */}
                 <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2">
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">Relationship</h3>
                     <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
-                    <input
-                      type="text"
-                      name="nokRelationship"
-                      value={formData.nokRelationship}
+                    <select
+                      name="nextOfKin.relationship"
+                      value={formData.nextOfKin.relationship}
                       onChange={handleInputChange}
-                      placeholder="Sister"
-                      className="w-full input input-bordered"
+                      className="w-full select select-bordered"
+                    >
+                      <option value="">Select Relationship</option>
+                      <option value="spouse">Spouse</option>
+                      <option value="parent">Parent</option>
+                      <option value="child">Child</option>
+                      <option value="sibling">Sibling</option>
+                      <option value="friend">Friend</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div className='hidden'>
+                    <label className="block mb-1 text-sm text-base-content/70">Address</label>
+                    <textarea
+                      name="nextOfKin.address"
+                      value={formData.nextOfKin.address}
+                      onChange={handleInputChange}
+                      placeholder="Enter address"
+                      className="w-full textarea textarea-bordered"
+                      rows={2}
                     />
                   </div>
-                  <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">Phone Number</h3>
-                    <label className="block mb-1 text-sm text-base-content/70">Enter Your Phone Number</label>
-                    <input
-                      type="tel"
-                      name="nokPhoneNumber"
-                      value={formData.nokPhoneNumber}
-                      onChange={handleInputChange}
-                      placeholder="09090000"
-                      className="w-full input input-bordered"
-                    />
-                  </div>
-                </div>
-
-                {/* NOK Address */}
-                <div>
-                  <h3 className="mb-3 text-base font-medium text-base-content">Address</h3>
-                  <label className="block mb-1 text-sm text-base-content/70">enter your address</label>
-                  <textarea
-                    name="nokAddress"
-                    value={formData.nokAddress}
-                    onChange={handleInputChange}
-                    placeholder="Enter Your address"
-                    className="w-full textarea textarea-bordered"
-                    rows={3}
-                  />
                 </div>
               </div>
             </div>
@@ -340,11 +483,11 @@ const Registration = () => {
                 <p className="mb-4 text-sm text-base-content/70">
                   Upload a clear photo of the patient (.JPG/.PNG). This will be attached to the patient record.
                 </p>
-                <div className="p-8 border-2 border-dashed rounded-lg border-base-300">
+                <div className="p-8 rounded-lg border-2 border-dashed border-base-300">
                   <div className="flex flex-col items-center">
                     <FaUpload className="mb-4 text-4xl text-base-content/50" />
                     <label className="btn btn-outline btn-sm">
-                      <FaUpload className="w-4 h-4 mr-2" />
+                      <FaUpload className="mr-2 w-4 h-4" />
                       Choose Image
                       <input
                         type="file"
@@ -370,7 +513,7 @@ const Registration = () => {
                 <button
                   type="button"
                   onClick={() => setHmoExpanded(!hmoExpanded)}
-                  className="flex justify-between items-center w-full mb-4 text-lg font-semibold text-left text-base-content"
+                  className="flex justify-between items-center mb-4 w-full text-lg font-semibold text-left text-base-content"
                 >
                   Connect To HMO
                   {hmoExpanded ? <FaChevronUp /> : <FaChevronDown />}
@@ -380,50 +523,46 @@ const Registration = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">HMO Provider</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Enter provider</label>
+                        <label className="block mb-1 text-sm text-base-content/70">HMO Provider</label>
                         <input
                           type="text"
-                          name="hmoProvider"
-                          value={formData.hmoProvider}
+                          name="hmo.provider"
+                          value={formData.hmos[0].provider}
                           onChange={handleInputChange}
-                          placeholder="Avon Industries"
+                          placeholder="e.g., Bastion, Avon"
                           className="w-full input input-bordered"
                         />
                       </div>
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">HMO Number</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Enter HMO Number</label>
+                        <label className="block mb-1 text-sm text-base-content/70">Member ID</label>
                         <input
                           type="text"
-                          name="hmoNumber"
-                          value={formData.hmoNumber}
+                          name="hmo.memberId"
+                          value={formData.hmos[0].memberId}
                           onChange={handleInputChange}
-                          placeholder="091919"
+                          placeholder="e.g., 34758H90938"
                           className="w-full input input-bordered"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">HMO plan</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">HMO Plan</label>
+                        <label className="block mb-1 text-sm text-base-content/70">Plan</label>
                         <input
                           type="text"
-                          name="hmoPlan"
-                          value={formData.hmoPlan}
+                          name="hmo.plan"
+                          value={formData.hmos[0].plan}
                           onChange={handleInputChange}
-                          placeholder="Premium"
+                          placeholder="e.g., Diamond, Premium"
                           className="w-full input input-bordered"
                         />
                       </div>
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">Add Expiring Date</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Enter expiring Date</label>
+                        <label className="block mb-1 text-sm text-base-content/70">Expiry Date</label>
                         <input
                           type="date"
-                          name="hmoExpiringDate"
-                          value={formData.hmoExpiringDate}
+                          name="hmo.expiresAt"
+                          value={formData.hmos[0].expiresAt}
                           onChange={handleInputChange}
                           className="w-full input input-bordered"
                         />
@@ -440,7 +579,7 @@ const Registration = () => {
                 <button
                   type="button"
                   onClick={() => setDependentExpanded(!dependentExpanded)}
-                  className="flex justify-between items-center w-full mb-4 text-lg font-semibold text-left text-base-content"
+                  className="flex justify-between items-center mb-4 w-full text-lg font-semibold text-left text-base-content"
                 >
                   Add Dependent
                   {dependentExpanded ? <FaChevronUp /> : <FaChevronDown />}
@@ -450,58 +589,53 @@ const Registration = () => {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">First Name</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Name</label>
+                        <label className="block mb-1 text-sm text-base-content/70">First Name</label>
                         <input
                           type="text"
-                          name="dependentFirstName"
-                          value={formData.dependentFirstName}
+                          name="dependent.firstName"
+                          value={formData.dependent.firstName}
                           onChange={handleInputChange}
-                          placeholder="Tosan"
+                          placeholder="Enter first name"
                           className="w-full input input-bordered"
                         />
                       </div>
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">Last Name</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Name"</label>
+                        <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
                         <input
                           type="text"
-                          name="dependentLastName"
-                          value={formData.dependentLastName}
+                          name="dependent.lastName"
+                          value={formData.dependent.lastName}
                           onChange={handleInputChange}
-                          placeholder="Oluwaseun"
+                          placeholder="Enter last name"
                           className="w-full input input-bordered"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">Relationship</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Enter Relationship</label>
+                        <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
                         <select
-                          name="dependentRelationship"
-                          value={formData.dependentRelationship}
+                          name="dependent.relationship"
+                          value={formData.dependent.relationship}
                           onChange={handleInputChange}
                           className="w-full select select-bordered"
                         >
-                          <option value="">Wife</option>
-                          <option value="Wife">Wife</option>
-                          <option value="Husband">Husband</option>
-                          <option value="Son">Son</option>
-                          <option value="Daughter">Daughter</option>
-                          <option value="Father">Father</option>
-                          <option value="Mother">Mother</option>
+                          <option value="">Select Relationship</option>
+                          <option value="spouse">Spouse</option>
+                          <option value="child">Child</option>
+                          <option value="parent">Parent</option>
+                          <option value="sibling">Sibling</option>
+                          <option value="other">Other</option>
                         </select>
                       </div>
                       <div>
-                        <h3 className="mb-3 text-base font-medium text-base-content">Phone Number</h3>
-                        <label className="block mb-1 text-sm text-base-content/70">Enter Number</label>
+                        <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
                         <input
                           type="tel"
-                          name="dependentPhoneNumber"
-                          value={formData.dependentPhoneNumber}
+                          name="dependent.phone"
+                          value={formData.dependent.phone}
                           onChange={handleInputChange}
-                          placeholder="0909000000"
+                          placeholder="Enter phone number"
                           className="w-full input input-bordered"
                         />
                       </div>
@@ -513,8 +647,19 @@ const Registration = () => {
 
             {/* Submit Button */}
             <div className="flex justify-center">
-              <button type="submit" className="btn btn-primary btn-wide">
-                Register Now
+              <button 
+                type="submit" 
+                className="btn btn-primary btn-wide"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Registering...
+                  </>
+                ) : (
+                  'Register Now'
+                )}
               </button>
             </div>
           </form>
