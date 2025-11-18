@@ -9,7 +9,7 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { loginSchema } from "../../../utils/formValidator";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { loginUser, clearError } from "../../store/slices/authSlice";
+import { loginUser, clearError, logoutUser } from "../../store/slices/authSlice";
 import toast from "react-hot-toast";
 import AuthTest from "../../components/common/AuthTest";
 import RouteProtectionTest from "../../components/common/RouteProtectionTest";
@@ -25,7 +25,7 @@ const Login = () => {
   const { currentTheme } = useTheme();
   
   // Redux state
-  const { isLoading, error, isAuthenticated, user, needsPasswordChange } = useAppSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, user, needsPasswordChange, token } = useAppSelector((state) => state.auth);
   
   // Local state
   const [showPassword, setShowPassword] = useState(false);
@@ -74,6 +74,20 @@ const Login = () => {
   // Redirect if user is already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
+      let expired = false;
+      try {
+        const parts = String(token || '').split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(decodeURIComponent(escape(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))));
+          const expMs = Number(payload?.exp || 0) * 1000;
+          expired = expMs > 0 && Date.now() >= expMs;
+        }
+      } catch {}
+
+      if (expired) {
+        dispatch(logoutUser());
+        return;
+      }
       console.log('🔄 Login: User already authenticated, redirecting...');
       console.log('🔄 Login: User role:', user.role);
       console.log('🔄 Login: Needs password change:', needsPasswordChange);
@@ -107,7 +121,7 @@ const Login = () => {
       console.log('🔄 Login: Redirecting to:', redirectPath);
       navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, user, needsPasswordChange, navigate, location.state]);
+  }, [isAuthenticated, user, needsPasswordChange, navigate, location.state, token, dispatch]);
 
   const onSubmit = async (data) => {
     console.log('🚀 Login: Starting login process');

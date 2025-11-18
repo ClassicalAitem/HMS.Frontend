@@ -238,8 +238,6 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
                         className="select select-bordered w-full"
                       >
                         <option value="scheduled">scheduled</option>
-                        <option value="confirmed">confirmed</option>
-                        <option value="pending">pending</option>
                         <option value="completed">completed</option>
                         <option value="cancelled">cancelled</option>
                       </select>
