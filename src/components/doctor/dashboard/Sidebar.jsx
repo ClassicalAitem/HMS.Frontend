@@ -13,43 +13,12 @@ const Sidebar = () => {
   const location = useLocation();
 
   const menuItems = [
-    {
-      icon: FaThLarge,
-      label: "Dashboard",
-      path: "/dashboard/doctor",
-      active: location.pathname === "/dashboard",
-    },
-    {
-      icon: FaSuitcaseMedical,
-      label: "Incoming",
-      path: "/dashboard/doctor/incoming",
-      active: location.pathname === "/incoming",
-    },
-    {
-      icon: SlCalender,
-      label: "Appointments",
-      path: "/dashboard/doctor/appointments",
-      active: location.pathname === "/appointments",
-    },
-    {
-      icon: GoChecklist,
-      label: "Lab Results",
-      path: "/dashboard/doctor/labResults",
-      active: location.pathname === "/patients",
-    },
-    {
-      icon: FaUsers,
-      label: "All Patients",
-      path: "/dashboard/doctor/allPatients",
-      active: location.pathname === "/patients",
-    },
-
-    {
-      icon: IoMenu,
-      label: "Assigned Task",
-      path: "/dashboard/doctor/assign-task",
-      active: location.pathname === "/appointments",
-    },
+    { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor" },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming" },
+    { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
+    { icon: GoChecklist, label: "Lab Results", path: "/dashboard/doctor/labResults" },
+    { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
+    { icon: IoMenu, label: "Assigned Task", path: "/dashboard/doctor/assign-task" },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active }) => (
@@ -99,7 +68,7 @@ const Sidebar = () => {
               icon={item.icon}
               label={item.label}
               path={item.path}
-              active={item.active}
+              active={item.path === "/dashboard/doctor" ? (location.pathname === item.path) : location.pathname.startsWith(item.path)}
             />
           ))}
         </nav>
