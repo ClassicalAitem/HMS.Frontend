@@ -25,6 +25,8 @@ import Users from "@/pages/admin/users/Users";
 import StaffList from "@/pages/admin/users/StaffList";
 import FrontdeskDashboard from "@/pages/frontdesk/dashboard/Dashboard";
 import Patients from "@/pages/frontdesk/patients/Patients";
+import Surgeries from "@/pages/frontdesk/surgeries/Surgeries";
+import SurgeryDetails from "@/pages/frontdesk/surgeries/SurgeryDetails";
 
 
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
@@ -44,7 +46,7 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
-import Incoming from "@/pages/cashier/incoming/Incoming";
+import CashierIncoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
 import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
@@ -54,6 +56,8 @@ import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 import { BookAppointmentModal } from "@/components/modals";
 import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
+import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
+import NurseIncoming from "@/pages/nurse/incoming/Incoming";
 
 const AppRoutes = () => {
   return (
@@ -107,6 +111,16 @@ const AppRoutes = () => {
           <Registration />
         </ProtectedRoute>
       } />
+      <Route path="/frontdesk/surgeries" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <Surgeries />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/surgeries/:surgeryId" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <SurgeryDetails />
+        </ProtectedRoute>
+      } />
 
 
       {/*==============================================================================================================
@@ -129,9 +143,14 @@ const AppRoutes = () => {
           <PatientVitals />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/patient/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <PatientVitalsDetails />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/nurse/incoming" element={
         <ProtectedRoute allowedRoles={['nurse']}>
-          <Incoming />
+          <NurseIncoming />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/nurse/appointments" element={
@@ -288,7 +307,7 @@ const AppRoutes = () => {
       } />
       <Route path="/cashier/incoming" element={
         <ProtectedRoute allowedRoles={['cashier']}>
-          <Incoming />
+          <CashierIncoming />
         </ProtectedRoute>
       } />
       <Route path="/cashier/patients" element={
@@ -301,7 +320,7 @@ const AppRoutes = () => {
           <PaymentRecords />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/patient-details" element={
+      <Route path="/cashier/patient-details/:patientId" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierPatientDetails />
         </ProtectedRoute>

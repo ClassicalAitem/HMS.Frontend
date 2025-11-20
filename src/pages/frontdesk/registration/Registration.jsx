@@ -46,11 +46,13 @@ const Registration = () => {
       }
     ],
     
-    // Dependent Section (for future use)
-    dependent: {
+    dependants: {
       firstName: '',
+      middleName: '',
       lastName: '',
-      relationship: '',
+      dob: '',
+      gender: '',
+      relationshipType: '',
       phone: ''
     }
   });
@@ -84,12 +86,12 @@ const Registration = () => {
           index === 0 ? { ...hmo, [field]: value } : hmo
         )
       }));
-    } else if (name.startsWith('dependent.')) {
+    } else if (name.startsWith('dependants.')) {
       const field = name.split('.')[1];
       setFormData(prev => ({
         ...prev,
-        dependent: {
-          ...prev.dependent,
+        dependants: {
+          ...prev.dependants,
           [field]: value
         }
       }));
@@ -130,10 +132,25 @@ const Registration = () => {
         nextOfKin: formData.nextOfKin,
         ...(formData.hmos[0].provider && {
           hmos: formData.hmos.filter(hmo => hmo.provider)
+        }),
+        ...(formData.dependants.firstName && {
+          dependants: [{
+            firstName: formData.dependants.firstName,
+            middleName: formData.dependants.middleName,
+            lastName: formData.dependants.lastName,
+            dob: formData.dependants.dob,
+            gender: formData.dependants.gender,
+            relationshipType: formData.dependants.relationshipType,
+            phone: formData.dependants.phone
+          }]
         })
       };
+
+      console.log('🔄 Registration: Sending data to backend in form:', patientData);
       
       console.log('📤 Registration: Final API data being sent:', JSON.stringify(patientData, null, 2));
+
+      // return;
       
       const result = await dispatch(addPatient(patientData));
       
@@ -165,10 +182,13 @@ const Registration = () => {
               expiresAt: ''
             }
           ],
-          dependent: {
+          dependants: {
             firstName: '',
+            middleName: '',
             lastName: '',
-            relationship: '',
+            dob: '',
+            gender: '',
+            relationshipType: '',
             phone: ''
           }
         });
@@ -563,15 +583,26 @@ const Registration = () => {
                 
                 {dependentExpanded && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                       <div>
                         <label className="block mb-1 text-sm text-base-content/70">First Name</label>
                         <input
                           type="text"
-                          name="dependent.firstName"
-                          value={formData.dependent.firstName}
+                          name="dependants.firstName"
+                          value={formData.dependants.firstName}
                           onChange={handleInputChange}
                           placeholder="Enter first name"
+                          className="w-full input input-bordered"
+                        />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-sm text-base-content/70">Middle Name</label>
+                        <input
+                          type="text"
+                          name="dependants.middleName"
+                          value={formData.dependants.middleName}
+                          onChange={handleInputChange}
+                          placeholder="Enter middle name"
                           className="w-full input input-bordered"
                         />
                       </div>
@@ -579,20 +610,32 @@ const Registration = () => {
                         <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
                         <input
                           type="text"
-                          name="dependent.lastName"
-                          value={formData.dependent.lastName}
+                          name="dependants.lastName"
+                          value={formData.dependants.lastName}
                           onChange={handleInputChange}
                           placeholder="Enter last name"
                           className="w-full input input-bordered"
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                      <div>
+                        <label className="block mb-1 text-sm text-base-content/70">Date of Birth</label>
+                        <input
+                          type="date"
+                          name="dependants.dob"
+                          value={formData.dependants.dob}
+                          onChange={handleInputChange}
+                          className="w-full input input-bordered"
+                        />
+                      </div>
+
                       <div>
                         <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
                         <select
-                          name="dependent.relationship"
-                          value={formData.dependent.relationship}
+                          name="dependants.relationshipType"
+                          value={formData.dependants.relationshipType}
                           onChange={handleInputChange}
                           className="w-full select select-bordered"
                         >
@@ -608,12 +651,26 @@ const Registration = () => {
                         <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
                         <input
                           type="tel"
-                          name="dependent.phone"
-                          value={formData.dependent.phone}
+                          name="dependants.phone"
+                          value={formData.dependants.phone}
                           onChange={handleInputChange}
                           placeholder="Enter phone number"
                           className="w-full input input-bordered"
                         />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-sm text-base-content/70">Gender</label>
+                        <select
+                          name="dependants.gender"
+                          value={formData.dependants.gender}
+                          onChange={handleInputChange}
+                          className="w-full select select-bordered"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                        </select>
                       </div>
                     </div>
                   </div>

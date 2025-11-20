@@ -18,11 +18,11 @@ const StockUpdate = () => {
     { name: "Operating Beds", stock: 50 },
   ];
   return (
-    <div className="p-5 ">
-      <div className="w-full h-[272px] bg-[#FFFFFF] flex flex-col gap-6 items-start p-7">
-        <div className="flex gap-5 items-center  ">
-          <h5 className="text-[24px] text-[#605D66] ">Stocks Update</h5>
-          <TbChartDots2 size={24} color="#605D66" />
+    <div className="p-5 w-full rounded-md shadow-md shadow-base-content/40">
+      <div className="w-full h-[272px] bg-base-100 flex flex-col gap-6 items-start p-4">
+        <div className="flex gap-5 items-center text-base-content/80">
+          <h5 className="text-[24px]">Stocks Update</h5>
+          <TbChartDots2 size={24} />
         </div>
 
         <ResponsiveContainer width="100%" height={180}>
