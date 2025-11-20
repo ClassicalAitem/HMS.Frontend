@@ -16,6 +16,24 @@ export const getPatients = async () => {
   }
 };
 
+// Update patient status
+export const updatePatientStatus = async (patientId, status) => {
+  try {
+    if (!patientId) throw new Error('Patient ID is required');
+    if (!status) throw new Error('Status is required');
+    console.log('📤 PatientsAPI: Updating patient status', { patientId, status });
+    const response = await apiClient.patch(`/patient/patientStatus/${patientId}`, { status });
+    console.log('✅ PatientsAPI: Patient status updated successfully');
+    console.log('📊 PatientsAPI: Response data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ PatientsAPI: Update patient status error occurred');
+    console.error('📥 PatientsAPI: Error response:', error.response);
+    console.error('📥 PatientsAPI: Error data:', error.response?.data);
+    throw error;
+  }
+};
+
 // Get patient by ID
 export const getPatientById = async (patientId) => {
   try {

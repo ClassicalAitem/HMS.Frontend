@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '../../store/hooks';
 
@@ -11,6 +11,24 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   console.log('🔒 ProtectedRoute: user role:', user?.role);
   console.log('🔒 ProtectedRoute: allowedRoles:', allowedRoles);
   console.log('🔒 ProtectedRoute: needsPasswordChange:', needsPasswordChange);
+
+  const token = useAppSelector((state) => state.auth.token);
+  const isExpired = useMemo(() => {
+    if (!token) return false;
+    try {
+      const parts = String(token).split('.');
+      if (parts.length !== 3) return false;
+      const payload = JSON.parse(decodeURIComponent(escape(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))));
+      const expMs = Number(payload?.exp || 0) * 1000;
+      return expMs > 0 && Date.now() >= expMs;
+    } catch {
+      return false;
+    }
+  }, [token]);
+
+  if (isExpired) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
 
   // If not authenticated, redirect to login
   if (!isAuthenticated) {

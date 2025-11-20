@@ -1,6 +1,12 @@
 export { default as BookAppointmentModal } from './BookAppointmentModal';
 export { default as EditPatientModal } from './EditPatientModal';
 export { default as LogoutModal } from './LogoutModal';
+export { default as AddHmoModal } from './AddHmoModal';
+export { default as EditHmoModal } from './EditHmoModal';
+export { default as AddDependantModal } from './AddDependantModal';
+export { default as EditDependantModal } from './EditDependantModal';
+export { default as NurseActionModal } from './NurseActionModal';
+export { default as CashierActionModal } from './CashierActionModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';

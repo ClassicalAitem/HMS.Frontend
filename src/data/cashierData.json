@@ -7,52 +7,102 @@
       {
         "id": 1,
         "patientName": "John Cooper",
-        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "patientPhoto": "https://randomuser.me/api/portraits/men/12.jpg",
         "service": "X-ray and room payment",
         "status": "Successful",
-        "hmo": "Medcare",
+        "hmo": "HMO MediCare",
         "amount": "₦3,000,000",
         "time": "12:00AM"
       },
       {
         "id": 2,
-        "patientName": "John Cooper",
-        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-        "service": "X-ray and room payment",
-        "status": "Successful",
-        "hmo": "Medcare",
-        "amount": "₦3,000,000",
-        "time": "12:00AM"
+        "patientName": "Lisa Adams",
+        "patientPhoto": "https://randomuser.me/api/portraits/women/25.jpg",
+        "service": "MRI scan and consultation fee",
+        "status": "Pending",
+        "hmo": "Private HealthFirst",
+        "amount": "₦1,200,000",
+        "time": "12:35AM"
       },
       {
         "id": 3,
-        "patientName": "John Cooper",
-        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-        "service": "X-ray and room payment",
-        "status": "Successful",
-        "hmo": "Medcare",
-        "amount": "₦3,000,000",
-        "time": "12:00AM"
+        "patientName": "Michael Smith",
+        "patientPhoto": "https://randomuser.me/api/portraits/men/44.jpg",
+        "service": "Blood test and follow-up care",
+        "status": "Completed",
+        "hmo": "Public CarePlus",
+        "amount": "₦500,000",
+        "time": "3:15PM"
       },
       {
         "id": 4,
-        "patientName": "John Cooper",
-        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-        "service": "X-ray and room payment",
+        "patientName": "Emily Johnson",
+        "patientPhoto": "https://randomuser.me/api/portraits/women/69.jpg",
+        "service": "Pharmacy purchase",
         "status": "Successful",
-        "hmo": "Medcare",
-        "amount": "₦3,000,000",
-        "time": "12:00AM"
+        "hmo": "Self-pay",
+        "amount": "₦75,000",
+        "time": "9:40AM"
       },
       {
         "id": 5,
-        "patientName": "John Cooper",
-        "patientPhoto": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-        "service": "X-ray and room payment",
+        "patientName": "David Okafor",
+        "patientPhoto": "https://randomuser.me/api/portraits/men/19.jpg",
+        "service": "Ward admission deposit",
+        "status": "Pending",
+        "hmo": "HMO MediCare",
+        "amount": "₦250,000",
+        "time": "10:20AM"
+      },
+      {
+        "id": 6,
+        "patientName": "Aisha Bello",
+        "patientPhoto": "https://randomuser.me/api/portraits/women/52.jpg",
+        "service": "Ultrasound and lab work",
         "status": "Successful",
-        "hmo": "Medcare",
-        "amount": "₦3,000,000",
-        "time": "12:00AM"
+        "hmo": "Private HealthFirst",
+        "amount": "₦320,000",
+        "time": "11:05AM"
+      },
+      {
+        "id": 7,
+        "patientName": "Kelechi Nnaji",
+        "patientPhoto": "https://randomuser.me/api/portraits/men/83.jpg",
+        "service": "CT scan payment",
+        "status": "Overdue",
+        "hmo": "Public CarePlus",
+        "amount": "₦900,000",
+        "time": "1:15PM"
+      },
+      {
+        "id": 8,
+        "patientName": "Grace Williams",
+        "patientPhoto": "https://randomuser.me/api/portraits/women/31.jpg",
+        "service": "Consultation fee",
+        "status": "Successful",
+        "hmo": "Self-pay",
+        "amount": "₦30,000",
+        "time": "2:05PM"
+      },
+      {
+        "id": 9,
+        "patientName": "Samuel Adeyemi",
+        "patientPhoto": "https://randomuser.me/api/portraits/men/50.jpg",
+        "service": "Surgery deposit",
+        "status": "Pending",
+        "hmo": "HMO MediCare",
+        "amount": "₦2,400,000",
+        "time": "4:25PM"
+      },
+      {
+        "id": 10,
+        "patientName": "Chiamaka Eze",
+        "patientPhoto": "https://randomuser.me/api/portraits/women/15.jpg",
+        "service": "ER charges",
+        "status": "Refunded",
+        "hmo": "Private HealthFirst",
+        "amount": "₦150,000",
+        "time": "6:10PM"
       }
     ]
   },
