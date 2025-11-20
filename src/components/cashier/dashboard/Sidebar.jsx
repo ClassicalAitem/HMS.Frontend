@@ -52,7 +52,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: GoArrowDownLeft,
       label: 'Incoming',
       path: '/cashier/incoming',
-      active: location.pathname === '/cashier/incoming'
+      active: location.pathname === '/cashier/incoming' || location.pathname.startsWith('/cashier/patient-details')
     },
     {
       icon: GoPerson,
@@ -84,7 +84,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
+    <div className="flex flex-col w-52 2xl:w-64 h-full border-r-2 bg-base-100 border-neutral/20">
       {/* Logo */}
       <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
