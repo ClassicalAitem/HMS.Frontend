@@ -66,9 +66,9 @@ const DoctorDashboard = () => {
                     <img src="/src/assets/images/users.png" alt="..." />
                   </div>
                   {loading ? (
-                    <div className="skeleton h-auto w-24 mt-3" />
+                    <div className="skeleton h-8 w-24 mt-3" />
                   ) : (
-                    <h1 className="text-4xl font-bold">{c.value}</h1>
+                    <h1 className="text-6xl font-semibold mt-3">{c.value}</h1>
                   )}
                 </div>
               ))}
