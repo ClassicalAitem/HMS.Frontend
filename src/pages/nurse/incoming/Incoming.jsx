@@ -10,13 +10,19 @@ import {
 } from "react-icons/ri";
 import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
+import SamplingModals from "./modals/SamplingModals";
+import InjectionModals from "./modals/InjectionModals";
 
 const Incoming = () => {
   const navigate = useNavigate();
+  const [selectedInvestigationId, setSelectedInvestigationId] = useState(null);
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [patient, setPatient] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showModal2, setShowModal2] = useState(false);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
@@ -292,7 +298,7 @@ const Incoming = () => {
                             </div>
                           </div>
 
-                          <div className="flex justify-center px-7 pb-5">
+                          <div className="flex  px-7 pb-5 cursor-pointer">
                             {primary === "vitals" && (
                               <button
                                 onClick={(e) => {
@@ -300,7 +306,7 @@ const Incoming = () => {
                                   setPatient(data.snapshot);
                                   setIsRecordOpen(true);
                                 }}
-                                className={`px-3 py-1 rounded-full ${
+                                className={`px-3 py-1 rounded-full cursor-pointer ${
                                   primary === "vitals"
                                     ? "bg-primary text-white"
                                     : "text-base-content/70"
@@ -312,7 +318,13 @@ const Incoming = () => {
 
                             {primary === "sampling" && (
                               <button
-                                className={`px-3 py-1 rounded-full ${
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPatient(data.snapshot);
+                                  setSelectedInvestigationId(data.snapshot.id);
+                                  setShowModal(true);
+                                }}
+                                className={`px-3 py-1 rounded-full cursor-pointer ${
                                   primary === "sampling"
                                     ? "bg-primary text-white"
                                     : "text-base-content/70"
@@ -324,7 +336,12 @@ const Incoming = () => {
 
                             {primary === "injection" && (
                               <button
-                                className={`px-3 py-1 rounded-full ${
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPatient(data.snapshot);
+                                  setShowModal2(true);
+                                }}
+                                className={`px-3 py-1 rounded-full cursor-pointer ${
                                   primary === "injection"
                                     ? "bg-primary text-white"
                                     : "text-base-content/70"
@@ -339,6 +356,23 @@ const Incoming = () => {
                     });
                   })()}
             </div>
+
+            {/* Modals rendered OUTSIDE the grid */}
+            {showModal && (
+              <SamplingModals
+                setShowModal={setShowModal}
+                patientId={selectedInvestigationId}
+                patientData={patient}
+              />
+            )}
+
+            {showModal2 && (
+              <InjectionModals
+                setShowModal2={setShowModal2}
+                patientData={patient}
+              />
+            )}
+
             {/* Carousel-style pagination dots and controls */}
             {(() => {
               const q = query.trim().toLowerCase();
