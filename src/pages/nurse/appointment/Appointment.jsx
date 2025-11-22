@@ -4,7 +4,7 @@ import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { LuPlus, LuCheck } from "react-icons/lu";
 import { VscSettings } from "react-icons/vsc";
 import { BookAppointmentModal } from "@/components/modals";
-import { getAllAppointments, updateAppointment } from "@/services/api/appointmentsAPI";
+import { getAllAppointments, updateAppointment, createAppointment } from "@/services/api/appointmentsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 
 const Appointment = () => {
@@ -85,9 +85,14 @@ const Appointment = () => {
     };
   }, [refreshKey]);
 
+
+
   const [showModal, setShowModal] = useState(false);
   const handleModalSubmit = async (formData) => {
     try {
+      // const response = await createAppointment(payload)
+      // const createAppointment = response.data
+
       // TODO: integrate createAppointment API here and refresh list
       // For now, simply close after submit to mirror frontdesk modal behavior
       setShowModal(false);
