@@ -55,7 +55,7 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
     return (
       <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-[1px] bg-opacity-40 flex justify-center items-center">
         <div className="bg-white shadow-lg p-6 rounded-lg">
-          <p className="text-center">Loading investigation details...</p>
+          <p className="text-center">Loading investigation details......</p>
         </div>
       </div>
     );
@@ -73,7 +73,7 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
             Close
           </button>
         </div>
-      </div>
+      </div> 
     );
   }
 
@@ -85,7 +85,8 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
 
   return (
     <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-[1px] bg-opacity-40 flex justify-center items-start overflow-y-auto">
-      <div className="bg-white shadow-lg p-6 max-w-[600px] w-full mt-10 rounded-lg">
+      <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[600px] w-full mt-10 rounded-lg">
+        
         <div className="w-full">
           <div className="w-full flex flex-col gap-3">
             <h5 className="text-[#00943C] text-[24px] font-[600]">

@@ -2,11 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { FaTimes } from "react-icons/fa";
 import { getPatients } from "@/services/api/patientsAPI";
-import {
-  getAllAppointments,
-  updateAppointment,
-  createAppointment,
-} from "@/services/api/appointmentsAPI";
+import { createAppointment } from "@/services/api/appointmentsAPI";
 import { toast } from "react-hot-toast";
 
 const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
@@ -38,6 +34,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isOpenList, setIsOpenList] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+
   const listboxId = "patient-combobox-listbox";
   const inputRef = useRef(null);
 
@@ -212,6 +209,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const handleSubmit = async (e) => {
+    e.preventDefault();
     // Validate form
     try {
       if (
@@ -222,7 +220,6 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
         return;
       }
 
-      e.preventDefault();
       onSubmit(formData);
       onClose();
       // Reset form
@@ -238,12 +235,21 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
       setFilteredResults([]);
       const response = await createAppointment(formData);
       console.log(response);
-    } catch (error) {}
+      onSubmit(response?.data || response);
+      toast.success("Appointment booked successfully!");
+    } catch (error) {
+      console.error("Error creating appointment:", error);
+      toast.error(
+        error?.response?.data?.message || "Failed to book appointment"
+      );
+    }
   };
 
   const handleCancel = () => {
     onClose();
     // Reset form
+
+    
     setFormData({
       patientId: "",
       appointmentDate: "",
@@ -253,9 +259,13 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
       notes: "",
     });
     setQuery("");
+     setPatients([]);
     setFilteredResults([]);
+     setIsOpenList(false);
+     setActiveIndex(-1);
     setDateError("");
     setTimeError("");
+     setIsSearching(false);
   };
 
   if (!isOpen) return null;
