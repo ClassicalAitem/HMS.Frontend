@@ -16,7 +16,7 @@ import InjectionModals from "./modals/InjectionModals";
 const Incoming = () => {
   const navigate = useNavigate();
   const [selectedInvestigationId, setSelectedInvestigationId] = useState(null);
-
+  const [selectedInjectionId, setSelectedInjectionId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -82,6 +82,7 @@ const Incoming = () => {
 
         const mapped = sorted.map((p) => ({
           id: p?.id,
+          prescriptionId: p?.prescriptionId || p?.prescription?._id,
           hospitalId: p?.hospitalId,
           snapshot: p,
           name:
@@ -338,7 +339,25 @@ const Incoming = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+
+                                  console.log(
+                                    "=== INJECTION BUTTON CLICKED ==="
+                                  );
+                                  console.log("data object:", data);
+                                  console.log("data.id:", data.id);
+                                  console.log("data.snapshot:", data.snapshot);
+                                  console.log(
+                                    "data.snapshot.id:",
+                                    data.snapshot.id
+                                  );
+                                  console.log(
+                                    "================================"
+                                  );
+
                                   setPatient(data.snapshot);
+                                  setSelectedInjectionId(
+                                    data.id || data.snapshot.id
+                                  );
                                   setShowModal2(true);
                                 }}
                                 className={`px-3 py-1 rounded-full cursor-pointer ${
@@ -369,6 +388,7 @@ const Incoming = () => {
             {showModal2 && (
               <InjectionModals
                 setShowModal2={setShowModal2}
+                patientId={selectedInjectionId}
                 patientData={patient}
               />
             )}
