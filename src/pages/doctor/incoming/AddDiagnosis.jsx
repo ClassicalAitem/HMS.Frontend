@@ -5,6 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
+import { CashierActionModal } from "@/components/modals";
 import toast from "react-hot-toast";
 
 const AddDiagnosis = () => {
@@ -18,6 +19,7 @@ const AddDiagnosis = () => {
   const [patient, setPatient] = useState(snapshot || null);
   const [isSurgery, setIsSurgery] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isCashierOpen, setIsCashierOpen] = useState(false);
   const [form, setForm] = useState({
     type: "Consultation",
     visitReason: "",
@@ -70,6 +72,7 @@ const AddDiagnosis = () => {
       diagnosis: form.diagnosis || "",
       notes: form.notes || "",
     };
+    console.log("You are sending payload", payload);
     try {
       setSaving(true);
       await createConsultation(payload);
@@ -118,7 +121,7 @@ const AddDiagnosis = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Diagnosis</label>
+                  <label className="block mb-1 text-sm text-base-content/70">Diagnosis <span className="text-error">*</span></label>
                   <input className="input input-bordered w-full" placeholder="Enter diagnosis" value={form.diagnosis} onChange={(e) => onChange("diagnosis", e.target.value)} />
                 </div>
                 <div>
@@ -163,24 +166,36 @@ const AddDiagnosis = () => {
               </div>
 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Visit Reason</label>
+                <div className="col-span-2">
+                  <label className="block mb-1 text-sm text-base-content/70">Visit Reason <span className="text-error">*</span></label>
                   <input className="input input-bordered w-full" placeholder="Enter reason" value={form.visitReason} onChange={(e) => onChange("visitReason", e.target.value)} />
                 </div>
-                <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Symptoms</label>
-                  <input className="input input-bordered w-full" placeholder="Enter symptoms" value={form.symptoms} onChange={(e) => onChange("symptoms", e.target.value)} />
-                </div>
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm text-base-content/70">Symptoms <span className="text-error">*</span></label>
+                <textarea className="textarea textarea-bordered w-full" placeholder="Enter symptoms" rows={3} value={form.symptoms} onChange={(e) => onChange("symptoms", e.target.value)} />
               </div>
 
               <div className="mt-4">
-                <label className="block mb-1 text-sm text-base-content/70">Notes</label>
+                <label className="block mb-1 text-sm text-base-content/70">Notes <span className="text-error">*</span></label>
                 <textarea className="textarea textarea-bordered w-full" placeholder="Enter Additional Notes" rows={5} value={form.notes} onChange={(e) => onChange("notes", e.target.value)} />
               </div>
 
-              <div className="mt-6 flex items-center gap-6">
-                <button className="text-primary hover:underline text-sm">Send to cashier</button>
-                <button className="text-primary hover:underline text-sm">Send to Pharmacy</button>
+              <div className="mt-6 flex items-start gap-10">
+                <div>
+                  <button
+                    className="text-primary text-lg font-semibold hover:underline"
+                    onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+                  >
+                    Send to cashier
+                  </button>
+                  <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
+                </div>
+                <div>
+                  <button className="text-primary text-lg font-semibold hover:underline">Send to Pharmacy</button>
+                  <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
+                </div>
               </div>
 
               <div className="mt-6 flex justify-center">
@@ -189,6 +204,16 @@ const AddDiagnosis = () => {
             </div>
           </div>
         </div>
+        {false && (
+          <CashierActionModal
+            isOpen={isCashierOpen}
+            onClose={() => setIsCashierOpen(false)}
+            patientId={patientId}
+            defaultStatus="awaiting_cashier"
+            mode="confirm"
+            patientLabel={`${patientName || "Unknown"} (${patient?.hospitalId || patientId || "—"})`}
+          />
+        )}
       </div>
     </div>
   );
