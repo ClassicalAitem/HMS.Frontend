@@ -13,6 +13,7 @@ import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import LabResults from "@/pages/doctor/labResults/LabResults";
+import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
 import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
 import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
 import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
@@ -204,6 +205,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/doctor/labResults" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <LabResults />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/labResults/:labResultId" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <LabResultDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/doctor/appointments" element={
