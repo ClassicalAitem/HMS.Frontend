@@ -11,6 +11,7 @@ import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
+import { getLabResults } from "@/services/api/labResultsAPI";
 
 const PatientMedicalHistory = () => {
   const { patientId } = useParams();
@@ -26,6 +27,8 @@ const PatientMedicalHistory = () => {
   const [recordError, setRecordError] = useState("");
   const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
   const [consultations, setConsultations] = useState([]);
+  const [labResults, setLabResults] = useState([]);
+  const [labLoading, setLabLoading] = useState(false);
 
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
@@ -78,6 +81,23 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  useEffect(() => {
+    let mounted = true;
+    const loadLabs = async () => {
+      try {
+        setLabLoading(true);
+        const res = await getLabResults({ patientId });
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        if (mounted) setLabResults(list);
+      } finally {
+        if (mounted) setLabLoading(false);
+      }
+    };
+    loadLabs();
+    return () => { mounted = false; };
+  }, [patientId]);
+
   const latest = useMemo(() => {
     if (!Array.isArray(vitals) || vitals.length === 0) return null;
     return vitals.reduce((acc, v) => {
@@ -95,6 +115,11 @@ const PatientMedicalHistory = () => {
       return bt - at;
     });
   }, [vitals]);
+
+  const latestLab = useMemo(() => {
+    if (!Array.isArray(labResults) || labResults.length === 0) return null;
+    return labResults.slice().sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0];
+  }, [labResults]);
 
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -139,6 +164,32 @@ const PatientMedicalHistory = () => {
           ), [consultations])} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} />
 
           <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+
+          <div className="shadow-xl card bg-base-100 mb-4">
+            <div className="p-4 card-body">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-base-content">Latest Lab Result</h3>
+                  {labLoading ? (
+                    <div className="skeleton h-4 w-48 mt-2" />
+                  ) : latestLab ? (
+                    <div className="text-sm text-base-content/70">
+                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? new Date(latestLab.createdAt).toLocaleString() : '—'}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-base-content/70">No lab results</div>
+                  )}
+                </div>
+                <button
+                  className="btn btn-outline btn-sm"
+                  disabled={!latestLab}
+                  onClick={() => latestLab && navigate(`/dashboard/doctor/labResults/${latestLab?._id || latestLab?.id}`)}
+                >
+                  View Lab Result
+                </button>
+              </div>
+            </div>
+          </div>
 
           <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
