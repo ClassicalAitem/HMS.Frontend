@@ -26,13 +26,18 @@ const Appointments = () => {
   useEffect(() => {
     const load = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          if (window.__appointmentsLoadInFlight) return;
+          window.__appointmentsLoadInFlight = true;
+        }
         const res = await toast.promise(
           getAllAppointments(),
           {
             loading: 'Loading appointments...',
             success: 'Appointments loaded',
             error: 'Failed to load appointments'
-          }
+          },
+          { id: 'appointments-load' }
         );
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
@@ -51,6 +56,11 @@ const Appointments = () => {
       } catch (err) {
         console.error('Load appointments error', err);
         // Fallback: keep existing state
+      }
+      finally {
+        if (typeof window !== 'undefined') {
+          window.__appointmentsLoadInFlight = false;
+        }
       }
     };
     load();
@@ -88,12 +98,12 @@ const Appointments = () => {
   const StatusBadge = ({ status }) => {
     const getBadgeClass = (status) => {
       switch (status) {
-        case 'Active':
-          return 'badge badge-success text-white';
-        case 'Not Active':
-          return 'badge badge-neutral text-white';
-        case 'Not Urgent':
-          return 'badge badge-success text-white';
+        case 'completed':
+          return 'badge badge-primary text-white';
+        case 'scheduled':
+          return 'badge badge-outline badge-info';
+        case 'cancelled':
+          return 'badge badge-error text-white';
         default:
           return 'badge badge-neutral text-white';
       }
@@ -317,6 +327,12 @@ const Appointments = () => {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
+        onUpdated={(updated) => {
+          setAppointments(prev => prev.map(a => (
+            a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
+              { ...a, status: updated?.status } : a
+          )));
+        }}
       />
     </div>
   );
