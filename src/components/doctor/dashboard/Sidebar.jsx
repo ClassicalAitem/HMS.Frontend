@@ -41,7 +41,7 @@ const Sidebar = () => {
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
     { icon: GoChecklist, label: "Lab Results", path: "/dashboard/doctor/labResults" },
     { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
-    { icon: IoMenu, label: "Assigned Task", path: "/dashboard/doctor/assign-task" },
+    // { icon: IoMenu, label: "Assigned Task", path: "/dashboard/doctor/assign-task" },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active }) => (

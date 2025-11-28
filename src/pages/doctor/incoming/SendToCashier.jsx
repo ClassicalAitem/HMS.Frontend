@@ -84,12 +84,18 @@ const SendToCashier = () => {
             title="Send To Cashier"
             subtitle={patient ? `${patientName || "Unknown"} • ${patient?.hospitalId || patientId || "—"}` : ""}
             fromIncoming={fromIncoming}
-            onBack={() => navigate(`/dashboard/doctor/medical-history/${patientId}`/add, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+            onBack={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
           />
 
-          <div className="flex gap-4 items-center mb-4">
-            <button className="btn btn-success btn-sm">Send to Cashier</button>
-            <button className="btn btn-outline btn-sm">Send to Pharmacy</button>
+          <div className="flex gap-4 items-center mb-4 justify-between">
+            <div className="flex gap-4 items-center">
+              <button className="btn btn-success btn-sm">Send to Cashier</button>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Pharmacy</button>
+            </div>
+
+            <div className="hidden">
+              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}>Back</button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

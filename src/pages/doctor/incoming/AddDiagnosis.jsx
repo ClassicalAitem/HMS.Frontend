@@ -193,7 +193,12 @@ const AddDiagnosis = () => {
                   <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
                 </div>
                 <div>
-                  <button className="text-primary text-lg font-semibold hover:underline">Send to Pharmacy</button>
+                  <button
+                    className="text-primary text-lg font-semibold hover:underline"
+                    onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+                  >
+                    Send to Pharmacy
+                  </button>
                   <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
                 </div>
               </div>
