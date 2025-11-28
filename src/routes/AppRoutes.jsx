@@ -18,6 +18,8 @@ import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
 import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
 import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
 import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
+import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
+import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import Task from "@/pages/doctor/assignTask/Task";
@@ -197,9 +199,19 @@ const AppRoutes = () => {
       <AddDiagnosis />
     </ProtectedRoute>
   } />
+  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ConsultationDetails />
+    </ProtectedRoute>
+  } />
   <Route path="/dashboard/doctor/send-to-cashier/:patientId" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <SendToCashier />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/send-to-pharmacy/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <SendToPharmacy />
     </ProtectedRoute>
   } />
       <Route path="/dashboard/doctor/labResults" element={
