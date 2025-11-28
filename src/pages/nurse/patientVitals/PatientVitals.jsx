@@ -32,8 +32,10 @@ const PatientVitals = () => {
   const statusBadgeClass = (status) => {
     const s = (status || "").toLowerCase();
     if (s.includes("active")) return "badge badge-success";
-    if (s.includes("pass") || s.includes("deceased")) return "badge badge-neutral";
-    if (s.includes("pending") || s.includes("wait")) return "badge badge-warning";
+    if (s.includes("pass") || s.includes("deceased"))
+      return "badge badge-neutral";
+    if (s.includes("pending") || s.includes("wait"))
+      return "badge badge-warning";
     return "badge badge-ghost";
   };
 
@@ -46,7 +48,10 @@ const PatientVitals = () => {
         const patients = Array.isArray(res?.data) ? res.data : [];
         const mapped = patients.map((p, idx) => ({
           sn: idx + 1,
-          name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.fullName || "Unknown",
+          name:
+            `${p?.firstName || ""} ${p?.lastName || ""}`.trim() ||
+            p?.fullName ||
+            "Unknown",
           gender: p?.gender || "—",
           age: calculateAge(p?.dob),
           blood: p?.bloodGroup || p?.blood || "—",
@@ -58,7 +63,19 @@ const PatientVitals = () => {
           firstName: p?.firstName,
           lastName: p?.lastName,
         }));
-        if (mounted) setItems(mapped);
+        // if (mounted) setItems(mapped);
+
+        const allowedStatuses = [
+          "awaiting_vitals",
+          "awaiting_sampling",
+          "awaiting_injection",
+        ];
+
+        const filtered = mapped.filter((p) =>
+          allowedStatuses.includes((p.status || "").toLowerCase())
+        );
+
+        if (mounted) setItems(filtered);
       } catch (err) {
         console.error("PatientVitals: patients fetch error", err);
         if (mounted) setItems([]);
@@ -71,23 +88,28 @@ const PatientVitals = () => {
       mounted = false;
     };
   }, [refreshKey]);
-  
+
   // Derived filtering & pagination
   const filteredItems = useMemo(() => {
     let data = items;
     const q = searchQuery.trim().toLowerCase();
     if (q) {
-      data = data.filter((p) =>
-        (p.name || "").toLowerCase().includes(q) ||
-        String(p.sn).includes(q) ||
-        (p.blood || "").toLowerCase().includes(q)
+      data = data.filter(
+        (p) =>
+          (p.name || "").toLowerCase().includes(q) ||
+          String(p.sn).includes(q) ||
+          (p.blood || "").toLowerCase().includes(q)
       );
     }
     if (genderFilter !== "all") {
-      data = data.filter((p) => (p.gender || "").toLowerCase() === genderFilter);
+      data = data.filter(
+        (p) => (p.gender || "").toLowerCase() === genderFilter
+      );
     }
     if (statusFilter !== "all") {
-      data = data.filter((p) => (p.status || "").toLowerCase().includes(statusFilter));
+      data = data.filter((p) =>
+        (p.status || "").toLowerCase().includes(statusFilter)
+      );
     }
     return data;
   }, [items, searchQuery, genderFilter, statusFilter]);
@@ -138,10 +160,14 @@ const PatientVitals = () => {
             <div>
               <div>
                 <div className="flex items-center gap-5 ">
-                  <h1 className="text-[32px] text-base-content">All Patients</h1>
+                  <h1 className="text-[32px] text-base-content">
+                    All Patients
+                  </h1>
                   <PiUsersThree size={25} className="text-base-content/80" />
                 </div>
-                <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
+                <p className="text-[12px] text-base-content/70">
+                  View the list of all Patients.
+                </p>
               </div>
             </div>
             {/* Search & Filters */}
@@ -186,86 +212,109 @@ const PatientVitals = () => {
 
             <div className="overflow-x-auto rounded-lg shadow mt-6">
               <div className="max-h-[60vh] overflow-y-auto">
-              <table className="w-full text-[16px] rounded-lg overflow-hidden">
-                <thead className="bg-base-200">
-                  <tr>
-                    <th className="p-3 ">S/n</th>
-                    <th className="p-3">Patient Name</th>
-                    <th className="p-3">Gender</th>
-                    <th className="p-3">Age</th>
-                    <th className="p-3">Blood/Gp</th>
-                    <th className="p-3">Status</th>
-                  </tr>
-                </thead>
+                <table className="w-full text-[16px] rounded-lg overflow-hidden">
+                  <thead className="bg-base-200">
+                    <tr>
+                      <th className="p-3 ">S/n</th>
+                      <th className="p-3">Patient Name</th>
+                      <th className="p-3">Gender</th>
+                      <th className="p-3">Age</th>
+                      <th className="p-3">Blood/Gp</th>
+                      <th className="p-3">Status</th>
+                    </tr>
+                  </thead>
 
-                <tbody className="bg-base-100">
-                  {loading ? (
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <tr key={index} className="border-b last:border-b-0">
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-8" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-32" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-16" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-10" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-16" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-6 w-20" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : items.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No patient records"
-                          description="Try refreshing to fetch the latest patients."
-                          actionLabel="Refresh"
-                          onAction={onRefresh}
-                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
-                        />
-                      </td>
-                    </tr>
-                  ) : filteredItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No matches"
-                          description="Try adjusting search or filters, or refresh to fetch latest."
-                          actionLabel="Clear Filters"
-                          onAction={() => { setSearchQuery(""); setGenderFilter("all"); setStatusFilter("all"); }}
-                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    shown.map((p, index) => (
-                      <tr
-                        key={index}
-                        className="border-b last:border-b-0 cursor-pointer hover:bg-base-200/40"
-                        onClick={() => p?.id && navigate(`/dashboard/nurse/patient/${p.id}`, { state: { patientSnapshot: p } })}
-                      >
-                        <td className="px-4 py-4">{String(p.sn).padStart(2, "0")}</td>
-                        <td className="text-center">{p.name}</td>
-                        <td className="text-center">{p.gender}</td>
-                        <td className="text-center">{p.age}</td>
-                        <td className="text-center">{p.blood}</td>
-                        <td className="text-center">
-                          <span className={statusBadgeClass(p.status)}>{p.status}</span>
+                  <tbody className="bg-base-100">
+                    {loading ? (
+                      Array.from({ length: 8 }).map((_, index) => (
+                        <tr key={index} className="border-b last:border-b-0">
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-8" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-32" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-16" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-10" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-16" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-6 w-20" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : items.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8">
+                          <EmptyState
+                            title="No patient records"
+                            description="Try refreshing to fetch the latest patients."
+                            actionLabel="Refresh"
+                            onAction={onRefresh}
+                            icon={
+                              <PiUsersThree
+                                className="text-base-content/60"
+                                size={40}
+                              />
+                            }
+                          />
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : filteredItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8">
+                          <EmptyState
+                            title="No matches"
+                            description="Try adjusting search or filters, or refresh to fetch latest."
+                            actionLabel="Clear Filters"
+                            onAction={() => {
+                              setSearchQuery("");
+                              setGenderFilter("all");
+                              setStatusFilter("all");
+                            }}
+                            icon={
+                              <PiUsersThree
+                                className="text-base-content/60"
+                                size={40}
+                              />
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ) : (
+                      shown.map((p, index) => (
+                        <tr
+                          key={index}
+                          className="border-b last:border-b-0 cursor-pointer hover:bg-base-200/40"
+                          onClick={() =>
+                            p?.id &&
+                            navigate(`/dashboard/nurse/patient/${p.id}`, {
+                              state: { patientSnapshot: p },
+                            })
+                          }
+                        >
+                          <td className="px-4 py-4">
+                            {String(p.sn).padStart(2, "0")}
+                          </td>
+                          <td className="text-center">{p.name}</td>
+                          <td className="text-center">{p.gender}</td>
+                          <td className="text-center">{p.age}</td>
+                          <td className="text-center">{p.blood}</td>
+                          <td className="text-center">
+                            <span className={statusBadgeClass(p.status)}>
+                              {p.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -273,7 +322,12 @@ const PatientVitals = () => {
             {!loading && items.length > 0 && (
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-base-content/70">
-                  Showing {filteredItems.length ? (Math.min((page - 1) * perPage + 1, filteredItems.length)) : 0}–{Math.min(page * perPage, filteredItems.length)} of {filteredItems.length}
+                  Showing{" "}
+                  {filteredItems.length
+                    ? Math.min((page - 1) * perPage + 1, filteredItems.length)
+                    : 0}
+                  –{Math.min(page * perPage, filteredItems.length)} of{" "}
+                  {filteredItems.length}
                 </div>
                 <div className="join">
                   <button
@@ -296,8 +350,6 @@ const PatientVitals = () => {
                 </div>
               </div>
             )}
-
-           
           </section>
         </div>
       </div>

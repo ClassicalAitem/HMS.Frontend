@@ -37,6 +37,17 @@
   font-family: "Poppins", sans-serif;
 }
 
+.btn {
+  background-color: #00943C;
+  color: #FFFFFF
+}
+.input {
+  border: 1px solid #AEAAAE;  /* This sets the border color */
+  color: #AEAAAE;             /* This sets the text color */
+  background-color: #F7F7F7;  /* This sets the background color */
+   border-radius: 8px;         /* same as rounded-[8px] */
+}
+
 body {
   font-family: "Poppins", sans-serif;
 }
