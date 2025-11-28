@@ -155,13 +155,17 @@ const PatientMedicalHistory = () => {
 
           <MedicalHistoryTable rows={useMemo(() => (
             Array.isArray(consultations) ? consultations.map((c) => ({
+              id: c?._id || c?.id,
               type: "Consultation",
               diagnosis: c?.diagnosis || "—",
               time: c?.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
               date: c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-US") : "—",
               notes: c?.notes || "—",
             })) : []
-          ), [consultations])} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} />
+          ), [consultations])} loading={loading} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} onViewDetails={(row) => {
+            const cid = row?.id;
+            if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+          }} />
 
           <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
@@ -192,6 +196,27 @@ const PatientMedicalHistory = () => {
           </div>
 
           <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
+
+          <div className="mt-6 flex items-start gap-10">
+            <div>
+              <button
+                className="text-primary text-lg font-semibold hover:underline"
+                onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+              >
+                Send to cashier
+              </button>
+              <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
+            </div>
+            <div>
+              <button
+                className="text-primary text-lg font-semibold hover:underline"
+                onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+              >
+                Send to Pharmacy
+              </button>
+              <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
+            </div>
+          </div>
 
           <RecordVitalsModal
             isOpen={isRecordOpen}
