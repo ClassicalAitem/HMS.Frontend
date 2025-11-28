@@ -35,6 +35,23 @@ import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 
+import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
+import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
+import Appointmentss from "@/pages/nurse/appointment/Appointment"
+
+import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
+import LabResults from "@/pages/doctor/labResults/LabResults";
+import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
+import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
+import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
+import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
+import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
+import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
+import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
+import AllPatients from "@/pages/doctor/allPatients/AllPatients";
+import Appointment from "@/pages/doctor/appiontments/Appointment";
+import Task from "@/pages/doctor/assignTask/Task";
+
 //Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import Schedule from "@/pages/admin/schedule/Schedule";
@@ -342,46 +359,73 @@ const AppRoutes = () => {
       ====================================  Doctor DashBoard Route =====================================================
       
       ================================================================================================================*/}
-      <Route
-        path="/dashboard/doctor"
-        element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
-            <DoctorDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard/doctor/patientVitals"
-        element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
-            <PatientVitals />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard/doctor/LabResults"
-        element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
-            <LabResults />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard/doctor/appointments"
-        element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
-            <Appoxintment />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/dashboard/doctor/assign-task"
-        element={
-          <ProtectedRoute allowedRoles={["doctor"]}>
-            <Task />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/dashboard/doctor" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <DoctorDashboard />
+        </ProtectedRoute>
+      } />
+  <Route path="/dashboard/doctor/patientVitals" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <PatientVitals />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <PatientMedicalHistory />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId/add" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <AddDiagnosis />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ConsultationDetails />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/send-to-cashier/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <SendToCashier />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/send-to-pharmacy/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <SendToPharmacy />
+    </ProtectedRoute>
+  } />
+      <Route path="/dashboard/doctor/labResults" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <LabResults />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/labResults/:labResultId" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <LabResultDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/appointments" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <Appointment />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/incoming" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <IncomingDoctor />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/allPatients" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <AllPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/assign-task" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <Task />
+        </ProtectedRoute>
+      } />
+
+
       {/*==============================================================================================================
       
       ====================================  Admin DashBoard Route =====================================================

@@ -1,190 +1,173 @@
-import React from "react";
-import { Header } from "@/components/common";
-import Sidebar from "../../../components/doctor/dashboard/Sidebar";
-import { MdOutlineFileDownload } from "react-icons/md";
-import { CiSearch } from "react-icons/ci";
-import { resultLab } from "../../../../data";
-import { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
+import { Header, EmptyState, DataTable } from "@/components/common";
+import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import { FaDownload } from 'react-icons/fa';
+import { getLabResults } from '@/services/api/labResultsAPI';
+import { getPatients } from '@/services/api/patientsAPI';
+import { LabResultDetailsModal } from '@/components/modals';
 
 const LabResults = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 8;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(true);
+  const [labResults, setLabResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [patientsById, setPatientsById] = useState({});
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedLabId, setSelectedLabId] = useState(null);
 
-  const filteredData = useMemo(() => {
-    return resultLab.filter((item) =>
-      `${item.patientName} ${item.testType} ${item.status}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await getLabResults();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const mapped = list.map((r) => ({
+          id: r?._id || r?.id,
+          labId: r?._id || r?.id,
+          patientId: r?.patientId,
+          testType: (Array.isArray(r?.result) && r.result[0]?.code) || (Array.isArray(r?.result) && r.result[0]?.value) || '—',
+          date: r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—',
+          time: r?.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+          doctor: '—',
+          status: 'Completed',
+        }));
+        setLabResults(mapped);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-  const paginatedData = filteredData.slice(
-    (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
-  );
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const res = await getPatients();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const map = {};
+        list.forEach((p) => {
+          const name = `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || p?.fullName || 'Unknown';
+          const idKeys = [p?.id, p?.patientId, p?.hospitalId, p?._id].filter(Boolean);
+          idKeys.forEach((k) => { map[k] = name; });
+        });
+        setPatientsById(map);
+      } catch {
+        setPatientsById({});
+      }
+    };
+    fetchPatients();
+  }, []);
 
-  const handlePageClick = (page) => {
-    setCurrentPage(page);
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
+  const columns = useMemo(() => [
+    { key: 'labId', title: 'Lab ID', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'patientName', title: 'Patient Name', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'patientId', title: 'Patient ID', sortable: true, className: 'text-base-content/70' },
+    { key: 'testType', title: 'Test Type', sortable: true, className: 'text-base-content/70' },
+    { key: 'date', title: 'Date', sortable: true, className: 'text-base-content/70' },
+    { key: 'time', title: 'Time', sortable: true, className: 'text-base-content/70' },
+    { key: 'doctor', title: 'Doctor', sortable: true, className: 'text-base-content/70' },
+    { key: 'status', title: 'Status', sortable: true, className: 'text-base-content/70' },
+  ], []);
+
+  const resolvedData = useMemo(() => labResults.map(r => ({
+    ...r,
+    patientName: patientsById[r.patientId] || r.patientName || 'Unknown',
+  })), [labResults, patientsById]);
+
+  const handleExport = () => {
+    const header = ['Lab ID','Patient Name','Patient ID','Test Type','Date','Time','Doctor','Status'];
+    const rows = labResults.map(r => [r.labId, r.patientName, r.patientId, r.testType, r.date, r.time, r.doctor, r.status]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `lab_results_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handlePrev = () => {
-    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
-  };
-
-  const bgChange = (status) => {
-    if (status === "Completed") {
-      return "#F7FEED";
-    }
-    if (status === "Processing") {
-      return "#D6EDFE";
-    }
-  };
   return (
-    <div className="flex h-screen ">
-      <Sidebar />
+    <div className="flex h-screen">
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
 
-      <div className="flex overflow-hidden flex-col flex-1 ">
-        <Header />
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <Sidebar onCloseSidebar={closeSidebar} />
+      </div>
 
-        <div className="overflow-y-auto flex-1">
-          <section className="p-7">
-            <div className="w-[234px]">
-              <h1 className="text-[#00943C] text-[32px]">Lab Results</h1>
-              <p className="text-[]">View and manage lab results</p>
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+        <Header onToggleSidebar={toggleSidebar} />
+
+        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+            <div>
+              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Lab Results</h1>
+              <p className="text-sm text-base-content/60 2xl:text-base">View and manage lab results</p>
             </div>
+            <button className="btn btn-outline btn-sm 2xl:btn-md" onClick={handleExport}>
+              <FaDownload className="w-4 h-4 mr-2" />
+              Export
+            </button>
+          </div>
 
-            <div className="flex justify-between mt-5">
-              <div className="relative flex items-center pt-4 lg:pt-0  ">
-                <input
-                  type="search "
-                  name="search"
-                  id="search"
-                  value={searchTerm}
-                  className="border border-[#AEAAAE] lg:w-[574px] w-full rounded-[10px] pl-10 p-3 "
-                  placeholder="Search by Patient or Test"
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1); // reset to page 1 when searching
-                  }}
-                />
-                <CiSearch className="absolute  pl-3 items-center " size={30} />
-              </div>
-              <div className="">
-                <button className="w-[138px] h-[56px] border border-[#AEAAAE] flex justify-center items-center text-[18px] font-[600] rounded-[10px]">
-                  {" "}
-                  <MdOutlineFileDownload size={24} /> Exports
-                </button>
-              </div>
-            </div>
+          <div className="flex gap-3 items-center mb-4">
+            <input className="input input-bordered w-full sm:w-96" placeholder="Search by Patient or Test" onChange={(e) => {
+              const q = e.target.value.toLowerCase();
+              setLabResults((prev) => prev.map(r => ({ ...r, __hidden: !( (patientsById[r.patientId]?.toLowerCase?.() || r.patientName?.toLowerCase?.() || '').includes(q) || (r.testType || '').toLowerCase().includes(q)) })));
+            }} />
+          </div>
 
-            <section>
-              <div className="overflow-x-auto rounded-lg shadow mt-6">
-                <table className="w-full text-[16px] rounded-lg overflow-hidden">
-                  <thead className="bg-[#EAFFF3] ">
-                    <tr>
-                      <th class="p-2">Lab ID</th>
-                      <th class="p-2">Patient Name</th>
-                      <th class="p-2">Patient ID</th>
-                      <th class="p-2">Test Type</th>
-                      <th class="p-2">Date</th>
-                      <th class="p-2">Time</th>
-                      <th class="p-2">Doctor</th>
-                      <th class="p-2">Status</th>
-                    </tr>
-                  </thead>
-
-                  <tbody className="bg-[#FFFFFF] ">
-                    {resultLab.map((item, index) => {
-                      return (
-                        <tr
-                          key={index}
-                          className="last:border-b-0 text-center "
-                        >
-                          <td class="border-b py-7">{item.labId}</td>
-                          <td class="border-b p-2">{item.patientName}</td>
-                          <td class="border-b p-2">{item.patientId}</td>
-                          <td class="border-b p-2">{item.testType}</td>
-                          <td class="border-b p-2">{item.date}</td>
-                          <td class="border-b p-2">{item.time}</td>
-                          <td class="border-b p-2">{item.doctor}</td>
-                          <td className="border-b p-2">
-                            <span
-                              className="w-[102px] h-[24px] rounded-full text-sm font-medium flex items-center justify-center"
-                              style={{
-                                backgroundColor: bgChange(item.status),
-                              }}
-                            >
-                              {item.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className=" w-[652px] flex mx-auto mt-10">
-                <div className="flex items-center gap-10">
-                  {/* Page Info */}
-                  <p className="text-sm text-gray-500 ">
-                    Showing result for{" "}
-                    <span className="font-medium text-gray-700">
-                      {paginatedData.length} Patients
-                    </span>{" "}
-                    ({filteredData.length} Total)
-                  </p>
-
-                  {/* Pagination Buttons */}
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={handlePrev}
-                      disabled={currentPage === 1}
-                      className={`h-[23px] w-[23px] rounded-full border border-[#CAE3F4] ${
-                        currentPage === 1
-                          ? "text-gray-400 cursor-not-allowed bg-gray-100"
-                          : "hover:bg-[#CAE3F4]"
-                      }`}
-                    >
-                      &lt;
-                    </button>
-
-                    {[...Array(totalPages)].map((_, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handlePageClick(index + 1)}
-                        className={`h-[23px] w-[23px] rounded-full border border-gray-300 ${
-                          currentPage === index + 1
-                            ? "bg-[#00943C] text-white"
-                            : "hover:bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        {index + 1}
-                      </button>
-                    ))}
-
-                    <button
-                      onClick={handleNext}
-                      disabled={currentPage === totalPages}
-                      className={`h-[23px] w-[23px] rounded-full border border-gray-300 ${
-                        currentPage === totalPages
-                          ? "text-gray-400 cursor-not-allowed bg-gray-100"
-                          : "hover:bg-gray-200"
-                      }`}
-                    >
-                      &gt;
-                    </button>
+          <div className="flex flex-1 w-full min-h-0">
+            <div className="w-full shadow-xl card bg-base-100">
+              <div className="p-4 card-body 2xl:p-6">
+                {loading ? (
+                  <div>
+                    <div className="skeleton h-6 w-40 mb-3" />
+                    <div className="space-y-2">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="grid grid-cols-8 gap-3">
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                          <div className="skeleton h-4 w-full" />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <DataTable
+                    data={resolvedData.filter(r => !r.__hidden)}
+                    columns={columns}
+                    searchable={false}
+                    sortable={true}
+                    paginated={true}
+                    initialEntriesPerPage={10}
+                    maxHeight="max-h-64 sm:max-h-84 2xl:max-h-110"
+                    showEntries={true}
+                    onRowClick={(row) => { const id = row?.id || row?.labId; if (id) { window.location.href = `/dashboard/doctor/labResults/${id}`; } }}
+                  />
+                )}
               </div>
-            </section>
-          </section>
+            </div>
+          </div>
+          {false && (<LabResultDetailsModal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} labResultId={selectedLabId} />)}
         </div>
       </div>
     </div>
