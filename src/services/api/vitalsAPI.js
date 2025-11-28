@@ -1,5 +1,21 @@
 import apiClient from './apiClient';
 
+// Get all vitals (general endpoint)
+export const getVitals = async () => {
+  try {
+    console.log('🩺 VitalsAPI: Fetching all vitals');
+    const response = await apiClient.get('/vital');
+    console.log('✅ VitalsAPI: All vitals fetched successfully');
+    console.log('🩺 VitalsAPI: Response data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ VitalsAPI: Get all vitals error occurred');
+    console.error('📥 VitalsAPI: Error response:', error.response);
+    console.error('📥 VitalsAPI: Error data:', error.response?.data);
+    throw error;
+  }
+};
+
 // Get vitals activity for a nurse
 export const getVitalsByNurse = async (nurseId) => {
   try {
@@ -68,6 +84,7 @@ export const createVital = async (payload) => {
 
 
 export default {
+  getVitals,
   getVitalsByNurse,
   getVitalsByPatient,
   createVital,

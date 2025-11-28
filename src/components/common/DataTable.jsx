@@ -13,7 +13,8 @@ const DataTable = ({
   className = "",
   searchPlaceholder = "Search...",
   showEntries = true,
-  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:min-h-[50vh] 2xl:min-h-[60vh]" // Responsive default
+  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:min-h-[50vh] 2xl:min-h-[60vh]", // Responsive default
+  onRowClick = null
 }) => {
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState('');
@@ -165,7 +166,13 @@ const DataTable = ({
             <tbody>
               {currentData.length > 0 ? (
                 currentData.map((item, index) => (
-                  <tr key={item.id || index} className="text-xs transition-colors hover:bg-base-200/50">
+                  <tr 
+                    key={item.id || index} 
+                    className={`text-xs transition-colors hover:bg-base-200/50 ${
+                      onRowClick ? 'cursor-pointer hover:shadow-md' : ''
+                    }`}
+                    onClick={() => onRowClick && onRowClick(item)}
+                  >
                     {columns.map((column) => (
                       <td
                         key={column.key}
