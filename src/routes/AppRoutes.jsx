@@ -13,6 +13,14 @@ import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import LabResults from "@/pages/doctor/labResults/LabResults";
+import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
+import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
+import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
+import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
+import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
+import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
+import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
+import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import Task from "@/pages/doctor/assignTask/Task";
 
@@ -25,6 +33,8 @@ import Users from "@/pages/admin/users/Users";
 import StaffList from "@/pages/admin/users/StaffList";
 import FrontdeskDashboard from "@/pages/frontdesk/dashboard/Dashboard";
 import Patients from "@/pages/frontdesk/patients/Patients";
+import Surgeries from "@/pages/frontdesk/surgeries/Surgeries";
+import SurgeryDetails from "@/pages/frontdesk/surgeries/SurgeryDetails";
 
 
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
@@ -109,6 +119,16 @@ const AppRoutes = () => {
           <Registration />
         </ProtectedRoute>
       } />
+      <Route path="/frontdesk/surgeries" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <Surgeries />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/surgeries/:surgeryId" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <SurgeryDetails />
+        </ProtectedRoute>
+      } />
 
 
       {/*==============================================================================================================
@@ -164,19 +184,59 @@ const AppRoutes = () => {
           <DoctorDashboard />
         </ProtectedRoute>
       } />
-      <Route path="/dashboard/doctor/patientVitals" element={
-        <ProtectedRoute allowedRoles={['doctor']}>
-          <PatientVitals />
-        </ProtectedRoute>
-      } />
-      <Route path="/dashboard/doctor/LabResults" element={
+  <Route path="/dashboard/doctor/patientVitals" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <PatientVitals />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <PatientMedicalHistory />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId/add" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <AddDiagnosis />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ConsultationDetails />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/send-to-cashier/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <SendToCashier />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/send-to-pharmacy/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <SendToPharmacy />
+    </ProtectedRoute>
+  } />
+      <Route path="/dashboard/doctor/labResults" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <LabResults />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/labResults/:labResultId" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <LabResultDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/doctor/appointments" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <Appointment />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/incoming" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <IncomingDoctor />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/allPatients" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <AllPatients />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/doctor/assign-task" element={
@@ -308,7 +368,7 @@ const AppRoutes = () => {
           <PaymentRecords />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/patient-details" element={
+      <Route path="/cashier/patient-details/:patientId" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierPatientDetails />
         </ProtectedRoute>

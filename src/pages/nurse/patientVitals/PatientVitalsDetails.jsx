@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/nurse/dashboard/Sidebar";
+import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
+import DoctorSidebar from "@/components/doctor/dashboard/Sidebar";
+import { useAppSelector } from "@/store/hooks";
 import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
@@ -15,6 +17,8 @@ const PatientVitalsDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === 'incoming';
+  const { user } = useAppSelector((state) => state.auth);
+  const role = String(user?.role || '').toLowerCase();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -113,7 +117,11 @@ const PatientVitalsDetails = () => {
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        <Sidebar onCloseSidebar={closeSidebar} />
+        {role === 'doctor' ? (
+          <DoctorSidebar />
+        ) : (
+          <NurseSidebar onCloseSidebar={closeSidebar} />
+        )}
       </div>
 
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
@@ -128,7 +136,11 @@ const PatientVitalsDetails = () => {
             </div>
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => navigate(fromIncoming ? '/dashboard/nurse/incoming' : '/dashboard/nurse/patient')}
+              onClick={() => {
+                const base = role === 'doctor' ? '/dashboard/doctor' : '/dashboard/nurse';
+                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' ? `${base}/patientVitals` : `${base}/patient`;
+                navigate(backPath);
+              }}
             >
               {fromIncoming ? 'Back to Incoming' : 'Back to Patients'}
             </button>
