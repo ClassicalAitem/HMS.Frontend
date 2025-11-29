@@ -4,6 +4,9 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { PiUsersThree } from "react-icons/pi";
 import { getPatients } from "@/services/api/patientsAPI";
+import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
+import { toast } from "react-hot-toast";
 
 const PatientVitals = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -17,6 +20,10 @@ const PatientVitals = () => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const navigate = useNavigate();
+  const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
+  const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
+  const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -44,13 +51,15 @@ const PatientVitals = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
-        const mapped = patients.map((p, idx) => ({
+        const allow = new Set(["awaiting_injection", "awaiting_sampling", "awaiting_vitals"]);
+        const filtered = patients.filter((p) => allow.has(String(p?.status || "").toLowerCase()));
+        const mapped = filtered.map((p, idx) => ({
           sn: idx + 1,
           name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.fullName || "Unknown",
           gender: p?.gender || "—",
           age: calculateAge(p?.dob),
           blood: p?.bloodGroup || p?.blood || "—",
-          status: p?.status || "Active",
+          status: p?.status || "",
           id: p?.patientId || p?.id || p?.uuid,
           phone: p?.phone || p?.phoneNumber || "—",
           hospitalId: p?.hospitalId || p?.patientId || p?.id || p?.uuid,
@@ -195,6 +204,7 @@ const PatientVitals = () => {
                     <th className="p-3">Age</th>
                     <th className="p-3">Blood/Gp</th>
                     <th className="p-3">Status</th>
+                    <th className="p-3">Actions</th>
                   </tr>
                 </thead>
 
@@ -250,16 +260,59 @@ const PatientVitals = () => {
                     shown.map((p, index) => (
                       <tr
                         key={index}
-                        className="border-b last:border-b-0 cursor-pointer hover:bg-base-200/40"
-                        onClick={() => p?.id && navigate(`/dashboard/nurse/patient/${p.id}`, { state: { patientSnapshot: p } })}
+                        className="border-b last:border-b-0 hover:bg-base-200/40"
                       >
                         <td className="px-4 py-4">{String(p.sn).padStart(2, "0")}</td>
-                        <td className="text-center">{p.name}</td>
+                        <td className="text-center">
+                          <button
+                            className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              p?.id && navigate(`/dashboard/nurse/patient/${p.id}`, { state: { patientSnapshot: p } });
+                            }}
+                          >
+                            {p.name}
+                          </button>
+                        </td>
                         <td className="text-center">{p.gender}</td>
                         <td className="text-center">{p.age}</td>
                         <td className="text-center">{p.blood}</td>
                         <td className="text-center">
                           <span className={statusBadgeClass(p.status)}>{p.status}</span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              className="btn btn-primary btn-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPatient(p);
+                                setIsSendDoctorOpen(true);
+                              }}
+                            >
+                              Send to Doctor
+                            </button>
+                            <button
+                              className="btn btn-outline btn-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPatient(p);
+                                setIsSendPharmacyOpen(true);
+                              }}
+                            >
+                              Send to Pharmacy
+                            </button>
+                            <button
+                              className="btn btn-outline btn-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPatient(p);
+                                setIsSendCashierOpen(true);
+                              }}
+                            >
+                              Send to Cashier
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -297,7 +350,75 @@ const PatientVitals = () => {
               </div>
             )}
 
-           
+            {/* Send to Doctor Modal */}
+            {isSendDoctorOpen && selectedPatient && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
+                <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
+                  <div className="p-6 card-body">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-bold text-base-content">Confirm Send to Doctor</h2>
+                      <button className="btn btn-ghost btn-sm" onClick={() => setIsSendDoctorOpen(false)}>Close</button>
+                    </div>
+                    <p className="mb-4 text-sm text-base-content/70">
+                      Are you sure you want to send this patient to the doctor for consultation? This will update the status to <span className="font-medium">awaiting_consultation</span> for {selectedPatient?.name || 'Unknown'} ({selectedPatient?.hospitalId || selectedPatient?.id || '—'}).
+                    </p>
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button className="btn" onClick={() => setIsSendDoctorOpen(false)}>Cancel</button>
+                      <button
+                        className="btn btn-success"
+                        onClick={async () => {
+                          try {
+                            const pid = selectedPatient?.id || selectedPatient?.hospitalId;
+                            const promise = updatePatientStatus(pid, 'awaiting_consultation');
+                            toast.promise(promise, {
+                              loading: 'Sending to doctor...',
+                              success: 'Patient sent to doctor successfully',
+                              error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
+                            });
+                            await promise;
+                            setIsSendDoctorOpen(false);
+                          } catch (e) {
+                            console.error('All Patients: send to doctor failed', e);
+                          }
+                        }}
+                      >
+                        Confirm & Send
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Send to Pharmacy Modal */}
+            {isSendPharmacyOpen && selectedPatient && (
+              <PharmacyActionModal
+                isOpen={isSendPharmacyOpen}
+                onClose={() => setIsSendPharmacyOpen(false)}
+                patientId={selectedPatient?.id || selectedPatient?.hospitalId}
+                defaultStatus={"awaiting_pharmacy"}
+                itemsCount={0}
+                medicationNames={[]}
+                patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
+                onUpdated={() => setIsSendPharmacyOpen(false)}
+              />
+            )}
+
+            {/* Send to Cashier Modal */}
+            {isSendCashierOpen && selectedPatient && (
+              <CashierActionModal
+                isOpen={isSendCashierOpen}
+                onClose={() => setIsSendCashierOpen(false)}
+                patientId={selectedPatient?.id || selectedPatient?.hospitalId}
+                defaultStatus={"awaiting_cashier"}
+                mode={"confirm"}
+                patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
+                onUpdated={() => setIsSendCashierOpen(false)}
+              />
+            )}
+
+          
           </section>
         </div>
       </div>

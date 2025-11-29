@@ -6,6 +6,9 @@ import DoctorSidebar from "@/components/doctor/dashboard/Sidebar";
 import { useAppSelector } from "@/store/hooks";
 import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
+import { toast } from "react-hot-toast";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
@@ -21,7 +24,6 @@ const PatientVitalsDetails = () => {
   const role = String(user?.role || '').toLowerCase();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [vitals, setVitals] = useState([]);
   const [patient, setPatient] = useState(null);
   // Record vitals modal state
@@ -29,6 +31,9 @@ const PatientVitalsDetails = () => {
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
   const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+  const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
+  const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
+  const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
 
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
@@ -39,14 +44,14 @@ const PatientVitalsDetails = () => {
     }
 
     console.log('PatientVitalsDetails: patientId from params:', patientId);
-  }, [location?.state]);
+  }, [location?.state, patientId]);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
         setLoading(true);
-        setError("");
+        
         // Fetch vitals for this patient
         const res = await getVitalsByPatient(patientId);
         const raw = res?.data ?? res ?? [];
@@ -63,12 +68,11 @@ const PatientVitalsDetails = () => {
             const pData = pRes?.data ?? pRes;
             if (mounted) setPatient(pData);
           } catch (e) {
-            // Silent fallback; page still renders vitals
+            console.warn("PatientVitalsDetails: fallback patient fetch failed", e);
           }
         }
       } catch (e) {
         console.error("PatientVitalsDetails: fetch error", e);
-        if (mounted) setError("Failed to load vitals");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -99,6 +103,7 @@ const PatientVitalsDetails = () => {
   const patientUUID = patient?.id || location?.state?.patientSnapshot?.id || "";
   console.log('Iwant to see patient:', patient);
   const patientHospitalId = patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
+  const patientName = patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -189,28 +194,33 @@ const PatientVitalsDetails = () => {
                         <span className="text-sm text-base-content/70">Patient ID</span>
                         <span className="text-base font-medium text-base-content">{patientUUID || '—'}</span>
                         <span className="text-xs text-base-content/70">Hospital ID: {patientHospitalId || '—'}</span>
-                      </div>
-                    </div>
-
-                    {/* Insurance / HMO list */}
-                    <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
-                      <div className="space-y-1">
-                        <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
-                        {Array.isArray(patient?.hmos) && patient.hmos.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {patient.hmos.map((h, i) => (
-                              <span key={i} className="badge badge-outline font-normal text-sm">
-                                {`${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString('en-US') : '—'})`}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-base-content/70">None</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                 </div>
+              </div>
+
+              {/* Insurance / HMO list */}
+              <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
+                <div className="space-y-1">
+                  <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
+                  {Array.isArray(patient?.hmos) && patient.hmos.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {patient.hmos.map((h, i) => (
+                        <span key={i} className="badge badge-outline font-normal text-sm">
+                          {`${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString('en-US') : '—'})`}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-base-content/70">None</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button className="btn btn-primary btn-sm" onClick={() => setIsSendDoctorOpen(true)}>Send to Doctor</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setIsSendCashierOpen(true)}>Send to Cashier</button>
+                </div>
+              </div>
+            </div>
+          </div>
               )}
             </div>
           </div>
@@ -486,6 +496,73 @@ const PatientVitalsDetails = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Send to Doctor Modal */}
+          {isSendDoctorOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
+              <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
+                <div className="p-6 card-body">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-base-content">Confirm Send to Doctor</h2>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setIsSendDoctorOpen(false)}>Close</button>
+                  </div>
+                  <p className="mb-4 text-sm text-base-content/70">
+                    Are you sure you want to send this patient to the doctor for consultation? This will update the status to <span className="font-medium">awaiting_consultation</span> for {patientName} ({patientHospitalId || '—'}).
+                  </p>
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button className="btn" onClick={() => setIsSendDoctorOpen(false)}>Cancel</button>
+                    <button
+                      className="btn btn-success"
+                      onClick={async () => {
+                        try {
+                          const promise = updatePatientStatus(patientUUID || patientId, 'awaiting_consultation');
+                          toast.promise(promise, {
+                            loading: 'Sending to doctor...',
+                            success: 'Patient sent to doctor successfully',
+                            error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
+                          });
+                          await promise;
+                          setIsSendDoctorOpen(false);
+                        } catch (e) {
+                          console.error("PatientVitalsDetails: send to doctor failed", e);
+                        }
+                      }}
+                    >
+                      Confirm & Send
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Send to Pharmacy Modal */}
+          {isSendPharmacyOpen && (
+            <PharmacyActionModal
+              isOpen={isSendPharmacyOpen}
+              onClose={() => setIsSendPharmacyOpen(false)}
+              patientId={patientUUID || patientId}
+              defaultStatus={"awaiting_pharmacy"}
+              itemsCount={0}
+              medicationNames={[]}
+              patientLabel={`${patientName} (${patientHospitalId || '—'})`}
+              onUpdated={() => setIsSendPharmacyOpen(false)}
+            />
+          )}
+
+          {/* Send to Cashier Modal */}
+          {isSendCashierOpen && (
+            <CashierActionModal
+              isOpen={isSendCashierOpen}
+              onClose={() => setIsSendCashierOpen(false)}
+              patientId={patientUUID || patientId}
+              defaultStatus={"awaiting_cashier"}
+              mode={"confirm"}
+              patientLabel={`${patientName} (${patientHospitalId || '—'})`}
+              onUpdated={() => setIsSendCashierOpen(false)}
+            />
           )}
         </div>
       </div>
