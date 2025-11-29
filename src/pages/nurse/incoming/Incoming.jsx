@@ -212,8 +212,7 @@ const Incoming = () => {
                     return (
                       <div
                         key={index}
-                        onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
-                        className="card bg-base-100 border border-base-300 shadow-sm cursor-pointer"
+                        className="card bg-base-100 border border-base-300 shadow-sm"
                       >
                         <div className="flex gap-6 items-center p-8">
                           <img
@@ -236,10 +235,13 @@ const Incoming = () => {
                           </div>
                         </div>
 
-                        <div className="flex justify-between px-7 pb-5">
-                          <button className={`px-3 py-1 rounded-full ${primary==='vitals' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Record Vitals</button>
-                          <button className={`px-3 py-1 rounded-full ${primary==='sampling' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Sampling</button>
-                          <button className={`px-3 py-1 rounded-full ${primary==='injection' ? 'bg-primary text-white' : 'text-base-content/70'}`}>Injection</button>
+                        <div className="flex justify-end px-7 pb-5">
+                          <button
+                            className="px-3 py-1 rounded-full bg-primary text-white"
+                            onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                          >
+                            View Patient Details
+                          </button>
                         </div>
                       </div>
                     );
