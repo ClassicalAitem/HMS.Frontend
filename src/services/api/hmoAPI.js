@@ -1,5 +1,4 @@
 import apiClient from './apiClient';
-import { API_ENDPOINTS } from '@/config/env';
 
 /**
  * Add HMO plans for a patient
@@ -19,13 +18,6 @@ export const updateHmoExpiry = async (hmoId, expiresAt) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) throw new Error('expiresAt must be YYYY-MM-DD');
   return apiClient.patch(`/hmo/${hmoId}`, { expiresAt });
 };
-
-export const getAllHmos = async (params = {}) => {
-  const url = API_ENDPOINTS.GET_HMOS; // '/hmo'
-  console.log('🧾 HmoAPI: Fetching all hmo', { params, url });
-  const response = await apiClient.get(url, { params });
-  return response;
-}
 
 export default {
   addHmoForPatient,
