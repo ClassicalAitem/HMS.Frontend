@@ -4,11 +4,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { useAppSelector } from "@/store/hooks";
-import { getServiceCharges } from "@/services/api/serviceChargesAPI";
-import { createBilling } from "@/services/api/billingAPI";
-import { updatePatientStatus } from "@/services/api/patientsAPI";
-import toast from "react-hot-toast";
+import { CashierActionModal } from "@/components/modals";
 
 const SendToCashier = () => {
   const { patientId } = useParams();
@@ -16,14 +12,17 @@ const SendToCashier = () => {
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
-  const { user } = useAppSelector((state) => state.auth);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
   const [patient, setPatient] = useState(snapshot || null);
-  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
-  const [serviceCharges, setServiceCharges] = useState([]);
-  const [serviceLoading, setServiceLoading] = useState(false);
+  const [isCashierOpen, setIsCashierOpen] = useState(false);
 
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState([
+    { id: 1, name: "General Consultation", note: "General Consultation", qty: 1, amount: 300000 },
+    { id: 2, name: "Malaria", note: "Lab test", qty: 1, amount: 300000 },
+    { id: 3, name: "General Consultation", note: "General Consultation", qty: 1, amount: 300000 },
+  ]);
+  const [newItem, setNewItem] = useState({ name: "", note: "", qty: 1, amount: 0 });
   const [diagnosis, setDiagnosis] = useState("");
   const [treatmentNotes, setTreatmentNotes] = useState("");
 
@@ -33,14 +32,16 @@ const SendToCashier = () => {
       try {
         if (snapshot) {
           setPatient(snapshot);
+          setLoadingPatient(false);
           return;
         }
         if (!patientId) return;
+        setLoadingPatient(true);
         const res = await getPatientById(patientId);
         const data = res?.data ?? res;
         if (mounted) setPatient(data);
       } finally {
-        // no-op
+        if (mounted) setLoadingPatient(false);
       }
     };
     load();
@@ -58,45 +59,12 @@ const SendToCashier = () => {
   const vat = useMemo(() => Math.round(subtotal * 0.05), [subtotal]);
   const total = useMemo(() => subtotal + vat, [subtotal, vat]);
 
-  const openAddItem = async () => {
-    try {
-      setIsAddItemOpen(true);
-      setServiceLoading(true);
-      const res = await getServiceCharges();
-      const raw = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-      setServiceCharges(list);
-    } catch {
-      setServiceCharges([]);
-    } finally {
-      setServiceLoading(false);
-    }
+  const addItem = () => {
+    if (!newItem.name || !newItem.amount) return;
+    setItems((list) => ([...list, { id: Date.now(), ...newItem, qty: Number(newItem.qty) || 1, amount: Number(newItem.amount) || 0 }]));
+    setNewItem({ name: "", note: "", qty: 1, amount: 0 });
   };
   const removeItem = (id) => setItems((list) => list.filter((i) => i.id !== id));
-
-  const addSelectedServiceItem = (svc, qty, price, desc, code) => {
-    const quantity = Math.max(1, Number(qty) || 1);
-    const unitPrice = Math.max(0, Number(price) || 0);
-    const item = {
-      id: Date.now(),
-      code: code || (svc?.category || ""),
-      name: svc?.service || desc || "Item",
-      description: desc || svc?.service || "",
-      note: svc?.category || "",
-      qty: quantity,
-      amount: unitPrice,
-    };
-    setItems((list) => {
-      const idx = list.findIndex((it) => (it.code === item.code) && (Number(it.amount) === Number(item.amount)));
-      if (idx >= 0) {
-        const updated = [...list];
-        updated[idx] = { ...updated[idx], qty: Number(updated[idx].qty) + item.qty };
-        return updated;
-      }
-      return [...list, item];
-    });
-    setIsAddItemOpen(false);
-  };
 
   return (
     <div className="flex h-screen">
@@ -132,51 +100,41 @@ const SendToCashier = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-          <div className="shadow-xl card bg-base-100">
-            <div className="p-4 card-body">
-              <h3 className="mb-4 text-lg font-medium text-base-content">Billable Items</h3>
-              <div className="space-y-3">
-                {items.map((it) => (
-                  <div key={it.id} className="flex justify-between items-center p-3 rounded-lg bg-base-200">
-                    <div>
-                      <div className="font-medium text-base-content">{it.name}</div>
-                      <div className="text-xs text-base-content/70">Code: {it.code || '—'}</div>
-                      <div className="text-sm text-base-content/70">{it.note}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input
-                        className="input input-bordered input-xs w-16"
-                        type="number"
-                        min={1}
-                        value={it.qty}
-                        onChange={(e) => {
-                          const val = Math.max(1, Number(e.target.value) || 1);
-                          setItems((list) => list.map((x) => x.id === it.id ? { ...x, qty: val } : x));
-                        }}
-                        title="Quantity"
-                      />
-                      <input
-                        className="input input-bordered input-xs w-28"
-                        type="number"
-                        min={0}
-                        value={it.amount}
-                        onChange={(e) => {
-                          const val = Math.max(0, Number(e.target.value) || 0);
-                          setItems((list) => list.map((x) => x.id === it.id ? { ...x, amount: val } : x));
-                        }}
-                        title="Unit price"
-                      />
-                      <span className="font-medium">₦{((Number(it.amount) || 0) * (Number(it.qty) || 1)).toLocaleString()}</span>
-                      <button className="btn btn-ghost btn-xs" onClick={() => removeItem(it.id)} title="Remove">🗑️</button>
-                    </div>
+              <div className="shadow-xl card bg-base-100">
+                <div className="p-4 card-body">
+                  <h3 className="mb-4 text-lg font-medium text-base-content">Billable Items</h3>
+                  <div className="space-y-3">
+                    {items.map((it) => (
+                      <div key={it.id} className="flex justify-between items-center p-3 rounded-lg bg-base-200">
+                        <div>
+                          <div className="font-medium text-base-content">{it.name}</div>
+                          <div className="text-sm text-base-content/70">{it.note}</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm">Qty:{it.qty}</span>
+                          <span className="font-medium">₦{(it.amount || 0).toLocaleString()}</span>
+                          <button className="btn btn-ghost btn-xs" onClick={() => removeItem(it.id)} title="Remove">🗑️</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <select className="select select-bordered w-full" value={newItem.note} onChange={(e) => setNewItem((ni) => ({ ...ni, note: e.target.value }))}>
+                      <option value="">Select Service</option>
+                      <option>General Consultation</option>
+                      <option>Lab test</option>
+                      <option>Surgery</option>
+                    </select>
+                    <input className="input input-bordered w-full sm:col-span-2" placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem((ni) => ({ ...ni, name: e.target.value }))} />
+                    <input className="input input-bordered w-full" type="number" placeholder="Qty" value={newItem.qty} onChange={(e) => setNewItem((ni) => ({ ...ni, qty: e.target.value }))} />
+                    <input className="input input-bordered w-full" type="number" placeholder="Amount" value={newItem.amount} onChange={(e) => setNewItem((ni) => ({ ...ni, amount: e.target.value }))} />
+                  </div>
+                  <div className="mt-3">
+                    <button className="btn btn-success btn-sm" onClick={addItem}>+ Add item</button>
+                  </div>
+                </div>
               </div>
-              <div className="mt-3">
-                <button className="btn btn-success btn-sm" onClick={openAddItem}>+ Add item</button>
-              </div>
-            </div>
-          </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="shadow-xl card bg-base-100">
@@ -212,106 +170,29 @@ const SendToCashier = () => {
                   <div className="space-y-2 text-sm text-base-content/70">
                     <div className="flex justify-between"><span>Visit Date</span><span>{new Date().toLocaleDateString()}</span></div>
                     <div className="flex justify-between"><span>Visit Time</span><span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>
-                    <div className="flex justify-between"><span>Doctor</span><span>Dr. {`${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || '—'}`}</span></div>
+                    <div className="flex justify-between"><span>Doctor</span><span>Dr. {patient?.doctorName || "—"}</span></div>
                   </div>
                 </div>
               </div>
               <div className="shadow-xl card bg-base-100">
                 <div className="p-4 card-body">
-                  <button
-                    className="btn btn-success w-full"
-                    onClick={async () => {
-                      try {
-                        if (!items.length) {
-                          toast.error('Add at least one billable item');
-                          return;
-                        }
-                        const itemDetail = items.map((it) => ({
-                          code: String(it.code || '').toLowerCase(),
-                          description: it.description || it.name || '',
-                          quantity: String(it.qty),
-                          price: String(it.amount),
-                          total: String((Number(it.amount) || 0) * (Number(it.qty) || 1)),
-                        }));
-                        await toast.promise(
-                          createBilling(patientId, { itemDetail }),
-                          { loading: 'Creating billing...', success: 'Billing created', error: (e) => e?.response?.data?.message || 'Failed to create billing' }
-                        );
-                        await toast.promise(
-                          updatePatientStatus(patientId, 'awaiting_cashier'),
-                          { loading: 'Sending to cashier...', success: 'Patient sent to cashier', error: (e) => e?.response?.data?.message || 'Failed to update status' }
-                        );
-                        navigate('/cashier/incoming');
-                      } catch {
-                        // already handled by toasts; offer retry via UI if needed
-                      }
-                    }}
-                  >
-                    Send to Cashier
-                  </button>
+                  <button className="btn btn-success w-full" onClick={() => setIsCashierOpen(true)}>Send to Cashier</button>
                 </div>
               </div>
             </div>
           </div>
-          {isAddItemOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsAddItemOpen(false)} />
-              <div className="relative z-10 w-full max-w-2xl shadow-xl card bg-base-100">
-                <div className="p-6 card-body">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold text-base-content">Add Billable Item</h2>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setIsAddItemOpen(false)}>Close</button>
-                  </div>
-                  <div className="mb-3">
-                    {serviceLoading ? (
-                      <div className="skeleton h-10 w-full" />
-                    ) : (
-                      <div className="rounded-lg border border-base-300 p-3 max-h-64 overflow-y-auto">
-                        {serviceCharges.length === 0 ? (
-                          <div className="text-sm text-base-content/70">No service charges found. You can enter manually.</div>
-                        ) : (
-                          <table className="table table-zebra w-full text-sm">
-                            <thead>
-                              <tr>
-                                <th>Service</th>
-                                <th>Category</th>
-                                <th>Amount</th>
-                                <th></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {serviceCharges.map((svc) => (
-                                <tr key={svc.id}>
-                                  <td>{svc.service}</td>
-                                  <td>{svc.category}</td>
-                                  <td>₦{Number(svc.amount || 0).toLocaleString()}</td>
-                                  <td>
-                                    <button
-                                      className="btn btn-primary btn-xs"
-                                      onClick={() => {
-                                        const price = Number(svc.amount || 0);
-                                        const desc = svc.service;
-                                        const code = svc.category;
-                                        const qty = 1;
-                                        addSelectedServiceItem(svc, qty, price, desc, code);
-                                      }}
-                                    >
-                                      Select
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-2 text-sm text-base-content/70">Selected items can be edited in the list (quantity and price). To merge duplicates we combine by code and price.</div>
-                </div>
-              </div>
-            </div>
-          )}
+
+          <CashierActionModal
+            isOpen={isCashierOpen}
+            onClose={() => setIsCashierOpen(false)}
+            patientId={patientId}
+            defaultStatus="awaiting_cashier"
+            mode="confirm"
+            totalAmount={total}
+            itemsCount={items.length}
+            patientLabel={`${patientName || "Unknown"} (${patient?.hospitalId || patientId || "—"})`}
+            onUpdated={() => navigate('/cashier/incoming')}
+          />
         </div>
       </div>
     </div>
