@@ -49,8 +49,8 @@ const Schedule = () => {
                   return (
                     <button
                       key={index}
-                      className={`w-[199px] h-[56px] border border-[#004A1E] flex justify-center items-center gap-3 text-[16px] font-[400] rounded-[4px] ${
-                        lastButton ? "bg-[#004A1E] text-white" : "bg-white"
+                      className={`w-[199px] h-[56px] border border-primary flex justify-center items-center gap-3 text-[16px] font-[400] rounded-[4px] ${
+                        lastButton ? "bg-primary text-primary-content" : "bg-base-100"
                       }`}
                     >
                       {schedule.icon} {schedule.action}
@@ -62,7 +62,7 @@ const Schedule = () => {
 
             <div className="mt-5">
               <div className="w-[525px]">
-                <h1 className="text-[#00943C] text-[32px]">Add New Shift</h1>
+                <h1 className="text-primary text-[32px]">Add New Shift</h1>
                 <p className="text-[12px]">
                   Assign roles to your staffs, they would get notification to
                   wherever you assign them to.
@@ -82,14 +82,14 @@ const Schedule = () => {
 
               <div className="flex gap-4 mt-5">
                 {/* All Staff Filter */}
-                <button className="flex items-center gap-2 bg-[#F1F2F1] border border-[#605D66] px-3 py-2 rounded-md text-sm text-[#605D66] ">
-                  <FiUser className="text-[#605D66]" />
+                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70 ">
+                  <FiUser className="text-base-content/70" />
                   <p>All Staff</p>
-                  <FaChevronDown className="ml-auto text-[#605D66]" />
+                  <FaChevronDown className="ml-auto text-base-content/70" />
                 </button>
 
                 {/* Doctors Filter */}
-                <button className="flex items-center gap-2 bg-[#F1F2F1] border border-[#605D66] px-3 py-2 rounded-md text-sm text-[#605D66]">
+                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70">
                   <img src={doctorIcon} alt="" />
 
                   <p>Doctors</p>
@@ -97,8 +97,8 @@ const Schedule = () => {
                 </button>
 
                 {/* Date Filter */}
-                <button className="flex items-center gap-2 bg-[#F1F2F1] border border-[#605D66] px-3 py-2 rounded-md text-sm text-[#605D66] ">
-                  <FaCalendarAlt className="text-[#605D66]" />
+                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70 ">
+                  <FaCalendarAlt className="text-base-content/70" />
                   <p>11th Sep 2025</p>
                 </button>
               </div>
@@ -108,9 +108,9 @@ const Schedule = () => {
 
             <div>
               <div className="overflow-x-auto rounded-lg shadow mt-6">
-                <table className="w-full bg-[#FFFFF] text-[16px]">
+                <table className="w-full bg-base-100 text-[16px]">
                   {/* Table header */}
-                  <thead className="bg-[#EAFFF3] text-left text-[#49454F]">
+                  <thead className="bg-base-200 text-left text-base-content/70">
                     <tr>
                       <th className="px-4 py-2">S/n</th>
                       <th className="px-4 py-2">Staff Names</th>
@@ -131,7 +131,7 @@ const Schedule = () => {
                         <td className="px-4 py-4">{staff.role}</td>
 
                         {/* <td className="px-4 py-2">{staff.time}</td> */}
-                        <select className="border border-[#AEAAAE] rounded-[6px] py-1 w-[271px] mt-3">
+                        <select className="border border-base-300 rounded-[6px] py-1 w-[271px] mt-3">
                           <td>
                             <option key={index} value="">
                               {staff.time}
@@ -147,10 +147,10 @@ const Schedule = () => {
               </div>
 
               <div className="flex justify-center gap-4 mt-6">
-                <button className="bg-[#FFFFFF] text-[#AEAAAE] w-[203px] px-6 py-2 rounded-full shadow ">
+                <button className="bg-base-100 text-base-content/70 w-[203px] px-6 py-2 rounded-full shadow ">
                   Review Shift
                 </button>
-                <button className="bg-[#00943C] text-[#FFFFFF]  w-[203px] px-6 py-2 rounded-full shadow ">
+                <button className="bg-primary text-primary-content  w-[203px] px-6 py-2 rounded-full shadow ">
                   Add Shift
                 </button>
               </div>

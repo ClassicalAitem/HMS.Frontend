@@ -4,9 +4,13 @@ import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
 import { BookAppointmentModal } from '@/components/modals';
-import appointmentsData from '@/data/appointments.json';
+import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
+// import appointmentsData from '@/data/appointments.json';
 import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
+import { toast } from 'react-hot-toast';
+import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getPatients } from '@/services/api/patientsAPI';
 
 const Appointments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -14,10 +18,73 @@ const Appointments = () => {
   const [selectedDate, setSelectedDate] = useState('7/18/17');
   const [filterOpen, setFilterOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [patientsById, setPatientsById] = useState({});
 
-  // Load appointments data from JSON file
+  // Load appointments data from backend
   useEffect(() => {
-    setAppointments(appointmentsData);
+    const load = async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          if (window.__appointmentsLoadInFlight) return;
+          window.__appointmentsLoadInFlight = true;
+        }
+        const res = await toast.promise(
+          getAllAppointments(),
+          {
+            loading: 'Loading appointments...',
+            success: 'Appointments loaded',
+            error: 'Failed to load appointments'
+          },
+          { id: 'appointments-load' }
+        );
+        const raw = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+        console.log('Raw appointment data:', list);
+        const mapped = list.map((a, idx) => ({
+          id: a?.id || a?._id || a?.appointmentId || idx + 1, // Use actual appointment ID
+          patientId: a?.patientId, // keep original patientId for name resolution
+          patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+          date: a?.appointmentDate || a?.date,
+          time: a?.appointmentTime || a?.time,
+          appointmentType: a?.department || a?.appointmentType || 'General',
+          status: a?.status || 'Active',
+        }));
+        console.log('Mapped appointments:', mapped);
+        setAppointments(mapped);
+      } catch (err) {
+        console.error('Load appointments error', err);
+        // Fallback: keep existing state
+      }
+      finally {
+        if (typeof window !== 'undefined') {
+          window.__appointmentsLoadInFlight = false;
+        }
+      }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        const res = await getPatients();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.data ?? []);
+        const map = {};
+        list.forEach((p) => {
+          const name = `${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`.trim() || 'Unknown Patient';
+          const idKeys = [p?.id, p?.patientId, p?.uuid, p?.hospitalId].filter(Boolean);
+          idKeys.forEach((k) => { map[k] = name; });
+        });
+        setPatientsById(map);
+      } catch (err) {
+        console.error('Fetch patients for name resolution failed', err);
+        setPatientsById({});
+      }
+    };
+    fetchPatients();
   }, []);
 
   const toggleSidebar = () => {
@@ -31,12 +98,12 @@ const Appointments = () => {
   const StatusBadge = ({ status }) => {
     const getBadgeClass = (status) => {
       switch (status) {
-        case 'Active':
-          return 'badge badge-success text-white';
-        case 'Not Active':
-          return 'badge badge-neutral text-white';
-        case 'Not Urgent':
-          return 'badge badge-success text-white';
+        case 'completed':
+          return 'badge badge-primary text-white';
+        case 'scheduled':
+          return 'badge badge-outline badge-info';
+        case 'cancelled':
+          return 'badge badge-error text-white';
         default:
           return 'badge badge-neutral text-white';
       }
@@ -50,9 +117,16 @@ const Appointments = () => {
   };
 
   // Process appointments data
-  const processedAppointments = useMemo(() => appointments.map(appointment => ({
-    ...appointment
-  })), [appointments]);
+  const resolvePatientName = (a) => {
+    const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
+    const resolved = pid ? patientsById[pid] : undefined;
+    return resolved || a?.patientName || a?.patient?.fullName || 'Unknown';
+  };
+
+  const processedAppointments = useMemo(() => appointments.map(a => ({
+    ...a,
+    patientName: resolvePatientName(a),
+  })), [appointments, patientsById]);
 
   // Define table columns
   const columns = useMemo(() => [
@@ -106,9 +180,48 @@ const Appointments = () => {
     return today.toLocaleDateString('en-US', options);
   };
 
-  const handleBookAppointment = (appointmentData) => {
-    console.log('New appointment:', appointmentData);
-    // Add logic to save appointment
+  const handleRowClick = (appointment) => {
+    console.log('Row clicked:', appointment);
+    // Use the actual appointment ID from the API, or fall back to the mapped ID
+    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
+    console.log('Appointment ID:', appointmentId);
+    if (appointmentId) {
+      setSelectedAppointmentId(appointmentId);
+      setIsDetailsModalOpen(true);
+      console.log('Opening modal with ID:', appointmentId);
+    } else {
+      toast.error('No appointment ID found');
+    }
+  };
+
+  const handleBookAppointment = async (appointmentData) => {
+    try {
+      await toast.promise(
+        createAppointment(appointmentData),
+        {
+          loading: 'Saving appointment...',
+          success: 'Appointment saved',
+          error: (e) => e?.message || 'Failed to save appointment'
+        }
+      );
+      setIsBookModalOpen(false);
+      // Refresh list
+      const res = await getAllAppointments();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+      const mapped = list.map((a, idx) => ({
+        id: a?.id || a?._id || a?.appointmentId || idx + 1, // Use actual appointment ID
+        patientId: a?.patientId, // keep original patientId for name resolution
+        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+        date: a?.appointmentDate || a?.date,
+        time: a?.appointmentTime || a?.time,
+        appointmentType: a?.department || a?.appointmentType || 'General',
+        status: a?.status || 'Active',
+      }));
+      setAppointments(mapped);
+    } catch (err) {
+      console.error('Create appointment error', err);
+    }
   };
 
   return (
@@ -122,10 +235,9 @@ const Appointments = () => {
       )}
       
       {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <div className={`${
+        'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0'
+      } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
       
@@ -188,13 +300,14 @@ const Appointments = () => {
                 <DataTable
                   data={processedAppointments}
                   columns={columns}
-                  searchable={false}
+                  searchable={filterOpen}
                   sortable={true}
                   paginated={true}
                   initialEntriesPerPage={10}
                   maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
                   showEntries={true}
                   searchPlaceholder="Search appointments..."
+                  onRowClick={handleRowClick}
                 />
               </div>
             </div>
@@ -207,6 +320,19 @@ const Appointments = () => {
         isOpen={isBookModalOpen}
         onClose={() => setIsBookModalOpen(false)}
         onSubmit={handleBookAppointment}
+      />
+
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        appointmentId={selectedAppointmentId}
+        onUpdated={(updated) => {
+          setAppointments(prev => prev.map(a => (
+            a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
+              { ...a, status: updated?.status } : a
+          )));
+        }}
       />
     </div>
   );
