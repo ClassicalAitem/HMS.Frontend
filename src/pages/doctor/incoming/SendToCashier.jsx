@@ -3,8 +3,11 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
-import { getPatientById } from "@/services/api/patientsAPI";
-import { CashierActionModal } from "@/components/modals";
+import toast from "react-hot-toast";
+import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
+import { createBilling } from "@/services/api/billingAPI";
+import { SelectServiceChargeModal } from "@/components/modals";
+import { useAppSelector } from "@/store/hooks";
 
 const SendToCashier = () => {
   const { patientId } = useParams();
@@ -13,16 +16,13 @@ const SendToCashier = () => {
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
   const [patient, setPatient] = useState(snapshot || null);
-  const [isCashierOpen, setIsCashierOpen] = useState(false);
+  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingCreated, setBillingCreated] = useState(false);
 
-  const [items, setItems] = useState([
-    { id: 1, name: "General Consultation", note: "General Consultation", qty: 1, amount: 300000 },
-    { id: 2, name: "Malaria", note: "Lab test", qty: 1, amount: 300000 },
-    { id: 3, name: "General Consultation", note: "General Consultation", qty: 1, amount: 300000 },
-  ]);
-  const [newItem, setNewItem] = useState({ name: "", note: "", qty: 1, amount: 0 });
+  const [items, setItems] = useState([]);
   const [diagnosis, setDiagnosis] = useState("");
   const [treatmentNotes, setTreatmentNotes] = useState("");
 
@@ -36,12 +36,10 @@ const SendToCashier = () => {
           return;
         }
         if (!patientId) return;
-        setLoadingPatient(true);
         const res = await getPatientById(patientId);
         const data = res?.data ?? res;
         if (mounted) setPatient(data);
       } finally {
-        if (mounted) setLoadingPatient(false);
       }
     };
     load();
@@ -59,12 +57,59 @@ const SendToCashier = () => {
   const vat = useMemo(() => Math.round(subtotal * 0.05), [subtotal]);
   const total = useMemo(() => subtotal + vat, [subtotal, vat]);
 
-  const addItem = () => {
-    if (!newItem.name || !newItem.amount) return;
-    setItems((list) => ([...list, { id: Date.now(), ...newItem, qty: Number(newItem.qty) || 1, amount: Number(newItem.amount) || 0 }]));
-    setNewItem({ name: "", note: "", qty: 1, amount: 0 });
+  const addOrMergeItem = (item) => {
+    setItems((list) => {
+      const code = item.code;
+      const price = Number(item.price) || 0;
+      const quantity = Number(item.quantity) || 1;
+      const idx = list.findIndex((i) => i.note === code && Number(i.amount) === price);
+      if (idx >= 0) {
+        const next = [...list];
+        next[idx] = { ...next[idx], qty: (Number(next[idx].qty) || 0) + quantity };
+        return next;
+      }
+      return [...list, { id: Date.now(), name: item.description, note: code, qty: quantity, amount: price }];
+    });
   };
   const removeItem = (id) => setItems((list) => list.filter((i) => i.id !== id));
+
+  const handleSendToCashier = async () => {
+    if (!patientId) return;
+    if (items.length === 0) {
+      toast.error('Add at least one billable item');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      if (!billingCreated) {
+        const itemDetail = items.map((i) => ({
+          code: i.note,
+          description: i.name,
+          quantity: Number(i.qty) || 1,
+          price: Number(i.amount) || 0,
+          total: (Number(i.amount) || 0) * (Number(i.qty) || 1),
+        }));
+        const createPromise = createBilling(patientId, { itemDetail, totalAmount: subtotal });
+        await toast.promise(createPromise, {
+          loading: 'Creating bill...',
+          success: 'Bill created',
+          error: (err) => err?.response?.data?.message || 'Failed to create bill',
+        });
+        setBillingCreated(true);
+      }
+      const statusPromise = updatePatientStatus(patientId, 'awaiting_cashier');
+      await toast.promise(statusPromise, {
+        loading: 'Updating status...',
+        success: 'Patient sent to cashier',
+        error: (err) => err?.response?.data?.message || 'Failed to update status',
+      });
+      navigate('/cashier/incoming');
+    } catch {
+      // toasts handle messages
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex h-screen">
@@ -119,20 +164,10 @@ const SendToCashier = () => {
                     ))}
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <select className="select select-bordered w-full" value={newItem.note} onChange={(e) => setNewItem((ni) => ({ ...ni, note: e.target.value }))}>
-                      <option value="">Select Service</option>
-                      <option>General Consultation</option>
-                      <option>Lab test</option>
-                      <option>Surgery</option>
-                    </select>
-                    <input className="input input-bordered w-full sm:col-span-2" placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem((ni) => ({ ...ni, name: e.target.value }))} />
-                    <input className="input input-bordered w-full" type="number" placeholder="Qty" value={newItem.qty} onChange={(e) => setNewItem((ni) => ({ ...ni, qty: e.target.value }))} />
-                    <input className="input input-bordered w-full" type="number" placeholder="Amount" value={newItem.amount} onChange={(e) => setNewItem((ni) => ({ ...ni, amount: e.target.value }))} />
+                  <div className="mt-4">
+                    <button className="btn btn-success btn-sm" onClick={() => setIsSelectModalOpen(true)}>+ Add item</button>
                   </div>
-                  <div className="mt-3">
-                    <button className="btn btn-success btn-sm" onClick={addItem}>+ Add item</button>
-                  </div>
+                  
                 </div>
               </div>
 
@@ -170,28 +205,22 @@ const SendToCashier = () => {
                   <div className="space-y-2 text-sm text-base-content/70">
                     <div className="flex justify-between"><span>Visit Date</span><span>{new Date().toLocaleDateString()}</span></div>
                     <div className="flex justify-between"><span>Visit Time</span><span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>
-                    <div className="flex justify-between"><span>Doctor</span><span>Dr. {patient?.doctorName || "—"}</span></div>
+                    <div className="flex justify-between"><span>Doctor</span><span>Dr. {user ? `${user.firstName} ${user.lastName}` : "—"}</span></div>
                   </div>
                 </div>
               </div>
               <div className="shadow-xl card bg-base-100">
                 <div className="p-4 card-body">
-                  <button className="btn btn-success w-full" onClick={() => setIsCashierOpen(true)}>Send to Cashier</button>
+                  <button className="btn btn-success w-full" disabled={isSubmitting} onClick={handleSendToCashier}>Send to Cashier</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <CashierActionModal
-            isOpen={isCashierOpen}
-            onClose={() => setIsCashierOpen(false)}
-            patientId={patientId}
-            defaultStatus="awaiting_cashier"
-            mode="confirm"
-            totalAmount={total}
-            itemsCount={items.length}
-            patientLabel={`${patientName || "Unknown"} (${patient?.hospitalId || patientId || "—"})`}
-            onUpdated={() => navigate('/cashier/incoming')}
+          <SelectServiceChargeModal
+            isOpen={isSelectModalOpen}
+            onClose={() => setIsSelectModalOpen(false)}
+            onAddItem={addOrMergeItem}
           />
         </div>
       </div>
