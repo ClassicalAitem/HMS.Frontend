@@ -46,50 +46,63 @@ const StaffSchedule = () => {
     },
   ];
 
-  // function to return the right badge style
+  // badge background colors (match screenshot palette)
   const bgChange = (status) => {
     if (status === "On Duty") {
-      return "#D0EEA6";
+      return "#D0EEA6"; // light green
     }
     if (status === "On Schedule") {
-      return "#D6EDFE";
+      return "#D6EDFE"; // light blue
     }
     if (status === "Off Duty") {
-      return "#D9D9D9";
+      return "#D9D9D9"; // light gray
     }
+    return "#E5E7EB";
+  };
+
+  // badge text colors to improve contrast
+  const textColor = (status) => {
+    if (status === "On Duty") return "#1F6D2E";
+    if (status === "On Schedule") return "#1F5C99";
+    if (status === "Off Duty") return "#4B5563";
+    return "#374151";
   };
 
   return (
     <div className="px-5 overflow-x-auto">
-      <div className="flex justify-between text-[#00943C]">
-        <h1 className="text-[32px] ">Staff Schedule</h1>
-        <button>View All</button>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-[32px] font-medium">Staff Schedule</h1>
+        <button className="px-5 py-2 rounded-full border border-[#0A843E] text-[#0A843E] hover:bg-primary hover:text-base-content">
+          View All
+        </button>
       </div>
 
-      <table className="w-full  text-left min-w-[600px] mb-10">
+      {/* Table */}
+      <table className="w-full text-left min-w-[600px] mb-10">
         {/* T-Head */}
-        <thead className="bg-[#EAFFF3] rounded-[20px]">
-          <tr>
-            <th className="p-3">S/n</th>
-            <th className="p-3">Staff Name</th>
-            <th className="p-3">Role</th>
-            <th className="p-3">Time</th>
-            <th className="p-3">Status</th>
+        <thead className="bg-base-100">
+          <tr className="text-sm">
+            <th className="p-4">S/n</th>
+            <th className="p-4">Staff Name</th>
+            <th className="p-4">Role</th>
+            <th className="p-4">Time</th>
+            <th className="p-4">Status</th>
           </tr>
         </thead>
 
         {/* T-Body */}
         <tbody>
           {staffData.map((staff, index) => (
-            <tr key={staff.id} className="border">
-              <td className="p-3 py-5">{String(index + 1).padStart(2, "0")}</td>
-              <td className="p-3">{staff.name}</td>
-              <td className="p-3">{staff.role}</td>
-              <td className="p-3">{staff.time}</td>
-              <td className="p-3">
+            <tr key={staff.id} className="border-b">
+              <td className="p-4 py-5 w-20">{String(index + 1).padStart(2, "0")}</td>
+              <td className="p-4">{staff.name}</td>
+              <td className="p-4">{staff.role}</td>
+              <td className="p-4">{staff.time}</td>
+              <td className="p-4">
                 <span
-                  className="w-[102px] h-[24px] rounded-full text-sm font-medium flex items-center justify-center"
-                  style={{ backgroundColor: bgChange(staff.status) }}
+                  className="min-w-[110px] h-[28px] px-3 rounded-full text-sm font-medium inline-flex items-center justify-center"
+                  style={{ backgroundColor: bgChange(staff.status), color: textColor(staff.status) }}
                 >
                   {staff.status}
                 </span>
