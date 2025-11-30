@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
 import { GoChecklist } from "react-icons/go";
 import { FaSuitcaseMedical } from "react-icons/fa6";
@@ -6,50 +6,42 @@ import { IoMenu } from "react-icons/io5";
 import { SlCalender } from "react-icons/sl";
 import { Link, useLocation } from "react-router-dom";
 import { MdLockOutline } from "react-icons/md";
-import missFolake from "@/assets/images/missFolake.jpg";
+import { LogoutModal } from "@/components/modals";
+import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg"
 
 const Sidebar = () => {
   const location = useLocation();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
+
+  const generateInitials = (firstName, lastName) => {
+    if (!firstName && !lastName) return 'U';
+    const fi = firstName ? firstName.charAt(0).toUpperCase() : '';
+    const li = lastName ? lastName.charAt(0).toUpperCase() : '';
+    return fi + li;
+  };
+
+  const formatRole = (role) => {
+    switch (role) {
+      case 'super-admin': return 'Super Admin';
+      case 'admin': return 'Admin';
+      case 'doctor': return 'Doctor';
+      case 'nurse': return 'Nurse';
+      case 'frontdesk':
+      case 'front-desk': return 'Front Desk';
+      case 'cashier': return 'Cashier';
+      default: return role || 'User';
+    }
+  };
 
   const menuItems = [
-    {
-      icon: FaThLarge,
-      label: "Dashboard",
-      path: "/dashboard/doctor",
-      active: location.pathname === "/dashboard",
-    },
-    {
-      icon: FaSuitcaseMedical,
-      label: "Incoming",
-      path: "/dashboard/doctor/incoming",
-      active: location.pathname === "/incoming",
-    },
-    {
-      icon: SlCalender,
-      label: "Appointments",
-      path: "/dashboard/doctor/appointments",
-      active: location.pathname === "/appointments",
-    },
-    {
-      icon: GoChecklist,
-      label: "Lab Results",
-      path: "/dashboard/doctor/labResults",
-      active: location.pathname === "/patients",
-    },
-    {
-      icon: FaUsers,
-      label: "All Patients",
-      path: "/dashboard/doctor/allPatients",
-      active: location.pathname === "/patients",
-    },
-
-    {
-      icon: IoMenu,
-      label: "Assigned Task",
-      path: "/dashboard/doctor/assign-task",
-      active: location.pathname === "/appointments",
-    },
+    { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor" },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming" },
+    { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
+    { icon: GoChecklist, label: "Lab Results", path: "/dashboard/doctor/labResults" },
+    { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
+    // { icon: IoMenu, label: "Assigned Task", path: "/dashboard/doctor/assign-task" },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active }) => (
@@ -99,7 +91,7 @@ const Sidebar = () => {
               icon={item.icon}
               label={item.label}
               path={item.path}
-              active={item.active}
+              active={item.path === "/dashboard/doctor" ? (location.pathname === item.path) : location.pathname.startsWith(item.path)}
             />
           ))}
         </nav>
@@ -113,31 +105,32 @@ const Sidebar = () => {
             <MdLockOutline className="w-5 h-5" />
             <span>Change Password</span>
           </Link>
-  
-          <button className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content">
+
+          <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content">
             <FaSignOutAlt className="w-5 h-5" />
             <span>Log Out</span>
           </button>
         </div>
-  
+
         {/* User Profile */}
         <div className="p-4 border-t border-base-300">
           <div className="flex items-center space-x-3 h-[58px]">
-            <div className="flex justify-center items-center w-10 h-10 rounded-full">
-              <img
-                src={missFolake}
-                alt="Folake Flakes"
-                className="object-cover w-10 h-10 rounded-full"
-              />
+            <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
+              {user?.profileImage ? (
+                <img src={user.profileImage} alt={`${user?.firstName || ''} ${user?.lastName || ''}`} className="object-cover w-10 h-10 rounded-full" />
+              ) : (
+                <div className="flex justify-center items-center w-10 h-10 text-sm font-semibold rounded-full bg-primary text-primary-content">
+                  {generateInitials(user?.firstName, user?.lastName)}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-base-content">
-                Folake Flakes
-              </p>
-              <p className="text-xs text-primary">FrontDesk</p>
+              <p className="text-sm font-medium text-base-content">{user ? `${user.firstName} ${user.lastName}` : 'User'}</p>
+              <p className="text-xs text-primary">{formatRole(user?.role)}</p>
             </div>
           </div>
         </div>
+        <LogoutModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} />
       </div>;
 };
 
