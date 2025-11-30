@@ -11,7 +11,7 @@ export const getPatients = async () => {
   } catch (error) {
     console.error('❌ PatientsAPI: Get patients error occurred');
     console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
+    console.error('📥 PatientsAPI: Error data1:', error.response?.data);
     throw error;
   }
 };
