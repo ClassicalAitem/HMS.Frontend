@@ -902,3 +902,488 @@ export const doctorsAppointmentsPatients = [
     status: "Not Urgent",
   },
 ];
+
+export const resultLab = [
+  {
+    labId: "LR-2024-001",
+    patientName: "Emma Williams",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Completed",
+  },
+
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "HbA1c Test",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Completed",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+];
+
+import incomingAvatar from "./src/assets/images/incomingLogo.jpg";
+export const doctorIncomingPatientDetails = [
+  {
+    image: incomingAvatar,
+    patientName: "Leslie Alexander",
+    gender: "Female",
+    phoneNumber: "07037794935",
+    patientId: "P-2025-002",
+    insurance: "MedCare HMO",
+    status: "Active",
+  },
+];
+
+export const additionalInformation = [
+  {
+    bloodGroup: "A+",
+    genotype: "AA",
+    bloodGroup: "A+",
+    lastVisit: "12:00 04/16/25",
+  },
+];
+
+export const medicalHistory = [
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+];
+
+export const currentVitals = [
+  {
+    patientName: "Leslie Alexander",
+    ward: "Ward 3",
+    bed: "Bed 10",
+    lastUpdated: "5 mins ago",
+  },
+];
+
+import heart from "./src/assets/images/heart.png";
+import vitalSigns from "./src/assets/images/vitalSigns.png";
+import oxygen from "./src/assets/images/oxygen.png";
+import thermometer from "./src/assets/images/thermometer.png";
+import schedule from "./src/assets/images/schedule.png";
+
+export const moreVitals = [
+  {
+    image: heart,
+    heading: "heartRate",
+    heartRate: "78",
+    value: "bpm",
+  },
+  {
+    image: heart,
+    beatsPerMinutes: "bpm",
+    heading: "Blood Pressure",
+    heartRate: "125/82",
+    value: "bpm",
+  },
+  {
+    image: oxygen,
+    heading: "Oxygen",
+    heartRate: "125/82",
+    value: "%",
+  },
+  {
+    image: thermometer,
+    heading: "Temperature",
+    heartRate: "98.6",
+    value: "°F",
+  },
+  {
+    image: vitalSigns,
+    heading: "Respiratory",
+    heartRate: "16",
+    value: "rpm",
+  },
+  {
+    image: schedule,
+    heading: "Last Updated",
+    heartRate: "10",
+    value: "minutes ago",
+  },
+];
+
+export const diagnosis = [
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    Allergies: "Hypertension check-up",
+    Admission: "Consultation",
+    date: "01/01/01",
+  },
+];
+
+export const billing = [
+  {
+    name: "General Consultation",
+    qty: 1,
+    service: "General Consultation",
+    price: 300000,
+  },
+  { name: "Malaria", qty: 1, service: "Lab Test", price: 300000 },
+  {
+    name: "General Consultation",
+    qty: 1,
+    service: "General Consultation",
+    price: 300000,
+  },
+];
+
+export const TestHistory = [
+  {
+    header: "Pending Test",
+    value: "14",
+    status: "+3 from yesterday",
+  },
+  {
+    header: "Completed Today",
+    value: "35",
+    status: "On Track",
+  },
+  {
+    header: "In Progress",
+    value: "2",
+    status: "3 urgent",
+  },
+  {
+    header: "Low Stock Items",
+    value: "7",
+    status: "Needed Attention",
+  },
+];
+
+export const pendingTestRequest = [
+  {
+    name: "John Doe",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+  {
+    name: "Jane Smith",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+  {
+    name: "Sarah Owolabi",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+  {
+    name: "Micheal Brown",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+];
+
+export const completedToday = [
+  {
+    name: "John Doe",
+    testType: "Blood Test",
+    date: "09:30 AM",
+  },
+  {
+    name: "Jane Smith",
+    testType: "Urine Test",
+    date: "10:30 AM",
+  },
+  {
+    name: "Maryam Aliyah",
+    testType: "Pregnancy Test",
+    date: "01:30 AM",
+  },
+  {
+    name: "Adeboye David",
+    testType: "x-ray",
+    date: "03:30 AM",
+  },
+];
+
+export const incomingTestResult = [
+  {
+    header: "New Request",
+    value: "14",
+  },
+  {
+    header: "Urgent Priority",
+    value: "4",
+  },
+  {
+    header: "High Priority",
+    value: "2",
+  },
+  {
+    header: "Avg. Wait time",
+    value: "20 mm",
+  },
+];
+
+export const patientTestResults = [
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Urgent",
+    test: "Complete Blood Count (CBC)",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Urgent",
+    test: "Complete Blood Count (CBC)",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Normal",
+    test: "Complete Blood Count (CBC)",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Normal",
+    test: "X-ray",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+];
+
+export const stocks = [
+  {
+    header: "Total Items",
+    value: "14",
+    status: "Across all items",
+  },
+  {
+    header: "Critical Stock",
+    value: "4",
+    status: "immediate action needed",
+  },
+  {
+    header: "Low Stock",
+    value: "3",
+    status: "Re order soon",
+  },
+  {
+    header: "Well stocked",
+    value: "67",
+    status: "Adequate supply",
+  },
+];
+
