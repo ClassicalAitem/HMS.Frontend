@@ -1,107 +1,24 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
-import { Header, EmptyState } from "@/components/common";
+import React, { useEffect, useState, useMemo } from "react";
+import { Header } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
-import { LuPlus, LuCheck } from "react-icons/lu";
-import { VscSettings } from "react-icons/vsc";
+import { DataTable } from "@/components/common";
 import { BookAppointmentModal } from "@/components/modals";
-import { getAllAppointments, updateAppointment, createAppointment } from "@/services/api/appointmentsAPI";
+import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal";
+import { toast } from "react-hot-toast";
+import { getAllAppointments, createAppointment } from "@/services/api/appointmentsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 
 const Appointment = () => {
-  const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([]);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const dropdownRef = useRef(null);
-  const [patientsById, setPatientsById] = useState({});
-  const [updatingId, setUpdatingId] = useState(null);
-  const [confirmAppt, setConfirmAppt] = useState(null);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-
-  const statusClasses = (status) => {
-    const s = (status || "").toLowerCase();
-    if (s.includes("scheduled") || s.includes("active")) return "badge badge-info";
-    if (s.includes("completed")) return "badge badge-success";
-    if (s.includes("cancel")) return "badge badge-error";
-    if (s.includes("pending")) return "badge badge-warning";
-    return "badge badge-ghost";
-  };
-
-  const onRefresh = () => setRefreshKey((k) => k + 1);
-
-  const formatDate = (d) => {
-    if (!d) return "—";
-    try {
-      const dt = new Date(d);
-      if (Number.isNaN(dt.getTime())) return d;
-      return dt.toLocaleDateString();
-    } catch {
-      return d;
-    }
-  };
-
-  const formatTime = (t) => {
-    if (!t) return "—";
-    // Normalize "12:30:00" to HH:MM
-    const parts = String(t).split(":");
-    if (parts.length >= 2) return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
-    return t;
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchAppointments = async () => {
-      try {
-        setLoading(true);
-        const res = await getAllAppointments();
-        const data = Array.isArray(res?.data) ? res.data : res?.data?.data || [];
-        const mapped = data.map((a, idx) => ({
-          id: a?.id || a?.appointmentId || a?.uuid,
-          sn: idx + 1,
-          patientName:
-            a?.patient?.fullName || `${a?.patient?.firstName || ""} ${a?.patient?.lastName || ""}`.trim() || a?.patientName || "Unknown",
-          patientId: a?.patient?.hospitalId || a?.hospitalId || a?.patientId || a?.patient?.id,
-          date: formatDate(a?.appointmentDate || a?.date),
-          rawDate: a?.appointmentDate || a?.date,
-          time: formatTime(a?.appointmentTime || a?.time),
-          type: a?.appointmentType || a?.department || "consultation",
-          status: a?.status || "scheduled",
-        }));
-        if (mounted) setItems(mapped);
-      } catch (err) {
-        console.error("Nurse Appointment: fetch error", err);
-        if (mounted) setItems([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetchAppointments();
-    return () => {
-      mounted = false;
-    };
-  }, [refreshKey]);
-
-
-
-  const [showModal, setShowModal] = useState(false);
-  const handleModalSubmit = async (formData) => {
-    try {
-      // const response = await createAppointment(payload)
-      // const createAppointment = response.data
-
-      // TODO: integrate createAppointment API here and refresh list
-      // For now, simply close after submit to mirror frontdesk modal behavior
-      setShowModal(false);
-      onRefresh();
-    } catch (e) {
-      console.error("Appointment submit failed", e);
-    }
-  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [appointments, setAppointments] = useState([]);
+  const [patientsById, setPatientsById] = useState({});
+  const [selectedDate, setSelectedDate] = useState('7/18/17');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [isBookModalOpen, setIsBookModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+
+
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -109,117 +26,126 @@ const Appointment = () => {
     setIsSidebarOpen(false);
   };
 
-  const handleStatusChange = async (appt, newStatus) => {
-    if (!appt?.id) return;
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await toast.promise(
+          getAllAppointments(),
+          {
+            loading: 'Loading appointments...',
+            success: 'Appointments loaded',
+            error: 'Failed to load appointments'
+          },
+          { id: 'nurse-appointments-load' }
+        );
+        const raw = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+        const mapped = list.map((a, idx) => ({
+          id: a?.id || a?._id || a?.appointmentId || idx + 1,
+          patientId: a?.patientId,
+          patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+          date: a?.appointmentDate || a?.date,
+          time: a?.appointmentTime || a?.time,
+          appointmentType: a?.department || a?.appointmentType || 'General',
+          status: a?.status || 'Active',
+        }));
+        setAppointments(mapped);
+      } catch (err) {
+        console.error('Nurse Appointments: load error', err);
+      }
+    };
+    load();
+  }, []);
+
+  const handleBookAppointment = async (appointmentData) => {
     try {
-      setUpdatingId(appt.id);
-      await updateAppointment(appt.id, { status: newStatus });
-      setItems((prev) => prev.map((i) => (i.id === appt.id ? { ...i, status: newStatus } : i)));
-    } catch (e) {
-      console.error("Appointment status update failed", e);
-    } finally {
-      setUpdatingId(null);
+      await toast.promise(
+        createAppointment(appointmentData),
+        {
+          loading: 'Saving appointment...',
+          success: 'Appointment saved',
+          error: (e) => e?.message || 'Failed to save appointment'
+        }
+      );
+      setIsBookModalOpen(false);
+      const res = await getAllAppointments();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+      const mapped = list.map((a, idx) => ({
+        id: a?.id || a?._id || a?.appointmentId || idx + 1,
+        patientId: a?.patientId,
+        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+        date: a?.appointmentDate || a?.date,
+        time: a?.appointmentTime || a?.time,
+        appointmentType: a?.department || a?.appointmentType || 'General',
+        status: a?.status || 'Active',
+      }));
+      setAppointments(mapped);
+    } catch (err) {
+      console.error('Nurse Appointments: create error', err);
     }
   };
 
-  const openConfirm = (appt) => {
-    setConfirmAppt(appt);
-    setIsConfirmOpen(true);
-  };
-  const closeConfirm = () => {
-    setIsConfirmOpen(false);
-    setConfirmAppt(null);
-  };
-  const confirmComplete = async () => {
-    if (!confirmAppt?.id) return;
-    try {
-      setUpdatingId(confirmAppt.id);
-      await updateAppointment(confirmAppt.id, { status: "completed" });
-      setItems((prev) => prev.map((i) => (i.id === confirmAppt.id ? { ...i, status: "completed" } : i)));
-    } catch (e) {
-      console.error("Appointment status update failed", e);
-    } finally {
-      setUpdatingId(null);
-      closeConfirm();
+  const handleRowClick = (appointment) => {
+    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
+    if (appointmentId) {
+      setSelectedAppointmentId(appointmentId);
+      setIsDetailsModalOpen(true);
+    } else {
+      toast.error('No appointment ID found');
     }
   };
 
   // Fetch patients map for resolving patientId -> name
   useEffect(() => {
-    let mounted = true;
-    const loadPatients = async () => {
+    const fetchPatients = async () => {
       try {
         const res = await getPatients();
         const raw = res?.data ?? res ?? [];
         const list = Array.isArray(raw) ? raw : (raw.data ?? []);
         const map = {};
         list.forEach((p) => {
-          const ids = [p?.id, p?.patientId, p?.hospitalId, p?.uuid].filter(Boolean);
-          const name = (`${p?.firstName || ""} ${p?.middleName || ""} ${p?.lastName || ""}`).trim() || p?.fullName || p?.name || "Unknown";
-          ids.forEach((id) => {
-            if (id && !map[id]) map[id] = name || "Unknown";
-          });
+          const name = `${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`.trim() || 'Unknown Patient';
+          const idKeys = [p?.id, p?.patientId, p?.uuid, p?.hospitalId].filter(Boolean);
+          idKeys.forEach((k) => { map[k] = name; });
         });
-        if (mounted) setPatientsById(map);
-      } catch (e) {
-        console.error("Nurse Appointment: patients fetch error", e);
+        setPatientsById(map);
+      } catch (err) {
+        console.error('Fetch patients for name resolution failed', err);
+        setPatientsById({});
       }
     };
-    loadPatients();
-    return () => { mounted = false; };
+    fetchPatients();
   }, []);
 
-  const resolvePatientName = (i) => {
-    const base = (i?.patientName && i.patientName !== "Unknown") ? i.patientName : "";
-    if (base) return base;
-    const pid = i?.patientId;
-    if (pid && patientsById[pid]) return patientsById[pid] || "Unknown";
-    return "Unknown";
+  const resolvePatientName = (a) => {
+    const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
+    const resolved = pid ? patientsById[pid] : undefined;
+    return resolved || a?.patientName || a?.patient?.fullName || 'Unknown';
   };
 
-  // Close filter dropdown on click outside
-  useEffect(() => {
-    const handler = (e) => {
-      if (!dropdownRef.current) return;
-      if (!dropdownRef.current.contains(e.target)) {
-        setIsFilterOpen(false);
-      }
-    };
-    if (isFilterOpen) {
-      document.addEventListener("mousedown", handler);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handler);
-    };
-  }, [isFilterOpen]);
+  const processedAppointments = useMemo(() => appointments.map(a => ({
+    ...a,
+    patientName: resolvePatientName(a),
+  })), [appointments, patientsById, resolvePatientName]);
 
-  // Apply filters to items
-  const filteredItems = useMemo(() => {
-    let list = items;
-    if (statusFilter !== "all") {
-      const s = statusFilter.toLowerCase();
-      list = list.filter((i) => (i.status || "").toLowerCase().includes(s));
-    }
-    if (typeFilter !== "all") {
-      const t = typeFilter.toLowerCase();
-      list = list.filter((i) => (i.type || "").toLowerCase().includes(t));
-    }
-    if (selectedDate) {
-      list = list.filter((i) => {
-        const d = i.rawDate;
-        if (!d) return false;
-        const dt = new Date(d);
-        if (Number.isNaN(dt.getTime())) return false;
-        return dt.toISOString().slice(0, 10) === selectedDate;
-      });
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((i) => resolvePatientName(i).toLowerCase().includes(q));
-    }
-    return list;
-  }, [items, statusFilter, typeFilter, selectedDate, searchQuery, patientsById]);
+  const columns = useMemo(() => [
+    { key: 'id', title: 'S/n', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'patientName', title: 'Patient Name', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'date', title: 'Date', sortable: true, className: 'text-base-content/70' },
+    { key: 'time', title: 'Time', sortable: true, className: 'text-base-content/70' },
+    { key: 'appointmentType', title: 'Appointment type', sortable: true, className: 'text-base-content/70' },
+    { key: 'status', title: 'Status', className: 'text-base-content/70', render: (value) => <span className="badge badge-outline">{value}</span> },
+  ], []);
+
+  const getCurrentDate = () => {
+    const today = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return today.toLocaleDateString('en-US', options);
+  };
   return (
+    <>
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
@@ -244,192 +170,90 @@ const Appointment = () => {
 
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           <section>
-            <div className="flex justify-between">
+            <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
               <div>
-                <h5 className="text-[24px] font-[400] text-base-content">Appointments</h5>
-                <p className="text-[12px] text-base-content/70">Tuesday, September 9, 2025</p>
+                <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
+                <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
               </div>
-              <div className="flex items-center">
+               <button
+                 className="btn btn-primary btn-sm 2xl:btn-md"
+                 onClick={() => setIsBookModalOpen(true)}
+               >
+                 <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                 </svg>
+                 <span className="text-xs 2xl:text-sm">Book Appointment</span>
+               </button>
+            </div>
+
+            <div className="flex gap-4 justify-between items-center mb-6">
+              <div className="flex gap-3 items-center">
                 <button
-                  className="btn btn-primary w-[301px] h-[56px] flex justify-center items-center gap-2"
-                  onClick={() => setShowModal(true)}
+                  className="flex gap-2 items-center btn btn-sm"
+                  onClick={() => setFilterOpen(!filterOpen)}
                 >
-                  <LuPlus /> Book Appointment
+                  <svg className="w-4 h-4 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M7 12h10M10 18h4" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <span className="text-xs">Filter</span>
                 </button>
               </div>
-              <BookAppointmentModal
-                isOpen={showModal}
-                onClose={() => setShowModal(false)}
-                onSubmit={handleModalSubmit}
-              />
-            </div>
 
-            {/* filter section */}
-            <div className="flex justify-between items-center mt-7">
-              <div className="flex items-center w-full max-w-xs">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="input input-bordered input-sm w-full"
-                  placeholder="Search patient..."
-                />
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="input input-bordered w-[213px] h-[34px]"
-                />
-                <div ref={dropdownRef} className={`dropdown ${isFilterOpen ? 'dropdown-open' : ''} dropdown-end dropdown-bottom`}>
-                  <button
-                    className="btn btn-ghost btn-sm flex items-center"
-                    onClick={() => setIsFilterOpen((v) => !v)}
-                  >
-                    <VscSettings />
-                    <span className="text-base-content ml-2">Filter</span>
-                  </button>
-                  <div className="dropdown-content z-[1000] p-3 shadow bg-base-100 rounded-box w-64">
-                    <div className="mb-3">
-                      <label className="block mb-1 text-xs font-medium text-base-content">Status</label>
-                      <select
-                        className="select select-bordered select-sm w-full"
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                      >
-                        <option value="all">All</option>
-                        <option value="scheduled">Scheduled</option>
-                        <option value="completed">Completed</option>
-                        <option value="canceled">Canceled</option>
-                        <option value="pending">Pending</option>
-                      </select>
-                    </div>
-                    <div className="mb-3">
-                      <label className="block mb-1 text-xs font-medium text-base-content">Type</label>
-                      <select
-                        className="select select-bordered select-sm w-full"
-                        value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                      >
-                        <option value="all">All</option>
-                        <option value="consultation">Consultation</option>
-                        <option value="follow_up">Follow-up</option>
-                        <option value="routine_check">Check-up</option>
-                        <option value="lab_test">Lab Test</option>
-                        <option value="vaccination">Vaccination</option>
-                        <option value="surgery">Surgery</option>
-                        <option value="emergency">Emergency</option>
-                      </select>
-                    </div>
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => { setStatusFilter('all'); setTypeFilter('all'); setSelectedDate(''); setIsFilterOpen(false); }}
-                      >
-                        Clear
-                      </button>
-                      <button
-                        className="btn btn-primary btn-xs"
-                        onClick={() => setIsFilterOpen(false)}
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  </div>
+              <div className="flex gap-3 items-center">
+                <div className="dropdown dropdown-end">
+                  <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm">
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 7V3m8 4V3M3 11h18M5 19h14" strokeWidth="2" strokeLinecap="round"/></svg>
+                    <span className="text-xs">{selectedDate}</span>
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round"/></svg>
+                  </label>
+                  <ul tabIndex={0} className="p-2 mt-1 w-52 shadow dropdown-content menu bg-base-100 rounded-box">
+                    <li><a onClick={() => setSelectedDate('7/18/17')}>7/18/17</a></li>
+                    <li><a onClick={() => setSelectedDate('7/19/17')}>7/19/17</a></li>
+                    <li><a onClick={() => setSelectedDate('7/20/17')}>7/20/17</a></li>
+                  </ul>
                 </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg shadow mt-6">
-              <table className="w-full text-[16px] rounded-lg overflow-hidden border-collapse">
-                <thead className="bg-base-200">
-                  <tr>
-                    <th className="p-3 py-5">S/n</th>
-                    <th className="">Patient Name</th>
-                    <th className="">Date</th>
-                    <th className="">Time</th>
-                    <th className="">Appointment Type</th>
-                    <th className="">Status</th>
-                  </tr>
-                </thead>
-
-                <tbody className="bg-base-100">
-                  {loading ? (
-                    Array.from({ length: 8 }).map((_, i) => (
-                      <tr key={i}>
-                        <td className="p-3 text-center"><div className="skeleton h-4 w-8" /></td>
-                        <td className="py-5 text-center"><div className="skeleton h-4 w-40" /></td>
-                        <td className="text-center"><div className="skeleton h-4 w-24" /></td>
-                        <td className="text-center"><div className="skeleton h-4 w-16" /></td>
-                        <td className="text-center"><div className="skeleton h-4 w-32" /></td>
-                        <td className="text-center"><div className="skeleton h-6 w-24" /></td>
-                      </tr>
-                    ))
-                  ) : items.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No appointments"
-                          description="Try refreshing to fetch the latest appointments."
-                          actionLabel="Refresh"
-                          onAction={onRefresh}
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredItems.map((appt, index) => (
-                      <tr key={index}>
-                        <td className="p-3 text-center">{String(appt.sn).padStart(2, "0")}</td>
-                        <td className="py-5 text-center">{resolvePatientName(appt)}</td>
-                        <td className="text-center">{appt.date}</td>
-                        <td className="text-center">{appt.time}</td>
-                        <td className="text-center">{appt.type}</td>
-                        <td className="text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className={statusClasses(appt.status)}>{appt.status}</span>
-                            <button
-                              className="btn btn-ghost btn-xs"
-                              title="Mark as completed"
-                              onClick={() => openConfirm(appt)}
-                              disabled={!appt.id || updatingId === appt.id || (appt.status || '').toLowerCase().includes('completed')}
-                            >
-                              <LuCheck />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {isConfirmOpen && (
-              <div className="modal modal-open">
-                <div className="modal-box">
-                  <h3 className="font-bold text-lg">Mark as Completed</h3>
-                  <p className="py-2 text-sm">
-                    Confirm completing appointment for {resolvePatientName(confirmAppt)}
-                    {confirmAppt?.date ? ` on ${confirmAppt.date}` : ''}
-                    {confirmAppt?.time ? ` at ${confirmAppt.time}` : ''}?
-                  </p>
-                  <div className="modal-action">
-                    <button className="btn btn-ghost" onClick={closeConfirm}>Cancel</button>
-                    <button
-                      className={`btn btn-primary ${updatingId === confirmAppt?.id ? 'loading' : ''}`}
-                      onClick={confirmComplete}
-                      disabled={updatingId === confirmAppt?.id}
-                    >
-                      Confirm
-                    </button>
-                  </div>
+            <div className="flex flex-1 w-full min-h-0">
+              <div className="w-full shadow-xl card bg-base-100">
+                <div className="p-4 card-body 2xl:p-6">
+                  <DataTable
+                    data={processedAppointments}
+                    columns={columns}
+                    searchable={filterOpen}
+                    sortable={true}
+                    paginated={true}
+                    initialEntriesPerPage={10}
+                    maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                    showEntries={true}
+                    searchPlaceholder="Search appointments..."
+                    onRowClick={handleRowClick}
+                  />
                 </div>
               </div>
-            )}
+            </div>
           </section>
         </div>
       </div>
     </div>
+
+    <BookAppointmentModal
+      isOpen={isBookModalOpen}
+      onClose={() => setIsBookModalOpen(false)}
+      onSubmit={handleBookAppointment}
+    />
+
+    <AppointmentDetailsModal
+      isOpen={isDetailsModalOpen}
+      onClose={() => setIsDetailsModalOpen(false)}
+      appointmentId={selectedAppointmentId}
+      onUpdated={(updated) => {
+        setAppointments(prev => prev.map(a => (
+          a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
+            { ...a, status: updated?.status } : a
+        )));
+      }}
+    />
+    </>
   );
 };
 

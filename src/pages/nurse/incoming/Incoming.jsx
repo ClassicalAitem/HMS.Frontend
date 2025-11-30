@@ -245,35 +245,22 @@ const Incoming = () => {
                     const end = start + pageSize;
                     const visible = filtered.slice(start, end);
 
-                    return visible.map((data, index) => {
-                      const primary =
-                        data.status === "awaiting_vitals"
-                          ? "vitals"
-                          : data.status === "awaiting_sampling"
-                          ? "sampling"
-                          : data.status === "awaiting_injection"
-                          ? "injection"
-                          : "";
-                      return (
-                        <div
-                          key={index}
-                          onClick={() =>
-                            data.id &&
-                            navigate(`/dashboard/nurse/patient/${data.id}`, {
-                              state: {
-                                from: "incoming",
-                                patientSnapshot: data.snapshot,
-                              },
-                            })
-                          }
-                          className="card bg-base-100 border border-base-300 shadow-sm cursor-pointer"
-                        >
-                          <div className="flex gap-6 items-center p-8">
-                            <img
-                              src={womanLogo}
-                              alt=""
-                              className="w-[52px] h-[52px] object-cover rounded-full"
-                            />
+                  return visible.map((data, index) => {
+                    const primary =
+                      data.status === 'awaiting_vitals' ? 'vitals' :
+                      data.status === 'awaiting_sampling' ? 'sampling' :
+                      data.status === 'awaiting_injection' ? 'injection' : '';
+                    return (
+                      <div
+                        key={index}
+                        className="card bg-base-100 border border-base-300 shadow-sm"
+                      >
+                        <div className="flex gap-6 items-center p-8">
+                          <img
+                            src={womanLogo}
+                            alt=""
+                            className="w-[52px] h-[52px] object-cover rounded-full"
+                          />
 
                             <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
                               <div className="space-y-1 xl:space-y-3">
@@ -298,82 +285,21 @@ const Incoming = () => {
                               </div>
                             </div>
                           </div>
-
-                          <div className="flex  px-7 pb-5 cursor-pointer">
-                            {primary === "vitals" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPatient(data.snapshot);
-                                  setIsRecordOpen(true);
-                                }}
-                                className={`px-3 py-1 rounded-full cursor-pointer ${
-                                  primary === "vitals"
-                                    ? "bg-primary text-white"
-                                    : "text-base-content/70"
-                                }`}
-                              >
-                                Record Vitals
-                              </button>
-                            )}
-
-                            {primary === "sampling" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPatient(data.snapshot);
-                                  setSelectedInvestigationId(data.snapshot.id);
-                                  setShowModal(true);
-                                }}
-                                className={`px-3 py-1 rounded-full cursor-pointer ${
-                                  primary === "sampling"
-                                    ? "bg-primary text-white"
-                                    : "text-base-content/70"
-                                }`}
-                              >
-                                Sampling
-                              </button>
-                            )}
-
-                            {primary === "injection" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-
-                                  console.log(
-                                    "=== INJECTION BUTTON CLICKED ==="
-                                  );
-                                  console.log("data object:", data);
-                                  console.log("data.id:", data.id);
-                                  console.log("data.snapshot:", data.snapshot);
-                                  console.log(
-                                    "data.snapshot.id:",
-                                    data.snapshot.id
-                                  );
-                                  console.log(
-                                    "================================"
-                                  );
-
-                                  setPatient(data.snapshot);
-                                  setSelectedInjectionId(
-                                    data.id || data.snapshot.id
-                                  );
-                                  setShowModal2(true);
-                                }}
-                                className={`px-3 py-1 rounded-full cursor-pointer ${
-                                  primary === "injection"
-                                    ? "bg-primary text-white"
-                                    : "text-base-content/70"
-                                }`}
-                              >
-                                Injection
-                              </button>
-                            )}
-                          </div>
                         </div>
-                      );
-                    });
-                  })()}
+
+                        <div className="flex justify-end px-7 pb-5">
+                          <button
+                            className="px-3 py-1 rounded-full bg-primary text-white"
+                            onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                          >
+                            View Patient Details
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()
+              )}
             </div>
 
             {/* Modals rendered OUTSIDE the grid */}
