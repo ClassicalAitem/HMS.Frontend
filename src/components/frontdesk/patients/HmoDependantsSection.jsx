@@ -16,7 +16,7 @@ const HmoDependantsSection = ({
   <div className="shadow-xl card bg-base-100">
     <div className="p-6 card-body">
       <h3 className="mb-4 text-lg font-medium text-primary flex items-center justify-between">
-        HMO & Dependants Information
+        HMO & Dependants Information 
         <span className='flex items-center gap-2'>
           <label className="label text-base-content text-sm">HMO</label>
           <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
