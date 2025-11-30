@@ -7,7 +7,7 @@ import { fetchPatientById, clearPatientsError } from '../../../store/slices/pati
 import toast from 'react-hot-toast';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import ActionButtons from '../patients/ActionButtons';
-import { NurseActionModal, PharmacyActionModal, ReceiptModal} from '@/components/modals';
+import { NurseActionModal, PharmacyActionModal2, ReceiptModal} from '@/components/modals';
 import { set } from 'react-hook-form';
 
 
@@ -558,7 +558,7 @@ const CashierPatientDetails = () => {
                 defaultAction={'awaiting_vitals'}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <PharmacyActionModal isOpen={isSendToPharmacyOpen}
+          <PharmacyActionModal2 isOpen={isSendToPharmacyOpen}
                 onClose={() => setIsSendToPharmacyOpen(false)}
                 patientId={patient?.id || patientId}
                 defaultAction={'awaiting_pharmacy'}
