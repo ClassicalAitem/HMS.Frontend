@@ -51,8 +51,22 @@ export const getAllBillings = async (params = {}) => {
   return response;
 };
 
+// Create billing (docs spec) with itemDetail entries
+export const createBilling = async (patientId, payload) => {
+  if (!patientId) throw new Error('Patient ID is required');
+  if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
+  const { itemDetail } = payload;
+  if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must be a non-empty array');
+
+  const url = `/billing/create/${patientId}`;
+  console.log('🧾 BillingAPI: Creating billing (docs spec)', { url, payload });
+  const response = await apiClient.post(url, payload);
+  return response;
+};
+
 export default {
   createBill,
+  createBilling,
   getBillingById,
   getAllBillings,
 };
