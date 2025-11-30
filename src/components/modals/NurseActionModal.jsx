@@ -6,9 +6,6 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
-  console.log({patientId});
-
-
   if (!isOpen) return null;
 
   const handleConfirm = async () => {

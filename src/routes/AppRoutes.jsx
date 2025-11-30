@@ -56,11 +56,9 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
 import CashierIncoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
-import BillingRecords from "@/pages/cashier/payment-records/BillingRecord";
-import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
+import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
 import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
-import GenerateReceipt from "@/pages/cashier/generate-receipt/GenerateReceipt";
 
 // Modals
 import { BookAppointmentModal } from "@/components/modals";
@@ -76,9 +74,9 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/*==============================================================================================================
-
+      
       ====================================  Auth Route ==============================================================
-
+      
       ================================================================================================================*/}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -90,11 +88,11 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-
+      
       {/*==============================================================================================================
-
+      
       ====================================  Frontdesk DashBoard Route =====================================================
-
+      
       ================================================================================================================*/}
       <Route path="/frontdesk/dashboard" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
@@ -134,9 +132,9 @@ const AppRoutes = () => {
 
 
       {/*==============================================================================================================
-
+      
       ====================================  Nurse DashBoard Route =====================================================
-
+      
       ================================================================================================================*/}
       <Route path="/dashboard/nurse" element={
         <ProtectedRoute allowedRoles={['nurse']}>
@@ -177,9 +175,9 @@ const AppRoutes = () => {
 
 
       {/*==============================================================================================================
-
+      
       ====================================  Doctor DashBoard Route =====================================================
-
+      
       ================================================================================================================*/}
       <Route path="/dashboard/doctor" element={
         <ProtectedRoute allowedRoles={['doctor']}>
@@ -249,9 +247,9 @@ const AppRoutes = () => {
 
 
       {/*==============================================================================================================
-
+      
       ====================================  Admin DashBoard Route =====================================================
-
+      
       ================================================================================================================*/}
       <Route path="/dashboard/admin" element={
         <ProtectedRoute allowedRoles={['admin']}>
@@ -347,7 +345,7 @@ const AppRoutes = () => {
       {/*=============================================================================================================
 
        ====================================  Cashier Route ===========================================================
-
+       
       ================================================================================================================*/}
 
       <Route path="/cashier/dashboard" element={
@@ -365,14 +363,9 @@ const AppRoutes = () => {
           <CashierPatients />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/billing-records" element={
+      <Route path="/cashier/payment-records" element={
         <ProtectedRoute allowedRoles={['cashier']}>
-          <BillingRecords />
-        </ProtectedRoute>
-      } />
-      <Route path="/cashier/receipt-records" element={
-        <ProtectedRoute allowedRoles={['cashier']}>
-          <ReceiptRecords />
+          <PaymentRecords />
         </ProtectedRoute>
       } />
       <Route path="/cashier/patient-details/:patientId" element={
@@ -380,14 +373,9 @@ const AppRoutes = () => {
           <CashierPatientDetails />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/generate-bill/:billingId" element={
+      <Route path="/cashier/generate-bill" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <GenerateBill />
-        </ProtectedRoute>
-      } />
-      <Route path="/cashier/generate-receipt/:billingId" element={
-        <ProtectedRoute allowedRoles={['cashier']}>
-          <GenerateReceipt />
         </ProtectedRoute>
       } />
 
