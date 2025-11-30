@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../config/env';
  * payload: { items: [{ category, description, rate }], paymentMethod }
  */
 export const createBill = async (patientId, billData) => {
-  if (!patientId) throw new Error('Patient ID is required');
+  if (!patientId) throw new Error('Patient ID is required:');
   if (!billData || typeof billData !== 'object') throw new Error('billData must be an object');
 
   const { items = [], paymentMethod } = billData;
