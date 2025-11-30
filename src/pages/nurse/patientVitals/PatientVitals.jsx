@@ -39,8 +39,10 @@ const PatientVitals = () => {
   const statusBadgeClass = (status) => {
     const s = (status || "").toLowerCase();
     if (s.includes("active")) return "badge badge-success";
-    if (s.includes("pass") || s.includes("deceased")) return "badge badge-neutral";
-    if (s.includes("pending") || s.includes("wait")) return "badge badge-warning";
+    if (s.includes("pass") || s.includes("deceased"))
+      return "badge badge-neutral";
+    if (s.includes("pending") || s.includes("wait"))
+      return "badge badge-warning";
     return "badge badge-ghost";
   };
 
@@ -55,7 +57,10 @@ const PatientVitals = () => {
         const filtered = patients.filter((p) => allow.has(String(p?.status || "").toLowerCase()));
         const mapped = filtered.map((p, idx) => ({
           sn: idx + 1,
-          name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.fullName || "Unknown",
+          name:
+            `${p?.firstName || ""} ${p?.lastName || ""}`.trim() ||
+            p?.fullName ||
+            "Unknown",
           gender: p?.gender || "—",
           age: calculateAge(p?.dob),
           blood: p?.bloodGroup || p?.blood || "—",
@@ -67,7 +72,19 @@ const PatientVitals = () => {
           firstName: p?.firstName,
           lastName: p?.lastName,
         }));
-        if (mounted) setItems(mapped);
+        // if (mounted) setItems(mapped);
+
+        const allowedStatuses = [
+          "awaiting_vitals",
+          "awaiting_sampling",
+          "awaiting_injection",
+        ];
+
+        const filtered = mapped.filter((p) =>
+          allowedStatuses.includes((p.status || "").toLowerCase())
+        );
+
+        if (mounted) setItems(filtered);
       } catch (err) {
         console.error("PatientVitals: patients fetch error", err);
         if (mounted) setItems([]);
@@ -80,23 +97,28 @@ const PatientVitals = () => {
       mounted = false;
     };
   }, [refreshKey]);
-  
+
   // Derived filtering & pagination
   const filteredItems = useMemo(() => {
     let data = items;
     const q = searchQuery.trim().toLowerCase();
     if (q) {
-      data = data.filter((p) =>
-        (p.name || "").toLowerCase().includes(q) ||
-        String(p.sn).includes(q) ||
-        (p.blood || "").toLowerCase().includes(q)
+      data = data.filter(
+        (p) =>
+          (p.name || "").toLowerCase().includes(q) ||
+          String(p.sn).includes(q) ||
+          (p.blood || "").toLowerCase().includes(q)
       );
     }
     if (genderFilter !== "all") {
-      data = data.filter((p) => (p.gender || "").toLowerCase() === genderFilter);
+      data = data.filter(
+        (p) => (p.gender || "").toLowerCase() === genderFilter
+      );
     }
     if (statusFilter !== "all") {
-      data = data.filter((p) => (p.status || "").toLowerCase().includes(statusFilter));
+      data = data.filter((p) =>
+        (p.status || "").toLowerCase().includes(statusFilter)
+      );
     }
     return data;
   }, [items, searchQuery, genderFilter, statusFilter]);
@@ -147,10 +169,14 @@ const PatientVitals = () => {
             <div>
               <div>
                 <div className="flex items-center gap-5 ">
-                  <h1 className="text-[32px] text-base-content">All Patients</h1>
+                  <h1 className="text-[32px] text-base-content">
+                    All Patients
+                  </h1>
                   <PiUsersThree size={25} className="text-base-content/80" />
                 </div>
-                <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
+                <p className="text-[12px] text-base-content/70">
+                  View the list of all Patients.
+                </p>
               </div>
             </div>
             {/* Search & Filters */}
@@ -195,90 +221,78 @@ const PatientVitals = () => {
 
             <div className="overflow-x-auto rounded-lg shadow mt-6">
               <div className="max-h-[60vh] overflow-y-auto">
-              <table className="w-full text-[16px] rounded-lg overflow-hidden">
-                <thead className="bg-base-200">
-                  <tr>
-                    <th className="p-3 ">S/n</th>
-                    <th className="p-3">Patient Name</th>
-                    <th className="p-3">Gender</th>
-                    <th className="p-3">Age</th>
-                    <th className="p-3">Blood/Gp</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Actions</th>
-                  </tr>
-                </thead>
+                <table className="w-full text-[16px] rounded-lg overflow-hidden">
+                  <thead className="bg-base-200">
+                    <tr>
+                      <th className="p-3 ">S/n</th>
+                      <th className="p-3">Patient Name</th>
+                      <th className="p-3">Gender</th>
+                      <th className="p-3">Age</th>
+                      <th className="p-3">Blood/Gp</th>
+                      <th className="p-3">Status</th>
+                    </tr>
+                  </thead>
 
-                <tbody className="bg-base-100">
-                  {loading ? (
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <tr key={index} className="border-b last:border-b-0">
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-8" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-32" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-16" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-10" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-16" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-6 w-20" />
+                  <tbody className="bg-base-100">
+                    {loading ? (
+                      Array.from({ length: 8 }).map((_, index) => (
+                        <tr key={index} className="border-b last:border-b-0">
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-8" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-32" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-16" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-10" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-4 w-16" />
+                          </td>
+                          <td className="px-4 py-4">
+                            <div className="skeleton h-6 w-20" />
+                          </td>
+                        </tr>
+                      ))
+                    ) : items.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8">
+                          <EmptyState
+                            title="No patient records"
+                            description="Try refreshing to fetch the latest patients."
+                            actionLabel="Refresh"
+                            onAction={onRefresh}
+                            icon={
+                              <PiUsersThree
+                                className="text-base-content/60"
+                                size={40}
+                              />
+                            }
+                          />
                         </td>
                       </tr>
-                    ))
-                  ) : items.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No patient records"
-                          description="Try refreshing to fetch the latest patients."
-                          actionLabel="Refresh"
-                          onAction={onRefresh}
-                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
-                        />
-                      </td>
-                    </tr>
-                  ) : filteredItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No matches"
-                          description="Try adjusting search or filters, or refresh to fetch latest."
-                          actionLabel="Clear Filters"
-                          onAction={() => { setSearchQuery(""); setGenderFilter("all"); setStatusFilter("all"); }}
-                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    shown.map((p, index) => (
-                      <tr
-                        key={index}
-                        className="border-b last:border-b-0 hover:bg-base-200/40"
-                      >
-                        <td className="px-4 py-4">{String(p.sn).padStart(2, "0")}</td>
-                        <td className="text-center">
-                          <button
-                            className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              p?.id && navigate(`/dashboard/nurse/patient/${p.id}`, { state: { patientSnapshot: p } });
+                    ) : filteredItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8">
+                          <EmptyState
+                            title="No matches"
+                            description="Try adjusting search or filters, or refresh to fetch latest."
+                            actionLabel="Clear Filters"
+                            onAction={() => {
+                              setSearchQuery("");
+                              setGenderFilter("all");
+                              setStatusFilter("all");
                             }}
-                          >
-                            {p.name}
-                          </button>
-                        </td>
-                        <td className="text-center">{p.gender}</td>
-                        <td className="text-center">{p.age}</td>
-                        <td className="text-center">{p.blood}</td>
-                        <td className="text-center">
-                          <span className={statusBadgeClass(p.status)}>{p.status}</span>
+                            icon={
+                              <PiUsersThree
+                                className="text-base-content/60"
+                                size={40}
+                              />
+                            }
+                          />
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2 justify-center">
@@ -315,10 +329,35 @@ const PatientVitals = () => {
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      shown.map((p, index) => (
+                        <tr
+                          key={index}
+                          className="border-b last:border-b-0 cursor-pointer hover:bg-base-200/40"
+                          onClick={() =>
+                            p?.id &&
+                            navigate(`/dashboard/nurse/patient/${p.id}`, {
+                              state: { patientSnapshot: p },
+                            })
+                          }
+                        >
+                          <td className="px-4 py-4">
+                            {String(p.sn).padStart(2, "0")}
+                          </td>
+                          <td className="text-center">{p.name}</td>
+                          <td className="text-center">{p.gender}</td>
+                          <td className="text-center">{p.age}</td>
+                          <td className="text-center">{p.blood}</td>
+                          <td className="text-center">
+                            <span className={statusBadgeClass(p.status)}>
+                              {p.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -326,7 +365,12 @@ const PatientVitals = () => {
             {!loading && items.length > 0 && (
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-base-content/70">
-                  Showing {filteredItems.length ? (Math.min((page - 1) * perPage + 1, filteredItems.length)) : 0}–{Math.min(page * perPage, filteredItems.length)} of {filteredItems.length}
+                  Showing{" "}
+                  {filteredItems.length
+                    ? Math.min((page - 1) * perPage + 1, filteredItems.length)
+                    : 0}
+                  –{Math.min(page * perPage, filteredItems.length)} of{" "}
+                  {filteredItems.length}
                 </div>
                 <div className="join">
                   <button
@@ -349,76 +393,6 @@ const PatientVitals = () => {
                 </div>
               </div>
             )}
-
-            {/* Send to Doctor Modal */}
-            {isSendDoctorOpen && selectedPatient && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
-                <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
-                  <div className="p-6 card-body">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold text-base-content">Confirm Send to Doctor</h2>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setIsSendDoctorOpen(false)}>Close</button>
-                    </div>
-                    <p className="mb-4 text-sm text-base-content/70">
-                      Are you sure you want to send this patient to the doctor for consultation? This will update the status to <span className="font-medium">awaiting_consultation</span> for {selectedPatient?.name || 'Unknown'} ({selectedPatient?.hospitalId || selectedPatient?.id || '—'}).
-                    </p>
-                    <div className="flex justify-end gap-3 mt-6">
-                      <button className="btn" onClick={() => setIsSendDoctorOpen(false)}>Cancel</button>
-                      <button
-                        className="btn btn-success"
-                        onClick={async () => {
-                          try {
-                            const pid = selectedPatient?.id || selectedPatient?.hospitalId;
-                            const promise = updatePatientStatus(pid, 'awaiting_consultation');
-                            toast.promise(promise, {
-                              loading: 'Sending to doctor...',
-                              success: 'Patient sent to doctor successfully',
-                              error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
-                            });
-                            await promise;
-                            setIsSendDoctorOpen(false);
-                          } catch (e) {
-                            console.error('All Patients: send to doctor failed', e);
-                          }
-                        }}
-                      >
-                        Confirm & Send
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Send to Pharmacy Modal */}
-            {isSendPharmacyOpen && selectedPatient && (
-              <PharmacyActionModal
-                isOpen={isSendPharmacyOpen}
-                onClose={() => setIsSendPharmacyOpen(false)}
-                patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                defaultStatus={"awaiting_pharmacy"}
-                itemsCount={0}
-                medicationNames={[]}
-                patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
-                onUpdated={() => setIsSendPharmacyOpen(false)}
-              />
-            )}
-
-            {/* Send to Cashier Modal */}
-            {isSendCashierOpen && selectedPatient && (
-              <CashierActionModal
-                isOpen={isSendCashierOpen}
-                onClose={() => setIsSendCashierOpen(false)}
-                patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                defaultStatus={"awaiting_cashier"}
-                mode={"confirm"}
-                patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
-                onUpdated={() => setIsSendCashierOpen(false)}
-              />
-            )}
-
-          
           </section>
         </div>
       </div>

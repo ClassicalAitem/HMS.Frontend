@@ -3,9 +3,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { DataTable } from "@/components/common";
 import { BookAppointmentModal } from "@/components/modals";
-import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal";
-import { toast } from "react-hot-toast";
-import { getAllAppointments, createAppointment } from "@/services/api/appointmentsAPI";
+import { getAllAppointments, updateAppointment, createAppointment } from "@/services/api/appointmentsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 
 const Appointment = () => {
@@ -58,32 +56,20 @@ const Appointment = () => {
     load();
   }, []);
 
-  const handleBookAppointment = async (appointmentData) => {
+
+
+  const [showModal, setShowModal] = useState(false);
+  const handleModalSubmit = async (formData) => {
     try {
-      await toast.promise(
-        createAppointment(appointmentData),
-        {
-          loading: 'Saving appointment...',
-          success: 'Appointment saved',
-          error: (e) => e?.message || 'Failed to save appointment'
-        }
-      );
-      setIsBookModalOpen(false);
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-      const mapped = list.map((a, idx) => ({
-        id: a?.id || a?._id || a?.appointmentId || idx + 1,
-        patientId: a?.patientId,
-        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
-        date: a?.appointmentDate || a?.date,
-        time: a?.appointmentTime || a?.time,
-        appointmentType: a?.department || a?.appointmentType || 'General',
-        status: a?.status || 'Active',
-      }));
-      setAppointments(mapped);
-    } catch (err) {
-      console.error('Nurse Appointments: create error', err);
+      // const response = await createAppointment(payload)
+      // const createAppointment = response.data
+
+      // TODO: integrate createAppointment API here and refresh list
+      // For now, simply close after submit to mirror frontdesk modal behavior
+      setShowModal(false);
+      onRefresh();
+    } catch (e) {
+      console.error("Appointment submit failed", e);
     }
   };
 
