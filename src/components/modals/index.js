@@ -9,6 +9,7 @@ export { default as NurseActionModal } from './NurseActionModal';
 export { default as CashierActionModal } from './CashierActionModal';
 export { default as PharmacyActionModal } from './PharmacyActionModal';
 export { default as LabResultDetailsModal } from './LabResultDetailsModal';
+export { default as SelectServiceChargeModal } from './SelectServiceChargeModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';
