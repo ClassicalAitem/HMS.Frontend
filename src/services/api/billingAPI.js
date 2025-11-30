@@ -55,6 +55,4 @@ export default {
   createBill,
   getBillingById,
   getAllBillings,
-  getAllReceipts,
-  updateReceipt
 };
