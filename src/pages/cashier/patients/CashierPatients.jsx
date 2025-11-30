@@ -6,6 +6,7 @@ import { FaUsers } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 
 const CashierPatients = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const CashierPatients = () => {
     dispatch(fetchPatients());
   }, [dispatch]);
 
+
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
@@ -32,12 +34,10 @@ const CashierPatients = () => {
   const StatusBadge = ({ status }) => {
     const getBadgeClass = (status) => {
       switch (status?.toLowerCase()) {
-        case 'registered':
+        case 'awaiting_cashier':
           return 'badge badge-success';
-        case 'active':
+        case 'awaiting_payment':
           return 'badge badge-success';
-        case 'inactive':
-          return 'badge badge-neutral';
         default:
           return 'badge badge-neutral';
       }
@@ -95,7 +95,7 @@ const CashierPatients = () => {
       className: 'text-center',
       render: (value, row) => (
         <button
-          onClick={() => navigate(`/cashier/patient-details/${row.patientId}`)}
+          onClick={() => navigate(`/cashier/patient-details/${row.id}`)}
           className="text-primary hover:text-primary/80 hover:underline text-sm font-medium"
         >
           View Details
@@ -103,6 +103,11 @@ const CashierPatients = () => {
       )
     }
   ], [navigate]);
+
+  const filteredPatient = patients.filter(
+      (p) => p.status === 'awaiting_cashier' || p.status === 'awaiting_payment'
+    );
+
 
   return (
     <CashierLayout>
@@ -136,7 +141,7 @@ const CashierPatients = () => {
                   </div>
                 ) : (
                   <DataTable
-                    data={patients}
+                    data={filteredPatient}
                     columns={columns}
                     searchable={true}
                     sortable={true}
