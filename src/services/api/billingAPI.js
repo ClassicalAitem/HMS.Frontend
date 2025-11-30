@@ -7,7 +7,7 @@ import { API_ENDPOINTS } from '../../config/env';
  * payload: { items: [{ category, description, rate }], paymentMethod }
  */
 export const createBill = async (patientId, billData) => {
-  if (!patientId) throw new Error('Patient ID is required');
+  if (!patientId) throw new Error('Patient ID is required:');
   if (!billData || typeof billData !== 'object') throw new Error('billData must be an object');
 
   const { items = [], paymentMethod } = billData;
@@ -51,8 +51,29 @@ export const getAllBillings = async (params = {}) => {
   return response;
 };
 
+export const createBilling = async (patientId, payload) => {
+  if (!patientId) throw new Error('Patient ID is required');
+  if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
+  const { itemDetail = [], totalAmount } = payload;
+  if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
+  const sanitized = itemDetail.map(({ code, description, quantity, price, total }) => ({
+    code,
+    description,
+    quantity: Number(quantity) || 1,
+    price: Number(price) || 0,
+    total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
+  }));
+  const body = { itemDetail: sanitized };
+  if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
+  const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
+  console.log('🧾 BillingAPI: Creating billing (detailed)', { patientId, body, url });
+  const response = await apiClient.post(url, body);
+  return response;
+};
+
 export default {
   createBill,
+  createBilling,
   getBillingById,
   getAllBillings,
 };

@@ -67,12 +67,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       path: "/dashboard/nurse/patient",
       active: !fromIncoming && location.pathname.startsWith("/dashboard/nurse/patient"),
     },
-    {
-      icon: GrTask,
-      label: "Assigned Task",
-      path: "/dashboard/nurse/assignedTask",
-      active: location.pathname.startsWith("/dashboard/nurse/assignedTask"),
-    },
+    // {
+    //   icon: GrTask,
+    //   label: "Assigned Task",
+    //   path: "/dashboard/nurse/assignedTask",
+    //   active: location.pathname.startsWith("/dashboard/nurse/assignedTask"),
+    // },
     {
       icon: TbCalendarPlus,
       label: "Appointments",
