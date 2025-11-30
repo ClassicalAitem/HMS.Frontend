@@ -23,7 +23,7 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="px-3 py-2 w-[-webkit-fill-available] border-b sm:px-6 lg:px-4 2xl:px-6 2xl:py-4 bg-base-100 border-base-300">
+    <header className="px-3 py-[7px] w-[-webkit-fill-available] border-b sm:px-6 lg:px-4 2xl:px-6 2xl:py-[22px] bg-base-100 border-base-300">
       <div className="flex justify-between items-center">
         {/* Mobile Menu Button */}
         <button
@@ -74,13 +74,13 @@ const Header = ({ onToggleSidebar }) => {
           </button>
 
           {/* Add Patient Button - Hidden on mobile, visible on larger screens */}
-          <button 
+          {/* <button 
             onClick={handleAddPatient} 
             className="hidden btn btn-primary btn-xs sm:flex sm:btn-sm lg:btn-base 2xl:btn-md"
           >
             <FaUserPlus className="w-3 h-3 sm:w-3 sm:h-3 2xl:w-4 2xl:h-4" />
             <span className="hidden text-xs sm:inline lg:text-xs 2xl:text-sm">Add Patient</span>
-          </button>
+          </button> */}
         </div>
       </div>
     </header>

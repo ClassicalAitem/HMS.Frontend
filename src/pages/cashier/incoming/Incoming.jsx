@@ -1,27 +1,55 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/cashier/dashboard';
-import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
-import cashierData from '@/data/cashierData.json';
+import { CashierLayout } from '@/layouts/cashier';
+import { Md6FtApart } from 'react-icons/md';
+import { useNavigate } from 'react-router-dom';
+import { getPatients } from '@/services/api/patientsAPI';
 
 const Incoming = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [incomingPatients, setIncomingPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const patientsPerPage = 6;
+  const patientsPerPage = 9;
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setIncomingPatients(cashierData.incomingPatients);
+    let mounted = true;
+    const fetchIncoming = async () => {
+      try {
+        setLoading(true);
+        const res = await getPatients();
+        const patients = Array.isArray(res?.data) ? res.data : [];
+        const statuses = new Set([
+          'awaiting_cashier',
+          'awaiting_payment'
+        ]);
+        const filtered = patients.filter((p) => statuses.has(String(p?.status || '').toLowerCase()));
+        const sorted = filtered.sort((a, b) => {
+          const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+        const mapped = sorted.map((p) => ({
+          id: p?.id,
+          snapshot: p,
+          name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+          patientId: p?.hospitalId || p?.id || '—',
+          photo: p?.profilePicture || p?.photo || 'https://randomuser.me/api/portraits/lego/1.jpg',
+          gender: p?.gender || '—',
+          phone: p?.phone || p?.phoneNumber || '—',
+          insurance: p?.hmos?.provider || 'Self-pay',
+          registeredTime: p?.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+          sentBy: p?.doctor ? 'Doctor' : 'Front Desk'
+        }));
+        if (mounted) setIncomingPatients(mapped);
+      } catch (err) {
+        if (mounted) setIncomingPatients([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchIncoming();
+    return () => { mounted = false; };
   }, []);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const totalPages = Math.ceil(incomingPatients.length / patientsPerPage);
   const startIndex = (currentPage - 1) * patientsPerPage;
@@ -32,68 +60,71 @@ const Incoming = () => {
     setCurrentPage(page);
   };
 
+  const handleViewDetails = (patient) => {
+    console.log('View Details Clicked:', patient);
+    const id = patient?.id || patient?.patientId;
+    if (!id) return;
+    navigate(`/cashier/patient-details/${id}` , { state: { from: 'incoming', patientSnapshot: patient?.snapshot } });
+  };
+
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+    <CashierLayout>
           {/* Page Header */}
           <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-4">
-              <FaArrowLeft className="w-5 h-5 text-primary" />
-              <FaArrowRight className="w-5 h-5 text-primary" />
-              <h1 className="text-3xl font-bold text-primary 2xl:text-4xl">Incoming</h1>
+            <div className="flex items-center mb-4 space-x-3">
+              <Md6FtApart className="w-5 h-5 text-primary" />
+              <h1 className="text-3xl font-normal text-primary 2xl:text-4xl">Incoming</h1>
             </div>
             <p className="text-sm text-base-content/70 2xl:text-base">Check out the patient sent to you.</p>
           </div>
 
           {/* Patient Cards Grid */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {currentPatients.map((patient) => (
-              <div key={patient.id} className="p-6 rounded-lg shadow-lg bg-primary/5 border border-primary/10">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
+            {loading ? (
+              Array.from({ length: 9 }).map((_, idx) => (
+                <div key={idx} className="p-2 2xl:p-6 rounded-xl border shadow-lg border-text-content bg-base-100">
+                  <div className="mb-4">
+                    <div className="animate-pulse h-4 w-24 rounded bg-base-300" />
+                  </div>
+                  <div className="flex items-center mb-4 space-x-4">
+                    <div className="w-16 h-16 rounded-full border-2 border-primary bg-base-300 animate-pulse" />
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                      <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
+                      <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
+                      <div className="animate-pulse h-3 w-24 rounded bg-base-300" />
+                      <div className="animate-pulse h-3 w-20 rounded bg-base-300" />
+                    </div>
+                  </div>
+                  <div className="flex justify-center items-center mt-6 border-t border-primary/20">
+                    <div className="animate-pulse h-4 w-44 rounded bg-base-300" />
+                  </div>
+                </div>
+              ))
+            ) : currentPatients.map((patient) => (
+              <div key={patient.id} className="p-4 2xl:p-6 rounded-xl border shadow-lg border-text-content bg-base-100">
                 {/* Sent By */}
                 <div className="mb-4">
                   <p className="text-sm text-base-content/70">Sent By {patient.sentBy}</p>
                 </div>
 
                 {/* Patient Info */}
-                <div className="flex items-center space-x-4 mb-4">
+                <div className="flex items-center mb-2 2xl:mb-4 space-x-4">
                   <img
                     src={patient.photo}
                     alt={patient.name}
-                    className="w-16 h-16 rounded-full object-cover"
+                    className="object-cover w-16 h-16 rounded-full border-2 border-primary"
                   />
-                  <div>
-                    <h3 className="font-semibold text-base-content">Name: <span className="font-bold">{patient.name}</span></h3>
-                    <p className="text-sm text-base-content/70">Patient ID: {patient.patientId}</p>
+                  <div className="grid grid-cols-2 gap-2 2xl:gap-4 w-full">
+                    <p className="text-sm text-base-content/70">Name: {patient.name}</p>
                     <p className="text-sm text-base-content/70">Insurance: {patient.insurance}</p>
+                    <p className="text-sm text-base-content/70">Patient ID: {patient.patientId}</p>
                     <p className="text-sm text-base-content/70">Registered: {patient.registeredTime}</p>
                   </div>
                 </div>
 
                 {/* Action Link */}
-                <div className="pt-4 border-t border-primary/20">
-                  <button className="text-primary hover:text-primary/80 hover:underline text-sm font-medium">
+                <div className="flex justify-center items-center border-t border-primary/20">
+                  <button className="text-sm font-medium text-primary/80 hover:underline hover:text-primary" onClick={() => handleViewDetails(patient)}>
                     View Patient Payment Details
                   </button>
                 </div>
@@ -119,9 +150,7 @@ const Incoming = () => {
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </CashierLayout>
   );
 };
 

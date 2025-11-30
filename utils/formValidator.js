@@ -28,6 +28,23 @@ export const updateYourPasswordSchema = yup.object().shape({
     .oneOf([yup.ref("newPassword"), null], "Password must match"),
 });
 
+// * Form Validation For Change Password (includes current password)
+export const changePasswordSchema = yup.object().shape({
+  currentPassword: yup
+    .string()
+    .required("Current password is required"),
+
+  newPassword: yup
+    .string()
+    .required("Please enter your new password")
+    .min(8, "Password must be at least 8 characters"),
+
+  confirmPassword: yup
+    .string()
+    .required("Please confirm your new password")
+    .oneOf([yup.ref("newPassword"), null], "Password must match"),
+});
+
 export const registrationSchema = yup.object().shape({
   firstName: yup.string().required("First Name is required"),
   lastName: yup.string().required("Last Name is required"),
@@ -42,8 +59,8 @@ export const registrationSchema = yup.object().shape({
     .email("Email must be a valid email address")
     .required("Email is required")
     .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email is invalid"),
-  dateOfBirth: yup.date()
-  .typeError("Date of Birth must be a valid date")
-  .required("Date of Birth is required"),
+  dateOfBirth: yup
+    .date()
+    .typeError("Date of Birth must be a valid date")
+    .required("Date of Birth is required"),
 });
-

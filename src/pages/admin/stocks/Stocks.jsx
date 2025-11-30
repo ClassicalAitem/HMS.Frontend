@@ -36,10 +36,10 @@ const Stocks = () => {
 
             {/* Stock Data */}
             <div className="flex gap-5 mt-5">
-              <div className="w-[50%]  h-[152px] bg-[#FFFFFF] rounded-[20px] p-5">
+              <div className="w-[50%]  h-[152px] bg-base-100 rounded-[20px] p-5">
                 <div className="flex items-center gap-2">
                   <h4 className="text-[32px] ">{total}</h4>
-                  <p className="text-[#605D66] text-[16px]">Product</p>
+                  <p className="text-base-content/70 text-[16px]">Product</p>
                 </div>
 
                 <div className="mt-3 w-full h-[11px] rounded-full flex gap-2  ">
@@ -57,7 +57,7 @@ const Stocks = () => {
                   ></div>
                 </div>
 
-                <div className="flex gap-5 mt-4 text-[16px] text-[#000000]">
+                <div className="flex gap-5 mt-4 text-[16px] text-base-content">
                   <div className="flex items-center space-x-1">
                     <span className="w-3 h-3 rounded-full bg-[#17C59C]"></span>
                     <span className="text-gray-600">In Stock</span>
@@ -73,7 +73,7 @@ const Stocks = () => {
                 </div>
               </div>
 
-              <div className="w-[25%] bg-[#FFFFFF] rounded-[20px] p-5 text-[#605D66]">
+              <div className="w-[25%] bg-base-100 rounded-[20px] p-5 text-base-content/70">
                 <div className="flex gap-5 items-center ">
                   <h5 className="text-[24px]">Total Resources</h5>
                   <TbChartDots2 size={24} />
@@ -84,7 +84,7 @@ const Stocks = () => {
                 </p>
               </div>
 
-              <div className="w-[25%] bg-[#FFFFFF] rounded-[20px] p-5 text-[#605D66]">
+              <div className="w-[25%] bg-base-100 rounded-[20px] p-5 text-base-content/70">
                 <div className="flex gap-5 items-center ">
                   <h5 className="text-[24px] ">Total Resources</h5>
                   <TbChartDots2 size={24} />
