@@ -22,9 +22,8 @@ import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
-import Task from "@/pages/doctor/assignTask/Task";
 
-//Admin Dashboard
+// Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import Schedule from "@/pages/admin/schedule/Schedule";
 import Stocks from "@/pages/admin/stocks/Stocks";
