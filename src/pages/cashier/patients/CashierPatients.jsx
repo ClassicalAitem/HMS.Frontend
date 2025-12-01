@@ -6,7 +6,6 @@ import { FaUsers } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
-import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 
 const CashierPatients = () => {
   const navigate = useNavigate();
@@ -22,7 +21,6 @@ const CashierPatients = () => {
     dispatch(fetchPatients());
   }, [dispatch]);
 
-
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
@@ -34,10 +32,12 @@ const CashierPatients = () => {
   const StatusBadge = ({ status }) => {
     const getBadgeClass = (status) => {
       switch (status?.toLowerCase()) {
-        case 'awaiting_cashier':
+        case 'registered':
           return 'badge badge-success';
-        case 'awaiting_payment':
+        case 'active':
           return 'badge badge-success';
+        case 'inactive':
+          return 'badge badge-neutral';
         default:
           return 'badge badge-neutral';
       }
@@ -95,7 +95,7 @@ const CashierPatients = () => {
       className: 'text-center',
       render: (value, row) => (
         <button
-          onClick={() => navigate(`/cashier/patient-details/${row.id}`)}
+          onClick={() => navigate(`/cashier/patient-details/${row.patientId}`)}
           className="text-primary hover:text-primary/80 hover:underline text-sm font-medium"
         >
           View Details
@@ -103,11 +103,6 @@ const CashierPatients = () => {
       )
     }
   ], [navigate]);
-
-  const filteredPatient = patients.filter(
-      (p) => p.status === 'awaiting_cashier' || p.status === 'awaiting_payment'
-    );
-
 
   return (
     <CashierLayout>
@@ -125,13 +120,8 @@ const CashierPatients = () => {
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
                 {isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-96 p-4 space-y-3">
-                      <div className="skeleton h-6 w-40" />
-                      {Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="skeleton h-8 w-full" />
-                      ))}
-                    </div>
+                  <div className="flex justify-center items-center h-64">
+                    <div className="loading loading-spinner loading-lg text-primary"></div>
                   </div>
                 ) : error ? (
                   <div className="flex flex-col justify-center items-center h-64 text-center">
@@ -146,7 +136,7 @@ const CashierPatients = () => {
                   </div>
                 ) : (
                   <DataTable
-                    data={filteredPatient}
+                    data={patients}
                     columns={columns}
                     searchable={true}
                     sortable={true}

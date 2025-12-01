@@ -9,27 +9,23 @@ import RecentActivity from '@/components/cashier/dashboard/RecentActivity';
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import { getMetrics } from '@/services/api/metricsAPI';
-import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI';
+import { getAllBillings } from '@/services/api/billingAPI';
 
 const CashierDashboard = () => {
   console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
   console.log("🎯 CashierDashboard: Component rendering - LOG level!");
   console.warn("🎯 CashierDashboard: Component rendering - WARN level!");
-  const [dashboardData, setDashboardData] = useState([]);
+  const [dashboardData, setDashboardData] = useState(null);
   const { user } = useAppSelector((state) => state.auth);
   const [metricsLoading, setMetricsLoading] = useState(false);
   const [totalPatients, setTotalPatients] = useState(0);
-  const [totalPendingInvoice, setTotalPendingInvoice] = useState(0);
   const [billingData, setBillingData] = useState([]);
   const [billingLoading, setBillingLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
-    setDashboardData(billingData);
-  }, [billingData]);
-
-  const {patients, isLoading, error} = useAppSelector((state) =>  state.patients)
-
+    setDashboardData(cashierData.dashboard);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -38,20 +34,10 @@ const CashierDashboard = () => {
         setMetricsLoading(true);
         const res = await getMetrics();
         const data = res?.data || {};
-        // const count = Number(data.totalPatients) || 0;
-        // if (mounted) setTotalPatients(count);
-        const invoiceCount = Number(data.totalPendingReceipt) || 0;
-        if(mounted) setTotalPendingInvoice(invoiceCount)
-        const filteredPatient = patients.filter(
-          (p) => p.status === 'awaiting_cashier' || p.status === 'awaiting_payment'
-        );
-
-        console.log({filteredPatient, patients});
-        const countPatient = filteredPatient.length || 0;
-        if (mount) setTotalPatients(countPatient)
+        const count = Number(data.totalPatients) || 0;
+        if (mounted) setTotalPatients(count);
       } catch (e) {
         if (mounted) setTotalPatients(0);
-        if (mounted) setTotalPatients(0)
       } finally {
         if (mounted) setMetricsLoading(false);
       }
@@ -68,68 +54,73 @@ const CashierDashboard = () => {
     const fetchBillingData = async () => {
       try {
         setBillingLoading(true);
-        const response = await getAllReceipts({ limit: 10, sort: 'createdAt:desc' });
-
+        const response = await getAllBillings({ limit: 10, sort: 'createdAt:desc' });
+        
         if (response.data?.success && mounted) {
-          const receiptRecords = response.data.data || [];
-
-          // Transform receipt data to match activity item format
-          const transformedActivities = receiptRecords.map((receipt, index) => {
+          const billingRecords = response.data.data || [];
+          
+          // Transform billing data to match activity item format
+          const transformedActivities = billingRecords.map((bill, index) => {
             // Get the first item detail or use a default description
-            const firstItem = receipt.billing.itemDetails?.[0];
-            const serviceDescription = firstItem
+            const firstItem = bill.itemDetails?.[0];
+            const serviceDescription = firstItem 
               ? `${firstItem.description || firstItem.code} - ${firstItem.quantity}x`
               : 'Medical Service';
-
+            
             // Format amount with currency
-            const formattedAmount = `₦${Number(receipt.amountPaid || 0).toLocaleString()}`;
-
+            const formattedAmount = `₦${Number(bill.totalAmount || 0).toLocaleString()}`;
+            
+            // Determine status based on outstanding bill
+            let status = 'Successful';
+            if (bill.outstandingBill > 0) {
+              status = bill.outstandingBill === bill.totalAmount ? 'Pending' : 'Partial';
+            }
+            
             // Format date/time
-            const createdDate = new Date(receipt.createdAt);
-            const timeString = createdDate.toLocaleTimeString('en-US', {
-              hour: 'numeric',
+            const createdDate = new Date(bill.createdAt);
+            const timeString = createdDate.toLocaleTimeString('en-US', { 
+              hour: 'numeric', 
               minute: '2-digit',
-              hour12: true
+              hour12: true 
             });
-
+            
             return {
-              id: receipt.id || index,
-              patientName: receipt.billing.patient ? `${receipt.billing.patient.firstName} ${receipt.billing.patient.lastName}` : 'N/A',
+              id: bill.id || index,
+              patientName: `Patient ${index + 1}`, // Will be replaced with actual patient name when patient API is integrated
+              patientPhoto: `https://randomuser.me/api/portraits/${index % 2 === 0 ? 'men' : 'women'}/${20 + index}.jpg`,
               service: serviceDescription,
-              status: receipt.status,
-              paidBy: receipt.paidBy,
+              status: status,
+              hmo: 'Self-pay', // Will be replaced with actual HMO data when available
               amount: formattedAmount,
               time: timeString,
-              createdAt: receipt.createdAt
+              createdAt: bill.createdAt
             };
           });
-
+          
           setBillingData(transformedActivities);
           setLastUpdated(new Date().toLocaleString());
         }
       } catch (error) {
         console.error('Error fetching billing data:', error);
-        // if (mounted) {
-        //   // Fallback to mock data if API fails
-        //   setBillingData(dashboardData?.recentActivity || []);
-        //   setLastUpdated(dashboardData?.lastUpdated || '1/1/01 12:00AM');
-        // }
+        if (mounted) {
+          // Fallback to mock data if API fails
+          setBillingData(dashboardData?.recentActivity || []);
+          setLastUpdated(dashboardData?.lastUpdated || '1/1/01 12:00AM');
+        }
       } finally {
         if (mounted) setBillingLoading(false);
       }
     };
 
-
-    fetchBillingData();
-
+    // Fetch billing data after dashboard data is loaded
+    if (dashboardData) {
+      fetchBillingData();
+    }
 
     return () => {
       mounted = false;
     };
-  }, [user]);
-
-  console.log(dashboardData);
-
+  }, [dashboardData]);
 
   return (
     <CashierLayout>
@@ -156,18 +147,18 @@ const CashierDashboard = () => {
         />
         <StatCard
           title="Pending Invoices"
-          value={totalPendingInvoice}
-          subtitle={undefined}
+          value={dashboardData?.pendingInvoices ?? 56}
+          subtitle={`${dashboardData?.overdueInvoices ?? 3} overdue`}
           icon={GoCreditCard}
-          loading={metricsLoading}
+          loading={!dashboardData}
         />
       </div>
 
       {/* Recent Activity */}
       <RecentActivity
-        items={dashboardData || []}
-        lastUpdated={lastUpdated || '1/1/01 12:00AM'}
-        loading={billingLoading}
+        items={dashboardData?.recentActivity || []}
+        lastUpdated={dashboardData?.lastUpdated || '1/1/01 12:00AM'}
+        loading={!dashboardData}
       />
     </CashierLayout>
   );

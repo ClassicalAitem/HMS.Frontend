@@ -51,53 +51,6 @@ export const getAllBillings = async (params = {}) => {
   return response;
 };
 
-export const getAllReceipts = async (params = {}) => {
-  const url = API_ENDPOINTS.GET_RECEIPTS; // '/receipts'
-  console.log('🧾 ReceiptAPI: Fetching all receipts', { params, url });
-  const response = await apiClient.get(url, { params });
-  return response;
-}
-
-export const getAllReceiptByPatientId = async (patientId) => {
-  if (!patientId) throw new Error('Patient ID is required');
-
-  console.log(patientId);
-
-  const url = `/receipt/patient/${patientId}`;
-  console.log('🧾 ReceiptAPI: Fetching receipt by patient ID', { patientId, url });
-  const response = await apiClient.get(url);
-  return response;
-};
-
-export const createReceipt = async (billingId, receiptData) => {
-  if (!billingId) throw new Error('Billing ID is required');
-  if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
-
-  const { amountPaid, paymentMethod, paidBy, hmoId } = receiptData;
-  if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');
-  if (!paymentMethod) throw new Error('Payment method is required');
-  if (!paidBy) throw new Error('Payer information is required');
-
-  const payload = {
-    amountPaid: Number(amountPaid),
-    paymentMethod,
-    paidBy,
-    hmoId: hmoId,
-  };
-  const url = `/receipt/create/${billingId}`;
-  console.log('🧾 ReceiptAPI: Creating receipt', { billingId, payload, url });
-  const response = await apiClient.post(url, payload);
-  return response;
-};
-
-export const updateReceipt = async(receiptId, status) => {
-  if(!receiptId) throw new Error('Receipt ID is required');
-
-  const url = `/receipt/${receiptId}`;
-  const response = await apiClient.patch(url, status)
-  return response;
-}
-
 export const createBilling = async (patientId, payload) => {
   if (!patientId) throw new Error('Patient ID is required');
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
@@ -123,6 +76,4 @@ export default {
   createBilling,
   getBillingById,
   getAllBillings,
-  getAllReceipts,
-  updateReceipt
 };

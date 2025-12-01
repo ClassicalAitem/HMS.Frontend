@@ -20,38 +20,29 @@ export const API_ENDPOINTS = {
   CREATE_BILL: '/billing/create',
   GET_BILLINGS: '/billing',
   GET_BILL_DETAILS: '/billing/:id',
-
-  // Receipts
-  CREATE_RECEIPT: '/receipt/create',
-  GET_RECEIPTS: '/receipt',
-  GET_RECEIPT_BY_PATIENT_ID: '/receipt/patient/:patientId',
-
   // Patients
   PATIENTS: '/patient',
   PATIENT_DETAILS: '/patients/:id',
-
+  
   // Users
   USERS: '/user',
   USER_PROFILE: '/users/profile',
   CREATE_STAFF: '/user/createStaff',
   CREATE_ADMIN: '/user/createAdmin',
-
-  // HMO
-  GET_HMOS: '/hmo',
-
-
+  
+ 
   // Appointments
   APPOINTMENTS: '/appointments',
   APPOINTMENT_DETAILS: '/appointments/:id',
-
+  
   // Medical Records
   PATIENT_VITALS: '/patient-vitals',
   LAB_RESULTS: '/lab-results',
-
+  
   // Payments
   PAYMENTS: '/payments',
   BILLS: '/bills',
-
+  
   // Reports
   REPORTS: '/reports',
 };
