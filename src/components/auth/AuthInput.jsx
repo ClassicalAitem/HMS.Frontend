@@ -1,22 +1,33 @@
-import React from 'react';
-import { FaTimes } from 'react-icons/fa';
+import React from "react";
+import { FaTimes } from "react-icons/fa";
 
-const AuthInput = ({
-  type = 'text',
-  name,
-  value,
-  onChange,
-  placeholder,
-  icon: Icon,
-  rightIcon,
-  onRightIconClick,
-  error = false,
-  errorMessage,
-  disabled = false,
-  onClear,
-  showClearButton = false,
-  className = ''
-}) => {
+
+
+const AuthInput = (
+  {
+    type = "text",
+    name,
+    value,
+    onChange,
+    placeholder,
+    icon: Icon,
+    rightIcon,
+    onRightIconClick,
+    error = false,
+    errorMessage,
+    disabled = false,
+    onClear,
+    showClearButton = false,
+    className = "",
+    theme = "light",
+    ...register
+  },
+  ref
+) => {
+
+  //set text color based on theme
+  const textColorClass = theme === "dark" ? "text-white" : "text-gray-800";
+
   return (
     <div className={className}>
       <div className="relative">
@@ -24,22 +35,24 @@ const AuthInput = ({
         {Icon && (
           <Icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
         )}
-        
+
         {/* Input Field */}
         <input
+          ref={ref}
           type={type}
           name={name}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
           disabled={disabled}
-          className={`w-full ${Icon ? 'pl-12' : 'pl-4'} pr-12 py-4 border-b-2 ${
-            error ? 'border-red-500' : 'border-gray-200'
+          {...register}
+          className={`w-full ${Icon ? "pl-12" : "pl-4"} pr-12 py-4 border-b-2 ${
+            error ? "border-red-500" : "border-gray-200"
           } focus:border-green-500 focus:outline-none transition-colors bg-transparent text-gray-800 placeholder-gray-400 ${
-            disabled ? 'cursor-not-allowed opacity-50' : ''
-          }`}
+            disabled ? "cursor-not-allowed opacity-50" : ""
+          } ${textColorClass}`}
         />
-        
+
         {/* Right Icon or Clear Button */}
         <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
           {error && (
@@ -47,7 +60,7 @@ const AuthInput = ({
               <span className="text-white text-xs font-bold">!</span>
             </div>
           )}
-          
+
           {showClearButton && value && !error && (
             <button
               type="button"
@@ -57,7 +70,7 @@ const AuthInput = ({
               <FaTimes />
             </button>
           )}
-          
+
           {rightIcon && !error && !showClearButton && (
             <button
               type="button"
@@ -69,12 +82,10 @@ const AuthInput = ({
           )}
         </div>
       </div>
-      
+
       {/* Error Message */}
       {error && errorMessage && (
-        <p className="mt-2 text-sm text-red-500">
-          {errorMessage}
-        </p>
+        <p className="mt-2 text-sm text-red-500">{errorMessage}</p>
       )}
     </div>
   );

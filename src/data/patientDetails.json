@@ -1,0 +1,761 @@
+[
+  {
+    "id": "01",
+    "patientId": "P-2025-001",
+    "name": "Jane Cooper",
+    "gender": "Female",
+    "phoneNumber": "09127911395",
+    "email": "Omo@gmail.com",
+    "dateOfBirth": "16th April 2025",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Ikorodu",
+    "stateOfOrigin": "Ogun State",
+    "lga": "Lagos State",
+    "insurance": "MedCare HMO",
+    "status": "Active",
+    "avatar": "https://plus.unsplash.com/premium_photo-1689551670902-19b441a6afde?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Omotolani Folashade Aji",
+      "relationship": "Sister",
+      "stateOfOrigin": "Ogun State",
+      "phoneNumber": "091 2791 1395",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Hypertension (since 2018)",
+      "allergies": "Penicillin (rash), Dust allergy",
+      "medications": "Amlodipine 5mg daily",
+      "surgery": "Appendectomy (2010)",
+      "lastVisit": "2025-09-15 - Chest X-Ray (routine check, normal)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-05",
+        "time": "09:30 AM",
+        "doctor": "Dr. Adams",
+        "department": "Cardiology"
+      },
+      "last": {
+        "date": "2025-09-20",
+        "doctor": "Dr. Adams",
+        "department": "Cardiology",
+        "reason": "Hypertension check"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10021",
+        "date": "2025-09-15",
+        "service": "Chest X-Ray",
+        "amount": 300000,
+        "deposited": 30000,
+        "balance": 270000,
+        "status": "Partially Paid"
+      },
+      {
+        "invoiceNo": "INV-10021",
+        "date": "2025-09-15",
+        "service": "Cardiology",
+        "amount": 300000,
+        "deposited": 30000,
+        "balance": 270000,
+        "status": "Covered by HMO"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5601",
+        "date": "2025-09-15",
+        "service": "Chest X-Ray",
+        "amount": 300000,
+        "method": "Cash",
+        "status": "Successful",
+        "time": "9:00AM"
+      },
+      {
+        "receiptNo": "RCPT-5601",
+        "date": "2025-09-15",
+        "service": "Cardiology",
+        "amount": 300000,
+        "method": "Transfer",
+        "status": "Successful",
+        "time": "11:00AM"
+      }
+    ]
+  },
+  {
+    "id": "02",
+    "patientId": "P-2025-002",
+    "name": "Theresa Webb",
+    "gender": "Female",
+    "phoneNumber": "(207) 555-0119",
+    "email": "theresa.webb@email.com",
+    "dateOfBirth": "22nd May 1988",
+    "address": "2118 Thornridge Syracuse, 35624",
+    "town": "Syracuse",
+    "stateOfOrigin": "Rivers State",
+    "lga": "Port Harcourt",
+    "insurance": "NHIS Basic",
+    "status": "Active",
+    "avatar": "https://images.unsplash.com/photo-1730500983837-76e4ed2262cd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Michael Webb",
+      "relationship": "Brother",
+      "stateOfOrigin": "Rivers State",
+      "phoneNumber": "08023456789",
+      "address": "2118 Thornridge Syracuse, 35624"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Asthma (since 2015)",
+      "allergies": "Shellfish, Pollen",
+      "medications": "Salbutamol inhaler as needed",
+      "surgery": "None",
+      "lastVisit": "2025-09-12 - Pulmonary function test (mild improvement)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-08",
+        "time": "11:00 AM",
+        "doctor": "Dr. Johnson",
+        "department": "Pulmonology"
+      },
+      "last": {
+        "date": "2025-09-12",
+        "doctor": "Dr. Johnson",
+        "department": "Pulmonology",
+        "reason": "Asthma follow-up"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10023",
+        "date": "2025-09-12",
+        "service": "Pulmonary Function Test",
+        "amount": 250000,
+        "deposited": 100000,
+        "balance": 150000,
+        "status": "Partially Paid"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5603",
+        "date": "2025-09-12",
+        "service": "Consultation",
+        "amount": 75000,
+        "method": "Card",
+        "status": "Successful",
+        "time": "11:30AM"
+      }
+    ]
+  },
+  {
+    "id": "03",
+    "patientId": "P-2025-003",
+    "name": "Albert Flores",
+    "gender": "Male",
+    "phoneNumber": "(217) 555-0113",
+    "email": "albert.flores@email.com",
+    "dateOfBirth": "8th November 1987",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Kano State",
+    "lga": "Kano Municipal",
+    "insurance": "Family Health Plan",
+    "status": "Inactive",
+    "avatar": "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Maria Flores",
+      "relationship": "Wife",
+      "stateOfOrigin": "Kano State",
+      "phoneNumber": "08034567890",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Lower back pain (chronic)",
+      "allergies": "Latex",
+      "medications": "Ibuprofen 400mg as needed",
+      "surgery": "None",
+      "lastVisit": "2025-08-20 - MRI scan (disc herniation identified)"
+    },
+    
+    "appointments": {
+      "upcoming": null,
+      "last": {
+        "date": "2025-08-20",
+        "doctor": "Dr. Martinez",
+        "department": "Orthopedics",
+        "reason": "Back pain assessment"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10024",
+        "date": "2025-08-20",
+        "service": "MRI Scan",
+        "amount": 800000,
+        "deposited": 0,
+        "balance": 800000,
+        "status": "Unpaid"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5604",
+        "date": "2025-07-15",
+        "service": "Consultation",
+        "amount": 60000,
+        "method": "Cash",
+        "status": "Successful",
+        "time": "2:15PM"
+      }
+    ]
+  },
+  {
+    "id": "04",
+    "patientId": "P-2025-004",
+    "name": "Robert Fox",
+    "gender": "Male",
+    "phoneNumber": "(480) 555-0103",
+    "email": "robert.fox@email.com",
+    "dateOfBirth": "3rd January 1988",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Kaduna State",
+    "lga": "Kaduna North",
+    "insurance": "Premium Care Plus",
+    "status": "Inactive",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Sarah Fox",
+      "relationship": "Sister",
+      "stateOfOrigin": "Kaduna State",
+      "phoneNumber": "08045678901",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Migraine (episodic)",
+      "allergies": "Sulfa drugs",
+      "medications": "Sumatriptan as needed",
+      "surgery": "None",
+      "lastVisit": "2025-07-30 - Neurological assessment (normal)"
+    },
+    
+    "appointments": {
+      "upcoming": null,
+      "last": {
+        "date": "2025-07-30",
+        "doctor": "Dr. Wilson",
+        "department": "Neurology",
+        "reason": "Migraine evaluation"
+      }
+    },
+    
+    "outstandingBills": [],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5605",
+        "date": "2025-07-30",
+        "service": "Neurological Consultation",
+        "amount": 120000,
+        "method": "Transfer",
+        "status": "Successful",
+        "time": "10:45AM"
+      }
+    ]
+  },
+  {
+    "id": "05",
+    "patientId": "P-2025-005",
+    "name": "Savannah Nguyen",
+    "gender": "Female",
+    "phoneNumber": "(209) 555-0104",
+    "email": "savannah.nguyen@email.com",
+    "dateOfBirth": "15th July 1989",
+    "address": "6391 Elgin St. Celina, Delaware 10299",
+    "town": "Celina",
+    "stateOfOrigin": "Anambra State",
+    "lga": "Awka South",
+    "insurance": "Wellness HMO",
+    "status": "Active",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "David Nguyen",
+      "relationship": "Husband",
+      "stateOfOrigin": "Anambra State",
+      "phoneNumber": "08056789012",
+      "address": "6391 Elgin St. Celina, Delaware 10299"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Thyroid disorder (hypothyroidism)",
+      "allergies": "Iodine",
+      "medications": "Levothyroxine 50mcg daily",
+      "surgery": "None",
+      "lastVisit": "2025-09-18 - Thyroid function test (levels stable)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-15",
+        "time": "08:45 AM",
+        "doctor": "Dr. Brown",
+        "department": "Endocrinology"
+      },
+      "last": {
+        "date": "2025-09-18",
+        "doctor": "Dr. Brown",
+        "department": "Endocrinology",
+        "reason": "Thyroid monitoring"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10025",
+        "date": "2025-09-18",
+        "service": "Thyroid Function Test",
+        "amount": 180000,
+        "deposited": 180000,
+        "balance": 0,
+        "status": "Covered by HMO"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5606",
+        "date": "2025-09-18",
+        "service": "Consultation",
+        "amount": 85000,
+        "method": "Card",
+        "status": "Successful",
+        "time": "9:15AM"
+      }
+    ]
+  },
+  {
+    "id": "06",
+    "patientId": "P-2025-006",
+    "name": "Annette Black",
+    "gender": "Female",
+    "phoneNumber": "(225) 555-0118",
+    "email": "annette.black@email.com",
+    "dateOfBirth": "28th September 1989",
+    "address": "2118 Thornridge Syracuse, 35624",
+    "town": "Syracuse",
+    "stateOfOrigin": "Delta State",
+    "lga": "Warri South",
+    "insurance": "Basic Health Cover",
+    "status": "Active",
+    "avatar": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "James Black",
+      "relationship": "Father",
+      "stateOfOrigin": "Delta State",
+      "phoneNumber": "08067890123",
+      "address": "2118 Thornridge Syracuse, 35624"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Anxiety disorder (generalized)",
+      "allergies": "None known",
+      "medications": "Sertraline 25mg daily",
+      "surgery": "None",
+      "lastVisit": "2025-09-14 - Mental health assessment (improving)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-10",
+        "time": "03:30 PM",
+        "doctor": "Dr. Taylor",
+        "department": "Psychiatry"
+      },
+      "last": {
+        "date": "2025-09-14",
+        "doctor": "Dr. Taylor",
+        "department": "Psychiatry",
+        "reason": "Anxiety management"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10026",
+        "date": "2025-09-14",
+        "service": "Psychiatric Consultation",
+        "amount": 200000,
+        "deposited": 50000,
+        "balance": 150000,
+        "status": "Partially Paid"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5607",
+        "date": "2025-09-14",
+        "service": "Mental Health Session",
+        "amount": 150000,
+        "method": "Cash",
+        "status": "Successful",
+        "time": "4:00PM"
+      }
+    ]
+  },
+  {
+    "id": "07",
+    "patientId": "P-2025-007",
+    "name": "Robert Fox",
+    "gender": "Male",
+    "phoneNumber": "(270) 555-0117",
+    "email": "robert.fox2@email.com",
+    "dateOfBirth": "12th December 1989",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Plateau State",
+    "lga": "Jos North",
+    "insurance": "Executive Health Plan",
+    "status": "Active",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Linda Fox",
+      "relationship": "Mother",
+      "stateOfOrigin": "Plateau State",
+      "phoneNumber": "08078901234",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "High cholesterol",
+      "allergies": "None known",
+      "medications": "Atorvastatin 20mg daily",
+      "surgery": "None",
+      "lastVisit": "2025-09-16 - Lipid profile (levels improving)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-18",
+        "time": "10:15 AM",
+        "doctor": "Dr. Davis",
+        "department": "Cardiology"
+      },
+      "last": {
+        "date": "2025-09-16",
+        "doctor": "Dr. Davis",
+        "department": "Cardiology",
+        "reason": "Cholesterol monitoring"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10027",
+        "date": "2025-09-16",
+        "service": "Lipid Profile",
+        "amount": 120000,
+        "deposited": 120000,
+        "balance": 0,
+        "status": "Paid"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5608",
+        "date": "2025-09-16",
+        "service": "Cardiac Consultation",
+        "amount": 150000,
+        "method": "Transfer",
+        "status": "Successful",
+        "time": "10:45AM"
+      }
+    ]
+  },
+  {
+    "id": "08",
+    "patientId": "P-2025-008",
+    "name": "Brooklyn Simmons",
+    "gender": "Male",
+    "phoneNumber": "(316) 555-0116",
+    "email": "brooklyn.simmons@email.com",
+    "dateOfBirth": "5th June 1989",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Edo State",
+    "lga": "Benin City",
+    "insurance": "Student Health Plan",
+    "status": "Inactive",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Grace Simmons",
+      "relationship": "Mother",
+      "stateOfOrigin": "Edo State",
+      "phoneNumber": "08089012345",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Sports injury (knee)",
+      "allergies": "None known",
+      "medications": "NSAIDs as needed",
+      "surgery": "Arthroscopy (2024)",
+      "lastVisit": "2025-06-25 - Physiotherapy assessment (good recovery)"
+    },
+    
+    "appointments": {
+      "upcoming": null,
+      "last": {
+        "date": "2025-06-25",
+        "doctor": "Dr. Thompson",
+        "department": "Sports Medicine",
+        "reason": "Knee rehabilitation"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10028",
+        "date": "2025-06-25",
+        "service": "Physiotherapy Session",
+        "amount": 80000,
+        "deposited": 0,
+        "balance": 80000,
+        "status": "Unpaid"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5609",
+        "date": "2025-05-20",
+        "service": "Sports Medicine Consultation",
+        "amount": 100000,
+        "method": "Card",
+        "status": "Successful",
+        "time": "2:30PM"
+      }
+    ]
+  },
+  {
+    "id": "09",
+    "patientId": "P-2025-009",
+    "name": "Jacob Jones",
+    "gender": "Male",
+    "phoneNumber": "(702) 555-0122",
+    "email": "jacob.jones@email.com",
+    "dateOfBirth": "18th October 1989",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Imo State",
+    "lga": "Owerri Municipal",
+    "insurance": "Comprehensive Health",
+    "status": "Active",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Mary Jones",
+      "relationship": "Wife",
+      "stateOfOrigin": "Imo State",
+      "phoneNumber": "08090123456",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Type 1 Diabetes (since 2010)",
+      "allergies": "None known",
+      "medications": "Insulin (rapid and long-acting)",
+      "surgery": "None",
+      "lastVisit": "2025-09-22 - HbA1c test (good control)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-22",
+        "time": "09:00 AM",
+        "doctor": "Dr. Lee",
+        "department": "Endocrinology"
+      },
+      "last": {
+        "date": "2025-09-22",
+        "doctor": "Dr. Lee",
+        "department": "Endocrinology",
+        "reason": "Diabetes management"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10029",
+        "date": "2025-09-22",
+        "service": "HbA1c Test",
+        "amount": 90000,
+        "deposited": 90000,
+        "balance": 0,
+        "status": "Covered by Insurance"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5610",
+        "date": "2025-09-22",
+        "service": "Endocrine Consultation",
+        "amount": 110000,
+        "method": "Transfer",
+        "status": "Successful",
+        "time": "9:30AM"
+      }
+    ]
+  },
+  {
+    "id": "10",
+    "patientId": "P-2025-010",
+    "name": "Annette Black",
+    "gender": "Female",
+    "phoneNumber": "(319) 555-0115",
+    "email": "annette.black2@email.com",
+    "dateOfBirth": "7th February 1989",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Cross River State",
+    "lga": "Calabar Municipal",
+    "insurance": "Federal Health Scheme",
+    "status": "Active",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Peter Black",
+      "relationship": "Brother",
+      "stateOfOrigin": "Cross River State",
+      "phoneNumber": "08001234567",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Fibromyalgia",
+      "allergies": "Codeine",
+      "medications": "Pregabalin 150mg twice daily",
+      "surgery": "None",
+      "lastVisit": "2025-09-19 - Pain management review (stable)"
+    },
+    
+    "appointments": {
+      "upcoming": {
+        "date": "2025-10-20",
+        "time": "01:45 PM",
+        "doctor": "Dr. Garcia",
+        "department": "Rheumatology"
+      },
+      "last": {
+        "date": "2025-09-19",
+        "doctor": "Dr. Garcia",
+        "department": "Rheumatology",
+        "reason": "Fibromyalgia management"
+      }
+    },
+    
+    "outstandingBills": [
+      {
+        "invoiceNo": "INV-10030",
+        "date": "2025-09-19",
+        "service": "Rheumatology Consultation",
+        "amount": 180000,
+        "deposited": 100000,
+        "balance": 80000,
+        "status": "Partially Paid"
+      }
+    ],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5611",
+        "date": "2025-09-19",
+        "service": "Pain Assessment",
+        "amount": 120000,
+        "method": "Cash",
+        "status": "Successful",
+        "time": "2:15PM"
+      }
+    ]
+  },
+  {
+    "id": "11",
+    "patientId": "P-2025-011",
+    "name": "Savannah Nguyen",
+    "gender": "Female",
+    "phoneNumber": "(316) 555-0116",
+    "email": "savannah.nguyen2@email.com",
+    "dateOfBirth": "25th August 1989",
+    "address": "3891 Ranchview Richardson, California",
+    "town": "Richardson",
+    "stateOfOrigin": "Akwa Ibom State",
+    "lga": "Uyo",
+    "insurance": "Corporate Health Plan",
+    "status": "Inactive",
+    "avatar": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    
+    "nextOfKin": {
+      "name": "Emmanuel Nguyen",
+      "relationship": "Brother",
+      "stateOfOrigin": "Akwa Ibom State",
+      "phoneNumber": "08012345678",
+      "address": "3891 Ranchview Richardson, California"
+    },
+    
+    "medicalHistory": {
+      "conditions": "Allergic rhinitis (seasonal)",
+      "allergies": "Pollen, Dust mites",
+      "medications": "Antihistamines as needed",
+      "surgery": "None",
+      "lastVisit": "2025-04-10 - Allergy testing (confirmed environmental allergies)"
+    },
+    
+    "appointments": {
+      "upcoming": null,
+      "last": {
+        "date": "2025-04-10",
+        "doctor": "Dr. White",
+        "department": "Allergy & Immunology",
+        "reason": "Seasonal allergy management"
+      }
+    },
+    
+    "outstandingBills": [],
+    
+    "paymentHistory": [
+      {
+        "receiptNo": "RCPT-5612",
+        "date": "2025-04-10",
+        "service": "Allergy Testing",
+        "amount": 200000,
+        "method": "Card",
+        "status": "Successful",
+        "time": "11:00AM"
+      }
+    ]
+  }
+]
