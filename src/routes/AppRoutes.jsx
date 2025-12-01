@@ -9,20 +9,13 @@ import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
 import Registration from "@/pages/frontdesk/registration/Registration";
 
 //Nurse Dashboard
-import NurseDashboard from "../pages/nurse/dashboard/NurseDashboard";
-import AssignedTask from "../pages/nurse/assignedTask/AssignedTask";
 import PatientVitals from "../pages/nurse/patientVitals/PatientVitals";
 import Incomming from "../pages/nurse/incoming/Incoming";
-import Appointmentss from "../pages/nurse/appointment/Appointment";
 import BookAppointmentModal from "@/components/nurse/bookAppointment/BookAppointmentModal";
 
 //Doctor's Dashboard
-import DoctorDashboard from "../pages/doctor/dashboard/DoctorDashboard";
-import AllPatients from "../pages/doctor/allPatients/AllPatients";
-import LabResults from "../pages/doctor/labResults/LabResults";
 import Appoxintment from "../pages/doctor/appiontments/Appointment";
 import Task from "../pages/doctor/assignTask/Task";
-import IncomingDoctor from "../pages/doctor/incoming/IncomingDoctor";
 import Patientdetails from "../pages/doctor/incoming/PatientDetails";
 import PatientDiagnosis from "../pages/doctor/incoming/PatientDiagnosis";
 import AddNewDiagnosis from "../pages/doctor/incoming/AddNewDiagnosis";
@@ -50,9 +43,8 @@ import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
-import Task from "@/pages/doctor/assignTask/Task";
 
-//Admin Dashboard
+// Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import Schedule from "@/pages/admin/schedule/Schedule";
 import Stocks from "@/pages/admin/stocks/Stocks";
@@ -207,7 +199,7 @@ const AppRoutes = () => {
       <Route path="/dashboard/cashier" element={<CashierDashboard />} />
       <Route path="/cashier/incoming" element={<CashierIncoming />} />
       <Route path="/cashier/patients" element={<CashierPatients />} />
-      <Route path="/cashier/payment-records" element={<PaymentRecords />} />
+      {/* <Route path="/cashier/payment-records" element={<PaymentRecords />} /> */}
       <Route
         path="/cashier/patient-details"
         element={<CashierPatientDetails />}
