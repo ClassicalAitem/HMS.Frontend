@@ -96,7 +96,7 @@ import Transactions from "@/pages/pharmacist/Transactions/Transactions";
 
 //Laboratory Dashboard Routes
 import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
-import IncomingLaboratory from "@/pages/laboratory/incoming/incomingLaboratory";
+import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
 import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
