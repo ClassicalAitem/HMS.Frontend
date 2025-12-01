@@ -78,9 +78,14 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
 import CashierIncoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
-import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
+// import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
 import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
+
+// Cashier
+import BillingRecords from "@/pages/cashier/payment-records/BillingRecord";
+import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
+import GenerateReceipt from "@/pages/cashier/generate-receipt/GenerateReceipt";
 
 // Modals
 // import { BookAppointmentModal } from "@/components/modals";
@@ -569,54 +574,48 @@ const AppRoutes = () => {
        ====================================  Cashier Route ===========================================================
        
       ================================================================================================================*/}
-      <Route
-        path="/cashier/dashboard"
-        element={
-          <ProtectedRoute allowedRoles={["cashier"]}>
-            <CashierDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cashier/incoming"
-        element={
-          <ProtectedRoute allowedRoles={["cashier"]}>
-            <CashierIncoming />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cashier/patients"
-        element={
-          <ProtectedRoute allowedRoles={["cashier"]}>
-            <CashierPatients />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cashier/payment-records"
-        element={
-          <ProtectedRoute allowedRoles={["cashier"]}>
-            <PaymentRecords />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cashier/patient-details/:patientId"
-        element={
-          <ProtectedRoute allowedRoles={["cashier"]}>
-            <CashierPatientDetails />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cashier/generate-bill"
-        element={
-          <ProtectedRoute allowedRoles={["cashier"]}>
-            <GenerateBill />
-          </ProtectedRoute>
-        }
-      />
+
+      <Route path="/cashier/dashboard" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/incoming" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/patients" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/billing-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <BillingRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/receipt-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <ReceiptRecords />
+        </ProtectedRoute>
+      } />
+      {/* <Route path="/cashier/payment-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <PaymentRecords />
+        </ProtectedRoute>
+      } /> */}
+      <Route path="/cashier/patient-details/:patientId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierPatientDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/generate-bill" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <GenerateBill />
+        </ProtectedRoute>
+      } />
+
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
