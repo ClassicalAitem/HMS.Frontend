@@ -202,7 +202,7 @@ const AppRoutes = () => {
       {/* <Route path="/cashier/payment-records" element={<PaymentRecords />} /> */}
       <Route
         path="/cashier/patient-details"
-        element={<CashierPatientDetails />}
+        element={<CashierPatientDetails  />}
       />
       <Route path="/cashier/generate-bill" element={<GenerateBill />} />
       {/* Frontdesk Routes */}
