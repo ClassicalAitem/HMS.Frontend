@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { MdOutlineDashboard } from "react-icons/md";
 import { GoArrowDownLeft, GoPerson, GoCreditCard } from "react-icons/go";
+import { IoReceiptOutline } from "react-icons/io5";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -62,9 +63,15 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
     {
       icon: GoCreditCard,
-      label: 'Payment Record',
-      path: '/cashier/payment-records',
-      active: location.pathname === '/cashier/payment-records'
+      label: 'Billing Record',
+      path: '/cashier/billing-records',
+      active: location.pathname === '/cashier/billing-records'
+    },
+    {
+      icon: IoReceiptOutline,
+      label: 'Payment Receipt',
+      path: '/cashier/receipt-records',
+      active: location.pathname === '/cashier/receipt-records'
     }
   ];
 
@@ -130,7 +137,7 @@ const Sidebar = ({ onCloseSidebar }) => {
           <span className="text-xs 2xl:text-sm">Change Password</span>
         </Link>
 
-        <button 
+        <button
           onClick={() => setIsLogoutModalOpen(true)}
           className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
@@ -159,8 +166,8 @@ const Sidebar = ({ onCloseSidebar }) => {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-base-content">
-              {user?.firstName && user?.lastName 
-                ? `${user.firstName} ${user.lastName}` 
+              {user?.firstName && user?.lastName
+                ? `${user.firstName} ${user.lastName}`
                 : 'User'
               }
             </p>
