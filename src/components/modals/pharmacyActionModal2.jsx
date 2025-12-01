@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
 
-const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaiting_vitals', onUpdated }) => {
+const PharmacyActionModal2 = ({ isOpen, onClose, patientId, defaultAction = 'awaiting_pharmacy', onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
-
-  console.log({patientId});
-
 
   if (!isOpen) return null;
 
@@ -16,9 +13,9 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
       setIsSending(true);
       const promise = updatePatientStatus(patientId, selectedAction);
       toast.promise(promise, {
-        loading: 'Sending to nurse...',
-        success: 'Patient sent to nurse successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to send to nurse',
+        loading: 'Sending to pharmacy...',
+        success: 'Patient sent to pharmacy successfully',
+        error: (err) => err?.response?.data?.message || 'Failed to send to pharmacy',
       });
       await promise;
       onClose();
@@ -36,16 +33,16 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
       <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
         <div className="p-6 card-body">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-base-content">Send to Nurse</h2>
+            <h2 className="text-xl font-bold text-base-content">Send to Pharmacy</h2>
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {['awaiting_vitals','awaiting_sampling','awaiting_injection'].map(action => (
+            {['awaiting_pharmacy'].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
-                  name="nurseAction"
+                  name="pharmacyAction"
                   className="radio radio-primary"
                   checked={selectedAction === action}
                   onChange={() => setSelectedAction(action)}
@@ -64,4 +61,4 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
   );
 };
 
-export default NurseActionModal;
+export default PharmacyActionModal2;
