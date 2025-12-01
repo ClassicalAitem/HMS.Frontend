@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "username": "frontdesk@kolak.com",
+    "password": "frontdesk123",
+    "role": "frontdesk",
+    "name": "Folake1 Flakes",
+    "department": "Front Desk",
+    "avatar": "https://images.unsplash.com/photo-1707303051965-bb814c443aa1?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "permissions": ["view_patients", "create_appointments", "register_patients", "view_dashboard"]
+  },
+  {
+    "id": 2,
+    "username": "nurse@kolak.com",
+    "password": "nurse123",
+    "role": "nurse",
+    "name": "Sarah Johnson",
+    "department": "Nursing",
+    "avatar": "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "permissions": ["view_patients", "update_patient_status", "view_medications", "view_tasks", "view_dashboard"]
+  },
+  {
+    "id": 3,
+    "username": "doctor@kolak.com",
+    "password": "doctor123",
+    "role": "doctor",
+    "name": "Dr. Michael Chen",
+    "department": "General Medicine",
+    "avatar": "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "permissions": ["view_patients", "diagnose_patients", "prescribe_medications", "view_appointments", "view_dashboard"]
+  },
+  {
+    "id": 4,
+    "username": "admin@kolak.com",
+    "password": "admin123",
+    "role": "admin",
+    "name": "Jennifer Martinez",
+    "department": "Administration",
+    "avatar": "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "permissions": ["view_all_data", "manage_users", "view_reports", "manage_departments", "view_dashboard"]
+  },
+  {
+    "id": 5,
+    "username": "superadmin@kolak.com",
+    "password": "superadmin123",
+    "role": "superAdmin",
+    "name": "Robert Thompson",
+    "department": "System Administration",
+    "avatar": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "permissions": ["full_access", "system_settings", "user_management", "data_export", "view_dashboard"]
+  },
+  {
+    "id": 6,
+    "username": "cashier@kolak.com",
+    "password": "cashier123",
+    "role": "cashier",
+    "name": "Maria Rodriguez",
+    "department": "Finance",
+    "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "permissions": ["process_payments", "view_billing", "generate_invoices", "view_financial_reports", "view_dashboard"]
+  }
+]
