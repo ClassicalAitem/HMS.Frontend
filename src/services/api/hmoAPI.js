@@ -19,7 +19,15 @@ export const updateHmoExpiry = async (hmoId, expiresAt) => {
   return apiClient.patch(`/hmo/${hmoId}`, { expiresAt });
 };
 
+export const getAllHmos = async (params = {}) => {
+  const url = API_ENDPOINTS.GET_HMOS; // '/hmo'
+  console.log('🧾 HmoAPI: Fetching all hmo', { params, url });
+  const response = await apiClient.get(url, { params });
+  return response;
+}
+
 export default {
   addHmoForPatient,
   updateHmoExpiry,
+  getAllHmos,
 };

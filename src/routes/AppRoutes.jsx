@@ -56,7 +56,9 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
 import CashierIncoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
-import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
+import BillingRecords from "@/pages/cashier/payment-records/BillingRecord";
+import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
+// import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
 import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 
@@ -363,9 +365,19 @@ const AppRoutes = () => {
           <CashierPatients />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/payment-records" element={
+      {/* <Route path="/cashier/payment-records" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <PaymentRecords />
+        </ProtectedRoute>
+      } /> */}
+      <Route path="/cashier/billing-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <BillingRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/receipt-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <ReceiptRecords />
         </ProtectedRoute>
       } />
       <Route path="/cashier/patient-details/:patientId" element={
