@@ -51,6 +51,26 @@ export const getAllBillings = async (params = {}) => {
   return response;
 };
 
+export const createBilling = async (patientId, payload) => {
+  if (!patientId) throw new Error('Patient ID is required');
+  if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
+  const { itemDetail = [], totalAmount } = payload;
+  if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
+  const sanitized = itemDetail.map(({ code, description, quantity, price, total }) => ({
+    code,
+    description,
+    quantity: Number(quantity) || 1,
+    price: Number(price) || 0,
+    total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
+  }));
+  const body = { itemDetail: sanitized };
+  if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
+  const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
+  console.log('🧾 BillingAPI: Creating billing (detailed)', { patientId, body, url });
+  const response = await apiClient.post(url, body);
+  return response;
+};
+
 export const getAllReceipts = async (params = {}) => {
   const url = API_ENDPOINTS.GET_RECEIPTS; // '/receipts'
   console.log('🧾 ReceiptAPI: Fetching all receipts', { params, url });
@@ -98,31 +118,13 @@ export const updateReceipt = async(receiptId, status) => {
   return response;
 }
 
-export const createBilling = async (patientId, payload) => {
-  if (!patientId) throw new Error('Patient ID is required');
-  if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
-  const { itemDetail = [], totalAmount } = payload;
-  if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
-  const sanitized = itemDetail.map(({ code, description, quantity, price, total }) => ({
-    code,
-    description,
-    quantity: Number(quantity) || 1,
-    price: Number(price) || 0,
-    total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
-  }));
-  const body = { itemDetail: sanitized };
-  if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
-  const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
-  console.log('🧾 BillingAPI: Creating billing (detailed)', { patientId, body, url });
-  const response = await apiClient.post(url, body);
-  return response;
-};
-
 export default {
   createBill,
   createBilling,
   getBillingById,
   getAllBillings,
   getAllReceipts,
-  updateReceipt
+  getAllReceiptByPatientId,
+  createReceipt,
+  updateReceipt,
 };

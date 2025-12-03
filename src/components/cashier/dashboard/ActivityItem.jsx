@@ -1,4 +1,3 @@
-import React from 'react';
 
 const ActivityItem = ({ activity }) => {
   const { patientName, time, service, status, hmo, amount } = activity || {};

@@ -1,5 +1,4 @@
 import apiClient from './apiClient';
-import { API_ENDPOINTS } from '@/config/env';
 
 /**
  * Add HMO plans for a patient
@@ -30,4 +29,5 @@ export const getAllHmos = async (params = {}) => {
 export default {
   addHmoForPatient,
   updateHmoExpiry,
+  getAllHmos,
 };
