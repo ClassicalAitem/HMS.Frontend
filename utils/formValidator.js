@@ -64,3 +64,19 @@ export const registrationSchema = yup.object().shape({
     .typeError("Date of Birth must be a valid date")
     .required("Date of Birth is required"),
 });
+
+// Minimal schema for staff creation
+export const staffRegistrationSchema = yup.object().shape({
+  firstName: yup.string().required("First Name is required"),
+  lastName: yup.string().required("Last Name is required"),
+  email: yup
+    .string()
+    .email("Email must be a valid email address")
+    .required("Email is required")
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email is invalid"),
+  role: yup.string().required("Role is required"),
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(8, "Password must be at least 8 characters"),
+});
