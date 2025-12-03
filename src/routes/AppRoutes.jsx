@@ -68,6 +68,13 @@ import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
 import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
 import NurseIncoming from "@/pages/nurse/incoming/Incoming";
+// Pharmacist
+import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
+import DrugDispensation from "@/pages/pharmacist/DrugDispensation/DrugDispensation";
+import PharmacistIncoming from "@/pages/pharmacist/incoming/Incoming";
+import InventoryStocks from "@/pages/pharmacist/Inventory&stocks/Inventory&stocks";
+import PharmacistReports from "@/pages/pharmacist/Reports/Reports";
+import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions";
 
 const AppRoutes = () => {
   return (
@@ -388,6 +395,42 @@ const AppRoutes = () => {
       <Route path="/cashier/generate-bill" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <GenerateBill />
+        </ProtectedRoute>
+      } />
+
+      {/*==============================================================================================================
+      
+      ====================================  Pharmacist DashBoard Route ===============================================
+      
+      ================================================================================================================*/}
+      <Route path="/dashboard/pharmacist" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/DrugDispensation" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <DrugDispensation />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/incoming" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/Inventory&stocks" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <InventoryStocks />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/Reports" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistReports />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/Transactions" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistTransactions />
         </ProtectedRoute>
       } />
 
