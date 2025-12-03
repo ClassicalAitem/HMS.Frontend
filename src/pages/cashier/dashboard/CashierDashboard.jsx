@@ -12,9 +12,6 @@ import { getMetrics } from '@/services/api/metricsAPI';
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI';
 
 const CashierDashboard = () => {
-  console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
-  console.log("🎯 CashierDashboard: Component rendering - LOG level!");
-  console.warn("🎯 CashierDashboard: Component rendering - WARN level!");
   const [dashboardData, setDashboardData] = useState([]);
   const { user } = useAppSelector((state) => state.auth);
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -46,12 +43,10 @@ const CashierDashboard = () => {
           (p) => p.status === 'awaiting_cashier' || p.status === 'awaiting_payment'
         );
 
-        console.log({filteredPatient, patients});
         const countPatient = filteredPatient.length || 0;
-        if (mount) setTotalPatients(countPatient)
+        if (mounted) setTotalPatients(countPatient)
       } catch (e) {
         if (mounted) setTotalPatients(0);
-        if (mounted) setTotalPatients(0)
       } finally {
         if (mounted) setMetricsLoading(false);
       }
@@ -128,7 +123,6 @@ const CashierDashboard = () => {
     };
   }, [user]);
 
-  console.log(dashboardData);
 
 
   return (
