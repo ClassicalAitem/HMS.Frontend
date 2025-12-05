@@ -1,6 +1,5 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "@/components/admin/dashboard/SideBar";
 import { useState } from "react";
 import { PiUsersThree } from "react-icons/pi";
 import {  FaLock } from "react-icons/fa";
@@ -13,6 +12,7 @@ import { registrationSchema, staffRegistrationSchema } from "../../../../utils/f
 import StaffList from "../../../pages/admin/users/StaffList";
 import { usersAPI } from "../../../services/api/usersAPI";
 import toast from "react-hot-toast";
+import { Sidebar } from "@/components/admin/dashboard";
 
 const steps = [
   { label: "User Details", icon: <FiUser /> },
@@ -76,12 +76,12 @@ const Users = () => {
 
   return (
     <div className="flex h-screen bg-base-200">
-      <SideBar />
+      <Sidebar />
 
-      <div className="flex overflow-hidden flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
 
-        <div className="overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto">
           <section className="p-7 ">
             {/* Page Heading */}
             <div className="flex gap-10">
@@ -125,11 +125,11 @@ const Users = () => {
             {/* Registration form section */}
             <section>
               {activeTab === "Staff Registration" && (
-                <div className="flex justify-between gap-3  overflow-hidden mt-5">
+                <div className="flex justify-between gap-3 mt-5 overflow-hidden">
                   <div className="w-[490px] bg-base-100">
-                    <div className="flex flex-col py-10 items-start gap-6">
+                    <div className="flex flex-col items-start gap-6 py-10">
                       <div className="flex items-center gap-3">
-                        <h4 className="w-8 h-8 flex items-center justify-center rounded-full border-2 bg-green-500 text-white border-green-500">
+                        <h4 className="flex items-center justify-center w-8 h-8 text-white bg-green-500 border-2 border-green-500 rounded-full">
                           {steps[0].icon}
                         </h4>
                         <span className="font-medium text-green-600">{steps[0].label}</span>
@@ -214,7 +214,7 @@ const Users = () => {
                             <button
                               type="button"
                               onClick={() => setShowPassword((v) => !v)}
-                              className="btn btn-ghost btn-xs absolute right-2 top-1/2 -translate-y-1/2"
+                              className="absolute -translate-y-1/2 btn btn-ghost btn-xs right-2 top-1/2"
                             >
                               {showPassword ? (
                                 <FiEyeOff className="w-4 h-4" />
@@ -238,7 +238,7 @@ const Users = () => {
 
                     {currentStep === 1 && (
                       <div>
-                        <h2 className="text-lg font-semibold mb-4">
+                        <h2 className="mb-4 text-lg font-semibold">
                           Residential Address
                         </h2>
                       </div>
@@ -246,7 +246,7 @@ const Users = () => {
 
                     {currentStep === 2 && (
                       <div>
-                        <h2 className="text-lg font-semibold mb-4">
+                        <h2 className="mb-4 text-lg font-semibold">
                           Additional details
                         </h2>
                       </div>
@@ -254,7 +254,7 @@ const Users = () => {
 
                     {currentStep === 3 && (
                       <div className="w-[800px]">
-                        <h2 className="text-lg font-semibold mb-4">Create password</h2>
+                        <h2 className="mb-4 text-lg font-semibold">Create password</h2>
                         <div className="my-4">
                           <label className="block">Password</label>
                           <div className="relative mt-3">
