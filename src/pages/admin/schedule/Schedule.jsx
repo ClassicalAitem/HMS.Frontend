@@ -1,6 +1,6 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "../../../components/admin/dashboard/SideBar";
+import SideBar from "@/components/admin/dashboard/SideBar";
 import { LuDownload } from "react-icons/lu";
 import { FiUser } from "react-icons/fi";
 import { LuPlus } from "react-icons/lu";

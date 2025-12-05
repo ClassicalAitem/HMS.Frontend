@@ -7,7 +7,7 @@ import { DataTable } from '@/components/common';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
-import PatientsDebug from '../../../components/common/PatientsDebug';
+import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
 
 const Patients = () => {
