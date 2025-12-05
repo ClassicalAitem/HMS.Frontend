@@ -1,6 +1,6 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "@/components/admin/dashboard/SideBar";
+import SideBar from "@/components/admin/dashboard/Sidebar";
 import AdminDashboardOverview from "@/components/admin/dashboard/AdminDashboardOverview";
 import StaffSchedule from "@/components/admin/dashboard/StaffSchedule";
 import StockUpdate from "@/components/admin/dashboard/StockUpdate";
