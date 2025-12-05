@@ -1,6 +1,6 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "../../../components/admin/dashboard/SideBar";
+import SideBar from "@/components/admin/dashboard/SideBar";
 import { useState } from "react";
 import { PiUsersThree } from "react-icons/pi";
 import {  FaLock } from "react-icons/fa";

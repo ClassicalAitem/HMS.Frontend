@@ -5,9 +5,9 @@ import { DataTable } from '@/components/common';
 import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
-import { AddUserModal, EditUserModal } from '../../../components/modals';
+import { AddUserModal, EditUserModal } from '@/components/modals';
 import toast from 'react-hot-toast';
-import UsersDebug from '../../../components/common/UsersDebug';
+import UsersDebug from '@/components/common/UsersDebug';
 
 const ManageUsers = () => {
   const dispatch = useAppDispatch();
