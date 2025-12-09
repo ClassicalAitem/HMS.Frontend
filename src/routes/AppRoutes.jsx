@@ -76,6 +76,14 @@ import InventoryStocks from "@/pages/pharmacist/Inventory&stocks/Inventory&stock
 import PharmacistReports from "@/pages/pharmacist/Reports/Reports";
 import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions";
 
+//Laboratory Dashboard Routes
+import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
+import IncomingLaboratory from "@/pages/laboratory/incoming/incomingLaboratory";
+import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
+import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
+import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
+
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -433,6 +441,29 @@ const AppRoutes = () => {
           <PharmacistTransactions />
         </ProtectedRoute>
       } />
+
+      {/*==============================================================================================================
+      
+      ====================================  Laboratory DashBoard Route ===============================================
+      ===============================================================================================================*/}
+      {/* LaboratoryDashboard */}
+      <Route path="/dashboard/laboratory" element={<LaboratoryDashboard />} />
+      <Route
+        path="/dashboard/laboratory/incoming"
+        element={<IncomingLaboratory />}
+      />
+      <Route
+        path="/dashboard/laboratory/inventoryStocks"
+        element={<InventorySTOCKS />}
+      />
+      <Route
+        path="/dashboard/laboratory/Reports"
+        element={<LaboratoryReports />}
+      />
+      <Route
+        path="/dashboard/laboratory/modal"
+        element={<TestRequestModal />}
+      />
 
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
