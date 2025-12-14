@@ -72,6 +72,7 @@ import NurseIncoming from "@/pages/nurse/incoming/Incoming";
 import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
 import DrugDispensation from "@/pages/pharmacist/DrugDispensation/DrugDispensation";
 import PharmacistIncoming from "@/pages/pharmacist/incoming/Incoming";
+import PharmacistIncomingDetails from "@/pages/pharmacist/incoming/IncomingDetails";
 import InventoryStocks from "@/pages/pharmacist/Inventory&stocks/Inventory&stocks";
 import PharmacistReports from "@/pages/pharmacist/Reports/Reports";
 import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions";
@@ -424,6 +425,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/pharmacist/incoming" element={
         <ProtectedRoute allowedRoles={['pharmacist']}>
           <PharmacistIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/incoming/:patientId" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistIncomingDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/pharmacist/Inventory&stocks" element={
