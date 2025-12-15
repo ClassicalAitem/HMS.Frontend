@@ -23,10 +23,10 @@ const Stocks = () => {
     <div className="flex h-screen bg-base-200">
       <SideBar />
 
-      <div className="flex overflow-hidden flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
 
-        <div className="overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto">
           <section className="p-7">
             {/* Page Heading */}
             <div className="w-[798px]">
@@ -74,7 +74,7 @@ const Stocks = () => {
               </div>
 
               <div className="w-[25%] bg-base-100 rounded-[20px] p-5 text-base-content/70">
-                <div className="flex gap-5 items-center ">
+                <div className="flex items-center gap-5 ">
                   <h5 className="text-[24px]">Total Resources</h5>
                   <TbChartDots2 size={24} />
                 </div>
@@ -85,7 +85,7 @@ const Stocks = () => {
               </div>
 
               <div className="w-[25%] bg-base-100 rounded-[20px] p-5 text-base-content/70">
-                <div className="flex gap-5 items-center ">
+                <div className="flex items-center gap-5 ">
                   <h5 className="text-[24px] ">Total Resources</h5>
                   <TbChartDots2 size={24} />
                 </div>

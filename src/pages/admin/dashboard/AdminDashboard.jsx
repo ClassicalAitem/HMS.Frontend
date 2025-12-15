@@ -11,13 +11,13 @@ const AdminDashboard = () => {
     <div className="flex h-screen ">
       <SideBar />
 
-      <div className="flex overflow-hidden flex-col flex-1">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
 
-        <div className="overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto">
           <AdminDashboardOverview />
 
-          <div className="flex gap-3 mb-3 sm:gap-4 px-4">
+          <div className="flex gap-3 px-4 mb-3 sm:gap-4">
             <TotalStaff />
             <StockUpdate />
           </div>

@@ -6,12 +6,13 @@ export { default as EditHmoModal } from './EditHmoModal';
 export { default as AddDependantModal } from './AddDependantModal';
 export { default as EditDependantModal } from './EditDependantModal';
 export { default as NurseActionModal } from './NurseActionModal';
-export { default as PharmacyActionModal } from './PharmacyActionModal';
-export { default as PharmacyActionModal2 } from './pharmacyActionModal2';
 export { default as CashierActionModal } from './CashierActionModal';
-export {default as ReceiptModal } from './ReceiptModal';
+export { default as PharmacyActionModal } from './PharmacyActionModal';
 export { default as LabResultDetailsModal } from './LabResultDetailsModal';
+export { default as PrescriptionDetailsModal } from './PrescriptionDetailsModal';
 export { default as SelectServiceChargeModal } from './SelectServiceChargeModal';
+export { default as PharmacyActionModal2 } from './PharmacyActionModal2';
+export { default as ReceiptModal } from './ReceiptModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';
