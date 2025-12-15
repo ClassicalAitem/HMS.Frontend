@@ -1,55 +1,108 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaDownload, FaEye } from 'react-icons/fa';
+import { getAllReceipts } from '@/services/api/billingAPI';
 
 const TransactionsTab = () => {
-  // Sample data for transactions
-  const transactions = [
-    {
-      id: 1,
-      patient: 'John Doe',
-      service: 'Consultation',
-      amount: 5000,
-      date: '2024-01-15',
-      paymentMethod: 'Cash',
-      status: 'Completed'
-    },
-    {
-      id: 2,
-      patient: 'Jane Smith',
-      service: 'Blood Test',
-      amount: 15000,
-      date: '2024-01-15',
-      paymentMethod: 'Card',
-      status: 'Completed'
-    },
-    {
-      id: 3,
-      patient: 'Mike Johnson',
-      service: 'X-Ray',
-      amount: 25000,
-      date: '2024-01-14',
-      paymentMethod: 'Insurance',
-      status: 'Pending'
-    },
-    {
-      id: 4,
-      patient: 'Sarah Wilson',
-      service: 'Surgery',
-      amount: 150000,
-      date: '2024-01-14',
-      paymentMethod: 'Bank Transfer',
-      status: 'Completed'
-    },
-    {
-      id: 5,
-      patient: 'David Brown',
-      service: 'Emergency Care',
-      amount: 30000,
-      date: '2024-01-13',
-      paymentMethod: 'Cash',
-      status: 'Completed'
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    const fetchReceipt = async() => {
+      try {
+        const res = await getAllReceipts({limit: 10, sort: 'createdAt:desc'});
+
+        const raw = res?.data.data ?? res?.data ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
+        const mapped = list.map((a, idx) => ({
+          id: a.id,
+          patient: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'Unknown Patient',
+          service: a.billing.itemDetails && a.billing.itemDetails.length > 0
+            ? `${a.billing.itemDetails[0].description || a.billing.itemDetails[0].code} - ${a.billing.itemDetails[0].quantity}x` : 'Medical Service',
+            amount: a.amountPaid,
+            date: new Date(a.paidAt).toISOString().split('T')[0],
+            paymentMethod: a.paymentMethod,
+            status: a.status
+        }))
+
+        console.log('Fetched Receipts:', mapped);
+        setTransactions(mapped);
+
+      } catch (error) {
+        console.error('Error fetching billing data:', error);
+      }
     }
-  ];
+
+    fetchReceipt()
+  })
+
+  // Sample data for transactions
+  // const transactions = [
+  //   {
+  //     id: 1,
+  //     patient: 'John Doe',
+  //     service: 'Consultation',
+  //     amount: 5000,
+  //     date: '2024-01-15',
+  //     paymentMethod: 'Cash',
+  //     status: 'Completed'
+  //   },
+  //   {
+  //     id: 2,
+  //     patient: 'Jane Smith',
+  //     service: 'Blood Test',
+  //     amount: 15000,
+  //     date: '2024-01-15',
+  //     paymentMethod: 'Card',
+  //     status: 'Completed'
+  //   },
+  //   {
+  //     id: 3,
+  //     patient: 'Mike Johnson',
+  //     service: 'X-Ray',
+  //     amount: 25000,
+  //     date: '2024-01-14',
+  //     paymentMethod: 'Insurance',
+  //     status: 'Pending'
+  //   },
+  //   {
+  //     id: 4,
+  //     patient: 'Sarah Wilson',
+  //     service: 'Surgery',
+  //     amount: 150000,
+  //     date: '2024-01-14',
+  //     paymentMethod: 'Bank Transfer',
+  //     status: 'Completed'
+  //   },
+  //   {
+  //     id: 5,
+  //     patient: 'David Brown',
+  //     service: 'Emergency Care',
+  //     amount: 30000,
+  //     date: '2024-01-13',
+  //     paymentMethod: 'Cash',
+  //     status: 'Completed'
+  //   }
+  // ];
+
+  const monthlyRevenue = () => {
+    // Calculate monthly revenue from transactions
+    const currentMonth = new Date().getMonth();
+    return transactions
+      .filter(txn => new Date(txn.date).getMonth() === currentMonth && txn.status === 'paid')
+      .reduce((sum, txn) => sum + txn.amount, 0);
+  }
+
+  const pendingBills = () => {
+    return transactions
+      .filter(txn => txn.status === 'pending')
+      .reduce((sum, txn) => sum + txn.amount, 0);
+  }
+
+  const todayRevenue = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return transactions
+      .filter(txn => txn.date === today && txn.status === 'paid')
+      .reduce((sum, txn) => sum + txn.amount, 0);
+  }
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-NG', {
@@ -68,11 +121,11 @@ const TransactionsTab = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'Completed':
+      case 'paid':
         return 'badge-success';
-      case 'Pending':
+      case 'pending':
         return 'badge-warning';
-      case 'Failed':
+      case 'failed':
         return 'badge-error';
       default:
         return 'badge-neutral';
@@ -101,7 +154,7 @@ const TransactionsTab = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-primary/70 mb-1">Today's Revenue</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(125000)}</p>
+              <p className="text-2xl font-bold text-primary">{formatCurrency(todayRevenue())}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
               <span className="text-primary font-bold">₦</span>
@@ -113,7 +166,7 @@ const TransactionsTab = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-warning/70 mb-1">Pending Bills</p>
-              <p className="text-2xl font-bold text-warning">{formatCurrency(45000)}</p>
+              <p className="text-2xl font-bold text-warning">{formatCurrency(pendingBills())}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
               <span className="text-warning font-bold">!</span>
@@ -125,7 +178,7 @@ const TransactionsTab = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-success/70 mb-1">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-success">{formatCurrency(2500000)}</p>
+              <p className="text-2xl font-bold text-success">{formatCurrency(monthlyRevenue())}</p>
             </div>
             <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
               <span className="text-success font-bold">₦</span>

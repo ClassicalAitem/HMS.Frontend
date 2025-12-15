@@ -2,9 +2,10 @@ import React, { useState, useEffect } from "react";
 import { FaUser } from "react-icons/fa6";
 import { FaRegIdBadge } from "react-icons/fa6";
 import apiClient from "@/services/api/apiClient";
+import toast from "react-hot-toast";
+import { updatePrescription } from "@/services/api/prescriptionAPI";
 
-const InjectionModals = ({ setShowModal2, patientId, patientData }) => {
-  console.log("Props received:", { patientId, patientData });
+const InjectionModals = ({ setIsRecordInjection, patientId, patientData }) => {
   const [prescription, setPrescription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -19,14 +20,8 @@ const InjectionModals = ({ setShowModal2, patientId, patientData }) => {
         const res = await apiClient.get(
           `/prescription/getPrescriptionByPatientId/${prescriptionID}`
         );
-        console.log("Full API Response:", res);
-        console.log("res.data:", res.data);
         console.log("res.data.data:", res.data.data);
-        console.log("Is it an array?", Array.isArray(res.data.data));
         const prescriptionData = res.data.data;
-
-        console.log("API Response:", res.data);
-        console.log("Prescription Data:", prescriptionData);
 
         setPrescription(prescriptionData);
         setSelectedStatus(res.data.data.status || "");
@@ -38,16 +33,43 @@ const InjectionModals = ({ setShowModal2, patientId, patientData }) => {
       }
     };
 
-    if (prescriptionID) {
-      console.log("Fetching with ID:", prescriptionID);
-      fetchPrescription();
-    } else {
-      console.log("No prescription ID found");
-      setLoading(false);
-    }
+
+    fetchPrescription();
+
   }, [prescriptionID]);
 
-  const medication = prescription?.medications?.[0];
+  const handleUpdate = async () => {
+  try {
+    setUpdateLoading(true);
+
+    // Build payload with updated medications
+    const payload = {
+      medications: prescription.medications.map((med) => ({
+        ...med,
+        dosesGiven: med.dosesGiven,
+        injectionStatus: med.injectionStatus || "pending",
+      })),
+    };
+
+    console.log("Payload for update:", payload);
+    const res = await toast.promise(
+      updatePrescription(prescription._id, payload),
+      {
+        loading: "Updating prescription...",
+        success: "Prescription updated successfully",
+        error: "Failed to update prescription",
+      }
+    );
+
+    const updated = res?.data?.data ?? prescription;
+    setPrescription(updated);
+
+  } catch (err) {
+    console.error("Update failed:", err);
+  } finally {
+    setUpdateLoading(false);
+  }
+};
 
   if (loading) {
     return (
@@ -65,7 +87,7 @@ const InjectionModals = ({ setShowModal2, patientId, patientData }) => {
         <div className="bg-white shadow-lg p-6 rounded-lg">
           <p className="text-center mb-4">No data found</p>
           <button
-            onClick={() => setShowModal2(false)}
+            onClick={() => setIsRecordInjection(false)}
             className="btn btn-primary w-full"
           >
             Close
@@ -109,93 +131,109 @@ const InjectionModals = ({ setShowModal2, patientId, patientData }) => {
             </div>
 
             <h5 className="font-[500] mt-3 mb-2">Prescription Details</h5>
-            <div className="flex items-start gap-8 flex-wrap">
-              <div>
-                <div className="text-[12px] text-gray-600">Drug Code</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <FaRegIdBadge />
-                  <p className="text-[14px] font-medium">
-                    {medication?.drugCode}
-                  </p>
+            {prescription?.medications
+              ?.filter((med) => med.medicationType === "injection")
+              .map((med, index) => (
+                <div key={index} className="w-full space-y-4">
+                  {/* Medication details row */}
+                  <div className="flex items-start gap-8 flex-wrap">
+                    <div>
+                      <div className="text-[12px] text-gray-600">Drug Code</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <FaRegIdBadge />
+                        <p className="text-[14px] font-medium">{med.drugCode}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[12px] text-gray-600">Drug Name</div>
+                      <p className="text-[14px] font-medium mt-1">{med.drugName}</p>
+                    </div>
+
+                    <div>
+                      <div className="text-[12px] text-gray-600">Dosage</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <FaRegIdBadge />
+                        <p className="text-[14px] font-medium">{med.dosage}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[12px] text-gray-600">Duration</div>
+                      <p className="text-[14px] font-medium mt-1">{med.duration}</p>
+                    </div>
+
+                    <div>
+                      <div className="text-[12px] text-gray-600">Frequency</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <FaRegIdBadge />
+                        <p className="text-[14px] font-medium">{med.frequency}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block mb-2 text-sm font-medium text-base-content/70">
+                        Doses Given
+                      </label>
+                      <input
+                        type="number"
+                        value={med.dosesGiven}
+                        min={0}
+                        onChange={(e) => {
+                          const updated = [...prescription.medications];
+                          updated[index].dosesGiven = Number(e.target.value);
+                          setPrescription({ ...prescription, medications: updated });
+                        }}
+                        className="input input-bordered input-sm w-20"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="text-[12px] text-gray-600">Instruction</div>
+                      <p className="text-[14px] font-medium mt-1">{med.instructions}</p>
+                    </div>
+                  </div>
+
+                  {/* Injection status block */}
+                  <div className="bg-[#F0EEF3] p-4 w-full rounded">
+                    <label className="flex items-center gap-2 mb-3">
+                      <FaUser color="#00943C" />
+                      <h5 className="font-[500]">Injection Status:</h5>
+                    </label>
+
+                    <select
+                      value={med.injectionStatus || ""}
+                      onChange={(e) => {
+                        const updated = [...prescription.medications];
+                        updated[index].injectionStatus = e.target.value;
+                        setPrescription({ ...prescription, medications: updated });
+                      }}
+                      className="select select-bordered select-sm"
+                    >
+                      <option value="">Select status</option>
+                      <option value="pending">Pending</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="completed">Completed</option>
+                      <option value="skipped">Skipped</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <div className="text-[12px] text-gray-600">Drug Name</div>
-                <p className="text-[14px] font-medium mt-1">
-                  {medication?.drugName}
-                </p>
-              </div>
-
-              <div>
-                <div className="text-[12px] text-gray-600">Dosage</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <FaRegIdBadge />
-                  <p className="text-[14px] font-medium">
-                    {medication?.dosage}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[12px] text-gray-600">Duration</div>
-                <p className="text-[14px] font-medium mt-1">
-                  {medication?.duration}
-                </p>
-              </div>
-
-              <div>
-                <div className="text-[12px] text-gray-600">Frequency</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <FaRegIdBadge />
-                  <p className="text-[14px] font-medium">
-                    {medication?.frequency}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <div className="text-[12px] text-gray-600">Instruction</div>
-                <p className="text-[14px] font-medium mt-1">
-                  {medication?.instructions}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#F0EEF3] p-4 w-full rounded">
-            <div className="flex items-center gap-2 mb-3">
-              <FaUser color="#00943C" />
-              <h5 className="font-[500]">Sampling Status</h5>
-            </div>
-
-            <div className="w-full">
-              <label className="block mb-2 text-sm text-gray-600">
-                Test Status
-              </label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                onClick={(e) => e.stopPropagation()}
-                className="select select-bordered w-full"
-              >
-                <option value="">Choose a status</option>
-                <option value="in_progress">pending</option>
-                <option value="completed">completed</option>
-              </select>
-            </div>
+              ))}
           </div>
         </div>
         {/* Buttons */}
         <div className="w-[349px] mx-auto justify-center items-center flex gap-[16px] mt-3">
           <button
-            onClick={() => setShowModal2(false)}
+            onClick={() => setIsRecordInjection(false)}
             className="w-[100px] h-[52px] rounded-[6px] border-[1px] border-[#AEAAAE] px-[24px] py-[16px] text-[#111215] text-[18px] font-[600] flex justify-center items-center cursor-pointer"
           >
             Close
           </button>
-          <button className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer ">
-            Accept & Process
+          <button
+          onClick={handleUpdate}
+          disabled={updateLoading || !selectedStatus}
+          className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer ">
+            {updateLoading ? "Processing..." : "Accept & Process"}
           </button>
         </div>
       </div>

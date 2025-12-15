@@ -5,7 +5,7 @@ import apiClient from "@/services/api/apiClient";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
-const SamplingModals = ({ setShowModal, patientId, patientData }) => {
+const SamplingModals = ({ setIsRecordSampling, patientId, patientData }) => {
   const [investigation, setInvestigation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -27,9 +27,9 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
       }
     };
 
-    if (patientId) {
-      fetchInvestigation();
-    }
+
+    fetchInvestigation();
+
   }, [patientId]);
 
   const handleStatusUpdate = async () => {
@@ -41,7 +41,7 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
 
       if (res.status === 200) {
         toast.success("Record Updated Successfully");
-        setShowModal(false);
+        setIsRecordSampling(false);
       }
     } catch (err) {
       console.error("Error updating status", err);
@@ -67,13 +67,13 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
         <div className="bg-white shadow-lg p-6 rounded-lg">
           <p className="text-center mb-4">No investigation found</p>
           <button
-            onClick={() => setShowModal(false)}
+            onClick={() => setIsRecordSampling(false)}
             className="btn btn-primary w-full"
           >
             Close
           </button>
         </div>
-      </div> 
+      </div>
     );
   }
 
@@ -86,7 +86,7 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
   return (
     <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-[1px] bg-opacity-40 flex justify-center items-start overflow-y-auto">
       <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[600px] w-full mt-10 rounded-lg">
-        
+
         <div className="w-full">
           <div className="w-full flex flex-col gap-3">
             <h5 className="text-[#00943C] text-[24px] font-[600]">
@@ -187,7 +187,7 @@ const SamplingModals = ({ setShowModal, patientId, patientData }) => {
         {/* Buttons */}
         <div className="w-full flex gap-4 mt-6 justify-end">
           <button
-            onClick={() => setShowModal(false)}
+            onClick={() => setIsRecordSampling(false)}
             className="px-6 py-3 rounded-md border border-gray-400 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
           >
             Close

@@ -491,13 +491,13 @@ const CashierPatientDetails = () => {
               <span className="w-3 h-3 rounded-full bg-error"></span>
               <span className="text-error font-semibold">Outstanding Balance: ₦{totalOutstanding.toLocaleString()}</span>
             </div>
-            <button
+            {/* <button
               onClick={() => navigate(`/cashier/generate-bill/${patientId}`)}
               className="btn btn-sm btn-primary"
             >
               <FaFileInvoice className="w-4 h-4 mr-1" />
               Generate Bill
-            </button>
+            </button> */}
           </div>
         </div>
 

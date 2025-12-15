@@ -7,7 +7,7 @@ export const usersAPI = {
     console.log('👥 UsersAPI: Starting getUsers request');
     console.log('📤 UsersAPI: Request params:', params);
     console.log('🌐 UsersAPI: API endpoint:', API_ENDPOINTS.USERS);
-    
+
     try {
       const response = await apiClient.get(API_ENDPOINTS.USERS, { params });
       console.log('✅ UsersAPI: Users response received');
@@ -28,7 +28,7 @@ export const usersAPI = {
   getUserById: async (userId) => {
     console.log('👤 UsersAPI: Starting getUserById request');
     console.log('📤 UsersAPI: User ID:', userId);
-    
+
     try {
       const response = await apiClient.get(`${API_ENDPOINTS.USERS}/${userId}`);
       console.log('✅ UsersAPI: User response received');
@@ -45,7 +45,7 @@ export const usersAPI = {
   createUser: async (userData) => {
     console.log('➕ UsersAPI: Starting createUser request');
     console.log('📤 UsersAPI: User data:', userData);
-    
+
     try {
       const response = await apiClient.post(API_ENDPOINTS.CREATE_STAFF, userData);
       console.log('✅ UsersAPI: Create user response received');
@@ -62,7 +62,7 @@ export const usersAPI = {
   createAdmin: async (adminData) => {
     console.log('👑 UsersAPI: Starting createAdmin request');
     console.log('📤 UsersAPI: Admin data:', adminData);
-    
+
     try {
       const response = await apiClient.post('/user/createAdmin', adminData);
       console.log('✅ UsersAPI: Create admin response received');
@@ -82,9 +82,9 @@ export const usersAPI = {
     console.log('✏️ UsersAPI: Starting updateUser request');
     console.log('📤 UsersAPI: User ID:', userId);
     console.log('📤 UsersAPI: User data:', userData);
-    
+
     try {
-      const response = await apiClient.put(`${API_ENDPOINTS.USERS}/${userId}`, userData);
+      const response = await apiClient.patch(`${API_ENDPOINTS.UPDATE_USER}/${userId}`, userData);
       console.log('✅ UsersAPI: Update user response received');
       console.log('📥 UsersAPI: Response data:', response.data);
       return response;
@@ -95,11 +95,26 @@ export const usersAPI = {
     }
   },
 
+  // Reset password
+  resetUserPassword: async (userData) => {
+    console.log('✏️ UsersAPI: Starting reset password request');
+    try {
+      const response = await apiClient.patch(`${API_ENDPOINTS.RESET_PASSWORD}`, userData);
+      console.log('✅ UsersAPI: password user response received');
+      console.log('📥 UsersAPI: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ UsersAPI: password user error occurred');
+      console.error('📥 UsersAPI: Error response:', error.response);
+      throw error;
+    }
+  },
+
   // Delete user
   deleteUser: async (userId) => {
     console.log('🗑️ UsersAPI: Starting deleteUser request');
     console.log('📤 UsersAPI: User ID:', userId);
-    
+
     try {
       const response = await apiClient.delete(`${API_ENDPOINTS.USERS}/${userId}`);
       console.log('✅ UsersAPI: Delete user response received');
@@ -117,7 +132,7 @@ export const usersAPI = {
     console.log('🔄 UsersAPI: Starting toggleUserStatus request');
     console.log('📤 UsersAPI: User ID:', userId);
     console.log('📤 UsersAPI: Is Active:', isActive);
-    
+
     try {
       const response = await apiClient.patch(`${API_ENDPOINTS.USERS}/${userId}/status`, { isActive });
       console.log('✅ UsersAPI: Toggle status response received');

@@ -1,61 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaPlus, FaMapMarkerAlt, FaEdit, FaTrash } from 'react-icons/fa';
-import { AddWardModal } from '@/components/modals';
+import { AddWardModal, EditWardModal } from '@/components/modals';
+import { getAllWards } from '@/services/api/wardAPI';
 
 const WardsTab = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedWard, setSelectedWard] = useState(null);
+  const [wards, setWards] = useState([]);
 
-  // Sample data for wards
-  const wards = [
-    {
-      id: 1,
-      name: 'Ward A - General',
-      department: 'General Medicine',
-      occupancy: '18/20',
-      floor: '2nd Floor',
-      status: 'Active'
-    },
-    {
-      id: 2,
-      name: 'Ward B - Cardiology',
-      department: 'Cardiology',
-      occupancy: '12/15',
-      floor: '3rd Floor',
-      status: 'Active'
-    },
-    {
-      id: 3,
-      name: 'Ward C - Pediatrics',
-      department: 'Pediatrics',
-      occupancy: '8/12',
-      floor: '1st Floor',
-      status: 'Active'
-    },
-    {
-      id: 4,
-      name: 'Ward D - Surgery',
-      department: 'Surgery',
-      occupancy: '6/8',
-      floor: '4th Floor',
-      status: 'Active'
-    },
-    {
-      id: 5,
-      name: 'Ward E - Emergency',
-      department: 'Emergency',
-      occupancy: '10/10',
-      floor: 'Ground Floor',
-      status: 'Full'
-    },
-    {
-      id: 6,
-      name: 'Ward F - ICU',
-      department: 'Intensive Care',
-      occupancy: '4/6',
-      floor: '5th Floor',
-      status: 'Active'
+  useEffect(() => {
+    const fetchWards = async() => {
+      try {
+        const res = await getAllWards();
+        setWards(res.data)
+        console.log(res.data);
+      } catch(error) {
+        console.error(error);
+      }
     }
-  ];
+    fetchWards()
+  }, []);
 
   const handleAddWard = () => {
     setIsAddModalOpen(true);
@@ -64,6 +29,7 @@ const WardsTab = () => {
   const handleEditWard = (ward) => {
     console.log('Edit ward:', ward);
     // TODO: Implement edit functionality
+    setSelectedWard(ward);
   };
 
   const handleDeleteWard = (ward) => {
@@ -73,7 +39,7 @@ const WardsTab = () => {
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'Active':
+      case 'active':
         return 'badge-success';
       case 'Full':
         return 'badge-warning';
@@ -120,7 +86,7 @@ const WardsTab = () => {
                 </td>
                 <td>
                   <div className="text-base-content/70">
-                    {ward.department}
+                    {ward.department.name}
                   </div>
                 </td>
                 <td>
@@ -131,7 +97,7 @@ const WardsTab = () => {
                 <td>
                   <div className="flex items-center text-base-content/70">
                     <FaMapMarkerAlt className="w-4 h-4 mr-2" />
-                    {ward.floor}
+                    {ward.floorLocation}
                   </div>
                 </td>
                 <td>
@@ -142,7 +108,7 @@ const WardsTab = () => {
                 <td>
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => handleEditWard(ward)}
+                      onClick={() => {handleEditWard(ward); setIsEditModalOpen(true)}}
                       className="btn btn-ghost btn-sm text-primary hover:bg-primary/10"
                       title="Edit Ward"
                     >
@@ -171,6 +137,13 @@ const WardsTab = () => {
           setIsAddModalOpen(false);
           // TODO: Refresh wards list
         }}
+      />
+
+      {/* Edit Ward Modal */}
+      <EditWardModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onWardUpdate={selectedWard}
       />
     </div>
   );

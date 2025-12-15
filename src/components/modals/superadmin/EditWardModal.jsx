@@ -1,95 +1,97 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaBed } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { updateWard } from '@/services/api/wardAPI';
+import { useAppDispatch } from '@/store/hooks';
+import { fetchUsers } from '@/store/slices/usersSlice';
 import { getAllDepartments } from '@/services/api/departmentAPI';
-import { createWard } from '@/services/api/wardAPI';
 
-const addWardSchema = yup.object({
-  name: yup
-    .string()
-    .required('Ward name is required')
-    .min(2, 'Ward name must be at least 2 characters')
-    .max(50, 'Ward name must not exceed 50 characters'),
-  departmentId: yup
-    .string()
-    .required('Department is required'),
-  floorLocation: yup
-    .string()
-    .min(1, 'Floor must be at least 1 character'),
-  status: yup
-    .string(),
-  occupancy: yup
-    .string()
-    .required('Occupancy is required')
-    .min(2, 'Occupancy must be at least 2 characters')
-    .max(10, 'Occupancy must not exceed 10 characters')
-});
-
-const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
+const EditWardModal = ({ isOpen, onClose, onWardUpdate }) => {
+  const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
 
-
   useEffect(() => {
-    if (!isOpen) return;
-    const fetchDepartment = async() => {
-      try {
-        const res = await getAllDepartments();
-        const list = res.data || [];
-        setDepartments(list);
+      const fetchDepartment = async() => {
+        try {
+          const res = await getAllDepartments()
+          setDepartments(res.data)
 
+          console.log(res.data);
+        } catch(error) {
+          console.error(error);
+        }
 
-        console.log({'Get Departments': res});
-      } catch(error) {
-        console.error(error);
       }
 
-    }
-    fetchDepartment();
-  }, [isOpen])
+      fetchDepartment()
+    }, []);
 
-  console.log('Departments:', departments);
+  const updateDepartmentSchema =
+  yup.object({
+    name: yup
+      .string()
+      .min(2, 'Ward name must be at least 2 characters')
+      .max(50, 'Ward name must not exceed 50 characters'),
+    departmentId: yup
+      .string(),
+    floorLocation: yup
+      .string()
+      .min(1, 'Floor must be at least 1 character'),
+    status: yup
+      .string(),
+    occupancy: yup
+      .string()
+      .min(2, 'Occupancy must be at least 2 characters')
+      .max(10, 'Occupancy must not exceed 10 characters')
+  });
 
-
-
-
-  // Sample departments for dropdown
-  // const departments = [
-  //   'General Medicine',
-  //   'Cardiology',
-  //   'Emergency',
-  //   'Pediatrics',
-  //   'Surgery',
-  //   'Intensive Care',
-  //   'Radiology',
-  //   'Oncology'
-  // ];
+  useEffect(() => {
+    dispatch(fetchUsers());
+  }, [dispatch]);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset
+    reset,
+    setValue,
   } = useForm({
-    resolver: yupResolver(addWardSchema)
+    resolver: yupResolver(updateDepartmentSchema),
+    defaultValues: {
+      name: '',
+      headOfDepartmentId: '',
+      status: 'active',
+    }
   });
+
+  useEffect(() => {
+    if (onWardUpdate && isOpen) {
+      setValue('name', onWardUpdate.name || '');
+      setValue('departmentId', onWardUpdate.departmentId || '');
+      setValue('floorLocation', onWardUpdate.floorLocation || '');
+      setValue('occupancy', onWardUpdate.occupancy || '');
+      setValue('status', onWardUpdate.status || 'active');
+    }
+  }, [onWardUpdate, isOpen, setValue])
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      await createWard(data);
-      console.log('Ward added:', data);
-      toast.success('Ward added successfully!');
+      console.log('Data to be sent for creation:', data);
+      await updateWard(onWardUpdate.id, data)
+      console.log('Ward updated:', data);
+      toast.success('Ward updated successfully!');
       reset();
-      onWardAdded();
+      onClose();
     } catch (error) {
-      console.error('Error adding ward:', error);
-      toast.error('Failed to add ward');
+      console.error('Error updating ward:', error);
+      toast.error('Failed to update ward');
     } finally {
       setIsLoading(false);
     }
@@ -100,18 +102,21 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
     onClose();
   };
 
+  console.log('Department', departments)
+
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md mx-4">
+    <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
+      <div className="mx-4 w-full max-w-md rounded-lg shadow-xl bg-base-100">
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-base-300">
+        <div className="flex justify-between items-center p-6 border-b border-base-300">
           <div className="flex items-center">
-            <div className="flex items-center justify-center w-10 h-10 mr-3 rounded-full bg-primary/10">
+            <div className="flex justify-center items-center mr-3 w-10 h-10 rounded-full bg-primary/10">
               <FaBed className="w-5 h-5 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold text-base-content">Add New Ward</h3>
+            <h3 className="text-lg font-semibold text-base-content">Edit Ward</h3>
           </div>
           <button
             onClick={handleClose}
@@ -125,26 +130,26 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
         {/* Modal Body */}
         <form onSubmit={handleSubmit(onSubmit)} className="p-6">
           <div className="space-y-4">
-            {/* Ward Name */}
+            {/* Department Name */}
             <div>
-              <label className="block text-sm font-medium text-base-content/70 mb-2">
+              <label className="block mb-2 text-sm font-medium text-base-content/70">
                 Ward Name
               </label>
               <input
                 type="text"
                 {...register('name')}
                 className={`input input-bordered w-full ${errors.name ? 'input-error' : ''}`}
-                placeholder="Enter ward name"
+                placeholder="Enter department name"
                 disabled={isLoading}
               />
               {errors.name && (
-                <p className="text-error text-xs mt-1">{errors.name.message}</p>
+                <p className="mt-1 text-xs text-error">{errors.name.message}</p>
               )}
             </div>
 
             {/* Department */}
             <div>
-              <label className="block text-sm font-medium text-base-content/70 mb-2">
+              <label className="block mb-2 text-sm font-medium text-base-content/70">
                 Department
               </label>
               <select
@@ -152,7 +157,7 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
                 className={`select select-bordered w-full ${errors.department ? 'select-error' : ''}`}
                 disabled={isLoading}
               >
-                <option value="">Select department</option>
+                <option value="">Select Department</option>
                 {departments.map((dept) => (
                   <option key={dept.id} value={dept.id}>
                     {dept.name}
@@ -160,41 +165,39 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
                 ))}
               </select>
               {errors.department && (
-                <p className="text-error text-xs mt-1">{errors.department.message}</p>
+                <p className="mt-1 text-xs text-error">{errors.department.message}</p>
               )}
             </div>
 
             {/* Floor */}
             <div>
-              <label className="block text-sm font-medium text-base-content/70 mb-2">
+              <label className="block mb-2 text-sm font-medium text-base-content/70">
                 Floor
               </label>
               <input
                 type="text"
                 {...register('floorLocation')}
                 className={`input input-bordered w-full ${errors.floor ? 'input-error' : ''}`}
-                placeholder="e.g., 2nd Floor, Ground Floor"
                 disabled={isLoading}
               />
               {errors.floor && (
-                <p className="text-error text-xs mt-1">{errors.floor.message}</p>
+                <p className="mt-1 text-xs text-error">{errors.floor.message}</p>
               )}
-            </div>
+            </div>.
 
             {/* Occupancy */}
             <div>
-              <label className="block text-sm font-medium text-base-content/70 mb-2">
+              <label className="block mb-2 text-sm font-medium text-base-content/70">
                 Occupancy
               </label>
               <input
                 type="text"
                 {...register('occupancy')}
-                className={`input input-bordered w-full ${errors.occupancy ? 'textarea-error' : ''}`}
-                placeholder="Enter ward occupancy details"
+                className={`input input-bordered w-full ${errors.occupancy ? 'input-error' : ''}`}
                 disabled={isLoading}
               />
               {errors.occupancy && (
-                <p className="text-error text-xs mt-1">{errors.occupancy.message}</p>
+                <p className="mt-1 text-xs text-error">{errors.occupancy.message}</p>
               )}
             </div>
 
@@ -218,7 +221,7 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
           </div>
 
           {/* Modal Footer */}
-          <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-base-300">
+          <div className="flex justify-end pt-4 mt-6 space-x-3 border-t border-base-300">
             <button
               type="button"
               onClick={handleClose}
@@ -235,10 +238,10 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
               {isLoading ? (
                 <>
                   <span className="loading loading-spinner loading-sm"></span>
-                  Adding...
+                  updating...
                 </>
               ) : (
-                'Add Ward'
+                'Update Ward'
               )}
             </button>
           </div>
@@ -248,4 +251,4 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
   );
 };
 
-export default AddWardModal;
+export default EditWardModal;
