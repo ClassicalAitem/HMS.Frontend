@@ -47,7 +47,7 @@ const InjectionModals = ({ setIsRecordInjection, patientId, patientData }) => {
       medications: prescription.medications.map((med) => ({
         ...med,
         dosesGiven: med.dosesGiven,
-        injectionStatus: med.injectionStatus || "pending",
+        injectionStatus: med.injectionStatus,
       })),
     };
 
