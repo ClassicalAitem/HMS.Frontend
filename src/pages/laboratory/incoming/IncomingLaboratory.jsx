@@ -109,14 +109,20 @@ const IncomingLaboratory = () => {
                           </p>
                         </div>
                         <div className="flex gap-2 flex-col">
+
+
                           <button
                             onClick={() => {
                               setSelectedCard(testCard), setShowModal(true);
                             }}
-                            className="w-[258px] h-[56px] bg-[#00943C] text-[#FFFFFF] cursor-pointer"
+                            className="w-[258px] h-[56px] bg-[#00943C] text-[#FFFFFF]"
                           >
                             Accept & Process
                           </button>
+
+
+
+
 
                           {showModal && (
                             <AcceptTestRequestModal
@@ -129,7 +135,7 @@ const IncomingLaboratory = () => {
                             onClick={() => {
                               setSelectedCard(testCard), setShowModal2(true);
                             }}
-                            className="w-[258px] h-[56px] border border-[#AEAAAE] cursor-pointer"
+                            className="w-[258px] h-[56px] border border-[#AEAAAE]"
                           >
                             View Details
                           </button>

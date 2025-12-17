@@ -5,11 +5,8 @@ import { FaPlus } from "react-icons/fa6";
 import { stocks } from "../../../../data";
 import { FiSettings } from "react-icons/fi";
 import InventoryItems from "./InventoryItems";
-import AddItemsModals from "./AddItemsModals";
-import { useState } from "react";
 
 const InventoryStocks = () => {
-  const [showModal, setShowModal] = useState(false);
   return (
     <div className="flex h-screen bg-base-200">
       <LaboratorySidebar />
@@ -29,17 +26,10 @@ const InventoryStocks = () => {
                 </p>
               </div>
               <div>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="flex items-center justify-center bg-[#00943C] text-[#FFFFFF] w-[154px] h-[56px] cursor-pointer"
-                >
+                <button className="flex items-center justify-center bg-[#00943C] text-[#FFFFFF] w-[154px] h-[56px]">
                   <FaPlus /> <p>Add Item</p>
                 </button>
               </div>
-              <AddItemsModals
-                showModal={showModal}
-                setShowModal={setShowModal}
-              />
             </div>
 
             <div className="flex gap-10 justify-between mt-10">
@@ -84,24 +74,32 @@ const InventoryStocks = () => {
               <div className="mt-8 text-[12px] space-y-2">
                 <li className="flex justify-between ">
                   <div>• Syringes (5ml)</div>
-                  <span className=" font-medium">4 boxes remaining</span>
+                  <span className=" font-medium">
+                    4 boxes remaining
+                  </span>
                 </li>
                 <li className="flex justify-between ">
                   <div>• Gloves (Large)</div>
-                  <span className=" font-medium">10 boxes remaining</span>
+                  <span className=" font-medium">
+                    10 boxes remaining
+                  </span>
                 </li>
                 <li className="flex justify-between">
                   <div>• Bandages (50 pack)</div>
-                  <span className=" font-medium">15 packs remaining</span>
+                  <span className=" font-medium">
+                    15 packs remaining
+                  </span>
                 </li>
                 <li className="flex justify-between">
                   <div>• Alcohol Swabs</div>
-                  <span className=" font-medium">20 packs remaining</span>
+                  <span className=" font-medium">
+                    20 packs remaining
+                  </span>
                 </li>
               </div>
             </div>
 
-            <InventoryItems />
+            <InventoryItems/>
           </section>
         </div>
       </div>
