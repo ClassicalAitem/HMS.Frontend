@@ -53,12 +53,6 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/dashboard/pharmacist'
     },
     {
-      icon: GiMedicines,
-      label: 'Drug Dispensation',
-      path: '/dashboard/pharmacist/DrugDispensation',
-      active: location.pathname === '/dashboard/pharmacist/DrugDispensation'
-    },
-    {
       icon: GoArrowDownLeft,
       label: 'Incoming',
       path: '/dashboard/pharmacist/incoming',
@@ -69,6 +63,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Inventory & Stocks',
       path: '/dashboard/pharmacist/Inventory&stocks',
       active: location.pathname === '/dashboard/pharmacist/Inventory&stocks'
+    },
+    {
+      icon: GiMedicines,
+      label: 'Drug Dispensation',
+      path: '/dashboard/pharmacist/DrugDispensation',
+      active: location.pathname === '/dashboard/pharmacist/DrugDispensation'
     },
     {
       icon: TbReportAnalytics,

@@ -1,6 +1,6 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "@/components/admin/dashboard/Sidebar";
+import SideBar from "../../../components/admin/dashboard/Sidebar2";
 import { LuDownload } from "react-icons/lu";
 import { FiUser } from "react-icons/fi";
 import { LuPlus } from "react-icons/lu";
@@ -30,10 +30,10 @@ const Schedule = () => {
     <div className="flex h-screen bg-base-200">
       <SideBar />
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header />
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="overflow-y-auto flex-1">
           <section className="p-8">
             <div className="w-[798px]">
               <h1 className="text-[32px]">Staff Schedules</h1>
@@ -82,14 +82,14 @@ const Schedule = () => {
 
               <div className="flex gap-4 mt-5">
                 {/* All Staff Filter */}
-                <button className="flex items-center gap-2 px-3 py-2 text-sm border rounded-md bg-base-200 border-base-300 text-base-content/70 ">
+                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70 ">
                   <FiUser className="text-base-content/70" />
                   <p>All Staff</p>
                   <FaChevronDown className="ml-auto text-base-content/70" />
                 </button>
 
                 {/* Doctors Filter */}
-                <button className="flex items-center gap-2 px-3 py-2 text-sm border rounded-md bg-base-200 border-base-300 text-base-content/70">
+                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70">
                   <img src={doctorIcon} alt="" />
 
                   <p>Doctors</p>
@@ -97,7 +97,7 @@ const Schedule = () => {
                 </button>
 
                 {/* Date Filter */}
-                <button className="flex items-center gap-2 px-3 py-2 text-sm border rounded-md bg-base-200 border-base-300 text-base-content/70 ">
+                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70 ">
                   <FaCalendarAlt className="text-base-content/70" />
                   <p>11th Sep 2025</p>
                 </button>
@@ -107,10 +107,10 @@ const Schedule = () => {
             {/* staff list data table... data coming from data.js */}
 
             <div>
-              <div className="mt-6 overflow-x-auto rounded-lg shadow">
+              <div className="overflow-x-auto rounded-lg shadow mt-6">
                 <table className="w-full bg-base-100 text-[16px]">
                   {/* Table header */}
-                  <thead className="text-left bg-base-200 text-base-content/70">
+                  <thead className="bg-base-200 text-left text-base-content/70">
                     <tr>
                       <th className="px-4 py-2">S/n</th>
                       <th className="px-4 py-2">Staff Names</th>
