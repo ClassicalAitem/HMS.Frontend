@@ -1,28 +1,8 @@
 import React from "react";
 import doctorIcon from "../../../assets/images/doctorIcon.png";
 import { FiSearch } from "react-icons/fi";
-import { inventoryData } from "../../../../data";
 
 const InventoryItems = () => {
-  const bgChange = (status) => {
-    if (status === "In Stock") return "#DBFCE7";
-
-    if (status === "Out Of Stock") return "#FFE2E2";
-
-    if (status === "Low Stock") return "#FFEDD4";
-
-    if (status === "In Stock") return "#DBFCE7";
-  };
-
-  // badge text colors to improve contrast
-  const textColor = (status) => {
-    if (status === "In Stock") return "#11AD4B";
-    if (status === "Out Of Stock") return "#E7000B";
-    if (status === "Low Stock") return "#F54A00";
-    if (status === "In Stock") return "#11AD4B";
-    return "#374151";
-  };
-
   return (
     <div>
       <div className="flex items-center justify-between mt-10">
@@ -54,55 +34,8 @@ const InventoryItems = () => {
               Complete list of laboratory supplies and equipment
             </p>
           </div>
-          <p className="font-[500] text-[#3498DB] cursor-pointer">See All</p>
+          <p className="font-[500] text-[#3498DB]">See All</p>
         </div>
-      </div>
-
-      <div className="overflow-x-auto rounded-lg shadow mt-6">
-        <table className="w-full text-[16px] rounded-lg overflow-hidden">
-          <thead className="bg-[#EAFFF3]">
-            <tr className="text-left">
-              <th className="p-3 font-semibold">Name</th>
-              <th className="p-3 font-semibold">Categories</th>
-              <th className="p-3 font-semibold">Stock</th>
-              <th className="p-3 font-semibold">Vendor</th>
-              <th className="p-3 font-semibold">Last Restocked</th>
-              <th className="p-3 font-semibold">Status</th>
-              <th className="p-3 font-semibold">Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {inventoryData.map((item, index) => {
-              return (
-                <tr key={index} className="last:border-b-0">
-                  <td className="p-3 last:border-b-0">{item.name}</td>
-                  <td className="p-3">{item.category}</td>
-                  <td className="p-3">{item.stock}</td>
-                  <td className="p-3">{item.vendor}</td>
-                  <td className="p-3">{item.lastRestocked}</td>
-                  <td className="p-3">
-                    <span
-                      className="min-w-[94px] h-[27px] px-3 rounded-[6px] text-sm font-medium inline-flex items-center justify-center"
-                      style={{
-                        backgroundColor: bgChange(item.status),
-                        color: textColor(item.status),
-                      }}
-                    >
-                      {item.status}{" "}
-                    </span>
-                  </td>
-
-                  <td className="p-3">
-                    <button className="px-4 py-1 border rounded-lg hover:bg-gray-100">
-                      Restock
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   );

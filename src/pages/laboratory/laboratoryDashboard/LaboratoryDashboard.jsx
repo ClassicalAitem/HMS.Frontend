@@ -5,26 +5,7 @@ import { TestHistory } from "../../../../data";
 import { pendingTestRequest } from "../../../../data";
 import { completedToday } from "../../../../data";
 
-
-const formatDate = (date) => {
-  const day = date.getDate();
-  const month = date.toLocaleString("en-US", { month: "long" });
-  const year = date.getFullYear();
-
-  const suffix =
-    day % 10 === 1 && day !== 11
-      ? "st"
-      : day % 10 === 2 && day !== 12
-      ? "nd"
-      : day % 10 === 3 && day !== 13
-      ? "rd"
-      : "th";
-
-  return `${day}${suffix} ${month} ${year}`;
-};
-
 const LaboratoryDashboard = () => {
-   const todayFormatted = formatDate(new Date());
   return (
     <div className="flex h-screen bg-base-200">
       <LaboratorySidebar />
@@ -38,12 +19,13 @@ const LaboratoryDashboard = () => {
               Welcome Back, Lab Technician!
             </h4>
             <p className="text-[12px]">
-              Here’s what’s happening in your lab today, {todayFormatted}
+              Here’s what’s happening in your lab today. Thursday 5th October
+              2025
             </p>
 
             <div className="flex gap-[20px] justify-between mt-10">
               {TestHistory.map((test, index) => {
-                const isFourthCard = index === 3;
+                const isFourthCard = index === 3
                 return (
                   <div
                     key={index}
@@ -51,11 +33,7 @@ const LaboratoryDashboard = () => {
                       isFourthCard ? "text-[#DC362E]" : ""
                     }`}
                   >
-                    <h1
-                      className={`text-[16px] text-[#605D66] ${
-                        isFourthCard ? "text-[#DC362E]" : ""
-                      }`}
-                    >
+                    <h1 className={`text-[16px] text-[#605D66] ${isFourthCard ? "text-[#DC362E]" : ""}`}>
                       {test.header}
                     </h1>
                     <p className="py-2 text-[30px] ">{test.value}</p>
@@ -106,7 +84,7 @@ const LaboratoryDashboard = () => {
                         </div>
                       );
                     })}
-                    <button className="text-[#3498DB] underline font-semibold cursor-pointer">
+                    <button className="text-[#3498DB] underline font-semibold">
                       View All
                     </button>
                   </div>
@@ -144,7 +122,7 @@ const LaboratoryDashboard = () => {
                         </div>
                       );
                     })}
-                    <button className="text-[#3498DB] underline font-semibold cursor-pointer">
+                    <button className="text-[#3498DB] underline font-semibold">
                       View All
                     </button>
                   </div>
