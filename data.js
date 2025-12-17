@@ -902,3 +902,1400 @@ export const doctorsAppointmentsPatients = [
     status: "Not Urgent",
   },
 ];
+
+export const resultLab = [
+  {
+    labId: "LR-2024-001",
+    patientName: "Emma Williams",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Completed",
+  },
+
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "HbA1c Test",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Completed",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+  {
+    labId: "LR-2024-001",
+    patientName: "Sarah Johnson",
+    patientId: "PT-1234",
+    testType: "Complete Blood Count",
+    date: "2024-10-07",
+    time: "09:30 AM",
+    doctor: "Dr. Folake",
+    status: "Processing",
+  },
+];
+
+import incomingAvatar from "./src/assets/images/incomingLogo.jpg";
+export const doctorIncomingPatientDetails = [
+  {
+    image: incomingAvatar,
+    patientName: "Leslie Alexander",
+    gender: "Female",
+    phoneNumber: "07037794935",
+    patientId: "P-2025-002",
+    insurance: "MedCare HMO",
+    status: "Active",
+  },
+];
+
+export const additionalInformation = [
+  {
+    bloodGroup: "A+",
+    genotype: "AA",
+    bloodGroup: "A+",
+    lastVisit: "12:00 04/16/25",
+  },
+];
+
+export const medicalHistory = [
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    time: "10:15 AM",
+    date: "2024-11-15",
+    notes: "BP elevated, mild headache",
+    detailsLink: "View Details",
+  },
+];
+
+export const currentVitals = [
+  {
+    patientName: "Leslie Alexander",
+    ward: "Ward 3",
+    bed: "Bed 10",
+    lastUpdated: "5 mins ago",
+  },
+];
+
+import heart from "./src/assets/images/heart.png";
+import vitalSigns from "./src/assets/images/vitalSigns.png";
+import oxygen from "./src/assets/images/oxygen.png";
+import thermometer from "./src/assets/images/thermometer.png";
+import schedule from "./src/assets/images/schedule.png";
+
+export const moreVitals = [
+  {
+    image: heart,
+    heading: "heartRate",
+    heartRate: "78",
+    value: "bpm",
+  },
+  {
+    image: heart,
+    beatsPerMinutes: "bpm",
+    heading: "Blood Pressure",
+    heartRate: "125/82",
+    value: "bpm",
+  },
+  {
+    image: oxygen,
+    heading: "Oxygen",
+    heartRate: "125/82",
+    value: "%",
+  },
+  {
+    image: thermometer,
+    heading: "Temperature",
+    heartRate: "98.6",
+    value: "°F",
+  },
+  {
+    image: vitalSigns,
+    heading: "Respiratory",
+    heartRate: "16",
+    value: "rpm",
+  },
+  {
+    image: schedule,
+    heading: "Last Updated",
+    heartRate: "10",
+    value: "minutes ago",
+  },
+];
+
+export const diagnosis = [
+  {
+    type: "Consultation",
+    diagnosis: "Hypertension check-up",
+    Allergies: "Hypertension check-up",
+    Admission: "Consultation",
+    date: "01/01/01",
+  },
+];
+
+export const billing = [
+  {
+    name: "General Consultation",
+    qty: 1,
+    service: "General Consultation",
+    price: 300000,
+  },
+  { name: "Malaria", qty: 1, service: "Lab Test", price: 300000 },
+  {
+    name: "General Consultation",
+    qty: 1,
+    service: "General Consultation",
+    price: 300000,
+  },
+];
+
+export const TestHistory = [
+  {
+    header: "Pending Test",
+    value: "14",
+    status: "+3 from yesterday",
+  },
+  {
+    header: "Completed Today",
+    value: "35",
+    status: "On Track",
+  },
+  {
+    header: "In Progress",
+    value: "2",
+    status: "3 urgent",
+  },
+  {
+    header: "Low Stock Items",
+    value: "7",
+    status: "Needed Attention",
+  },
+];
+
+export const pendingTestRequest = [
+  {
+    name: "John Doe",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+  {
+    name: "Jane Smith",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+  {
+    name: "Sarah Owolabi",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+  {
+    name: "Micheal Brown",
+    issuedBy: "Doctor",
+    status: "Pending",
+  },
+];
+
+export const completedToday = [
+  {
+    name: "John Doe",
+    testType: "Blood Test",
+    date: "09:30 AM",
+  },
+  {
+    name: "Jane Smith",
+    testType: "Urine Test",
+    date: "10:30 AM",
+  },
+  {
+    name: "Maryam Aliyah",
+    testType: "Pregnancy Test",
+    date: "01:30 AM",
+  },
+  {
+    name: "Adeboye David",
+    testType: "x-ray",
+    date: "03:30 AM",
+  },
+];
+
+export const incomingTestResult = [
+  {
+    header: "New Request",
+    value: "14",
+  },
+  {
+    header: "Urgent Priority",
+    value: "4",
+  },
+  {
+    header: "High Priority",
+    value: "2",
+  },
+  {
+    header: "Avg. Wait time",
+    value: "20 mm",
+  },
+];
+
+export const patientTestResults = [
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Urgent",
+    test: "Complete Blood Count (CBC)",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Urgent",
+    test: "Complete Blood Count (CBC)",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Normal",
+    test: "Complete Blood Count (CBC)",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+  {
+    name: "John Doe",
+    userId: "PT-2025-001",
+    status: "Normal",
+    test: "X-ray",
+    date: "2025-10-09",
+    requestedBy: "Dr. Alexa Mary",
+    time: "Time: 08:30AM",
+    symptoms: "Fever, fatigue, dizziness",
+  },
+];
+
+export const stocks = [
+  {
+    header: "Total Items",
+    value: "14",
+    status: "Across all items",
+  },
+  {
+    header: "Critical Stock",
+    value: "4",
+    status: "immediate action needed",
+  },
+  {
+    header: "Low Stock",
+    value: "3",
+    status: "Re order soon",
+  },
+  {
+    header: "Well stocked",
+    value: "67",
+    status: "Adequate supply",
+  },
+];
+
+export const laboratoryReports = [
+  {
+    header: "Total Test (This Week)",
+    value: "14",
+    status: "+12% from last week",
+  },
+  {
+    header: "Completed Reports",
+    value: "4",
+    status: "92.7% completion rate",
+  },
+  {
+    header: "Pending Review",
+    value: "3",
+    status: "Awaiting approval",
+  },
+  {
+    header: "Avg. Turnaround Time",
+    value: "67",
+    status: "Within target range",
+  },
+];
+
+export const testReports = [
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "Complete Blood Count",
+    date: "2025-10-09",
+    result: "Normal",
+    status: "Approved",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "Urine Analysis",
+    date: "2025-10-09",
+    result: "Normal",
+    status: "Approved",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "X-Ray Chest",
+    date: "2025-10-09",
+    result: "Normal",
+    status: "Approved",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "Lipid Profile",
+    date: "2025-10-09",
+    result: "Normal",
+    status: "Approved",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "Pregnancy Test",
+    date: "2025-10-09",
+    result: "Positive",
+    status: "Approved",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "HIV Test",
+    date: "2025-10-09",
+    result: "Positive",
+    status: "Pending Review",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "Malaria",
+    date: "2025-10-09",
+    result: "Positive",
+    status: "Pending Review",
+    action: "View",
+  },
+  {
+    reportId: "RPT-2025-089",
+    patientName: "Robert Wilson",
+    testType: "Genotype",
+    date: "2025-10-09",
+    result: "Normal",
+    status: "Pending Review",
+    action: "View",
+  },
+];
+
+export const mostRequestedTests = [
+  { testType: "Complete Blood Count", count: 120 },
+  { testType: "Pregnancy", count: 150 },
+  { testType: "Urine Analysis", count: 23 },
+  { testType: "Blood Glucose", count: 45 },
+  { testType: "Thyroid Function", count: 50 },
+];
+
+export const performanceMetrics = [
+  { title: "Completion Rate", value: 94.9 },
+  { title: "Accuracy Rate", value: 98 },
+  { title: "On-Time Delivery", value: 90 },
+];
+
+export const workloadSummary = [
+  { level: "Urgent", count: 120 },
+  { level: "High", count: 150 },
+  { level: "Normal", count: 23 },
+];
+
+export const inventoryData = [
+  {
+    name: "Blood Collection Tubes (EDTA)",
+    category: "Consumables",
+    stock: "20/100",
+    vendor: "MedSupply Co.",
+    lastRestocked: "2025-10-05",
+    status: "In Stock",
+    action: "Restock",
+  },
+  {
+    name: "Urine Sample Containers",
+    category: "Consumables",
+    stock: "10/100",
+    vendor: "LabChem Inc.",
+    lastRestocked: "2025-10-07",
+    status: "Out Of Stock",
+    action: "Restock",
+  },
+  {
+    name: "Glucose Test Strips",
+    category: "Testing",
+    stock: "20/100",
+    vendor: "MedSupply Co.",
+    lastRestocked: "2025-10-08",
+    status: "Low Stock",
+    action: "Restock",
+  },
+  {
+    name: "Syringes (5ml)",
+    category: "Consumables",
+    stock: "20/100",
+    vendor: "LabChem Inc.",
+    lastRestocked: "2025-09-30",
+    status: "Low Stock",
+    action: "Restock",
+  },
+  {
+    name: "Latex Gloves (Medium)",
+    category: "PPE",
+    stock: "20/100",
+    vendor: "MedSupply Co.",
+    lastRestocked: "2025-09-28",
+    status: "In Stock",
+    action: "Restock",
+  },
+  {
+    name: "Disinfectant Solution",
+    category: "Cleaning",
+    stock: "20/100",
+    vendor: "LabChem Inc.",
+    lastRestocked: "2025-10-09",
+    status: "In Stock",
+    action: "Restock",
+  },
+  {
+    name: "Microscope Slides",
+    category: "Equipment",
+    stock: "40/100",
+    vendor: "LabChem Inc.",
+    lastRestocked: "2025-10-08",
+    status: "Out Of Stock",
+    action: "Restock",
+  },
+  {
+    name: "Reagent - CBC Analyzer",
+    category: "Reagents",
+    stock: "80/100",
+    vendor: "MedSupply Co.",
+    lastRestocked: "2025-10-01",
+    status: "Out Of Stock",
+    action: "Restock",
+  },
+];
+
+export const testTypeData = [
+  { name: "Urine Tests", value: 30, color: "#8CD5AB" },
+  { name: "Blood Tests", value: 25, color: "#E97A46" },
+  { name: "Xray", value: 15, color: "#B3261E" },
+  { name: "Pregnancy", value: 20, color: "#004A1E" },
+  { name: "Others", value: 10, color: "#057A9D" },
+];
+
+export const weeklyTestsData = [
+  { day: "Mon", tests: 45 },
+  { day: "Tue", tests: 100 },
+  { day: "Wed", tests: 65 },
+  { day: "Thu", tests: 100 },
+  { day: "Fri", tests: 58 },
+  { day: "Sat", tests: 50 },
+  { day: "Sun", tests: 28 },
+];
+
+export const monthlyPerformanceData = [
+  { month: "May", completed: 520, pending: 45 },
+  { month: "Jun", completed: 650, pending: 38 },
+  { month: "Jul", completed: 350, pending: 42 },
+  { month: "Aug", completed: 520, pending: 35 },
+  { month: "Sep", completed: 850, pending: 28 },
+  { month: "Oct", completed: 620, pending: 40 },
+  { month: "Nov", completed: 720, pending: 32 },
+];
+
+export const stockData = [
+  { name: "In Stock", value: 75, color: "#8CD5AB" },
+  { name: "Low Stock", value: 15, color: "#E97A46" },
+  { name: "Out of Stock", value: 10, color: "#B3261E" },
+];
+
+export const activityData = [
+  {
+    id: 1,
+    batchNo: "P-001",
+    description: "Restock added to inventory",
+    drug: "Amoxicillin 250mg",
+    quantity: 2,
+    date: "01/01/01",
+    status: "In",
+  },
+  {
+    id: 2,
+    batchNo: "P-001",
+    description: "Restock added to inventory",
+    drug: "Amoxicillin 250mg",
+    quantity: 2,
+    date: "01/01/01",
+    status: "In",
+  },
+  {
+    id: 3,
+    batchNo: "P-001",
+    description: "Drug dispensed from inventory",
+    drug: "Amoxicillin 250mg",
+    quantity: 2,
+    date: "01/01/01",
+    status: "Out",
+  },
+  {
+    id: 4,
+    batchNo: "P-001",
+    description: "Drug dispensed from inventory",
+    drug: "Amoxicillin 250mg",
+    quantity: 2,
+    date: "01/01/01",
+    status: "Out",
+  },
+  {
+    id: 5,
+    batchNo: "P-001",
+    description: "Restock added to inventory",
+    drug: "Amoxicillin 250mg",
+    quantity: 2,
+    date: "01/01/01",
+    status: "In",
+  },
+];
+
+export const prescriptionData = [
+  {
+    id: 1,
+    time: "09:30 AM",
+    patientId: "PT-2025-001",
+    patientName: "John Doe",
+    medications: "Amoxicillin 500mg, Paracetamol 1000mg",
+    amount: "₦7090",
+    status: "Pending",
+    action: "Mark Ready",
+  },
+  {
+    id: 2,
+    time: "09:30 AM",
+    patientId: "PT-2025-001",
+    patientName: "John Doe",
+    medications: "Ibuprofen 400mg, Omeprazole 20mg",
+    amount: "₦7080",
+    status: "Ready",
+    action: "Send to cashier",
+  },
+  {
+    id: 3,
+    time: "09:30 AM",
+    patientId: "PT-2025-001",
+    patientName: "John Doe",
+    medications: "Metformin 850mg, Aspirin 75mg",
+    amount: "₦6,200",
+    status: "Ready",
+    action: "Send to cashier",
+  },
+  {
+    id: 4,
+    time: "09:30 AM",
+    patientId: "PT-2025-001",
+    patientName: "John Doe",
+    medications: "Cetirizine 10mg, Salbutamol Inhaler",
+    amount: "₦6,200",
+    status: "Ready",
+    action: "Mark Ready",
+  },
+  {
+    id: 5,
+    time: "09:30 AM",
+    patientId: "PT-2025-001",
+    patientName: "John Doe",
+    medications: "Lisinopril 10mg, Atorvastatin 20mg",
+    amount: "₦7,500",
+    status: "Pending",
+    action: "Send to cashier",
+  },
+];
+
+import { LuArchive } from "react-icons/lu";
+import { LuMessageSquare } from "react-icons/lu";
+import { VscWarning } from "react-icons/vsc";
+import { IoMdTime } from "react-icons/io";
+
+export const pharmacyInventory = [
+  {
+    header: "Total Items",
+    value: "400",
+    status: "Active items in stock",
+    icon: LuArchive,
+  },
+  {
+    header: "In stock",
+    value: "320",
+    status: "93% availability",
+    icon: VscWarning,
+  },
+  {
+    header: "Low Stock",
+    value: "15",
+    status: "Need reordering",
+    icon: LuMessageSquare,
+  },
+  {
+    header: "Expired Soon",
+    value: "8",
+    status: "Within 30 days",
+    icon: IoMdTime,
+  },
+];
+
+export const allItemsData = [
+  {
+    id: 1,
+    itemId: "MED-001",
+    medicationName: "Amoxicillin 500mg",
+    category: "Antibiotics",
+    form: "Tablets",
+    stockLevel: "450 units",
+    unitPrice: "₦70,890",
+    Supplier: "PharmaCorp",
+    expiryDate: "03/12/2025",
+    status: "In Stock",
+    edit: "Edit",
+  },
+  {
+    id: 2,
+    itemId: "MED-002",
+    medicationName: "Ibuprofen 400mg",
+    category: "Painkillers",
+    form: "Tablets",
+    stockLevel: "320 units ",
+    unitPrice: "₦45,500",
+    Supplier: "MediSupply",
+    expiryDate: "15/08/2025",
+    status: "In Stock",
+    edit: "Edit",
+  },
+  {
+    id: 3,
+    itemId: "MED-003",
+    medicationName: "Paracetamol 500mg",
+    category: "Painkillers",
+    form: "Tablets",
+    stockLevel: "280 units ",
+    unitPrice: "₦35,000",
+    Supplier: "PharmaCorp",
+    expiryDate: "22/09/2025",
+    status: "In Stock",
+    edit: "Edit",
+  },
+  {
+    id: 4,
+    itemId: "MED-004",
+    medicationName: "Metformin 850mg",
+    category: "Diabetes",
+    form: "Tablets",
+    stockLevel: "75 units ",
+    unitPrice: "₦52,000",
+    Supplier: "HealthPlus",
+    expiryDate: "10/07/2025",
+    status: "Low Stock",
+    edit: "Edit",
+  },
+  {
+    id: 5,
+    itemId: "MED-005",
+    medicationName: "Lisinopril 10mg",
+    category: "Hypertension",
+    form: "Tablets",
+    stockLevel: "0 units ",
+    unitPrice: "₦68,200",
+    Supplier: "MediSupply",
+    expiryDate: "18/11/2025",
+    status: "Out of Stock",
+    edit: "Edit",
+  },
+];
+
+export const lowStockItems = [
+  {
+    id: "MED-001",
+    name: "Amoxicillin 500mg",
+    form: "Tablets",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Low Stock",
+  },
+  {
+    id: "MED-002",
+    name: "Amoxicillin 500mg",
+    form: "Syrup",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Low Stock",
+  },
+  {
+    id: "MED-003",
+    name: "Amoxicillin 500mg",
+    form: "Syrup",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Low Stock",
+  },
+  {
+    id: "MED-004",
+    name: "Amoxicillin 500mg",
+    form: "Tablets",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Low Stock",
+  },
+];
+
+export const outOfStockItems = [
+  {
+    id: "MED-001",
+    name: "Amoxicillin 500mg",
+    form: "Tablets",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Out of stock",
+  },
+  {
+    id: "MED-002",
+    name: "Amoxicillin 500mg",
+    form: "Syrup",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Out of stock",
+  },
+  {
+    id: "MED-003",
+    name: "Amoxicillin 500mg",
+    form: "Syrup",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Out of stock",
+  },
+  {
+    id: "MED-004",
+    name: "Amoxicillin 500mg",
+    form: "Tablets",
+    category: "Antibiotics",
+    stockLevel: "450 units",
+    minStock: "Min: 100",
+    unitPrice: "₦70,890",
+    supplier: "PharmaCorp",
+    status: "Out of stock",
+  },
+];
+
+export const recentActivityData = [
+  {
+    id: 1,
+    action: "Stock Added",
+    medication: "Amoxicillin 500mg",
+    quantity: "+300 units",
+    pharmacist: "Pharm. Folake",
+    time: "2hours ago",
+  },
+  {
+    id: 2,
+    action: "Stock Updated",
+    medication: "Ibuprofen 200mg",
+    quantity: "+150 units",
+    pharmacist: "Pharm. Johnson",
+    time: "1hour ago",
+  },
+  {
+    id: 3,
+    action: "Stock Removed",
+    medication: "Aspirin 100mg",
+    quantity: "-50 units",
+    pharmacist: "Pharm. Smith",
+    time: "30minutes ago",
+  },
+  {
+    id: 4,
+    action: "Stock Added",
+    medication: "Cetirizine 10mg",
+    quantity: "+300 units",
+    pharmacist: "Pharm. Ahmed",
+    time: "15minutes ago",
+  },
+];
+
+import { CgArrowBottomLeft } from "react-icons/cg";
+import { CgArrowBottomRight } from "react-icons/cg";
+import { TbArrowsDoubleNeSw } from "react-icons/tb";
+
+export const drugDispensation = [
+  {
+    header: "Today's Dispensations",
+    value: "20",
+    status: "Total dispensation",
+    icon: LuArchive,
+  },
+  {
+    header: "Stock in",
+    value: "320",
+    status: "93% availability",
+    icon: CgArrowBottomLeft,
+  },
+  {
+    header: "Stock out",
+    value: "30",
+    status: "Total dispensation",
+    icon: CgArrowBottomRight,
+  },
+  {
+    header: "Net Movement",
+    value: "8",
+    status: "Units difference",
+    icon: TbArrowsDoubleNeSw,
+  },
+];
+
+export const dispensingData = [
+  {
+    batchId: "DISP-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Dispensed",
+  },
+  {
+    batchId: "Stock-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Syrup",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Pending",
+  },
+  {
+    batchId: "DISP-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Dispensed",
+  },
+  {
+    batchId: "DISP-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Syrup",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Dispensed",
+  },
+  {
+    batchId: "Stock-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Pending",
+  },
+];
+
+export const stockTransaction = [
+  {
+    header: "Total stock",
+    value: "20",
+    status: "Total dispensation",
+    icon: LuArchive,
+  },
+  {
+    header: "Stock in",
+    value: "320",
+    status: "93% availability",
+    icon: CgArrowBottomLeft,
+  },
+  {
+    header: "Stock out",
+    value: "30",
+    status: "Total dispensation",
+    icon: CgArrowBottomRight,
+  },
+  {
+    header: "Net Movement",
+    value: "8",
+    status: "Units difference",
+    icon: TbArrowsDoubleNeSw,
+  },
+];
+
+export const stockInData = [
+  {
+    batchId: "Stock-001",
+    name: "PharmaCorp Ltd",
+    supplierId: "SUP-101",
+    drugName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: 300,
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    purchaseOrder: "PO-5678",
+    status: "In",
+  },
+  {
+    batchId: "Stock-001",
+    name: "PharmaCorp Ltd",
+    supplierId: "SUP-101",
+    drugName: "Amoxicillin 500mg",
+    form: "Syrup",
+    quantity: 250,
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    purchaseOrder: "PO-5678",
+    status: "In",
+  },
+  {
+    batchId: "Stock-001",
+    name: "MediSupply Co",
+    supplierId: "SUP-101",
+    drugName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: 200,
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    purchaseOrder: "PO-5678",
+    status: "In",
+  },
+  {
+    batchId: "Stock-001",
+    name: "Health CO",
+    supplierId: "SUP-101",
+    drugName: "Amoxicillin 500mg",
+    form: "Syrup",
+    quantity: 490,
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    purchaseOrder: "PO-5678",
+    status: "In",
+  },
+  {
+    batchId: "Stock-001",
+    name: "MedCo",
+    supplierId: "SUP-101",
+    drugName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: 100,
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    purchaseOrder: "PO-5678",
+    status: "In",
+  },
+];
+
+export const stockOutData = [
+  {
+    batchId: "DISP-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Out",
+  },
+  {
+    batchId: "Stock-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Syrup",
+    quantity: "250 ml",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Out",
+  },
+  {
+    batchId: "DISP-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Out",
+  },
+  {
+    batchId: "DISP-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Syrup",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Out",
+  },
+  {
+    batchId: "Stock-001",
+    name: "Emily Davis",
+    patientId: "PT-2457",
+    medicationName: "Amoxicillin 500mg",
+    form: "Tablets",
+    quantity: "30 tabs",
+    price: "₦70,890",
+    dateTime: "2025-10-18 09:45 AM",
+    prescriptionId: "RX-1234",
+    status: "Out",
+  },
+];
+
+export const pharmacyReports = [
+  {
+    header: "Total Sales",
+    value: "2,000,098",
+    icon: LuArchive,
+  },
+  {
+    header: "Prescriptions filled",
+    value: "1,234",
+    icon: VscWarning,
+  },
+  {
+    header: "Inventory Value",
+    value: "456,765",
+    icon: LuMessageSquare,
+  },
+  {
+    header: "Low Stock Items",
+    value: "12",
+    icon: IoMdTime,
+  },
+];
+
+
+export const recentSalesData = [
+  {
+    id: 1,
+    invoiceId: "INV-2024-001",
+    loginTime: "2024-10-15",
+    medication: "Amoxicillin 500mg",
+    quantity: 100,
+    amount: "₦70,890",
+    status: "Completed",
+  },
+  {
+    id: 2,
+    invoiceId: "INV-2024-001",
+    loginTime: "2024-10-15",
+    medication: "Paracetamol 500mg",
+    quantity: 200,
+    amount: "₦70,890",
+    status: "Completed",
+  },
+  {
+    id: 3,
+    invoiceId: "INV-2024-001",
+    loginTime: "2024-10-15",
+    medication: "Ibuprofen 400mg",
+    quantity: 150,
+    amount: "₦70,890",
+    status: "Completed",
+  },
+  {
+    id: 4,
+    invoiceId: "INV-2024-001",
+    loginTime: "2024-10-15",
+    medication: "Metformin 850mg",
+    quantity: 75,
+    amount: "₦70,890",
+    status: "Pending",
+  },
+  {
+    id: 5,
+    invoiceId: "INV-2024-001",
+    loginTime: "2024-10-15",
+    medication: "Lisinopril 10mg",
+    quantity: 90,
+    amount: "₦70,890",
+    status: "Pending",
+  },
+];
+
+
+
+export const lowStockData = [
+  {
+    id: 1,
+    medication: "Aspirin 100mg",
+    minStock: "Minimum stock: 100 units",
+    unitsRemaining: "45 units remaining",
+    percentage: "45% of minimum",
+    action: "Reorder",
+  },
+  {
+    id: 2,
+    medication: "Ibuprofen 200mg",
+    minStock: "Minimum stock: 150 units",
+    unitsRemaining: "75 units remaining",
+    percentage: "50% of minimum",
+    action: "Reorder",
+  },
+  {
+    id: 3,
+    medication: "Paracetamol 500mg",
+    minStock: "Minimum stock: 200 units",
+    unitsRemaining: "100 units remaining",
+    percentage: "50% of minimum",
+    action: "Reorder",
+  },
+  {
+    id: 4,
+    medication: "Amoxicillin 250mg",
+    minStock: "Minimum stock: 120 units",
+    unitsRemaining: "60 units remaining",
+    percentage: "50% of minimum",
+    action: "Reorder",
+  },
+];
