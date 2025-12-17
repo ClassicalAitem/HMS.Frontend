@@ -2,22 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar, FilterUsers } from '@/components/superadmin';
 import { DataTable } from '@/components/common';
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff, FaKey } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
-import { AddUserModal, EditUserModal } from '@/components/modals';
+import { AddUserModal, ResetPasswordModal, EditUserModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
-import UsersDebug from '@/components/common/UsersDebug';
 
 const ManageUsers = () => {
   const dispatch = useAppDispatch();
   const { users, isLoading, error } = useAppSelector((state) => state.users);
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
@@ -65,16 +65,16 @@ const ManageUsers = () => {
 
   // Filter users based on search term, role, and status
   const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = selectedRole === 'all' || user.accountType === selectedRole;
-    const matchesStatus = selectedStatus === 'all' || 
+    const matchesStatus = selectedStatus === 'all' ||
       (selectedStatus === 'active' && user.isActive) ||
       (selectedStatus === 'inactive' && !user.isActive);
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -131,7 +131,7 @@ const ManageUsers = () => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       console.log('🗑️ ManageUsers: Deleting user:', userId);
       const result = await dispatch(deleteUser(userId));
-      
+
       if (deleteUser.fulfilled.match(result)) {
         toast.success('User deleted successfully');
       } else {
@@ -142,12 +142,29 @@ const ManageUsers = () => {
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
     console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
-    const result = await dispatch(toggleUserStatus({ userId, isActive: !currentStatus }));
     
-    if (toggleUserStatus.fulfilled.match(result)) {
-      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-    } else {
-      toast.error('Failed to update user status');
+    // Determine the action based on current status (if active, we want to disable, so isActive should be false)
+    const newStatus = !currentStatus;
+    
+    // For disabling/enabling account, the API expects isActive boolean
+    // When disabling (newStatus is false), we might also want to send isDisabled: true depending on backend logic
+    // But based on usersAPI.disableUserAccount, it accepts userData object
+    
+    try {
+      const result = await dispatch(toggleUserStatus({ userId, isActive: newStatus }));
+
+      if (toggleUserStatus.fulfilled.match(result)) {
+        toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`);
+        // Refresh the list to reflect changes
+        dispatch(fetchUsers());
+      } else {
+        // Handle error from the thunk
+        const errorMessage = result.payload || 'Failed to update user status';
+        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
+      }
+    } catch (error) {
+      console.error('❌ ManageUsers: Error toggling status:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
@@ -248,6 +265,16 @@ const ManageUsers = () => {
             <FaEdit className="w-3 h-3" />
           </button>
           <button
+            onClick={() => {
+              setSelectedUser(row);
+              setIsResetPasswordModalOpen(true);
+            }}
+            className="btn btn-ghost btn-xs"
+            title="Change Password"
+          >
+            <FaKey className="w-3 h-3" />
+          </button>
+          <button
             onClick={() => handleDeleteUser(row.id)}
             className="btn btn-ghost btn-xs text-error"
             title="Delete User"
@@ -263,12 +290,12 @@ const ManageUsers = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
@@ -276,12 +303,12 @@ const ManageUsers = () => {
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -354,6 +381,13 @@ const ManageUsers = () => {
         onClose={() => setIsEditModalOpen(false)}
         user={selectedUser}
         onUserUpdated={handleUserUpdated}
+      />
+
+      {/* Change Password Modal */}
+      <ResetPasswordModal
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => setIsResetPasswordModalOpen(false)}
+        user={selectedUser}
       />
 
       {/* Debug Component - Remove in production */}

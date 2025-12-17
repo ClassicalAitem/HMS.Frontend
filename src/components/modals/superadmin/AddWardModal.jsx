@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaBed } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getAllDepartments } from '@/services/api/departmentAPI';
+import { createWard } from '@/services/api/wardAPI';
 
 const addWardSchema = yup.object({
   name: yup
@@ -11,39 +13,60 @@ const addWardSchema = yup.object({
     .required('Ward name is required')
     .min(2, 'Ward name must be at least 2 characters')
     .max(50, 'Ward name must not exceed 50 characters'),
-  department: yup
+  departmentId: yup
     .string()
     .required('Department is required'),
-  floor: yup
+  floorLocation: yup
     .string()
-    .required('Floor is required')
     .min(1, 'Floor must be at least 1 character'),
-  bedCapacity: yup
-    .number()
-    .required('Bed capacity is required')
-    .min(1, 'Bed capacity must be at least 1')
-    .max(100, 'Bed capacity must not exceed 100'),
-  description: yup
+  status: yup
+    .string(),
+  occupancy: yup
     .string()
-    .required('Description is required')
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must not exceed 500 characters')
+    .required('Occupancy is required')
+    .min(2, 'Occupancy must be at least 2 characters')
+    .max(10, 'Occupancy must not exceed 10 characters')
 });
 
 const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchDepartment = async() => {
+      try {
+        const res = await getAllDepartments();
+        const list = res.data || [];
+        setDepartments(list);
+
+
+        console.log({'Get Departments': res});
+      } catch(error) {
+        console.error(error);
+      }
+
+    }
+    fetchDepartment();
+  }, [isOpen])
+
+  console.log('Departments:', departments);
+
+
+
 
   // Sample departments for dropdown
-  const departments = [
-    'General Medicine',
-    'Cardiology',
-    'Emergency',
-    'Pediatrics',
-    'Surgery',
-    'Intensive Care',
-    'Radiology',
-    'Oncology'
-  ];
+  // const departments = [
+  //   'General Medicine',
+  //   'Cardiology',
+  //   'Emergency',
+  //   'Pediatrics',
+  //   'Surgery',
+  //   'Intensive Care',
+  //   'Radiology',
+  //   'Oncology'
+  // ];
 
   const {
     register,
@@ -59,6 +82,7 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
+      await createWard(data);
       console.log('Ward added:', data);
       toast.success('Ward added successfully!');
       reset();
@@ -124,14 +148,14 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
                 Department
               </label>
               <select
-                {...register('department')}
+                {...register('departmentId')}
                 className={`select select-bordered w-full ${errors.department ? 'select-error' : ''}`}
                 disabled={isLoading}
               >
                 <option value="">Select department</option>
                 {departments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
                   </option>
                 ))}
               </select>
@@ -147,7 +171,7 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
               </label>
               <input
                 type="text"
-                {...register('floor')}
+                {...register('floorLocation')}
                 className={`input input-bordered w-full ${errors.floor ? 'input-error' : ''}`}
                 placeholder="e.g., 2nd Floor, Ground Floor"
                 disabled={isLoading}
@@ -157,39 +181,38 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
               )}
             </div>
 
-            {/* Bed Capacity */}
+            {/* Occupancy */}
             <div>
               <label className="block text-sm font-medium text-base-content/70 mb-2">
-                Bed Capacity
+                Occupancy
               </label>
               <input
-                type="number"
-                {...register('bedCapacity', { valueAsNumber: true })}
-                className={`input input-bordered w-full ${errors.bedCapacity ? 'input-error' : ''}`}
-                placeholder="Enter bed capacity"
-                min="1"
-                max="100"
+                type="text"
+                {...register('occupancy')}
+                className={`input input-bordered w-full ${errors.occupancy ? 'textarea-error' : ''}`}
+                placeholder="Enter ward occupancy details"
                 disabled={isLoading}
               />
-              {errors.bedCapacity && (
-                <p className="text-error text-xs mt-1">{errors.bedCapacity.message}</p>
+              {errors.occupancy && (
+                <p className="text-error text-xs mt-1">{errors.occupancy.message}</p>
               )}
             </div>
 
-            {/* Description */}
+            {/* status */}
             <div>
               <label className="block text-sm font-medium text-base-content/70 mb-2">
-                Description
+                status
               </label>
-              <textarea
-                {...register('description')}
-                rows={3}
-                className={`textarea textarea-bordered w-full ${errors.description ? 'textarea-error' : ''}`}
-                placeholder="Enter ward description"
+              <select
+                {...register('status')}
+                className={`select select-bordered w-full ${errors.status ? 'select-error' : ''}`}
                 disabled={isLoading}
-              />
-              {errors.description && (
-                <p className="text-error text-xs mt-1">{errors.description.message}</p>
+              >
+                <option value="active">Active</option>
+                <option value="inactive">InActive</option>
+              </select>
+              {errors.status && (
+                <p className="text-error text-xs mt-1">{errors.status.message}</p>
               )}
             </div>
           </div>

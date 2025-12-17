@@ -14,7 +14,7 @@ export const API_ENDPOINTS = {
   REFRESH_TOKEN: '/user/refresh', // not yet implemented in backend
   CHANGE_PASSWORD: '/user/changePassword',
   FORGOT_PASSWORD: '/user/forgot-password',
-  RESET_PASSWORD: '/user/reset-password',
+  RESET_PASSWORD: '/user/resetPassword',
 
   // Billing
   CREATE_BILL: '/billing/create',
@@ -35,6 +35,8 @@ export const API_ENDPOINTS = {
   USER_PROFILE: '/users/profile',
   CREATE_STAFF: '/user/createStaff',
   CREATE_ADMIN: '/user/createAdmin',
+  UPDATE_USER: '/user/updateUser',
+  DISABLE_ACCOUNT: '/user/accountDisabled',
 
   // HMO
   GET_HMOS: '/hmo',
