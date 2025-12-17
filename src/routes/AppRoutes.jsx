@@ -72,9 +72,18 @@ import NurseIncoming from "@/pages/nurse/incoming/Incoming";
 import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
 import DrugDispensation from "@/pages/pharmacist/DrugDispensation/DrugDispensation";
 import PharmacistIncoming from "@/pages/pharmacist/incoming/Incoming";
+import PharmacistIncomingDetails from "@/pages/pharmacist/incoming/IncomingDetails";
 import InventoryStocks from "@/pages/pharmacist/Inventory&stocks/Inventory&stocks";
 import PharmacistReports from "@/pages/pharmacist/Reports/Reports";
 import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions";
+
+//Laboratory Dashboard Routes
+import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
+import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
+import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
+import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
+import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
+
 
 const AppRoutes = () => {
   return (
@@ -418,6 +427,11 @@ const AppRoutes = () => {
           <PharmacistIncoming />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/pharmacist/incoming/:patientId" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistIncomingDetails />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/pharmacist/Inventory&stocks" element={
         <ProtectedRoute allowedRoles={['pharmacist']}>
           <InventoryStocks />
@@ -433,6 +447,29 @@ const AppRoutes = () => {
           <PharmacistTransactions />
         </ProtectedRoute>
       } />
+
+      {/*==============================================================================================================
+      
+      ====================================  Laboratory DashBoard Route ===============================================
+      ===============================================================================================================*/}
+      {/* LaboratoryDashboard */}
+      <Route path="/dashboard/laboratory" element={<LaboratoryDashboard />} />
+      <Route
+        path="/dashboard/laboratory/incoming"
+        element={<IncomingLaboratory />}
+      />
+      <Route
+        path="/dashboard/laboratory/inventoryStocks"
+        element={<InventorySTOCKS />}
+      />
+      <Route
+        path="/dashboard/laboratory/Reports"
+        element={<LaboratoryReports />}
+      />
+      <Route
+        path="/dashboard/laboratory/modal"
+        element={<TestRequestModal />}
+      />
 
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
