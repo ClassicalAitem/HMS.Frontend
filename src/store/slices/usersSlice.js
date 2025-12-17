@@ -181,22 +181,35 @@ export const toggleUserStatus = createAsyncThunk(
   async ({ userId, isActive }, { rejectWithValue }) => {
     console.log('🔄 UsersSlice: Starting toggleUserStatus thunk');
     console.log('📤 UsersSlice: User ID:', userId);
-    console.log('📤 UsersSlice: Is Active:', isActive);
+    console.log('📤 UsersSlice: New status:', isActive);
     
     try {
-      const response = await usersAPI.toggleUserStatus(userId, isActive);
+      const userData = { isActive };
+      const response = await usersAPI.disableUserAccount(userId, userData);
       console.log('✅ UsersSlice: API response received:', response);
       
       if (response.data.success) {
-        const user = response.data.data;
-        console.log('📦 UsersSlice: User status toggled:', user);
-        return user;
+        console.log('✅ UsersSlice: User status updated successfully');
+        return { userId, isActive };
       } else {
-        throw new Error(response.data.message || 'Failed to toggle user status');
+        throw new Error(response.data.message || 'Failed to update user status');
       }
     } catch (error) {
       console.error('❌ UsersSlice: Toggle user status error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to toggle user status';
+      
+      // Handle the case where the error message is an object (e.g., default password warning)
+      const errorData = error.response?.data?.message;
+      let errorMessage = 'Failed to update user status';
+      
+      if (typeof errorData === 'object' && errorData !== null) {
+        // If it's the specific object structure we saw: {data: 'uuid', message: '...'}
+        errorMessage = errorData.message || JSON.stringify(errorData);
+      } else if (typeof errorData === 'string') {
+        errorMessage = errorData;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return rejectWithValue(errorMessage);
     }
   }

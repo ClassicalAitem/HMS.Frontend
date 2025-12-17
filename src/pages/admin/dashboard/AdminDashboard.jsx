@@ -1,6 +1,6 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "@/components/admin/dashboard/Sidebar";
+import SideBar from "../../../components/admin/dashboard/Sidebar2";
 import AdminDashboardOverview from "@/components/admin/dashboard/AdminDashboardOverview";
 import StaffSchedule from "@/components/admin/dashboard/StaffSchedule";
 import StockUpdate from "@/components/admin/dashboard/StockUpdate";
@@ -11,13 +11,13 @@ const AdminDashboard = () => {
     <div className="flex h-screen ">
       <SideBar />
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header />
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="overflow-y-auto flex-1">
           <AdminDashboardOverview />
 
-          <div className="flex gap-3 px-4 mb-3 sm:gap-4">
+          <div className="flex gap-3 mb-3 sm:gap-4 px-4">
             <TotalStaff />
             <StockUpdate />
           </div>
