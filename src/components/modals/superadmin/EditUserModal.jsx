@@ -5,6 +5,7 @@ import * as yup from 'yup';
 import { FaTimes, FaUserEdit, FaEye, FaEyeSlash, FaSave } from 'react-icons/fa';
 import { usersAPI } from '../../../services/api/usersAPI';
 import toast from 'react-hot-toast';
+import { getAllDepartments } from '@/services/api/departmentAPI';
 
 // Validation schema
 const editUserSchema = yup.object({
@@ -18,31 +19,34 @@ const editUserSchema = yup.object({
     .required('Last name is required')
     .min(2, 'Last name must be at least 2 characters')
     .max(50, 'Last name must not exceed 50 characters'),
-  email: yup
-    .string()
-    .required('Email is required')
-    .email('Please enter a valid email address'),
   role: yup
     .string()
     .required('Role is required')
     .oneOf(['admin', 'doctor', 'nurse', 'frontdesk', 'cashier', 'pharmacist'], 'Please select a valid role'),
-  password: yup
+  departmentId: yup
     .string()
-    .min(6, 'Password must be at least 6 characters')
-    .max(50, 'Password must not exceed 50 characters'),
-  confirmPassword: yup
-    .string()
-    .when('password', {
-      is: (password) => password && password.length > 0,
-      then: (schema) => schema.required('Please confirm your password').oneOf([yup.ref('password')], 'Passwords do not match'),
-      otherwise: (schema) => schema.notRequired(),
-    }),
+    .required('Department is required'),
+
 });
 
 const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [departments, setDepartments] = useState([]);
+
+  useEffect(() => {
+    if(!isOpen) return;
+
+    const fetchDepartment = async() => {
+      try {
+        const res = await getAllDepartments();
+        const list = res.data || [];
+        setDepartments(list);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    fetchDepartment();
+  }, [isOpen]);
 
   const {
     register,
@@ -58,12 +62,10 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       lastName: '',
       email: '',
       role: '',
-      password: '',
-      confirmPassword: '',
+      departmentId: '',
     },
   });
 
-  const watchedPassword = watch('password');
   const watchedRole = watch('role');
 
   // Update form values when user prop changes
@@ -74,7 +76,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       setValue('lastName', user.lastName || '');
       setValue('email', user.email || '');
       setValue('role', user.accountType || '');
-      setValue('password', '');
+      setValue('departmentId', '');
       setValue('confirmPassword', '');
     }
   }, [user, isOpen, setValue]);
@@ -84,18 +86,15 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
     setIsLoading(true);
 
     try {
+      console.log('Data to be sent for update:', data);
       // Prepare the data for the API
       const updateData = {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         email: data.email.trim().toLowerCase(),
         accountType: data.role,
+        departmentId: data.departmentId,
       };
-
-      // Only include password if it's provided
-      if (data.password && data.password.trim()) {
-        updateData.password = data.password;
-      }
 
       console.log('📤 EditUserModal: Sending update data:', updateData);
       console.log('📤 EditUserModal: Updating user ID:', user.id);
@@ -118,7 +117,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       }
     } catch (error) {
       console.error('❌ EditUserModal: Error updating user:', error);
-      
+
       // Show error message
       const errorMessage = error.response?.data?.message || 'Failed to update user. Please try again.';
       toast.error(errorMessage);
@@ -159,7 +158,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
           <div className="mb-4 p-3 bg-base-200 rounded-lg">
             <div className="text-sm text-base-content/70">
               <div><strong>User ID:</strong> {user.id}</div>
-              <div><strong>Current Status:</strong> 
+              <div><strong>Current Status:</strong>
                 <span className={`ml-1 badge ${user.isActive ? 'badge-success' : 'badge-error'}`}>
                   {user.isActive ? 'Active' : 'Inactive'}
                 </span>
@@ -215,16 +214,11 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
               </label>
               <input
                 type="email"
-                placeholder="Enter email address"
-                className={`input input-bordered w-full ${errors.email ? 'input-error' : ''}`}
-                {...register('email')}
-                disabled={isLoading}
+                value={user?.email || ''}
+                className={"input input-bordered w-full"}
+                disabled
+                readOnly
               />
-              {errors.email && (
-                <label className="label">
-                  <span className="label-text-alt text-error">{errors.email.message}</span>
-                </label>
-              )}
             </div>
 
             {/* Role */}
@@ -252,66 +246,27 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
               )}
             </div>
 
-            {/* Password */}
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">New Password</span>
-                <span className="label-text-alt text-base-content/60">(Leave blank to keep current password)</span>
+            {/* Department */}
+            <div>
+              <label className="block text-sm font-medium text-base-content/70 mb-2">
+                Department
               </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter new password (optional)"
-                  className={`input input-bordered w-full pr-10 ${errors.password ? 'input-error' : ''}`}
-                  {...register('password')}
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content"
-                  disabled={isLoading}
-                >
-                  {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
-                </button>
-              </div>
-              {errors.password && (
-                <label className="label">
-                  <span className="label-text-alt text-error">{errors.password.message}</span>
-                </label>
+              <select
+                {...register('departmentId')}
+                className={`select select-bordered w-full ${errors.department ? 'select-error' : ''}`}
+                disabled={isLoading}
+              >
+                <option value="">Select department</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
+              {errors.department && (
+                <p className="text-error text-xs mt-1">{errors.department.message}</p>
               )}
             </div>
-
-            {/* Confirm Password - Only show if password is provided */}
-            {watchedPassword && watchedPassword.length > 0 && (
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium">Confirm New Password</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="Confirm new password"
-                    className={`input input-bordered w-full pr-10 ${errors.confirmPassword ? 'input-error' : ''}`}
-                    {...register('confirmPassword')}
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-base-content/60 hover:text-base-content"
-                    disabled={isLoading}
-                  >
-                    {showConfirmPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.confirmPassword && (
-                  <label className="label">
-                    <span className="label-text-alt text-error">{errors.confirmPassword.message}</span>
-                  </label>
-                )}
-              </div>
-            )}
 
             {/* Role-specific info */}
             {watchedRole && (

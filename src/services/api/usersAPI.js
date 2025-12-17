@@ -84,7 +84,7 @@ export const usersAPI = {
     console.log('📤 UsersAPI: User data:', userData);
     
     try {
-      const response = await apiClient.put(`${API_ENDPOINTS.USERS}/${userId}`, userData);
+      const response = await apiClient.put(`${API_ENDPOINTS.UPDATE_USER}/${userId}`, userData);
       console.log('✅ UsersAPI: Update user response received');
       console.log('📥 UsersAPI: Response data:', response.data);
       return response;
@@ -94,6 +94,40 @@ export const usersAPI = {
       throw error;
     }
   },
+
+  // Disadle user Account
+  disableUserAccount: async (userId, userData) => {
+    console.log('✏️ UsersAPI: Starting disableUserAccount request');
+    console.log('📤 UsersAPI: User ID:', userId);
+    console.log('📤 UsersAPI: User data:', userData);
+    
+    try {
+      const response = await apiClient.patch(`${API_ENDPOINTS.DISABLE_ACCOUNT}/${userId}`, userData);
+      console.log('✅ UsersAPI: Disable user account response received');
+      console.log('📥 UsersAPI: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ UsersAPI: Disable user account error occurred');
+      console.error('📥 UsersAPI: Error response:', error.response);
+      throw error;
+    }
+  },
+
+  // Reset password
+  resetUserPassword: async (userData) => {
+    console.log('✏️ UsersAPI: Starting reset password request');
+    try {
+      const response = await apiClient.patch(`${API_ENDPOINTS.RESET_PASSWORD}`, userData);
+      console.log('✅ UsersAPI: password user response received');
+      console.log('📥 UsersAPI: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ UsersAPI: password user error occurred');
+      console.error('📥 UsersAPI: Error response:', error.response);
+      throw error;
+    }
+  },
+
 
   // Delete user
   deleteUser: async (userId) => {
