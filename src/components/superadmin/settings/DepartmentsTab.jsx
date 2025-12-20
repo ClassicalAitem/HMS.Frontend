@@ -1,53 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaPlus, FaUsers, FaBed, FaEdit, FaTrash } from 'react-icons/fa';
-import { AddDepartmentModal } from '@/components/modals';
+import { AddDepartmentModal, EditDepartmentModal } from '@/components/modals';
+import { getAllDepartments } from '@/services/api/departmentAPI';
 
 const DepartmentsTab = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sample data for departments
-  const departments = [
-    {
-      id: 1,
-      name: 'Cardiology',
-      head: 'Dr. Sarah Johnson',
-      staffCount: 12,
-      bedsCount: 25,
-      status: 'Active'
-    },
-    {
-      id: 2,
-      name: 'Emergency',
-      head: 'Dr. Michael Brown',
-      staffCount: 18,
-      bedsCount: 15,
-      status: 'Active'
-    },
-    {
-      id: 3,
-      name: 'Pediatrics',
-      head: 'Dr. Emily Davis',
-      staffCount: 15,
-      bedsCount: 30,
-      status: 'Active'
-    },
-    {
-      id: 4,
-      name: 'Surgery',
-      head: 'Dr. Robert Wilson',
-      staffCount: 20,
-      bedsCount: 12,
-      status: 'Active'
-    },
-    {
-      id: 5,
-      name: 'Radiology',
-      head: 'Dr. Lisa Anderson',
-      staffCount: 8,
-      bedsCount: 5,
-      status: 'Active'
+  useEffect(() => {
+    const fetchDepartment = async() => {
+      try {
+        setLoading(true);
+        const res = await getAllDepartments()
+        setDepartments(res.data)
+
+        console.log(res.data);
+      } catch(error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+
     }
-  ];
+
+    fetchDepartment()
+  }, []);
 
   const handleAddDepartment = () => {
     setIsAddModalOpen(true);
@@ -56,6 +36,7 @@ const DepartmentsTab = () => {
   const handleEditDepartment = (department) => {
     console.log('Edit department:', department);
     // TODO: Implement edit functionality
+    setSelectedDepartment(department);
   };
 
   const handleDeleteDepartment = (department) => {
@@ -82,67 +63,78 @@ const DepartmentsTab = () => {
           <thead>
             <tr>
               <th className="text-base-content/70">Department</th>
-              <th className="text-base-content/70">Head</th>
-              <th className="text-base-content/70">Staff</th>
-              <th className="text-base-content/70">Beds</th>
+              <th className="text-base-content/70">Head Of Department</th>
               <th className="text-base-content/70">Status</th>
               <th className="text-base-content/70">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {departments.map((department) => (
-              <tr key={department.id}>
-                <td>
-                  <div className="font-medium text-base-content">
-                    {department.name}
-                  </div>
-                </td>
-                <td>
-                  <div className="text-base-content/70">
-                    {department.head}
-                  </div>
-                </td>
-                <td>
-                  <div className="flex items-center text-base-content/70">
-                    <FaUsers className="w-4 h-4 mr-2" />
-                    {department.staffCount}
-                  </div>
-                </td>
-                <td>
-                  <div className="flex items-center text-base-content/70">
-                    <FaBed className="w-4 h-4 mr-2" />
-                    {department.bedsCount}
-                  </div>
-                </td>
-                <td>
-                  <span className={`badge ${
-                    department.status === 'Active' 
-                      ? 'badge-success' 
-                      : 'badge-error'
-                  }`}>
-                    {department.status}
-                  </span>
-                </td>
-                <td>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEditDepartment(department)}
-                      className="btn btn-ghost btn-sm text-primary hover:bg-primary/10"
-                      title="Edit Department"
-                    >
-                      <FaEdit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteDepartment(department)}
-                      className="btn btn-ghost btn-sm text-error hover:bg-error/10"
-                      title="Delete Department"
-                    >
-                      <FaTrash className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {loading ? (
+              // Skeleton Loader
+              [...Array(5)].map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  <td>
+                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  </td>
+                  <td>
+                    <div className="h-4 bg-gray-200 rounded w-40"></div>
+                  </td>
+                  <td>
+                    <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                  </td>
+                  <td>
+                    <div className="flex space-x-2">
+                      <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                      <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              departments.map((department) => (
+                <tr key={department.id}>
+                  <td>
+                    <div className="font-medium text-base-content">
+                      {department.name}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="text-base-content/70">
+                    {department.headOfDepartment
+                      ? `${department.headOfDepartment.firstName} ${  department.headOfDepartment.lastName }`
+                      : 'N/A'}
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`badge ${
+                      department.status === 'active'
+                        ? 'badge-success'
+                        : 'badge-error'
+                    }`}>
+                      {department.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => {handleEditDepartment(department); setIsEditModalOpen(true);}}
+                        className="btn btn-ghost btn-sm text-primary hover:bg-primary/10"
+                        title="Edit Department"
+                      >
+                        <FaEdit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDepartment(department)}
+                        className="btn btn-ghost btn-sm text-error hover:bg-error/10"
+                        title="Delete Department"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -155,6 +147,13 @@ const DepartmentsTab = () => {
           setIsAddModalOpen(false);
           // TODO: Refresh departments list
         }}
+      />
+
+      {/* Edit Department Modal - To be implemented */}
+      <EditDepartmentModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onDepartmentUpdate={selectedDepartment}
       />
     </div>
   );

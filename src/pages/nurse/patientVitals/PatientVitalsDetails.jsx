@@ -14,6 +14,8 @@ import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
 import { LuDroplet, LuThermometer, LuActivity } from "react-icons/lu";
 import { GiWeightLiftingUp } from "react-icons/gi";
+import InjectionModals from "../incoming/modals/InjectionModals";
+import SamplingModals from "../incoming/modals/SamplingModals";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -28,6 +30,8 @@ const PatientVitalsDetails = () => {
   const [patient, setPatient] = useState(null);
   // Record vitals modal state
   const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [isRecordInjection, setIsRecordInjection] = useState(false);
+  const [isRecordSampling, setIsRecordSampling] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
   const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
@@ -51,7 +55,7 @@ const PatientVitalsDetails = () => {
     const load = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch vitals for this patient
         const res = await getVitalsByPatient(patientId);
         const raw = res?.data ?? res ?? [];
@@ -101,7 +105,7 @@ const PatientVitalsDetails = () => {
   }, [vitals]);
 
   const patientUUID = patient?.id || location?.state?.patientSnapshot?.id || "";
-  console.log('Iwant to see patient:', patient);
+  console.log('I want to see patient:', patient);
   const patientHospitalId = patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
   const patientName = patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
 
@@ -246,7 +250,28 @@ const PatientVitalsDetails = () => {
                     <span>Last updated {formatRelativeTime(latest?.createdAt)}</span>
                   </div>
                 </div>
-                <button className="btn btn-success btn-sm" onClick={() => setIsRecordOpen(true)}>+ Record Vitals</button>
+                  {patient?.status === "awaiting_vitals" ? (
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={() => setIsRecordOpen(true)}
+                    >
+                      + Record Vitals
+                    </button>
+                  ) : patient?.status === "awaiting_injection" ? (
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={() => setIsRecordInjection(true)}
+                    >
+                      + Record Injection
+                    </button>
+                  ) : patient?.status === "awaiting_sampling" ? (
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={() => setIsRecordSampling(true)}
+                    >
+                      + Collect Sampling
+                    </button>
+                  ) : null}
               </div>
 
               {loading ? (
@@ -562,6 +587,24 @@ const PatientVitalsDetails = () => {
               mode={"confirm"}
               patientLabel={`${patientName} (${patientHospitalId || '—'})`}
               onUpdated={() => setIsSendCashierOpen(false)}
+            />
+          )}
+
+          {/* Injection Modal */}
+          {isRecordInjection && (
+            <InjectionModals
+              setIsRecordInjection={setIsRecordInjection}
+              patientId={patientId}
+              patientData={patient}
+            />
+          )}
+
+          {/* Sampling Modal */}
+          {isRecordSampling && (
+            <SamplingModals
+              setIsRecordSampling={setIsRecordSampling}
+              patientId={patientId}
+              patientData={patient}
             />
           )}
         </div>
