@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import { API_ENDPOINTS } from '../../config/env';
+import toast from 'react-hot-toast';
 
 export const usersAPI = {
   // Get all users
@@ -77,14 +78,15 @@ export const usersAPI = {
     }
   },
 
-  // Update user
+// Update user
   updateUser: async (userId, userData) => {
+    // toast.success('hit endpoint upodate');
     console.log('✏️ UsersAPI: Starting updateUser request');
     console.log('📤 UsersAPI: User ID:', userId);
     console.log('📤 UsersAPI: User data:', userData);
-    
+
     try {
-      const response = await apiClient.put(`${API_ENDPOINTS.UPDATE_USER}/${userId}`, userData);
+      const response = await apiClient.patch(`${API_ENDPOINTS.UPDATE_USER}/${userId}`, userData);
       console.log('✅ UsersAPI: Update user response received');
       console.log('📥 UsersAPI: Response data:', response.data);
       return response;

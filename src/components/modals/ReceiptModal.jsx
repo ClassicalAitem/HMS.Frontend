@@ -183,7 +183,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
             {/* Patient Selector Combobox */}
             <div>
               {/* HMO Selector only if multiple */}
-              {hmos.length > 0 && (
+              {hmos.length > 0 && formData.paidBy === 'hmo' && (
               <div>
                 <label className="block mb-2 text-sm font-medium">Select HMO</label>
                 <input
