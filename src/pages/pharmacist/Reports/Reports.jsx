@@ -125,7 +125,7 @@ const Reports = () => {
             <table className="table w-full table-compact">
               <thead>
                 <tr>
-                  <th>Invoice ID</th>
+                  <th>Transaction ID</th>
                   <th>Login Time</th>
                   <th>Medication</th>
                   <th>Quantity</th>
