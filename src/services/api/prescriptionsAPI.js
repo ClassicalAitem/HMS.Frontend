@@ -42,7 +42,7 @@ export const updatePrescription = async (id, updateData) => {
 
 export default {
   getPrescriptions,
-  getPrescriptionById
-  ,getPrescriptionByPatientId,
+  getPrescriptionById,
+  getPrescriptionByPatientId,
   updatePrescription
 }
