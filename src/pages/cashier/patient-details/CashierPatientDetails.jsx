@@ -493,7 +493,7 @@ const CashierPatientDetails = () => {
             </div>
             <button
               onClick={() => navigate(`/cashier/generate-bill/${patientId}`)}
-              className="btn btn-sm btn-primary"
+              className="btn btn-sm btn-primary hidden"
             >
               <FaFileInvoice className="w-4 h-4 mr-1" />
               Generate Bill

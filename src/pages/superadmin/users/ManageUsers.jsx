@@ -107,6 +107,8 @@ const ManageUsers = () => {
         return 'badge badge-primary';
       case 'cashier':
         return 'badge badge-secondary';
+      case 'lab-technician':
+        return 'badge badge-outline badge-accen';
       default:
         return 'badge badge-neutral';
     }

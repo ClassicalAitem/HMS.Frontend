@@ -247,6 +247,7 @@ const SuperAdminRegistration = () => {
                     <option value="nurse">Nurse</option>
                     <option value="frontdesk">Front Desk</option>
                     <option value="cashier">Cashier</option>
+                    <option value="lab-technician">Lab Technician</option>
                   </select>
                   {errors.role && (
                     <p className="mt-1 text-xs text-error">{errors.role.message}</p>
