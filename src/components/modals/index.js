@@ -9,12 +9,19 @@ export { default as NurseActionModal } from './NurseActionModal';
 export { default as CashierActionModal } from './CashierActionModal';
 export { default as PharmacyActionModal } from './PharmacyActionModal';
 export { default as LabResultDetailsModal } from './LabResultDetailsModal';
+export { default as PrescriptionDetailsModal } from './PrescriptionDetailsModal';
 export { default as SelectServiceChargeModal } from './SelectServiceChargeModal';
+export { default as PharmacyActionModal2 } from './PharmacyActionModal2';
+export { default as ReceiptModal } from './ReceiptModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';
 export { default as EditUserModal } from './superadmin/EditUserModal';
+export { default as ResetPasswordModal } from './superadmin/resetPasswordModal';
 export { default as AddDepartmentModal } from './superadmin/AddDepartmentModal';
 export { default as AddWardModal } from './superadmin/AddWardModal';
+export { default as EditWardModal } from './superadmin/EditWardModal';
+export { default as EditDepartmentModal } from './superadmin/EditDepartmentModal';
 export { default as AddServiceChargeModal } from './superadmin/AddServiceChargeModal';
+export { default as EditServiceChargeModal } from './superadmin/EditServiceChargeModal';
 export { default as CreateRoleModal } from './superadmin/CreateRoleModal';

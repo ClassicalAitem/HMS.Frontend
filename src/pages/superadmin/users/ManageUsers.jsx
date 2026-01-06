@@ -108,6 +108,8 @@ const ManageUsers = () => {
       case 'cashier':
         return 'badge badge-secondary';
       case 'lab-technician':
+        return 'badge badge-outline badge-accen';
+      case 'lab-technician':
         return 'badge badge-accent';
       case 'surgeon':
         return 'badge badge-ghost';
@@ -154,6 +156,30 @@ const ManageUsers = () => {
       toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
     } else {
       toast.error('Failed to update user status');
+
+      // Determine the action based on current status (if active, we want to disable, so isActive should be false)
+      const newStatus = !currentStatus;
+
+      // For disabling/enabling account, the API expects isActive boolean
+      // When disabling (newStatus is false), we might also want to send isDisabled: true depending on backend logic
+      // But based on usersAPI.disableUserAccount, it accepts userData object
+
+      try {
+        const result = await dispatch(toggleUserStatus({ userId, isActive: newStatus }));
+
+        if (toggleUserStatus.fulfilled.match(result)) {
+          toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`);
+          // Refresh the list to reflect changes
+          dispatch(fetchUsers());
+        } else {
+          // Handle error from the thunk
+          const errorMessage = result.payload || 'Failed to update user status';
+          toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
+        }
+      } catch (error) {
+        console.error('❌ ManageUsers: Error toggling status:', error);
+        toast.error('An unexpected error occurred');
+      }
     }
   };
 
