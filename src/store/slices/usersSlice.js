@@ -28,11 +28,11 @@ export const fetchUsers = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     console.log('🔄 UsersSlice: Starting fetchUsers thunk');
     console.log('📤 UsersSlice: Request params:', params);
-    
+
     try {
       const response = await usersAPI.getUsers(params);
       console.log('✅ UsersSlice: API response received:', response);
-      
+
       // Handle the API response structure
       if (response.data.success) {
         console.log('✅ UsersSlice: Users fetched successfully');
@@ -44,6 +44,8 @@ export const fetchUsers = createAsyncThunk(
           phoneNumber: user.phoneNumber,
           accountType: user.accountType,
           isDefaultPassword: user.isDefaultPassword,
+          departmentId: user.departmentId,
+          departmentName: user.department?.name || null,
           isActive: user.isActive,
           isDisabled: user.isDisabled,
           isDeleted: user.isDeleted,
@@ -52,7 +54,7 @@ export const fetchUsers = createAsyncThunk(
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         }));
-        
+
         console.log('📦 UsersSlice: Processed users data:', users);
         return {
           users,
@@ -81,11 +83,11 @@ export const fetchUserById = createAsyncThunk(
   async (userId, { rejectWithValue }) => {
     console.log('🔄 UsersSlice: Starting fetchUserById thunk');
     console.log('📤 UsersSlice: User ID:', userId);
-    
+
     try {
       const response = await usersAPI.getUserById(userId);
       console.log('✅ UsersSlice: API response received:', response);
-      
+
       if (response.data.success) {
         const user = response.data.data;
         console.log('📦 UsersSlice: Processed user data:', user);
@@ -106,11 +108,11 @@ export const createUser = createAsyncThunk(
   async (userData, { rejectWithValue }) => {
     console.log('🔄 UsersSlice: Starting createUser thunk');
     console.log('📤 UsersSlice: User data:', userData);
-    
+
     try {
       const response = await usersAPI.createUser(userData);
       console.log('✅ UsersSlice: API response received:', response);
-      
+
       if (response.data.success) {
         const user = response.data.data;
         console.log('📦 UsersSlice: Created user data:', user);
@@ -132,11 +134,11 @@ export const updateUser = createAsyncThunk(
     console.log('🔄 UsersSlice: Starting updateUser thunk');
     console.log('📤 UsersSlice: User ID:', userId);
     console.log('📤 UsersSlice: User data:', userData);
-    
+
     try {
       const response = await usersAPI.updateUser(userId, userData);
       console.log('✅ UsersSlice: API response received:', response);
-      
+
       if (response.data.success) {
         const user = response.data.data;
         console.log('📦 UsersSlice: Updated user data:', user);
@@ -157,11 +159,11 @@ export const deleteUser = createAsyncThunk(
   async (userId, { rejectWithValue }) => {
     console.log('🔄 UsersSlice: Starting deleteUser thunk');
     console.log('📤 UsersSlice: User ID:', userId);
-    
+
     try {
       const response = await usersAPI.deleteUser(userId);
       console.log('✅ UsersSlice: API response received:', response);
-      
+
       if (response.data.success) {
         console.log('📦 UsersSlice: User deleted successfully');
         return userId;
@@ -182,11 +184,11 @@ export const toggleUserStatus = createAsyncThunk(
     console.log('🔄 UsersSlice: Starting toggleUserStatus thunk');
     console.log('📤 UsersSlice: User ID:', userId);
     console.log('📤 UsersSlice: Is Active:', isActive);
-    
+
     try {
       const response = await usersAPI.toggleUserStatus(userId, isActive);
       console.log('✅ UsersSlice: API response received:', response);
-      
+
       if (response.data.success) {
         const user = response.data.data;
         console.log('📦 UsersSlice: User status toggled:', user);
@@ -254,7 +256,7 @@ const usersSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch user by ID
       .addCase(fetchUserById.pending, (state) => {
         state.isLoading = true;
@@ -269,7 +271,7 @@ const usersSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Create user
       .addCase(createUser.pending, (state) => {
         state.isLoading = true;
@@ -284,7 +286,7 @@ const usersSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Update user
       .addCase(updateUser.pending, (state) => {
         state.isLoading = true;
@@ -305,7 +307,7 @@ const usersSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Delete user
       .addCase(deleteUser.pending, (state) => {
         state.isLoading = true;
@@ -320,7 +322,7 @@ const usersSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Toggle user status
       .addCase(toggleUserStatus.pending, (state) => {
         state.isLoading = true;

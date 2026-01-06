@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/common/ProtectedRoute";
 
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
+import Task from "@/pages/nurse/assignedTask/AssignedTask";
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
@@ -22,9 +23,8 @@ import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
-import Task from "@/pages/doctor/assignTask/Task";
 
-//Admin Dashboard
+// Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import Schedule from "@/pages/admin/schedule/Schedule";
 import Stocks from "@/pages/admin/stocks/Stocks";
@@ -56,7 +56,9 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
 import CashierIncoming from "@/pages/cashier/incoming/Incoming";
 import CashierPatients from "@/pages/cashier/patients/CashierPatients";
-import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
+import BillingRecords from "@/pages/cashier/payment-records/BillingRecord";
+import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
+// import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
 import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 
@@ -66,6 +68,22 @@ import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
 import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
 import NurseIncoming from "@/pages/nurse/incoming/Incoming";
+// Pharmacist
+import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
+import DrugDispensation from "@/pages/pharmacist/DrugDispensation/DrugDispensation";
+import PharmacistIncoming from "@/pages/pharmacist/incoming/Incoming";
+import PharmacistIncomingDetails from "@/pages/pharmacist/incoming/IncomingDetails";
+import InventoryStocks from "@/pages/pharmacist/Inventory&stocks/Inventory&stocks";
+import PharmacistReports from "@/pages/pharmacist/Reports/Reports";
+import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions";
+
+//Laboratory Dashboard Routes
+import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
+import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
+import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
+import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
+import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
+
 
 const AppRoutes = () => {
   return (
@@ -363,9 +381,19 @@ const AppRoutes = () => {
           <CashierPatients />
         </ProtectedRoute>
       } />
-      <Route path="/cashier/payment-records" element={
+      {/* <Route path="/cashier/payment-records" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <PaymentRecords />
+        </ProtectedRoute>
+      } /> */}
+      <Route path="/cashier/billing-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <BillingRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/receipt-records" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <ReceiptRecords />
         </ProtectedRoute>
       } />
       <Route path="/cashier/patient-details/:patientId" element={
@@ -378,6 +406,70 @@ const AppRoutes = () => {
           <GenerateBill />
         </ProtectedRoute>
       } />
+
+      {/*==============================================================================================================
+      
+      ====================================  Pharmacist DashBoard Route ===============================================
+      
+      ================================================================================================================*/}
+      <Route path="/dashboard/pharmacist" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/DrugDispensation" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <DrugDispensation />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/incoming" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/incoming/:patientId" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistIncomingDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/Inventory&stocks" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <InventoryStocks />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/Reports" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistReports />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/Transactions" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistTransactions />
+        </ProtectedRoute>
+      } />
+
+      {/*==============================================================================================================
+      
+      ====================================  Laboratory DashBoard Route ===============================================
+      ===============================================================================================================*/}
+      {/* LaboratoryDashboard */}
+      <Route path="/dashboard/laboratory" element={<LaboratoryDashboard />} />
+      <Route
+        path="/dashboard/laboratory/incoming"
+        element={<IncomingLaboratory />}
+      />
+      <Route
+        path="/dashboard/laboratory/inventoryStocks"
+        element={<InventorySTOCKS />}
+      />
+      <Route
+        path="/dashboard/laboratory/Reports"
+        element={<LaboratoryReports />}
+      />
+      <Route
+        path="/dashboard/laboratory/modal"
+        element={<TestRequestModal />}
+      />
 
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
