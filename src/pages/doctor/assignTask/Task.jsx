@@ -1,6 +1,6 @@
 import React from 'react'
 import { Header } from "@/components/common";
-import Sidebar from "../../../components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/doctor/dashboard/Sidebar";
 
 
 const AssignTask = () => {

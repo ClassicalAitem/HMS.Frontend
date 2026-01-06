@@ -113,9 +113,10 @@ const Login = () => {
           'admin': '/dashboard/admin',
           'super-admin': '/dashboard/superadmin',
           'cashier': '/cashier/dashboard',
+          'pharmacist': '/dashboard/pharmacist',
         };
-        
-        redirectPath = roleRoutes[user.role] || '/frontdesk/dashboard';
+        const roleOrType = user.role || user.accountType;
+        redirectPath = roleRoutes[roleOrType] || '/frontdesk/dashboard';
       }
       
       console.log('🔄 Login: Redirecting to:', redirectPath);
@@ -156,7 +157,7 @@ const Login = () => {
         console.log('🏠 Login: Redirecting to dashboard');
         // Navigate to role-specific dashboard after delay
         setTimeout(() => {
-          const dashboardPath = getDashboardPath(result.payload.user.role);
+          const dashboardPath = getDashboardPath(result.payload.user.role || result.payload.user.accountType);
           console.log('🏠 Login: Dashboard path:', dashboardPath);
           navigate(dashboardPath);
         }, 2000);
@@ -199,6 +200,8 @@ const Login = () => {
         return '/dashboard/superadmin';
       case 'cashier':
         return '/cashier/dashboard';
+      case 'pharmacist':
+        return '/dashboard/pharmacist';
       default:
         return '/frontdesk/dashboard';
     }

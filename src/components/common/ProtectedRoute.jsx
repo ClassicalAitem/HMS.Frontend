@@ -61,9 +61,11 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'admin': '/dashboard/admin',
       'super-admin': '/dashboard/superadmin',
       'cashier': '/cashier/dashboard',
+      'pharmacist': '/dashboard/pharmacist',
     };
     
-    const defaultRoute = roleRoutes[user?.role] || '/frontdesk/dashboard';
+    const roleOrType = user?.role || user?.accountType;
+    const defaultRoute = roleRoutes[roleOrType] || '/frontdesk/dashboard';
     console.log('🔒 ProtectedRoute: Redirecting to:', defaultRoute);
     return <Navigate to={defaultRoute} replace />;
   }
