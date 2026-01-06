@@ -31,8 +31,8 @@ const registrationSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['superAdmin', 'admin', 'doctor', 'nurse', 'frontdesk', 'cashier'], 'Please select a valid role'),
-  password: yup
+    .oneOf(['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'lab-technician', 'surgeon', 'pharmacist'], 'Please select a valid role'),
+  pass_word: yup
     .string()
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters')
@@ -113,7 +113,7 @@ const SuperAdminRegistration = () => {
       reset();
     } catch (error) {
       console.error('❌ SuperAdminRegistration: Error creating user:', error);
-      
+
       // Show error message
       const errorMessage = error.response?.data?.message || 'Failed to register user. Please try again.';
       toast.error(errorMessage);
@@ -131,12 +131,12 @@ const SuperAdminRegistration = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
@@ -144,12 +144,12 @@ const SuperAdminRegistration = () => {
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -241,12 +241,14 @@ const SuperAdminRegistration = () => {
                     disabled={isLoading}
                   >
                     <option value="">Select a role</option>
-                    <option value="superAdmin">Super Admin</option>
                     <option value="admin">Admin</option>
                     <option value="doctor">Doctor</option>
                     <option value="nurse">Nurse</option>
-                    <option value="frontdesk">Front Desk</option>
+                    <option value="front-desk">Front Desk</option>
                     <option value="cashier">Cashier</option>
+                    <option value="lab-technician">Lab Technician</option>
+                    <option value="surgeon">Surgeon</option>
+                    <option value="pharmacist">Pharmacist</option>
                   </select>
                   {errors.role && (
                     <p className="mt-1 text-xs text-error">{errors.role.message}</p>

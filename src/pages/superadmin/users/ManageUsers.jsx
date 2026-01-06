@@ -12,12 +12,12 @@ import UsersDebug from '../../../components/common/UsersDebug';
 const ManageUsers = () => {
   const dispatch = useAppDispatch();
   const { users, isLoading, error } = useAppSelector((state) => state.users);
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
@@ -65,16 +65,16 @@ const ManageUsers = () => {
 
   // Filter users based on search term, role, and status
   const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = selectedRole === 'all' || user.accountType === selectedRole;
-    const matchesStatus = selectedStatus === 'all' || 
+    const matchesStatus = selectedStatus === 'all' ||
       (selectedStatus === 'active' && user.isActive) ||
       (selectedStatus === 'inactive' && !user.isActive);
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -103,10 +103,16 @@ const ManageUsers = () => {
         return 'badge badge-info';
       case 'nurse':
         return 'badge badge-success';
-      case 'frontdesk':
+      case 'front-desk':
         return 'badge badge-primary';
       case 'cashier':
         return 'badge badge-secondary';
+      case 'lab-technician':
+        return 'badge badge-accent';
+      case 'surgeon':
+        return 'badge badge-ghost';
+      case 'pharmacist':
+        return 'badge badge-outline';
       default:
         return 'badge badge-neutral';
     }
@@ -131,7 +137,7 @@ const ManageUsers = () => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       console.log('🗑️ ManageUsers: Deleting user:', userId);
       const result = await dispatch(deleteUser(userId));
-      
+
       if (deleteUser.fulfilled.match(result)) {
         toast.success('User deleted successfully');
       } else {
@@ -143,7 +149,7 @@ const ManageUsers = () => {
   const handleToggleUserStatus = async (userId, currentStatus) => {
     console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
     const result = await dispatch(toggleUserStatus({ userId, isActive: !currentStatus }));
-    
+
     if (toggleUserStatus.fulfilled.match(result)) {
       toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
     } else {
@@ -263,12 +269,12 @@ const ManageUsers = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
@@ -276,12 +282,12 @@ const ManageUsers = () => {
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
