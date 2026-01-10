@@ -8,8 +8,15 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
   if (!isOpen) return null;
 
   const handleSubmit = () => {
-    if (symptom && duration) {
-      onAdd({ name: symptom, duration: `${duration} ${durationUnit}` });
+    if (symptom) {
+      // Use default duration of '1' if user hasn't changed the dropdown
+      const finalDuration = duration || "1";
+      onAdd({ 
+        name: symptom, 
+        duration: `${finalDuration} ${durationUnit}`,
+        value: parseInt(finalDuration),
+        unit: durationUnit
+      });
       setSymptom("");
       setDuration("");
       setDurationUnit("Day(s)");
@@ -18,7 +25,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-200/90 bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
       <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="p-6">
           <h3 className="text-xl font-semibold text-success mb-6">Add Complaint</h3>
@@ -48,6 +55,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
                 >
+                  <option value="" disabled>--</option>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                     <option key={num} value={num}>{num}</option>
                   ))}
