@@ -16,7 +16,7 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-200/90 bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
       <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md mx-4">
         <div className="p-6">
           <h3 className="text-xl font-semibold text-success mb-6">Add Family History</h3>
