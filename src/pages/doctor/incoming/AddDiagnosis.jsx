@@ -27,11 +27,20 @@ const AddDiagnosis = () => {
   const [saving, setSaving] = useState(false);
 
   // Form State
-  const [complaints, setComplaints] = useState([]);
-  const [medicalHistory, setMedicalHistory] = useState([]);
-  const [surgicalHistory, setSurgicalHistory] = useState([]);
-  const [familyHistory, setFamilyHistory] = useState([]);
-  const [allergyHistory, setAllergyHistory] = useState([]);
+  const [complaints, setComplaints] = useState([
+    { name: "Headache", duration: "2 days" },
+    { name: "Fever", duration: "3 days" },
+    { name: "Cough", duration: "1 week" },
+    { name: "Fatigue", duration: "5 days" }
+  ]);
+  const [medicalHistory, setMedicalHistory] = useState(["Diabetes", "Hypertension", "Asthma"]);
+  const [surgicalHistory, setSurgicalHistory] = useState(["Appendectomy", "Caesarean Section", "Tonsillectomy"]);
+  const [familyHistory, setFamilyHistory] = useState([
+    { title: "Father", value: "Hypertension" },
+    { title: "Mother", value: "Diabetes" },
+    { title: "Sibling", value: "Asthma" }
+  ]);
+  const [allergyHistory, setAllergyHistory] = useState(["Penicillin", "Peanuts", "Dust"]);
   const [notes, setNotes] = useState("");
 
   // Modals State
@@ -135,10 +144,10 @@ Allergy History: ${allergyHistory.join(", ")}
 
                 <div className="flex items-center gap-1 flex-col">
                   <p className="text-sm text-base-content/70">
-                    {patient ? `${patientName || "Unknown"} • ${patient?.hospitalId || patientId || "—"}` : ""}
+                    {patient ? `${patientName || "Unknown"}` : ""}
                   </p>
                   <p className="text-sm text-base-content/70">
-                    {patient ? `${patientName || "Unknown"} • ${patient?.hospitalId || patientId || "—"}` : ""}
+                    {patient ? `${patient?.hospitalId || patientId || "—"}` : ""}
                   </p>
                 </div>
               </div>
@@ -152,154 +161,170 @@ Allergy History: ${allergyHistory.join(", ")}
           </div>
 
           {/* Complaint Section */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-0">
-              <div className="p-4 flex justify-between items-center border-b border-base-200">
-                <h3 className="text-lg font-medium">Complaint</h3>
-                <button className="btn btn-success btn-sm text-white" onClick={() => setActiveModal('complaint')}>+ Add Complaint</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="table w-full">
-                  <thead>
-                    <tr className="bg-base-100 text-base-content/70">
-                      <th className="font-medium">Complaint Name</th>
-                      <th className="font-medium">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {complaints.length > 0 ? (
-                      complaints.map((item, idx) => (
-                        <tr key={idx} className="border-b border-base-100 last:border-0">
-                          <td className="py-4">{item.name}</td>
-                          <td className="py-4 flex justify-between items-center">
-                            <span>{item.duration}</span>
-                            <button onClick={() => removeComplaint(idx)} className="text-error hover:text-red-700">
-                              <span className="text-xl font-bold">−</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="2" className="text-center py-8 text-base-content/50">No complaints added</td>
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800">Complaint</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('complaint')}
+              >
+                <span className="text-lg">+</span> Add Complaint
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="font-medium text-gray-500 py-4 pl-6">Complaint Name</th>
+                    <th className="font-medium text-gray-500 py-4">Duration</th>
+                    <th className="w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {complaints.length > 0 ? (
+                    complaints.map((item, idx) => (
+                      <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                        <td className="py-4 pl-6 font-medium text-gray-800">{item.name}</td>
+                        <td className="py-4 text-gray-600">{item.duration}</td>
+                        <td className="py-4 pr-6 text-right">
+                          <button onClick={() => removeComplaint(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
+                            <span className="text-lg font-bold">−</span>
+                          </button>
+                        </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center py-8 text-gray-400">No complaints added</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
           {/* Past Medical History */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Past Medical History</h3>
-                <button className="btn btn-success btn-sm text-white" onClick={() => setActiveModal('medical')}>+ Add Medical History</button>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {medicalHistory.map((item, idx) => (
-                  <div key={idx} className="badge badge-lg gap-2 py-4 px-4 bg-white border border-base-300 text-base-content rounded-full">
-                    {item}
-                    <button onClick={() => removeMedical(idx)} className="text-error hover:scale-110 transition-transform">
-                      <IoCloseCircleOutline className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-                {medicalHistory.length === 0 && <span className="text-sm text-base-content/50">No medical history recorded</span>}
-              </div>
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Past Medical History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('medical')}
+              >
+                <span className="text-lg">+</span> Add Medical History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {medicalHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeMedical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {medicalHistory.length === 0 && <span className="text-sm text-gray-400 italic">No medical history recorded</span>}
             </div>
           </div>
 
           {/* Past Surgical History */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Past Surgical History</h3>
-                <button className="btn btn-success btn-sm text-white" onClick={() => setActiveModal('surgical')}>+ Add Surgical History</button>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {surgicalHistory.map((item, idx) => (
-                  <div key={idx} className="badge badge-lg gap-2 py-4 px-4 bg-white border border-base-300 text-base-content rounded-full">
-                    {item}
-                    <button onClick={() => removeSurgical(idx)} className="text-error hover:scale-110 transition-transform">
-                      <IoCloseCircleOutline className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-                {surgicalHistory.length === 0 && <span className="text-sm text-base-content/50">No surgical history recorded</span>}
-              </div>
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Past Surgical History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('surgical')}
+              >
+                <span className="text-lg">+</span> Add Surgical History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {surgicalHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeSurgical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {surgicalHistory.length === 0 && <span className="text-sm text-gray-400 italic">No surgical history recorded</span>}
             </div>
           </div>
 
           {/* Family History */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-0">
-              <div className="p-4 flex justify-between items-center border-b border-base-200">
-                <h3 className="text-lg font-medium">Family History</h3>
-                <button className="btn btn-success btn-sm text-white" onClick={() => setActiveModal('family')}>+ Add Family History</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="table w-full">
-                  <thead>
-                    <tr className="bg-base-100 text-base-content/70">
-                      <th className="font-medium">Title</th>
-                      <th className="font-medium">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {familyHistory.length > 0 ? (
-                      familyHistory.map((item, idx) => (
-                        <tr key={idx} className="border-b border-base-100 last:border-0">
-                          <td className="py-4 font-medium">{item.title}</td>
-                          <td className="py-4 flex justify-between items-center">
-                            <span>{item.value}</span>
-                            <button onClick={() => removeFamily(idx)} className="text-error hover:text-red-700">
-                              <span className="text-xl font-bold">−</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="2" className="text-center py-8 text-base-content/50">No family history recorded</td>
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800">Family History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('family')}
+              >
+                <span className="text-lg">+</span> Add Family History
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="font-medium text-gray-500 py-4 pl-6 w-1/2">Title</th>
+                    <th className="font-medium text-gray-500 py-4 w-1/2">Value</th>
+                    <th className="w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {familyHistory.length > 0 ? (
+                    familyHistory.map((item, idx) => (
+                      <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                        <td className="py-4 pl-6 font-medium text-gray-800">{item.title}</td>
+                        <td className="py-4 text-gray-600">{item.value}</td>
+                        <td className="py-4 pr-6 text-right">
+                          <button onClick={() => removeFamily(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
+                            <span className="text-lg font-bold">−</span>
+                          </button>
+                        </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center py-8 text-gray-400">No family history recorded</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
           {/* Past Allergy History */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-4">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Past Allergy History</h3>
-                <button className="btn btn-success btn-sm text-white" onClick={() => setActiveModal('allergy')}>+ Add Allergy History</button>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                {allergyHistory.map((item, idx) => (
-                  <div key={idx} className="badge badge-lg gap-2 py-4 px-4 bg-white border border-base-300 text-base-content rounded-full">
-                    {item}
-                    <button onClick={() => removeAllergy(idx)} className="text-error hover:scale-110 transition-transform">
-                      <IoCloseCircleOutline className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-                {allergyHistory.length === 0 && <span className="text-sm text-base-content/50">No allergy history recorded</span>}
-              </div>
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Past Allergy History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('allergy')}
+              >
+                <span className="text-lg">+</span> Add Allergy History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {allergyHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeAllergy(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {allergyHistory.length === 0 && <span className="text-sm text-gray-400 italic">No allergy history recorded</span>}
             </div>
           </div>
 
           {/* Notes */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-4">
-              <h3 className="text-lg font-medium mb-2">Notes</h3>
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Notes</h3>
               <textarea 
-                className="textarea textarea-bordered w-full text-base" 
+                className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-[#00943C] resize-y rounded-md" 
                 placeholder="Enter Additional Notes" 
-                rows={6}
                 value={notes} 
                 onChange={(e) => setNotes(e.target.value)} 
               />
@@ -307,16 +332,16 @@ Allergy History: ${allergyHistory.join(", ")}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-center gap-4 pt-4 pb-8">
+          <div className="flex justify-center gap-4 pt-4 pb-12">
             <button 
-              className={`btn btn-success px-12 text-white ${saving ? "loading" : ""}`} 
+              className={`btn bg-[#00943C] hover:bg-[#007a31] text-white px-12 h-12 text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`} 
               onClick={onSave}
               disabled={saving}
             >
               Save Now
             </button>
             <button 
-              className="btn btn-outline px-12"
+              className="btn btn-outline border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-12 h-12 text-lg font-normal normal-case rounded-md"
               onClick={() => toast.success("Next step not implemented yet")}
             >
               Next
