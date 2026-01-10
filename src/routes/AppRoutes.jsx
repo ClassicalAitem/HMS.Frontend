@@ -51,6 +51,7 @@ import BillingFinance from "@/pages/superadmin/settings/BillingFinance";
 import SecuritySettings from "@/pages/superadmin/settings/SecuritySettings";
 import SecurityPreferences from "@/pages/superadmin/settings/SecurityPreferences";
 import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
+import MedicalData from "@/pages/superadmin/settings/MedicalData";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
@@ -355,6 +356,11 @@ const AppRoutes = () => {
       <Route path="/superadmin/settings/audit-logs" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <AuditLogs />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/medical-data" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <MedicalData />
         </ProtectedRoute>
       } />
 
