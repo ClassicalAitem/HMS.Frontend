@@ -27,20 +27,11 @@ const AddDiagnosis = () => {
   const [saving, setSaving] = useState(false);
 
   // Form State
-  const [complaints, setComplaints] = useState([
-    { name: "Headache", duration: "2 days" },
-    { name: "Fever", duration: "3 days" },
-    { name: "Cough", duration: "1 week" },
-    { name: "Fatigue", duration: "5 days" }
-  ]);
-  const [medicalHistory, setMedicalHistory] = useState(["Diabetes", "Hypertension", "Asthma"]);
-  const [surgicalHistory, setSurgicalHistory] = useState(["Appendectomy", "Caesarean Section", "Tonsillectomy"]);
-  const [familyHistory, setFamilyHistory] = useState([
-    { title: "Father", value: "Hypertension" },
-    { title: "Mother", value: "Diabetes" },
-    { title: "Sibling", value: "Asthma" }
-  ]);
-  const [allergyHistory, setAllergyHistory] = useState(["Penicillin", "Peanuts", "Dust"]);
+  const [complaints, setComplaints] = useState([]);
+  const [medicalHistory, setMedicalHistory] = useState([]);
+  const [surgicalHistory, setSurgicalHistory] = useState([]);
+  const [familyHistory, setFamilyHistory] = useState([]);
+  const [allergyHistory, setAllergyHistory] = useState([]);
   const [notes, setNotes] = useState("");
 
   // Modals State
@@ -91,33 +82,71 @@ const AddDiagnosis = () => {
   const onSave = async () => {
     if (!patientId) return;
     
-    // Construct payload
-    const formattedSymptoms = complaints.map(c => `${c.name} (${c.duration})`).join(", ");
-    const formattedHistory = `
-Medical History: ${medicalHistory.join(", ")}
-Surgical History: ${surgicalHistory.join(", ")}
-Family History: ${familyHistory.map(f => `${f.title}: ${f.value}`).join(", ")}
-Allergy History: ${allergyHistory.join(", ")}
-    `.trim();
-
+    // Construct payload matching the new API documentation
     const payload = {
       patientId,
-      visitReason: "Consultation",
-      symptoms: formattedSymptoms || "None recorded",
-      diagnosis: "Pending Assessment", // Default as per new flow
-      notes: `${notes}\n\n${formattedHistory}`,
+      visitReason: "Consultation", // This could be a form field if needed, defaulting for now
+      diagnosis: "Pending Assessment", // Or derived from a new input if required
+      notes: notes,
+      complaint: complaints.map(c => {
+        // Calculate total days based on unit
+        let days = c.value || parseInt(c.duration) || 1;
+        const unit = c.unit || "";
+        
+        if (unit === "Week(s)") days *= 7;
+        else if (unit === "Month(s)") days *= 30;
+        else if (unit === "Year(s)") days *= 365;
+        
+        return {
+          symptom: c.name,
+          durationInDays: days // Send as number
+        };
+      }),
+      surgicalHistory: surgicalHistory.map(s => ({
+        procedureName: s,
+        dateOfSurgery: new Date().toISOString().split('T')[0] // Placeholder date as the current UI only captures name. Consider adding date input in modal.
+      })),
+      familyHistory: familyHistory.map(f => ({
+        relation: f.title,
+        condition: f.value,
+        value: "1" // Default value if not captured, or derive from UI if meaningful
+      })),
+      medicalHistory: medicalHistory.map(m => ({
+        title: m,
+        value: "1" // Default value or duration if applicable
+      })),
+      allergicHistory: allergyHistory.map(a => ({
+        allergen: a,
+        severity: "medium", // Default, could be added to UI
+        reaction: "reaction" // Default, could be added to UI
+      })),
+      // socialHistory is not currently in the UI state, omitting or adding empty array if required
+      socialHistory: [] 
     };
 
-    try {
-      setSaving(true);
-      await createConsultation(payload);
-      toast.success("Consultation saved successfully");
-      navigate(`/dashboard/doctor/medical-history/${patientId}`, { replace: true, state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-    } catch (e) {
-      toast.error(e?.response?.data?.message || "Failed to save consultation");
-    } finally {
+    console.log("Submitting Consultation Payload:", payload);
+
+    setSaving(true);
+    
+    toast.promise(
+      createConsultation(payload),
+      {
+        loading: 'Saving consultation...',
+        success: (res) => {
+          navigate(`/dashboard/doctor/medical-history/${patientId}`, { 
+            replace: true, 
+            state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } 
+          });
+          return "Consultation saved successfully";
+        },
+        error: (err) => {
+          console.error("Consultation Save Error:", err);
+          return err?.response?.data?.message || "Failed to save consultation";
+        }
+      }
+    ).finally(() => {
       setSaving(false);
-    }
+    });
   };
 
   return (
