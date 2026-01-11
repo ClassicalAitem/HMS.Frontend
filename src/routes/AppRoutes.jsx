@@ -21,6 +21,7 @@ import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
 import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
 import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
+import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 
@@ -84,6 +85,7 @@ import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
 import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
+import WriteDiagnosis from "@/pages/doctor/incoming/WriteDiagnosis";
 
 
 const AppRoutes = () => {
@@ -220,7 +222,13 @@ const AppRoutes = () => {
   } />
   <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId" element={
     <ProtectedRoute allowedRoles={['doctor']}>
-      <ConsultationDetails />
+      <ViewConsultation />
+    </ProtectedRoute>
+  } />
+
+  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/prescription" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <WriteDiagnosis />
     </ProtectedRoute>
   } />
   <Route path="/dashboard/doctor/send-to-cashier/:patientId" element={
