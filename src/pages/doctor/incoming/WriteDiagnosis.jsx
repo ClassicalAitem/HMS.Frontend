@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
-import { getConsultationById, updateConsultation } from "@/services/api/consultationAPI";
+import { getConsultationById } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { IoCloseCircleOutline } from "react-icons/io5";
@@ -83,14 +83,43 @@ const WriteDiagnosis = () => {
   const removeLabTest = (idx) => setLabTests(labTests.filter((_, i) => i !== idx));
 
   const handleSave = () => {
-    // Placeholder save logic
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsConfirmOpen(false);
+    
+    // Construct payload for PATCH
+    const payload = {
+      diagnosis: diagnoses.map(d => `${d.name} (${d.severity})`).join(", "),
+      notes: notes,
+      // Add other fields as per your backend requirement for prescription/lab tests if they are part of the consultation patch
+      // For now, based on provided docs, we are patching the consultation.
+      // If prescriptions/lab tests are separate endpoints, they should be handled accordingly.
+      // Assuming for this task we just patch the consultation details provided in the docs.
+    };
+
+    console.log("Submitting Diagnosis Patch:", payload);
+
     setSaving(true);
-    setTimeout(() => {
+
+    toast.promise(
+      updateConsultation(consultationId, payload),
+      {
+        loading: 'Saving diagnosis...',
+        success: (res) => {
+          // You might want to navigate back or reset state
+           navigate(`/dashboard/doctor/medical-history/${patientId}`);
+          return "Diagnosis saved successfully";
+        },
+        error: (err) => {
+          console.error("Diagnosis Save Error:", err);
+          return err?.response?.data?.message || "Failed to save diagnosis";
+        }
+      }
+    ).finally(() => {
       setSaving(false);
-      toast.success("Diagnosis and Prescription Saved!");
-      // Navigate back or to success page
-      // navigate(`/dashboard/doctor/medical-history/${patientId}`);
-    }, 1500);
+    });
   };
 
   if (loading) {
