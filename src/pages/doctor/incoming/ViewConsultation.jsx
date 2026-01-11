@@ -345,12 +345,22 @@ const ViewConsultation = () => {
           </div>
 
           {/* Footer/Action */}
-          <div className="flex justify-center pt-4 pb-12">
+          <div className="flex justify-center pt-4 pb-12 gap-4">
             <button 
               className="btn btn-outline border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-12 h-12 text-lg font-normal normal-case rounded-md"
               onClick={() => navigate(-1)}
             >
               Back
+            </button>
+            <button 
+              className="btn bg-[#00943C] hover:bg-[#007a31] text-white px-8 h-12 text-lg font-normal normal-case rounded-md"
+              onClick={() => {
+                navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, {
+                   state: { from: fromIncoming ? "incoming" : "patients" } 
+                });
+              }}
+            >
+              Write Diagnosis/Prescription
             </button>
           </div>
         </div>

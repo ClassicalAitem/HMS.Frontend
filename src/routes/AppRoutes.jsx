@@ -84,6 +84,7 @@ import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
 import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
+import WriteDiagnosis from "@/pages/doctor/incoming/WriteDiagnosis";
 
 
 const AppRoutes = () => {
@@ -221,6 +222,12 @@ const AppRoutes = () => {
   <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <ViewConsultation />
+    </ProtectedRoute>
+  } />
+
+  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/prescription" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <WriteDiagnosis />
     </ProtectedRoute>
   } />
   <Route path="/dashboard/doctor/send-to-cashier/:patientId" element={

@@ -13,6 +13,7 @@ import { IoIosCloseCircleOutline } from "react-icons/io";
 import AddComplaintModal from "./modals/AddComplaintModal";
 import AddFamilyHistoryModal from "./modals/AddFamilyHistoryModal";
 import AddHistoryModal from "./modals/AddHistoryModal";
+import { ConfirmationModal } from "@/components/modals";
 
 const AddDiagnosis = () => {
   const { patientId } = useParams();
@@ -25,6 +26,7 @@ const AddDiagnosis = () => {
   const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
   const [patient, setPatient] = useState(snapshot || null);
   const [saving, setSaving] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   // Form State
   const [complaints, setComplaints] = useState([]);
@@ -80,6 +82,11 @@ const AddDiagnosis = () => {
   const removeAllergy = (idx) => setAllergyHistory(allergyHistory.filter((_, i) => i !== idx));
 
   const onSave = async () => {
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsConfirmOpen(false);
     if (!patientId) return;
     
     // Construct payload matching the new API documentation
@@ -407,6 +414,17 @@ const AddDiagnosis = () => {
         onClose={() => setActiveModal(null)} 
         onAdd={handleAddAllergy} 
         type="Allergy"
+      />
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+        title="Save Consultation"
+        message="Are you sure you want to save this consultation? This action cannot be undone."
+        confirmText="Save Consultation"
+        cancelText="Cancel"
       />
     </div>
   );
