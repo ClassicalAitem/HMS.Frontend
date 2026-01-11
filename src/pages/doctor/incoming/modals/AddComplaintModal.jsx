@@ -50,16 +50,14 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
             <div>
               <label className="block text-sm font-medium text-base-content mb-1">Duration</label>
               <div className="flex gap-2">
-                <select 
-                  className="select select-bordered w-24"
+                <input 
+                  type="number"
+                  min="1"
+                  className="input input-bordered w-24"
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
-                >
-                  <option value="" disabled>--</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                    <option key={num} value={num}>{num}</option>
-                  ))}
-                </select>
+                  placeholder="1"
+                />
                 <select 
                   className="select select-bordered flex-1"
                   value={durationUnit}

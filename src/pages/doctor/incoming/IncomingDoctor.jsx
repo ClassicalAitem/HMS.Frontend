@@ -95,7 +95,7 @@ const IncomingDoctor = () => {
               )}
             </div>
 
-            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 rounded-md">
+            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5 rounded-md">
               {loading ? (
                 Array.from({ length: 6 }).map((_, idx) => (
                   <div key={idx} className="h-[216px] card bg-base-100 border border-base-300 shadow-sm">
