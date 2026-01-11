@@ -6,7 +6,7 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, loading = false }) =>
       <div className="p-4 card-body">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold text-base-content">Medical History</h2>
-          <button className="btn btn-success btn-sm" onClick={onAdd}>+ Add New Diagnosis</button>
+          <button className="btn btn-success btn-sm" onClick={onAdd}>+ Add New Consultation</button>
         </div>
         {loading ? (
           <div className="space-y-3">
