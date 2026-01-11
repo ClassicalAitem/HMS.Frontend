@@ -13,6 +13,9 @@ export { default as PrescriptionDetailsModal } from './PrescriptionDetailsModal'
 export { default as SelectServiceChargeModal } from './SelectServiceChargeModal';
 export { default as PharmacyActionModal2 } from './PharmacyActionModal2';
 export { default as ReceiptModal } from './ReceiptModal';
+export { default as DoctorActionModal } from './doctorActionModal';
+export { default as FrontDeskActionModal } from './frontdeskActionModal';
+export { default as LabActionModal } from './labActionModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';

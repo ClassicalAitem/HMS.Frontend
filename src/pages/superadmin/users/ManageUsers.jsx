@@ -108,13 +108,11 @@ const ManageUsers = () => {
       case 'cashier':
         return 'badge badge-secondary';
       case 'lab-technician':
-        return 'badge badge-outline badge-accen';
-      case 'lab-technician':
-        return 'badge badge-accent';
+        return 'badge badge-outline badge-accent';
       case 'surgeon':
-        return 'badge badge-ghost';
+        return 'badge badge-outline badge-ghost';
       case 'pharmacist':
-        return 'badge badge-outline';
+        return 'badge badge-outline badge-primary';
       default:
         return 'badge badge-neutral';
     }
