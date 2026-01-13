@@ -1,8 +1,13 @@
 import React, { useState } from "react";
+import { SearchableInput } from "@/components/common";
 
-const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd }) => {
+const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
+
+  React.useEffect(() => {
+    console.log('AddFamilyHistoryModal received data:', data);
+  }, [data]);
 
   if (!isOpen) return null;
 
@@ -24,12 +29,13 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-base-content mb-1">Title</label>
-              <input 
-                type="text"
-                className="input input-bordered w-full"
-                placeholder="e.g. Wife"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+              <SearchableInput 
+                data={data}
+                onSelect={(item) => setTitle(item ? item.name : "")}
+                placeholder="Search family relation..."
+                displayKey="name"
+                className="w-full"
+                initialValue={title}
               />
             </div>
 
@@ -47,16 +53,16 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd }) => {
 
           <div className="flex gap-4 mt-8">
             <button 
-              className="btn btn-success flex-1 text-base-content"
-              onClick={handleSubmit}
-            >
-              Add Family History
-            </button>
-            <button 
               className="btn btn-outline flex-1"
               onClick={onClose}
             >
               Cancel
+            </button>
+            <button 
+              className="btn btn-success flex-1 text-white"
+              onClick={handleSubmit}
+            >
+              Add Family History
             </button>
           </div>
         </div>
