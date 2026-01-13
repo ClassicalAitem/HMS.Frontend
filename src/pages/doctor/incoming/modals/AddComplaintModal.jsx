@@ -1,9 +1,14 @@
 import React, { useState } from "react";
+import { SearchableInput } from "@/components/common";
 
-const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
+const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   const [symptom, setSymptom] = useState("");
   const [duration, setDuration] = useState("");
   const [durationUnit, setDurationUnit] = useState("Day(s)");
+
+  React.useEffect(() => {
+      console.log('AddComplaintModal received data:', data);
+  }, [data]);
 
   if (!isOpen) return null;
 
@@ -33,18 +38,14 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-base-content mb-1">Symptoms</label>
-              <select 
-                className="select select-bordered w-full"
-                value={symptom}
-                onChange={(e) => setSymptom(e.target.value)}
-              >
-                <option value="">Select symptoms</option>
-                <option value="Headache">Headache</option>
-                <option value="Fever">Fever</option>
-                <option value="Cough">Cough</option>
-                <option value="Stomach Ache">Stomach Ache</option>
-                <option value="Fatigue">Fatigue</option>
-              </select>
+              <SearchableInput 
+                data={data}
+                onSelect={(item) => setSymptom(item ? item.name : "")}
+                placeholder="Search symptoms..."
+                displayKey="name"
+                className="w-full"
+                initialValue={symptom}
+              />
             </div>
 
             <div>
@@ -74,16 +75,16 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd }) => {
 
           <div className="flex gap-4 mt-8">
             <button 
-              className="btn btn-success flex-1 text-white"
-              onClick={handleSubmit}
-            >
-              Add Complaint
-            </button>
-            <button 
               className="btn btn-outline flex-1"
               onClick={onClose}
             >
               Cancel
+            </button>
+            <button 
+              className="btn btn-success flex-1 text-white"
+              onClick={handleSubmit}
+            >
+              Add
             </button>
           </div>
         </div>
