@@ -38,7 +38,7 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {['awaiting_vitals','awaiting_sampling','awaiting_injection'].map(action => (
+            {['awaiting_vitals','awaiting_sampling','awaiting_injection', 'awaiting_vaccination'].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
