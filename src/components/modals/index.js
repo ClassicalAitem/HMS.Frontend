@@ -16,6 +16,7 @@ export { default as ReceiptModal } from './ReceiptModal';
 export { default as DoctorActionModal } from './doctorActionModal';
 export { default as FrontDeskActionModal } from './frontdeskActionModal';
 export { default as LabActionModal } from './labActionModal';
+export { default as ConfirmationModal } from './ConfirmationModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';
