@@ -11,6 +11,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
     paymentMethod: 'Select payment method',
     hmoId: '',
     paidBy: 'Select payer',
+    paymentDestination: 'Select Destination',
   });
 
   // Patient search state
@@ -125,7 +126,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
   };
 
   const handleSubmit = (e) => {
-    console.log(formData)
+    console.log('get data', formData)
     e.preventDefault();
       onSubmit(formData);
       onClose();
@@ -135,6 +136,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
         paymentMethod: 'Select payment method',
         hmoId: '',
         paidBy: 'Select payer',
+        paymentDestination: 'Select Destination',
       });
       setQuery('');
       setFilteredResults([]);
@@ -148,6 +150,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
       paymentMethod: 'Select payment method',
       hmoId: '',
       paidBy: 'Select payer',
+      paymentDestination: 'Select Destination',
     });
     setQuery('');
     setFilteredResults([]);
@@ -249,8 +252,9 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
               </div>
             </div>
 
-            {/* Payment Method */}
-            <div>
+            {/* payment method & destination */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
               <label className="block mb-2 text-sm font-medium text-base-content">
                 Payment Method
               </label>
@@ -268,6 +272,31 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
                 <option value="hmo">HMO</option>
               </select>
             </div>
+              <div>
+                <label className="block mb-2 text-sm font-medium text-base-content">
+                  Payment Destination
+                </label>
+                <select
+                  name="paymentDestination"
+                  value={formData.paymentDestination}
+                  onChange={handleInputChange}
+                  className="w-full select select-bordered"
+                  required
+                >
+                  <option value="">Select Destination</option>
+                  <option value="form">Form Registration</option>
+                  <option value="pharmacy">pharmacy</option>
+                  <option value="lab_test">Lab Test</option>
+                  <option value="consultation">Consultation</option>
+                  <option value="surgery">Surgery</option>
+                  <option value="radiology">Radiology</option>
+                  <option value="admission">Admission</option>
+                  <option value="nursing">Nursing</option>
+                  <option value="vaccination">Vaccination</option>
+                  <option value="laboratory">Laboratory</option>
+                </select>
+              </div>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 justify-end pt-4">
@@ -281,7 +310,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!formData.amountPaid || !formData.paymentMethod || !formData.paidBy}
+                disabled={!formData.amountPaid || !formData.paymentMethod || !formData.paidBy || !formData.paymentDestination}
               >
                 Send Receipt
               </button>
