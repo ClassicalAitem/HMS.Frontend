@@ -7,8 +7,7 @@ import { fetchPatientById, clearPatientsError } from '../../../store/slices/pati
 import toast from 'react-hot-toast';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import ActionButtons from '../patients/ActionButtons';
-import { NurseActionModal, PharmacyActionModal2, ReceiptModal} from '@/components/modals';
-import { set } from 'react-hook-form';
+import { LabActionModal, DoctorActionModal, FrontDeskActionModal, NurseActionModal, PharmacyActionModal2, ReceiptModal} from '@/components/modals';
 
 
 const CashierPatientDetails = () => {
@@ -22,6 +21,9 @@ const CashierPatientDetails = () => {
   const [receipts, setReceipts] = useState([]);
   const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
   const [isSendToPharmacyOpen, setIsSendToPharmacyOpen] = useState(false);
+  const [isSendToLabOpen, setIsSendToLabOpen] = useState(false);
+  const [isSendToDoctorOpen, setIsSendToDoctorOpen] = useState(false);
+  const [isSendToFrontDeskOpen, setIsSendToFrontDeskOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedPatientId] = useState(patientId || (currentPatient ? currentPatient.id : null));
@@ -29,6 +31,8 @@ const CashierPatientDetails = () => {
   const toggleRow = (id) => {
     setOpenRow(openRow === id ? null : id);
   };
+
+  console.log('receipts:', receipts);
 
   // Prefer snapshot passed from Incoming; fallback to store
   const snapshot = location?.state?.patientSnapshot || null;
@@ -100,6 +104,7 @@ const CashierPatientDetails = () => {
 
   const handleReceiptSubmit = async(receiptData) => {
     try {
+      console.log('Receipt Data:', receiptData);
       await toast.promise(
         createReceipt(selectedBillingId, receiptData),
         {
@@ -122,162 +127,6 @@ const CashierPatientDetails = () => {
       console.error('Error submitting receipt:', error);
     }
   };
-
-  // const outstandingBills = [
-  //   [{
-  //     invoiceNo: "INV-10021",
-  //     date: "2025-09-15",
-  //     service: "Chest X-Ray",
-  //     amount: "₦300,000",
-  //     deposited: "₦30,000",
-  //     balance: "₦270,000",
-  //     status: "Partially Paid"
-  //   }, {
-  //     invoiceNo: "INV-10021",
-  //     date: "2025-09-15",
-  //     service: "Chest X-Ray",
-  //     amount: "₦300,000",
-  //     deposited: "₦30,000",
-  //     balance: "₦270,000",
-  //     status: "Partially Paid"
-  //   } ],
-  //   {
-  //     invoiceNo: "INV-10021",
-  //     date: "2025-09-15",
-  //     service: "Cardiology",
-  //     amount: "₦300,000",
-  //     deposited: "₦30,000",
-  //     balance: "₦270,000",
-  //     status: "Covered by HMO"
-  //   },
-  //   {
-  //     invoiceNo: "INV-10021",
-  //     date: "2025-09-15",
-  //     service: "Cardiology",
-  //     amount: "₦300,000",
-  //     deposited: "₦30,000",
-  //     balance: "₦270,000",
-  //     status: "Not Paid"
-  //   }
-  // ];
-
-  const outstandingBills = [
-  {
-    id: "f14c914e-f08b-4c96-89be-78cea3a4d881",
-    invoiceNo: "INV-00123",
-    date: "2025-11-03",
-    totalAmount: 15000,
-    deposited: 15000,
-    balance: 0,
-    status: "Paid",
-    itemDetails: [
-      {
-        code: "CONSULT",
-        price: 15000,
-        quantity: 1,
-        total: 15000,
-        description: "Consultation fee"
-      }
-    ]
-  },
-
-  {
-    id: "1f1aa4d0-f77c-442c-b37f-8d5fd086071d",
-    invoiceNo: "INV-00124",
-    date: "2025-11-04",
-    totalAmount: 42000,
-    deposited: 20000,
-    balance: 22000,
-    status: "Partially Paid",
-    itemDetails: [
-      {
-        code: "LAB-001",
-        price: 10000,
-        quantity: 1,
-        total: 10000,
-        description: "Blood test"
-      },
-      {
-        code: "DRUG-043",
-        price: 8000,
-        quantity: 2,
-        total: 16000,
-        description: "Antibiotics (Ciprofloxacin)"
-      },
-      {
-        code: "XRAY-12",
-        price: 16000,
-        quantity: 1,
-        total: 16000,
-        description: "Chest X-Ray"
-      }
-    ]
-  },
-
-  {
-    id: "6cbf0473-9d85-4dd8-b7de-1c1985772cc0",
-    invoiceNo: "INV-00125",
-    date: "2025-11-05",
-    totalAmount: 10000,
-    deposited: 0,
-    balance: 10000,
-    status: "Pending",
-    itemDetails: [
-      {
-        code: "CARD-TEST",
-        price: 5000,
-        quantity: 1,
-        total: 5000,
-        description: "Cardiology test"
-      },
-      {
-        code: "BP-CHK",
-        price: 2500,
-        quantity: 1,
-        total: 2500,
-        description: "Blood pressure check"
-      },
-      {
-        code: "TEMP-CHK",
-        price: 2500,
-        quantity: 1,
-        total: 2500,
-        description: "Temperature check"
-      }
-    ]
-  }
-];
-
-
-  const paymentHistory = [
-    {
-      receiptNo: "RCPT-5601",
-      date: "2025-09-15",
-      service: "Chest X-Ray",
-      amount: "₦300,000",
-      method: "Cash",
-      status: "Successful",
-      time: "9:00AM"
-    },
-    {
-      receiptNo: "RCPT-5601",
-      date: "2025-09-15",
-      service: "Cardiology",
-      amount: "₦300,000",
-      method: "Transfer",
-      status: "Successful",
-      time: "11:00AM"
-    },
-    {
-      receiptNo: "RCPT-5601",
-      date: "2025-09-15",
-      service: "Cardiology",
-      amount: "₦300,000",
-      method: "Transfer",
-      status: "Successful",
-      time: "11:00AM"
-    }
-  ];
 
   const totalOutstanding = billings.reduce((sum, bill) => {
     return sum + parseInt(bill.outstandingBill || 0);
@@ -425,7 +274,7 @@ const CashierPatientDetails = () => {
               <td className="font-medium">{bill.id}</td>
               <td> ₦ {bill.totalAmount.toLocaleString()}</td>
               <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
-              <td className="text-success">{bill.cashier.firstName}{" "}{bill.cashier.lastName}</td>
+              <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
               <td>
                 {bill.isCleared ? (
                   <button
@@ -517,6 +366,7 @@ const CashierPatientDetails = () => {
                   <th>Date</th>
                   <th>Amount Paid</th>
                   <th>Method</th>
+                  <th>Destination</th>
                   <th>Status</th>
                   <th>Paid By</th>
                   <th>Time</th>
@@ -537,6 +387,7 @@ const CashierPatientDetails = () => {
                       <td>{date}</td>
                       <td>₦ {Number(payment.amountPaid).toLocaleString()}</td>
                       <td>{payment.paymentMethod}</td>
+                      <td>{payment.paymentDestination}</td>
                       <td>
                         <span className="badge badge-success">{payment.status}</span>
                       </td>
@@ -551,7 +402,9 @@ const CashierPatientDetails = () => {
             </table>
           </div>
         </div>
-          <ActionButtons onSendToNurse={() => setIsSendToNurseOpen(true)} onSendToPharmacy={() => setIsSendToPharmacyOpen(true)} />
+          <ActionButtons destination={receipts[0]?.paymentDestination} onSendToNurse={() => setIsSendToNurseOpen(true)} onSendToPharmacy={() => setIsSendToPharmacyOpen(true)} onSendToLab={() => setIsSendToLabOpen(true)}
+  onSendToFrontDesk={() => setIsSendToFrontDeskOpen(true)}
+onSendToDoctor={() => setIsSendToDoctorOpen(true)}/>
         <NurseActionModal isOpen={isSendToNurseOpen}
                 onClose={() => setIsSendToNurseOpen(false)}
                 patientId={patient?.id || patientId}
@@ -564,6 +417,26 @@ const CashierPatientDetails = () => {
                 defaultAction={'awaiting_pharmacy'}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
+
+          <FrontDeskActionModal isOpen={isSendToFrontDeskOpen}
+                onClose={() => setIsSendToFrontDeskOpen(false)}
+                patientId={patient?.id || patientId}
+                defaultAction={'awaiting_front_desk'}
+                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+              />
+          <DoctorActionModal isOpen={isSendToDoctorOpen}
+                onClose={() => setIsSendToDoctorOpen(false)}
+                patientId={patient?.id || patientId}
+                defaultAction={'awaiting_consultation'}
+                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+              />
+          <LabActionModal isOpen={isSendToLabOpen}
+                onClose={() => setIsSendToLabOpen(false)}
+                patientId={patient?.id || patientId}
+                defaultAction={'awaiting_lab'}
+                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+              />
+
           {/* Receipt Modal */}
           <ReceiptModal
             isOpen={isReceiptModalOpen}

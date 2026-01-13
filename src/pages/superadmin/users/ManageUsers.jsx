@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar, FilterUsers } from '@/components/superadmin';
 import { DataTable } from '@/components/common';
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff, FaKey } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
-import { AddUserModal, ResetPasswordModal, EditUserModal } from '../../../components/modals';
+import { AddUserModal, EditUserModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
+import UsersDebug from '../../../components/common/UsersDebug';
 
 const ManageUsers = () => {
   const dispatch = useAppDispatch();
@@ -15,7 +16,6 @@ const ManageUsers = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Filter states
@@ -103,12 +103,16 @@ const ManageUsers = () => {
         return 'badge badge-info';
       case 'nurse':
         return 'badge badge-success';
-      case 'frontdesk':
+      case 'front-desk':
         return 'badge badge-primary';
       case 'cashier':
         return 'badge badge-secondary';
       case 'lab-technician':
-        return 'badge badge-outline badge-accen';
+        return 'badge badge-outline badge-accent';
+      case 'surgeon':
+        return 'badge badge-outline badge-ghost';
+      case 'pharmacist':
+        return 'badge badge-outline badge-primary';
       default:
         return 'badge badge-neutral';
     }
@@ -144,29 +148,36 @@ const ManageUsers = () => {
 
   const handleToggleUserStatus = async (userId, currentStatus) => {
     console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
-    
-    // Determine the action based on current status (if active, we want to disable, so isActive should be false)
-    const newStatus = !currentStatus;
-    
-    // For disabling/enabling account, the API expects isActive boolean
-    // When disabling (newStatus is false), we might also want to send isDisabled: true depending on backend logic
-    // But based on usersAPI.disableUserAccount, it accepts userData object
-    
-    try {
-      const result = await dispatch(toggleUserStatus({ userId, isActive: newStatus }));
+    const result = await dispatch(toggleUserStatus({ userId, isActive: !currentStatus }));
 
-      if (toggleUserStatus.fulfilled.match(result)) {
-        toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`);
-        // Refresh the list to reflect changes
-        dispatch(fetchUsers());
-      } else {
-        // Handle error from the thunk
-        const errorMessage = result.payload || 'Failed to update user status';
-        toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
+    if (toggleUserStatus.fulfilled.match(result)) {
+      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+    } else {
+      toast.error('Failed to update user status');
+
+      // Determine the action based on current status (if active, we want to disable, so isActive should be false)
+      const newStatus = !currentStatus;
+
+      // For disabling/enabling account, the API expects isActive boolean
+      // When disabling (newStatus is false), we might also want to send isDisabled: true depending on backend logic
+      // But based on usersAPI.disableUserAccount, it accepts userData object
+
+      try {
+        const result = await dispatch(toggleUserStatus({ userId, isActive: newStatus }));
+
+        if (toggleUserStatus.fulfilled.match(result)) {
+          toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`);
+          // Refresh the list to reflect changes
+          dispatch(fetchUsers());
+        } else {
+          // Handle error from the thunk
+          const errorMessage = result.payload || 'Failed to update user status';
+          toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
+        }
+      } catch (error) {
+        console.error('❌ ManageUsers: Error toggling status:', error);
+        toast.error('An unexpected error occurred');
       }
-    } catch (error) {
-      console.error('❌ ManageUsers: Error toggling status:', error);
-      toast.error('An unexpected error occurred');
     }
   };
 
@@ -265,16 +276,6 @@ const ManageUsers = () => {
             title="Edit User"
           >
             <FaEdit className="w-3 h-3" />
-          </button>
-          <button
-            onClick={() => {
-              setSelectedUser(row);
-              setIsResetPasswordModalOpen(true);
-            }}
-            className="btn btn-ghost btn-xs"
-            title="Change Password"
-          >
-            <FaKey className="w-3 h-3" />
           </button>
           <button
             onClick={() => handleDeleteUser(row.id)}
@@ -383,13 +384,6 @@ const ManageUsers = () => {
         onClose={() => setIsEditModalOpen(false)}
         user={selectedUser}
         onUserUpdated={handleUserUpdated}
-      />
-
-      {/* Change Password Modal */}
-      <ResetPasswordModal
-        isOpen={isResetPasswordModalOpen}
-        onClose={() => setIsResetPasswordModalOpen(false)}
-        user={selectedUser}
       />
 
       {/* Debug Component - Remove in production */}
