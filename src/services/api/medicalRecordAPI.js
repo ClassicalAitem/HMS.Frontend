@@ -25,9 +25,9 @@ export const createMedicalRecord = async (payload) => {
 
 
 // Update a medical complaint
-export const updateComplaint = async (complaintId, payload) => {
+export const updateComplaint = async (id, payload) => {
   try {
-    const response = await apiClient.put(`/medicalRecord/${complaintId}`, payload);
+    const response = await apiClient.patch(`/medicalRecord/${id}`, payload);
     return response.data;
   } catch (error) {
     throw error?.response?.data || error;
@@ -35,9 +35,9 @@ export const updateComplaint = async (complaintId, payload) => {
 };
 
 // Delete a medical complaint
-export const deleteComplaint = async (complaintId) => {
+export const deleteComplaint = async (id) => {
   try {
-    const response = await apiClient.delete(`/medicalRecord/${complaintId}`);
+    const response = await apiClient.delete(`/medicalRecord/${id}`);
     return response.data;
   } catch (error) {
     throw error?.response?.data || error;
