@@ -86,6 +86,12 @@ const SuperAdminSettings = () => {
       title: 'System Preferences',
       description: 'Configure system-wide settings and preferences',
       onClick: () => navigate('/superadmin/settings/security-preferences')
+    },
+    {
+      icon: FaCog,
+      title: 'Medical Data',
+      description: 'Setup medical prescriptions, allergy, etc.',
+      onClick: () => navigate('/superadmin/settings/medical-data')
     }
   ];
 
