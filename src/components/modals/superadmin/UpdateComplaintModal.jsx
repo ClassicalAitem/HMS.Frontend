@@ -102,7 +102,7 @@ const UpdateComplaintModal = ({ isOpen, onClose, complaint, onUpdated }) => {
                 <option value="surgical">Surgical</option>
                 <option value="family">Family</option>
                 <option value="social">Social</option>
-                <option value="allergical">Allergical</option>
+                <option value="allergic">Allergic</option>
               </select>
               {errors.category && (
                 <label className="label">
