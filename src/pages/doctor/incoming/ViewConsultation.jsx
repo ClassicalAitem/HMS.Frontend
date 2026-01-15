@@ -365,7 +365,17 @@ const ViewConsultation = () => {
           </div>
 
           {/* Action Footer */}
-          <div className="flex justify-end pt-6">
+          <div className="flex justify-end pt-6 gap-4">
+            <button 
+              className="btn btn-outline btn-primary px-8 gap-2 shadow-lg hover:shadow-xl transition-all"
+              onClick={() => {
+                // Future functionality: Navigate to lab test order page or open modal
+                console.log("Order further tests");
+              }}
+            >
+              <FaFileMedical />
+              Further Tests
+            </button>
             <button 
               className="btn btn-primary px-8 gap-2 shadow-lg hover:shadow-xl transition-all"
               onClick={() => {
@@ -375,7 +385,7 @@ const ViewConsultation = () => {
               }}
             >
               <FaFileMedical />
-              Write Prescription / Plan
+              Write Prescription
             </button>
           </div>
 
