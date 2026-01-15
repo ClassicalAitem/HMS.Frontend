@@ -4,6 +4,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
 import toast from "react-hot-toast";
 import { IoCloseCircleOutline } from "react-icons/io5";
@@ -33,16 +34,41 @@ const AddDiagnosis = () => {
   const [medicalHistory, setMedicalHistory] = useState([]);
   const [surgicalHistory, setSurgicalHistory] = useState([]);
   const [familyHistory, setFamilyHistory] = useState([]);
+  const [socialHistory, setSocialHistory] = useState([]);
   const [allergyHistory, setAllergyHistory] = useState([]);
   const [notes, setNotes] = useState("");
 
   // Modals State
-  const [activeModal, setActiveModal] = useState(null); // 'complaint', 'medical', 'surgical', 'family', 'allergy'
+  const [activeModal, setActiveModal] = useState(null); // 'complaint', 'medical', 'surgical', 'family', 'social', 'allergy'
+  const [medicalRecords, setMedicalRecords] = useState({
+    symptoms: [],
+    surgical: [],
+    family: [],
+    social: [],
+    allergic: []
+  });
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
+        // Fetch Medical Records
+        try {
+          const records = await getAllComplaint();
+          if (mounted && Array.isArray(records)) {
+            const categorized = {
+              symptoms: records.filter(r => r.category === 'symptoms'),
+              surgical: records.filter(r => r.category === 'surgical'),
+              family: records.filter(r => r.category === 'family'),
+              social: records.filter(r => r.category === 'social'),
+              allergic: records.filter(r => r.category === 'allergic')
+            };
+            setMedicalRecords(categorized);
+          }
+        } catch (err) {
+          console.error("Failed to load medical records", err);
+        }
+
         if (snapshot) {
           setPatient(snapshot);
           setLoadingPatient(false);
@@ -73,12 +99,14 @@ const AddDiagnosis = () => {
   const handleAddMedical = (item) => setMedicalHistory([...medicalHistory, item]);
   const handleAddSurgical = (item) => setSurgicalHistory([...surgicalHistory, item]);
   const handleAddFamily = (item) => setFamilyHistory([...familyHistory, item]);
+  const handleAddSocial = (item) => setSocialHistory([...socialHistory, item]);
   const handleAddAllergy = (item) => setAllergyHistory([...allergyHistory, item]);
 
   const removeComplaint = (idx) => setComplaints(complaints.filter((_, i) => i !== idx));
   const removeMedical = (idx) => setMedicalHistory(medicalHistory.filter((_, i) => i !== idx));
   const removeSurgical = (idx) => setSurgicalHistory(surgicalHistory.filter((_, i) => i !== idx));
   const removeFamily = (idx) => setFamilyHistory(familyHistory.filter((_, i) => i !== idx));
+  const removeSocial = (idx) => setSocialHistory(socialHistory.filter((_, i) => i !== idx));
   const removeAllergy = (idx) => setAllergyHistory(allergyHistory.filter((_, i) => i !== idx));
 
   const onSave = async () => {
@@ -127,8 +155,10 @@ const AddDiagnosis = () => {
         severity: "medium", // Default, could be added to UI
         reaction: "reaction" // Default, could be added to UI
       })),
-      // socialHistory is not currently in the UI state, omitting or adding empty array if required
-      socialHistory: [] 
+      socialHistory: (socialHistory || []).map(s => ({
+        title: s,
+        value: "1" // Default value or duration if applicable
+      }))
     };
 
     console.log("Submitting Consultation Payload:", payload);
@@ -330,6 +360,30 @@ const AddDiagnosis = () => {
             </div>
           </div>
 
+          {/* Social History */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Social History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('social')}
+              >
+                <span className="text-lg">+</span> Add Social History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {socialHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeSocial(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {socialHistory.length === 0 && <span className="text-sm text-gray-400 italic">No social history recorded</span>}
+            </div>
+          </div>
+
           {/* Past Allergy History */}
           <div className="bg-white rounded-lg shadow-sm">
             <div className="p-4 flex justify-between items-center mb-2">
@@ -391,29 +445,41 @@ const AddDiagnosis = () => {
         isOpen={activeModal === 'complaint'} 
         onClose={() => setActiveModal(null)} 
         onAdd={handleAddComplaint} 
+        data={medicalRecords.symptoms}
       />
       <AddFamilyHistoryModal 
         isOpen={activeModal === 'family'} 
         onClose={() => setActiveModal(null)} 
         onAdd={handleAddFamily} 
+        data={medicalRecords.family}
       />
       <AddHistoryModal 
         isOpen={activeModal === 'medical'} 
         onClose={() => setActiveModal(null)} 
         onAdd={handleAddMedical} 
         type="Medical"
+        data={medicalRecords.symptoms}
       />
       <AddHistoryModal 
         isOpen={activeModal === 'surgical'} 
         onClose={() => setActiveModal(null)} 
         onAdd={handleAddSurgical} 
         type="Surgical"
+        data={medicalRecords.surgical}
+      />
+      <AddHistoryModal 
+        isOpen={activeModal === 'social'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddSocial} 
+        type="Social"
+        data={medicalRecords.social}
       />
       <AddHistoryModal 
         isOpen={activeModal === 'allergy'} 
         onClose={() => setActiveModal(null)} 
         onAdd={handleAddAllergy} 
         type="Allergy"
+        data={medicalRecords.allergic}
       />
       
       {/* Confirmation Modal */}
