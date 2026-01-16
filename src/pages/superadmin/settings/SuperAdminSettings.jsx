@@ -92,6 +92,12 @@ const SuperAdminSettings = () => {
       title: 'Medical Data',
       description: 'Setup medical prescriptions, allergy, etc.',
       onClick: () => navigate('/superadmin/settings/medical-data')
+    },
+    {
+      icon: FaCog,
+      title: 'Pharmacy Inventory',
+      description: 'Setup  pharmacy inventory data, etc.',
+      onClick: () => navigate('/superadmin/settings/pharmacy-inventory')
     }
   ];
 
