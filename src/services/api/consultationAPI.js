@@ -28,8 +28,19 @@ export const createConsultation = async (payload) => {
   }
 };
 
+export const updateConsultation = async (id, payload) => {
+  if (!id) throw new Error('Consultation ID is required');
+  try {
+    const response = await apiClient.patch(`/consultation/${id}`, payload);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default {
   getConsultations,
   getConsultationById,
   createConsultation,
+  updateConsultation,
 };
