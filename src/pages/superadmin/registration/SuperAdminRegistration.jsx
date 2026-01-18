@@ -31,7 +31,7 @@ const registrationSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['superAdmin', 'admin', 'doctor', 'nurse', 'frontdesk', 'cashier'], 'Please select a valid role'),
+    .oneOf(['superAdmin', 'admin', 'doctor', 'nurse', 'front-desk', 'cashier'], 'Please select a valid role'),
   password: yup
     .string()
     .required('Password is required')
@@ -245,7 +245,7 @@ const SuperAdminRegistration = () => {
                     <option value="admin">Admin</option>
                     <option value="doctor">Doctor</option>
                     <option value="nurse">Nurse</option>
-                    <option value="frontdesk">Front Desk</option>
+                    <option value="front-desk">Front Desk</option>
                     <option value="cashier">Cashier</option>
                     <option value="lab-technician">Lab Technician</option>
                   </select>
