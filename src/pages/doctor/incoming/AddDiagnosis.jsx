@@ -4,9 +4,17 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
-import { CashierActionModal } from "@/components/modals";
 import toast from "react-hot-toast";
+import { IoCloseCircleOutline } from "react-icons/io5";
+import { IoIosCloseCircleOutline } from "react-icons/io";
+
+// Modals
+import AddComplaintModal from "./modals/AddComplaintModal";
+import AddFamilyHistoryModal from "./modals/AddFamilyHistoryModal";
+import AddHistoryModal from "./modals/AddHistoryModal";
+import { ConfirmationModal } from "@/components/modals";
 
 const AddDiagnosis = () => {
   const { patientId } = useParams();
@@ -14,31 +22,53 @@ const AddDiagnosis = () => {
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
   const [patient, setPatient] = useState(snapshot || null);
-  const [isSurgery, setIsSurgery] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isCashierOpen, setIsCashierOpen] = useState(false);
-  const [form, setForm] = useState({
-    type: "Consultation",
-    visitReason: "",
-    diagnosis: "",
-    date: "",
-    admission: "",
-    symptoms: "",
-    notes: "",
-    procedureName: "",
-    scheduledDate: "",
-    startTime: "",
-    endTime: "",
-    procedureCode: "",
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // Form State
+  const [complaints, setComplaints] = useState([]);
+  const [medicalHistory, setMedicalHistory] = useState([]);
+  const [surgicalHistory, setSurgicalHistory] = useState([]);
+  const [familyHistory, setFamilyHistory] = useState([]);
+  const [socialHistory, setSocialHistory] = useState([]);
+  const [allergyHistory, setAllergyHistory] = useState([]);
+  const [notes, setNotes] = useState("");
+
+  // Modals State
+  const [activeModal, setActiveModal] = useState(null); // 'complaint', 'medical', 'surgical', 'family', 'social', 'allergy'
+  const [medicalRecords, setMedicalRecords] = useState({
+    symptoms: [],
+    surgical: [],
+    family: [],
+    social: [],
+    allergic: []
   });
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
+        // Fetch Medical Records
+        try {
+          const records = await getAllComplaint();
+          if (mounted && Array.isArray(records)) {
+            const categorized = {
+              symptoms: records.filter(r => r.category === 'symptoms'),
+              surgical: records.filter(r => r.category === 'surgical'),
+              family: records.filter(r => r.category === 'family'),
+              social: records.filter(r => r.category === 'social'),
+              allergic: records.filter(r => r.category === 'allergic')
+            };
+            setMedicalRecords(categorized);
+          }
+        } catch (err) {
+          console.error("Failed to load medical records", err);
+        }
+
         if (snapshot) {
           setPatient(snapshot);
           setLoadingPatient(false);
@@ -61,165 +91,407 @@ const AddDiagnosis = () => {
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  const onChange = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-
-  const onSave = async () => {
-    if (!patientId) return;
-    const payload = {
-      patientId,
-      visitReason: form.visitReason || form.type || "",
-      symptoms: form.symptoms || "",
-      diagnosis: form.diagnosis || "",
-      notes: form.notes || "",
-    };
-    console.log("You are sending payload", payload);
-    try {
-      setSaving(true);
-      await createConsultation(payload);
-      toast.success("Consultation created successfully");
-      navigate(`/dashboard/doctor/medical-history/${patientId}`, { replace: true, state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-    } catch (e) {
-      toast.error(e?.response?.data?.message || "Failed to create consultation");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
+  // Handlers
+  const handleAddComplaint = (item) => setComplaints([...complaints, item]);
+  const handleAddMedical = (item) => setMedicalHistory([...medicalHistory, item]);
+  const handleAddSurgical = (item) => setSurgicalHistory([...surgicalHistory, item]);
+  const handleAddFamily = (item) => setFamilyHistory([...familyHistory, item]);
+  const handleAddSocial = (item) => setSocialHistory([...socialHistory, item]);
+  const handleAddAllergy = (item) => setAllergyHistory([...allergyHistory, item]);
+
+  const removeComplaint = (idx) => setComplaints(complaints.filter((_, i) => i !== idx));
+  const removeMedical = (idx) => setMedicalHistory(medicalHistory.filter((_, i) => i !== idx));
+  const removeSurgical = (idx) => setSurgicalHistory(surgicalHistory.filter((_, i) => i !== idx));
+  const removeFamily = (idx) => setFamilyHistory(familyHistory.filter((_, i) => i !== idx));
+  const removeSocial = (idx) => setSocialHistory(socialHistory.filter((_, i) => i !== idx));
+  const removeAllergy = (idx) => setAllergyHistory(allergyHistory.filter((_, i) => i !== idx));
+
+  const onSave = async () => {
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsConfirmOpen(false);
+    if (!patientId) return;
+    
+    // Construct payload matching the new API documentation
+    const payload = {
+      patientId,
+      visitReason: "Consultation", // This could be a form field if needed, defaulting for now
+      diagnosis: "Pending Assessment", // Or derived from a new input if required
+      notes: notes,
+      complaint: complaints.map(c => {
+        // Calculate total days based on unit
+        let days = c.value || parseInt(c.duration) || 1;
+        const unit = c.unit || "";
+        
+        if (unit === "Week(s)") days *= 7;
+        else if (unit === "Month(s)") days *= 30;
+        else if (unit === "Year(s)") days *= 365;
+        
+        return {
+          symptom: c.name,
+          durationInDays: days // Send as number
+        };
+      }),
+      surgicalHistory: surgicalHistory.map(s => ({
+        procedureName: s,
+        dateOfSurgery: new Date().toISOString().split('T')[0] // Placeholder date as the current UI only captures name. Consider adding date input in modal.
+      })),
+      familyHistory: familyHistory.map(f => ({
+        relation: f.title,
+        condition: f.value,
+        value: "1" // Default value if not captured, or derive from UI if meaningful
+      })),
+      medicalHistory: medicalHistory.map(m => ({
+        title: m,
+        value: "1" // Default value or duration if applicable
+      })),
+      allergicHistory: allergyHistory.map(a => ({
+        allergen: a,
+        severity: "medium", // Default, could be added to UI
+        reaction: "reaction" // Default, could be added to UI
+      })),
+      socialHistory: (socialHistory || []).map(s => ({
+        title: s,
+        value: "1" // Default value or duration if applicable
+      }))
+    };
+
+    console.log("Submitting Consultation Payload:", payload);
+
+    setSaving(true);
+    
+    toast.promise(
+      createConsultation(payload),
+      {
+        loading: 'Saving consultation...',
+        success: (res) => {
+          navigate(`/dashboard/doctor/medical-history/${patientId}`, { 
+            replace: true, 
+            state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } 
+          });
+          return "Consultation saved successfully";
+        },
+        error: (err) => {
+          console.error("Consultation Save Error:", err);
+          return err?.response?.data?.message || "Failed to save consultation";
+        }
+      }
+    ).finally(() => {
+      setSaving(false);
+    });
+  };
+
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-base-200/50">
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
-      <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
+      
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
       </div>
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <PatientHeaderActions
-            title="Add New Diagnosis"
-            subtitle={patient ? `${patientName || "Unknown"} • ${patient?.hospitalId || patientId || "—"}` : ""}
-            fromIncoming={fromIncoming}
-            onBack={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
-          />
+        
+        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
+          {/* Header Section */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3 w-full justify-between">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-2xl font-semibold text-base-content">Add New Consultation</h1>
+                </div>
 
-          <div className="shadow-xl card bg-base-100">
-            <div className="p-4 card-body">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Type</label>
-                  <select className="select select-bordered w-full" value={form.type} onChange={(e) => onChange("type", e.target.value)}>
-                    <option>Consultation</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Diagnosis <span className="text-error">*</span></label>
-                  <input className="input input-bordered w-full" placeholder="Enter diagnosis" value={form.diagnosis} onChange={(e) => onChange("diagnosis", e.target.value)} />
-                </div>
-                <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Admission</label>
-                  <input className="input input-bordered w-full" placeholder="MM/DD" value={form.admission} onChange={(e) => onChange("admission", e.target.value)} />
-                </div>
-                <div>
-                  <label className="block mb-1 text-sm text-base-content/70">Date</label>
-                  <input className="input input-bordered w-full" placeholder="MM/DD" value={form.date} onChange={(e) => onChange("date", e.target.value)} />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-success">Is your patient undergoing any surgery? If yes toggle on here</span>
-                  <input type="checkbox" className="toggle toggle-success toggle-sm" checked={isSurgery} onChange={(e) => setIsSurgery(e.target.checked)} />
-                </div>
-                {isSurgery && (
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Procedure Name</label>
-                      <input className="input input-bordered w-full" placeholder="Enter procedure" value={form.procedureName} onChange={(e) => onChange("procedureName", e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Scheduled Date</label>
-                      <input className="input input-bordered w-full" placeholder="MM/DD/YY" value={form.scheduledDate} onChange={(e) => onChange("scheduledDate", e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Start Time</label>
-                      <input className="input input-bordered w-full" placeholder="12:00AM" value={form.startTime} onChange={(e) => onChange("startTime", e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm text-base-content/70">End Time</label>
-                      <input className="input input-bordered w-full" placeholder="12:00AM" value={form.endTime} onChange={(e) => onChange("endTime", e.target.value)} />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block mb-1 text-sm text-base-content/70">Procedure Code</label>
-                      <input className="input input-bordered w-full" placeholder="0101010" value={form.procedureCode} onChange={(e) => onChange("procedureCode", e.target.value)} />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block mb-1 text-sm text-base-content/70">Visit Reason <span className="text-error">*</span></label>
-                  <input className="input input-bordered w-full" placeholder="Enter reason" value={form.visitReason} onChange={(e) => onChange("visitReason", e.target.value)} />
+                <div className="flex items-center gap-1 flex-col">
+                  <p className="text-sm text-base-content/70">
+                    {patient ? `${patientName || "Unknown"}` : ""}
+                  </p>
+                  <p className="text-sm text-base-content/70">
+                    {patient ? `${patient?.hospitalId || patientId || "—"}` : ""}
+                  </p>
                 </div>
               </div>
 
               <div>
-                <label className="block mb-1 text-sm text-base-content/70">Symptoms <span className="text-error">*</span></label>
-                <textarea className="textarea textarea-bordered w-full" placeholder="Enter symptoms" rows={3} value={form.symptoms} onChange={(e) => onChange("symptoms", e.target.value)} />
-              </div>
-
-              <div className="mt-4">
-                <label className="block mb-1 text-sm text-base-content/70">Notes <span className="text-error">*</span></label>
-                <textarea className="textarea textarea-bordered w-full" placeholder="Enter Additional Notes" rows={5} value={form.notes} onChange={(e) => onChange("notes", e.target.value)} />
-              </div>
-
-              <div className="mt-6 flex items-start gap-10">
-                <div>
-                  <button
-                    className="text-primary text-lg font-semibold hover:underline"
-                    onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
-                  >
-                    Send to cashier
-                  </button>
-                  <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
-                </div>
-                <div>
-                  <button
-                    className="text-primary text-lg font-semibold hover:underline"
-                    onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
-                  >
-                    Send to Pharmacy
-                  </button>
-                  <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-center">
-                <button className={`btn btn-success px-10 ${saving ? "loading" : ""}`} onClick={onSave} disabled={saving}>Save Now</button>
+                <IoIosCloseCircleOutline 
+                  className="btn btn-ghost text-error btn-md btn-circle" 
+                  onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} />
               </div>
             </div>
           </div>
+
+          {/* Complaint Section */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800">Complaint</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('complaint')}
+              >
+                <span className="text-lg">+</span> Add Complaint
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="font-medium text-gray-500 py-4 pl-6">Complaint Name</th>
+                    <th className="font-medium text-gray-500 py-4">Duration</th>
+                    <th className="w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {complaints.length > 0 ? (
+                    complaints.map((item, idx) => (
+                      <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                        <td className="py-4 pl-6 font-medium text-gray-800">{item.name}</td>
+                        <td className="py-4 text-gray-600">{item.duration}</td>
+                        <td className="py-4 pr-6 text-right">
+                          <button onClick={() => removeComplaint(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
+                            <span className="text-lg font-bold">−</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center py-8 text-gray-400">No complaints added</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Past Medical History */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Past Medical History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('medical')}
+              >
+                <span className="text-lg">+</span> Add Medical History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {medicalHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeMedical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {medicalHistory.length === 0 && <span className="text-sm text-gray-400 italic">No medical history recorded</span>}
+            </div>
+          </div>
+
+          {/* Past Surgical History */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Past Surgical History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('surgical')}
+              >
+                <span className="text-lg">+</span> Add Surgical History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {surgicalHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeSurgical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {surgicalHistory.length === 0 && <span className="text-sm text-gray-400 italic">No surgical history recorded</span>}
+            </div>
+          </div>
+
+          {/* Family History */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-800">Family History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('family')}
+              >
+                <span className="text-lg">+</span> Add Family History
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="font-medium text-gray-500 py-4 pl-6 w-1/2">Title</th>
+                    <th className="font-medium text-gray-500 py-4 w-1/2">Value</th>
+                    <th className="w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {familyHistory.length > 0 ? (
+                    familyHistory.map((item, idx) => (
+                      <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
+                        <td className="py-4 pl-6 font-medium text-gray-800">{item.title}</td>
+                        <td className="py-4 text-gray-600">{item.value}</td>
+                        <td className="py-4 pr-6 text-right">
+                          <button onClick={() => removeFamily(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
+                            <span className="text-lg font-bold">−</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="3" className="text-center py-8 text-gray-400">No family history recorded</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Social History */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Social History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('social')}
+              >
+                <span className="text-lg">+</span> Add Social History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {socialHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeSocial(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {socialHistory.length === 0 && <span className="text-sm text-gray-400 italic">No social history recorded</span>}
+            </div>
+          </div>
+
+          {/* Past Allergy History */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4 flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold text-gray-800">Past Allergy History</h3>
+              <button 
+                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
+                onClick={() => setActiveModal('allergy')}
+              >
+                <span className="text-lg">+</span> Add Allergy History
+              </button>
+            </div>
+            <div className="px-6 pb-6 flex flex-wrap gap-3">
+              {allergyHistory.map((item, idx) => (
+                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
+                  <span className="font-medium">{item}</span>
+                  <button onClick={() => removeAllergy(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <IoCloseCircleOutline className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {allergyHistory.length === 0 && <span className="text-sm text-gray-400 italic">No allergy history recorded</span>}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="bg-white rounded-lg shadow-sm">
+            <div className="p-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Notes</h3>
+              <textarea 
+                className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-[#00943C] resize-y rounded-md" 
+                placeholder="Enter Additional Notes" 
+                value={notes} 
+                onChange={(e) => setNotes(e.target.value)} 
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-center gap-4 pt-4 pb-12">
+            <button 
+              className={`btn bg-[#00943C] hover:bg-[#007a31] text-white px-12 h-12 text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`} 
+              onClick={onSave}
+              disabled={saving}
+            >
+              Save Now
+            </button>
+            <button 
+              className="btn btn-outline border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-12 h-12 text-lg font-normal normal-case rounded-md"
+              onClick={() => toast.success("Next step not implemented yet")}
+            >
+              Next
+            </button>
+          </div>
         </div>
-        {false && (
-          <CashierActionModal
-            isOpen={isCashierOpen}
-            onClose={() => setIsCashierOpen(false)}
-            patientId={patientId}
-            defaultStatus="awaiting_cashier"
-            mode="confirm"
-            patientLabel={`${patientName || "Unknown"} (${patient?.hospitalId || patientId || "—"})`}
-          />
-        )}
       </div>
+
+      {/* Modals */}
+      <AddComplaintModal 
+        isOpen={activeModal === 'complaint'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddComplaint} 
+        data={medicalRecords.symptoms}
+      />
+      <AddFamilyHistoryModal 
+        isOpen={activeModal === 'family'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddFamily} 
+        data={medicalRecords.family}
+      />
+      <AddHistoryModal 
+        isOpen={activeModal === 'medical'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddMedical} 
+        type="Medical"
+        data={medicalRecords.symptoms}
+      />
+      <AddHistoryModal 
+        isOpen={activeModal === 'surgical'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddSurgical} 
+        type="Surgical"
+        data={medicalRecords.surgical}
+      />
+      <AddHistoryModal 
+        isOpen={activeModal === 'social'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddSocial} 
+        type="Social"
+        data={medicalRecords.social}
+      />
+      <AddHistoryModal 
+        isOpen={activeModal === 'allergy'} 
+        onClose={() => setActiveModal(null)} 
+        onAdd={handleAddAllergy} 
+        type="Allergy"
+        data={medicalRecords.allergic}
+      />
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+        title="Save Consultation"
+        message="Are you sure you want to save this consultation? This action cannot be undone."
+        confirmText="Save Consultation"
+        cancelText="Cancel"
+      />
     </div>
   );
 };
