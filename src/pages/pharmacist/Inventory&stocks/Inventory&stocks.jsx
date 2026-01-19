@@ -125,7 +125,6 @@ const InventoryStocks = () => {
           </div>
           <div className="flex items-center gap-3">
             <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
-            <button className="btn btn-primary btn-sm flex items-center gap-2" onClick={() => setShowAdd(true)}><MdAdd/> Add new item</button>
           </div>
         </div>
 
@@ -176,7 +175,6 @@ const InventoryStocks = () => {
                     <option>All Categories</option>
                   </select>
                   <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
-                  <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ Add New Item</button>
                 </div>
               </div>
 
@@ -212,7 +210,7 @@ const InventoryStocks = () => {
                       <th>Stock</th>
                       <th>Reorder Level</th>
                       <th>Price</th>
-                      <th>Actions</th>
+                      {/* <th>Actions</th> */}
                     </tr>
                   </thead>
                   <tbody>
@@ -223,12 +221,12 @@ const InventoryStocks = () => {
                         <td>{item.stock ?? 0}</td>
                         <td>{item.reorderLevel ?? 0}</td>
                         <td>{item.sellingPrice ?? '—'}</td>
-                        <td>
+                        {/* <td>
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
                             <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
                           </div>
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                   </tbody>
