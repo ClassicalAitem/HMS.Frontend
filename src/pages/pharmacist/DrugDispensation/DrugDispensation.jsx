@@ -121,7 +121,7 @@ const DrugDispensation = () => {
 
           <div className="flex items-center space-x-3">
             <button className="btn btn-outline btn-sm flex items-center space-x-2"><FiDownload /><span className="text-xs">Export</span></button>
-            <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record dispensation</span></button>
+            {/* <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record dispensation</span></button> */}
           </div>
         </div>
 
