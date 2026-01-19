@@ -7,6 +7,7 @@ import { updatePrescription } from "@/services/api/prescriptionsAPI";
 import { createDispense } from "@/services/api/dispensesAPI";
 import { getInventories } from "@/services/api/inventoryAPI";
 import { batch } from "react-redux";
+//fixed Error file name is: AddDrugModal.jsx
 
 const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
   const [prescription, setPrescription] = useState(null);
