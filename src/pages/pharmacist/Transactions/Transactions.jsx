@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { FiSearch, FiDownload } from 'react-icons/fi'
-import { BiPlus } from 'react-icons/bi'
 import inventoryAPI from '@/services/api/inventoryAPI'
-import dispensesAPI from '@/services/api/dispensesAPI'
 import toast from 'react-hot-toast'
 
 const StatCard = ({ title, value, hint }) => (
@@ -146,7 +144,7 @@ const Transactions = () => {
 
           <div className="flex items-center space-x-3">
             <button className="btn btn-outline btn-sm flex items-center space-x-2"><FiDownload /><span className="text-xs">Export</span></button>
-            <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record Transaction</span></button>
+            {/* <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record Transaction</span></button> */}
           </div>
         </div>
 

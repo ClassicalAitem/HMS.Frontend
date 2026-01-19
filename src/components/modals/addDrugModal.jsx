@@ -16,9 +16,8 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [isFullyAdministered, setIsFullyAdministered] = useState(false);
   const [inventoryItems, setInventoryItems] = useState([]);
-  const [meds, setMeds] = useState([
-      { id: 1, name: "Paracetamol", quantity: "50", batchNumber: "HR72386G", expiry: "2026-10-20" },
-    ]);
+  const [meds, setMeds] = useState([]);
+
 
   const [newMed, setNewMed] = useState({ name: "", quantity: "", batchNumber: "", expiry: "" });
 
