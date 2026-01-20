@@ -5,8 +5,10 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getConsultationById } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus } from "react-icons/fa";
+import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
+import OrderInvestigationModal from "./modals/OrderInvestigationModal";
+import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -18,7 +20,9 @@ const ViewConsultation = () => {
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState(null);
   const [patient, setPatient] = useState(null);
+  const [prescriptions, setPrescriptions] = useState([]);
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
+  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -29,9 +33,31 @@ const ViewConsultation = () => {
       
       const pid = patientId || data?.patientId;
       if (pid) {
+        // Fetch patient details
         const pRes = await getPatientById(pid);
         const pData = pRes?.data ?? pRes;
         setPatient(pData);
+        
+        // Fetch prescriptions for this patient
+        try {
+          const presRes = await getPrescriptionByPatientId(pid);
+          
+          const rawData = presRes?.data ?? presRes;
+          let list = [];
+
+          if (Array.isArray(rawData)) {
+            list = rawData;
+          } else if (rawData && typeof rawData === 'object') {
+            // If it's a single object (and not an empty one), wrap it in an array
+            if (Object.keys(rawData).length > 0) {
+               list = [rawData];
+            }
+          }
+          
+          setPrescriptions(list);
+        } catch (presErr) {
+          console.error("Error loading prescriptions:", presErr);
+        }
       } else if (data?.patient) {
         setPatient(data.patient);
       }
@@ -65,6 +91,12 @@ const ViewConsultation = () => {
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
   const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
+
+  // Filter prescriptions related to this consultation (if there's a link) or just show recent ones
+  // Since the API doesn't seem to link prescription to consultationId directly yet, 
+  // we'll display the most recent prescription if it matches the consultation date closely, or just list recent ones.
+  // For now, let's show all prescriptions for this patient as a reference.
+  const recentPrescriptions = prescriptions.slice(0, 3);
 
   // Helper for Skeleton Loading
   const SkeletonCard = ({ title, icon }) => (
@@ -125,6 +157,15 @@ const ViewConsultation = () => {
         onClose={() => setIsDiagnosisModalOpen(false)}
         consultationId={consultationId}
         onDiagnosisAdded={loadData}
+      />
+      <OrderInvestigationModal 
+        isOpen={isInvestigationModalOpen}
+        onClose={() => setIsInvestigationModalOpen(false)}
+        patientId={patientId}
+        onOrderCreated={() => {
+           // Optional: Reload data or show success notification
+           console.log("Investigation ordered");
+        }}
       />
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
@@ -234,6 +275,45 @@ const ViewConsultation = () => {
                     <p className="whitespace-pre-wrap text-base-content/80 leading-relaxed">
                       {notes || "No additional clinical notes."}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Prescriptions */}
+              <div className="card bg-base-100 shadow-sm border border-base-200">
+                <div className="card-body p-0">
+                  <div className="p-6 border-b border-base-200 flex items-center gap-2">
+                    <FaPrescriptionBottleAlt className="text-success w-5 h-5" />
+                    <h3 className="text-lg font-bold text-base-content">Prescriptions</h3>
+                  </div>
+                  <div className="p-6">
+                    {recentPrescriptions.length > 0 ? (
+                      <div className="space-y-4">
+                        {recentPrescriptions.map((pres, idx) => (
+                          <div key={idx} className="border border-base-200 rounded-lg p-4 bg-base-50">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm mb-1`}>
+                                  {pres.status}
+                                </span>
+                                <p className="text-xs text-base-content/60">
+                                  {new Date(pres.createdAt).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <ul className="list-disc list-inside text-sm space-y-1">
+                              {pres.medications?.map((med, mIdx) => (
+                                <li key={mIdx} className="text-base-content/80">
+                                  <span className="font-medium">{med.drugName}</span> - {med.dosage} ({med.frequency})
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-base-content/50 italic">No prescriptions found for this patient.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -368,10 +448,7 @@ const ViewConsultation = () => {
           <div className="flex justify-end pt-6 gap-4">
             <button 
               className="btn btn-outline btn-primary px-8 gap-2 shadow-lg hover:shadow-xl transition-all"
-              onClick={() => {
-                // Future functionality: Navigate to lab test order page or open modal
-                console.log("Order further tests");
-              }}
+              onClick={() => setIsInvestigationModalOpen(true)}
             >
               <FaFileMedical />
               Further Tests
