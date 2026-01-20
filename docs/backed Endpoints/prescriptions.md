@@ -5,7 +5,7 @@ curl --location '/prescription' \
 --data '{
     "patientId": "452b51c8-787c-49f9-aea5-2fa91d42fa08",
     "medications": [{
-        "medicationType": "oral",
+      "medicationType": "oral",
        "drugCode": "TAB_1003",
        "drugName": "amoxcillian",
        "dosage":  "12",
@@ -125,7 +125,7 @@ Example Response
 GET
 Get Prescription By Patient ID
 
-curl --location '/prescription/getPrescriptionByPatientId/452b51c8-787c-49f9-aea5-2fa91d42fa08' \
+curl --location '/prescription/getPrescriptionByPatientId/fb1e3148-d266-4fd3-a2f4-e15889fd6011' \
 --data ''
 
 Example Response
@@ -134,24 +134,22 @@ Example Response
   "code": 200,
   "message": "Operation Successful",
   "data": {
-    "_id": "68d4771aae3823efd10f7ccc",
-    "patientId": "0119f2a1-f5d3-4bb8-832b-536dfe2ba43e",
-    "doctorId": "0e875b7e-b0fb-4680-8381-154857a7c9bb",
+    "_id": "696e375573baa2c7c0ed6ec3",
+    "patientId": "fb1e3148-d266-4fd3-a2f4-e15889fd6011",
+    "doctorId": "d3d5b2a5-1b0a-45f0-83b1-cbb8909a4d57",
     "medications": [
       {
-        "medicationType": "injection",
-        "dosesGiven": 0,
-        "drugCode": "AMOX500",
-        "drugName": "Amoxicillin",
-        "dosage": "500mg",
-        "frequency": "3 times daily",
-        "duration": "7 days",
-        "instructions": "Take after meals"
+        "medicationType": "oral",
+        "drugName": "LA",
+        "dosage": "200mg",
+        "frequency": "Twice Daily",
+        "duration": "14 Days",
+        "dosesGiven": 0
       }
     ],
-    "status": "completed",
-    "createdAt": "2025-09-24T22:56:26.042Z",
-    "updatedAt": "2025-09-24T23:07:19.916Z",
+    "status": "pending",
+    "createdAt": "2026-01-19T13:53:25.337Z",
+    "updatedAt": "2026-01-19T13:53:25.337Z",
     "__v": 0
   }
 }
