@@ -101,6 +101,7 @@ const WritePrescription = () => {
     try {
       const payload = {
         patientId,
+        consultationId, // Add consultationId to link prescription to consultation
         medications: data.medications.map(med => ({
           ...med,
           // Convert empty instructions to undefined to avoid sending empty strings if backend disallows it
