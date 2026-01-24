@@ -50,9 +50,9 @@ export const updatePrescription = async (id, updateData) => {
   }
 }
 
-export const createPrescription = async (data) => {
+export const createPrescription = async (data, consultationId) => {
   try {
-    const response = await apiClient.post('/prescription', data)
+    const response = await apiClient.post(`/prescription/${consultationId}`, data)
     return response.data ?? response
   } catch (err) {
     console.error('prescriptionsAPI: createPrescription error', err.response?.data || err.message)

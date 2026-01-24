@@ -114,7 +114,7 @@ const WritePrescription = () => {
       };
 
       console.log("Submitting prescription payload:", payload);
-      await createPrescription(payload);
+      await createPrescription(payload, consultationId);
       toast.success("Prescription created successfully!");
       navigate(`/dashboard/doctor/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } });
     } catch (error) {
@@ -134,7 +134,7 @@ const WritePrescription = () => {
 
         <div className="flex overflow-hidden flex-col flex-1">
           <Header onToggleSidebar={toggleSidebar} />
-          
+
           <div className="flex flex-col h-full overflow-hidden">
             {/* Header Skeleton */}
             <div className="bg-base-100 border-b border-base-200 px-6 py-4 flex justify-between items-center shrink-0">
@@ -186,14 +186,14 @@ const WritePrescription = () => {
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
-      
+
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
       </div>
 
       <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         <div className="flex flex-col h-full overflow-hidden">
           {/* Header */}
           <div className="bg-base-100 border-b border-base-200 px-6 py-4 flex justify-between items-center shrink-0">
@@ -208,7 +208,7 @@ const WritePrescription = () => {
                 </p>
               </div>
             </div>
-            <button 
+            <button
               className="btn btn-ghost btn-circle text-base-content/70 hover:bg-base-200"
               onClick={() => navigate(-1)}
             >
@@ -220,10 +220,10 @@ const WritePrescription = () => {
             {/* Main Form Area */}
             <div className="flex-1 overflow-y-auto p-6">
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mx-auto">
-                
+
                 {fields.map((item, index) => {
                   const medicationType = watch(`medications.${index}.medicationType`);
-                  
+
                   return (
                     <div key={item.id} className="card bg-base-100 shadow-sm border border-base-200 relative overflow-visible">
                       <div className="card-body p-6">
@@ -233,8 +233,8 @@ const WritePrescription = () => {
                             <h3 className="font-semibold text-lg">Medication Details</h3>
                           </div>
                           {fields.length > 1 && (
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               className="btn btn-ghost btn-sm text-error"
                               onClick={() => remove(index)}
                             >
@@ -249,18 +249,18 @@ const WritePrescription = () => {
                             <label className="label cursor-pointer justify-start gap-4">
                               <span className="label-text font-medium">Type:</span>
                               <label className="cursor-pointer flex items-center gap-2">
-                                <input 
-                                  type="radio" 
-                                  value="oral" 
+                                <input
+                                  type="radio"
+                                  value="oral"
                                   className="radio radio-primary radio-sm"
                                   {...register(`medications.${index}.medicationType`)}
                                 />
                                 <span className="label-text flex items-center gap-1"><FaPills /> Oral</span>
                               </label>
                               <label className="cursor-pointer flex items-center gap-2">
-                                <input 
-                                  type="radio" 
-                                  value="injection" 
+                                <input
+                                  type="radio"
+                                  value="injection"
                                   className="radio radio-primary radio-sm"
                                   {...register(`medications.${index}.medicationType`)}
                                 />
@@ -274,9 +274,9 @@ const WritePrescription = () => {
                             <label className="label">
                               <span className="label-text">Drug Name</span>
                             </label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. Amoxicillin" 
+                            <input
+                              type="text"
+                              placeholder="e.g. Amoxicillin"
                               className={`input input-bordered w-full ${errors.medications?.[index]?.drugName ? 'input-error' : ''}`}
                               {...register(`medications.${index}.drugName`)}
                             />
@@ -289,9 +289,9 @@ const WritePrescription = () => {
                             <label className="label">
                               <span className="label-text">Dosage</span>
                             </label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. 500mg" 
+                            <input
+                              type="text"
+                              placeholder="e.g. 500mg"
                               className={`input input-bordered w-full ${errors.medications?.[index]?.dosage ? 'input-error' : ''}`}
                               {...register(`medications.${index}.dosage`)}
                             />
@@ -304,9 +304,9 @@ const WritePrescription = () => {
                             <label className="label">
                               <span className="label-text">Frequency</span>
                             </label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. Twice daily" 
+                            <input
+                              type="text"
+                              placeholder="e.g. Twice daily"
                               className={`input input-bordered w-full ${errors.medications?.[index]?.frequency ? 'input-error' : ''}`}
                               {...register(`medications.${index}.frequency`)}
                             />
@@ -319,9 +319,9 @@ const WritePrescription = () => {
                             <label className="label">
                               <span className="label-text">Duration</span>
                             </label>
-                            <input 
-                              type="text" 
-                              placeholder="e.g. 7 days" 
+                            <input
+                              type="text"
+                              placeholder="e.g. 7 days"
                               className={`input input-bordered w-full ${errors.medications?.[index]?.duration ? 'input-error' : ''}`}
                               {...register(`medications.${index}.duration`)}
                             />
@@ -337,9 +337,9 @@ const WritePrescription = () => {
                                 <label className="label">
                                   <span className="label-text">Doses Given</span>
                                 </label>
-                                <input 
-                                  type="number" 
-                                  placeholder="e.g. 1" 
+                                <input
+                                  type="number"
+                                  placeholder="e.g. 1"
                                   className={`input input-bordered w-full ${errors.medications?.[index]?.dosesGiven ? 'input-error' : ''}`}
                                   {...register(`medications.${index}.dosesGiven`)}
                                 />
@@ -352,7 +352,7 @@ const WritePrescription = () => {
                                 <label className="label">
                                   <span className="label-text">Injection Status</span>
                                 </label>
-                                <select 
+                                <select
                                   className={`select select-bordered w-full ${errors.medications?.[index]?.injectionStatus ? 'select-error' : ''}`}
                                   {...register(`medications.${index}.injectionStatus`)}
                                 >
@@ -370,8 +370,8 @@ const WritePrescription = () => {
                             <label className="label">
                               <span className="label-text">Instructions (Optional)</span>
                             </label>
-                            <textarea 
-                              className="textarea textarea-bordered h-20" 
+                            <textarea
+                              className="textarea textarea-bordered h-20"
                               placeholder="e.g. Take after meals"
                               {...register(`medications.${index}.instructions`)}
                             ></textarea>
@@ -382,8 +382,8 @@ const WritePrescription = () => {
                   );
                 })}
 
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-outline btn-primary w-full border-dashed"
                   onClick={() => append({
                     medicationType: 'oral',
@@ -400,15 +400,15 @@ const WritePrescription = () => {
                 </button>
 
                 <div className="flex justify-end gap-4 pt-4 pb-8">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="btn btn-ghost"
                     onClick={() => navigate(-1)}
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className={`btn btn-primary px-8 ${saving ? 'loading' : ''}`}
                     disabled={saving}
                   >
