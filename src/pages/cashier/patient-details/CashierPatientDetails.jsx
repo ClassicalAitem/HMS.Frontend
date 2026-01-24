@@ -254,7 +254,8 @@ const CashierPatientDetails = () => {
           <th>Billing ID</th>
           <th>Total amount</th>
           <th>Outstanding Bills</th>
-          <th>Cashier Name</th>
+          <th>Raised By</th>
+          <th>Role</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -275,6 +276,7 @@ const CashierPatientDetails = () => {
               <td> ₦ {bill.totalAmount.toLocaleString()}</td>
               <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
               <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
+              <td className="text-success">{bill.raisedBy.accountType}</td>
               <td>
                 {bill.isCleared ? (
                   <button
