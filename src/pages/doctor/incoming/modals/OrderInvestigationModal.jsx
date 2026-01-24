@@ -17,7 +17,7 @@ const investigationSchema = yup.object({
   priority: yup.string().oneOf(['normal', 'urgent', 'emergency']).required(),
 });
 
-const OrderInvestigationModal = ({ isOpen, onClose, patientId, doctorId, onOrderCreated }) => {
+const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, doctorId, onOrderCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -51,7 +51,7 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, doctorId, onOrder
         status: 'in_progress'
       };
 
-      await createInvestigation(payload);
+      await createInvestigation(consultationId, payload);
       toast.success('Investigation order created successfully!');
       reset();
       if (onOrderCreated) onOrderCreated();
@@ -67,7 +67,7 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, doctorId, onOrder
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-2xl mx-4 bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-200 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-base-200 flex justify-between items-center bg-base-100">
