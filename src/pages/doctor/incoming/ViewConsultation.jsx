@@ -5,8 +5,11 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getConsultationById } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus } from "react-icons/fa";
+import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
+import OrderInvestigationModal from "./modals/OrderInvestigationModal";
+import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
+import { getInvestigationByConsultationId } from "@/services/api/investigationAPI";
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -18,7 +21,10 @@ const ViewConsultation = () => {
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState(null);
   const [patient, setPatient] = useState(null);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [labRequests, setLabRequests] = useState([]); // Placeholder for future lab data
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
+  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -29,9 +35,49 @@ const ViewConsultation = () => {
       
       const pid = patientId || data?.patientId;
       if (pid) {
-        const pRes = await getPatientById(pid);
-        const pData = pRes?.data ?? pRes;
-        setPatient(pData);
+        // Parallel fetching for patient data, prescriptions, and lab requests
+        // We use Promise.allSettled to ensure one failure doesn't block others
+        const promises = [
+           getPatientById(pid),
+           getPrescriptionsForConsultation(consultationId),
+           getInvestigationByConsultationId(consultationId)
+        ];
+
+        const results = await Promise.allSettled(promises);
+
+        // 1. Patient Details
+        if (results[0].status === 'fulfilled') {
+          const pRes = results[0].value;
+          setPatient(pRes?.data ?? pRes);
+        } else {
+          console.error("Error loading patient:", results[0].reason);
+        }
+
+        // 2. Prescriptions
+        if (results[1].status === 'fulfilled') {
+           const presRes = results[1].value;
+           const rawData = presRes?.data ?? presRes;
+           let list = [];
+           if (Array.isArray(rawData)) {
+             list = rawData;
+           } else if (rawData && typeof rawData === 'object') {
+             if (Object.keys(rawData).length > 0) list = [rawData];
+           }
+           setPrescriptions(list);
+        } else {
+           console.error("Error loading prescriptions:", results[1].reason);
+        }
+
+        // 3. Lab Investigations
+        if (results[2].status === 'fulfilled') {
+           const labRes = results[2].value;
+           const rawLabData = labRes?.data ?? labRes ?? [];
+           const labList = Array.isArray(rawLabData) ? rawLabData : [];
+           setLabRequests(labList);
+        } else {
+           console.error("Error loading lab investigations:", results[2].reason);
+        }
+
       } else if (data?.patient) {
         setPatient(data.patient);
       }
@@ -65,6 +111,12 @@ const ViewConsultation = () => {
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
   const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
+
+  // Filter prescriptions related to this consultation (if there's a link) or just show recent ones
+  // Since the API doesn't seem to link prescription to consultationId directly yet, 
+  // we'll display the most recent prescription if it matches the consultation date closely, or just list recent ones.
+  // For now, let's show all prescriptions for this patient as a reference.
+  const recentPrescriptions = prescriptions.slice(0, 3);
 
   // Helper for Skeleton Loading
   const SkeletonCard = ({ title, icon }) => (
@@ -126,6 +178,16 @@ const ViewConsultation = () => {
         consultationId={consultationId}
         onDiagnosisAdded={loadData}
       />
+      <OrderInvestigationModal 
+        isOpen={isInvestigationModalOpen}
+        onClose={() => setIsInvestigationModalOpen(false)}
+        patientId={patientId}
+        consultationId={consultationId}
+        onOrderCreated={() => {
+           // Optional: Reload data or show success notification
+           console.log("Investigation ordered");
+        }}
+      />
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
@@ -163,77 +225,193 @@ const ViewConsultation = () => {
             </button>
           </div>
 
-          {/* Main Content Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
             
             {/* Left Column - Key Clinical Info */}
             <div className="xl:col-span-2 space-y-6">
               
-              {/* Visit Reason & Diagnosis */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="card bg-base-100 shadow-sm border border-base-200">
-                  <div className="card-body p-6">
-                    <h3 className="card-title text-base text-base-content/70 mb-2 uppercase tracking-wide">Visit Reason</h3>
-                    <p className="text-lg font-medium text-base-content">{visitReason}</p>
-                  </div>
-                </div>
-                <div className="card bg-base-100 shadow-sm border border-base-200">
-                  <div className="card-body p-6">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="card-title text-base text-base-content/70 uppercase tracking-wide">Diagnosis</h3>
-                      {(diagnosis === "Pending Assessment" || diagnosis === "Pending diagnosis") && (
-                        <button 
-                          className="btn btn-xs btn-outline btn-success gap-1"
-                          onClick={() => setIsDiagnosisModalOpen(true)}
-                        >
-                          <FaPlus className="w-3 h-3" /> Add
-                        </button>
-                      )}
-                    </div>
-                    <p className={`text-lg font-medium ${diagnosis === "Pending Assessment" || diagnosis === "Pending diagnosis" ? "text-warning italic" : "text-primary"}`}>
-                      {diagnosis}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Complaints */}
+              {/* Consultation Summary Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-0">
-                  <div className="p-6 border-b border-base-200 flex items-center gap-2">
-                    <FaNotesMedical className="text-error w-5 h-5" />
-                    <h3 className="text-lg font-bold text-base-content">Complaints</h3>
-                  </div>
-                  <div className="p-6">
-                    {complaints.length > 0 ? (
-                      <div className="flex flex-wrap gap-3">
-                        {complaints.map((item, idx) => (
-                          <div key={idx} className="badge badge-lg badge-outline gap-2 p-4">
-                            <span className="font-semibold">{item.symptom}</span>
-                            <span className="text-xs opacity-70 border-l pl-2 border-base-content/20">
-                              {item.durationInDays ? `${item.durationInDays} days` : "Duration N/A"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-base-content/50 italic">No complaints recorded</p>
+                  <div className="p-4 border-b border-base-200 bg-base-50/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FaNotesMedical className="text-primary w-5 h-5" />
+                      <h3 className="font-bold text-lg text-base-content">Consultation Overview</h3>
+                    </div>
+                    {(diagnosis === "Pending Assessment" || diagnosis === "Pending diagnosis") && (
+                      <button 
+                        className="btn btn-sm btn-outline btn-success gap-2"
+                        onClick={() => setIsDiagnosisModalOpen(true)}
+                      >
+                        <FaPlus className="w-3 h-3" /> Add Diagnosis
+                      </button>
                     )}
                   </div>
+                  
+                  <div className="p-6 grid gap-6">
+                    {/* Reason & Diagnosis Row */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Visit Reason</h4>
+                        <div className="p-3 bg-base-200/50 rounded-lg">
+                          <p className="font-medium text-base-content">{visitReason}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Diagnosis</h4>
+                        <div className={`p-3 rounded-lg border ${diagnosis.includes("Pending") ? "bg-warning/10 border-warning/20 text-warning-content" : "bg-success/10 border-success/20"}`}>
+                          <p className="font-medium">{diagnosis}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Complaints */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Patient Complaints</h4>
+                      {complaints.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {complaints.map((item, idx) => (
+                            <div key={idx} className="badge badge-lg badge-outline gap-2 p-3 bg-base-100">
+                              <span className="font-semibold">{item.symptom}</span>
+                              {item.durationInDays && (
+                                <span className="text-xs opacity-70 border-l pl-2 border-base-content/20">
+                                  {item.durationInDays} days
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-base-content/50 italic">No complaints recorded</p>
+                      )}
+                    </div>
+
+                    {/* Clinical Notes */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Clinical Notes</h4>
+                      <div className="p-4 bg-base-200/30 rounded-xl border border-base-200 min-h-[100px]">
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-base-content/80">
+                          {notes || "No additional clinical notes."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Notes */}
+              {/* Treatment Plan Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-0">
-                  <div className="p-6 border-b border-base-200 flex items-center gap-2">
-                    <FaFileMedical className="text-warning w-5 h-5" />
-                    <h3 className="text-lg font-bold text-base-content">Clinical Notes</h3>
+                  <div className="p-4 border-b border-base-200 bg-base-50/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FaPrescriptionBottleAlt className="text-success w-5 h-5" />
+                      <h3 className="font-bold text-lg text-base-content">Treatment Plan & Orders</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2"
+                        onClick={() => setIsInvestigationModalOpen(true)}
+                      >
+                        <FaFlask /> Order Labs
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-primary gap-2"
+                        onClick={() => {
+                          navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, {
+                             state: { from: fromIncoming ? "incoming" : "patients" } 
+                          });
+                        }}
+                      >
+                        <FaPrescriptionBottleAlt /> Prescribe
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-6 bg-base-200/30 min-h-[150px]">
-                    <p className="whitespace-pre-wrap text-base-content/80 leading-relaxed">
-                      {notes || "No additional clinical notes."}
-                    </p>
+
+                  <div className="p-6 space-y-8">
+                  
+                  {/* Lab Requests (Placeholder) */}
+                    <div>
+                      <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-info"></span>
+                        Lab Investigations
+                      </h4>
+                      {labRequests.length > 0 ? (
+                        <div className="grid gap-3">
+                          {labRequests.map((lab, idx) => (
+                            <div key={idx} className="border border-base-200 rounded-lg p-3 hover:shadow-sm transition-shadow bg-base-50">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={`badge ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'} badge-sm`}>
+                                    {lab.status.replace('_', ' ')}
+                                  </span>
+                                  <span className="text-xs text-base-content/50">
+                                    Requested {new Date(lab.createdAt).toLocaleDateString()}
+                                  </span>
+                                  {lab.priority === 'urgent' && <span className="badge badge-error badge-outline badge-xs">Urgent</span>}
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                {lab.tests?.map((test, tIdx) => (
+                                  <div key={tIdx} className="flex items-center gap-2 text-sm">
+                                    <span className="font-medium text-base-content">{test.name}</span>
+                                    {test.code && <span className="text-xs text-base-content/50">({test.code})</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+                          <p className="text-sm text-base-content/50">No lab investigations ordered yet</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="divider my-0"></div>
+
+
+                    {/* Prescriptions */}
+                    <div>
+                      <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-success"></span>
+                        Active Prescriptions
+                      </h4>
+                      {recentPrescriptions.length > 0 ? (
+                        <div className="grid gap-3">
+                          {recentPrescriptions.map((pres, idx) => (
+                            <div key={idx} className="border border-base-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}>
+                                    {pres.status}
+                                  </span>
+                                  <span className="text-xs text-base-content/50">
+                                    Ordered {new Date(pres.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                {pres.medications?.map((med, mIdx) => (
+                                  <div key={mIdx} className="flex items-center gap-2 text-sm">
+                                    <span className="font-medium text-base-content">{med.drugName}</span>
+                                    <span className="text-base-content/40">•</span>
+                                    <span className="text-base-content/70">{med.dosage}</span>
+                                    <span className="text-base-content/40">•</span>
+                                    <span className="text-base-content/70">{med.frequency}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+                          <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 </div>
               </div>
@@ -253,8 +431,10 @@ const ViewConsultation = () => {
                     <ul className="space-y-3">
                       {medicalHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <span className="font-medium">{item.title}</span>
-                          <span className="text-base-content/60 bg-base-200 px-2 py-0.5 rounded text-xs">{item.value}</span>
+                          <span className="font-medium">{typeof item === 'object' ? item.title || item.name || JSON.stringify(item) : item}</span>
+                          <span className="text-base-content/60 bg-base-200 px-2 py-0.5 rounded text-xs">
+                            {idx + 1}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -274,13 +454,8 @@ const ViewConsultation = () => {
                   {surgicalHistory.length > 0 ? (
                     <ul className="space-y-3">
                       {surgicalHistory.map((item, idx) => (
-                        <li key={idx} className="text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <div className="font-medium">{item.procedureName}</div>
-                          {item.dateOfSurgery && (
-                            <div className="text-xs text-base-content/60 mt-0.5">
-                              {new Date(item.dateOfSurgery).toLocaleDateString()}
-                            </div>
-                          )}
+                        <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
+                          <span className="font-medium">{typeof item === 'object' ? item.procedure || item.title || item.name || JSON.stringify(item) : item}</span>
                         </li>
                       ))}
                     </ul>
@@ -290,7 +465,7 @@ const ViewConsultation = () => {
                 </div>
               </div>
 
-              {/* Allergies */}
+              {/* Allergies - Highlighted */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-5">
                   <div className="flex items-center gap-2 mb-4 text-error">
@@ -301,13 +476,13 @@ const ViewConsultation = () => {
                     <div className="flex flex-wrap gap-2">
                       {allergyHistory.map((item, idx) => (
                         <div key={idx} className="badge badge-error badge-outline gap-1 h-auto py-1">
-                          <span className="font-medium">{item.allergen}</span>
-                          {item.reaction && <span className="text-xs opacity-75">({item.reaction})</span>}
+                          <span className="font-medium">{typeof item === 'object' ? item.allergen || item.title || item.name || JSON.stringify(item) : item}</span>
+                          <span className="text-xs opacity-75">(reaction)</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-base-content/50 italic">No known allergies</p>
+                    <p className="text-sm text-base-content/50 italic">None recorded</p>
                   )}
                 </div>
               </div>
@@ -322,12 +497,9 @@ const ViewConsultation = () => {
                   {familyHistory.length > 0 ? (
                     <ul className="space-y-3">
                       {familyHistory.map((item, idx) => (
-                        <li key={idx} className="text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <div className="flex justify-between">
-                            <span className="font-medium">{item.relation}</span>
-                            <span className="text-xs bg-base-200 px-2 py-0.5 rounded">{item.value}</span>
-                          </div>
-                          <div className="text-xs text-base-content/60 mt-0.5">{item.condition}</div>
+                        <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
+                          <span className="font-medium">{item.title}</span>
+                          <span className="text-base-content/70">{item.value}</span>
                         </li>
                       ))}
                     </ul>
@@ -348,10 +520,7 @@ const ViewConsultation = () => {
                     <ul className="space-y-3">
                       {socialHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <span className="font-medium">{item.habit || item.title}</span>
-                          <span className="text-base-content/60 bg-base-200 px-2 py-0.5 rounded text-xs">
-                            {item.frequencyPerDay ? `${item.frequencyPerDay}/day` : (item.value || "")}
-                          </span>
+                          <span className="font-medium">{typeof item === 'object' ? item.habit || item.title || item.name || JSON.stringify(item) : item}</span>
                         </li>
                       ))}
                     </ul>
@@ -360,34 +529,11 @@ const ViewConsultation = () => {
                   )}
                 </div>
               </div>
-
             </div>
           </div>
-
-          {/* Action Footer */}
-          <div className="flex justify-end pt-6 gap-4">
-            <button 
-              className="btn btn-outline btn-primary px-8 gap-2 shadow-lg hover:shadow-xl transition-all"
-              onClick={() => {
-                // Future functionality: Navigate to lab test order page or open modal
-                console.log("Order further tests");
-              }}
-            >
-              <FaFileMedical />
-              Further Tests
-            </button>
-            <button 
-              className="btn btn-primary px-8 gap-2 shadow-lg hover:shadow-xl transition-all"
-              onClick={() => {
-                navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, {
-                   state: { from: fromIncoming ? "incoming" : "patients" } 
-                });
-              }}
-            >
-              <FaFileMedical />
-              Write Prescription
-            </button>
-          </div>
+          
+          {/* Bottom Spacing */}
+          <div className="h-12"></div>
 
         </div>
       </div>

@@ -27,7 +27,7 @@ const StatCard = ({ title, value, hint, color }) => (
 
 const Badge = ({ children, variant }) => {
   const base = 'px-3 py-1 rounded-full text-xs font-medium';
-  const cls = variant === 'dispensed' ? 'bg-error/10 text-error' : variant === 'pending' ? 'bg-warning/10 text-warning' : 'bg-base-200 text-base-content';
+  const cls = variant === 'dispensed' ? 'bg-success/10 text-success' : variant === 'partial' ? 'bg-warning/10 text-warning' : 'bg-base-200 text-base-content';
   return <span className={`${base} ${cls}`}>{children}</span>
 }
 
@@ -62,16 +62,15 @@ const DrugDispensation = () => {
               // Each dispense may have items array; create one row per item
               return (d.items || []).map(item => ({
                 id: d._id,
-                batch: item.batch || item.batchNo || 'N/A',
+                batch: item.batchNumber || item.batch || 'N/A',
                 name: '', // user info can be fetched via patientId if needed
+                pharmacist: `${d.pharmacist.firstName} ${d.pharmacist.lastName || ''}`.trim(),
                 patientId: d?.prescription?.patientId || '-',
                 medication: item.drugName || (d?.prescription?.medications?.[0]?.drugName) || 'Unknown',
-                form: item.form || '—',
                 quantity: item.quantity?.toString() ?? String(item.qty || '0'),
                 price: item.price ? `₦${item.price}` : '—',
-                datetime: d.dispensedAt ? new Date(d.dispensedAt).toLocaleString() : (d.createdAt ? new Date(d.createdAt).toLocaleString() : '-'),
-                prescriptionId: d?.prescription?._id || '-',
-                status: d.status || 'Pending'
+                dispensedAt: d.dispensedAt ? new Date(d.dispensedAt).toLocaleString() : (d.createdAt ? new Date(d.createdAt).toLocaleString() : '-'),
+                status: d.status
               }))
             })
             setRows(mapped.length ? mapped : [])
@@ -122,7 +121,7 @@ const DrugDispensation = () => {
 
           <div className="flex items-center space-x-3">
             <button className="btn btn-outline btn-sm flex items-center space-x-2"><FiDownload /><span className="text-xs">Export</span></button>
-            <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record dispensation</span></button>
+            {/* <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record dispensation</span></button> */}
           </div>
         </div>
 
@@ -176,14 +175,12 @@ const DrugDispensation = () => {
               <thead>
                 <tr>
                   <th>Batch ID</th>
-                  <th>Name</th>
-                  <th>Patient ID</th>
+                  <th>Patient Name</th>
+                  <th>Pharmacist</th>
                   <th>Medication Name</th>
-                  <th>Form</th>
-                  <th>Quantity</th>
+                  <th>Quantity Dispensed</th>
                   <th>Price</th>
-                  <th>Date &amp; Time</th>
-                  <th>Prescription ID</th>
+                  <th>Dispensed At</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -192,15 +189,13 @@ const DrugDispensation = () => {
                   <tr key={idx} className="hover">
                     <td className="font-medium">{row.batch}</td>
                     <td>{row.name}</td>
-                    <td>{row.patientId}</td>
+                    <td>{row.pharmacist}</td>
                     <td>{row.medication}</td>
-                    <td>{row.form}</td>
                     <td>{row.quantity}</td>
                     <td>{row.price}</td>
-                    <td>{row.datetime}</td>
-                    <td>{row.prescriptionId}</td>
+                    <td>{row.dispensedAt}</td>
                     <td>
-                      {row.status === 'Dispensed' ? <Badge variant="dispensed">Dispensed</Badge> : <Badge variant="pending">Pending</Badge>}
+                      {row.status === 'dispensed' ? <Badge variant="dispensed">Dispensed</Badge> : <Badge variant="partial">Partial</Badge>}
                     </td>
                   </tr>
                 ))}

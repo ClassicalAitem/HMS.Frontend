@@ -46,7 +46,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xs">
       <div className="w-full max-w-lg mx-4 bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-200">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -57,12 +57,12 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="form-control">
+            <div className="form-control flex flex-col">
               <label className="label">
                 <span className="label-text font-medium text-base-content">Diagnosis</span>
               </label>
               <textarea 
-                className={`textarea textarea-bordered h-24 focus:outline-none focus:border-primary bg-base-100 text-base-content ${errors.diagnosis ? 'textarea-error' : ''}`}
+                className={`w-full textarea textarea-bordered h-24 focus:outline-none focus:border-primary bg-base-100 text-base-content ${errors.diagnosis ? 'textarea-error' : ''}`}
                 placeholder="Enter diagnosis..."
                 {...register('diagnosis')}
               />

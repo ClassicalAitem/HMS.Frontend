@@ -53,6 +53,7 @@ import SecuritySettings from "@/pages/superadmin/settings/SecuritySettings";
 import SecurityPreferences from "@/pages/superadmin/settings/SecurityPreferences";
 import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import MedicalData from "@/pages/superadmin/settings/MedicalData";
+import PharmacyInventory from "@/pages/superadmin/settings/PharmacyInventory";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
@@ -85,7 +86,7 @@ import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
 import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
-import WriteDiagnosis from "@/pages/doctor/incoming/WriteDiagnosis";
+import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
 
 
 const AppRoutes = () => {
@@ -228,7 +229,7 @@ const AppRoutes = () => {
 
   <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/prescription" element={
     <ProtectedRoute allowedRoles={['doctor']}>
-      <WriteDiagnosis />
+      <WritePrescription />
     </ProtectedRoute>
   } />
   <Route path="/dashboard/doctor/send-to-cashier/:patientId" element={
@@ -369,6 +370,11 @@ const AppRoutes = () => {
       <Route path="/superadmin/settings/medical-data" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <MedicalData />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/pharmacy-inventory" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <PharmacyInventory />
         </ProtectedRoute>
       } />
 

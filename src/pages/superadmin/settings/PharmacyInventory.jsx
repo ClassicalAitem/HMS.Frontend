@@ -3,6 +3,7 @@ import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdAdd, MdInventory2 } from 'react-icons/md'
 import toast from 'react-hot-toast'
 import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions } from '@/services/api/inventoryAPI'
+import { SuperAdminLayout } from '@/layouts/superadmin'
 
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
@@ -62,12 +63,18 @@ const InventoryStocks = () => {
       const rows = list.map(i => ({
         id: i._id,
         name: i.name,
-        category: i.category || '',
+        strength: i.strength || '',
+        sku: i.sku || '',
+        reorderLevel: i.reorderLevel ?? 0,
         form: i.form || '',
         stock: i.stock ?? 0,
-        unitPrice: i.sellingPrice ?? '',
+        costPrice: i.costPrice ?? '',
+        sellingPrice: i.sellingPrice ?? '',
+        unitPrice: i.unitPrice ?? '',
         supplier: i.supplier || '',
-        expiryDate: i.expiryDate || ''
+        expiryDate: i.expiryDate || '',
+        batchNumber: i.batchNumber || '',
+        description: i.description || ''
       }))
       const header = Object.keys(rows[0] || {}).join(',') + '\n'
       const csv = header + rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
@@ -116,8 +123,10 @@ const InventoryStocks = () => {
   }
 
   return (
-    <PharmacistLayout>
-      <div className="p-6">
+
+<SuperAdminLayout>
+
+         <div className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Inventory & Stocks</h1>
@@ -125,6 +134,7 @@ const InventoryStocks = () => {
           </div>
           <div className="flex items-center gap-3">
             <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
+            <button className="btn btn-primary btn-sm flex items-center gap-2" onClick={() => setShowAdd(true)}><MdAdd/> Add new item</button>
           </div>
         </div>
 
@@ -210,7 +220,7 @@ const InventoryStocks = () => {
                       <th>Stock</th>
                       <th>Reorder Level</th>
                       <th>Price</th>
-                      {/* <th>Actions</th> */}
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -221,12 +231,12 @@ const InventoryStocks = () => {
                         <td>{item.stock ?? 0}</td>
                         <td>{item.reorderLevel ?? 0}</td>
                         <td>{item.sellingPrice ?? '—'}</td>
-                        {/* <td>
+                        <td>
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
                             <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
                           </div>
-                        </td> */}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -258,8 +268,13 @@ const InventoryStocks = () => {
         {restockingFor && (
           <RestockModal item={restockingFor} onClose={() => setRestockingFor(null)} onSubmit={(payload) => handleRestock(restockingFor._id, payload)} />
         )}
-      </div>
-    </PharmacistLayout>
+         </div>
+
+</SuperAdminLayout>
+
+
+
+
   )
 }
 
@@ -268,7 +283,7 @@ export default InventoryStocks
 // --- Inline modal components ---
 function InventoryFormModal({ item, onClose, onSubmit }){
   const [form, setForm] = useState({
-    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice || '', sellingPrice: item?.sellingPrice || '', reorderLevel: item?.reorderLevel || 0, supplier: item?.supplier || ''
+    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice || '', sellingPrice: item?.sellingPrice || '', reorderLevel: item?.reorderLevel, supplier: item?.supplier || '', sku: item?.sku || '', unitPrice: item?.unitPrice || '', stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -276,6 +291,10 @@ function InventoryFormModal({ item, onClose, onSubmit }){
     // basic validation
     if (!form.name) return toast.error('Name required')
     if (!form.sellingPrice) return toast.error('Selling price required')
+    if (!form.stock || Number(form.stock) < 0) return toast.error('Valid stock required')
+    if(!form.batchNumber) return toast.error('Batch number required')
+    if(!form.strength) return toast.error('Strength required')
+
     setSubmitting(true)
     try{
       await onSubmit(form)
@@ -291,7 +310,10 @@ function InventoryFormModal({ item, onClose, onSubmit }){
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
         <div className="space-y-2">
-          <input className="input input-bordered w-full" placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
+          <div className="flex gap-2">
+          <input className="input input-bordered flex-1" placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
+          <input className="input input-bordered flex-1" placeholder="Stock" value={form.stock} onChange={(e)=>setForm({...form,stock:e.target.value})} />
+          </div>
           <div className="flex gap-2">
             <input className="input input-bordered flex-1" placeholder="Form" value={form.form} onChange={(e)=>setForm({...form,form:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Strength" value={form.strength} onChange={(e)=>setForm({...form,strength:e.target.value})} />
@@ -301,8 +323,22 @@ function InventoryFormModal({ item, onClose, onSubmit }){
             <input className="input input-bordered flex-1" placeholder="Selling Price" value={form.sellingPrice} onChange={(e)=>setForm({...form,sellingPrice:e.target.value})} />
           </div>
           <div className="flex gap-2">
+            <input className="input input-bordered flex-1" placeholder="Sku" value={form.sku} onChange={(e)=>setForm({...form,sku:e.target.value})} />
+            <input className="input input-bordered flex-1" placeholder="Unit Price" value={form.unitPrice} onChange={(e)=>setForm({...form,unitPrice:e.target.value})} />
+          </div>
+          <div className="flex gap-2">
             <input className="input input-bordered flex-1" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e)=>setForm({...form,reorderLevel:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Supplier" value={form.supplier} onChange={(e)=>setForm({...form,supplier:e.target.value})} />
+          </div>
+          <div className="flex gap-2">
+            <input className="input input-bordered flex-1" placeholder="Batch Number" value={form.batchNumber} onChange={(e)=>setForm({...form,batchNumber:e.target.value})} />
+            <input className="input input-bordered flex-1" type="date" placeholder="YYYY-MM-DD" value={form.expiryDate} onChange={(e)=>setForm({...form,expiryDate:e.target.value})} />
+          </div>
+          <div className="flex gap-2">
+            <textarea className="textarea textarea-bordered w-full" rows={3} placeholder='Description'
+              value={form.description}
+              onChange={(e) => setRecordForm((f) => ({ ...f, description: e.target.value }))}
+            />
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -317,13 +353,15 @@ function InventoryFormModal({ item, onClose, onSubmit }){
 function RestockModal({ item, onClose, onSubmit }){
   const [qty, setQty] = useState('')
   const [batch, setBatch] = useState('')
+  const [costPrice, setCostPrice] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const handle = async () => {
     if (!qty || Number(qty) <= 0) return toast.error('Enter valid quantity')
     setSubmitting(true)
     try{
-      await onSubmit({ quantity: qty, batchNumber: batch })
+
+      await onSubmit({ quantity: qty, batchNumber: item.batchNumber, costPrice: costPrice })
     }finally{ setSubmitting(false) }
   }
 
@@ -337,7 +375,8 @@ function RestockModal({ item, onClose, onSubmit }){
         </div>
         <div className="space-y-2">
           <input className="input input-bordered w-full" placeholder="Quantity" value={qty} onChange={(e)=>setQty(e.target.value)} />
-          <input className="input input-bordered w-full" placeholder="Batch number (optional)" value={batch} onChange={(e)=>setBatch(e.target.value)} />
+          <input className="input input-bordered w-full" placeholder="Batch number (optional)" value={item.batchNumber} onChange={(e)=>setBatch(e.target.value)} />
+          <input className="input input-bordered w-full" placeholder="cost price (optional)" value={costPrice} onChange={(e)=>setCostPrice(e.target.value)} />
           <div className="flex justify-end gap-2">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting? 'Restocking...' : 'Restock'}</button>
