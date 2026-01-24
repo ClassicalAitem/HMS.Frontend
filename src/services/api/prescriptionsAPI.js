@@ -10,6 +10,16 @@ export const getPrescriptions = async () => {
   }
 }
 
+export const getPrescriptionsForConsultation = async (consultationId) => {
+  try {
+    const response = await apiClient.get(`/prescription?consultationId=${consultationId}`)
+    return response.data ?? response
+  } catch (err) {
+    console.error('prescriptionsAPI: getPrescriptionsForConsultation error', err)
+    throw err
+  }
+}
+
 export const getPrescriptionById = async (id) => {
   try {
     const response = await apiClient.get(`/prescription/${id}`)
@@ -40,9 +50,20 @@ export const updatePrescription = async (id, updateData) => {
   }
 }
 
+export const createPrescription = async (data) => {
+  try {
+    const response = await apiClient.post('/prescription', data)
+    return response.data ?? response
+  } catch (err) {
+    console.error('prescriptionsAPI: createPrescription error', err.response?.data || err.message)
+    throw err
+  }
+}
+
 export default {
   getPrescriptions,
   getPrescriptionById,
   getPrescriptionByPatientId,
-  updatePrescription
+  updatePrescription,
+  createPrescription
 }
