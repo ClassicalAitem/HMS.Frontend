@@ -12,6 +12,13 @@ import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
 import Task from "@/pages/nurse/assignedTask/AssignedTask";
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
+import SurgeonDashboard from "@/pages/surgeon/dashboard/SurgeonDashboard";
+import SurgeonAssignedTask from "@/pages/surgeon/assignedTask/AssignedTask";
+import SurgeonAppointments from "@/pages/surgeon/appointment/Appointment"
+import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
+import MedicalRecord from "@/pages/surgeon/incoming/MedicalRecord";
+import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
+
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import LabResults from "@/pages/doctor/labResults/LabResults";
 import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
@@ -467,6 +474,54 @@ const AppRoutes = () => {
           <PharmacistTransactions />
         </ProtectedRoute>
       } />
+
+
+         {/*==============================================================================================================
+      
+      ====================================  Surgeon DashBoard Route =====================================================
+      
+      ================================================================================================================*/}
+      <Route path="/dashboard/surgeon" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/surgeon/assignedTask" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonAssignedTask />
+        </ProtectedRoute>
+      } />
+     
+    
+      <Route path="/dashboard/surgeon/incoming" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonIncoming />
+        </ProtectedRoute>
+      } />
+        <Route path="/dashboard/surgeon/medical-history/:patientId" element={
+    <ProtectedRoute allowedRoles={['surgeon']}>
+      <MedicalRecord />
+    </ProtectedRoute>
+  } />
+      <Route path="/dashboard/surgeon/appointments" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonAppointments />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/surgeon/medical-history/:patientId/add-surgical-note" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+            <WriteSurgicalNote />
+        </ProtectedRoute>
+      } />
+      <Route path="/book" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <BookAppointmentModal />
+        </ProtectedRoute>
+      } />
+   
+
+
+
 
       {/*==============================================================================================================
       
