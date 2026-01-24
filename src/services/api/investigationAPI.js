@@ -1,8 +1,8 @@
 import apiClient from './apiClient';
 
-export const createInvestigation = async (data) => {
-  try {
-    const response = await apiClient.post('/investigation', data);
+export const createInvestigation = async (consultationId, data) => {
+  try{
+    const response = await apiClient.post(`/investigation/${consultationId}`, data);
     return response.data ?? response;
   } catch (error) {
     console.error('investigationAPI: createInvestigation error', error);
@@ -36,6 +36,16 @@ export const getInvestigationByPatientId = async (patientId) => {
     return response.data ?? response;
   } catch (error) {
     console.error('investigationAPI: getInvestigationByPatientId error', error);
+    throw error;
+  }
+};
+
+export const getInvestigationByConsultationId = async (consultationId) => {
+  try {
+    const response = await apiClient.get(`/investigation?consultationId=${consultationId}`);
+    return response.data ?? response;
+  } catch (error) {
+    console.error('investigationAPI: getInvestigationByConsultationId error', error);
     throw error;
   }
 };
