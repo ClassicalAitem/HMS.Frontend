@@ -62,12 +62,6 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: fromIncoming || location.pathname.startsWith("/dashboard/surgeon/incoming"),
     },
     {
-      icon: FiUser,
-      label: "Patients",
-      path: "/dashboard/surgeon/patient",
-      active: !fromIncoming && location.pathname.startsWith("/dashboard/surgeon/patient"),
-    },
-    {
       icon: GrTask,
       label: "Assigned Task",
       path: "/dashboard/surgeon/assignedTask",
