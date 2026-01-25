@@ -16,7 +16,6 @@ import SurgeonDashboard from "@/pages/surgeon/dashboard/SurgeonDashboard";
 import SurgeonAssignedTask from "@/pages/surgeon/assignedTask/AssignedTask";
 import SurgeonAppointments from "@/pages/surgeon/appointment/Appointment"
 import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
-import MedicalRecord from "@/pages/surgeon/incoming/MedicalRecord";
 import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
@@ -498,17 +497,12 @@ const AppRoutes = () => {
           <SurgeonIncoming />
         </ProtectedRoute>
       } />
-        <Route path="/dashboard/surgeon/medical-history/:patientId" element={
-    <ProtectedRoute allowedRoles={['surgeon']}>
-      <MedicalRecord />
-    </ProtectedRoute>
-  } />
       <Route path="/dashboard/surgeon/appointments" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
           <SurgeonAppointments />
         </ProtectedRoute>
       } />
-      <Route path="/dashboard/surgeon/medical-history/:patientId/add-surgical-note" element={
+      <Route path="/dashboard/surgeon/write-surgical-note/:investigationRequestId" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
             <WriteSurgicalNote />
         </ProtectedRoute>
