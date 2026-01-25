@@ -4,7 +4,8 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
-import { getPatients } from "@/services/api/patientsAPI";
+import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
+import { getPatientById } from "@/services/api/patientsAPI";
 
 const SurgeonIncoming = () => {
   const navigate = useNavigate();
@@ -24,31 +25,51 @@ const SurgeonIncoming = () => {
     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const res = await getPatients();
-        const patients = Array.isArray(res?.data) ? res.data : [];
-        const filtered = patients.filter((p) => (p?.status || "").toLowerCase() === "awaiting_consultation");
-        const sorted = filtered.sort((a, b) => {
-          const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-          const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+        const res = await getAllInvestigationRequests();
+        const investigations = res?.data || [];
+        const sorted = investigations.sort((a, b) => {
+          const aTime = new Date(a?.createdAt || 0).getTime();
+          const bTime = new Date(b?.createdAt || 0).getTime();
           return bTime - aTime;
         });
-        const prettifyStatus = (s) => (s || "").replace(/_/g, " ").replace(/^awaiting/i, "Awaiting");
-        const mapped = sorted.map((p) => ({
-          id: p?.id,
-          hospitalId: p?.hospitalId,
-          snapshot: p,
-          name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
-          patientId: p?.hospitalId || p?.id || "—",
-          reason: prettifyStatus(p?.status) || "Consultation",
-          insurance: p?.hmos?.provider || "—",
-          registered: (p?.createdAt)
-            ? new Date(p.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })
-            : "—",
-          status: (p?.status || "").toLowerCase(),
+        const mapped = await Promise.all(sorted.map(async (inv) => {
+          let patientName = 'Unknown';
+          let patientId = '—';
+          if (inv?.patient) {
+            if (inv.patient.fullName) patientName = inv.patient.fullName;
+            else if (inv.patient.firstName || inv.patient.lastName) patientName = `${inv.patient.firstName || ''} ${inv.patient.lastName || ''}`.trim();
+            patientId = inv.patient.hospitalId || inv.patient.id || '—';
+          } else if (inv?.patientName) {
+            patientName = inv.patientName;
+            patientId = inv?.patientId || inv?.patient_id || '—';
+          } else if (inv?.patient_id) {
+            patientName = inv.patient_id;
+            patientId = inv.patient_id;
+          } else if (inv?.patientId) {
+            try {
+              const patientRes = await getPatientById(inv.patientId);
+              const p = patientRes?.data || patientRes;
+              if (p?.fullName) patientName = p.fullName;
+              else if (p?.firstName || p?.lastName) patientName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+              patientId = p?.hospitalId || p?.id || inv.patientId;
+            } catch (e) {
+              patientName = inv.patientId;
+              patientId = inv.patientId;
+            }
+          }
+          return {
+            id: inv?._id || inv?.id,
+            patientName,
+            patientId,
+            type: inv?.type || inv?.title || 'Investigation',
+            status: inv?.status || 'Pending',
+            createdAt: inv?.createdAt ? new Date(inv.createdAt).toLocaleString() : '—',
+            snapshot: inv,
+          };
         }));
         if (mounted) setItems(mapped);
       } catch (err) {
-        console.error("Doctor Incoming: patients fetch error", err);
+        console.error("Surgeon Incoming: investigation fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -81,14 +102,14 @@ const SurgeonIncoming = () => {
                   <RiArrowLeftRightFill size={25} className="text-primary" />
                   <h1 className="text-[32px] text-primary ">Incoming</h1>
                 </div>
-                <p className="text-[12px] text-base-content/70">Check out the patient sent to you.</p>
+                <p className="text-[12px] text-base-content/70">Check out the investigation requests assigned to you.</p>
               </div>
             </div>
 
             <div className="mt-4 flex items-center gap-2">
               <div className="relative w-full max-w-xs">
                 <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patients" className="input input-bordered input-sm pl-9 w-full" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search requests" className="input input-bordered input-sm pl-9 w-full" />
               </div>
               {query && (
                 <button onClick={() => setQuery("")} className="btn btn-ghost btn-xs">Clear</button>
@@ -125,9 +146,8 @@ const SurgeonIncoming = () => {
                 (() => {
                   const q = query.trim().toLowerCase();
                   const filtered = q
-                    ? items.filter((d) => [d?.name, d?.patientId, d?.reason, d?.insurance].filter(Boolean).join(" ").toLowerCase().includes(q))
+                    ? items.filter((d) => [d?.patientName, d?.status].filter(Boolean).join(" ").toLowerCase().includes(q))
                     : items;
-
                   if (filtered.length === 0) {
                     return (
                       <div className="col-span-full">
@@ -135,35 +155,29 @@ const SurgeonIncoming = () => {
                       </div>
                     );
                   }
-
                   const start = page * pageSize;
                   const end = start + pageSize;
                   const visible = filtered.slice(start, end);
-
                   return visible.map((data, index) => (
                     <div key={index} className="card bg-base-100 border border-base-300 shadow-sm">
                       <div className="flex gap-6 items-center p-8">
                         <img src={avatarImg} alt="" className="w-[52px] h-[52px] object-cover rounded-full" />
                         <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
-                          <div className="space-y-1 xl:space-y-3">
-                            <span className="block">Name: {data.name}</span>
+                          <div className="space-y-1 xl:space-y-3 col-span-2">
+                            <span className="block whitespace-nowrap overflow-hidden text-ellipsis w-full font-semibold" style={{maxWidth: '100%'}}>
+                              Patient: {data.patientName}
+                            </span>
                             <span className="block">Patient ID: {data.patientId}</span>
-                            <span className="block">Reason: {data.reason}</span>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="block">Insurance: {data.insurance}</span>
-                            <span className="block">Registered: {data.registered}</span>
-                            <span className="block">Status: Awaiting Consultation</span>
+                            <span className="block">Status: {data.status}</span>
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex justify-center px-7 pb-5">
+                      <div className="flex justify-center px-7 pb-5 gap-2">
                         <button
                           className="px-4 py-1 rounded-full bg-primary text-white"
-                          onClick={() => data.id && navigate(`/dashboard/surgeon/medical-history/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                          onClick={() => data.id && navigate(`/dashboard/surgeon/write-surgical-note/${data.id}`, { state: { from: 'incoming', investigationRequest: data.snapshot } })}
                         >
-                          View  Patient Details
+                          Add Surgical Note
                         </button>
                       </div>
                     </div>
@@ -174,7 +188,7 @@ const SurgeonIncoming = () => {
 
             {(() => {
               const q = query.trim().toLowerCase();
-              const filtered = q ? items.filter((d) => [d?.name, d?.patientId, d?.reason, d?.insurance].filter(Boolean).join(" ").toLowerCase().includes(q)) : items;
+              const filtered = q ? items.filter((d) => [d?.patientName, d?.type, d?.status, d?.createdAt].filter(Boolean).join(" ").toLowerCase().includes(q)) : items;
               const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
               if (!loading && filtered.length > pageSize) {
                 return (
