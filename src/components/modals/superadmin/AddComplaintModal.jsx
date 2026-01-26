@@ -3,7 +3,6 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaUserPlus, FaEye, FaEyeSlash, FaPlus } from 'react-icons/fa';
-import { usersAPI } from '../../../services/api/usersAPI';
 import toast from 'react-hot-toast';
 import { createMedicalRecord } from '@/services/api/medicalRecordAPI';
 
@@ -17,7 +16,7 @@ const addComplaintSchema = yup.object({
   category: yup
     .string()
     .required('Category is required')
-    .oneOf(['symptoms', 'surgical', 'family', 'social', 'allergic'], 'Please select a valid category'),
+    .oneOf(['medical_history','symptoms', 'surgical', 'family', 'social', 'allergic'], 'Please select a valid category'),
 
 });
 
@@ -120,6 +119,7 @@ const AddComplaintModal = ({ isOpen, onClose, onMedicalRecordAdded }) => {
                 disabled={isLoading}
               >
                 <option value="">Select a category</option>
+                <option value="medical_history">Medical History</option>
                 <option value="symptoms">Symptoms</option>
                 <option value="surgical">Surgical</option>
                 <option value="family">Family</option>
