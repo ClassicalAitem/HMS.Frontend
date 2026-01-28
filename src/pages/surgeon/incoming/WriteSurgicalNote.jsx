@@ -109,13 +109,13 @@ const WriteSurgicalNote = () => {
     surgeonTeam: [{ surgeonName: "" }],
     surgeonAssistants: [{ assistantName: "" }],
     anesthesiaDosages: [{ anesthesiaType: "", dosage: "" }],
-    vitalSigns: {
+    vitalSigns: [{
       bloodPressure: '',
       heartRate: '',
       respiratoryRate: '',
       temperature: '',
       oxygenSaturation: '',
-    },
+    }],
     postOperativeAssessments: [{ medication: "" }],
     babyAssessment: [{ ...initialBabyAssessment }],
     estimatedBloodLoss: '',
@@ -344,16 +344,22 @@ const WriteSurgicalNote = () => {
               <button type="button" className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" onClick={() => addToList('anesthesiaDosages', { anesthesiaType: "", dosage: "" })}>Add Anesthesia</button>
             </div>
 
-            {/* Vital Signs */}
+            {/* Vital Signs (multiple) */}
             <div>
               <label className="label">Vital Signs (Theatre)</label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <input name="bloodPressure" placeholder="Blood Pressure" value={form.vitalSigns.bloodPressure} onChange={e => setForm(f => ({ ...f, vitalSigns: { ...f.vitalSigns, bloodPressure: e.target.value } }))} className="input input-bordered" />
-                <input name="heartRate" placeholder="Heart Rate" value={form.vitalSigns.heartRate} onChange={e => setForm(f => ({ ...f, vitalSigns: { ...f.vitalSigns, heartRate: e.target.value } }))} className="input input-bordered" />
-                <input name="respiratoryRate" placeholder="Respiratory Rate" value={form.vitalSigns.respiratoryRate} onChange={e => setForm(f => ({ ...f, vitalSigns: { ...f.vitalSigns, respiratoryRate: e.target.value } }))} className="input input-bordered" />
-                <input name="temperature" placeholder="Temperature" value={form.vitalSigns.temperature} onChange={e => setForm(f => ({ ...f, vitalSigns: { ...f.vitalSigns, temperature: e.target.value } }))} className="input input-bordered" />
-                <input name="oxygenSaturation" placeholder="Oxygen Saturation" value={form.vitalSigns.oxygenSaturation} onChange={e => setForm(f => ({ ...f, vitalSigns: { ...f.vitalSigns, oxygenSaturation: e.target.value } }))} className="input input-bordered" />
-              </div>
+              {form.vitalSigns.map((v, i) => (
+                <div key={i} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+                  <input name="bloodPressure" placeholder="Blood Pressure" value={v.bloodPressure} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'bloodPressure')} className="input input-bordered" />
+                  <input name="heartRate" placeholder="Heart Rate" value={v.heartRate} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'heartRate')} className="input input-bordered" />
+                  <input name="respiratoryRate" placeholder="Respiratory Rate" value={v.respiratoryRate} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'respiratoryRate')} className="input input-bordered" />
+                  <input name="temperature" placeholder="Temperature" value={v.temperature} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'temperature')} className="input input-bordered" />
+                  <input name="oxygenSaturation" placeholder="Oxygen Saturation" value={v.oxygenSaturation} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'oxygenSaturation')} className="input input-bordered" />
+                  {form.vitalSigns.length > 1 && (
+                    <button type="button" className="btn btn-error btn-xs col-span-2 md:col-span-1" onClick={() => removeFromList('vitalSigns', i)}>Remove</button>
+                  )}
+                </div>
+              ))}
+              <button type="button" className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" onClick={() => addToList('vitalSigns', { bloodPressure: '', heartRate: '', respiratoryRate: '', temperature: '', oxygenSaturation: '' })}>Add Vital Sign</button>
             </div>
 
             {/* Surgical Findings, EBL, Swabs, Histology, Complications, Outcomes */}
@@ -411,14 +417,14 @@ const WriteSurgicalNote = () => {
               <textarea name="notes" value={form.notes} onChange={handleChange} className="textarea textarea-bordered w-full" />
             </div>
 
-            {/* Baby Assessment (collapsible) */}
+            {/* Baby Assessment (collapsible, multiple) */}
             <div className="border rounded p-4">
               <div className="flex items-center gap-2 mb-2">
                 <input type="checkbox" checked={form.showBaby} onChange={e => setForm(f => ({ ...f, showBaby: e.target.checked }))} />
                 <span className="font-semibold">Include Baby Assessment</span>
               </div>
               {form.showBaby && form.babyAssessment.map((b, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 border-b pb-4">
                   <div>
                     <label className="label">Apgar Score (0-2)</label>
                     <div className="grid grid-cols-2 gap-2">
@@ -461,8 +467,14 @@ const WriteSurgicalNote = () => {
                     <label className="label">Deformity of Baby</label>
                     <input name="deformity" value={b.deformity} onChange={e => handleBabyChange(idx, e)} className="input input-bordered w-full" />
                   </div>
+                  {form.babyAssessment.length > 1 && (
+                    <button type="button" className="btn btn-error btn-xs mt-2" onClick={() => removeFromList('babyAssessment', idx)}>Remove Baby</button>
+                  )}
                 </div>
               ))}
+              {form.showBaby && (
+                <button type="button" className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case mt-2" onClick={() => addToList('babyAssessment', { apgarScore: { appearance: '', pulse: '', grimace: '', activity: '', respiration: '' }, weight: '', length: '', headCircumference: '', deliveryTime: '', abdominalCircumference: '', randomBloodSugar: '', vitalSign: '', deformity: '' })}>Add Baby</button>
+              )}
             </div>
 
             <div className="flex justify-center gap-4 pt-4 pb-12">
