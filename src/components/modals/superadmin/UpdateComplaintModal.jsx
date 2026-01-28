@@ -15,7 +15,7 @@ const updateComplaintSchema = yup.object({
   category: yup
     .string()
     .required('Category is required')
-    .oneOf(['symptoms', 'surgical', 'family', 'social', 'allergic'], 'Please select a valid category'),
+    .oneOf(['medical_history','symptoms', 'surgical', 'family', 'social', 'allergic'], 'Please select a valid category'),
 });
 
 const UpdateComplaintModal = ({ isOpen, onClose, complaint, onUpdated }) => {
@@ -98,6 +98,7 @@ const UpdateComplaintModal = ({ isOpen, onClose, complaint, onUpdated }) => {
                 disabled={isLoading}
               >
                 <option value="">Select a category</option>
+                <option value="medical_history">Medical History</option>
                 <option value="symptoms">Symptoms</option>
                 <option value="surgical">Surgical</option>
                 <option value="family">Family</option>
