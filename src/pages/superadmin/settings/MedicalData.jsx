@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
 import { FaArrowLeft, FaBell, FaPlus, FaPen, FaTrash, FaNotesMedical, FaMedkit } from 'react-icons/fa';
-import { GeneralTab, NotificationsTab, AppointmentsTab } from '@/components/superadmin/settings/preferences';
 import AddComplaintModal from '@/components/modals/superadmin/AddComplaintModal';
 import UpdateComplaintModal from '@/components/modals/superadmin/UpdateComplaintModal';
 import {  deleteComplaint, getAllComplaint } from '@/services/api/medicalRecordAPI';
@@ -38,7 +37,7 @@ const MedicalData = () => {
     try {
       const data = await getAllComplaint();
       setComplaints(Array.isArray(data) ? data : []);
-    } catch (err) {
+    } catch {
       setComplaints([]);
     } finally {
       setIsLoading(false);
@@ -208,7 +207,7 @@ const MedicalData = () => {
                                        try {
                                          await deleteComplaint(log.id);
                                          await fetchComplaints();
-                                       } catch (err) {
+                                       } catch {
                                          alert('Delete failed!');
                                        }
                                      }
