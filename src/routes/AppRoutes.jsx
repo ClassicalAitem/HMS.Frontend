@@ -10,7 +10,14 @@ import ProtectedRoute from "@/components/common/ProtectedRoute";
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
 import Task from "@/pages/nurse/assignedTask/AssignedTask";
+
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
+
+import SurgeonDashboard from "@/pages/surgeon/dashboard/SurgeonDashboard";
+import SurgeonAssignedTask from "@/pages/surgeon/assignedTask/AssignedTask";
+import SurgeonAppointments from "@/pages/surgeon/appointment/Appointment"
+import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
+import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
 
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import LabResults from "@/pages/doctor/labResults/LabResults";
@@ -491,6 +498,49 @@ const AppRoutes = () => {
           <PharmacistPaymentRecords />
         </ProtectedRoute>
       } />
+
+
+
+
+         {/*==============================================================================================================
+      
+      ====================================  Surgeon DashBoard Route =====================================================
+      
+      ================================================================================================================*/}
+      <Route path="/dashboard/surgeon" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/surgeon/assignedTask" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonAssignedTask />
+        </ProtectedRoute>
+      } />
+     
+    
+      <Route path="/dashboard/surgeon/incoming" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/surgeon/appointments" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonAppointments />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/surgeon/write-surgical-note/:investigationRequestId" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+            <WriteSurgicalNote />
+        </ProtectedRoute>
+      } />
+      <Route path="/book" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <BookAppointmentModal />
+        </ProtectedRoute>
+      } />
+   
+
 
 
 

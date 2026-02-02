@@ -62,6 +62,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'super-admin': '/dashboard/superadmin',
       'cashier': '/cashier/dashboard',
       'pharmacist': '/dashboard/pharmacist',
+      'surgeon': '/dashboard/surgeon',
     };
     
     const roleOrType = user?.role || user?.accountType;
