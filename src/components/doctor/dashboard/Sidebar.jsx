@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
 import { GoChecklist } from "react-icons/go";
 import { FaSuitcaseMedical } from "react-icons/fa6";
-import { IoMenu } from "react-icons/io5";
+import { IoReceiptOutline } from "react-icons/io5";
 import { SlCalender } from "react-icons/sl";
 import { Link, useLocation } from "react-router-dom";
 import { MdLockOutline } from "react-icons/md";
@@ -41,7 +41,7 @@ const Sidebar = () => {
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
     { icon: GoChecklist, label: "Lab Results", path: "/dashboard/doctor/labResults" },
     { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
-    // { icon: IoMenu, label: "Assigned Task", path: "/dashboard/doctor/assign-task" },
+    { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/doctor/payment-records" },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active }) => (
@@ -65,7 +65,7 @@ const Sidebar = () => {
               alt="Kolak"
               className="hidden w-auto h-10"
             />
-  
+
             {/* Kolak logo adaptive*/}
             <div className="flex items-center space-x-2">
               <div className="">
@@ -82,7 +82,7 @@ const Sidebar = () => {
             </div>
           </div>
         </div>
-  
+
         {/* Navigation Menu */}
         <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
           {menuItems.map((item, index) => (
@@ -95,7 +95,7 @@ const Sidebar = () => {
             />
           ))}
         </nav>
-  
+
         {/* Bottom Actions */}
         <div className="p-4 space-y-2 border-t border-base-300">
           <Link
