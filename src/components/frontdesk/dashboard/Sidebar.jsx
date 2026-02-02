@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
-import { FaThLarge, FaUsers, FaUserPlus, FaCalendarAlt, FaSignOutAlt } from 'react-icons/fa';
 import { SlCalender } from "react-icons/sl";
+import { IoReceiptOutline } from "react-icons/io5";
 import { MdOutlineDashboard, MdFormatListBulletedAdd } from "react-icons/md";
 import { GoPerson } from "react-icons/go";
 import { CiLock, CiLogout } from "react-icons/ci";
@@ -69,6 +69,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Appointments',
       path: '/frontdesk/appointments',
       active: location.pathname === '/frontdesk/appointments'
+    },
+    {
+      icon: IoReceiptOutline,
+      label: 'Payment Records',
+      path: '/frontdesk/payment-records',
+      active: location.pathname === '/frontdesk/payment-records'
     }
   ];
 
@@ -135,7 +141,7 @@ const Sidebar = ({ onCloseSidebar }) => {
           <span className="text-xs 2xl:text-sm">Change Password</span>
         </Link>
 
-        <button 
+        <button
           onClick={() => setIsLogoutModalOpen(true)}
           className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
