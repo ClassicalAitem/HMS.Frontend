@@ -43,7 +43,13 @@ export const updateDependant = async (dependantId, updates) => {
   return apiClient.patch(`/dependant/${dependantId}`, payload);
 };
 
+export const getAllDependantsForPatient = async (patientId) => {
+  if (!patientId) throw new Error('Patient ID is required');
+  return apiClient.get(`/dependant?patientId=${patientId}`);
+};
+
 export default {
   addDependantForPatient,
   updateDependant,
+  getAllDependantsForPatient
 };
