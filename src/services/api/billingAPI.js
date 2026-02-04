@@ -81,8 +81,6 @@ export const getAllReceipts = async (params = {}) => {
 export const getAllReceiptByPatientId = async (patientId) => {
   if (!patientId) throw new Error('Patient ID is required');
 
-  console.log(patientId);
-
   const url = `/receipt/patient/${patientId}`;
   console.log('🧾 ReceiptAPI: Fetching receipt by patient ID', { patientId, url });
   const response = await apiClient.get(url);
