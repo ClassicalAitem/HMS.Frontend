@@ -503,9 +503,9 @@ const AppRoutes = () => {
 
 
          {/*==============================================================================================================
-      
+
       ====================================  Surgeon DashBoard Route =====================================================
-      
+
       ================================================================================================================*/}
       <Route path="/dashboard/surgeon" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
@@ -517,8 +517,8 @@ const AppRoutes = () => {
           <SurgeonAssignedTask />
         </ProtectedRoute>
       } />
-     
-    
+
+
       <Route path="/dashboard/surgeon/incoming" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
           <SurgeonIncoming />
@@ -539,7 +539,7 @@ const AppRoutes = () => {
           <BookAppointmentModal />
         </ProtectedRoute>
       } />
-   
+
 
 
 
