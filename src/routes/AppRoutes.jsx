@@ -31,6 +31,7 @@ import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
+import DoctorPaymentRecords from "@/pages/doctor/payment-records/ReceiptRecord";
 
 // Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
@@ -94,6 +95,9 @@ import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks"
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
 import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
+import FrontDeskPaymentRecords from "@/pages/frontdesk/payment-records/ReceiptRecord";
+import NursePaymentRecords from "@/pages/nurse/payment-records/ReceiptRecord";
+import PharmacistPaymentRecords from "@/pages/pharmacist/payment-records/ReceiptRecord";
 
 
 const AppRoutes = () => {
@@ -103,9 +107,9 @@ const AppRoutes = () => {
       <Route path="/" element={<Navigate to="/login" replace />} />
 
       {/*==============================================================================================================
-      
+
       ====================================  Auth Route ==============================================================
-      
+
       ================================================================================================================*/}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -117,11 +121,11 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
-      
+
       {/*==============================================================================================================
-      
+
       ====================================  Frontdesk DashBoard Route =====================================================
-      
+
       ================================================================================================================*/}
       <Route path="/frontdesk/dashboard" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
@@ -158,12 +162,17 @@ const AppRoutes = () => {
           <SurgeryDetails />
         </ProtectedRoute>
       } />
+      <Route path="/frontdesk/payment-records" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <FrontDeskPaymentRecords />
+        </ProtectedRoute>
+      } />
 
 
       {/*==============================================================================================================
-      
+
       ====================================  Nurse DashBoard Route =====================================================
-      
+
       ================================================================================================================*/}
       <Route path="/dashboard/nurse" element={
         <ProtectedRoute allowedRoles={['nurse']}>
@@ -200,13 +209,18 @@ const AppRoutes = () => {
           <BookAppointmentModal />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/payment-records" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <NursePaymentRecords />
+        </ProtectedRoute>
+      } />
 
 
 
       {/*==============================================================================================================
-      
+
       ====================================  Doctor DashBoard Route =====================================================
-      
+
       ================================================================================================================*/}
       <Route path="/dashboard/doctor" element={
         <ProtectedRoute allowedRoles={['doctor']}>
@@ -279,12 +293,17 @@ const AppRoutes = () => {
           <Task />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/doctor/payment-records" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <DoctorPaymentRecords />
+        </ProtectedRoute>
+      } />
 
 
       {/*==============================================================================================================
-      
+
       ====================================  Admin DashBoard Route =====================================================
-      
+
       ================================================================================================================*/}
       <Route path="/dashboard/admin" element={
         <ProtectedRoute allowedRoles={['admin']}>
@@ -390,7 +409,7 @@ const AppRoutes = () => {
       {/*=============================================================================================================
 
        ====================================  Cashier Route ===========================================================
-       
+
       ================================================================================================================*/}
 
       <Route path="/cashier/dashboard" element={
@@ -435,9 +454,9 @@ const AppRoutes = () => {
       } />
 
       {/*==============================================================================================================
-      
+
       ====================================  Pharmacist DashBoard Route ===============================================
-      
+
       ================================================================================================================*/}
       <Route path="/dashboard/pharmacist" element={
         <ProtectedRoute allowedRoles={['pharmacist']}>
@@ -474,12 +493,19 @@ const AppRoutes = () => {
           <PharmacistTransactions />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/pharmacist/payment-records" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistPaymentRecords />
+        </ProtectedRoute>
+      } />
+
+
 
 
          {/*==============================================================================================================
-      
+
       ====================================  Surgeon DashBoard Route =====================================================
-      
+
       ================================================================================================================*/}
       <Route path="/dashboard/surgeon" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
@@ -491,8 +517,8 @@ const AppRoutes = () => {
           <SurgeonAssignedTask />
         </ProtectedRoute>
       } />
-     
-    
+
+
       <Route path="/dashboard/surgeon/incoming" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
           <SurgeonIncoming />
@@ -513,13 +539,13 @@ const AppRoutes = () => {
           <BookAppointmentModal />
         </ProtectedRoute>
       } />
-   
+
 
 
 
 
       {/*==============================================================================================================
-      
+
       ====================================  Laboratory DashBoard Route ===============================================
       ===============================================================================================================*/}
       {/* LaboratoryDashboard */}
