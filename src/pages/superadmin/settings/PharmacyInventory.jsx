@@ -68,11 +68,11 @@ const InventoryStocks = () => {
         reorderLevel: i.reorderLevel ?? 0,
         form: i.form || '',
         stock: i.stock ?? 0,
-        costPrice: i.costPrice ?? '',
-        sellingPrice: i.sellingPrice ?? '',
-        unitPrice: i.unitPrice ?? '',
+        costPrice: i.costPrice ?? 0,
+        sellingPrice: i.sellingPrice ?? 0,
+        unitPrice: i.unitPrice ?? 0,
         supplier: i.supplier || '',
-        expiryDate: i.expiryDate || '',
+        expiryDate: i.expiryDate ? new Date(i.expiryDate).toISOString().split('T')[0] : '',
         batchNumber: i.batchNumber || '',
         description: i.description || ''
       }))
@@ -283,17 +283,14 @@ export default InventoryStocks
 // --- Inline modal components ---
 function InventoryFormModal({ item, onClose, onSubmit }){
   const [form, setForm] = useState({
-    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice || '', sellingPrice: item?.sellingPrice || '', reorderLevel: item?.reorderLevel, supplier: item?.supplier || '', sku: item?.sku || '', unitPrice: item?.unitPrice || '', stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
+    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice, sellingPrice: item?.sellingPrice, reorderLevel: item?.reorderLevel, supplier: item?.supplier, sku: item?.sku || '', unitPrice: item?.unitPrice, stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
   })
   const [submitting, setSubmitting] = useState(false)
 
   const handle = async () => {
     // basic validation
     if (!form.name) return toast.error('Name required')
-    if (!form.sellingPrice) return toast.error('Selling price required')
-    if (!form.stock || Number(form.stock) < 0) return toast.error('Valid stock required')
     if(!form.batchNumber) return toast.error('Batch number required')
-    if(!form.strength) return toast.error('Strength required')
 
     setSubmitting(true)
     try{
@@ -337,7 +334,7 @@ function InventoryFormModal({ item, onClose, onSubmit }){
           <div className="flex gap-2">
             <textarea className="textarea textarea-bordered w-full" rows={3} placeholder='Description'
               value={form.description}
-              onChange={(e) => setRecordForm((f) => ({ ...f, description: e.target.value }))}
+              onChange={(e) => setForm({...form,description:e.target.value})}
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -353,7 +350,7 @@ function InventoryFormModal({ item, onClose, onSubmit }){
 function RestockModal({ item, onClose, onSubmit }){
   const [qty, setQty] = useState('')
   const [batch, setBatch] = useState('')
-  const [costPrice, setCostPrice] = useState('')
+  const [costPrice, setCostPrice] = useState(0)
   const [submitting, setSubmitting] = useState(false)
 
   const handle = async () => {
