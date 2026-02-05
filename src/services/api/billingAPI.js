@@ -8,16 +8,32 @@ import { API_ENDPOINTS } from '../../config/env';
  */
 export const createBill = async (patientId, billData) => {
   if (!patientId) throw new Error('Patient ID is required:');
-  if (!billData || typeof billData !== 'object') throw new Error('billData must be an object');
+  
+  // Allow passing raw payload directly if it matches expected structure { itemDetail: [...] }
+  // This supports the new CreateBillModal usage
+  if (billData.itemDetail && Array.isArray(billData.itemDetail)) {
+      const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
+      console.log('🧾 BillingAPI: Creating bill (raw payload)', { patientId, payload: billData, url });
+      const response = await apiClient.post(url, billData);
+      return response;
+  }
 
+  // Legacy support for older calls (if any)
   const { items = [], paymentMethod } = billData;
   if (!Array.isArray(items) || items.length === 0) throw new Error('At least one bill item is required');
-  if (!paymentMethod) throw new Error('Payment method is required');
-
+  // Payment method removed as requirement for BILL creation (it's for receipt)
+  
   const totalAmount = items.reduce((sum, item) => sum + (Number(item.rate) || 0), 0);
+  
+  // Map old structure to new structure expected by backend
   const payload = {
-    items: items.map(({ category, description, rate }) => ({ category, description, rate: Number(rate) || 0 })),
-    paymentMethod,
+    itemDetail: items.map(({ category, description, rate }) => ({ 
+        code: category || 'misc', 
+        description, 
+        quantity: 1,
+        price: Number(rate) || 0,
+        total: Number(rate) || 0
+    })),
     totalAmount,
   };
 
