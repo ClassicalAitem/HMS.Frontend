@@ -12,11 +12,10 @@ import { toast } from "react-hot-toast";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
-import { LuDroplet, LuThermometer } from "react-icons/lu";
+import { LuDroplet, LuThermometer, LuActivity } from "react-icons/lu";
 import { GiWeightLiftingUp } from "react-icons/gi";
 import InjectionModals from "../incoming/modals/InjectionModals";
 import SamplingModals from "../incoming/modals/SamplingModals";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -39,7 +38,6 @@ const PatientVitalsDetails = () => {
   const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
   const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
   const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
-  const [dependants, setDependants] = useState([]);
 
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
@@ -87,31 +85,6 @@ const PatientVitalsDetails = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Get All Dependant
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchDependant = async () => {
-      try {
-
-        setLoading(true);
-        const res = await getAllDependantsForPatient(patientId);
-        console.log('Dependants response:', res);
-        const data = res?.data.data.dependants ?? res;
-        if (mounted)
-          setDependants(Array.isArray(data) ? data : (data?.data || []));
-      } catch (error) {
-        console.error('Error fetching dependant data:', error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
-    fetchDependant();
-
-    return () => { mounted = false; };
-  }, [patientId]);
-
   const latest = useMemo(() => {
     if (!Array.isArray(vitals) || vitals.length === 0) return null;
     return vitals.reduce((acc, v) => {
@@ -130,15 +103,6 @@ const PatientVitalsDetails = () => {
       return bt - at;
     });
   }, [vitals]);
-
-  const sortedDependants = useMemo(() => {
-    if (!Array.isArray(dependants)) return [];
-    return [...dependants].sort((a, b) => {
-      const at = new Date(a?.createdAt || 0).getTime();
-      const bt = new Date(b?.createdAt || 0).getTime();
-      return bt - at;
-    });
-  }, [dependants]);
 
   const patientUUID = patient?.id || location?.state?.patientSnapshot?.id || "";
   console.log('I want to see patient:', patient);
@@ -420,62 +384,8 @@ const PatientVitalsDetails = () => {
             </div>
           </div>
 
-          {/* Dependant History */}
-          <div className="shadow-xl card bg-base-100">
-            <div className="p-4 card-body">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-base-content">Dependant History</h2>
-                <div className="text-sm text-base-content/70">Showing {dependants?.length || 0} readings</div>
-              </div>
-              {loading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="skeleton h-10 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                  <table className="table w-full">
-                    <thead>
-                      <tr>
-                        <th>First Name</th>
-                        <th>Last Name</th>
-                        <th>Relationship</th>
-                        <th>Gender</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedDependants?.length ? sortedDependants.map((v, i) => (
-                        <tr key={i} className="hover">
-                          <td>{v?.firstName ?? '—'}</td>
-                          <td>{v?.lastName ?? '—'}</td>
-                          <td>{v?.relationshipType ?? '—'}</td>
-                          <td>{v?.gender ?? '—'}</td>
-                          <td>
-                          <button
-                            className="px-3 py-1 rounded-full bg-primary text-white"
-                            onClick={() => v?.id && navigate(`/dashboard/nurse/dependant/${v.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
-                          >
-                            View Dependant Details
-                          </button></td>
-                        </tr>
-                      )) : (
-                        <tr>
-                          <td colSpan={7}>
-                            <EmptyState title="No Dependant" description="No dependant history found for this patient." />
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Vitals History */}
-          <div className="shadow-xl card bg-base-100 mt-4">
+          <div className="shadow-xl card bg-base-100">
             <div className="p-4 card-body">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-base-content">Vitals History</h2>
