@@ -54,7 +54,7 @@ const TotalStaff = () => {
     if (type.includes("nurse")) return "Nurse";
     if (type.includes("cashier")) return "Cashier";
     if (type.includes("pharmacist")) return "Pharmacist"; // keep support if present
-    if (type.includes("front-desk") || type.includes("frontdesk") || type.includes("admin")) return "Non medical staff";
+    if (type.includes("front-desk") || type.includes("front-desk") || type.includes("admin")) return "Non medical staff";
     // Default bucket for any other roles
     return "Non medical staff";
   };
