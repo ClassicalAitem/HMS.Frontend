@@ -14,6 +14,7 @@ import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
 import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHistoryTable";
+import CreateBillModal from "@/components/modals/CreateBillModal";
 
 const PatientMedicalHistory = () => {
   const { patientId } = useParams();
@@ -33,6 +34,7 @@ const PatientMedicalHistory = () => {
   const [labLoading, setLabLoading] = useState(false);
   const [prescriptions, setPrescriptions] = useState([]);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
 
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
@@ -252,7 +254,7 @@ const PatientMedicalHistory = () => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+                onClick={() => setIsBillModalOpen(true)}
               >
                 Send to cashier
               </button>
@@ -294,6 +296,15 @@ const PatientMedicalHistory = () => {
               } finally {
                 setRecordLoading(false);
               }
+            }}
+          />
+          
+          <CreateBillModal 
+            isOpen={isBillModalOpen}
+            onClose={() => setIsBillModalOpen(false)}
+            patientId={patientId}
+            onSuccess={() => {
+              // Optionally refresh billing history or navigate away
             }}
           />
         </div>
