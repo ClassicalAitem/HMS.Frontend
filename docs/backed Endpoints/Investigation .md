@@ -181,7 +181,43 @@ Example Response
 }
 
 ===================================================================================================================================================
+===================================================================================================================================================
 
+GET
+Get Investigation Request By ConsultationID
+
+curl --location '/investigation?consultationId=6c7fe29e-62d9-4f24-afbe-abb5d92e28f5' \
+--data ''
+
+Example Response
+{
+  "success": true,
+  "code": 200,
+  "message": "Investigation Requests fetched successfully",
+  "data": [
+    {
+      "_id": "6971e1ab0802e9e31897e3d5",
+      "patientId": "fb1e3148-d266-4fd3-a2f4-e15889fd6011",
+      "doctorId": "d3d5b2a5-1b0a-45f0-83b1-cbb8909a4d57",
+      "type": "lab",
+      "tests": [
+        {
+          "code": "LAB-SURGERY001",
+          "name": "Blood Test Malaria",
+          "notes": "tewttttt"
+        }
+      ],
+      "priority": "urgent",
+      "status": "in_progress",
+      "consultationId": "6c7fe29e-62d9-4f24-afbe-abb5d92e28f5",
+      "createdAt": "2026-01-22T08:37:00.001Z",
+      "updatedAt": "2026-01-22T08:37:00.001Z",
+      "__v": 0
+    }
+  ]
+}
+
+===================================================================================================================================================
 PATCH
 Update Investigation Request
 
