@@ -29,7 +29,7 @@ export const createAppointment = async (payload) => {
     appointmentTime: payload.appointmentTime,
     department: payload.department,
     appointmentType: payload.appointmentType || 'consultation',
-    notes: payload.notes || '',
+    notes: payload.notes,
   };
   const url = '/appointment';
   console.log('📅 AppointmentsAPI: Creating appointment', { url, body });
