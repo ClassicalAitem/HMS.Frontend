@@ -43,7 +43,7 @@ const ConsultationDetails = () => {
     time: consultation?.createdAt ? new Date(consultation.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
     admission: consultation?.admission || "—",
     allergies: consultation?.allergies || "—",
-    notes: consultation?.notes || "",
+    notes: consultation?.notes,
   }), [consultation]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
