@@ -25,7 +25,7 @@ const addUserSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['admin', 'doctor', 'nurse', 'front-desk', 'cashier'], 'Please select a valid role'),
+    .oneOf(['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'lab-technician', 'hr', 'surgeon'], 'Please select a valid role'),
   password: yup
     .string()
     .required('Password is required')
@@ -102,7 +102,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
       }
     } catch (error) {
       console.error('❌ AddUserModal: Error creating user:', error);
-      
+
       // Show error message
       const errorMessage = error.response?.data?.message || 'Failed to create user. Please try again.';
       toast.error(errorMessage);
@@ -215,6 +215,10 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 <option value="nurse">Nurse</option>
                 <option value="front-desk">Front Desk</option>
                 <option value="cashier">Cashier</option>
+                <option value="pharmacist">Pharmacist</option>
+                <option value="lab-technician">Lab Technician</option>
+                <option value="hr">HR</option>
+                <option value="surgeon">Surgeon</option>
               </select>
               {errors.role && (
                 <label className="label">
@@ -301,7 +305,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 mt-6">
-              
+
               <button
                 type="submit"
                 disabled={isLoading}
