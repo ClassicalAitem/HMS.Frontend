@@ -23,6 +23,9 @@ const Registration = () => {
     email: '',
     phone: '',
     address: '',
+    stateOfOrigin: '',
+    town: '',
+    LGA: '',
     dob: '',
     gender: '',
     
@@ -127,6 +130,9 @@ const Registration = () => {
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
+        stateOfOrigin: formData.stateOfOrigin,
+        town: formData.town,
+        LGA: formData.LGA,
         dob: formData.dob,
         gender: formData.gender,
         nextOfKin: formData.nextOfKin,
@@ -166,6 +172,9 @@ const Registration = () => {
           email: '',
           phone: '',
           address: '',
+          stateOfOrigin: '',
+          town: '',
+          LGA: '',
           dob: '',
           gender: '',
           nextOfKin: {
@@ -424,8 +433,8 @@ const Registration = () => {
                     <label className="block mb-1 text-sm text-base-content/70">Local Gov Area</label>
                     <input
                       type="text"
-                      name="lga"
-                      value={formData.lga}
+                      name="LGA"
+                      value={formData.LGA}
                       onChange={handleInputChange}
                       placeholder="Aba North"
                       className="w-full input input-bordered"
