@@ -25,8 +25,7 @@ const editUserSchema = yup.object({
     .oneOf(['admin', 'doctor', 'nurse', 'frontdesk', 'cashier', 'pharmacist', 'lab-technician'], 'Please select a valid role'),
   departmentId: yup
     .string()
-    .required('Department is required'),
-
+    .notRequired(),
 });
 
 const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
@@ -91,10 +90,13 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       const updateData = {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
-        email: data.email.trim().toLowerCase(),
         accountType: data.role,
-        departmentId: data.departmentId,
       };
+
+      // Only add departmentId if it's selected
+      if (data.departmentId && data.departmentId.trim()) {
+        updateData.departmentId = data.departmentId;
+      }
 
       console.log('📤 EditUserModal: Sending update data:', updateData);
       console.log('📤 EditUserModal: Updating user ID:', user.id);
