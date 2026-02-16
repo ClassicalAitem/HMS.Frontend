@@ -119,6 +119,7 @@ const ManageUsers = () => {
   };
 
   const formatRole = (accountType) => {
+    if (!accountType) return 'Unknown';
     return accountType
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -140,8 +141,10 @@ const ManageUsers = () => {
 
       if (deleteUser.fulfilled.match(result)) {
         toast.success('User deleted successfully');
+        // Refresh the list to reflect changes
+        dispatch(fetchUsers());
       } else {
-        toast.error('Failed to delete user');
+        toast.error(result.payload || 'Failed to delete user');
       }
     }
   };
@@ -150,35 +153,19 @@ const ManageUsers = () => {
     console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
     const result = await dispatch(toggleUserStatus({ userId, isActive: !currentStatus }));
 
+    console.log('🔄 ManageUsers: Toggle result:', result);
+    
     if (toggleUserStatus.fulfilled.match(result)) {
+      console.log('✅ ManageUsers: Toggle successful');
       toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
     } else {
-      toast.error('Failed to update user status');
-
-      // Determine the action based on current status (if active, we want to disable, so isActive should be false)
-      const newStatus = !currentStatus;
-
-      // For disabling/enabling account, the API expects isActive boolean
-      // When disabling (newStatus is false), we might also want to send isDisabled: true depending on backend logic
-      // But based on usersAPI.disableUserAccount, it accepts userData object
-
-      try {
-        const result = await dispatch(toggleUserStatus({ userId, isActive: newStatus }));
-
-        if (toggleUserStatus.fulfilled.match(result)) {
-          toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`);
-          // Refresh the list to reflect changes
-          dispatch(fetchUsers());
-        } else {
-          // Handle error from the thunk
-          const errorMessage = result.payload || 'Failed to update user status';
-          toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
-        }
-      } catch (error) {
-        console.error('❌ ManageUsers: Error toggling status:', error);
-        toast.error('An unexpected error occurred');
-      }
+      console.log('❌ ManageUsers: Toggle failed');
+      toast.error(result.payload || 'Failed to update user status');
     }
+    
+    // Always refresh the list after toggling
+    console.log('🔄 ManageUsers: Refreshing users list after toggle');
+    dispatch(fetchUsers());
   };
 
   const handleUserAdded = () => {
@@ -226,7 +213,7 @@ const ManageUsers = () => {
       render: (value) => (
         <div className="flex items-center space-x-2">
           <span className={`badge ${value ? 'badge-success' : 'badge-error'}`}>
-            {value ? 'Active' : 'Inactive'}
+            {value ? 'Active' : 'Disabled'}
           </span>
         </div>
       )
