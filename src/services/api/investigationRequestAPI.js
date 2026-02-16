@@ -61,8 +61,15 @@ export const getInvestigationRequestByPatientId = async (patientId) => {
 export const updateInvestigationRequest = async (id, payload) => {
   if (!id) throw new Error('Investigation Request ID is required');
   const url = `/investigation/${id}`;
-  const response = await apiClient.patch(url, payload);
-  return response.data;
+  console.log('Updating investigation request:', { id, url, payload });
+  try {
+    const response = await apiClient.patch(url, payload);
+    console.log('Investigation request updated successfully:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to update investigation request:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 export default {
