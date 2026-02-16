@@ -523,7 +523,12 @@ const AppRoutes = () => {
       ====================================  Laboratory DashBoard Route ===============================================
       ===============================================================================================================*/}
       {/* LaboratoryDashboard */}
-      <Route path="/dashboard/laboratory" element={<LaboratoryDashboard />} />
+            <Route path="/dashboard/laboratory" element={
+        <ProtectedRoute allowedRoles={['lab-technician']}>
+          <LaboratoryDashboard />
+        </ProtectedRoute>
+      } />
+      {/* <Route path="/dashboard/laboratory" element={<LaboratoryDashboard />} allowedRoles={['laboratory']} /> */}
       <Route
         path="/dashboard/laboratory/incoming"
         element={<IncomingLaboratory />}

@@ -75,6 +75,7 @@ const PatientMedicalHistory = () => {
         const list = Array.isArray(raw) ? raw : raw?.data ?? [];
         if (mounted) setConsultations(list);
       } catch {
+        console.error("Failed to load consultations");
       }
     };
     loadConsultations();

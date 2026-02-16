@@ -1,6 +1,26 @@
 import React from "react";
 
-const TestRequestModal = ({ setShowModal2 }) => {
+const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
+  const getPriorityBgColor = (status) => {
+    if (status === "Urgent") return "#FFE2E2";
+    if (status === "Normal") return "#DBEAFE";
+    return "#F2F2F3";
+  };
+
+  const getPriorityTextColor = (status) => {
+    if (status === "Urgent") return "#E7000B";
+    if (status === "Normal") return "#4680FC";
+    return "#111215";
+  };
+
+  const handleAcceptClick = () => {
+    setShowModal2(false);
+    // Call the parent callback to open AcceptTestRequestModal with the correct data
+    if (onAcceptFromDetails) {
+      onAcceptFromDetails(data);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-start overflow-y-auto min-h-screen">
       <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[413px] h-[917px]  w-full">
@@ -24,13 +44,13 @@ const TestRequestModal = ({ setShowModal2 }) => {
                 <div className="h-[48px]">
                   <p className="text-[#aeaaae] text-[12px]">Patient Name</p>
                   <p className="text-[16px] text-[#111215] font-[400]">
-                    John Doe
+                    {data?.name || "Unknown Patient"}
                   </p>
                 </div>
                 <div className="h-[48px]">
                   <p className="text-[#aeaaae] text-[12px]">Patient ID</p>
                   <p className="text-[16px] text-[#111215] font-[400]">
-                    kol-2025-001
+                    {data?.userId || "N/A"}
                   </p>
                 </div>
               </div>
@@ -47,13 +67,19 @@ const TestRequestModal = ({ setShowModal2 }) => {
                       Test Type
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      Complete Blood Count (CBC)
+                      {data?.test || "N/A"}
                     </p>
                   </div>
                   <div className="w-[106px] flex flex-col gap-[8px]">
                     <p className="text-[#111215] text-[16px]">Priority Level</p>
-                    <p className="w-[53px] h-[24px] rounded-[6px] px-[6px] py-[4px] text-[#E7000B] text-[12px] font-[400] bg-[#FFE2E2]">
-                      Urgent
+                    <p
+                      style={{
+                        backgroundColor: getPriorityBgColor(data?.status),
+                        color: getPriorityTextColor(data?.status),
+                      }}
+                      className="w-[62px] h-[24px] rounded-[6px] px-[6px] py-[4px] text-[12px] font-[400] flex items-center justify-center"
+                    >
+                      {data?.status || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -63,7 +89,7 @@ const TestRequestModal = ({ setShowModal2 }) => {
                       Request Date
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      2025-10-09
+                      {data?.date || "N/A"}
                     </p>
                   </div>
                   <div className="w-[106px] flex flex-col gap-[8px]">
@@ -71,7 +97,7 @@ const TestRequestModal = ({ setShowModal2 }) => {
                       Request Time
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      08:30 AM
+                      {data?.time || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -88,15 +114,7 @@ const TestRequestModal = ({ setShowModal2 }) => {
                     Doctor Name
                   </p>
                   <p className="text-[#111215] text-[16px] font-[400]">
-                    Dr. Sarah Williams
-                  </p>
-                </div>
-                <div className="h-[48px] flex flex-col gap-[8px]">
-                  <p className="text-[#AEAAAE] text-[12px] font-[400]">
-                    Department
-                  </p>
-                  <p className="text-[#111215] text-[16px] font-[400]">
-                    General Medicine
+                    {data?.requestedBy || "N/A"}
                   </p>
                 </div>
               </div>
@@ -111,7 +129,7 @@ const TestRequestModal = ({ setShowModal2 }) => {
                   Symptoms/Clinical Notes
                 </p>
                 <p className="text-[#111215] text-[16px] font-[400]">
-                  Fever, fatigue, dizziness
+                  {data?.symptoms || "No notes provided"}
                 </p>
               </div>
             </div>
@@ -136,7 +154,10 @@ const TestRequestModal = ({ setShowModal2 }) => {
           >
             Close
           </button>
-          <button className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer ">
+          <button 
+            onClick={handleAcceptClick}
+            className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer "
+          >
             Accept & Process
           </button>
         </div>
