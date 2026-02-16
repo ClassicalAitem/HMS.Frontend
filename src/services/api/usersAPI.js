@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { API_ENDPOINTS } from '../../config/env';
+import { API_ENDPOINTS } from '@/config/env';
 import toast from 'react-hot-toast';
 
 export const usersAPI = {
@@ -131,13 +131,13 @@ export const usersAPI = {
   },
 
 
-  // Delete user
+  
   deleteUser: async (userId) => {
     console.log('🗑️ UsersAPI: Starting deleteUser request');
     console.log('📤 UsersAPI: User ID:', userId);
     
     try {
-      const response = await apiClient.delete(`${API_ENDPOINTS.USERS}/${userId}`);
+      const response = await apiClient.patch(`${API_ENDPOINTS.DELETE_USER}/${userId}`);
       console.log('✅ UsersAPI: Delete user response received');
       console.log('📥 UsersAPI: Response data:', response.data);
       return response;
@@ -155,7 +155,7 @@ export const usersAPI = {
     console.log('📤 UsersAPI: Is Active:', isActive);
     
     try {
-      const response = await apiClient.patch(`${API_ENDPOINTS.USERS}/${userId}/status`, { isActive });
+      const response = await apiClient.patch(`${API_ENDPOINTS.TOGGLE_USER_STATUS}/${userId}`, { isDisabled: !isActive });
       console.log('✅ UsersAPI: Toggle status response received');
       console.log('📥 UsersAPI: Response data:', response.data);
       return response;
