@@ -18,6 +18,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     email: '',
     phone: '',
     address: '',
+    stateOfOrigin: '',
+    town: '',
+    LGA: '',
     dob: '',
     gender: '',
     
@@ -33,6 +36,8 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     hmo: []
   });
 
+  console.log('State of origin:  ', patient?.stateOfOrigin);
+
   // Pre-populate form when patient data is available
   useEffect(() => {
     if (patient) {
@@ -43,6 +48,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         email: patient.email || '',
         phone: patient.phone || '',
         address: patient.address || '',
+        stateOfOrigin: patient.stateOfOrigin || '',
+        town: patient.town || '',
+        LGA: patient.LGA || '',
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
         gender: patient.gender || '',
         
@@ -98,6 +106,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         phone: formData.phone,
         email: formData.email,
         address: formData.address,
+        stateOfOrigin: formData.stateOfOrigin,
+        town: formData.town,
+        LGA: formData.LGA,
         nextOfKin: {
           name: formData.nextOfKin.name,
           phone: formData.nextOfKin.phone,
@@ -281,11 +292,13 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                   <label className="block mb-1 text-sm text-base-content/70">SOO</label>
                   <select
                     name="stateOfOrigin"
-                    value={formData.stateOfOrigin}
+                    value={patient?.stateOfOrigin}
                     onChange={handleInputChange}
                     className="w-full select select-bordered"
                   >
-                   <option value="Abia">Abia</option>
+                    <option value={patient?.stateOfOrigin}>{patient?.stateOfOrigin}</option>
+                    <option value="Abia">Abia</option>
+                    <option value="Abuja">Abuja</option>
                     <option value="Adamawa">Adamawa</option>
                     <option value="Akwa Ibom">Akwa Ibom</option>
                     <option value="Anambra">Anambra</option>
@@ -321,7 +334,6 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                     <option value="Taraba">Taraba</option>
                     <option value="Yobe">Yobe</option>
                     <option value="Zamfara">Zamfara</option>
-
                   </select>
                 </div>
                 <div>
@@ -330,7 +342,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                   <input
                     type="text"
                     name="town"
-                    value={formData.town}
+                    value={formData.stateOfOrigin}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
                   />
@@ -340,8 +352,8 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                   <label className="block mb-1 text-sm text-base-content/70">Local Gov Area</label>
                   <input
                     type="text"
-                    name="lga"
-                    value={formData.lga}
+                    name="LGA"
+                    value={formData.LGA}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
                   />
