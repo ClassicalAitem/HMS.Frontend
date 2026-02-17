@@ -272,7 +272,7 @@ const ChangePassword = () => {
                 
                 <div className="space-y-3">
                   <PasswordRequirement 
-                    text="At least 8 charatcers long" 
+                    text="At least 6 charatcers long" 
                     isValid={newPassword && newPassword.length >= 8} 
                   />
                   <PasswordRequirement 
