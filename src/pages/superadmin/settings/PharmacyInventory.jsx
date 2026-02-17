@@ -99,7 +99,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setShowAdd(false)
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error creating inventory item:', e)
+    }
   }
 
   const handleEdit = async (id, payload) => {
@@ -109,7 +111,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setEditing(null)
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error updating inventory item:', e)
+    }
   }
 
   const handleRestock = async (id, payload) => {
@@ -119,7 +123,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setRestockingFor(null)
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error restocking inventory item:', e)
+    }
   }
 
   return (
@@ -220,6 +226,7 @@ const InventoryStocks = () => {
                       <th>Stock</th>
                       <th>Reorder Level</th>
                       <th>Price</th>
+                      <th>Expiry Date</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -231,6 +238,12 @@ const InventoryStocks = () => {
                         <td>{item.stock ?? 0}</td>
                         <td>{item.reorderLevel ?? 0}</td>
                         <td>{item.sellingPrice ?? '—'}</td>
+                        <td>
+                          {item.expiryDate
+                            ? new Date(item.expiryDate).toISOString().split('T')[0]
+                            : '—'}
+                        </td>
+
                         <td>
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
@@ -334,7 +347,7 @@ function InventoryFormModal({ item, onClose, onSubmit }){
           <div className="flex gap-2">
             <textarea className="textarea textarea-bordered w-full" rows={3} placeholder='Description'
               value={form.description}
-              onChange={(e) => setForm({...form,description:e.target.value})}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </div>
           <div className="flex justify-end gap-2">
