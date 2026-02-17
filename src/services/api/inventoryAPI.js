@@ -70,6 +70,15 @@ export const getInventoryTransaction = async (id) => {
   }
 }
 
+export const deleteInventory = async (id) => {
+  try {
+    const response = await apiClient.delete(`/inventory/${id}`)
+    return response.data ?? response
+  } catch (err) {
+    console.error('inventoryAPI: deleteInventory error', err)
+    throw err
+  }
+}
 export default {
   getInventories,
   getInventory,
@@ -77,5 +86,6 @@ export default {
   updateInventory,
   restockInventory,
   getAllInventoryTransactions,
-  getInventoryTransaction
+  getInventoryTransaction,
+  deleteInventory
 }
