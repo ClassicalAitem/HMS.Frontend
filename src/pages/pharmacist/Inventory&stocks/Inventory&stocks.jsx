@@ -67,7 +67,8 @@ const InventoryStocks = () => {
         stock: i.stock ?? 0,
         unitPrice: i.sellingPrice ?? '',
         supplier: i.supplier || '',
-        expiryDate: i.expiryDate || ''
+        expiryDate: i.expiryDate ? new Date(i.expiryDate).toISOString().split('T')[0] : '',
+
       }))
       const header = Object.keys(rows[0] || {}).join(',') + '\n'
       const csv = header + rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n')
@@ -210,6 +211,7 @@ const InventoryStocks = () => {
                       <th>Stock</th>
                       <th>Reorder Level</th>
                       <th>Price</th>
+                      <th>Expiry Date</th>
                       {/* <th>Actions</th> */}
                     </tr>
                   </thead>
@@ -221,6 +223,7 @@ const InventoryStocks = () => {
                         <td>{item.stock ?? 0}</td>
                         <td>{item.reorderLevel ?? 0}</td>
                         <td>{item.sellingPrice ?? '—'}</td>
+                        <td>{item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0]: '—'}</td>
                         {/* <td>
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
