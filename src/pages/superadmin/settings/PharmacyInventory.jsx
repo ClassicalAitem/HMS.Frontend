@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdAdd, MdInventory2 } from 'react-icons/md'
 import toast from 'react-hot-toast'
-import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions } from '@/services/api/inventoryAPI'
+import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions, deleteInventory } from '@/services/api/inventoryAPI'
 import { SuperAdminLayout } from '@/layouts/superadmin'
 
 const InventoryStocks = () => {
@@ -13,6 +13,21 @@ const InventoryStocks = () => {
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState(null)
   const [restockingFor, setRestockingFor] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+  
+  const handleDelete = async (item) => {
+    if (!window.confirm(`Are you sure you want to delete "${item.name}"? This cannot be undone.`)) return;
+    setDeleting(item._id);
+    try {
+      await deleteInventory(item._id);
+      toast.success('Item deleted');
+      await fetch();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to delete item');
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const fetch = async () => {
     setLoading(true)
@@ -248,6 +263,18 @@ const InventoryStocks = () => {
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
                             <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
+                            <button
+                              className="btn btn-error btn-xs"
+                              title="Delete"
+                              disabled={deleting === item._id}
+                              onClick={() => handleDelete(item)}
+                            >
+                              {deleting === item._id ? 'Deleting...' : (
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              )}
+                            </button>
                           </div>
                         </td>
                       </tr>
