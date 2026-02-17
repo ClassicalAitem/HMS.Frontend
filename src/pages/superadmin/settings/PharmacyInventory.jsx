@@ -4,6 +4,7 @@ import { MdAdd, MdInventory2 } from 'react-icons/md'
 import toast from 'react-hot-toast'
 import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions, deleteInventory } from '@/services/api/inventoryAPI'
 import { SuperAdminLayout } from '@/layouts/superadmin'
+import { FaTrash } from 'react-icons/fa'
 
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
@@ -60,7 +61,7 @@ const InventoryStocks = () => {
     const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     return diff <= 30 && diff >= 0
   }).length
-
+ 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     let list = items.filter(i => !q || (i.name || '').toLowerCase().includes(q) || (i.strength || '').toLowerCase().includes(q) || (i.form || '').toLowerCase().includes(q))
@@ -259,22 +260,18 @@ const InventoryStocks = () => {
                             : '—'}
                         </td>
 
+
                         <td>
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
                             <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
                             <button
-                              className="btn btn-error btn-xs"
-                              title="Delete"
                               disabled={deleting === item._id}
                               onClick={() => handleDelete(item)}
-                            >
-                              {deleting === item._id ? 'Deleting...' : (
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                              )}
+                              className="btn btn-ghost btn-xs text-error"
+                              title="Delete Item"><FaTrash className="w-3 h-3" />
                             </button>
+                          
                           </div>
                         </td>
                       </tr>
