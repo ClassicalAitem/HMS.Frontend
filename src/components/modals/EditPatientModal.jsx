@@ -290,13 +290,13 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                 <div>
                   <h4 className="mb-3 text-base font-medium text-base-content">State Of Origin</h4>
                   <label className="block mb-1 text-sm text-base-content/70">SOO</label>
-                  <select
-                    name="stateOfOrigin"
-                    value={patient?.stateOfOrigin}
-                    onChange={handleInputChange}
-                    className="w-full select select-bordered"
-                  >
-                    <option value={patient?.stateOfOrigin}>{patient?.stateOfOrigin}</option>
+                       <select
+                        name="stateOfOrigin"
+                        value={formData.stateOfOrigin}
+                        onChange={handleInputChange}
+                        className="w-full select select-bordered"
+                      >
+                    <option >{patient?.stateOfOrigin}</option>
                     <option value="Abia">Abia</option>
                     <option value="Abuja">Abuja</option>
                     <option value="Adamawa">Adamawa</option>
@@ -342,7 +342,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                   <input
                     type="text"
                     name="town"
-                    value={formData.stateOfOrigin}
+                    value={formData.town}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
                   />
