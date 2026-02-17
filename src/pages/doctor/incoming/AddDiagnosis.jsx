@@ -15,14 +15,14 @@ import AddComplaintModal from "./modals/AddComplaintModal";
 import AddFamilyHistoryModal from "./modals/AddFamilyHistoryModal";
 import AddHistoryModal from "./modals/AddHistoryModal";
 import { ConfirmationModal } from "@/components/modals";
-
+import { getInventories } from "@/services/api/inventoryAPI";
 const AddDiagnosis = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
   const [patient, setPatient] = useState(snapshot || null);
@@ -37,6 +37,10 @@ const AddDiagnosis = () => {
   const [socialHistory, setSocialHistory] = useState([]);
   const [allergyHistory, setAllergyHistory] = useState([]);
   const [notes, setNotes] = useState("");
+  const [visitReason, setVisitReason] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [cid, setCid] = useState(null);
+  const [items, setItems] = useState([]);
 
   // Modals State
   const [activeModal, setActiveModal] = useState(null); // 'complaint', 'medical', 'surgical', 'family', 'social', 'allergy'
@@ -47,6 +51,22 @@ const AddDiagnosis = () => {
     social: [],
     allergic: []
   });
+
+  useEffect(() => {
+      let mounted = true;
+      const load = async () => {
+      try {
+        const res = await getInventories();
+        console.log('InventoryStocks: fetched data', res);
+        const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
+        setMedicalRecords(prev => ({...prev, allergic: list}))
+      } catch (err) {
+        console.error('InventoryStocks: fetch error', err)
+      }
+    }
+    load();
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -61,7 +81,6 @@ const AddDiagnosis = () => {
               surgical: records.filter(r => r.category === 'surgical'),
               family: records.filter(r => r.category === 'family'),
               social: records.filter(r => r.category === 'social'),
-              allergic: records.filter(r => r.category === 'allergic')
             };
             setMedicalRecords(categorized);
           }
@@ -113,10 +132,12 @@ const AddDiagnosis = () => {
     setIsConfirmOpen(true);
   };
 
+  console.log('medicalRecords', medicalRecords);
+
   const handleConfirmSave = async () => {
     setIsConfirmOpen(false);
     if (!patientId) return;
-    
+
     // Construct payload matching the new API documentation
     const payload = {
       patientId,
@@ -126,12 +147,12 @@ const AddDiagnosis = () => {
       complaint: complaints.map(c => {
         // Calculate total days based on unit
         let days = c.value || parseInt(c.duration) || 1;
-        const unit = c.unit || "";
-        
+        const unit = c.unit;
+
         if (unit === "Week(s)") days *= 7;
         else if (unit === "Month(s)") days *= 30;
         else if (unit === "Year(s)") days *= 365;
-        
+
         return {
           symptom: c.name,
           durationInDays: days // Send as number
@@ -152,8 +173,6 @@ const AddDiagnosis = () => {
       })),
       allergicHistory: allergyHistory.map(a => ({
         allergen: a,
-        severity: "medium", // Default, could be added to UI
-        reaction: "reaction" // Default, could be added to UI
       })),
       socialHistory: (socialHistory || []).map(s => ({
         title: s,
@@ -164,16 +183,21 @@ const AddDiagnosis = () => {
     console.log("Submitting Consultation Payload:", payload);
 
     setSaving(true);
-    
+
     toast.promise(
       createConsultation(payload),
       {
         loading: 'Saving consultation...',
         success: (res) => {
-          navigate(`/dashboard/doctor/medical-history/${patientId}`, { 
-            replace: true, 
-            state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } 
-          });
+          const data = res?.data ?? res;
+          console.log("Consultation Save Response:", data);
+          setCid(data.id);
+          // navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+          //   replace: true,
+          //   state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient }
+          // });
+
+
           return "Consultation saved successfully";
         },
         error: (err) => {
@@ -191,14 +215,14 @@ const AddDiagnosis = () => {
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
-      
+
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
       </div>
 
       <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
           {/* Header Section */}
           <div className="flex items-center justify-between mb-4">
@@ -219,269 +243,313 @@ const AddDiagnosis = () => {
               </div>
 
               <div>
-                <IoIosCloseCircleOutline 
-                  className="btn btn-ghost text-error btn-md btn-circle" 
+                <IoIosCloseCircleOutline
+                  className="btn btn-ghost text-error btn-md btn-circle"
                   onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} />
               </div>
             </div>
           </div>
 
-          {/* Complaint Section */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4 flex justify-between items-center border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800">Complaint</h3>
-              <button 
-                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
-                onClick={() => setActiveModal('complaint')}
-              >
-                <span className="text-lg">+</span> Add Complaint
-              </button>
+          {/* Visit Reason & Diagnosis Section */}
+          <div className="grid grid-cols-1 gap-4">
+            <div className="card bg-base-100 shadow-sm">
+              <div className="card-body p-4">
+                <h3 className="card-title text-lg font-semibold text-base-content mb-2">Visit Reason</h3>
+                <textarea
+                  className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-primary resize-y rounded-md bg-base-100 text-base-content"
+                  placeholder="e.g. for wellness"
+                  value={visitReason}
+                  onChange={(e) => setVisitReason(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="table w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="font-medium text-gray-500 py-4 pl-6">Complaint Name</th>
-                    <th className="font-medium text-gray-500 py-4">Duration</th>
-                    <th className="w-16"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complaints.length > 0 ? (
-                    complaints.map((item, idx) => (
-                      <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                        <td className="py-4 pl-6 font-medium text-gray-800">{item.name}</td>
-                        <td className="py-4 text-gray-600">{item.duration}</td>
-                        <td className="py-4 pr-6 text-right">
-                          <button onClick={() => removeComplaint(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
-                            <span className="text-lg font-bold">−</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" className="text-center py-8 text-gray-400">No complaints added</td>
+          </div>
+
+          {/* Complaint Section */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center border-b border-base-200">
+                <h3 className="card-title text-lg font-semibold text-base-content">Complaint</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('complaint')}
+                >
+                  <span className="text-lg">+</span> Add Complaint
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr className="border-b border-base-200">
+                      <th className="font-medium text-base-content/70 py-4 pl-6">Complaint Name</th>
+                      <th className="font-medium text-base-content/70 py-4">Duration</th>
+                      <th className="w-16"></th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {complaints.length > 0 ? (
+                      complaints.map((item, idx) => (
+                        <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/50">
+                          <td className="py-4 pl-6 font-medium text-base-content">{item.name}</td>
+                          <td className="py-4 text-base-content/80">{item.duration}</td>
+                          <td className="py-4 pr-6 text-right">
+                            <button onClick={() => removeComplaint(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
+                              <span className="text-lg font-bold">−</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="3" className="text-center py-8 text-base-content/40">No complaints added</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           {/* Past Medical History */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4 flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">Past Medical History</h3>
-              <button 
-                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
-                onClick={() => setActiveModal('medical')}
-              >
-                <span className="text-lg">+</span> Add Medical History
-              </button>
-            </div>
-            <div className="px-6 pb-6 flex flex-wrap gap-3">
-              {medicalHistory.map((item, idx) => (
-                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
-                  <span className="font-medium">{item}</span>
-                  <button onClick={() => removeMedical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
-                    <IoCloseCircleOutline className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              {medicalHistory.length === 0 && <span className="text-sm text-gray-400 italic">No medical history recorded</span>}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center mb-2">
+                <h3 className="card-title text-lg font-semibold text-base-content">Past Medical History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('medical')}
+                >
+                  <span className="text-lg">+</span> Add Medical History
+                </button>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                {medicalHistory.map((item, idx) => (
+                  <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm text-base-content shadow-sm hover:border-base-content/30 transition-colors">
+                    <span className="font-medium">{item}</span>
+                    <button onClick={() => removeMedical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                      <IoCloseCircleOutline className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {medicalHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No medical history recorded</span>}
+              </div>
             </div>
           </div>
 
           {/* Past Surgical History */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4 flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">Past Surgical History</h3>
-              <button 
-                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
-                onClick={() => setActiveModal('surgical')}
-              >
-                <span className="text-lg">+</span> Add Surgical History
-              </button>
-            </div>
-            <div className="px-6 pb-6 flex flex-wrap gap-3">
-              {surgicalHistory.map((item, idx) => (
-                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
-                  <span className="font-medium">{item}</span>
-                  <button onClick={() => removeSurgical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
-                    <IoCloseCircleOutline className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              {surgicalHistory.length === 0 && <span className="text-sm text-gray-400 italic">No surgical history recorded</span>}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center mb-2">
+                <h3 className="card-title text-lg font-semibold text-base-content">Past Surgical History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('surgical')}
+                >
+                  <span className="text-lg">+</span> Add Surgical History
+                </button>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                {surgicalHistory.map((item, idx) => (
+                  <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm text-base-content shadow-sm hover:border-base-content/30 transition-colors">
+                    <span className="font-medium">{item}</span>
+                    <button onClick={() => removeSurgical(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                      <IoCloseCircleOutline className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {surgicalHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No surgical history recorded</span>}
+              </div>
             </div>
           </div>
 
           {/* Family History */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4 flex justify-between items-center border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-800">Family History</h3>
-              <button 
-                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
-                onClick={() => setActiveModal('family')}
-              >
-                <span className="text-lg">+</span> Add Family History
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="table w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="font-medium text-gray-500 py-4 pl-6 w-1/2">Title</th>
-                    <th className="font-medium text-gray-500 py-4 w-1/2">Value</th>
-                    <th className="w-16"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {familyHistory.length > 0 ? (
-                    familyHistory.map((item, idx) => (
-                      <tr key={idx} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                        <td className="py-4 pl-6 font-medium text-gray-800">{item.title}</td>
-                        <td className="py-4 text-gray-600">{item.value}</td>
-                        <td className="py-4 pr-6 text-right">
-                          <button onClick={() => removeFamily(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
-                            <span className="text-lg font-bold">−</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" className="text-center py-8 text-gray-400">No family history recorded</td>
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center border-b border-base-200">
+                <h3 className="card-title text-lg font-semibold text-base-content">Family History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('family')}
+                >
+                  <span className="text-lg">+</span> Add Family History
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr className="border-b border-base-200">
+                      <th className="font-medium text-base-content/70 py-4 pl-6 w-1/2">Title</th>
+                      <th className="font-medium text-base-content/70 py-4 w-1/2">Value</th>
+                      <th className="w-16"></th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {familyHistory.length > 0 ? (
+                      familyHistory.map((item, idx) => (
+                        <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/50">
+                          <td className="py-4 pl-6 font-medium text-base-content">{item.title}</td>
+                          <td className="py-4 text-base-content/80">{item.value}</td>
+                          <td className="py-4 pr-6 text-right">
+                            <button onClick={() => removeFamily(idx)} className="btn btn-ghost btn-xs text-error hover:bg-error/10">
+                              <span className="text-lg font-bold">−</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="3" className="text-center py-8 text-base-content/40">No family history recorded</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           {/* Social History */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4 flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">Social History</h3>
-              <button 
-                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
-                onClick={() => setActiveModal('social')}
-              >
-                <span className="text-lg">+</span> Add Social History
-              </button>
-            </div>
-            <div className="px-6 pb-6 flex flex-wrap gap-3">
-              {socialHistory.map((item, idx) => (
-                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
-                  <span className="font-medium">{item}</span>
-                  <button onClick={() => removeSocial(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
-                    <IoCloseCircleOutline className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              {socialHistory.length === 0 && <span className="text-sm text-gray-400 italic">No social history recorded</span>}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center mb-2">
+                <h3 className="card-title text-lg font-semibold text-base-content">Social History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('social')}
+                >
+                  <span className="text-lg">+</span> Add Social History
+                </button>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                {socialHistory.map((item, idx) => (
+                  <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm text-base-content shadow-sm hover:border-base-content/30 transition-colors">
+                    <span className="font-medium">{item}</span>
+                    <button onClick={() => removeSocial(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                      <IoCloseCircleOutline className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {socialHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No social history recorded</span>}
+              </div>
             </div>
           </div>
 
           {/* Past Allergy History */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4 flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold text-gray-800">Past Allergy History</h3>
-              <button 
-                className="btn btn-sm bg-[#00943C] hover:bg-[#007a31] text-white border-none gap-2 font-normal normal-case" 
-                onClick={() => setActiveModal('allergy')}
-              >
-                <span className="text-lg">+</span> Add Allergy History
-              </button>
-            </div>
-            <div className="px-6 pb-6 flex flex-wrap gap-3">
-              {allergyHistory.map((item, idx) => (
-                <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-700 shadow-sm hover:border-gray-300 transition-colors">
-                  <span className="font-medium">{item}</span>
-                  <button onClick={() => removeAllergy(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
-                    <IoCloseCircleOutline className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              {allergyHistory.length === 0 && <span className="text-sm text-gray-400 italic">No allergy history recorded</span>}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center mb-2">
+                <h3 className="card-title text-lg font-semibold text-base-content">Past Allergy History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('allergy')}
+                >
+                  <span className="text-lg">+</span> Add Allergy History
+                </button>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                {allergyHistory.map((item, idx) => (
+                  <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm text-base-content shadow-sm hover:border-base-content/30 transition-colors">
+                    <span className="font-medium">{item}</span>
+                    <button onClick={() => removeAllergy(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                      <IoCloseCircleOutline className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {allergyHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No allergy history recorded</span>}
+              </div>
             </div>
           </div>
 
           {/* Notes */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <div className="p-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Notes</h3>
-              <textarea 
-                className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-[#00943C] resize-y rounded-md" 
-                placeholder="Enter Additional Notes" 
-                value={notes} 
-                onChange={(e) => setNotes(e.target.value)} 
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-4">
+              <h3 className="card-title text-lg font-semibold text-base-content mb-3">Notes</h3>
+              <textarea
+                className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-primary resize-y rounded-md bg-base-100 text-base-content"
+                placeholder="Enter Additional Notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Diagnosis */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-4">
+              <h3 className="card-title text-lg font-semibold text-base-content mb-3">Diagnosis</h3>
+              <textarea
+                className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-primary resize-y rounded-md bg-base-100 text-base-content"
+                placeholder="e.g. malaria parasite"
+                value={diagnosis}
+                onChange={(e) => setDiagnosis(e.target.value)}
               />
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex justify-center gap-4 pt-4 pb-12">
-            <button 
-              className={`btn bg-[#00943C] hover:bg-[#007a31] text-white px-12 h-12 text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`} 
+            <button
+              className={`btn btn-primary text-white px-12 h-12 text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
               onClick={onSave}
               disabled={saving}
             >
               Save Now
             </button>
-            <button 
-              className="btn btn-outline border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-12 h-12 text-lg font-normal normal-case rounded-md"
-              onClick={() => toast.success("Next step not implemented yet")}
+
+            {cid && (
+            <button
+              className="btn btn-outline border-base-300 hover:border-base-content hover:bg-base-200 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
+              onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
             >
               Next
             </button>
+
+            )}
           </div>
         </div>
       </div>
 
       {/* Modals */}
-      <AddComplaintModal 
-        isOpen={activeModal === 'complaint'} 
-        onClose={() => setActiveModal(null)} 
-        onAdd={handleAddComplaint} 
+      <AddComplaintModal
+        isOpen={activeModal === 'complaint'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddComplaint}
         data={medicalRecords.symptoms}
       />
-      <AddFamilyHistoryModal 
-        isOpen={activeModal === 'family'} 
-        onClose={() => setActiveModal(null)} 
-        onAdd={handleAddFamily} 
+      <AddFamilyHistoryModal
+        isOpen={activeModal === 'family'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddFamily}
         data={medicalRecords.family}
       />
-      <AddHistoryModal 
-        isOpen={activeModal === 'medical'} 
-        onClose={() => setActiveModal(null)} 
-        onAdd={handleAddMedical} 
+      <AddHistoryModal
+        isOpen={activeModal === 'medical'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddMedical}
         type="Medical"
         data={medicalRecords.symptoms}
       />
-      <AddHistoryModal 
-        isOpen={activeModal === 'surgical'} 
-        onClose={() => setActiveModal(null)} 
-        onAdd={handleAddSurgical} 
+      <AddHistoryModal
+        isOpen={activeModal === 'surgical'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddSurgical}
         type="Surgical"
         data={medicalRecords.surgical}
       />
-      <AddHistoryModal 
-        isOpen={activeModal === 'social'} 
-        onClose={() => setActiveModal(null)} 
-        onAdd={handleAddSocial} 
+      <AddHistoryModal
+        isOpen={activeModal === 'social'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddSocial}
         type="Social"
         data={medicalRecords.social}
       />
-      <AddHistoryModal 
-        isOpen={activeModal === 'allergy'} 
-        onClose={() => setActiveModal(null)} 
-        onAdd={handleAddAllergy} 
+      <AddHistoryModal
+        isOpen={activeModal === 'allergy'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddAllergy}
         type="Allergy"
         data={medicalRecords.allergic}
       />
-      
+
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={isConfirmOpen}

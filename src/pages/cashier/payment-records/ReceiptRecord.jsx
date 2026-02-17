@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/cashier/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
-import cashierData from '@/data/cashierData.json';
 import { getAllReceipts, updateReceipt } from '@/services/api/billingAPI';
 import toast from 'react-hot-toast';
 
@@ -60,6 +59,7 @@ const PaymentRecords = () => {
           transactionId: a.reference || `Kolak-${idx + 1}`,
           name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
           paymentMethod: a.paymentMethod,
+          paymentDestination: a.paymentDestination || 'N/A',
           paidBy: a.paidBy || 'N/A',
           status: a.status || 'pending',
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
@@ -128,6 +128,12 @@ const PaymentRecords = () => {
       title: 'Amount Paid',
       sortable: true,
       className: 'text-base-content/70'
+    },
+    {
+      key: 'paymentDestination',
+      title: 'Payment Destination',
+      sortable: true,
+      className: 'text-base-content font-medium'
     },
     {
       key: 'paidBy',
@@ -294,6 +300,14 @@ const PaymentRecords = () => {
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Amount</label>
                   <p className="text-base-content">{selectedPayment.amount}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-base-content/70">Transaction ID</label>
+                  <p className="text-base-content">{selectedPayment.transactionId}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-base-content/70">Payment Destination</label>
+                  <p className="text-base-content">{selectedPayment.paymentDestination}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Date & Time</label>

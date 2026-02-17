@@ -10,6 +10,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg";
+import { path } from 'slate';
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -81,6 +82,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Transactions',
       path: '/dashboard/pharmacist/Transactions',
       active: location.pathname === '/dashboard/pharmacist/Transactions'
+    },
+    {
+      icon: IoReceiptOutline,
+      label: 'Payment Records',
+      path: '/dashboard/pharmacist/payment-records',
+      active: location.pathname === '/dashboard/pharmacist/payment-records'
     }
   ];
 

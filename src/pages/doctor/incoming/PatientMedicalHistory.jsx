@@ -12,6 +12,9 @@ import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
+import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
+import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHistoryTable";
+import CreateBillModal from "@/components/modals/CreateBillModal";
 
 const PatientMedicalHistory = () => {
   const { patientId } = useParams();
@@ -29,6 +32,9 @@ const PatientMedicalHistory = () => {
   const [consultations, setConsultations] = useState([]);
   const [labResults, setLabResults] = useState([]);
   const [labLoading, setLabLoading] = useState(false);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
 
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
@@ -96,6 +102,40 @@ const PatientMedicalHistory = () => {
       }
     };
     loadLabs();
+    return () => { mounted = false; };
+  }, [patientId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPrescriptions = async () => {
+      try {
+        setPrescriptionsLoading(true);
+        const res = await getPrescriptionByPatientId(patientId);
+        // The API returns { data: { ...prescriptionObject } } or { data: [...] } or just the object/array
+        // Based on the documentation, it returns a single object if there's one active prescription, or potentially an array.
+        // However, the example response shows a single object in `data`.
+        // Let's handle both cases: single object or array of objects.
+        
+        const rawData = res?.data ?? res;
+        let list = [];
+
+        if (Array.isArray(rawData)) {
+          list = rawData;
+        } else if (rawData && typeof rawData === 'object') {
+          // If it's a single object (and not an empty one), wrap it in an array
+          if (Object.keys(rawData).length > 0) {
+             list = [rawData];
+          }
+        }
+        
+        if (mounted) setPrescriptions(list);
+      } catch (err) {
+        console.error("Failed to load prescriptions", err);
+      } finally {
+        if (mounted) setPrescriptionsLoading(false);
+      }
+    };
+    loadPrescriptions();
     return () => { mounted = false; };
   }, [patientId]);
 
@@ -168,6 +208,19 @@ const PatientMedicalHistory = () => {
             if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
           }} />
 
+          <PrescriptionHistoryTable 
+            loading={prescriptionsLoading}
+            rows={useMemo(() => (
+              Array.isArray(prescriptions) ? prescriptions.map((p) => ({
+                id: p?._id || p?.id,
+                status: p?.status || 'pending',
+                date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
+                medicationsCount: p?.medications?.length || 0,
+                medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || []
+              })) : []
+            ), [prescriptions])}
+          />
+
           <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
           <div className="shadow-xl card bg-base-100 mb-4">
@@ -202,7 +255,7 @@ const PatientMedicalHistory = () => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+                onClick={() => setIsBillModalOpen(true)}
               >
                 Send to cashier
               </button>
@@ -244,6 +297,15 @@ const PatientMedicalHistory = () => {
               } finally {
                 setRecordLoading(false);
               }
+            }}
+          />
+          
+          <CreateBillModal 
+            isOpen={isBillModalOpen}
+            onClose={() => setIsBillModalOpen(false)}
+            patientId={patientId}
+            onSuccess={() => {
+              // Optionally refresh billing history or navigate away
             }}
           />
         </div>

@@ -1,11 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { FiSearch, FiDownload } from 'react-icons/fi'
-import { BiPlus } from 'react-icons/bi'
 import inventoryAPI from '@/services/api/inventoryAPI'
-import dispensesAPI from '@/services/api/dispensesAPI'
 import toast from 'react-hot-toast'
-import { Link } from 'react-router-dom'
 
 const StatCard = ({ title, value, hint }) => (
   <div className="p-4 rounded-xl bg-base-100 border border-base-300">
@@ -34,24 +31,34 @@ const Transactions = () => {
       setLoading(true)
       setError(null)
       try {
-        const [txRes, dRes] = await Promise.all([
-          inventoryAPI.getAllInventoryTransactions().catch(e=>{throw {source:'inventory', e}}),
-          dispensesAPI.getDispenses().catch(e=>{throw {source:'dispenses', e}})
-        ])
+        const allTx = await inventoryAPI.getAllInventoryTransactions().catch(e => { throw { source: 'inventory', e } });
+
+        console.log("All transactions:", allTx)
+
+          // Separate into "in" and "out"
+          const txRes = allTx?.data.filter(tx => tx.type === 'in');
+          const dRes  = allTx?.data.filter(tx => tx.type === 'out');
+
+          // Now you can use txRes and dRes
+          console.log("IN transactions:", txRes);
+          console.log("OUT transactions:", dRes);
+
 
         if (!mounted) return
 
         const txs = txRes?.data ?? txRes
         const disp = dRes?.data ?? dRes
 
+        console.log("Filtered OUT transactions:", disp);
+
         // Normalize inventory transactions (type: in/out)
         const invRows = (Array.isArray(txs) ? txs : []).map(t => ({
           id: t._id || t.id,
-          batch: t.batch || t.batchNumber || t.batchNo || 'Stock-001',
-          name: t.inventoryName || t.name || t.itemName || (t.supplier && t.supplier.name) || 'Unknown',
-          supplierId: t.supplierId || (t.supplier && t.supplier.id) || 'SUP-001',
-          drugName: t.inventoryName || t.itemName || t.description || 'Unknown',
-          form: t.form || t.unit || t.uom || '—',
+          batch: t.batchNumber,
+          name: t.inventoryId?.name || 'Unknown',
+          supplierId: t.inventoryId?.supplier || '-',
+          description: t.inventoryName || t.itemName || t.description || 'Unknown',
+          form: t.inventoryId?.form || '—',
           quantity: t.quantity ?? t.qty ?? 0,
           price: t.unitPrice ?? t.price ?? '₦70,890',
           datetime: t.createdAt || t.date || '-',
@@ -61,21 +68,24 @@ const Transactions = () => {
         }))
 
         // Normalize dispenses as out transactions
-        const dispRows = (Array.isArray(disp) ? disp : []).flatMap(d => (d.items || []).map(it => ({
-          id: d._id,
-          batch: it.batch || 'DISP-001',
-          name: d?.prescription?.patientId || 'PT-XXXX',
-          supplierId: d.pharmacistId || 'PHAR-001',
-          drugName: it.drugName || d?.prescription?.medications?.[0]?.drugName || 'Unknown',
-          form: it.form || '—',
-          quantity: it.quantity ?? it.qty ?? 0,
-          price: it.price ? `₦${it.price}` : '₦70,890',
-          datetime: d.dispensedAt || d.createdAt || '-',
-          prescriptionId: d?.prescription?._id || '-',
-          status: 'Out',
-          type: 'out'
-        })))
+        const dispRows = (Array.isArray(disp) ? disp : []).flatMap(d => {
+          // Safely access dispensedId.items
+          const items = d?.dispensedId?.items || [];
 
+          return items.map(item => ({
+            id: d._id,
+            batch: item?.batchNumber || 'N/A',
+            name: item?.drugName || 'N/A',
+            description: d?.description,
+            quantity: item?.quantity ?? 0,
+            datetime: d.createdAt || '-',
+            referenceId: d?.referenceId || 'N/A',
+            type: d?.type || 'out',
+          }));
+        });
+
+
+        console.log('Normalized inventory transactions:', dispRows)
         setInventoryTx(invRows)
         setDispenses(dispRows)
       } catch (err) {
@@ -111,7 +121,7 @@ const Transactions = () => {
     if (category && category !== 'All Categories') list = list.filter(r => (r.form || '').toLowerCase() === category.toLowerCase())
     if (query) {
       const q = query.toLowerCase()
-      list = list.filter(r => (String(r.drugName || r.name || r.batch || r.prescriptionId || r.purchaseOrder)).toLowerCase().includes(q))
+      list = list.filter(r => (String(r.drugName || r.name || r.batch || r.referenceId || r.referenceId)).toLowerCase().includes(q))
     }
     return list
   }, [allRows, activeTab, query, category])
@@ -134,7 +144,7 @@ const Transactions = () => {
 
           <div className="flex items-center space-x-3">
             <button className="btn btn-outline btn-sm flex items-center space-x-2"><FiDownload /><span className="text-xs">Export</span></button>
-            <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record Transaction</span></button>
+            {/* <button className="btn btn-success btn-sm flex items-center space-x-2"><BiPlus /><span className="text-xs">Record Transaction</span></button> */}
           </div>
         </div>
 
@@ -173,11 +183,11 @@ const Transactions = () => {
                 <tr>
                   <th>Batch ID</th>
                   <th>Name</th>
-                  <th>Supplier ID</th>
-                  <th>Drug Name</th>
-                  <th>Form</th>
+                  <th>{activeTab==='in' ? 'Supplier Name' : ''}</th>
+                  <th>Description</th>
+                  <th>{activeTab==='in' ? 'Form' : ''}</th>
                   <th>Quantity</th>
-                  <th>Price</th>
+                  <th>{activeTab==='in' ? 'Price' : ''}</th>
                   <th>Date &amp; Time</th>
                   <th>{activeTab==='in' ? 'Purchase order' : 'Prescription ID'}</th>
                   <th>Status</th>
@@ -194,13 +204,13 @@ const Transactions = () => {
                   <tr key={idx} className="hover">
                     <td className="font-medium">{row.batch}</td>
                     <td>{row.name}</td>
-                    <td>{row.supplierId ?? row.patientId ?? '—'}</td>
-                    <td>{row.drugName}</td>
-                    <td>{row.form}</td>
+                    <td>{activeTab==='in' ? (row.supplierId || '-') : ('')}</td>
+                    <td>{row.description}</td>
+                    <td>{activeTab==='in' ? (row.form || '-') : ('')}</td>
                     <td>{row.quantity}</td>
-                    <td>{row.price}</td>
+                    <td>{activeTab==='in' ? (row.price || '-') : ('')}</td>
                     <td>{row.datetime ? new Date(row.datetime).toLocaleString() : '-'}</td>
-                    <td>{activeTab==='in' ? (row.purchaseOrder || '-') : (row.prescriptionId || row.purchaseOrder || '-')}</td>
+                    <td>{activeTab==='in' ? (row.purchaseOrder || '-') : (row.referenceId || '-')}</td>
                     <td>{row.type === 'in' ? <Badge variant="in">In</Badge> : <Badge variant="out">Out</Badge>}</td>
                   </tr>
                 ))}
