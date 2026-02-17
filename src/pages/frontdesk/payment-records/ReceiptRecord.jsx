@@ -1,49 +1,20 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Header, DataTable } from '@/components/common';
-import { Sidebar } from '@/components/cashier/dashboard';
+import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
-import { getAllReceipts, updateReceipt } from '@/services/api/billingAPI';
-import toast from 'react-hot-toast';
+import { getAllReceipts } from '@/services/api/billingAPI';
 
-const PaymentRecords = () => {
+const FrontDeskPaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editStatus, setEditStatus] = useState('');
-  const [updating, setUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
 
   const handleClose = () => {
     setIsModalOpen(false);
-    setIsEditing(false);
-    setEditStatus('');
-  };
-
-  const handleSave = async () => {
-    try {
-      setUpdating(true);
-
-      const res = await toast.promise(
-        updateReceipt(selectedPayment.receiptId, { status: editStatus || selectedPayment.status }),
-        {
-          loading: 'Updating payment...',
-          success: 'Payment updated',
-          error: 'Failed to update payment',
-        }
-      );
-      // const updated = res?.data?.data;
-      // setPaymentRecords(updated)
-      setIsEditing(false);
-      setUpdating(false);
-      handleClose();
-    } catch (err) {
-      setUpdating(false);
-      console.error('Update payment failed', err);
-    }
   };
 
 
@@ -52,9 +23,28 @@ const PaymentRecords = () => {
       try {
         setIsLoading(true);
         const res = await getAllReceipts();
+        console.log({res})
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
-        const mapped = list.map((a, idx) => ({
+
+        const frontdeskDestinations = ['form'];
+        const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
+
+        // Get start of today (midnight local time)
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        // Get end of today (23:59:59)
+        const endOfToday = new Date();
+        endOfToday.setHours(23, 59, 59, 999);
+
+        // Filter only receipts updated/paid today
+        const todayReceipts = filteredList.filter(a => {
+          const paidDate = new Date(a.paidAt || a.updatedAt);
+          return paidDate >= startOfToday && paidDate <= endOfToday;
+        });
+
+        const mapped = todayReceipts.map((a, idx) => ({
           receiptId: a.id,
           transactionId: a.reference || `Kolak-${idx + 1}`,
           name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
@@ -319,23 +309,10 @@ const PaymentRecords = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Status</label>
-                  {isEditing ? (
-                    <select
-                        value={editStatus || selectedPayment.status || ''}
-                        onChange={(e) => setEditStatus(e.target.value)}
-                        className="select select-bordered w-full"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="paid">Paid</option>
-                        <option value="active">Active</option>
-                        <option value="reversed">Reversed</option>
-                        <option value="declined">Declined</option>
-                      </select>
-                  ):(
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(selectedPayment.status)}`}>
                     {selectedPayment.status}
                   </span>
-                  )}
+
 
                 </div>
               </div>
@@ -361,48 +338,6 @@ const PaymentRecords = () => {
                   Close
                 </button>
 
-                {selectedPayment.status !== 'paid' && !isEditing && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditStatus(selectedPayment.status || 'pending');
-                      setIsEditing(true);
-                    }}
-                    className="btn btn-primary"
-                  >
-                    Edit Payment
-                  </button>
-                )}
-
-                {selectedPayment.status !== 'paid' && isEditing && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleSave}
-                      className="btn btn-primary"
-                      disabled={updating}
-                    >
-                      {updating ? (
-                        <>
-                          <span className="loading loading-spinner loading-sm"></span>
-                          Saving...
-                        </>
-                      ) : (
-                        'Save Changes'
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditStatus(selectedPayment.status || 'pending');
-                      }}
-                      className="btn"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -412,4 +347,4 @@ const PaymentRecords = () => {
   );
 };
 
-export default PaymentRecords;
+export default FrontDeskPaymentRecords;

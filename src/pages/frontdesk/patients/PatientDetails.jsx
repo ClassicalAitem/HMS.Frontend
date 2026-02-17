@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
+import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 // Icons and utilities now handled within extracted components
@@ -28,6 +29,7 @@ const PatientDetails = () => {
   const [isEditDependantOpen, setIsEditDependantOpen] = useState(false);
   const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
   const [isSendToCashierOpen, setIsSendToCashierOpen] = useState(false);
+  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
 
   // Fetch patient data from backend
   useEffect(() => {
@@ -163,7 +165,10 @@ const PatientDetails = () => {
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
           {/* Action Buttons */}
-          <ActionButtons onSendToCashier={() => setIsSendToCashierOpen(true)} onSendToNurse={() => setIsSendToNurseOpen(true)} />
+          <ActionButtons 
+            onSendToCashier={() => setIsCreateBillOpen(true)} 
+            onSendToNurse={() => setIsSendToNurseOpen(true)} 
+          />
         </div>
       </div>
 
@@ -228,13 +233,25 @@ const PatientDetails = () => {
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 
-      {/* Send to Cashier Modal */}
+      {/* Send to Cashier Modal (Status Update) - Triggered AFTER Bill Creation */}
       <CashierActionModal
         isOpen={isSendToCashierOpen}
         onClose={() => setIsSendToCashierOpen(false)}
         patientId={patient?.id || patientId}
         defaultStatus={'awaiting_cashier'}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+      />
+
+      {/* Create Bill Modal - Intercepts "Send to Cashier" */}
+      <CreateBillModal
+        isOpen={isCreateBillOpen}
+        onClose={() => setIsCreateBillOpen(false)}
+        patientId={patientId}
+        onSuccess={() => {
+          // After bill is created, proceed to status update modal
+          setIsSendToCashierOpen(true);
+        }}
+        defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
     </div>
   );

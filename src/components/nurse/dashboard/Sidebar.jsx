@@ -11,6 +11,8 @@ import missFolake from "@/assets/images/missFolake.jpg";
 import { LogoutModal } from "@/components/modals";
 import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg"
+import { IoReceiptOutline } from "react-icons/io5";
+import { path } from "slate";
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -66,6 +68,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Patients",
       path: "/dashboard/nurse/patient",
       active: !fromIncoming && location.pathname.startsWith("/dashboard/nurse/patient"),
+    },
+    {
+      icon: IoReceiptOutline,
+      label: "Payment Records",
+      path: "/dashboard/nurse/payment-records",
+      active: location.pathname.startsWith("/dashboard/nurse/payment-records"),
     },
     // {
     //   icon: GrTask,
@@ -151,7 +159,7 @@ const Sidebar = ({ onCloseSidebar }) => {
           <span>Change Password</span>
         </Link>
 
-        <button 
+        <button
           onClick={() => setIsLogoutModalOpen(true)}
           className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >

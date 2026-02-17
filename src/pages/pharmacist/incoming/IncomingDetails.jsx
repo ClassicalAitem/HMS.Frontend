@@ -5,6 +5,7 @@ import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI'
 import { getPatientById } from '@/services/api/patientsAPI'
 import { updatePatientStatus } from '@/services/api/patientsAPI'
 import { updatePrescription } from '@/services/api/prescriptionsAPI'
+import { AddDrugModal } from '@/components/modals'
 import toast from 'react-hot-toast'
 
 const IncomingDetails = () => {
@@ -14,6 +15,7 @@ const IncomingDetails = () => {
   const [error, setError] = useState(null)
   const [prescription, setPrescription] = useState(null)
   const [patient, setPatient] = useState(null)
+  const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -24,6 +26,9 @@ const IncomingDetails = () => {
         // fetch prescription by patient id
         const presRes = await getPrescriptionByPatientId(patientId)
         const presData = presRes?.data ?? presRes
+        console.log("Prescription Data:", presData);
+        const oralMedication = presData.medications?.filter(med => med.medicationType === 'oral') || [];
+        presData.medications = oralMedication; // Keep only oral medications
         if (mounted) setPrescription(presData)
 
         // fetch patient snapshot for extra info
@@ -44,6 +49,8 @@ const IncomingDetails = () => {
     fetch()
     return () => { mounted = false }
   }, [patientId])
+
+  console.log('Prescription:', prescription)
 
   const renderMedications = () => {
     if (!prescription?.medications || !prescription.medications.length) return <div className="text-sm text-base-content/60">No medications found.</div>
@@ -123,6 +130,14 @@ const IncomingDetails = () => {
                 >
                   Mark Prescription Completed
                 </button>
+                {prescription?.medications?.length > 0 && (
+                  <button
+                  className="btn btn-warning btn-sm" onClick={() => setIsSelectModalOpen(true)}
+                >
+                  Dispense Drug
+                </button>
+                )}
+
 
                 {/* Complete Pharmacy: mark prescription completed and update patient status */}
                 <button
@@ -207,6 +222,12 @@ const IncomingDetails = () => {
             </>
           )}
         </div>
+        {isSelectModalOpen && (
+          <AddDrugModal
+            setIsSelectModalOpen={setIsSelectModalOpen}
+            prescriptionPatient={prescription}
+          />
+        )}
       </div>
     </PharmacistLayout>
   )
