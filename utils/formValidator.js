@@ -11,7 +11,7 @@ export const loginSchema = yup.object().shape({
   password: yup
     .string()
     .required("Password is required")
-    .min(8, "Password must be at least 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 });
 
 // * Form Validation For Update New User's Password
@@ -20,7 +20,7 @@ export const updateYourPasswordSchema = yup.object().shape({
   newPassword: yup
     .string()
     .required("Please enter your new password")
-    .min(8, "Password must be at lease 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 
   confirmPassword: yup
     .string()
@@ -37,7 +37,7 @@ export const changePasswordSchema = yup.object().shape({
   newPassword: yup
     .string()
     .required("Please enter your new password")
-    .min(8, "Password must be at least 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 
   confirmPassword: yup
     .string()
@@ -78,5 +78,5 @@ export const staffRegistrationSchema = yup.object().shape({
   password: yup
     .string()
     .required("Password is required")
-    .min(8, "Password must be at least 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 });

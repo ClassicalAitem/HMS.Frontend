@@ -102,9 +102,18 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
       }
     } catch (error) {
       console.error('❌ AddUserModal: Error creating user:', error);
+      console.error('📥 AddUserModal: Error response data:', error.response?.data);
 
-      // Show error message
-      const errorMessage = error.response?.data?.message || 'Failed to create user. Please try again.';
+      // Show error message from backend
+      let errorMessage = 'Failed to create user. Please try again.';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      console.log('📋 AddUserModal: Displaying error message:', errorMessage);
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
