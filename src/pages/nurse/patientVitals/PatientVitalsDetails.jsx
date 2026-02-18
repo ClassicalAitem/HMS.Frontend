@@ -17,6 +17,7 @@ import { GiWeightLiftingUp } from "react-icons/gi";
 import InjectionModals from "../incoming/modals/InjectionModals";
 import SamplingModals from "../incoming/modals/SamplingModals";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import CreateBillModal from "@/components/modals/CreateBillModal";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -40,6 +41,7 @@ const PatientVitalsDetails = () => {
   const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
   const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
   const [dependants, setDependants] = useState([]);
+  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
 
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
@@ -256,7 +258,7 @@ const PatientVitalsDetails = () => {
                 <div className="flex gap-2">
                   <button className="btn btn-primary btn-sm" onClick={() => setIsSendDoctorOpen(true)}>Send to Doctor</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setIsSendCashierOpen(true)}>Send to Cashier</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setIsCreateBillOpen(true)}>Send to Cashier</button>
                 </div>
               </div>
             </div>
@@ -668,17 +670,24 @@ const PatientVitalsDetails = () => {
           )}
 
           {/* Send to Cashier Modal */}
-          {isSendCashierOpen && (
+
             <CashierActionModal
               isOpen={isSendCashierOpen}
               onClose={() => setIsSendCashierOpen(false)}
-              patientId={patientUUID || patientId}
+              patientId={patient?.id || patientId}
               defaultStatus={"awaiting_cashier"}
-              mode={"confirm"}
-              patientLabel={`${patientName} (${patientHospitalId || '—'})`}
-              onUpdated={() => setIsSendCashierOpen(false)}
+              onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
             />
-          )}
+
+
+          <CreateBillModal
+            isOpen={isCreateBillOpen}
+            onClose={() => setIsCreateBillOpen(false)}
+            patientId={patientId}
+            onSuccess={() => {
+              setIsSendCashierOpen(true);
+            }}
+          />
 
           {/* Injection Modal */}
           {isRecordInjection && (
