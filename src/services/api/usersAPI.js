@@ -1,6 +1,5 @@
 import apiClient from './apiClient';
-import { API_ENDPOINTS } from '@/config/env';
-import toast from 'react-hot-toast';
+import { API_ENDPOINTS } from '../../config/env';
 
 export const usersAPI = {
   // Get all users
@@ -8,7 +7,7 @@ export const usersAPI = {
     console.log('👥 UsersAPI: Starting getUsers request');
     console.log('📤 UsersAPI: Request params:', params);
     console.log('🌐 UsersAPI: API endpoint:', API_ENDPOINTS.USERS);
-    
+
     try {
       const response = await apiClient.get(API_ENDPOINTS.USERS, { params });
       console.log('✅ UsersAPI: Users response received');
@@ -29,7 +28,7 @@ export const usersAPI = {
   getUserById: async (userId) => {
     console.log('👤 UsersAPI: Starting getUserById request');
     console.log('📤 UsersAPI: User ID:', userId);
-    
+
     try {
       const response = await apiClient.get(`${API_ENDPOINTS.USERS}/${userId}`);
       console.log('✅ UsersAPI: User response received');
@@ -46,7 +45,7 @@ export const usersAPI = {
   createUser: async (userData) => {
     console.log('➕ UsersAPI: Starting createUser request');
     console.log('📤 UsersAPI: User data:', userData);
-    
+
     try {
       const response = await apiClient.post(API_ENDPOINTS.CREATE_STAFF, userData);
       console.log('✅ UsersAPI: Create user response received');
@@ -63,7 +62,7 @@ export const usersAPI = {
   createAdmin: async (adminData) => {
     console.log('👑 UsersAPI: Starting createAdmin request');
     console.log('📤 UsersAPI: Admin data:', adminData);
-    
+
     try {
       const response = await apiClient.post('/user/createAdmin', adminData);
       console.log('✅ UsersAPI: Create admin response received');
@@ -102,7 +101,7 @@ export const usersAPI = {
     console.log('✏️ UsersAPI: Starting disableUserAccount request');
     console.log('📤 UsersAPI: User ID:', userId);
     console.log('📤 UsersAPI: User data:', userData);
-    
+
     try {
       const response = await apiClient.patch(`${API_ENDPOINTS.DISABLE_ACCOUNT}/${userId}`, userData);
       console.log('✅ UsersAPI: Disable user account response received');
@@ -131,11 +130,11 @@ export const usersAPI = {
   },
 
 
-  
+
   deleteUser: async (userId) => {
     console.log('🗑️ UsersAPI: Starting deleteUser request');
     console.log('📤 UsersAPI: User ID:', userId);
-    
+
     try {
       const response = await apiClient.patch(`${API_ENDPOINTS.DELETE_USER}/${userId}`);
       console.log('✅ UsersAPI: Delete user response received');
@@ -149,13 +148,13 @@ export const usersAPI = {
   },
 
   // Toggle user status (activate/deactivate)
-  toggleUserStatus: async (userId, isActive) => {
+  toggleUserStatus: async (userId, isDisabled) => {
     console.log('🔄 UsersAPI: Starting toggleUserStatus request');
     console.log('📤 UsersAPI: User ID:', userId);
-    console.log('📤 UsersAPI: Is Active:', isActive);
-    
+    console.log('📤 UsersAPI: Is status:', isDisabled);
+
     try {
-      const response = await apiClient.patch(`${API_ENDPOINTS.TOGGLE_USER_STATUS}/${userId}`, { isDisabled: !isActive });
+      const response = await apiClient.patch(`${API_ENDPOINTS.DISABLE_ENABLE_ACCOUNT}/${userId}`, { isDisabled });
       console.log('✅ UsersAPI: Toggle status response received');
       console.log('📥 UsersAPI: Response data:', response.data);
       return response;
