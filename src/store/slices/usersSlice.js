@@ -46,7 +46,7 @@ export const fetchUsers = createAsyncThunk(
           isDefaultPassword: user.isDefaultPassword,
           departmentId: user.departmentId,
           departmentName: user.department?.name || null,
-          isActive: user.isActive,
+          isActive: !user.isDisabled,
           isDisabled: user.isDisabled,
           isDeleted: user.isDeleted,
           lastLogin: user.lastLogin,
@@ -168,7 +168,7 @@ export const deleteUser = createAsyncThunk(
         console.log('📦 UsersSlice: User deleted successfully');
         return userId;
       } else {
-        throw new Error(response.data.message || 'Failed to delete user');
+        throw new Error(response?.data?.message || 'Failed to delete user');
       }
     } catch (error) {
       console.error('❌ UsersSlice: Delete user error caught:', error);
@@ -188,12 +188,20 @@ export const toggleUserStatus = createAsyncThunk(
       const response = await usersAPI.toggleUserStatus(userId, isDisabled);
       console.log('✅ UsersSlice: API response received:', response);
 
-      if (response.data.success) {
-        const user = response.data.data;
+      // Handle both success: true/false and direct response structures
+      const userData = response?.data?.data || response?.data;
+      const hasSuccess = response?.data?.success !== false;
+
+      if (hasSuccess && userData) {
+        const user = {
+          ...userData,
+          id: userData.id || userId,
+          isActive: isActive
+        };
         console.log('📦 UsersSlice: User status toggled:', user);
         return user;
       } else {
-        throw new Error(response.data.message || 'Failed to toggle user status');
+        throw new Error(response?.data?.message || 'Failed to toggle user status');
       }
     } catch (error) {
       console.error('❌ UsersSlice: Toggle user status error caught:', error);
