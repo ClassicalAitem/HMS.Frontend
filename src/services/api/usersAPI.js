@@ -130,7 +130,7 @@ export const usersAPI = {
   },
 
 
-  // Delete user
+
   deleteUser: async (userId) => {
     console.log('🗑️ UsersAPI: Starting deleteUser request');
     console.log('📤 UsersAPI: User ID:', userId);

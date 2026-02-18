@@ -119,6 +119,7 @@ const ManageUsers = () => {
   };
 
   const formatRole = (accountType) => {
+    if (!accountType) return 'Unknown';
     return accountType
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -140,8 +141,10 @@ const ManageUsers = () => {
 
       if (deleteUser.fulfilled.match(result)) {
         toast.success('User deleted successfully');
+        // Refresh the list to reflect changes
+        dispatch(fetchUsers());
       } else {
-        toast.error('Failed to delete user');
+        toast.error(result.payload || 'Failed to delete user');
       }
     }
   };
@@ -227,7 +230,7 @@ const ManageUsers = () => {
       render: (value) => (
         <div className="flex items-center space-x-2">
           <span className={`badge ${value ? 'badge-success' : 'badge-error'}`}>
-            {value ? 'Active' : 'Inactive'}
+            {value ? 'Active' : 'Disabled'}
           </span>
         </div>
       )
