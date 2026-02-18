@@ -36,7 +36,9 @@ export const API_ENDPOINTS = {
   CREATE_STAFF: '/user/createStaff',
   CREATE_ADMIN: '/user/createAdmin',
   UPDATE_USER: '/user/updateUser',
-  DISABLE_ACCOUNT: '/user/accountDisabled',
+  DISABLE_ENABLE_ACCOUNT: '/user/accountDisabledOrEnable',
+  DELETE_USER: '/user/accountDeleted',
+
 
   // HMO
   GET_HMOS: '/hmo',
