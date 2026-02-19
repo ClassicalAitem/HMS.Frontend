@@ -1,12 +1,26 @@
-import React, { useState } from "react";
-import { SearchableInput } from "@/components/common";
+import React, { useState, useRef, useEffect } from "react";
 
 const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
   const [value, setValue] = useState("");
+  const [search, setSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const wrapperRef = useRef(null);
 
-  React.useEffect(() => {
-    console.log(`AddHistoryModal (${type}) received data:`, data);
-  }, [data, type]);
+  useEffect(() => {
+    setSearch("");
+    setValue("");
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClick = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
 
   if (!isOpen) return null;
 
@@ -27,14 +41,50 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-base-content mb-1">{type}</label>
-              <SearchableInput 
-                data={data}
-                onSelect={(item) => setValue(item ? item.name : "")}
-                placeholder={`Search ${type.toLowerCase()}...`}
-                displayKey="name"
-                className="w-full"
-                initialValue={value}
-              />
+              <div ref={wrapperRef} className="relative w-full">
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  placeholder={`Search ${type.toLowerCase()}...`}
+                  value={search || value}
+                  onChange={e => {
+                    setSearch(e.target.value);
+                    setDropdownOpen(true);
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  autoComplete="off"
+                />
+                {dropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <ul className="py-1">
+                      {Array.isArray(data) && data.filter(item =>
+                        (search || value)
+                          ? item.name.toLowerCase().includes((search || value).toLowerCase())
+                          : true
+                      ).map(item => (
+                        <li
+                          key={item.id || item._id}
+                          onClick={() => {
+                            setValue(item.name);
+                            setSearch(item.name);
+                            setDropdownOpen(false);
+                          }}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+                        >
+                          {item.name}
+                        </li>
+                      ))}
+                      {Array.isArray(data) && data.filter(item =>
+                        (search || value)
+                          ? item.name.toLowerCase().includes((search || value).toLowerCase())
+                          : true
+                      ).length === 0 && (
+                        <li className="px-4 py-2 text-gray-400 text-sm">No matches found</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
