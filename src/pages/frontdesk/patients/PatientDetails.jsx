@@ -92,7 +92,7 @@ const PatientDetails = () => {
         <div className="text-center">
           <p className="text-base-content/70">Patient not found</p>
           <p className="text-sm text-base-content/50 mt-2">Patient ID: {patientId}</p>
-          <button 
+          <button
             onClick={() => navigate('/frontdesk/patients')}
             className="btn btn-primary mt-4"
           >
@@ -158,16 +158,16 @@ const PatientDetails = () => {
               />
             </div>
 
-            
+
           </div>
 
             {/* Additional Information */}
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
           {/* Action Buttons */}
-          <ActionButtons 
-            onSendToCashier={() => setIsCreateBillOpen(true)} 
-            onSendToNurse={() => setIsSendToNurseOpen(true)} 
+          <ActionButtons
+            onSendToCashier={() => setIsCreateBillOpen(true)}
+            onSendToNurse={() => setIsSendToNurseOpen(true)}
           />
         </div>
       </div>
@@ -251,7 +251,7 @@ const PatientDetails = () => {
           // After bill is created, proceed to status update modal
           setIsSendToCashierOpen(true);
         }}
-        defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
+        // defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
     </div>
   );

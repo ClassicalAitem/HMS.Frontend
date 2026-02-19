@@ -46,7 +46,7 @@ export const fetchUsers = createAsyncThunk(
           isDefaultPassword: user.isDefaultPassword,
           departmentId: user.departmentId,
           departmentName: user.department?.name || null,
-          isActive: !user.isDisabled,  
+          isActive: !user.isDisabled,
           isDisabled: user.isDisabled,
           isDeleted: user.isDeleted,
           lastLogin: user.lastLogin,
@@ -164,9 +164,7 @@ export const deleteUser = createAsyncThunk(
       const response = await usersAPI.deleteUser(userId);
       console.log('✅ UsersSlice: API response received:', response);
 
-      // Handle both success: true/false and direct response structures
-      const hasSuccess = response?.data?.success !== false;
-      if (hasSuccess || response?.data?.data) {
+      if (response.status === 204) {
         console.log('📦 UsersSlice: User deleted successfully');
         return userId;
       } else {
@@ -181,20 +179,19 @@ export const deleteUser = createAsyncThunk(
 );
 
 export const toggleUserStatus = createAsyncThunk(
-  'users/toggleUserStatus',
-  async ({ userId, isActive }, { rejectWithValue }) => {
+  'users/toggleUserStatustoggleUserStatus',
+  async ({ userId, isDisabled }, { rejectWithValue }) => {
     console.log('🔄 UsersSlice: Starting toggleUserStatus thunk');
     console.log('📤 UsersSlice: User ID:', userId);
-    console.log('📤 UsersSlice: Is Active:', isActive);
-
+    console.log('📤 UsersSlice: Is Disabled:', isDisabled);
     try {
-      const response = await usersAPI.toggleUserStatus(userId, isActive);
+      const response = await usersAPI.toggleUserStatus(userId, isDisabled);
       console.log('✅ UsersSlice: API response received:', response);
 
       // Handle both success: true/false and direct response structures
       const userData = response?.data?.data || response?.data;
       const hasSuccess = response?.data?.success !== false;
-      
+
       if (hasSuccess && userData) {
         const user = {
           ...userData,
