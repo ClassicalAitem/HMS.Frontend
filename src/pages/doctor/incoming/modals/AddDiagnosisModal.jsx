@@ -1,38 +1,81 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { yupResolver } from '@hookform/resolvers/yup';
-import * as yup from 'yup';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes, FaPlus } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { updateConsultation } from '@/services/api/consultationAPI';
 
-const diagnosisSchema = yup.object({
-  diagnosis: yup.string().required('Diagnosis is required').min(3, 'Diagnosis must be at least 3 characters'),
-});
+import { getAllComplaint } from '@/services/api/medicalRecordAPI';
+
+
 
 const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }) => {
+  const [diagnoses, setDiagnoses] = useState([]); // Array of selected diagnoses
+  const [diagnosisInput, setDiagnosisInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const wrapperRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [diagnosisOptions, setDiagnosisOptions] = useState([]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset
-  } = useForm({
-    resolver: yupResolver(diagnosisSchema),
-    defaultValues: {
-      diagnosis: '',
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchDiagnosis = async () => {
+      try {
+        const allRecords = await getAllComplaint();
+        setDiagnosisOptions(Array.isArray(allRecords) ? allRecords.filter(item => item.category === 'diagnosis') : []);
+      } catch (err) {
+        setDiagnosisOptions([]);
+        toast.error('Failed to load diagnosis options');
+      }
+    };
+    fetchDiagnosis();
+    setSearch('');
+    setDiagnosisInput('');
+    setDiagnoses([]);
+  }, [isOpen]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClick = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
+
+
+  if (!isOpen) return null;
+
+  const handleAddDiagnosis = (name) => {
+    if (!name) return;
+    if (diagnoses.includes(name)) {
+      toast.error('Diagnosis already added');
+      return;
     }
-  });
+    setDiagnoses(prev => [...prev, name]);
+    setDiagnosisInput('');
+    setSearch('');
+    setDropdownOpen(false);
+  };
 
-  const onSubmit = async (data) => {
+  const handleRemoveDiagnosis = (idx) => {
+    setDiagnoses(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!diagnoses.length) {
+      toast.error('Please add at least one diagnosis');
+      return;
+    }
     setIsLoading(true);
     try {
-      // Ensure only diagnosis is sent in the payload
-      const payload = { diagnosis: data.diagnosis };
+      const payload = { diagnosis: diagnoses };
       await updateConsultation(consultationId, payload);
       toast.success('Diagnosis updated successfully!');
-      reset();
+      setDiagnoses([]);
       onDiagnosisAdded();
       onClose();
     } catch (error) {
@@ -42,8 +85,6 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
       setIsLoading(false);
     }
   };
-
-  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-xs">
@@ -56,21 +97,82 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
             </button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="form-control flex flex-col">
               <label className="label">
-                <span className="label-text font-medium text-base-content">Diagnosis</span>
+                <span className="font-medium label-text text-base-content">Diagnosis</span>
               </label>
-              <textarea 
-                className={`w-full textarea textarea-bordered h-24 focus:outline-none focus:border-primary bg-base-100 text-base-content ${errors.diagnosis ? 'textarea-error' : ''}`}
-                placeholder="Enter diagnosis..."
-                {...register('diagnosis')}
-              />
-              {errors.diagnosis && (
-                <span className="text-error text-sm mt-1">{errors.diagnosis.message}</span>
-              )}
+              <div ref={wrapperRef} className="relative w-full">
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  placeholder="Search diagnosis..."
+                  value={search || diagnosisInput}
+                  onChange={e => {
+                    setSearch(e.target.value);
+                    setDiagnosisInput(e.target.value);
+                    setDropdownOpen(true);
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  disabled={isLoading}
+                  autoComplete="off"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-primary"
+                    onClick={() => handleAddDiagnosis(search || diagnosisInput)}
+                    tabIndex={-1}
+                    disabled={isLoading || !(search || diagnosisInput)}
+                  >
+                    <FaPlus className="w-4 h-4" />
+                  </button>
+                </div>
+                {dropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <ul className="py-1">
+                      {diagnosisOptions.filter(item =>
+                        (search || diagnosisInput)
+                          ? item.name.toLowerCase().includes((search || diagnosisInput).toLowerCase())
+                          : true
+                      ).map(item => (
+                        <li
+                          key={item.id || item._id}
+                          onClick={() => handleAddDiagnosis(item.name)}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+                        >
+                          {item.name}
+                        </li>
+                      ))}
+                      {diagnosisOptions.filter(item =>
+                        (search || diagnosisInput)
+                          ? item.name.toLowerCase().includes((search || diagnosisInput).toLowerCase())
+                          : true
+                      ).length === 0 && (
+                        <li className="px-4 py-2 text-gray-400 text-sm">No matches found</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              {/* Show added diagnoses as chips */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {diagnoses.map((item, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm text-base-content">
+                    {item}
+                    <button
+                      type="button"
+                      className="ml-1 text-error hover:text-red-700"
+                      onClick={() => handleRemoveDiagnosis(idx)}
+                      tabIndex={-1}
+                    >
+                      <FaTimes className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                {diagnoses.length === 0 && <span className="text-sm text-base-content/40 italic">No diagnosis added</span>}
+              </div>
             </div>
-
             <div className="pt-4 flex justify-end gap-3">
               <button
                 type="button"
