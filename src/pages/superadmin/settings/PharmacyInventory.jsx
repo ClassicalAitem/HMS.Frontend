@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions, deleteInventory } from '@/services/api/inventoryAPI'
 import { SuperAdminLayout } from '@/layouts/superadmin'
 import { FaTrash } from 'react-icons/fa'
+import * as XLSX from 'xlsx'
 
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
@@ -105,6 +106,44 @@ const InventoryStocks = () => {
       toast.error('Export failed')
     }
   }
+
+
+const exportExcel = (list) => {
+  try {
+    const rows = list.map(i => ({
+      id: i._id,
+      name: i.name,
+      strength: i.strength || '',
+      sku: i.sku || '',
+      reorderLevel: i.reorderLevel ?? 0,
+      form: i.form || '',
+      stock: i.stock ?? 0,
+      costPrice: i.costPrice ?? 0,
+      sellingPrice: i.sellingPrice ?? 0,
+      unitPrice: i.unitPrice ?? 0,
+      supplier: i.supplier || '',
+      expiryDate: i.expiryDate
+        ? new Date(i.expiryDate).toISOString().split('T')[0]
+        : '',
+      batchNumber: i.batchNumber || '',
+      description: i.description || ''
+    }))
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory')
+
+    // Export file
+    XLSX.writeFile(workbook, 'inventory.xlsx')
+
+  } catch (e) {
+    toast.error('Export failed')
+  }
+}
+
 
   const lowStock = (i) => (Number(i.stock) === 0 ? 'out' : (Number(i.stock) <= Number(i.reorderLevel || 0) ? 'low' : 'ok'))
 
@@ -207,6 +246,7 @@ const InventoryStocks = () => {
                     <option>All Categories</option>
                   </select>
                   <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => exportExcel(filtered)}>Export Excel</button>
                 </div>
               </div>
 
