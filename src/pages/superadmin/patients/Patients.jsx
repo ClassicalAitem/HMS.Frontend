@@ -108,19 +108,19 @@ const Patients = () => {
       title: 'Patient Name',
       sortable: true,
       className: 'text-base-content font-medium',
-      // render: (value, row) => (
-      //   <button
-      //     type="button"
-      //     onClick={(e) => {
-      //       e.preventDefault();
-      //       e.stopPropagation();
-      //       navigate(`/superadmin/patients/PatientDetails/${row.id}`);
-      //     }}
-      //     className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
-      //   >
-      //     {value}
-      //   </button>
-      // )
+          // render: (value, row) => (
+          //   <button
+          //     type="button"
+          //     onClick={(e) => {
+          //       e.preventDefault();
+          //       e.stopPropagation();
+          //       navigate(`/superadmin/patients/PatientDetails/${row.id}`);
+          //     }}
+          //     className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+          //   >
+          //     {value}
+          //   </button>
+          // )
     },
     {
       key: 'gender',
