@@ -32,6 +32,7 @@ const ConsultationDetails = () => {
         if (mounted) setLoading(false);
       }
     };
+    
     load();
     return () => { mounted = false; };
   }, [patientId, consultationId]);

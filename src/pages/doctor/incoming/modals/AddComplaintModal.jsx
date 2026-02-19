@@ -1,14 +1,28 @@
-import React, { useState } from "react";
-import { SearchableInput } from "@/components/common";
+import React, { useState, useRef, useEffect } from "react";
 
 const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   const [symptom, setSymptom] = useState("");
+  const [search, setSearch] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const wrapperRef = useRef(null);
   const [duration, setDuration] = useState("");
   const [durationUnit, setDurationUnit] = useState("Day(s)");
 
-  React.useEffect(() => {
-      console.log('AddComplaintModal received data:', data);
-  }, [data]);
+  useEffect(() => {
+    setSearch("");
+    setSymptom("");
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClick = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [dropdownOpen]);
 
   if (!isOpen) return null;
 
@@ -38,14 +52,50 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-base-content mb-1">Symptoms</label>
-              <SearchableInput 
-                data={data}
-                onSelect={(item) => setSymptom(item ? item.name : "")}
-                placeholder="Search symptoms..."
-                displayKey="name"
-                className="w-full"
-                initialValue={symptom}
-              />
+              <div ref={wrapperRef} className="relative w-full">
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  placeholder="Search symptoms..."
+                  value={search || symptom}
+                  onChange={e => {
+                    setSearch(e.target.value);
+                    setDropdownOpen(true);
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  autoComplete="off"
+                />
+                {dropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    <ul className="py-1">
+                      {Array.isArray(data) && data.filter(item =>
+                        (search || symptom)
+                          ? item.name.toLowerCase().includes((search || symptom).toLowerCase())
+                          : true
+                      ).map(item => (
+                        <li
+                          key={item.id || item._id}
+                          onClick={() => {
+                            setSymptom(item.name);
+                            setSearch(item.name);
+                            setDropdownOpen(false);
+                          }}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+                        >
+                          {item.name}
+                        </li>
+                      ))}
+                      {Array.isArray(data) && data.filter(item =>
+                        (search || symptom)
+                          ? item.name.toLowerCase().includes((search || symptom).toLowerCase())
+                          : true
+                      ).length === 0 && (
+                        <li className="px-4 py-2 text-gray-400 text-sm">No matches found</li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
