@@ -13,10 +13,9 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   const handleRefresh = () => {
-    // Handle refresh action
-    console.log("Refresh clicked");
+    // Refresh the page
+    window.location.reload();
   };
-
   const handleNotifications = () => {
     // Handle notifications
     console.log("Notifications clicked");
