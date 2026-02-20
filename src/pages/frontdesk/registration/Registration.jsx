@@ -378,6 +378,7 @@ const Registration = () => {
                       className="w-full select select-bordered"
                     >
                     <option value="Abia">Abia</option>
+                    <option value="">Select State</option>
                     <option value="Adamawa">Adamawa</option>
                     <option value="Akwa Ibom">Akwa Ibom</option>
                     <option value="Anambra">Anambra</option>
