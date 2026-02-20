@@ -24,7 +24,9 @@ const VitalsHistoryTable = ({ sortedVitals, loading }) => {
                   <th>Heart Rate</th>
                   <th>Temperature</th>
                   <th>Weight</th>
+                  <th>Height</th>
                   <th>O2 Saturation</th>
+                  <th>Respiratory Rate</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -36,7 +38,9 @@ const VitalsHistoryTable = ({ sortedVitals, loading }) => {
                     <td>{v?.pulse ?? "—"} <span className="text-sm text-base-content/70">bpm</span></td>
                     <td>{v?.temperature ?? "—"} <span className="text-sm text-base-content/70">°F</span></td>
                     <td>{v?.weight ?? "—"} <span className="text-sm text-base-content/70">kg</span></td>
+                    <td>{v?.height ?? "—"} <span className="text-sm text-base-content/70">cm</span></td>
                     <td>{v?.spo2 ?? v?.oxygen ?? "—"} <span className="text-sm text-base-content/70">%</span></td>
+                    <td>{v?.respiratoryRate ?? "—"} <span className="text-sm text-base-content/70">bpm</span></td>
                     <td><span className="badge badge-success">Normal</span></td>
                   </tr>
                 )) : (

@@ -104,17 +104,18 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         dob: formData.dob, // already in YYYY-MM-DD
         gender: formData.gender,
         phone: formData.phone,
-        email: formData.email,
         address: formData.address,
-        stateOfOrigin: formData.stateOfOrigin,
-        town: formData.town,
-        LGA: formData.LGA,
         nextOfKin: {
           name: formData.nextOfKin.name,
           phone: formData.nextOfKin.phone,
           relationship: formData.nextOfKin.relationship,
         },
         status: patient.status || 'registered',
+        // Only include optional fields if they have values
+        ...(formData.email && { email: formData.email }),
+        ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
+        ...(formData.town && { town: formData.town }),
+        ...(formData.LGA && { LGA: formData.LGA }),
       };
 
       console.log('📦 EditPatientModal: PATCH payload:', updatePayload);
