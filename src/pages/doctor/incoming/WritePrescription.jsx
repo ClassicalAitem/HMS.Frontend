@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -11,6 +11,7 @@ import { createPrescription } from '@/services/api/prescriptionsAPI';
 import { IoIosCloseCircleOutline, IoMdAdd, IoMdTrash } from 'react-icons/io';
 import { FaPrescriptionBottleAlt, FaSyringe, FaPills, FaNotesMedical, FaFileMedicalAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getInventories } from '@/services/api/inventoryAPI';
 
 const medicationSchema = yup.object().shape({
   medicationType: yup.string().oneOf(['oral', 'injection']).required(),
@@ -31,6 +32,8 @@ const medicationSchema = yup.object().shape({
   })
 });
 
+
+
 const schema = yup.object().shape({
   medications: yup.array().of(medicationSchema).min(1, 'At least one medication is required')
 });
@@ -46,8 +49,12 @@ const WritePrescription = () => {
   const [consultation, setConsultation] = useState(null);
   const [patient, setPatient] = useState(null);
   const [saving, setSaving] = useState(false);
+const [drugList, setDrugList] = useState([]);
+const [drugDropdownIndex, setDrugDropdownIndex] = useState(null);
+const [drugSearch, setDrugSearch] = useState("");
+const drugWrapperRef = useRef(null);
   
-  const { register, control, handleSubmit, watch, formState: { errors } } = useForm({
+  const { register, control, setValue, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       medications: [{
@@ -124,6 +131,34 @@ const WritePrescription = () => {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+
+  const fetchDrugs = async () => {
+    try {
+      const res = await getInventories();
+      setDrugList(res.data || res); // depends on your API structure
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  fetchDrugs();
+}, []);
+
+useEffect(() => {
+  const handleClick = (e) => {
+    if (
+      drugWrapperRef.current &&
+      !drugWrapperRef.current.contains(e.target)
+    ) {
+      setDrugDropdownIndex(null);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClick);
+  return () => document.removeEventListener("mousedown", handleClick);
+}, []);
 
   if (loading) {
     return (
@@ -270,20 +305,82 @@ const WritePrescription = () => {
                           </div>
 
                           {/* Common Fields */}
-                          <div className="form-control">
-                            <label className="label">
-                              <span className="label-text">Drug Name</span>
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Amoxicillin"
-                              className={`input input-bordered w-full ${errors.medications?.[index]?.drugName ? 'input-error' : ''}`}
-                              {...register(`medications.${index}.drugName`)}
-                            />
-                            {errors.medications?.[index]?.drugName && (
-                              <span className="text-error text-xs mt-1">{errors.medications[index].drugName.message}</span>
-                            )}
-                          </div>
+             <div className="form-control relative" ref={drugWrapperRef}>
+  <label className="label">
+    <span className="label-text">Drug Name</span>
+  </label>
+
+  <input
+    type="text"
+    placeholder="Search drug..."
+    className={`input input-bordered w-full ${
+      errors.medications?.[index]?.drugName ? "input-error" : ""
+    }`}
+    value={
+      drugDropdownIndex === index
+        ? drugSearch
+        : watch(`medications.${index}.drugName`) || ""
+    }
+    onFocus={() => {
+      setDrugDropdownIndex(index);
+      setDrugSearch("");
+    }}
+    onChange={(e) => {
+      setDrugSearch(e.target.value);
+      setDrugDropdownIndex(index);
+    }}
+    autoComplete="off"
+  />
+
+  {drugDropdownIndex === index && (
+    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+      <ul className="py-1">
+        {drugList
+          .filter((drug) =>
+            drugSearch
+              ? drug.name
+                  ?.toLowerCase()
+                  .includes(drugSearch.toLowerCase())
+              : true
+          )
+          .map((drug) => (
+            <li
+              key={drug.id}
+              onClick={() => {
+                setValue(
+                  `medications.${index}.drugName`,
+                  drug.name
+                );
+                setDrugDropdownIndex(null);
+                setDrugSearch("");
+              }}
+              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+            >
+              {drug.name}
+            </li>
+          ))}
+
+        {drugList.filter((drug) =>
+          drugSearch
+            ? drug.name
+                ?.toLowerCase()
+                .includes(drugSearch.toLowerCase())
+            : true
+        ).length === 0 && (
+          <li className="px-4 py-2 text-gray-400 text-sm">
+            No matches found
+          </li>
+        )}
+      </ul>
+    </div>
+  )}
+
+  {errors.medications?.[index]?.drugName && (
+    <span className="text-error text-xs mt-1">
+      {errors.medications[index].drugName.message}
+    </span>
+  )}
+</div>
 
                           <div className="form-control">
                             <label className="label">
