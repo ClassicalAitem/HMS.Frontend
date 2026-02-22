@@ -286,6 +286,7 @@ const Login = () => {
         <AuthInput
           type="text"
           name="email"
+          autoComplete="off"
           // value={formData.username}
           // onChange={handleInputChange}
           placeholder="Enter Your Email"
@@ -303,6 +304,7 @@ const Login = () => {
         <AuthInput
           type={showPassword ? "text" : "password"}
           name="password"
+          autoComplete="off"
           // value={formData.password}
           // onChange={handleInputChange}
           placeholder="Enter Your Password"
