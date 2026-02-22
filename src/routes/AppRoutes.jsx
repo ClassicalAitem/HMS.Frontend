@@ -361,7 +361,7 @@ const AppRoutes = () => {
           <ManageUsers />
         </ProtectedRoute>
       } />
-      <Route path="/superadmin/patients" element={
+      <Route path="/superadmin/patients/Patients" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperAdminPatients />
         </ProtectedRoute>
