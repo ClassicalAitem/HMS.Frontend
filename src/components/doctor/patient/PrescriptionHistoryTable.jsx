@@ -13,7 +13,8 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
             <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
               <div className="overflow-auto max-h-64 p-4 space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="grid grid-cols-5 gap-3">
+                  <div key={i} className="grid grid-cols-6 gap-3">
+                    <div className="skeleton h-4 w-full" />
                     <div className="skeleton h-4 w-full" />
                     <div className="skeleton h-4 w-full" />
                     <div className="skeleton h-4 w-full" />
@@ -33,6 +34,7 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
                   <th>Medications Count</th>
                   <th>Created At</th>
                   <th>Medications</th>
+                  <th>Total Price</th>
                 </tr>
               </thead>
               <tbody>
@@ -54,11 +56,14 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
                           {row.medicationsCount > 2 && <li>...</li>}
                         </ul>
                       </td>
+                      <td className="font-medium text-primary">
+                        {row.totalPrice ? `₦${Number(row.totalPrice).toLocaleString()}` : '—'}
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="py-6 text-base-content/70">No prescriptions found</td>
+                    <td colSpan={5} className="py-6 text-base-content/70">No prescriptions found</td>
                   </tr>
                 )}
               </tbody>

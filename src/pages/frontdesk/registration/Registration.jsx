@@ -126,16 +126,17 @@ const Registration = () => {
       const patientData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        middleName: formData.middleName,
-        email: formData.email,
+        middleName: formData.middleName || undefined,
         phone: formData.phone,
         address: formData.address,
-        stateOfOrigin: formData.stateOfOrigin,
-        town: formData.town,
-        LGA: formData.LGA,
         dob: formData.dob,
         gender: formData.gender,
         nextOfKin: formData.nextOfKin,
+        // Only include optional fields if they have values
+        ...(formData.email && { email: formData.email }),
+        ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
+        ...(formData.town && { town: formData.town }),
+        ...(formData.LGA && { LGA: formData.LGA }),
         ...(formData.hmos[0].provider && {
           hmos: formData.hmos.filter(hmo => hmo.provider)
         }),
@@ -378,6 +379,7 @@ const Registration = () => {
                       className="w-full select select-bordered"
                     >
                     <option value="Abia">Abia</option>
+                    <option value="">Select State</option>
                     <option value="Adamawa">Adamawa</option>
                     <option value="Akwa Ibom">Akwa Ibom</option>
                     <option value="Anambra">Anambra</option>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { AddServiceChargeModal, EditServiceChargeModal } from '@/components/modals';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
+import { deleteServiceCharge, fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
 import toast from 'react-hot-toast';
 
 const ServiceChargesTab = () => {
@@ -56,6 +56,20 @@ const ServiceChargesTab = () => {
       ))}
     </div>
   );
+    const handleDeleteServiceCharge = async (serviceChargeId) => {
+    if (window.confirm('Are you sure you want to delete this service charge?')) {
+      console.log('🗑️ ServiceChargesTab: Deleting service charge:', serviceChargeId);
+      const result = await dispatch(deleteServiceCharge(serviceChargeId));
+
+      if (deleteServiceCharge.fulfilled.match(result)) {
+        toast.success('Service charge deleted successfully');
+        // Refresh the list to reflect changes
+        dispatch(fetchServiceCharges());
+      } else {
+        toast.error(result.payload || 'Failed to delete service charge');
+      }
+    }
+  };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -138,6 +152,13 @@ const ServiceChargesTab = () => {
                         >
                           <FaEdit className="w-4 h-4" />
                         </button>
+                           <button
+                                    onClick={() => handleDeleteServiceCharge(serviceCharge.id)}
+                                    className="btn btn-ghost btn-xs text-error"
+                                    title="Delete Service Charge"
+                                  >
+                                    <FaTrash className="w-3 h-3" />
+                                  </button>
                       </div>
                     </td>
                   </tr>
