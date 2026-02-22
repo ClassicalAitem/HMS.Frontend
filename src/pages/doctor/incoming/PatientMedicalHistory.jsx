@@ -29,7 +29,7 @@ const PatientMedicalHistory = () => {
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
-  const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+  const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" });
   const [consultations, setConsultations] = useState([]);
   const [labResults, setLabResults] = useState([]);
   const [labLoading, setLabLoading] = useState(false);
@@ -318,18 +318,18 @@ const PatientMedicalHistory = () => {
             setRecordForm={setRecordForm}
             recordError={recordError}
             recordLoading={recordLoading}
-            onCancel={() => { setIsRecordOpen(false); setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" }); setRecordError(""); }}
+            onCancel={() => { setIsRecordOpen(false); setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" }); setRecordError(""); }}
             onSubmit={async () => {
               try {
                 setRecordLoading(true);
                 setRecordError("");
-                await createVital({ patientId, bp: recordForm.bp, pulse: recordForm.pulse, temperature: recordForm.temperature, weight: recordForm.weight, spo2: recordForm.spo2, notes: recordForm.notes });
+                await createVital({ patientId, bp: recordForm.bp, pulse: recordForm.pulse, temperature: recordForm.temperature, weight: recordForm.weight, spo2: recordForm.spo2, height: recordForm.height, respiratoryRate: recordForm.respiratoryRate});
                 const res = await getVitalsByPatient(patientId);
                 const raw = res?.data ?? res ?? [];
                 const list = Array.isArray(raw) ? raw : raw?.data ?? [];
                 setVitals(list);
                 setIsRecordOpen(false);
-                setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+                setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" });
               } catch (e) {
                 const msg = e?.response?.data?.message || "Failed to record vitals";
                 setRecordError(msg);
