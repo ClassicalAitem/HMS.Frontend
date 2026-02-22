@@ -13,6 +13,7 @@ import { getPatientById } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
+import { getInventories } from "@/services/api/inventoryAPI";
 import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHistoryTable";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 
@@ -35,6 +36,7 @@ const PatientMedicalHistory = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [inventoryData, setInventoryData] = useState([]);
 
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
@@ -139,6 +141,23 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  // Fetch inventory data to match drug prices
+  useEffect(() => {
+    let mounted = true;
+    const loadInventory = async () => {
+      try {
+        const res = await getInventories();
+        const rawData = res?.data ?? res;
+        const list = Array.isArray(rawData) ? rawData : (rawData?.data ?? []);
+        if (mounted) setInventoryData(list);
+      } catch (err) {
+        console.error("Failed to load inventory", err);
+      }
+    };
+    loadInventory();
+    return () => { mounted = false; };
+  }, []);
+
   const latest = useMemo(() => {
     if (!Array.isArray(vitals) || vitals.length === 0) return null;
     return vitals.reduce((acc, v) => {
@@ -165,6 +184,18 @@ const PatientMedicalHistory = () => {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
+
+  // Helper function to find drug price from inventory
+  const getDrugPrice = (drugName) => {
+    if (!drugName) return null;
+    const inventoryDrug = inventoryData.find(item => {
+      const inventoryName = item?.name?.toLowerCase() || '';
+      const searchName = drugName.toLowerCase();
+      // Match if exact or if inventory name contains the search term
+      return inventoryName === searchName || inventoryName.includes(searchName);
+    });
+    return inventoryDrug?.sellingPrice || null;
+  };
 
   return (
     <div className="flex h-screen">
@@ -211,14 +242,22 @@ const PatientMedicalHistory = () => {
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
             rows={useMemo(() => (
-              Array.isArray(prescriptions) ? prescriptions.map((p) => ({
-                id: p?._id || p?.id,
-                status: p?.status || 'pending',
-                date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
-                medicationsCount: p?.medications?.length || 0,
-                medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || []
-              })) : []
-            ), [prescriptions])}
+              Array.isArray(prescriptions) ? prescriptions.map((p) => {
+                // Calculate total price by matching each drug to inventory
+                const totalPrice = (p?.medications || []).reduce((sum, med) => {
+                  const price = getDrugPrice(med?.drugName);
+                  return sum + (Number(price) || 0);
+                }, 0);
+                return {
+                  id: p?._id || p?.id,
+                  status: p?.status || 'pending',
+                  date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
+                  medicationsCount: p?.medications?.length || 0,
+                  medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
+                  totalPrice: totalPrice > 0 ? totalPrice : null
+                };
+              }) : []
+            ), [prescriptions, inventoryData])}
           />
 
           <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />

@@ -12,12 +12,13 @@ import { toast } from "react-hot-toast";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
-import { LuDroplet, LuThermometer } from "react-icons/lu";
-import { GiWeightLiftingUp } from "react-icons/gi";
+import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
+import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
 import InjectionModals from "../incoming/modals/InjectionModals";
 import SamplingModals from "../incoming/modals/SamplingModals";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import CreateBillModal from "@/components/modals/CreateBillModal";
+import { fetchPatientById } from "@/store/slices/patientsSlice";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -370,18 +371,6 @@ const PatientVitalsDetails = () => {
                       </div>
                     </div>
 
-                    {/* Respiratory */}
-                    {/* <div className="rounded-xl border border-base-300 p-3 hidden">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <LuActivity className="w-5 h-5" />
-                        <span>Respiratory</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">rpm</span>
-                      </div>
-                    </div> */}
-
                     {/* Weight */}
                     <div className="rounded-xl border border-base-300 p-3">
                       <div className="flex items-center gap-2 text-sm text-base-content/80">
@@ -391,6 +380,28 @@ const PatientVitalsDetails = () => {
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-2xl font-semibold">{latest?.weight ?? '—'}</span>
                         <span className="text-sm text-base-content/70">kg</span>
+                      </div>
+                    </div>
+                    {/* Height */}
+                    <div className="rounded-xl border border-base-300 p-3">
+                      <div className="flex items-center gap-2 text-sm text-base-content/80">
+                        <GiBodyHeight className="w-5 h-5" />
+                        <span>Height</span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-semibold">{latest?.height ?? '—'}</span>
+                        <span className="text-sm text-base-content/70">cm</span>
+                      </div>
+                    </div>
+                    {/* Respiratory Rate */}
+                    <div className="rounded-xl border border-base-300 p-3">
+                      <div className="flex items-center gap-2 text-sm text-base-content/80">
+                        <LuActivity className="w-5 h-5" />
+                        <span>Respiratory Rate</span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? '—'}</span>
+                        <span className="text-sm text-base-content/70">rpm</span>
                       </div>
                     </div>
 
@@ -499,7 +510,9 @@ const PatientVitalsDetails = () => {
                         <th>Heart Rate</th>
                         <th>Temperature</th>
                         <th>Weight</th>
+                        <th>Height</th>
                         <th>O2 Saturation</th>
+                        <th>Respiratory Rate</th>
                         <th>Status</th>
                       </tr>
                     </thead>
@@ -510,8 +523,10 @@ const PatientVitalsDetails = () => {
                           <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
                           <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
                           <td>{v?.temperature ?? '—'} <span className="text-sm text-base-content/70">°F</span></td>
+                          <td>{v?.height ?? '—'} <span className="text-sm text-base-content/70">cm</span></td>
                           <td>{v?.weight ?? '—'} <span className="text-sm text-base-content/70">kg</span></td>
                           <td>{v?.spo2 ?? v?.oxygen ?? '—'} <span className="text-sm text-base-content/70">%</span></td>
+                          <td>{v?.respiratoryRate ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
                           <td><span className="badge badge-success">Normal</span></td>
                         </tr>
                       )) : (
@@ -571,11 +586,25 @@ const PatientVitalsDetails = () => {
                       onChange={(e) => setRecordForm((f) => ({ ...f, spo2: e.target.value }))}
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block mb-1 text-sm text-base-content/70">Notes</label>
-                    <textarea placeholder="Optional notes" className="textarea textarea-bordered w-full"
-                      value={recordForm.notes}
-                      onChange={(e) => setRecordForm((f) => ({ ...f, notes: e.target.value }))}
+                  <div>
+                    <label className="block mb-1 text-sm text-base-content/70">Height (cm)</label>
+                    <input type="number" placeholder="170" className="input input-bordered w-full"
+                      value={recordForm.height}
+                      onChange={(e) => setRecordForm((f) => ({ ...f, height: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm text-base-content/70">Height (cm)</label>
+                    <input type="number" placeholder="170" className="input input-bordered w-full"
+                      value={recordForm.height}
+                      onChange={(e) => setRecordForm((f) => ({ ...f, height: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm text-base-content/70">Respiratory Rate (bpm)</label>
+                    <input type="number" placeholder="16" className="input input-bordered w-full"
+                      value={recordForm.respiratoryRate}
+                      onChange={(e) => setRecordForm((f) => ({ ...f, respiratoryRate: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -595,6 +624,8 @@ const PatientVitalsDetails = () => {
                         weight: recordForm.weight ? Number(recordForm.weight) : undefined,
                         pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
                         spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
+                        height: recordForm.height ? Number(recordForm.height) : undefined,
+                        respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
                         notes: recordForm.notes || undefined,
                       };
                       const res = await createVital(payload);

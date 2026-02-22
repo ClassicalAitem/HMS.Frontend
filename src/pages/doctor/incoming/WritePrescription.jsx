@@ -19,7 +19,7 @@ const medicationSchema = yup.object().shape({
   frequency: yup.string().required('Frequency is required'),
   duration: yup.string().required('Duration is required'),
   instructions: yup.string(),
-  dosesGiven: yup.number().transform((value) => (isNaN(value) ? undefined : value)).when('medicationType', {
+   dosesGiven: yup.number().transform((value) => (isNaN(value) ? undefined : value)).when('medicationType', {
     is: 'injection',
     then: (schema) => schema.required('Doses given is required'),
     otherwise: (schema) => schema.nullable()
@@ -46,7 +46,7 @@ const WritePrescription = () => {
   const [consultation, setConsultation] = useState(null);
   const [patient, setPatient] = useState(null);
   const [saving, setSaving] = useState(false);
-
+  
   const { register, control, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
