@@ -5,6 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { PharmacyActionModal } from "@/components/modals";
+import { getInventories } from "@/services/api/inventoryAPI";
 
 const SendToPharmacy = () => {
   const { patientId } = useParams();
@@ -16,6 +17,10 @@ const SendToPharmacy = () => {
   const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
   const [patient, setPatient] = useState(snapshot || null);
   const [isPharmacyOpen, setIsPharmacyOpen] = useState(false);
+  const [inventories, setInventories] = useState([]);
+const [medSearch, setMedSearch] = useState("");
+const [medDropdownOpen, setMedDropdownOpen] = useState(false);
+const medWrapperRef = React.useRef(null);
 
   const [meds, setMeds] = useState([
     { id: 1, name: "Paracetamol", dosage: "500mg", frequency: "2x daily", duration: "3 days", instructions: "After meals" },
@@ -45,6 +50,34 @@ const SendToPharmacy = () => {
     load();
     return () => { mounted = false; };
   }, [patientId, snapshot]);
+
+  useEffect(() => {
+  const fetchInventories = async () => {
+    try {
+      const res = await getInventories();
+      setInventories(res?.data ?? res ?? []);
+    } catch (err) {
+      console.error("Failed to fetch inventories", err);
+    }
+  };
+
+  fetchInventories();
+}, []);
+
+useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (
+      medWrapperRef.current &&
+      !medWrapperRef.current.contains(e.target)
+    ) {
+      setMedDropdownOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () =>
+    document.removeEventListener("mousedown", handleClickOutside);
+}, []); 
 
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
@@ -117,8 +150,66 @@ const SendToPharmacy = () => {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input className="input input-bordered w-full" placeholder="Medication name" value={newMed.name} onChange={(e) => setNewMed((nm) => ({ ...nm, name: e.target.value }))} />
-                      <input className="input input-bordered w-full" placeholder="Dosage (e.g., 500mg)" value={newMed.dosage} onChange={(e) => setNewMed((nm) => ({ ...nm, dosage: e.target.value }))} />
+                    <div className="relative" ref={medWrapperRef}>
+  <input
+    className="input input-bordered w-full"
+    placeholder="Prescription name..."
+    value={medSearch || newMed.name}
+    onFocus={() => {
+      setMedDropdownOpen(true);
+      setMedSearch("");
+    }}
+    onChange={(e) => {
+      setMedSearch(e.target.value);
+      setMedDropdownOpen(true);
+    }}
+    autoComplete="off"
+  />
+
+  {medDropdownOpen && (
+    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+      <ul className="py-1">
+        {inventories
+          .filter((item) =>
+            medSearch
+              ? item.name
+                  ?.toLowerCase()
+                  .includes(medSearch.toLowerCase())
+              : true
+          )
+          .map((item) => (
+            <li
+              key={item.id}
+              onClick={() => {
+                setNewMed((nm) => ({
+                  ...nm,
+                  name: item.name,
+                }));
+                setMedDropdownOpen(false);
+                setMedSearch("");
+              }}
+              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+            >
+              {item.name}
+            </li>
+          ))}
+
+        {inventories.filter((item) =>
+          medSearch
+            ? item.name
+                ?.toLowerCase()
+                .includes(medSearch.toLowerCase())
+            : true
+        ).length === 0 && (
+          <li className="px-4 py-2 text-gray-400 text-sm">
+            No matches found
+          </li>
+        )}
+      </ul>
+    </div>
+  )}
+</div>
+<input className="input input-bordered w-full" placeholder="Dosage (e.g., 500mg)" value={newMed.dosage} onChange={(e) => setNewMed((nm) => ({ ...nm, dosage: e.target.value }))} />
                       <input className="input input-bordered w-full" placeholder="Frequency (e.g., 2x daily)" value={newMed.frequency} onChange={(e) => setNewMed((nm) => ({ ...nm, frequency: e.target.value }))} />
                       <input className="input input-bordered w-full" placeholder="Duration (e.g., 3 days)" value={newMed.duration} onChange={(e) => setNewMed((nm) => ({ ...nm, duration: e.target.value }))} />
                       <div className="sm:col-span-2">
@@ -126,7 +217,7 @@ const SendToPharmacy = () => {
                       </div>
                     </div>
                     <div>
-                      <button className="btn btn-success btn-sm" onClick={addMedication}>+ Add Medication</button>
+                      <button className="btn btn-success btn-sm" onClick={addMedication}>+ Add Prescription</button>
                     </div>
                   </div>
                 </div>
