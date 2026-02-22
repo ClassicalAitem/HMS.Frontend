@@ -7,6 +7,7 @@ import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDep
 import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
+import toast from 'react-hot-toast';
 // Icons and utilities now handled within extracted components
 import PatientPageHeader from '@/components/frontdesk/patients/PatientPageHeader';
 import PatientIdentificationCard from '@/components/frontdesk/patients/PatientIdentificationCard';
