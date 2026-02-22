@@ -1,8 +1,8 @@
 import React from "react";
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
-import { LuDroplet, LuThermometer } from "react-icons/lu";
-import { GiWeightLiftingUp } from "react-icons/gi";
+import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
+import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
 
 const formatRelativeTime = (dateInput) => {
   if (!dateInput) return "";
@@ -104,6 +104,26 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-2xl font-semibold">{latest?.weight ?? "—"}</span>
                   <span className="text-sm text-base-content/70">kg</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-base-300 p-3">
+                <div className="flex items-center gap-2 text-sm text-base-content/80">
+                  <GiBodyHeight className="w-5 h-5" />
+                  <span>Height</span>
+                </div>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold">{latest?.height ?? "—"}</span>
+                  <span className="text-sm text-base-content/70">cm</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-base-300 p-3">
+                <div className="flex items-center gap-2 text-sm text-base-content/80">
+                  <LuActivity className="w-5 h-5" />
+                  <span>Respitory Rate</span>
+                </div>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? "—"}</span>
+                  <span className="text-sm text-base-content/70">bpm</span>
                 </div>
               </div>
 
