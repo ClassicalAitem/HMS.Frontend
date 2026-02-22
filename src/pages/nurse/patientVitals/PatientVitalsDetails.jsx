@@ -573,7 +573,7 @@ const PatientVitalsDetails = () => {
                     />
                   </div>
                   <div>
-                    <label className="block mb-1 text-sm text-base-content/70">Temperature (°F)</label>
+                    <label className="block mb-1 text-sm text-base-content/70">Temperature (°C)</label>
                     <input type="number" placeholder="98.6" className="input input-bordered w-full"
                       value={recordForm.temperature}
                       onChange={(e) => setRecordForm((f) => ({ ...f, temperature: e.target.value }))}
@@ -584,13 +584,6 @@ const PatientVitalsDetails = () => {
                     <input type="number" placeholder="98" className="input input-bordered w-full"
                       value={recordForm.spo2}
                       onChange={(e) => setRecordForm((f) => ({ ...f, spo2: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">Height (cm)</label>
-                    <input type="number" placeholder="170" className="input input-bordered w-full"
-                      value={recordForm.height}
-                      onChange={(e) => setRecordForm((f) => ({ ...f, height: e.target.value }))}
                     />
                   </div>
                   <div>
