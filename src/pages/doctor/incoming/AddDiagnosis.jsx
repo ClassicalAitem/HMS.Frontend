@@ -38,6 +38,7 @@ const AddDiagnosis = () => {
   const [allergyHistory, setAllergyHistory] = useState([]);
   const [notes, setNotes] = useState("");
   const [visitReason, setVisitReason] = useState("");
+  const [historyOfPresentingComplaint, setHistoryOfPresentingComplaint] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [cid, setCid] = useState(null);
   const [items, setItems] = useState([]);
@@ -81,6 +82,8 @@ const AddDiagnosis = () => {
               surgical: records.filter(r => r.category === 'surgical'),
               family: records.filter(r => r.category === 'family'),
               social: records.filter(r => r.category === 'social'),
+              allergic: records.filter(r => r.category === 'allergic'),
+              diagnosis: records.filter(r => r.category === 'diagnosis'),
             };
             setMedicalRecords(categorized);
           }
@@ -142,6 +145,7 @@ const AddDiagnosis = () => {
     const payload = {
       patientId,
       visitReason: "Consultation", // This could be a form field if needed, defaulting for now
+      complaintHistory: "History", 
       diagnosis: "Pending Assessment", // Or derived from a new input if required
       notes: notes,
       complaint: complaints.map(c => {
@@ -306,6 +310,15 @@ const AddDiagnosis = () => {
                     )}
                   </tbody>
                 </table>
+                 <div className="card-body p-4">
+                <h3 className="card-title text-lg font-semibold text-base-content mb-2">History of Presenting Complaints</h3>
+                <textarea
+                  className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-primary resize-y rounded-md bg-base-100 text-base-content"
+                  placeholder="history of presenting complaints"
+                  value={historyOfPresentingComplaint}
+                  onChange={(e) => setHistoryOfPresentingComplaint(e.target.value)}
+                />
+              </div>
               </div>
             </div>
           </div>
@@ -472,18 +485,6 @@ const AddDiagnosis = () => {
             </div>
           </div>
 
-          {/* Diagnosis */}
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold text-base-content mb-3">Diagnosis</h3>
-              <textarea
-                className="textarea textarea-bordered w-full text-base min-h-[150px] focus:outline-none focus:border-primary resize-y rounded-md bg-base-100 text-base-content"
-                placeholder="e.g. malaria parasite"
-                value={diagnosis}
-                onChange={(e) => setDiagnosis(e.target.value)}
-              />
-            </div>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-center gap-4 pt-4 pb-12">

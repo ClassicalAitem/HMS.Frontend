@@ -15,11 +15,12 @@ export const API_ENDPOINTS = {
   CHANGE_PASSWORD: '/user/changePassword',
   FORGOT_PASSWORD: '/user/forgot-password',
   RESET_PASSWORD: '/user/resetPassword',
-
+  
   // Billing
   CREATE_BILL: '/billing/create',
   GET_BILLINGS: '/billing',
   GET_BILL_DETAILS: '/billing/:id',
+  DELETE_BILLING: '/billing',
 
   // Receipts
   CREATE_RECEIPT: '/receipt/create',
@@ -38,8 +39,8 @@ export const API_ENDPOINTS = {
   UPDATE_USER: '/user/updateUser',
   DISABLE_ENABLE_ACCOUNT: '/user/accountDisabledOrEnable',
   DELETE_USER: '/user/accountDeleted',
-
-
+  
+  
   // HMO
   GET_HMOS: '/hmo',
 

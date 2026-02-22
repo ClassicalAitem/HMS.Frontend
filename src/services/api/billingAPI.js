@@ -133,6 +133,21 @@ export const updateReceipt = async(receiptId, status) => {
   const response = await apiClient.patch(url, status)
   return response;
 }
+ export const deleteBilling = async (billingId) => {
+    console.log('🗑️ BillingAPI: Starting deleteBilling request');
+    console.log('📤 BillingAPI: Billing ID:', billingId);
+
+    try {
+      const response = await apiClient.delete(`${API_ENDPOINTS.DELETE_BILLING}/${billingId}`);
+      console.log('✅ BillingAPI: Delete billing response received');
+      console.log('📥 BillingAPI: Response data:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ BillingAPI: Delete billing error occurred');
+      console.error('📥 BillingAPI: Error response:', error.response);
+      throw error;
+    }
+  };
 
 export default {
   createBill,
@@ -143,4 +158,5 @@ export default {
   getAllReceiptByPatientId,
   createReceipt,
   updateReceipt,
+  deleteBilling,
 };
