@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import { Sidebar } from '@/components/superadmin/dashboard';
 import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
 import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -46,7 +46,7 @@ const PatientDetails = () => {
       toast.error(error);
       dispatch(clearPatientsError());
       // Redirect to patients list on error
-      navigate('/frontdesk/patients');
+      navigate('/superadmin/patients');
     }
   }, [error, dispatch, navigate]);
 
@@ -93,8 +93,8 @@ const PatientDetails = () => {
         <div className="text-center">
           <p className="text-base-content/70">Patient not found</p>
           <p className="text-sm text-base-content/50 mt-2">Patient ID: {patientId}</p>
-          <button
-            onClick={() => navigate('/frontdesk/patients')}
+          <button 
+            onClick={() => navigate('/superadmin/patients')}
             className="btn btn-primary mt-4"
           >
             Back to Patients
@@ -133,7 +133,7 @@ const PatientDetails = () => {
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
-          <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
+          <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/superadmin/patients')} />
 
           {/* Patient Information */}
           <div className="grid grid-cols-1 gap-6">
@@ -159,16 +159,16 @@ const PatientDetails = () => {
               />
             </div>
 
-
+            
           </div>
 
             {/* Additional Information */}
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
           {/* Action Buttons */}
-          <ActionButtons
-            onSendToCashier={() => setIsCreateBillOpen(true)}
-            onSendToNurse={() => setIsSendToNurseOpen(true)}
+          <ActionButtons 
+            onSendToCashier={() => setIsCreateBillOpen(true)} 
+            onSendToNurse={() => setIsSendToNurseOpen(true)} 
           />
         </div>
       </div>
@@ -252,7 +252,7 @@ const PatientDetails = () => {
           // After bill is created, proceed to status update modal
           setIsSendToCashierOpen(true);
         }}
-        // defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
+        defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
     </div>
   );
