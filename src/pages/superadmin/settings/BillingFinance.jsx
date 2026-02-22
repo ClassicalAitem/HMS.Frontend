@@ -8,6 +8,7 @@ import TransactionsTab from '@/components/superadmin/settings/TransactionsTab';
 import FinancialReportsTab from '@/components/superadmin/settings/FinancialReportsTab';
 
 const BillingFinance = () => {
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('service-charges');
   const navigate = useNavigate();
