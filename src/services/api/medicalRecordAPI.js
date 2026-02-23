@@ -44,10 +44,22 @@ export const deleteComplaint = async (id) => {
   }
 };
 
+// Upload medical records from CSV
+export const uploadMedicalRecordCSV = async (csvContent) => {
+  try {
+    const response = await apiClient.post('/medicalRecord/upload-csv', {
+      csv: csvContent
+    });
+    return response.data?.data || response.data;
+  } catch (error) {
+    throw error?.response?.data || error;
+  }
+};
 
 export default {
   getAllComplaint,
   createMedicalRecord,
   updateComplaint,
   deleteComplaint,
+  uploadMedicalRecordCSV,
 };
