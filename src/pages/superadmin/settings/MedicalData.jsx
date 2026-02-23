@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/superadmin/dashboard';
 import { FaArrowLeft, FaBell, FaPlus, FaPen, FaTrash, FaNotesMedical, FaMedkit } from 'react-icons/fa';
 import AddComplaintModal from '@/components/modals/superadmin/AddComplaintModal';
 import UpdateComplaintModal from '@/components/modals/superadmin/UpdateComplaintModal';
+import UploadCsvModal from '@/components/modals/superadmin/UploadCsvModal';
 import {  deleteComplaint, getAllComplaint } from '@/services/api/medicalRecordAPI';
 
 
@@ -13,6 +14,7 @@ const MedicalData = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isUploadCsvModalOpen, setIsUploadCsvModalOpen] = useState(false);
   const [complaints, setComplaints] = useState([]);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -57,6 +59,12 @@ const MedicalData = () => {
   // Handler for update
   const handleComplaintUpdated = async () => {
     setIsUpdateModalOpen(false);
+    await fetchComplaints();
+  };
+
+  // Handler for CSV upload
+  const handleCsvUploadSuccess = async () => {
+    setIsUploadCsvModalOpen(false);
     await fetchComplaints();
   };
 
@@ -147,6 +155,15 @@ const MedicalData = () => {
                     <h1 className="text-3xl font-semibold text-base-content">Complaints</h1>
                      <p className="text-sm text-base-content/70">Manage possible patient complaint</p>
                         </div>
+                        <div className="flex gap-2">
+                        <button
+                             onClick={() => setIsUploadCsvModalOpen(true)}
+                            className="btn btn-outline btn-primary"
+                        >
+                        <FaPlus className="w-4 h-4 mr-2" />
+                            
+                           Upload CSV
+                        </button>
                         <button
                              onClick={() => setIsAddModalOpen(true)}
 
@@ -155,7 +172,8 @@ const MedicalData = () => {
                         <FaPlus className="w-4 h-4 mr-2" />
                             
                            Add Medical Data
-                        </button> 
+                        </button>
+                        </div> 
                         
                         </div>
                    </div>
@@ -235,6 +253,12 @@ const MedicalData = () => {
               onClose={() => setIsUpdateModalOpen(false)}
               complaint={selectedComplaint}
               onUpdated={handleComplaintUpdated}
+            />
+            {/* Upload CSV Modal */}
+            <UploadCsvModal
+              isOpen={isUploadCsvModalOpen}
+              onClose={() => setIsUploadCsvModalOpen(false)}
+              onUploadSuccess={handleCsvUploadSuccess}
             />
                  </div>
       
