@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import AddDiagnosisItemModal from "./modals/AddDiagnosisItemModal";
 import AddPrescriptionModal from "./modals/AddPrescriptionModal";
 import AddLabTestModal from "./modals/AddLabTestModal";
+import { updateComplaint } from "@/services/api/medicalRecordAPI";
 
 const WriteDiagnosis = () => {
   const { patientId, consultationId } = useParams();
@@ -104,7 +105,7 @@ const WriteDiagnosis = () => {
     setSaving(true);
 
     toast.promise(
-      updateConsultation(consultationId, payload),
+      updateComplaint(consultationId, payload),
       {
         loading: 'Saving diagnosis...',
         success: (res) => {

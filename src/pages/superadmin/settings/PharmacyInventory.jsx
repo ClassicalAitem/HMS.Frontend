@@ -86,7 +86,6 @@ const InventoryStocks = () => {
         stock: i.stock ?? 0,
         costPrice: i.costPrice ?? 0,
         sellingPrice: i.sellingPrice ?? 0,
-        unitPrice: i.unitPrice ?? 0,
         supplier: i.supplier || '',
         expiryDate: i.expiryDate ? new Date(i.expiryDate).toISOString().split('T')[0] : '',
         batchNumber: i.batchNumber || '',
@@ -320,7 +319,7 @@ export default InventoryStocks
 // --- Inline modal components ---
 function InventoryFormModal({ item, onClose, onSubmit }){
   const [form, setForm] = useState({
-    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice, sellingPrice: item?.sellingPrice, reorderLevel: item?.reorderLevel, supplier: item?.supplier, sku: item?.sku || '', unitPrice: item?.unitPrice, stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
+    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice, sellingPrice: item?.sellingPrice, reorderLevel: item?.reorderLevel, supplier: item?.supplier, sku: item?.sku || '', stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -356,10 +355,9 @@ function InventoryFormModal({ item, onClose, onSubmit }){
             <input className="input input-bordered flex-1" placeholder="Cost Price" value={form.costPrice} onChange={(e)=>setForm({...form,costPrice:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Selling Price" value={form.sellingPrice} onChange={(e)=>setForm({...form,sellingPrice:e.target.value})} />
           </div>
-          <div className="flex gap-2">
+                  <div className="flex gap-2">
             <input className="input input-bordered flex-1" placeholder="Sku" value={form.sku} onChange={(e)=>setForm({...form,sku:e.target.value})} />
-            <input className="input input-bordered flex-1" placeholder="Unit Price" value={form.unitPrice} onChange={(e)=>setForm({...form,unitPrice:e.target.value})} />
-          </div>
+           </div>
           <div className="flex gap-2">
             <input className="input input-bordered flex-1" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e)=>setForm({...form,reorderLevel:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Supplier" value={form.supplier} onChange={(e)=>setForm({...form,supplier:e.target.value})} />
