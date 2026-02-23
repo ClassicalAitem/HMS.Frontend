@@ -72,7 +72,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
     }
     setIsLoading(true);
     try {
-      const payload = { diagnosis: diagnoses };
+      const payload = { diagnosis: diagnoses.join(', ') };
       await updateConsultation(consultationId, payload);
       toast.success('Diagnosis updated successfully!');
       setDiagnoses([]);
