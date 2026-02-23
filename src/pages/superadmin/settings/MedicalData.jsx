@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
+import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
-import { FaArrowLeft, FaBell, FaPlus, FaPen, FaTrash, FaNotesMedical, FaMedkit } from 'react-icons/fa';
+import { FaArrowLeft, FaHeartbeat, FaUsers, FaExclamationTriangle, FaClipboardList, FaStethoscope, FaNotesMedical, FaPlus, FaPen, FaTrash } from 'react-icons/fa';
 import AddComplaintModal from '@/components/modals/superadmin/AddComplaintModal';
 import UpdateComplaintModal from '@/components/modals/superadmin/UpdateComplaintModal';
 import UploadCsvModal from '@/components/modals/superadmin/UploadCsvModal';
 import {  deleteComplaint, getAllComplaint } from '@/services/api/medicalRecordAPI';
+import { FaScreenpal } from 'react-icons/fa6';
 
 
 
 const MedicalData = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('All Medical Data');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUploadCsvModalOpen, setIsUploadCsvModalOpen] = useState(false);
   const [complaints, setComplaints] = useState([]);
@@ -68,22 +69,100 @@ const MedicalData = () => {
     await fetchComplaints();
   };
 
-  const tabs = [
-    { id: 'complaints', label: 'Complaints', icon: FaNotesMedical },
-    { id: 'allergy', label: 'Allergy', icon: FaBell },
-    { id: 'surgical', label: 'Surgical', icon: FaMedkit }
-  ];
+  // Format complaints data for DataTable
+  const processedComplaints = useMemo(() => 
+    complaints.map((log) => ({
+      id: log.id,
+      name: log.name || log.dataName,
+      category: log.category?.replace('_', ' ').replace('history', 'History').replace('medical', 'Medical').replace('surgical', 'Surgical').replace('family', 'Family').replace('social', 'Social').replace('allergical', 'Allergical'),
+      rawCategory: log.category,
+    })), 
+    [complaints]
+  );
 
-  // const renderTabContent = () => {
-  //   switch (activeTab) {
-  //     case 'complaints':
-  //       return <GeneralTab />;
-  //     case 'notifications':
-  //       return <NotificationsTab />;
-  //     case 'appointments':
-  //       return <AppointmentsTab />;
-  //   }
-  // };
+  // Filter complaints based on active tab
+  const filteredComplaints = useMemo(() => {
+    if (activeTab === 'All Medical Data') {
+      return processedComplaints;
+    }
+
+    // Map tab id to backend category
+    const categoryMap = {
+      'symptoms': 'symptoms',
+      'surgical': 'surgical',
+      'family': 'family',
+      'social': 'social',
+      'allergy': 'allergic',
+      'medical': 'medical_history',
+      'diagnosis': 'diagnosis'
+    };
+
+    const targetCategory = categoryMap[activeTab];
+    return processedComplaints.filter(item => item.rawCategory === targetCategory);
+  }, [processedComplaints, activeTab]);
+
+  // Define columns for DataTable
+  const columns = useMemo(() => [
+    {
+      key: 'name',
+      title: 'Complaint',
+      sortable: true,
+      className: 'font-medium text-base-content'
+    },
+    {
+      key: 'category',
+      title: 'Category',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'actions',
+      title: 'Actions',
+      className: 'text-base-content/70',
+      render: (value, row) => (
+        <div className="flex gap-2">
+          <button
+            className="btn btn-ghost btn-xs mr-2"
+            title="Edit"
+            onClick={() => {
+              const complaint = complaints.find(c => c.id === row.id);
+              setSelectedComplaint(complaint);
+              setIsUpdateModalOpen(true);
+            }}
+          >
+            <FaPen className="w-4 h-4 text-primary" />
+          </button>
+          <button
+            className="btn btn-ghost btn-xs"
+            title="Delete"
+            onClick={async () => {
+              if (window.confirm('Are you sure you want to delete this complaint?')) {
+                try {
+                  await deleteComplaint(row.id);
+                  await fetchComplaints();
+                } catch {
+                  alert('Delete failed!');
+                }
+              }
+            }}
+          >
+            <FaTrash className="w-4 h-4 text-error" />
+          </button>
+        </div>
+      )
+    }
+  ], [complaints]);
+
+  const tabs = [
+    { id: 'All Medical Data', label: 'All Data', icon: FaNotesMedical },
+    { id: 'symptoms', label: 'Symptoms', icon: FaHeartbeat },
+    { id: 'surgical', label: 'Surgical', icon: FaScreenpal },
+    { id: 'family', label: 'Family', icon: FaUsers },
+    { id: 'social', label: 'Social', icon: FaUsers },
+    { id: 'allergy', label: 'Allergy', icon: FaExclamationTriangle },
+    { id: 'medical', label: 'Medical History', icon: FaClipboardList },
+    { id: 'diagnosis', label: 'Diagnosis', icon: FaStethoscope }
+  ];
 
   return (
     <div className="flex h-screen bg-base-300/20">
@@ -178,68 +257,28 @@ const MedicalData = () => {
                         </div>
                    </div>
        
-                   <div className="overflow-x-auto">
-                     <table className="table table-zebra w-full">
-                       <thead>
-                         <tr>
-                           <th className="text-base-content/70">Complaint</th>
-                           <th className="text-base-content/70">Category</th>
-                           
-                           <th className="text-base-content/70">Actions</th>
-                         </tr>
-                       </thead>
-                       <tbody>
-                         {isLoading ? (
-                           <tr><td colSpan={4}>Loading...</td></tr>
-                         ) : complaints.length === 0 ? (
-                           <tr><td colSpan={4}>No complaints found.</td></tr>
-                         ) : (
-                           complaints.map((log) => (
-                             <tr key={log.id}>
-                               <td>
-                                 <div className="font-medium text-base-content">
-                                   {log.name || log.dataName}
-                                 </div>
-                               </td>
-                               <td>
-                                 <div className="text-base-content/70">
-                                   {log.category?.replace('_', ' ').replace('history', 'History').replace('medical', 'Medical').replace('surgical', 'Surgical').replace('family', 'Family').replace('social', 'Social').replace('allergical', 'Allergical')}
-                                 </div>
-                               </td>
-                               <td>
-                                 <button
-                                   className="btn btn-ghost btn-xs mr-2"
-                                   title="Edit"
-                                   onClick={() => {
-                                     setSelectedComplaint(log);
-                                     setIsUpdateModalOpen(true);
-                                   }}
-                                 >
-                                   <FaPen className="w-4 h-4 text-primary" />
-                                 </button>
-                                 <button
-                                   className="btn btn-ghost btn-xs"
-                                   title="Delete"
-                                   onClick={async () => {
-                                     if (window.confirm('Are you sure you want to delete this complaint?')) {
-                                       try {
-                                         await deleteComplaint(log.id);
-                                         await fetchComplaints();
-                                       } catch {
-                                         alert('Delete failed!');
-                                       }
-                                     }
-                                   }}
-                                 >
-                                   <FaTrash className="w-4 h-4 text-error" />
-                                 </button>
-                               </td>
-                             </tr>
-                           ))
-                         )}
-                       </tbody>
-                     </table>
-                   </div>
+                   {isLoading ? (
+                     <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+                       <div className="overflow-auto max-h-96 p-4 space-y-3">
+                         <div className="skeleton h-6 w-52" />
+                         {Array.from({ length: 8 }).map((_, i) => (
+                           <div key={i} className="skeleton h-8 w-full" />
+                         ))}
+                       </div>
+                     </div>
+                   ) : (
+                     <DataTable
+                       data={filteredComplaints}
+                       columns={columns}
+                       searchable={true}
+                       sortable={true}
+                       paginated={true}
+                       initialEntriesPerPage={20}
+                       maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
+                       showEntries={true}
+                       searchPlaceholder="Search complaints..."
+                     />
+                   )}
        
               {/* Add Complaint Modal */}
             <AddComplaintModal
