@@ -259,9 +259,19 @@ const ViewConsultation = () => {
                       </div>
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Diagnosis</h4>
-                        <div className={`p-3 rounded-lg border ${diagnosis.includes("Pending") ? "bg-warning/10 border-warning/20 text-warning-content" : "bg-success/10 border-success/20"}`}>
-                          <p className="font-medium">{diagnosis}</p>
-                        </div>
+                        {diagnosis.includes("Pending") ? (
+                          <div className="p-3 rounded-lg border bg-warning/10 border-warning/20 text-warning-content">
+                            <p className="font-medium">{diagnosis}</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {diagnosis.split(',').map((item, idx) => (
+                              <span key={idx} className="inline-flex items-center px-3 py-1 bg-success/10 border border-success/30 rounded-full text-sm text-success-content font-medium">
+                                {item.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
