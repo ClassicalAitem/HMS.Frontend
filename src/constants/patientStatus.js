@@ -1,0 +1,36 @@
+// Centralized patient status constants matching backend enum values
+// keep property names uppercase for easier reference, values are the strings
+// the API expects lowercase underscore values so we mirror that.
+
+export const PATIENT_STATUS = {
+  REGISTERED: "registered",
+  AWAITING_FRONT_DESK: "awaiting_front_desk",
+  AWAITING_PAYMENT: "awaiting_payment",
+  AWAITING_VITALS: "awaiting_vitals",
+  AWAITING_CONSULTATION: "awaiting_consultation",
+  AWAITING_SAMPLING: "awaiting_sampling",
+  AWAITING_REVIEW: "awaiting_review",
+  AWAITING_INJECTION: "awaiting_injection",
+  AWAITING_CASHIER: "awaiting_cashier",
+  IN_CONSULTATION: "in_consultation",
+  AWAITING_LAB: "awaiting_lab",
+  LAB_COMPLETED: "lab_completed",
+  AWAITING_RADIOLOGY: "awaiting_radiology",
+  RADIOLOGY_COMPLETED: "radiology_completed",
+  AWAITING_PHARMACY: "awaiting_pharmacy",
+  PHARMACY_COMPLETED: "pharmacy_completed",
+  AWAITING_ADMISSION: "awaiting_admission",
+  ADMITTED: "admitted",
+  UNDER_OBSERVATION: "under_observation",
+  AWAITING_SURGERY: "awaiting_surgery",
+  POST_SURGERY_RECOVERY: "post_surgery_recovery",
+  TRANSFERRED: "transferred",
+  REFERRED: "referred",
+  ISOLATED: "isolated",
+  AWAITING_DISCHARGE_APPROVAL: "awaiting_discharge_approval",
+  DISCHARGED: "discharged",
+  DECEASED: "deceased",
+  NO_SHOW: "no_show",
+  CANCELLED: "cancelled",
+  COMPLETED: "completed",
+};
