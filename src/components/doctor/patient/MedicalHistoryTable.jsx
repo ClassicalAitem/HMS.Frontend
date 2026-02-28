@@ -1,6 +1,6 @@
 import React from "react";
 
-const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, loading = false }) => {
+const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, loading = false }) => {
   return (
     <div className="shadow-xl card bg-base-100 mb-4">
       <div className="p-4 card-body">
@@ -48,8 +48,11 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, loading = false }) =>
                       <td>{row.time}</td>
                       <td>{row.date}</td>
                       <td>{row.notes}</td>
-                      <td>
+                      <td className="space-x-2">
                         <button className="text-primary hover:underline text-sm" onClick={() => { if (typeof onViewDetails === 'function') onViewDetails(row, idx); }}>View Details</button>
+                        {typeof onEdit === 'function' && (
+                          <button className="text-secondary hover:underline text-sm" onClick={() => onEdit(row, idx)}>Edit</button>
+                        )}
                       </td>
                     </tr>
                   ))
