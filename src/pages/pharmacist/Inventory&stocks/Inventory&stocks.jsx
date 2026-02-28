@@ -158,7 +158,7 @@ const InventoryStocks = () => {
                 <div className="p-4 rounded-xl bg-base-100 border border-base-300">
                   <div className="text-sm text-base-content/70">Expiring Soon</div>
                   <div className="text-3xl font-bold">{expiringSoonCount}</div>
-                  <div className="text-xs text-error/70">Within 30 days</div>
+                  <div className="text-xs text-error/70">Within 90 days</div>
                 </div>
               </div>
 
