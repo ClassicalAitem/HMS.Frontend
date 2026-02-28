@@ -237,7 +237,11 @@ const PatientMedicalHistory = () => {
           ), [consultations])} loading={loading} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} onViewDetails={(row) => {
             const cid = row?.id;
             if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-          }} />
+          }}
+            onEdit={(row) => {
+              const cid = row?.id;
+              if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+            }} />
 
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
