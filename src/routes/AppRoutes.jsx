@@ -25,6 +25,7 @@ import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
 import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
 import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
 import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
+import EditConsultation from "@/pages/doctor/incoming/EditConsultation";
 import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
 import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
@@ -249,8 +250,11 @@ const AppRoutes = () => {
     <ProtectedRoute allowedRoles={['doctor']}>
       <ViewConsultation />
     </ProtectedRoute>
+  } />  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/edit" element={
+    <ProtectedRoute allowedRoles={["doctor"]}>
+      <EditConsultation />
+    </ProtectedRoute>
   } />
-
   <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/prescription" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <WritePrescription />
