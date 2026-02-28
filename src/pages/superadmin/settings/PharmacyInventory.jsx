@@ -61,6 +61,11 @@ const InventoryStocks = () => {
     const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     return diff <= 30 && diff >= 0
   }).length
+  const expiredCount = items.filter(i => {
+    if (!i.expiryDate) return false
+    const d = new Date(i.expiryDate)
+    return d.getTime() < Date.now()
+  }).length
  
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -68,6 +73,21 @@ const InventoryStocks = () => {
     if (activeTab === 'low') list = list.filter(i => (Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0)))
     if (activeTab === 'out') list = list.filter(i => Number(i.stock) === 0)
     if (activeTab === 'recent') list = list.slice().sort((a,b)=> new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+    if (activeTab === 'expiring') {
+      list = list.filter(i => {
+        if (!i.expiryDate) return false
+        const d = new Date(i.expiryDate)
+        const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        return diff <= 30 && diff >= 0
+      })
+    }
+    if (activeTab === 'expired') {
+      list = list.filter(i => {
+        if (!i.expiryDate) return false
+        const d = new Date(i.expiryDate)
+        return d.getTime() < Date.now()
+      })
+    }
     return list
   }, [items, search, activeTab])
 
@@ -80,7 +100,6 @@ const InventoryStocks = () => {
         id: i._id,
         name: i.name,
         strength: i.strength || '',
-        sku: i.sku || '',
         reorderLevel: i.reorderLevel ?? 0,
         form: i.form || '',
         stock: i.stock ?? 0,
@@ -169,36 +188,43 @@ const InventoryStocks = () => {
           ) : (
             <>
               {/* Top stat cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
+<div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
                   <div className="text-sm text-base-content/70">Total Items</div>
                   <div className="text-3xl font-bold">{totalItems}</div>
                   <div className="text-xs text-base-content/60">Unique medications</div>
                 </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
+                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
                   <div className="text-sm text-base-content/70">In Stock</div>
                   <div className="text-3xl font-bold">{inStockCount}</div>
                   <div className="text-xs text-success/70">{totalItems ? Math.round((inStockCount/totalItems)*100) : 0}% availability</div>
                 </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
+                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
                   <div className="text-sm text-base-content/70">Low Stock</div>
                   <div className="text-3xl font-bold">{lowStockCount}</div>
                   <div className="text-xs text-warning/70">Needs reordering</div>
                 </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
+                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
                   <div className="text-sm text-base-content/70">Expiring Soon</div>
                   <div className="text-3xl font-bold">{expiringSoonCount}</div>
-                  <div className="text-xs text-error/70">Within 30 days</div>
+                  <div className="text-xs text-error/70">Within 90 days</div>
+                </div>
+                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
+                  <div className="text-sm text-base-content/70">Expired</div>
+                  <div className="text-3xl font-bold">{expiredCount}</div>
+                  <div className="text-xs text-error/70">Past expiry date</div>
                 </div>
               </div>
 
               {/* Tabs and controls */}
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                  <button className={`px-3 py-1 rounded ${activeTab==='all'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('all'); setCurrentPage(1)}}>All Items</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='low'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('low'); setCurrentPage(1)}}>Low Stock</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='out'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('out'); setCurrentPage(1)}}>Out of Stock</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='recent'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('recent'); setCurrentPage(1)}}>Recent Activity</button>
+                  <button className={`px-2 py-1 rounded ${activeTab==='all'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('all'); setCurrentPage(1)}}>All Items</button>
+                  <button className={`px-2 py-1 rounded ${activeTab==='low'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('low'); setCurrentPage(1)}}>Low Stock</button>
+                  <button className={`px-2 py-1 rounded ${activeTab==='out'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('out'); setCurrentPage(1)}}>Out of Stock</button>
+                  <button className={`px-2 py-1 rounded ${activeTab==='expiring'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expiring'); setCurrentPage(1)}}>Expiring Soon</button>
+                  <button className={`px-2 py-1 rounded ${activeTab==='expired'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expired'); setCurrentPage(1)}}>Expired</button>
+                  <button className={`px-2 py-1 rounded ${activeTab==='recent'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('recent'); setCurrentPage(1)}}>Recent Activity</button>
                 </div>
                 <div className="flex items-center gap-2">
                   <input className="input input-sm input-bordered" placeholder="Search Medications..." value={search} onChange={(e)=>{setSearch(e.target.value); setCurrentPage(1)}} />
@@ -281,7 +307,7 @@ const InventoryStocks = () => {
 
               {/* Pagination footer */}
               <div className="mt-4 flex items-center justify-between text-xs text-base-content/60">
-                <div>Showing Result for {activeTab==='all'?'All Items': activeTab==='low'?'Low Stock': activeTab==='out'?'Out of Stock':'Recent Activity'} ({filtered.length} Total)</div>
+                <div>Showing Result for {activeTab==='all'?'All Items': activeTab==='low'?'Low Stock': activeTab==='out'?'Out of Stock': activeTab==='expiring'?'Expiring Soon': activeTab==='expired'?'Expired Items':'Recent Activity'} ({filtered.length} Total)</div>
                 <div className="join">
                   {Array.from({ length: Math.max(1, Math.ceil(filtered.length / itemsPerPage)) }).map((_, idx) => (
                     <button key={idx} onClick={() => setCurrentPage(idx+1)} className={`join-item btn btn-ghost btn-xs ${currentPage===idx+1?'bg-primary text-white':''}`}>{idx+1}</button>
@@ -319,7 +345,7 @@ export default InventoryStocks
 // --- Inline modal components ---
 function InventoryFormModal({ item, onClose, onSubmit }){
   const [form, setForm] = useState({
-    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice, sellingPrice: item?.sellingPrice, reorderLevel: item?.reorderLevel, supplier: item?.supplier, sku: item?.sku || '', stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
+    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice, sellingPrice: item?.sellingPrice, reorderLevel: item?.reorderLevel, supplier: item?.supplier, stock: item?.stock, batchNumber: item?.batchNumber || '', expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '', description: item?.description || ''
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -355,9 +381,7 @@ function InventoryFormModal({ item, onClose, onSubmit }){
             <input className="input input-bordered flex-1" placeholder="Cost Price" value={form.costPrice} onChange={(e)=>setForm({...form,costPrice:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Selling Price" value={form.sellingPrice} onChange={(e)=>setForm({...form,sellingPrice:e.target.value})} />
           </div>
-                  <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Sku" value={form.sku} onChange={(e)=>setForm({...form,sku:e.target.value})} />
-           </div>
+             
           <div className="flex gap-2">
             <input className="input input-bordered flex-1" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e)=>setForm({...form,reorderLevel:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Supplier" value={form.supplier} onChange={(e)=>setForm({...form,supplier:e.target.value})} />
