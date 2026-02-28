@@ -465,7 +465,10 @@ const ViewConsultation = () => {
                     <ul className="space-y-3">
                       {surgicalHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <span className="font-medium">{typeof item === 'object' ? item.procedure || item.title || item.name || JSON.stringify(item) : item}</span>
+                          <span className="font-medium">{typeof item === 'object' ? item.procedureName || item.procedure || item.title || item.name : item}</span>
+                          {typeof item === 'object' && item.dateOfSurgery && (
+                            <span className="text-base-content/60 text-xs">{new Date(item.dateOfSurgery).toLocaleDateString()}</span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -508,8 +511,8 @@ const ViewConsultation = () => {
                     <ul className="space-y-3">
                       {familyHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <span className="font-medium">{item.title}</span>
-                          <span className="text-base-content/70">{item.value}</span>
+                          <span className="font-medium">{typeof item === 'object' ? item.relation || item.title : item}</span>
+                          <span className="text-base-content/70">{typeof item === 'object' ? item.condition || item.value : ''}</span>
                         </li>
                       ))}
                     </ul>
@@ -530,7 +533,7 @@ const ViewConsultation = () => {
                     <ul className="space-y-3">
                       {socialHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <span className="font-medium">{typeof item === 'object' ? item.habit || item.title || item.name || JSON.stringify(item) : item}</span>
+                          <span className="font-medium">{typeof item === 'object' ? item.title || item.habit || item.name : item}</span>
                         </li>
                       ))}
                     </ul>

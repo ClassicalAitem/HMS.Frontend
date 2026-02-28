@@ -20,6 +20,8 @@ const MedicalData = () => {
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
 
 
@@ -69,6 +71,47 @@ const MedicalData = () => {
     await fetchComplaints();
   };
 
+  // Handle individual item selection
+  const handleToggleSelection = (id) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  // Handle select/deselect all
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredComplaints.length && filteredComplaints.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      const allIds = new Set(filteredComplaints.map(item => item.id));
+      setSelectedIds(allIds);
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.size} item(s)? This action cannot be undone.`)) {
+      setIsDeleting(true);
+      try {
+        const deletePromises = Array.from(selectedIds).map(id => deleteComplaint(id));
+        await Promise.all(deletePromises);
+        setSelectedIds(new Set());
+        await fetchComplaints();
+      } catch (error) {
+        console.error('Bulk delete failed:', error);
+        alert('Failed to delete some items. Please try again.');
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+
   // Format complaints data for DataTable
   const processedComplaints = useMemo(() => 
     complaints.map((log) => ({
@@ -103,6 +146,27 @@ const MedicalData = () => {
 
   // Define columns for DataTable
   const columns = useMemo(() => [
+    {
+      key: 'checkbox',
+      title: (
+        <input
+          type="checkbox"
+          checked={selectedIds.size === filteredComplaints.length && filteredComplaints.length > 0}
+          indeterminate={selectedIds.size > 0 && selectedIds.size < filteredComplaints.length}
+          onChange={handleSelectAll}
+          className="checkbox checkbox-sm"
+        />
+      ),
+      className: 'text-center w-12',
+      render: (value, row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.id)}
+          onChange={() => handleToggleSelection(row.id)}
+          className="checkbox checkbox-sm"
+        />
+      )
+    },
     {
       key: 'name',
       title: 'Complaint',
@@ -151,7 +215,7 @@ const MedicalData = () => {
         </div>
       )
     }
-  ], [complaints]);
+  ], [complaints, selectedIds, filteredComplaints]);
 
   const tabs = [
     { id: 'All Medical Data', label: 'All Data', icon: FaNotesMedical },
@@ -256,6 +320,42 @@ const MedicalData = () => {
                         
                         </div>
                    </div>
+
+                   {/* Bulk Actions Bar */}
+                   {selectedIds.size > 0 && (
+                     <div className="mb-4 p-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                         <span className="text-sm font-medium text-base-content">
+                           {selectedIds.size} item{selectedIds.size > 1 ? 's' : ''} selected
+                         </span>
+                       </div>
+                       <div className="flex gap-2">
+                         <button
+                           onClick={() => setSelectedIds(new Set())}
+                           className="btn btn-ghost btn-sm"
+                         >
+                           Cancel
+                         </button>
+                         <button
+                           onClick={handleBulkDelete}
+                           disabled={isDeleting}
+                           className="btn btn-error btn-sm"
+                         >
+                           {isDeleting ? (
+                             <>
+                               <span className="loading loading-spinner loading-sm"></span>
+                               Deleting...
+                             </>
+                           ) : (
+                             <>
+                               <FaTrash className="w-4 h-4" />
+                               Delete ({selectedIds.size})
+                             </>
+                           )}
+                         </button>
+                       </div>
+                     </div>
+                   )}
        
                    {isLoading ? (
                      <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
