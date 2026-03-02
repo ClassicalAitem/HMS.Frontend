@@ -12,13 +12,14 @@ export const getLabResultById = async (id) => {
 };
 
 export const createLabResult = async (investigationRequestId, data) => {
-  const form = new FormData();
-  if (data?.patientId) form.append('patientId', data.patientId);
-  if (data?.tests) form.append('tests', typeof data.tests === 'string' ? data.tests : JSON.stringify(data.tests));
-  if (data?.remarks) form.append('remarks', data.remarks);
-  const uploads = Array.isArray(data?.uploads) ? data.uploads : (data?.upload ? [data.upload] : []);
-  uploads.forEach((file) => { if (file) form.append('upload', file); });
-  const response = await apiClient.post(`/labResult/${investigationRequestId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  // Send the complete form data as JSON
+  const payload = {
+    patientId: data?.patientId,
+    form: data?.form,
+    remarks: data?.remarks,
+  };
+  
+  const response = await apiClient.post(`/labResult/${investigationRequestId}`, payload);
   return response.data;
 };
 

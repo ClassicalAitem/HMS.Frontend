@@ -6,6 +6,8 @@ import { FaTimes, FaPlus, FaMoneyBillWave, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
+import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 // Form validation schema
 const billItemSchema = yup.object({
@@ -21,6 +23,13 @@ const billingSchema = yup.object({
 });
 
 const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems = [] }) => {
+  useEffect(() => {
+    if (isOpen) {
+      console.log('CreateBillModal: opened', { patientId, defaultItems });
+    } else {
+      console.log('CreateBillModal: closed');
+    }
+  }, [isOpen, patientId, defaultItems]);
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -135,7 +144,19 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
       };
 
       await createBilling(patientId, payload);
-      toast.success('Bill created successfully! Sent to Cashier.');
+      toast.success('Bill created successfully!');
+
+      // Update patient status to awaiting cashier so incoming list removes the patient
+      try {
+        const statusPromise = updatePatientStatus(patientId, PATIENT_STATUS.AWAITING_CASHIER);
+        await toast.promise(statusPromise, {
+          loading: 'Updating patient status...',
+          success: 'Patient sent to cashier',
+          error: (err) => err?.response?.data?.message || 'Failed to update patient status',
+        });
+      } catch (err) {
+        console.error('CreateBillModal: failed updating patient status', err);
+      }
 
       reset();
       if (onSuccess) onSuccess();
