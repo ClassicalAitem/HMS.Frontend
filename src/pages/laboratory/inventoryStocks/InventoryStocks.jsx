@@ -43,6 +43,8 @@ const InventoryStocks = () => {
           const lastRestocked = lastRestockedMap[itemId];
           return {
             ...item,
+            quantity: item.quantity ?? item.stock ?? 0,
+            stock: item.stock ?? item.quantity ?? 0,
             lastRestocked: lastRestocked ? new Date(lastRestocked).toLocaleDateString() : "N/A",
           };
         });
@@ -60,6 +62,17 @@ const InventoryStocks = () => {
         const wellStockedItems = enrichedItems.filter(
           (item) => item.quantity > (item.reorderLevel || 0) && item.status === "in_stock"
         );
+       const expiringSoonItems = enrichedItems.filter((item) => {
+          if (!item.expiryDate) return false;
+          const d = new Date(item.expiryDate);
+          const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+          return diff <= 30 && diff >= 0;
+        });
+        const expiredItems = enrichedItems.filter((item) => {
+          if (!item.expiryDate) return false;
+          const d = new Date(item.expiryDate);
+          return d.getTime() < Date.now();
+        });
 
         setStockStats([
           {
@@ -81,6 +94,16 @@ const InventoryStocks = () => {
             header: "Well stocked",
             value: wellStockedItems.length,
             status: "Adequate supply",
+          },
+          {
+            header: "Expiring Soon",
+            value: expiringSoonItems.length,
+            status: "Within 90 days",
+          },
+          {
+            header: "Expired",
+            value: expiredItems.length,
+            status: "Past expiry",
           },
         ]);
 
@@ -172,7 +195,7 @@ const InventoryStocks = () => {
               </div> */}
             </div>
 
-            <div className="flex gap-10 justify-between mt-10">
+            <div className="flex flex-wrap gap-2 justify-between mt-2">
               {stockStats.map((test, index) => {
                 const isRed = index === 1;
                 const isGreen = index === 3;
@@ -202,7 +225,7 @@ const InventoryStocks = () => {
             </div>
 
             {criticalItems.length > 0 && (
-              <div className="h-[232px] w-full bg-[#FFE2E2] rounded-[6px] mt-5 p-5 text-[#CA332C]">
+              <div className="h-[150px] w-full bg-[#FFE2E2] rounded-[6px] mt-2 p-5 text-[#CA332C]">
                 <div className="flex items-center gap-3">
                   <FiSettings />
                   <h4 className="text-[20px]">Critical Stock Alert</h4>
@@ -212,7 +235,7 @@ const InventoryStocks = () => {
                   restocking
                 </p>
 
-                <div className="mt-8 text-[12px] space-y-2">
+                <div className="mt-5 text-[12px] space-y-2">
                   {criticalItems.map((item, index) => (
                     <li key={index} className="flex justify-between ">
                       <div>• {item.name}</div>
