@@ -26,7 +26,10 @@ const IncomingDoctor = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
-        const filtered = patients.filter((p) => (p?.status || "").toLowerCase() === "awaiting_consultation");
+        const filtered = patients.filter((p) => {
+          const status = (p?.status || "").toLowerCase();
+          return status === "awaiting_consultation" || status === "lab_completed";
+        });
         const sorted = filtered.sort((a, b) => {
           const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
@@ -153,7 +156,7 @@ const IncomingDoctor = () => {
                           <div className="space-y-1">
                             <span className="block">Insurance: {data.insurance}</span>
                             <span className="block">Registered: {data.registered}</span>
-                            <span className="block">Status: Awaiting Consultation</span>
+                            <span className="block">Status: {data.reason}</span>
                           </div>
                         </div>
                       </div>

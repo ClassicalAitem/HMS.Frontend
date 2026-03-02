@@ -16,6 +16,17 @@ const InventoryItems = ({ items = [] }) => {
         if (filterStatus === "well-stocked") {
           return item.status === "in_stock";
         }
+        if (filterStatus === "expiring") {
+          if (!item.expiryDate) return false;
+          const d = new Date(item.expiryDate);
+          const diff = (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+          return diff <= 30 && diff >= 0;
+        }
+        if (filterStatus === "expired") {
+          if (!item.expiryDate) return false;
+          const d = new Date(item.expiryDate);
+          return d.getTime() < Date.now();
+        }
         return true;
       });
     }
@@ -34,17 +45,19 @@ const InventoryItems = ({ items = [] }) => {
 
   const getStockStatus = (item) => {
     const status = item.status || "unknown";
-    
-    if (status === "low_stock" || item.quantity <= item.reorderLevel) {
+    const qty = item.quantity ?? item.stock ?? 0;
+    const reorder = Number(item.reorderLevel ?? 0);
+
+    if (status === "low_stock" || qty <= reorder) {
       return { label: "Low Stock", color: "#DC362E", bgColor: "#FFE2E2" };
     }
     if (status === "in_stock") {
       return { label: "In Stock", color: "#11AD4B", bgColor: "#D4EDDA" };
     }
-    if (status === "out_of_stock") {
+    if (status === "out_of_stock" || qty === 0) {
       return { label: "Out of Stock", color: "#6B7280", bgColor: "#F3F4F6" };
     }
-    
+
     return { label: status, color: "#605D66", bgColor: "#EFEFEF" };
   };
 
@@ -80,6 +93,8 @@ const InventoryItems = ({ items = [] }) => {
             <option value="critical">Critical Stock</option>
             <option value="low">Low Stock</option>
             <option value="well-stocked">Well-stocked</option>
+            <option value="expiring">Expiring Soon</option>
+            <option value="expired">Expired</option>
           </select>
         </div>
       </div>
@@ -136,7 +151,7 @@ const InventoryItems = ({ items = [] }) => {
                         {item.form || "N/A"}
                       </td>
                       <td className="px-4 py-3 text-[14px] text-[#111215] font-[500]">
-                        {item.quantity} {item.strength || ""}
+                        { (item.quantity ?? item.stock ?? 0) } {item.strength || ""}
                       </td>
                       <td className="px-4 py-3 text-[14px] text-[#605D66]">
                         {item.supplier || "N/A"}
