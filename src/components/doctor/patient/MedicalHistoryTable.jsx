@@ -51,7 +51,13 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, loading = fal
                       <td className="space-x-2">
                         <button className="text-primary hover:underline text-sm" onClick={() => { if (typeof onViewDetails === 'function') onViewDetails(row, idx); }}>View Details</button>
                         {typeof onEdit === 'function' && (
-                          <button className="text-secondary hover:underline text-sm" onClick={() => onEdit(row, idx)}>Edit</button>
+                          <button
+                            className={`text-secondary hover:underline text-sm ${row.canEdit ? '' : 'opacity-50 cursor-not-allowed'}`}
+                            onClick={() => { if (row.canEdit) onEdit(row, idx); }}
+                            disabled={!row.canEdit}
+                          >
+                            Edit
+                          </button>
                         )}
                       </td>
                     </tr>

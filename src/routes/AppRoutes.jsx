@@ -95,6 +95,8 @@ import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions
 //Laboratory Dashboard Routes
 import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
 import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
+import AddLabResult from "@/pages/laboratory/results/AddLabResult";
+import ViewLabResult from "@/pages/laboratory/results/ViewLabResult";
 import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
@@ -575,6 +577,14 @@ const AppRoutes = () => {
       <Route
         path="/dashboard/laboratory/incoming"
         element={<IncomingLaboratory />}
+      />
+      <Route
+        path="/dashboard/laboratory/results/add/:investigationId"
+        element={<AddLabResult />}
+      />
+      <Route
+        path="/dashboard/laboratory/results/:labResultId"
+        element={<ViewLabResult />}
       />
       <Route
         path="/dashboard/laboratory/inventoryStocks"
