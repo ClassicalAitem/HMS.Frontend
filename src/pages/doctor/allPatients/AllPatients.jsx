@@ -24,7 +24,10 @@ const AllPatients = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
-        const filtered = patients.filter((p) => (p?.status || '').toLowerCase() === 'awaiting_consultation');
+        const filtered = patients.filter((p) => {
+          const status = (p?.status || '').toLowerCase();
+          return status === 'awaiting_consultation' || status === 'lab_completed';
+        });
         const sorted = filtered.sort((a, b) => {
           const at = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bt = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
@@ -55,8 +58,8 @@ const AllPatients = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = items; // already filtered to awaiting_consultation
-    if (!q) return base;
+    const base = items;    
+     if (!q) return base;
     return base.filter((d) => [d.name, d.patientId, d.insurance, d.gender, d.phone, d.status].filter(Boolean).join(' ').toLowerCase().includes(q));
   }, [items, query]);
 
