@@ -113,18 +113,13 @@ const PatientMedicalHistory = () => {
       try {
         setPrescriptionsLoading(true);
         const res = await getPrescriptionByPatientId(patientId);
-        // The API returns { data: { ...prescriptionObject } } or { data: [...] } or just the object/array
-        // Based on the documentation, it returns a single object if there's one active prescription, or potentially an array.
-        // However, the example response shows a single object in `data`.
-        // Let's handle both cases: single object or array of objects.
-        
+       
         const rawData = res?.data ?? res;
         let list = [];
 
         if (Array.isArray(rawData)) {
           list = rawData;
         } else if (rawData && typeof rawData === 'object') {
-          // If it's a single object (and not an empty one), wrap it in an array
           if (Object.keys(rawData).length > 0) {
              list = [rawData];
           }
@@ -226,14 +221,20 @@ const PatientMedicalHistory = () => {
           <PatientSummaryCard patient={patient} loading={loading} />
 
           <MedicalHistoryTable rows={useMemo(() => (
-            Array.isArray(consultations) ? consultations.map((c) => ({
-              id: c?._id || c?.id,
-              type: "Consultation",
-              diagnosis: c?.diagnosis || "—",
-              time: c?.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
-              date: c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-US") : "—",
-              notes: c?.notes || "—",
-            })) : []
+            Array.isArray(consultations) ? consultations.map((c) => {
+              const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
+              const now = Date.now();
+              const within24h = now - createdTime < 24 * 60 * 60 * 1000;
+              return {
+                id: c?._id || c?.id,
+                type: "Consultation",
+                diagnosis: c?.diagnosis || "—",
+                time: c?.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
+                date: c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-US") : "—",
+                notes: c?.notes || "—",
+                canEdit: within24h,
+              };
+            }) : []
           ), [consultations])} loading={loading} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} onViewDetails={(row) => {
             const cid = row?.id;
             if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
