@@ -18,6 +18,7 @@ export { default as FrontDeskActionModal } from './frontdeskActionModal';
 export { default as LabActionModal } from './labActionModal';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { default as AddDrugModal } from './addDrugModal';
+export { default as SendLabResultsModal } from './SendLabResultsModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';

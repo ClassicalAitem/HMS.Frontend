@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
@@ -7,6 +8,7 @@ import { getAllInvestigationRequests } from "@/services/api/investigationRequest
 import { getPatientById } from "@/services/api/patientsAPI";
 
 const IncomingLaboratory = () => {
+  const navigate = useNavigate();
   const [incomingStats, setIncomingStats] = useState([]);
   const [testRequests, setTestRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -281,9 +283,9 @@ const IncomingLaboratory = () => {
                           <div className="flex gap-2 flex-col">
                             <button
                               onClick={() => {
-                                setSelectedCard(testCard), setShowModal(true);
+                                navigate(`/dashboard/laboratory/results/add/${testCard.id}`);
                               }}
-                              className="w-[258px] h-[56px] bg-[#00943C] text-[#FFFFFF]"
+                              className="w-[258px] h-[56px] bg-[#00943C] text-[#FFFFFF] rounded hover:bg-[#007a31] transition-all font-semibold"
                             >
                               Accept & Process
                             </button>

@@ -52,8 +52,8 @@ const PatientSummaryCard = ({ patient, loading }) => {
                 </div>
                 <div className="flex flex-col space-y-1">
                   <span className="text-sm text-base-content/70">Patient ID</span>
-                  <span className="text-base font-medium text-base-content">{patientUUID || "—"}</span>
-                  <span className="text-xs text-base-content/70">Hospital ID: {patientHospitalId || "—"}</span>
+                  <span className="text-base font-medium text-base-content">{patientHospitalId || "—"}</span>
+                  {/* <span className="text-xs text-base-content/70">Hospital ID: {patientHospitalId || "—"}</span> */}
                 </div>
               </div>
 
