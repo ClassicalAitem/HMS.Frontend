@@ -8,8 +8,6 @@ import { createInvestigation } from '@/services/api/investigationAPI';
 
 const testSchema = yup.object({
   name: yup.string().required('Test name is required'),
-  code: yup.string().optional(),
-  notes: yup.string().optional(),
 });
 
 const investigationSchema = yup.object({
@@ -29,7 +27,7 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, d
   } = useForm({
     resolver: yupResolver(investigationSchema),
     defaultValues: {
-      tests: [{ name: '', code: '', notes: '' }],
+      tests: [{ name: '' }],
       priority: 'normal',
     }
   });
@@ -140,28 +138,8 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, d
                         )}
                       </div>
 
-                      <div className="form-control">
-                        <label className="label pb-1">
-                          <span className="label-text text-xs">Test Code (Optional)</span>
-                        </label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. CBC" 
-                          className="input input-bordered input-sm w-full"
-                          {...register(`tests.${index}.code`)}
-                        />
-                      </div>
+                
 
-                      <div className="form-control md:col-span-2">
-                        <label className="label pb-1">
-                          <span className="label-text text-xs">Clinical Notes / Instructions</span>
-                        </label>
-                        <textarea 
-                          className="textarea textarea-bordered textarea-sm h-16 w-full" 
-                          placeholder="Specific instructions for the lab technician..."
-                          {...register(`tests.${index}.notes`)}
-                        ></textarea>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -171,7 +149,7 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, d
             <button 
               type="button" 
               className="btn btn-outline btn-primary btn-sm w-full border-dashed gap-2"
-              onClick={() => append({ name: '', code: '', notes: '' })}
+              onClick={() => append({ name: ''})}
             >
               <FaPlus className="w-3 h-3" /> Add Another Test
             </button>
