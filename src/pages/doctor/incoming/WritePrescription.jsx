@@ -109,14 +109,18 @@ const drugWrapperRef = useRef(null);
       const payload = {
         patientId,
         consultationId, // Add consultationId to link prescription to consultation
-        medications: data.medications.map(med => ({
-          ...med,
-          // Convert empty instructions to undefined to avoid sending empty strings if backend disallows it
-          instructions: med.instructions ? med.instructions : undefined,
-          // Ensure injection specific fields are handled correctly
-          dosesGiven: med.medicationType === 'injection' ? Number(med.dosesGiven) : undefined,
-          injectionStatus: med.medicationType === 'injection' ? med.injectionStatus : undefined
-        })),
+        medications: data.medications.map(med => {
+          // eslint-disable-next-line no-unused-vars
+          const { _selectedDrug, ...medData } = med;
+          return {
+            ...medData,
+            // Convert empty instructions to undefined to avoid sending empty strings if backend disallows it
+            instructions: medData.instructions ? medData.instructions : undefined,
+            // Ensure injection specific fields are handled correctly
+            dosesGiven: medData.medicationType === 'injection' ? Number(medData.dosesGiven) : undefined,
+            injectionStatus: medData.medicationType === 'injection' ? medData.injectionStatus : undefined
+          };
+        }),
         status: 'pending'
       };
 
@@ -351,12 +355,21 @@ useEffect(() => {
                   `medications.${index}.drugName`,
                   drug.name
                 );
+                // Store selected drug data for display
+                setValue(`medications.${index}._selectedDrug`, drug);
                 setDrugDropdownIndex(null);
                 setDrugSearch("");
               }}
               className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
             >
-              {drug.name}
+              <div className="flex items-center justify-between">
+                <span className="font-medium">{drug.name}</span>
+                {(drug.form || drug.strength) && (
+                  <span className="text-gray-500 text-xs ml-2">
+                    {[drug.form, drug.strength].filter(Boolean).join(' - ')}
+                  </span>
+                )}
+              </div>
             </li>
           ))}
 
@@ -372,6 +385,16 @@ useEffect(() => {
           </li>
         )}
       </ul>
+    </div>
+  )}
+
+  {/* Display selected drug form/strength info */}
+  {watch(`medications.${index}.drugName`) && watch(`medications.${index}._selectedDrug`) && (
+    <div className="mt-2 p-3 bg-info/10 border border-info/30 rounded text-sm text-info-content">
+      <p className="font-medium">Available: {watch(`medications.${index}._selectedDrug`)?.form || 'N/A'} {watch(`medications.${index}._selectedDrug`)?.strength ? `- ${watch(`medications.${index}._selectedDrug`)?.strength}` : ''}</p>
+      {watch(`medications.${index}._selectedDrug`)?.quantity && (
+        <p className="text-xs mt-1">Stock: {watch(`medications.${index}._selectedDrug`)?.quantity} units available</p>
+      )}
     </div>
   )}
 

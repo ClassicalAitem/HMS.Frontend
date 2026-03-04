@@ -8,7 +8,7 @@ import MedicalHistoryTable from "@/components/doctor/patient/MedicalHistoryTable
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
-import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
+import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
@@ -51,8 +51,7 @@ const PatientMedicalHistory = () => {
       try {
         setLoading(true);
         const res = await getVitalsByPatient(patientId);
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : raw?.data ?? [];
+        const list = normalizeVitalsResponse(res);
         if (mounted) setVitals(list);
 
         const fromVitalsPatient = list?.[0]?.patient;
@@ -153,23 +152,9 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, []);
 
-  const latest = useMemo(() => {
-    if (!Array.isArray(vitals) || vitals.length === 0) return null;
-    return vitals.reduce((acc, v) => {
-      const a = new Date(acc?.createdAt || 0).getTime();
-      const b = new Date(v?.createdAt || 0).getTime();
-      return b > a ? v : acc;
-    }, vitals[0]);
-  }, [vitals]);
+  const latest = useMemo(() => getLatestVital(vitals), [vitals]);
 
-  const sortedVitals = useMemo(() => {
-    if (!Array.isArray(vitals)) return [];
-    return [...vitals].sort((a, b) => {
-      const at = new Date(a?.createdAt || 0).getTime();
-      const bt = new Date(b?.createdAt || 0).getTime();
-      return bt - at;
-    });
-  }, [vitals]);
+  const sortedVitals = useMemo(() => sortVitalsByTime(vitals), [vitals]);
 
   const latestLab = useMemo(() => {
     if (!Array.isArray(labResults) || labResults.length === 0) return null;
@@ -244,6 +229,8 @@ const PatientMedicalHistory = () => {
               if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
             }} />
 
+          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
+
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
             rows={useMemo(() => (
@@ -293,7 +280,6 @@ const PatientMedicalHistory = () => {
             </div>
           </div>
 
-          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
           <div className="mt-6 flex items-start gap-10">
             <div>
@@ -308,11 +294,33 @@ const PatientMedicalHistory = () => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+                onClick={() => {
+                  const medsFromPrescriptions = (prescriptions || []).flatMap(p => (p?.medications || []).map((m, idx) => ({
+                    id: m?.id || `${p?._id || p?.id || 'pres'}-${idx}`,
+                    name: m?.drugName || m?.name || 'Medication',
+                    dosage: m?.dosage || '',
+                    frequency: m?.frequency || '',
+                    duration: m?.duration || '',
+                    instructions: m?.instructions || ''
+                  })));
+
+                  navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, {
+                    state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, meds: medsFromPrescriptions }
+                  });
+                }}
               >
                 Send to Pharmacy
               </button>
               <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
+            </div>
+            <div>
+              <button
+                className="text-primary text-lg font-semibold hover:underline"
+                onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+              >
+                Send to Nurse
+              </button>
+              <div className="text-xs text-base-content/70">(assign nursing tasks)</div>
             </div>
           </div>
 

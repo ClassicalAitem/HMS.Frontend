@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { updateInvestigationRequest } from "@/services/api/investigationRequestAPI";
+import { updatePatientStatus } from "@/services/api/patientsAPI";
 
 const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
   const [completionTime, setCompletionTime] = useState("");
@@ -35,6 +36,18 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
       });
 
       console.log("Investigation updated successfully:", response);
+
+      // Update patient status to awaiting_lab if not already
+      if (data?.userId) {
+        try {
+          await updatePatientStatus(data.userId, "awaiting_lab");
+          console.log("Patient status updated to awaiting_lab");
+        } catch (statusErr) {
+          console.error("Error updating patient status:", statusErr);
+          // Don't fail the whole operation if status update fails
+        }
+      }
+
       setSuccess(true);
       
       // Call the callback to refresh the list if provided
