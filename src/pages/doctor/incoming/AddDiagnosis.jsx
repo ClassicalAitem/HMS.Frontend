@@ -179,8 +179,8 @@ const AddDiagnosis = () => {
         allergen: a,
       })),
       socialHistory: (socialHistory || []).map(s => ({
-        title: s,
-        value: "1" // Default value or duration if applicable
+        habit: s,
+        frequencyPerDay: "1" // Default value or duration if applicable
       }))
     };
 
