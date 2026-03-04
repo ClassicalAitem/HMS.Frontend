@@ -69,6 +69,7 @@ const NurseDashboard = () => {
           "awaiting_injection",
           "awaiting_sampling",
           "awaiting_vitals",
+          "awaiting_nurse",
         ]);
         const filtered = patients.filter((p) => statuses.has((p?.status || "").toLowerCase()));
 

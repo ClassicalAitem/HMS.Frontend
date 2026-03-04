@@ -18,6 +18,8 @@ const ViewLabResult = () => {
   const [error, setError] = useState(null);
   const [showSendModal, setShowSendModal] = useState(false);
 
+  const effectiveInvestigationId =  labResult?.investigationRequestId;
+
   useEffect(() => {
     if (location?.state?.investigationId) {
       setInvestigationIdState(location.state.investigationId);
@@ -56,7 +58,7 @@ const ViewLabResult = () => {
     if (labResultId) {
       fetchData();
     }
-  }, [labResultId]);
+  }, [labResultId, investigationIdState]);
 
   const displayField = (label, value) => {
     if (!value) return null;
@@ -92,6 +94,35 @@ const ViewLabResult = () => {
             );
           })}
         </div>
+      </div>
+    );
+  };
+
+  const displayAttachments = () => {
+    const atts = labResult?.form?.attachments;
+    if (!atts || !atts.length) return null;
+    return (
+      <div className="mb-6">
+        <h3 className="text-lg font-bold text-[#00943C] mb-3 pb-2 border-b-2 border-[#00943C]">
+          Attachments
+        </h3>
+        <ul className="list-disc list-inside text-gray-700">
+          {atts.map((file, idx) => (
+            <li key={idx} className="break-words">
+              {file.name || file.filename || "file"}{' '}
+              {file.url && (
+                <a
+                  href={file.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  view
+                </a>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     );
   };
@@ -137,11 +168,21 @@ const ViewLabResult = () => {
       ? `${patient.firstName} ${patient.lastName}`
       : patient?.name || "Unknown Patient";
 
-  return (
-    <div className="flex h-screen bg-base-200">
-      <LaboratorySidebar />
+  const handlePrint = () => {
+    document.body.classList.add('printable-lab');
+    setTimeout(() => {
+      window.print();
+      document.body.classList.remove('printable-lab');
+    }, 250);
+  };
 
-      <div className="flex overflow-hidden flex-col flex-1">
+  return (
+    <div className="lab-container flex h-screen bg-base-200">
+      <div className="lab-sidebar">
+        <LaboratorySidebar />
+      </div>
+
+      <div className="lab-main flex overflow-hidden flex-col flex-1">
         <Header />
 
         <div className="overflow-y-auto flex-1">
@@ -153,12 +194,20 @@ const ViewLabResult = () => {
                   Complete laboratory test results for {patientName}
                 </p>
               </div>
-              <button
-                onClick={() => navigate(-1)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
-                ← Back
-              </button>
+              <div className="flex gap-2 no-print">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                >
+                  ← Back
+                </button>
+                <button
+                  onClick={() => navigate(`/dashboard/laboratory/results/edit/${labResultId}`)}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                >
+                  Edit
+                </button>
+              </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
@@ -204,6 +253,8 @@ const ViewLabResult = () => {
               {displaySection("Lipid Profile", labResult?.form?.lipidProfile)}
               {displaySection("Others", labResult?.form?.others)}
 
+              {displayAttachments()}
+
               {/* Widal Report Table */}
               {labResult?.form?.widalReport &&
                 Object.values(labResult.form.widalReport).some(
@@ -221,10 +272,10 @@ const ViewLabResult = () => {
                               Organism
                             </th>
                             <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                              O (Somatic)
+                              O 
                             </th>
                             <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                              H (Flagellar)
+                              H 
                             </th>
                           </tr>
                         </thead>
@@ -273,15 +324,16 @@ const ViewLabResult = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mt-8 pt-8 border-t-2 border-gray-200">
+              <div className="flex gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
                 <button
                   onClick={() => setShowSendModal(true)}
-                  className="flex-1 px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] transition-all"
+                  disabled={!effectiveInvestigationId}
+                  className={`flex-1 px-6 py-3 ${effectiveInvestigationId ? "bg-[#00943C] text-white hover:bg-[#007a31]" : "bg-gray-200 text-gray-500 cursor-not-allowed"} font-semibold rounded-lg transition-all`}
                 >
                   Send to Doctor
                 </button>
                 <button
-                  onClick={() => window.print()}
+                  onClick={handlePrint}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
                 >
                   Print Results
@@ -293,6 +345,18 @@ const ViewLabResult = () => {
                   Close
                 </button>
               </div>
+              <style>{`
+                @media print {
+                  body { background: white !important; margin: 0; padding: 0; }
+                  body.printable-lab { background: white !important; }
+                  .lab-container { display: flex !important; }
+                  .lab-sidebar { display: none !important; width: 0 !important; }
+                  .lab-main { width: 100% !important; }
+                  .no-print { display: none !important; }
+                  .rounded-lg { border-radius: 0 !important; }
+                  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+              `}</style>
             </div>
           </section>
         </div>
@@ -302,7 +366,7 @@ const ViewLabResult = () => {
         isOpen={showSendModal}
         onClose={() => setShowSendModal(false)}
         labResultId={labResultId}
-        investigationId={investigationIdState || labResult?.investigationId}
+        investigationRequestId={effectiveInvestigationId}
         patientId={labResult?.patientId}
         patientName={patientName}
         onSuccess={() => navigate("/dashboard/laboratory")}

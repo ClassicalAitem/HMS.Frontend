@@ -6,7 +6,6 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
-import ActionButtons from '../patients/ActionButtons';
 import { LabActionModal, DoctorActionModal, FrontDeskActionModal, NurseActionModal, PharmacyActionModal2, ReceiptModal} from '@/components/modals';
 
 
@@ -404,9 +403,46 @@ const CashierPatientDetails = () => {
             </table>
           </div>
         </div>
-          <ActionButtons destination={receipts[0]?.paymentDestination} onSendToNurse={() => setIsSendToNurseOpen(true)} onSendToPharmacy={() => setIsSendToPharmacyOpen(true)} onSendToLab={() => setIsSendToLabOpen(true)}
-  onSendToFrontDesk={() => setIsSendToFrontDeskOpen(true)}
-onSendToDoctor={() => setIsSendToDoctorOpen(true)}/>
+
+        {/* Post-Payment Actions */}
+        {receipts.length > 0 && (
+          <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
+            <h3 className="text-xl font-bold text-primary mb-4">Post-Payment Actions</h3>
+            <p className="text-sm text-base-content/70 mb-4">Payment received. Send patient to:</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setIsSendToLabOpen(true)}
+                className="btn btn-secondary text-white"
+              >
+                Send to Lab
+              </button>
+              <button
+                onClick={() => setIsSendToPharmacyOpen(true)}
+                className="btn btn-primary text-white"
+              >
+                Send to Pharmacy
+              </button>
+              <button
+                onClick={() => setIsSendToNurseOpen(true)}
+                className="btn btn-outline text-white"
+              >
+                Send to Nurse
+              </button>
+              <button
+                onClick={() => setIsSendToDoctorOpen(true)}
+                className="btn btn-warning text-white"
+              >
+                Send to Doctor
+              </button>
+              <button
+                onClick={() => setIsSendToFrontDeskOpen(true)}
+                className="btn btn-accent text-white"
+              >
+                Send to Front Desk
+              </button>
+            </div>
+          </div>
+        )}
         <NurseActionModal isOpen={isSendToNurseOpen}
                 onClose={() => setIsSendToNurseOpen(false)}
                 patientId={patient?.id || patientId}

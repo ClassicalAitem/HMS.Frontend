@@ -28,6 +28,7 @@ import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
 import EditConsultation from "@/pages/doctor/incoming/EditConsultation";
 import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
 import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
+import SendToNurse from "@/pages/doctor/incoming/SendToNurse";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
@@ -66,6 +67,7 @@ import SecurityPreferences from "@/pages/superadmin/settings/SecurityPreferences
 import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import MedicalData from "@/pages/superadmin/settings/MedicalData";
 import PharmacyInventory from "@/pages/superadmin/settings/PharmacyInventory";
+import LaboratoryInventory from "@/pages/superadmin/settings/LaboratoryInventory";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
@@ -82,6 +84,7 @@ import { BookAppointmentModal } from "@/components/modals";
 import Appointments from "@/pages/frontdesk/appointments/Appointments";
 import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
 import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
+import DependantVitalsDetails from "@/pages/nurse/dependantVitals/PatientVitalsDetails";
 import NurseIncoming from "@/pages/nurse/incoming/Incoming";
 // Pharmacist
 import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
@@ -97,7 +100,8 @@ import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/Laborato
 import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
 import AddLabResult from "@/pages/laboratory/results/AddLabResult";
 import ViewLabResult from "@/pages/laboratory/results/ViewLabResult";
-import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
+// import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
+import InventoryAndStocks from "@/pages/laboratory/Inventory&stocks/Inventory&stocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
 import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
@@ -200,6 +204,11 @@ const AppRoutes = () => {
           <PatientVitalsDetails />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/dependant/:dependantId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <DependantVitalsDetails />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/nurse/incoming" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <NurseIncoming />
@@ -270,6 +279,11 @@ const AppRoutes = () => {
   <Route path="/dashboard/doctor/send-to-pharmacy/:patientId" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <SendToPharmacy />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/send-to-nurse/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <SendToNurse />
     </ProtectedRoute>
   } />
       <Route path="/dashboard/doctor/labResults" element={
@@ -420,6 +434,16 @@ const AppRoutes = () => {
       <Route path="/superadmin/settings/pharmacy-inventory" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <PharmacyInventory />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/pharmacy-inventory" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <PharmacyInventory />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/laboratory-inventory" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <LaboratoryInventory />
         </ProtectedRoute>
       } />
 
@@ -583,12 +607,20 @@ const AppRoutes = () => {
         element={<AddLabResult />}
       />
       <Route
+        path="/dashboard/laboratory/results/edit/:labResultId"
+        element={<AddLabResult />}
+      />
+      <Route
         path="/dashboard/laboratory/results/:labResultId"
         element={<ViewLabResult />}
       />
-      <Route
+      {/* <Route
         path="/dashboard/laboratory/inventoryStocks"
         element={<InventorySTOCKS />}
+      /> */}
+      <Route
+        path="/dashboard/laboratory/inventory&stocks"
+        element={<InventoryAndStocks />}
       />
       <Route
         path="/dashboard/laboratory/Reports"
