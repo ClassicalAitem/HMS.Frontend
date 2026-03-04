@@ -22,9 +22,12 @@ const [medSearch, setMedSearch] = useState("");
 const [medDropdownOpen, setMedDropdownOpen] = useState(false);
 const medWrapperRef = React.useRef(null);
 
-  const [meds, setMeds] = useState([
-    { id: 1, name: "Paracetamol", dosage: "500mg", frequency: "2x daily", duration: "3 days", instructions: "After meals" },
-  ]);
+  const passedMeds = location?.state?.meds ?? [];
+  // If the caller passed prescriptions for this patient, prepopulate them.
+  // Otherwise start with an empty list so the user adds prescriptions manually.
+  const [meds, setMeds] = useState(() => (
+    Array.isArray(passedMeds) && passedMeds.length > 0 ? passedMeds : []
+  ));
   const [newMed, setNewMed] = useState({ name: "", dosage: "", frequency: "", duration: "", instructions: "" });
   const [diagnosis, setDiagnosis] = useState("");
   const [pharmacyNotes, setPharmacyNotes] = useState("");
@@ -118,6 +121,7 @@ useEffect(() => {
             <div className="flex gap-4 items-center">
               <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Cashier</button>
               <button className="btn btn-success btn-sm">Send to Pharmacy</button>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Nurse</button>
             </div>
             <div className="hidden">
               <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}>Back</button>
