@@ -35,6 +35,7 @@ const PatientVitalsDetails = () => {
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
   const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+  const [selectedDependantId, setSelectedDependantId] = useState(null);
   const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
   const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
   const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
@@ -491,13 +492,13 @@ const PatientVitalsDetails = () => {
                 {recordError && <p className="mt-2 text-sm text-error">{recordError}</p>}
 
                 <div className="modal-action">
-                  <button className="btn btn-ghost" onClick={() => { setIsRecordOpen(false); setRecordError(""); }}>Cancel</button>
+                  <button className="btn btn-ghost" onClick={() => { setIsRecordOpen(false); setRecordError(""); setSelectedDependantId(null); }}>Cancel</button>
                   <button className={`btn btn-primary ${recordLoading ? 'loading' : ''}`} onClick={async () => {
                     try {
                       setRecordLoading(true);
                       setRecordError("");
                       const payload = {
-                        patientId: patientUUID || patientId,
+                        patientId: selectedDependantId || patientUUID || patientId,
                         bp: recordForm.bp,
                         temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
                         weight: recordForm.weight ? Number(recordForm.weight) : undefined,
@@ -511,6 +512,7 @@ const PatientVitalsDetails = () => {
                       setVitals((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
                       setIsRecordOpen(false);
                       setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+                      setSelectedDependantId(null);
                     } catch (e) {
                       const msg = e?.response?.data?.message || 'Failed to record vitals';
                       setRecordError(msg);

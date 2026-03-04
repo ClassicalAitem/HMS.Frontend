@@ -136,6 +136,7 @@ const SendToCashier = () => {
             <div className="flex gap-4 items-center">
               <button className="btn btn-success btn-sm">Send to Cashier</button>
               <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Pharmacy</button>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Nurse</button>
             </div>
 
             <div className="hidden">
