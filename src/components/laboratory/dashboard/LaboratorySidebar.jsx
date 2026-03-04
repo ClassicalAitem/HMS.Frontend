@@ -62,11 +62,17 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
       path: "/dashboard/laboratory/incoming",
       active: location.pathname === "/dashboard/laboratory/incoming",
     },
+    // {
+    //   icon: RiCalendarScheduleLine,
+    //   label: "Inventory/Stocks",
+    //   path: "/dashboard/laboratory/inventoryStocks",
+    //   active: location.pathname === "/dashboard/laboratory/inventoryStocks",
+    // },
     {
       icon: RiCalendarScheduleLine,
-      label: "Inventory/Stocks",
-      path: "/dashboard/laboratory/inventoryStocks",
-      active: location.pathname === "/dashboard/laboratory/inventoryStocks",
+      label: "Inventory&Stocks",
+      path: "/dashboard/laboratory/inventory&stocks",
+      active: location.pathname === "/dashboard/laboratory/inventory&stocks",
     },
     {
       icon: LuListChecks,

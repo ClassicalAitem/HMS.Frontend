@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
-import { createLabResult } from "@/services/api/labResultsAPI";
-import { getPatientById } from "@/services/api/patientsAPI";
+import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
+import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
 import { usersAPI } from "@/services/api/usersAPI"; 
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -38,18 +38,95 @@ const SectionHeader = ({ title, id, count, expandedSection, toggleSection }) => 
   </button>
 );
 
-const InputField = ({ label, value, onChange, placeholder = "", type = "text" }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-sm font-medium text-[#605D66]">{label}</label>
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C] focus:ring-1 focus:ring-[#00943C]"
-    />
-  </div>
-);
+const ranges = {
+  HB: 'g/dl (11-16)',
+  PCV: '% (37-54)',
+  Platelets: '/mm (100-300)',
+  WBCTotal: '/mm (4.0-10.0)',
+  Neut: '% (50-70)',
+  Lymp: '% (20-70)',
+  Mono: '% (0-10)',
+  Eosin: '% (1-6)',
+  Baso: '% (0-3)',
+  ESR: 'mm/h (0-9)',
+  RBC: '(3.9-6)',
+  Retics: '',
+  MCV: 'fl (80-100)',
+  ClottingTime: 'mins (2-7)',
+  ProthrombinTime: 'secs (10-13)',
+  APTT: 'secs (30-40)',
+  'PT/INR': '(0.8-1.11)',
+  LeCells: '%',
+  Microfilaria: '',
+  Genotype: '',
+  BloodGroup: '',
+  RhD: '',
+  SicklingTest: '%',
+  OccultBlood: '',
+  'HIV Screening': '',
+  'Hepatitis A': '',
+  'Hepatitis B': '',
+  'Hepatitis C': '',
+  VDRL: '',
+  'MANTOUX/HEAF': '',
+  AFB: '',
+  'TB(Serum)': '',
+  'H. PYLORI': '',
+  FSH: '4.46-12.43 mIU/ml (f)',
+  Testosterone: '30-100 ng/dl',
+  LH: '2.95-3.65 mIU/ml (f)',
+  Prolactin: '4.6-25.0 (f)',
+  Progesterone: '1.8-29.2 ng/ml',
+  T3: '1.4-3 nmol/L',
+  T4: '70-185 nmol/L',
+  TSH: '0.3-4.2 mU/L',
+  E1: '10-200 Pg/ml',
+  E2: '35-310 Pg/ml',
+  E3: '<2.0 ng/ml',
+  Sodium: '130-150 mEq/L',
+  Potassium: '3-5 mEq/L',
+  Bicarbonate: '21-30 mEq/L',
+  Chloride: '98-111 mEq/L',
+  Urea: '1.5-55 mg/dl',
+  Creatinine: '0.5-1.5 mg/dl',
+  AST: '0.35 U/L',
+  ALT: '0.49 U/L',
+  'ALK Phos': '64-306 U/L',
+  'T. Bilirubin': '0.2-1.2 mg/dl',
+  'D. Bilirubin': '0.2-1.2 mg/dl',
+  'Total Protein': '6-8 g/dl',
+  Albumin: '3.2-5.2 g/dl',
+  'Fasting Blood Sugar': '70-100 mg/dl',
+  'Random Blood Sugar': '80-180 mg/dl',
+  Cholesterol: '<200 mg/dl',
+  Triglyceride: '150-199 mg/dl',
+  HDL: '30-40 mg/dl',
+  LDL: '<150 mg/dl',
+  VLDL: '30-40 mg/dl',
+  Calcium: '9-11 mg/dl',
+  Phosphorus: '2.25 mg/dl',
+  'Uric Acid': '2.5 mg/dl',
+  'Serum Iron': '60-170 mg/dl',
+  PSA: '0-4 ng/ml',
+  HBA1C: '<6.5%',
+  CA125: '0-35 ku/L',
+};
+
+const InputField = ({ label, value, onChange, placeholder = "", type = "text" }) => {
+  const displayLabel = ranges[label] ? `${label} ${ranges[label]}` : label;
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium text-[#605D66]">{displayLabel}</label>
+      <textarea
+        rows={2}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C] focus:ring-1 focus:ring-[#00943C] resize-vertical"
+      />
+    </div>
+  );
+};
 
 const SectionContent = ({ children }) => (
   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-[#FFFFFF] border border-[#AEAAAE] border-t-0 rounded-b-lg">
@@ -58,12 +135,13 @@ const SectionContent = ({ children }) => (
 );
 
 const AddLabResult = () => {
-  const { investigationId } = useParams();
+  const { investigationId, labResultId: paramLabResultId } = useParams();
   const navigate = useNavigate();
 
 
   const [patient, setPatient] = useState(null);
   const [investigation, setInvestigation] = useState(null);
+  const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -84,10 +162,11 @@ const AddLabResult = () => {
     referral: "",
     natureOfSpecimen: "",
     remarks: "",
+    attachments: [], // File objects selected by technician
 
     haematology: {
       HB: "",
-      PVC: "",
+      PCV: "",
       Platelets: "",
       WBCTotal: "",
     },
@@ -274,14 +353,35 @@ const AddLabResult = () => {
   });
 
   useEffect(() => {
-    if (currentUser) {
-      const name = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim();
-      if (name) {
-        setFormData((prev) => ({ ...prev, labNo: name }));
+    const load = async () => {
+      if (currentUser) {
+        const name = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim();
+        if (name) {
+          setFormData((prev) => ({ ...prev, labNo: name }));
+        }
       }
-    }
 
-    const fetchData = async () => {
+      // if we are editing an existing lab result, load it
+      if (paramLabResultId) {
+        setEditing(true);
+        try {
+          const res = await getLabResultById(paramLabResultId);
+          const data = res?.data || res;
+          if (data) {
+            setFormData((prev) => ({ ...prev, ...data.form }));
+            if (data.patientId) {
+              const pRes = await getPatientById(data.patientId);
+              setPatient(pRes?.data || pRes);
+            }
+            if (data.investigationId) {
+              setInvestigation(data.investigationId);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load lab result for editing', e);
+        }
+      }
+
       try {
         setLoading(true);
 
@@ -305,7 +405,7 @@ const AddLabResult = () => {
               const patientData = patientResponse?.data || patientResponse;
               setPatient(patientData);
 
-            
+              
               const patientName =
                 patientData?.firstName && patientData?.lastName
                   ? `${patientData.firstName} ${patientData.lastName}`
@@ -353,18 +453,16 @@ const AddLabResult = () => {
       }
     };
 
-    fetchData();
-  }, [investigationId]);
+    load();
+  }, [investigationId, paramLabResultId, currentUser]);
 
   const handleInputChange = (section, field, value) => {
     if (typeof section === "string" && !field) {
-
       setFormData((prev) => ({
         ...prev,
         [section]: value,
       }));
     } else if (typeof formData[section] === "object") {
-      
       setFormData((prev) => ({
         ...prev,
         [section]: {
@@ -373,6 +471,14 @@ const AddLabResult = () => {
         },
       }));
     }
+  };
+
+  const handleAttachmentsChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    setFormData((prev) => ({
+      ...prev,
+      attachments: files,
+    }));
   };
 
   const handleNestedInputChange = (section, subsection, field, value) => {
@@ -392,7 +498,6 @@ const AddLabResult = () => {
     setIsConfirmOpen(true);
   };
 
-
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -403,14 +508,20 @@ const AddLabResult = () => {
         patientId: patient?._id || patient?.id,
         form: formData,
         remarks: formData.remarks,
+        attachments: formData.attachments,
       };
 
-      const response = await createLabResult(investigationId, payload);
-      const labResultData = response?.data || response;
-      const labResultId = labResultData?._id || labResultData?.id;
+      let resultId = paramLabResultId;
+      if (editing && resultId) {
+        await updateLabResult(resultId, payload);
+      } else {
+        const response = await createLabResult(investigationId, payload);
+        const labResultData = response?.data || response;
+        resultId = labResultData?._id || labResultData?.id;
+      }
 
-      navigate(`/dashboard/laboratory/results/${labResultId}`, {
-        state: { from: "add", patientSnapshot: patient, investigationId },
+      navigate(`/dashboard/laboratory/results/${resultId}`, {
+        state: { from: editing ? "edit" : "add", patientSnapshot: patient, investigationId: investigation || investigationId },
       });
     } catch (err) {
       console.error("Error saving lab result:", err);
@@ -419,9 +530,10 @@ const AddLabResult = () => {
           "Failed to save lab result. Please try again."
       );
       setSaving(false);
-      setIsConfirmOpen(true); 
+      setIsConfirmOpen(true);
     }
   };
+
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
@@ -457,10 +569,12 @@ const AddLabResult = () => {
 
             <div className="mb-6">
               <h1 className="text-[32px] text-[#00943C] font-bold">
-                Laboratory Result Form
+                {editing ? "Edit Lab Result" : "Laboratory Result Form"}
               </h1>
               <p className="text-[12px] text-[#605D66]">
                 Complete the patient's laboratory test results. All fields are optional.
+                You can save a draft and send results to the doctor later using the send
+                button on the result detail page.
               </p>
             </div>
 
@@ -737,8 +851,8 @@ const AddLabResult = () => {
                       <thead>
                         <tr className="bg-gradient-to-r from-[#00943C]/20 to-[#00943C]/10">
                           <th className="border border-[#AEAAAE] px-4 py-3 text-left font-semibold text-[#00943C]">Organism</th>
-                          <th className="border border-[#AEAAAE] px-4 py-3 text-left font-semibold text-[#00943C]">O (Somatic)</th>
-                          <th className="border border-[#AEAAAE] px-4 py-3 text-left font-semibold text-[#00943C]">H (Flagellar)</th>
+                          <th className="border border-[#AEAAAE] px-4 py-3 text-left font-semibold text-[#00943C]">O </th>
+                          <th className="border border-[#AEAAAE] px-4 py-3 text-left font-semibold text-[#00943C]">H </th>
                         </tr>
                       </thead>
                       <tbody>
@@ -892,6 +1006,27 @@ const AddLabResult = () => {
               <div className="bg-white rounded-lg shadow">
                 <div className="p-4 flex flex-col gap-3">
                   <label className="text-lg font-semibold text-[#00943C]">
+                    Attachments <span className="text-sm font-normal text-[#605D66]">(optional)</span>
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleAttachmentsChange}
+                    className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C]"
+                  />
+                  {formData.attachments.length > 0 && (
+                    <ul className="mt-2 list-disc list-inside text-sm text-[#605D66]">
+                      {formData.attachments.map((file, i) => (
+                        <li key={i}>{file.name}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow">
+                <div className="p-4 flex flex-col gap-3">
+                  <label className="text-lg font-semibold text-[#00943C]">
                     Overall Remarks <span className="text-sm font-normal text-[#605D66]">(Optional)</span>
                   </label>
                   <textarea
@@ -911,7 +1046,7 @@ const AddLabResult = () => {
               onClick={onSave}
               disabled={saving}
             >
-              Save Now
+              {editing ? "Update" : "Save Draft"}
             </button>
                 <button
                   onClick={() => navigate(-1)}
