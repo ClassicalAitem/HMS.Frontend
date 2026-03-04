@@ -12,7 +12,23 @@ export const getLabResultById = async (id) => {
 };
 
 export const createLabResult = async (investigationRequestId, data) => {
-  // Send the complete form data as JSON
+  // if attachments are present we need multipart/form-data
+  if (data?.form?.attachments && data.form.attachments.length > 0) {
+    const formData = new FormData();
+    formData.append('patientId', data.patientId || '');
+    formData.append('form', JSON.stringify(data.form));
+    formData.append('remarks', data.remarks || '');
+    data.form.attachments.forEach((file) => {
+      // backend should expect `attachments` field
+      formData.append('attachments', file);
+    });
+
+    const response = await apiClient.post(`/labResult/${investigationRequestId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
   const payload = {
     patientId: data?.patientId,
     form: data?.form,
@@ -24,6 +40,21 @@ export const createLabResult = async (investigationRequestId, data) => {
 };
 
 export const updateLabResult = async (id, payload) => {
+  // if attachments included with update convert to FormData
+  if (payload?.form?.attachments && payload.form.attachments.length > 0) {
+    const formData = new FormData();
+    if (payload.patientId) formData.append('patientId', payload.patientId);
+    formData.append('form', JSON.stringify(payload.form));
+    if (payload.remarks) formData.append('remarks', payload.remarks);
+    payload.form.attachments.forEach((file) => {
+      formData.append('attachments', file);
+    });
+    const response = await apiClient.patch(`/labResult/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  }
+
   const response = await apiClient.patch(`/labResult/${id}`, payload);
   return response.data;
 };

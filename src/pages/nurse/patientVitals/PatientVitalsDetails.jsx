@@ -4,7 +4,7 @@ import { Header, EmptyState } from "@/components/common";
 import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
 import DoctorSidebar from "@/components/doctor/dashboard/Sidebar";
 import { useAppSelector } from "@/store/hooks";
-import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
+import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
@@ -19,11 +19,13 @@ import SamplingModals from "../incoming/modals/SamplingModals";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
+import { useDispatch } from "react-redux";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch()
   const fromIncoming = location?.state?.from === 'incoming';
   const { user } = useAppSelector((state) => state.auth);
   const role = String(user?.role || '').toLowerCase();
@@ -37,11 +39,13 @@ const PatientVitalsDetails = () => {
   const [isRecordSampling, setIsRecordSampling] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
-  const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+  const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
+  const [selectedDependantId, setSelectedDependantId] = useState(null);
   const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
   const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
   const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
   const [dependants, setDependants] = useState([]);
+  const [dependantsLoading, setDependantsLoading] = useState(true);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
 
   // Use patient snapshot from navigation if available to render immediately
@@ -63,8 +67,7 @@ const PatientVitalsDetails = () => {
 
         // Fetch vitals for this patient
         const res = await getVitalsByPatient(patientId);
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const list = normalizeVitalsResponse(res);
         if (mounted) setVitals(list);
 
         // Try to infer patient info from vitals; fallback to patient API
@@ -91,48 +94,49 @@ const PatientVitalsDetails = () => {
   }, [patientId]);
 
   // Get All Dependant
-  useEffect(() => {
-    let mounted = true;
+useEffect(() => {
+  let mounted = true;
 
-    const fetchDependant = async () => {
-      try {
+  const fetchDependant = async () => {
+    try {
+      setDependantsLoading(true);
 
-        setLoading(true);
-        const res = await getAllDependantsForPatient(patientId);
-        console.log('Dependants response:', res);
-        const data = res?.data.data.dependants ?? res;
-        if (mounted)
-          setDependants(Array.isArray(data) ? data : (data?.data || []));
-      } catch (error) {
-        console.error('Error fetching dependant data:', error);
-      } finally {
-        if (mounted) setLoading(false);
+      const res = await getAllDependantsForPatient(patientId);
+      console.log('Dependants response:', res);
+
+      const raw =
+        res?.data?.data?.dependants ??
+        res?.data?.dependants ??
+        res?.data ??
+        [];
+
+      if (mounted) {
+        setDependants(Array.isArray(raw) ? raw : []);
       }
+    } catch (error) {
+      console.error('Error fetching dependant data:', error);
+    } finally {
+      if (mounted) setDependantsLoading(false);
     }
+  };
 
-    fetchDependant();
-
-    return () => { mounted = false; };
-  }, [patientId]);
-
-  const latest = useMemo(() => {
-    if (!Array.isArray(vitals) || vitals.length === 0) return null;
-    return vitals.reduce((acc, v) => {
-      const a = new Date(acc?.createdAt || 0).getTime();
-      const b = new Date(v?.createdAt || 0).getTime();
-      return b > a ? v : acc;
-    }, vitals[0]);
-  }, [vitals]);
+  fetchDependant();
+  return () => { mounted = false; };
+}, [patientId]);
+  const latest = useMemo(() => getLatestVital(vitals), [vitals]);
 
   // Sort vitals history by time descending so latest appears first
-  const sortedVitals = useMemo(() => {
-    if (!Array.isArray(vitals)) return [];
-    return [...vitals].sort((a, b) => {
-      const at = new Date(a?.createdAt || 0).getTime();
-      const bt = new Date(b?.createdAt || 0).getTime();
-      return bt - at;
-    });
-  }, [vitals]);
+  const sortedVitals = useMemo(() => sortVitalsByTime(vitals), [vitals]);
+
+  const currentSubject = useMemo(() => {
+    if (!latest) return patient;
+    if (latest.dependant && typeof latest.dependant === 'object') return latest.dependant;
+    if (latest.dependantId) {
+      const found = dependants.find((d) => (d?.id || '') === latest.dependantId);
+      if (found) return found;
+    }
+    return patient;
+  }, [latest, patient, dependants]);
 
   const sortedDependants = useMemo(() => {
     if (!Array.isArray(dependants)) return [];
@@ -144,9 +148,9 @@ const PatientVitalsDetails = () => {
   }, [dependants]);
 
   const patientUUID = patient?.id || location?.state?.patientSnapshot?.id || "";
-  console.log('I want to see patient:', patient);
-  const patientHospitalId = patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
-  const patientName = patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
+  const subjectUUID = currentSubject?.id || patientUUID;
+  const subjectHospitalId = currentSubject?.hospitalId || patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
+  const subjectName = currentSubject?.fullName || `${currentSubject?.firstName || ''} ${currentSubject?.lastName || ''}`.trim() || 'Unknown';
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -236,7 +240,7 @@ const PatientVitalsDetails = () => {
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Patient ID</span>
                         <span className="text-base font-medium text-base-content">{patientUUID || '—'}</span>
-                        <span className="text-xs text-base-content/70">Hospital ID: {patientHospitalId || '—'}</span>
+                        <span className="text-xs text-base-content/70">Hospital ID: {patient?.hospitalId || '—'}</span>
                 </div>
               </div>
 
@@ -274,9 +278,9 @@ const PatientVitalsDetails = () => {
               {/* Header matching design */}
               <div className="flex justify-between items-center mb-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-base-content">Current Vitals - {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}</h2>
+                  <h2 className="text-xl font-semibold text-base-content">Current Vitals - {subjectName}</h2>
                   <div className="flex items-center gap-2 text-sm text-base-content/70">
-                    {patient?.ward || patient?.bed ? (
+                    {currentSubject?.ward || currentSubject?.bed ? (
                       <span>
                         {patient?.ward ? `Ward ${patient.ward}` : ''}
                         {patient?.ward && patient?.bed ? ' - ' : ''}
@@ -289,7 +293,8 @@ const PatientVitalsDetails = () => {
                     <span>Last updated {formatRelativeTime(latest?.createdAt)}</span>
                   </div>
                 </div>
-                  {patient?.status === "awaiting_vitals" ? (
+                  {patient?.status === "awaiting_vitals" ? 
+                  (
                     <button
                       className="btn btn-success btn-sm"
                       onClick={() => setIsRecordOpen(true)}
@@ -468,7 +473,7 @@ const PatientVitalsDetails = () => {
                           <td>
                           <button
                             className="px-3 py-1 rounded-full bg-primary text-white"
-                            onClick={() => v?.id && navigate(`/dashboard/nurse/dependant/${v.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                            // onClick={() => v?.id && navigate(`/dashboard/nurse/dependant/${v.id}`, { state: { from: 'vitals', patientSnapshot: patient } })}
                           >
                             View Dependant Details
                           </button></td>
@@ -494,7 +499,7 @@ const PatientVitalsDetails = () => {
                 <h2 className="text-lg font-semibold text-base-content">Vitals History</h2>
                 <div className="text-sm text-base-content/70">Showing {vitals?.length || 0} readings</div>
               </div>
-              {loading ? (
+             {dependantsLoading ? (
                 <div className="space-y-2">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="skeleton h-10 w-full" />
@@ -505,6 +510,7 @@ const PatientVitalsDetails = () => {
                   <table className="table w-full">
                     <thead>
                       <tr>
+                        <th>Record For</th>
                         <th>Time</th>
                         <th>Blood Pressure</th>
                         <th>Heart Rate</th>
@@ -519,6 +525,17 @@ const PatientVitalsDetails = () => {
                     <tbody>
                       {sortedVitals?.length ? sortedVitals.map((v, i) => (
                         <tr key={i} className="hover">
+                          <td>
+                              {v?.dependantId ? (
+                                <span className="badge badge-info">
+                                  Dependant
+                                </span>
+                              ) : (
+                                <span className="badge badge-primary">
+                                Patient
+                                </span>
+                              )}
+                            </td>
                           <td>{v?.createdAt ? new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                           <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
                           <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
@@ -549,6 +566,26 @@ const PatientVitalsDetails = () => {
               <div className="modal-box">
                 <h3 className="font-bold text-lg">Record New Vitals - {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}</h3>
                 <p className="py-1 text-sm">Enter the latest vital signs for this patient.</p>
+
+                <div className="mb-4">
+                  <label className="block mb-1 text-sm text-base-content/70">Family Member / Dependant (Optional)</label>
+                  <select 
+                    value={selectedDependantId || ''} 
+                    onChange={(e) => setSelectedDependantId(e.target.value || null)}
+                    className="select select-bordered w-full"
+                  >
+                    <option value="">Record for main patient</option>
+                    {dependants && dependants.length > 0 ? (
+                      dependants.map((dep) => (
+                        <option key={dep?.id} value={dep?.id}>
+                          {dep?.fullName || `${dep?.firstName || ''} ${dep?.lastName || ''}`.trim() || 'Unknown'} - {dep?.relationship || 'Family'}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No family members added</option>
+                    )}
+                  </select>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                   <div>
@@ -605,28 +642,30 @@ const PatientVitalsDetails = () => {
                 {recordError && <p className="mt-2 text-sm text-error">{recordError}</p>}
 
                 <div className="modal-action">
-                  <button className="btn btn-ghost" onClick={() => { setIsRecordOpen(false); setRecordError(""); }}>Cancel</button>
+                  <button className="btn btn-ghost" onClick={() => { setIsRecordOpen(false); setRecordError(""); setSelectedDependantId(null); }}>Cancel</button>
                   <button className={`btn btn-primary ${recordLoading ? 'loading' : ''}`} onClick={async () => {
                     try {
                       setRecordLoading(true);
                       setRecordError("");
-                      const payload = {
-                        patientId: patientUUID || patientId,
-                        bp: recordForm.bp,
-                        temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
-                        weight: recordForm.weight ? Number(recordForm.weight) : undefined,
-                        pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
-                        spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
-                        height: recordForm.height ? Number(recordForm.height) : undefined,
-                        respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
-                        notes: recordForm.notes || undefined,
-                      };
+                     const payload = {
+  patientId: patientUUID || patientId, 
+  dependantId: selectedDependantId || undefined, 
+  bp: recordForm.bp,
+  temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
+  weight: recordForm.weight ? Number(recordForm.weight) : undefined,
+  pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
+  spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
+  height: recordForm.height ? Number(recordForm.height) : undefined,
+  respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
+  notes: recordForm.notes || undefined,
+};
                       const res = await createVital(payload);
                       const created = res?.data ?? res;
                       // Prepend new vital to history and update latest
                       setVitals((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
                       setIsRecordOpen(false);
-                      setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", notes: "" });
+                      setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
+                      setSelectedDependantId(null);
                     } catch (e) {
                       const msg = e?.response?.data?.message || 'Failed to record vitals';
                       setRecordError(msg);
@@ -650,7 +689,7 @@ const PatientVitalsDetails = () => {
                     <button className="btn btn-ghost btn-sm" onClick={() => setIsSendDoctorOpen(false)}>Close</button>
                   </div>
                   <p className="mb-4 text-sm text-base-content/70">
-                    Are you sure you want to send this patient to the doctor for consultation? This will update the status to <span className="font-medium">awaiting_consultation</span> for {patientName} ({patientHospitalId || '—'}).
+                    Are you sure you want to send this patient to the doctor for consultation? This will update the status to <span className="font-medium">awaiting_consultation</span> for {subjectName} ({subjectHospitalId || '—'}).
                   </p>
                   <div className="flex justify-end gap-3 mt-6">
                     <button className="btn" onClick={() => setIsSendDoctorOpen(false)}>Cancel</button>
@@ -688,7 +727,7 @@ const PatientVitalsDetails = () => {
               defaultStatus={"awaiting_pharmacy"}
               itemsCount={0}
               medicationNames={[]}
-              patientLabel={`${patientName} (${patientHospitalId || '—'})`}
+              patientLabel={`${subjectName} (${subjectHospitalId || '—'})`}
               onUpdated={() => setIsSendPharmacyOpen(false)}
             />
           )}

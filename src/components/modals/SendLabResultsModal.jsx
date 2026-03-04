@@ -3,18 +3,22 @@ import { updateInvestigationRequest } from "@/services/api/investigationRequestA
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import ConfirmationModal from "./ConfirmationModal";
 
-const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationId, patientId, patientName, onSuccess }) => {
+const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationRequestId, patientId, patientName, onSuccess }) => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleSendToDoctor = async () => {
     try {
+      if (!investigationRequestId) {
+        setError("Cannot send results: investigation request not provided.");
+        return;
+      }
+
       setSending(true);
       setError(null);
 
-    
-      await updateInvestigationRequest(investigationId, {
+      await updateInvestigationRequest(investigationRequestId, {
         status: "processing",
         labResultId: labResultId,
       });
@@ -58,6 +62,11 @@ const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationId, pa
         )}
 
         <div className="space-y-4 mb-6">
+          {!investigationRequestId && (
+            <div className="mb-4 p-3 bg-yellow-100 text-yellow-700 rounded-lg text-sm border border-yellow-300">
+              Investigation request ID is missing; results cannot be forwarded to the doctor.
+            </div>
+          )}
           <div className="p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-2">Patient</p>
             <p className="font-semibold text-gray-800">{patientName}</p>
@@ -84,8 +93,8 @@ const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationId, pa
           </button>
           <button
             onClick={() => setShowConfirm(true)}
-            disabled={sending}
-            className="flex-1 px-4 py-2 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:opacity-50"
+            disabled={sending || !investigationRequestId}
+            className={`flex-1 px-4 py-2 font-semibold rounded-lg ${investigationRequestId ? "bg-[#00943C] text-white hover:bg-[#007a31]" : "bg-gray-200 text-gray-500 cursor-not-allowed"} disabled:opacity-50`}
           >
             {sending ? "Sending..." : "Send Now"}
           </button>
