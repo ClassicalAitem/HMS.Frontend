@@ -203,10 +203,10 @@ const LabResultDetails = () => {
                                     Organism
                                   </th>
                                   <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                                    O (Somatic)
+                                    O 
                                   </th>
                                   <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                                    H (Flagellar)
+                                    H 
                                   </th>
                                 </tr>
                               </thead>

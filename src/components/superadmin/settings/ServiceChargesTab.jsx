@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deleteServiceCharge, fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
 import toast from 'react-hot-toast';
 
-const ServiceChargesTab = () => {
+const ServiceChargesTab = ({ categoryFilter = null }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedServiceCharge, setSelectedServiceCharge] = useState(null);
@@ -121,7 +121,10 @@ const ServiceChargesTab = () => {
             </thead>
             <tbody>
               {serviceCharges && serviceCharges.length > 0 ? (
-                serviceCharges.map((serviceCharge) => (
+                (categoryFilter
+                  ? serviceCharges.filter((sc) => (sc?.category || '').toLowerCase() === String(categoryFilter || '').toLowerCase())
+                  : serviceCharges
+                ).map((serviceCharge) => (
                   <tr key={serviceCharge.id}>
                     <td>
                       <div className="font-medium text-base-content">

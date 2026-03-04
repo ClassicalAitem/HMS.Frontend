@@ -82,10 +82,42 @@ export const createVital = async (payload) => {
   }
 };
 
+export const normalizeVitalsResponse = (response) => {
+  try {
+    const raw = response?.data ?? response ?? [];
+    if (Array.isArray(raw)) return raw;
+    if (raw?.data && Array.isArray(raw.data)) return raw.data;
+    return [];
+  } catch (e) {
+    console.error('VitalsAPI: Error normalizing vitals response:', e);
+    return [];
+  }
+};
+
+export const getLatestVital = (vitals) => {
+  if (!Array.isArray(vitals) || vitals.length === 0) return null;
+  return vitals.reduce((acc, v) => {
+    const accTime = new Date(acc?.createdAt || 0).getTime();
+    const vTime = new Date(v?.createdAt || 0).getTime();
+    return vTime > accTime ? v : acc;
+  }, vitals[0]);
+};
+
+export const sortVitalsByTime = (vitals) => {
+  if (!Array.isArray(vitals)) return [];
+  return [...vitals].sort((a, b) => {
+    const aTime = new Date(a?.createdAt || 0).getTime();
+    const bTime = new Date(b?.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
+};
 
 export default {
   getVitals,
   getVitalsByNurse,
   getVitalsByPatient,
   createVital,
+  normalizeVitalsResponse,
+  getLatestVital,
+  sortVitalsByTime,
 };

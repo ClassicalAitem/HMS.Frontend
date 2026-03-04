@@ -98,6 +98,12 @@ const SuperAdminSettings = () => {
       title: 'Pharmacy Inventory',
       description: 'Setup  pharmacy inventory data, etc.',
       onClick: () => navigate('/superadmin/settings/pharmacy-inventory')
+    },
+    {
+      icon: FaCog,
+      title: 'Laboratory Inventory',
+      description: 'Setup  laboratory inventory data, etc.',
+      onClick: () => navigate('/superadmin/settings/laboratory-inventory')
     }
   ];
 
