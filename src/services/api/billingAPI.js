@@ -67,6 +67,97 @@ export const getAllBillings = async (params = {}) => {
   return response;
 };
 
+/**
+ * Get billing details by patient ID
+ * GET /billing/patient/{patientId} or /billing?patientId={patientId} or fetch all and filter
+ */
+export const getBillingbypatientId = async (patientId) => {
+  if (!patientId) throw new Error('Patient ID is required');
+  
+  console.log('🧾 BillingAPI: Starting getBillingbypatientId', { patientId });
+  
+  // Try endpoint 1: /billing/patient/{patientId}
+  try {
+    const url = `/billing/patient/${patientId}`;
+    console.log('🧾 BillingAPI: Trying endpoint 1', { url });
+    const response = await apiClient.get(url);
+    console.log('🧾 BillingAPI: Endpoint 1 success', response);
+    if (response?.data) {
+      return response;
+    }
+  } catch (error) {
+    console.log('🧾 BillingAPI: Endpoint 1 failed', { status: error?.response?.status, message: error?.message });
+  }
+
+  // Try endpoint 2: /billing?patientId={patientId}
+  try {
+    const url = `/billing?patientId=${patientId}`;
+    console.log('🧾 BillingAPI: Trying endpoint 2', { url });
+    const response = await apiClient.get(url);
+    console.log('🧾 BillingAPI: Endpoint 2 success', response);
+    if (response?.data) {
+      const data = Array.isArray(response.data) ? response.data[0] : response.data;
+      return { data };
+    }
+  } catch (error) {
+    console.log('🧾 BillingAPI: Endpoint 2 failed', { status: error?.response?.status, message: error?.message });
+  }
+
+  // Fallback: Fetch all billings and filter
+  try {
+    console.log('🧾 BillingAPI: Attempting fallback - fetching all billings');
+    const allBillings = await getAllBillings();
+    console.log('🧾 BillingAPI: All billings response', allBillings);
+    
+    let billingsList = [];
+    
+    // Handle various response formats
+    if (Array.isArray(allBillings?.data)) {
+      billingsList = allBillings.data;
+    } else if (Array.isArray(allBillings?.data?.data)) {
+      billingsList = allBillings.data.data;
+    } else if (allBillings?.data && typeof allBillings.data === 'object') {
+      billingsList = [allBillings.data];
+    } else if (Array.isArray(allBillings)) {
+      billingsList = allBillings;
+    }
+    
+    console.log('🧾 BillingAPI: Processed billings list', { count: billingsList.length, billingsList });
+    
+    // Filter by patient ID
+    const patientBillings = billingsList.filter(b => {
+      const bPatientId = b?.patientId || b?.patient?.id || b?.patient?._id;
+      const matches = String(bPatientId) === String(patientId);
+      console.log('🧾 BillingAPI: Checking billing', { billingId: b?.id, bPatientId, patientId, matches });
+      return matches;
+    });
+    
+    console.log('🧾 BillingAPI: Filtered billings for patient', { 
+      patientId, 
+      count: patientBillings.length,
+      billings: patientBillings 
+    });
+    
+    if (patientBillings.length > 0) {
+      // Sort by creation date (most recent first) and return the latest
+      const sorted = patientBillings.sort((a, b) => {
+        const dateA = new Date(a?.createdAt || a?.created_at || 0).getTime();
+        const dateB = new Date(b?.createdAt || b?.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+      
+      console.log('🧾 BillingAPI: Returning most recent billing', sorted[0]);
+      return { data: sorted[0] };
+    } else {
+      console.warn('🧾 BillingAPI: No billings found for patient', { patientId });
+      return { data: null };
+    }
+  } catch (fallbackError) {
+    console.error('🧾 BillingAPI: All methods failed', fallbackError);
+    throw new Error(`Failed to fetch billing for patient ${patientId}: ${fallbackError?.message}`);
+  }
+};
+
 export const createBilling = async (patientId, payload) => {
   if (!patientId) throw new Error('Patient ID is required');
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
@@ -153,6 +244,7 @@ export default {
   createBill,
   createBilling,
   getBillingById,
+  getBillingbypatientId,
   getAllBillings,
   getAllReceipts,
   getAllReceiptByPatientId,
