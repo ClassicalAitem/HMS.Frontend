@@ -121,3 +121,16 @@ export default {
   getLatestVital,
   sortVitalsByTime,
 };
+
+// Update an existing vital record
+export const updateVital = async (id, payload) => {
+  try {
+    console.log('📝 VitalsAPI: Updating vital id:', id, 'payload:', payload);
+    const response = await apiClient.patch(`/vital/${id}`, payload);
+    console.log('✅ VitalsAPI: Vital updated successfully', response.data);
+    return response.data ?? response;
+  } catch (error) {
+    console.error('❌ VitalsAPI: Update vital error occurred', error.response);
+    throw error;
+  }
+};

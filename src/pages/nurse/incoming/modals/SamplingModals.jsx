@@ -77,7 +77,7 @@ const SamplingModals = ({ setIsRecordSampling, patientId, patientData }) => {
     );
   }
 
-  const test = investigation.tests[0];
+  const test = investigation?.tests?.[0];
   const patientName =
     patientData?.fullName ||
     `${patientData?.firstName || ""} ${patientData?.lastName || ""}`.trim() ||
@@ -126,27 +126,31 @@ const SamplingModals = ({ setIsRecordSampling, patientId, patientData }) => {
               </div>
 
               <h5 className="font-[500] mt-3 mb-2">Test Details</h5>
-              <div className="flex items-start gap-8 flex-wrap">
-                <div>
-                  <div className="text-[12px] text-gray-600">Code</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <FaRegIdBadge />
-                    <p className="text-[14px] font-medium">{test.code}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[12px] text-gray-600">Name</div>
-                  <p className="text-[14px] font-medium mt-1">{test.name}</p>
-                </div>
-
-                {test.notes && (
+              {test ? (
+                <div className="flex items-start gap-8 flex-wrap">
                   <div>
-                    <div className="text-[12px] text-gray-600">Note</div>
-                    <p className="text-[13px] mt-1">{test.notes}</p>
+                    <div className="text-[12px] text-gray-600">Code</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <FaRegIdBadge />
+                      <p className="text-[14px] font-medium">{test.code}</p>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  <div>
+                    <div className="text-[12px] text-gray-600">Name</div>
+                    <p className="text-[14px] font-medium mt-1">{test.name}</p>
+                  </div>
+
+                  {test.notes && (
+                    <div>
+                      <div className="text-[12px] text-gray-600">Note</div>
+                      <p className="text-[13px] mt-1">{test.notes}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[13px] text-gray-500">No test details available</p>
+              )}
 
               <p className="font-[500] mt-3">
                 Priority:{" "}
