@@ -70,15 +70,15 @@ const SendToNurse = () => {
   };
   const removeTask = (id) => setTasks((list) => list.filter((t) => t.id !== id));
   const getStatusForTask = (taskName) => {
-    if (!taskName) return 'awaiting_injection';
+    if (!taskName) return ['awaiting_injection'];
     const name = taskName.toLowerCase();
-    if (name.includes('vital')) return 'awaiting_vitals';
-    if (name.includes('injection') || name.includes('iv')) return 'awaiting_injection';
-    if (name.includes('blood') || name.includes('sampling')) return 'awaiting_sampling';
-    if (name.includes('wound') || name.includes('catheter') || name.includes('examination')) return 'awaiting_review';
-    if (name.includes('monitor')) return 'under_observation';
+    if (name.includes('vital')) return ['awaiting_vitals'];
+    if (name.includes('injection') || name.includes('iv')) return ['awaiting_injection'];
+    if (name.includes('blood') || name.includes('sampling')) return ['awaiting_sampling'];
+    if (name.includes('wound') || name.includes('catheter') || name.includes('examination')) return ['awaiting_review'];
+    if (name.includes('monitor')) return ['under_observation'];
     // fallback
-    return 'awaiting_injection';
+    return ['awaiting_injection'];
   };
 
   const handleSendToNurse = async () => {

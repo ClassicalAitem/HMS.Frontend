@@ -4,11 +4,16 @@ import { Header, EmptyState } from "@/components/common";
 import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
 import DoctorSidebar from "@/components/doctor/dashboard/Sidebar";
 import { useAppSelector } from "@/store/hooks";
-import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
+import { getVitalsByPatient, createVital, updateVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { getConsultations } from "@/services/api/consultationAPI";
+import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
+import { getInvestigationRequestByPatientId } from "@/services/api/investigationRequestAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
+import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
@@ -39,6 +44,7 @@ const PatientVitalsDetails = () => {
   const [isRecordSampling, setIsRecordSampling] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
   const [recordError, setRecordError] = useState("");
+  const [editingVitalId, setEditingVitalId] = useState(null);
   const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
   const [selectedDependantId, setSelectedDependantId] = useState(null);
   const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
@@ -47,6 +53,17 @@ const PatientVitalsDetails = () => {
   const [dependants, setDependants] = useState([]);
   const [dependantsLoading, setDependantsLoading] = useState(true);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
+  // Doctor's consultation data
+  const [consultation, setConsultation] = useState(null);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [investigations, setInvestigations] = useState([]);
+  const [consultationLoading, setConsultationLoading] = useState(false);
+  // Track if prescription/investigation failed to load
+  const [prescriptionError, setPrescriptionError] = useState(false);
+  const [investigationError, setInvestigationError] = useState(false);
+  // Vitals pagination
+  const [vitalsPage, setVitalsPage] = useState(1);
+  const vitalsPerPage = 8;
 
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
@@ -123,6 +140,99 @@ useEffect(() => {
   fetchDependant();
   return () => { mounted = false; };
 }, [patientId]);
+
+// Fetch doctor's consultation data
+useEffect(() => {
+  let mounted = true;
+
+  const fetchConsultationData = async () => {
+    try {
+      setConsultationLoading(true);
+      
+      // Fetch all consultations and filter by patientId
+      const consultationRes = await getConsultations();
+      console.log('PatientVitalsDetails: consultationRes =', consultationRes);
+      const allConsults = Array.isArray(consultationRes?.data) ? consultationRes.data : Array.isArray(consultationRes) ? consultationRes : [];
+      const patientConsult = allConsults.find(c => c.patientId === patientId);
+      
+      if (mounted && patientConsult) {
+        setConsultation(patientConsult);
+      }
+
+      // Fetch prescriptions and investigations in parallel using Promise.allSettled
+      console.log('PatientVitalsDetails: Fetching prescriptions and investigations for patientId=', patientId);
+      
+      const promises = [
+        getPrescriptionByPatientId(patientId),
+        getInvestigationRequestByPatientId(patientId)
+      ];
+
+      const results = await Promise.allSettled(promises);
+
+      // 1. Prescriptions
+      if (results[0].status === 'fulfilled') {
+        const presRes = results[0].value;
+        let presList = [];
+        if (Array.isArray(presRes)) {
+          presList = presRes;
+        } else if (presRes?.data && Array.isArray(presRes.data)) {
+          presList = presRes.data;
+        } else if (presRes?.data?.data && Array.isArray(presRes.data.data)) {
+          presList = presRes.data.data;
+        } else if (presRes && typeof presRes === 'object' && Object.keys(presRes).length > 0) {
+          presList = [presRes];
+        }
+        if (mounted) {
+          setPrescriptions(presList);
+          setPrescriptionError(presList.length === 0);
+        }
+      } else {
+        if (mounted) {
+          setPrescriptions([]);
+          setPrescriptionError(true);
+        }
+      }
+
+      // 2. Investigations
+      if (results[1].status === 'fulfilled') {
+        const invRes = results[1].value;
+        let invList = [];
+        if (Array.isArray(invRes)) {
+          invList = invRes;
+        } else if (invRes?.data && Array.isArray(invRes.data)) {
+          invList = invRes.data;
+        } else if (invRes?.data?.data && Array.isArray(invRes.data.data)) {
+          invList = invRes.data.data;
+        }
+        if (mounted) {
+          setInvestigations(invList);
+          setInvestigationError(invList.length === 0);
+        }
+      } else {
+        if (mounted) {
+          setInvestigations([]);
+          setInvestigationError(true);
+        }
+      }
+
+    } catch (error) {
+      console.error('PatientVitalsDetails: Error fetching consultation data', error);
+    } finally {
+      if (mounted) setConsultationLoading(false);
+    }
+  };
+
+  fetchConsultationData();
+  return () => { mounted = false; };
+}, [patientId]);
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log('=== PatientVitalsDetails State ===');
+    console.log('prescriptions state:', prescriptions);
+    console.log('investigations state:', investigations);
+    console.log('consultation state:', consultation);
+  }, [prescriptions, investigations, consultation]);
+
   const latest = useMemo(() => getLatestVital(vitals), [vitals]);
 
   // Sort vitals history by time descending so latest appears first
@@ -252,7 +362,7 @@ useEffect(() => {
                     <div className="flex flex-wrap gap-2">
                       {patient.hmos.map((h, i) => (
                         <span key={i} className="badge badge-outline font-normal text-sm">
-                          {`${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString('en-US') : '—'})`}
+                          {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString('en-US') : '—'})`}
                         </span>
                       ))}
                     </div>
@@ -293,29 +403,81 @@ useEffect(() => {
                     <span>Last updated {formatRelativeTime(latest?.createdAt)}</span>
                   </div>
                 </div>
-                  {patient?.status === "awaiting_vitals" ? 
-                  (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Record Vitals - Primary if AWAITING_VITALS */}
                     <button
-                      className="btn btn-success btn-sm"
-                      onClick={() => setIsRecordOpen(true)}
+                      className={`btn btn-sm ${
+                        hasStatus(patient?.status, PATIENT_STATUS.AWAITING_VITALS)
+                          ? "btn-success"
+                          : "btn-outline"
+                      }`}
+                      onClick={() => { setIsRecordOpen(true); setEditingVitalId(null); }}
                     >
                       + Record Vitals
+                      {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_VITALS) && (
+                        <span className="badge badge-xs badge-warning ml-1">Primary</span>
+                      )}
                     </button>
-                  ) : patient?.status === "awaiting_injection" ? (
+
+                    {/* Edit Vitals */}
+                    {latest && (
+                      <button
+                        className="btn btn-outline btn-sm"
+                        onClick={() => {
+                          // Prefill modal with latest values for editing
+                          setEditingVitalId(latest?.id || latest?._id || null);
+                          setSelectedDependantId(latest?.dependantId || null);
+                          setRecordForm({
+                            bp: latest?.bp || latest?.bloodPressure || "",
+                            pulse: latest?.pulse || latest?.heartRate || "",
+                            temperature: latest?.temperature || "",
+                            weight: latest?.weight || "",
+                            spo2: latest?.spo2 || latest?.oxygenSaturation || latest?.oxygen || "",
+                            height: latest?.height || "",
+                            respiratoryRate: latest?.respiratoryRate || "",
+                            notes: latest?.notes || "",
+                          });
+                          setIsRecordOpen(true);
+                        }}
+                      >
+                        Edit Vitals
+                      </button>
+                    )}
+
+                    {/* Record Injection - Primary if AWAITING_INJECTION */}
                     <button
-                      className="btn btn-success btn-sm"
+                      className={`btn btn-sm ${
+                        hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
+                          ? "btn-success"
+                          : "btn-outline"
+                      }`}
+                      disabled={prescriptionError}
+                      title={prescriptionError ? "No prescriptions found for this patient" : ""}
                       onClick={() => setIsRecordInjection(true)}
                     >
                       + Record Injection
+                      {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION) && (
+                        <span className="badge badge-xs badge-warning ml-1">Primary</span>
+                      )}
                     </button>
-                  ) : patient?.status === "awaiting_sampling" ? (
+
+                    {/* Collect Sampling - Primary if AWAITING_SAMPLING */}
                     <button
-                      className="btn btn-success btn-sm"
+                      className={`btn btn-sm ${
+                        hasStatus(patient?.status, PATIENT_STATUS.AWAITING_SAMPLING)
+                          ? "btn-success"
+                          : "btn-outline"
+                      }`}
+                      disabled={investigationError}
+                      title={investigationError ? "No investigation requests found for this patient" : ""}
                       onClick={() => setIsRecordSampling(true)}
                     >
                       + Collect Sampling
+                      {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_SAMPLING) && (
+                        <span className="badge badge-xs badge-warning ml-1">Primary</span>
+                      )}
                     </button>
-                  ) : null}
+                  </div>
               </div>
 
               {loading ? (
@@ -348,7 +510,7 @@ useEffect(() => {
                       </div>
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-2xl font-semibold">{latest?.bloodPressure ?? latest?.bp ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">bpm</span>
+                        <span className="text-sm text-base-content/70">mnHg</span>
                       </div>
                     </div>
 
@@ -372,7 +534,7 @@ useEffect(() => {
                       </div>
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-2xl font-semibold">{latest?.temperature ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">°F</span>
+                        <span className="text-sm text-base-content/70">°C</span>
                       </div>
                     </div>
 
@@ -422,15 +584,7 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  {/* Additional Notes */}
-                  <div className="mt-4">
-                    <div className="rounded-xl border border-base-300 p-4">
-                      <div className="text-base font-medium text-base-content">Additional Notes</div>
-                      <div className="mt-2 text-sm text-base-content/80 min-h-24 whitespace-pre-wrap">
-                        {latest?.notes ? latest.notes : '—'}
-                      </div>
-                    </div>
-                  </div>
+        
                 </>
               ) : (
                 <EmptyState title="No vitals available" description="No vitals recorded for this patient yet." />
@@ -438,6 +592,221 @@ useEffect(() => {
             </div>
           </div>
 
+          {/* Doctor's Consultation Data */}
+          {consultation && (
+            <div className="shadow-xl card bg-base-100 mb-4">
+              <div className="p-4 card-body">
+                <h2 className="text-lg font-semibold text-base-content mb-4">Doctor's Tasks</h2>
+                
+                {/* Diagnosis & Visit Reason */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <span className="text-sm font-medium text-base-content/70">Visit Reason:</span>
+                    <p className="text-base font-medium">{consultation?.visitReason || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-base-content/70">Diagnosis:</span>
+                    <p className="text-base font-medium">{consultation?.diagnosis || '—'}</p>
+                  </div>
+                </div>
+
+                {/* Complaints */}
+                {consultation?.complaint?.length > 0 && (
+                  <div className="mb-4">
+                    <span className="text-sm font-medium text-base-content/70">Patient Complaints:</span>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {consultation.complaint.map((item, idx) => (
+                        <span key={idx} className="badge badge-outline">
+                          {item.symptom} ({item.durationInDays} days)
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Clinical Notes from Doctor - Doctor's Observations */}
+                {consultation?.notes && (
+                  <div className="mb-4">
+                    <span className="text-sm font-medium text-base-content/70">Doctor's Observations:</span>
+                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mt-2 text-sm text-base-content/90">
+                      <p className="text-xs text-blue-600 font-semibold mb-2">Clinical Findings & Assessment</p>
+                      {consultation.notes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Notes for Nurse - What Doctor Wants Nurse to Do */}
+                {consultation?.additionalNotes && (
+                  <div className="mb-4">
+                    <span className="text-sm font-medium text-base-content/70">Doctor's Instructions for Nurse:</span>
+                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mt-2 text-sm text-base-content/90">
+                      <p className="text-xs text-amber-600 font-semibold mb-2">What Doctor Wants You to Do</p>
+                      {consultation.additionalNotes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Medical History */}
+                {(consultation?.medicalHistory?.length > 0 || consultation?.surgicalHistory?.length > 0 || consultation?.familyHistory?.length > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {consultation?.medicalHistory?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-bold mb-2">Medical History</h4>
+                        <ul className="text-sm space-y-1">
+                          {consultation.medicalHistory.map((item, idx) => (
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? item.title : item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {consultation?.surgicalHistory?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-bold mb-2">Surgical History</h4>
+                        <ul className="text-sm space-y-1">
+                          {consultation.surgicalHistory.map((item, idx) => (
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? item.procedureName : item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {consultation?.familyHistory?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-bold mb-2">Family History</h4>
+                        <ul className="text-sm space-y-1">
+                          {consultation.familyHistory.map((item, idx) => (
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? `${item.relation}: ${item.condition}` : item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {consultation?.allergicHistory?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-bold mb-2">Allergic History</h4>
+                        <ul className="text-sm space-y-1">
+                          {consultation.allergicHistory.map((item, idx) => (
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? `${item.relation}: ${item.condition}` : item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {consultation?.socialHistory?.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-bold mb-2">Social History</h4>
+                        <ul className="text-sm space-y-1">
+                          {consultation.socialHistory.map((item, idx) => (
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? `${item.relation}: ${item.condition}` : item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+  {/* Prescriptions */}
+  {prescriptions && prescriptions.length > 0 ? (
+    <div className="shadow-xl card bg-base-100 mb-4">
+      <div className="p-4 card-body">
+        <h2 className="text-lg font-semibold text-base-content mb-4">
+          Prescriptions ({prescriptions.length})
+        </h2>
+
+        <div className="space-y-3">
+          {prescriptions.map((pres, idx) => (
+            <div key={idx} className="border border-base-200 rounded-lg p-3">
+              {pres.medications && pres.medications.length > 0 ? (
+                pres.medications.map((med, mIdx) => (
+                  <div key={mIdx} className="text-sm">
+                    <span className="font-medium">{med.drugName}</span> -{" "}
+                    {med.dosage}, {med.frequency}, {med.duration}
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-base-content/60 italic">
+                  No medications in this prescription
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="shadow-xl card bg-base-100 mb-4">
+      <div className="p-4 card-body">
+        <h2 className="text-lg font-semibold text-base-content mb-4">
+          Prescriptions
+        </h2>
+        <p className="text-sm text-base-content/60">
+          No prescriptions found for this patient
+        </p>
+      </div>
+    </div>
+  )}
+
+  {/* Lab Investigations */}
+  {investigations && investigations.length > 0 ? (
+    <div className="shadow-xl card bg-base-100 mb-4">
+      <div className="p-4 card-body">
+        <h2 className="text-lg font-semibold text-base-content mb-4">
+          Lab Investigations ({investigations.length})
+        </h2>
+
+        <div className=" flex flex-wrap space-y-3 ">
+          {investigations.map((inv, idx) => ( 
+            <div key={idx} className="border border-base-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className={`badge ${
+                    inv.status === "completed"
+                      ? "badge-success"
+                      : "badge-info"
+                  }`}
+                >
+                  {inv.status}
+                </span>
+
+                {inv.priority === "urgent" && (
+                  <span className="badge badge-error badge-xs">
+                    Urgent
+                  </span>
+                )}
+              </div>
+
+              {inv.tests && inv.tests.length > 0 ? (
+                inv.tests.map((tests, tIdx) => (
+                  <div key={tIdx} className="text-sm text-base-content/80">
+                    • {tests.name}
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-base-content/60 italic">
+                  No tests in this investigation
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="shadow-xl card bg-base-100 mb-4">
+      <div className="p-4 card-body">
+        <h2 className="text-lg font-semibold text-base-content mb-4">
+          Lab Investigations
+        </h2>
+        <p className="text-sm text-base-content/60">
+          No lab investigations found for this patient
+        </p>
+      </div>
+    </div>
+  )}
+
+</div>
           {/* Dependant History */}
           <div className="shadow-xl card bg-base-100">
             <div className="p-4 card-body">
@@ -497,7 +866,7 @@ useEffect(() => {
             <div className="p-4 card-body">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-base-content">Vitals History</h2>
-                <div className="text-sm text-base-content/70">Showing {vitals?.length || 0} readings</div>
+                <div className="text-sm text-base-content/70">Showing {sortedVitals?.length || 0} readings</div>
               </div>
              {dependantsLoading ? (
                 <div className="space-y-2">
@@ -506,55 +875,89 @@ useEffect(() => {
                   ))}
                 </div>
               ) : (
-                <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                  <table className="table w-full">
-                    <thead>
-                      <tr>
-                        <th>Record For</th>
-                        <th>Time</th>
-                        <th>Blood Pressure</th>
-                        <th>Heart Rate</th>
-                        <th>Temperature</th>
-                        <th>Weight</th>
-                        <th>Height</th>
-                        <th>O2 Saturation</th>
-                        <th>Respiratory Rate</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedVitals?.length ? sortedVitals.map((v, i) => (
-                        <tr key={i} className="hover">
-                          <td>
-                              {v?.dependantId ? (
-                                <span className="badge badge-info">
-                                  Dependant
-                                </span>
-                              ) : (
-                                <span className="badge badge-primary">
-                                Patient
-                                </span>
-                              )}
-                            </td>
-                          <td>{v?.createdAt ? new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                          <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
-                          <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
-                          <td>{v?.temperature ?? '—'} <span className="text-sm text-base-content/70">°F</span></td>
-                          <td>{v?.height ?? '—'} <span className="text-sm text-base-content/70">cm</span></td>
-                          <td>{v?.weight ?? '—'} <span className="text-sm text-base-content/70">kg</span></td>
-                          <td>{v?.spo2 ?? v?.oxygen ?? '—'} <span className="text-sm text-base-content/70">%</span></td>
-                          <td>{v?.respiratoryRate ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
-                          <td><span className="badge badge-success">Normal</span></td>
-                        </tr>
-                      )) : (
+                <div>
+                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                    <table className="table w-full">
+                      <thead>
                         <tr>
-                          <td colSpan={7}>
-                            <EmptyState title="No history" description="No vitals history found for this patient." />
-                          </td>
+                          <th>Record For</th>
+                          <th>Time</th>
+                          <th>Blood Pressure</th>
+                          <th>Heart Rate</th>
+                          <th>Temperature</th>
+                          <th>Weight</th>
+                          <th>Height</th>
+                          <th>O2 Saturation</th>
+                          <th>Respiratory Rate</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const start = (vitalsPage - 1) * vitalsPerPage;
+                          const end = start + vitalsPerPage;
+                          const paginatedVitals = sortedVitals?.slice(start, end);
+                          
+                          return paginatedVitals?.length ? paginatedVitals.map((v, i) => (
+                            <tr key={i} className="hover">
+                              <td>
+                                  {v?.dependantId ? (
+                                    <span className="badge badge-info">
+                                      Dependant
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-primary">
+                                    Patient
+                                    </span>
+                                  )}
+                                </td>
+                              <td>{v?.createdAt ? new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                              <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
+                              <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
+                              <td>{v?.temperature ?? '—'} <span className="text-sm text-base-content/70">°C</span></td>
+                              <td>{v?.height ?? '—'} <span className="text-sm text-base-content/70">cm</span></td>
+                              <td>{v?.weight ?? '—'} <span className="text-sm text-base-content/70">kg</span></td>
+                              <td>{v?.spo2 ?? v?.oxygen ?? '—'} <span className="text-sm text-base-content/70">%</span></td>
+                              <td>{v?.respiratoryRate ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
+                            </tr>
+                          )) : (
+                            <tr>
+                              <td colSpan={7}>
+                                <EmptyState title="No history" description="No vitals history found for this patient." />
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {sortedVitals?.length > vitalsPerPage && (
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-base-content/70">
+                        Showing {Math.min((vitalsPage - 1) * vitalsPerPage + 1, sortedVitals.length)}–{Math.min(vitalsPage * vitalsPerPage, sortedVitals.length)} of {sortedVitals.length}
+                      </div>
+                      <div className="join">
+                        <button
+                          className="join-item btn btn-sm"
+                          disabled={vitalsPage <= 1}
+                          onClick={() => setVitalsPage((p) => Math.max(1, p - 1))}
+                        >
+                          Prev
+                        </button>
+                        <span className="join-item btn btn-sm no-animation">
+                          Page {vitalsPage} / {Math.ceil(sortedVitals.length / vitalsPerPage)}
+                        </span>
+                        <button
+                          className="join-item btn btn-sm"
+                          disabled={vitalsPage >= Math.ceil(sortedVitals.length / vitalsPerPage)}
+                          onClick={() => setVitalsPage((p) => Math.min(Math.ceil(sortedVitals.length / vitalsPerPage), p + 1))}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -647,25 +1050,35 @@ useEffect(() => {
                     try {
                       setRecordLoading(true);
                       setRecordError("");
-                     const payload = {
-  patientId: patientUUID || patientId, 
-  dependantId: selectedDependantId || undefined, 
-  bp: recordForm.bp,
-  temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
-  weight: recordForm.weight ? Number(recordForm.weight) : undefined,
-  pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
-  spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
-  height: recordForm.height ? Number(recordForm.height) : undefined,
-  respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
-  notes: recordForm.notes || undefined,
-};
-                      const res = await createVital(payload);
-                      const created = res?.data ?? res;
-                      // Prepend new vital to history and update latest
-                      setVitals((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
+                      const payload = {
+                        patientId: patientUUID || patientId,
+                        dependantId: selectedDependantId || undefined,
+                        bp: recordForm.bp,
+                        temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
+                        weight: recordForm.weight ? Number(recordForm.weight) : undefined,
+                        pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
+                        spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
+                        height: recordForm.height ? Number(recordForm.height) : undefined,
+                        respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
+                        notes: recordForm.notes || undefined,
+                      };
+
+                      if (editingVitalId) {
+                        // Edit existing vital
+                        const res = await updateVital(editingVitalId, payload);
+                        const updated = res?.data ?? res;
+                        setVitals((prev) => (Array.isArray(prev) ? prev.map((v) => ((v?.id === editingVitalId || v?._id === editingVitalId) ? updated : v)) : [updated]));
+                      } else {
+                        // Create new vital
+                        const res = await createVital(payload);
+                        const created = res?.data ?? res;
+                        setVitals((prev) => [created, ...(Array.isArray(prev) ? prev : [])]);
+                      }
+
                       setIsRecordOpen(false);
                       setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
                       setSelectedDependantId(null);
+                      setEditingVitalId(null);
                     } catch (e) {
                       const msg = e?.response?.data?.message || 'Failed to record vitals';
                       setRecordError(msg);
@@ -697,7 +1110,12 @@ useEffect(() => {
                       className="btn btn-success"
                       onClick={async () => {
                         try {
-                          const promise = updatePatientStatus(patientUUID || patientId, 'awaiting_consultation');
+                          const newStatus = Array.from(
+                            new Set([...(patient?.status || []), PATIENT_STATUS.AWAITING_CONSULTATION])
+                          );
+
+                          updatePatientStatus(patientUUID || patientId, newStatus);
+                          const promise = updatePatientStatus(patientUUID || patientId, newStatus);
                           toast.promise(promise, {
                             loading: 'Sending to doctor...',
                             success: 'Patient sent to doctor successfully',
@@ -724,7 +1142,8 @@ useEffect(() => {
               isOpen={isSendPharmacyOpen}
               onClose={() => setIsSendPharmacyOpen(false)}
               patientId={patientUUID || patientId}
-              defaultStatus={"awaiting_pharmacy"}
+              currentStatus={patient?.status || []}
+              defaultStatus={[PATIENT_STATUS.AWAITING_PHARMACY]}
               itemsCount={0}
               medicationNames={[]}
               patientLabel={`${subjectName} (${subjectHospitalId || '—'})`}
@@ -738,7 +1157,8 @@ useEffect(() => {
               isOpen={isSendCashierOpen}
               onClose={() => setIsSendCashierOpen(false)}
               patientId={patient?.id || patientId}
-              defaultStatus={"awaiting_cashier"}
+              currentStatus={patient?.status || []}
+              defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
               onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
             />
 

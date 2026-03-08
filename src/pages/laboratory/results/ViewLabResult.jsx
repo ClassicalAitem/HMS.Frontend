@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
-import { getLabResultById } from "@/services/api/labResultsAPI";
+import { getLabResultById, getLabResultFile } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
+import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
+import { FaFileImage } from "react-icons/fa";
 
 const ViewLabResult = () => {
   const { labResultId } = useParams();
@@ -17,6 +19,10 @@ const ViewLabResult = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [isAttachmentViewerOpen, setIsAttachmentViewerOpen] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
 
   const effectiveInvestigationId =  labResult?.investigationRequestId;
 
@@ -60,6 +66,60 @@ const ViewLabResult = () => {
     }
   }, [labResultId, investigationIdState]);
 
+  const handleOpenAttachmentViewer = async (fileIndex = 0) => {
+    const atts = labResult?.attachedFiles || labResult?.form?.attachments;
+    if (!atts || atts.length === 0) {
+      setAttachedFiles([]);
+      setCurrentFileIndex(0);
+      setIsAttachmentViewerOpen(true);
+      return;
+    }
+
+    setIsLoadingFiles(true);
+    try {
+      const files = await Promise.all(
+        atts.map(async (file) => {
+          try {
+            // If it's already a file object with data, use it directly
+            if (file.data || file._id) {
+              return file;
+            }
+            // Otherwise, fetch it by ID assuming it's a string ID
+            const fileId = typeof file === 'string' ? file : file.id || file._id;
+            if (!fileId) {
+              console.warn("No file ID found for file:", file);
+              return null;
+            }
+            const response = await getLabResultFile(fileId);
+            const mimeType = response.headers['content-type'] || 'application/octet-stream';
+            const filename = response.headers['content-disposition']?.match(/filename="(.+?)"/)?.[1] || `file-${fileId}`;
+            
+            return {
+              _id: fileId,
+              id: fileId,
+              name: filename,
+              filename: filename,
+              mimetype: mimeType,
+              data: new Uint8Array(response.data)
+            };
+          } catch (error) {
+            console.error(`Error loading file:`, error);
+            return null;
+          }
+        })
+      );
+      
+      const validFiles = files.filter(f => f !== null);
+      setAttachedFiles(validFiles);
+      setCurrentFileIndex(Math.min(fileIndex, validFiles.length - 1));
+      setIsAttachmentViewerOpen(true);
+    } catch (error) {
+      console.error("Error loading attachments:", error);
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
+
   const displayField = (label, value) => {
     if (!value) return null;
     return (
@@ -99,30 +159,88 @@ const ViewLabResult = () => {
   };
 
   const displayAttachments = () => {
-    const atts = labResult?.form?.attachments;
+    const atts = labResult?.attachedFiles || labResult?.form?.attachments;
     if (!atts || !atts.length) return null;
+
     return (
       <div className="mb-6">
-        <h3 className="text-lg font-bold text-[#00943C] mb-3 pb-2 border-b-2 border-[#00943C]">
-          Attachments
+        <h3 className="text-lg font-bold text-[#00943C] mb-4 pb-2 border-b-2 border-[#00943C] flex items-center gap-2">
+          <FaFileImage className="w-5 h-5" /> Attachments ({atts.length})
         </h3>
-        <ul className="list-disc list-inside text-gray-700">
-          {atts.map((file, idx) => (
-            <li key={idx} className="break-words">
-              {file.name || file.filename || "file"}{' '}
-              {file.url && (
-                <a
-                  href={file.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline"
+        
+        {attachedFiles.length === 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {atts.map((file, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleOpenAttachmentViewer(idx)}
+                disabled={isLoadingFiles}
+                className="flex items-center justify-center p-3 bg-base-200/50 rounded-lg border border-base-200 hover:border-[#00943C] hover:bg-[#00943C]/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Click to load and view"
+              >
+                <div className="flex flex-col items-center gap-1 w-full">
+                  <FaFileImage className="w-6 h-6 text-[#00943C] group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-medium text-gray-600 group-hover:text-[#00943C] text-center truncate w-full px-1">
+                    Load File {idx + 1}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : isLoadingFiles ? (
+          <div className="flex justify-center p-8">
+            <span className="loading loading-spinner loading-lg text-[#00943C]"></span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {attachedFiles.map((file, idx) => {
+              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || file.filename);
+              const getImageUrl = () => {
+                if (!file.data) return '';
+                if (typeof file.data === 'string') {
+                  return file.data.startsWith('data:') || file.data.startsWith('http') 
+                    ? file.data 
+                    : `data:${file.mimetype};base64,${file.data}`;
+                }
+                if (file.data instanceof Uint8Array) {
+                  const blob = new Blob([file.data], { type: file.mimetype });
+                  return URL.createObjectURL(blob);
+                }
+                return '';
+              };
+              
+              return (
+                <div
+                  key={idx}
+                  className="relative group rounded-lg overflow-hidden border border-gray-300 hover:border-[#00943C] transition-all cursor-pointer"
+                  onClick={() => setCurrentFileIndex(idx) || setIsAttachmentViewerOpen(true)}
                 >
-                  view
-                </a>
-              )}
-            </li>
-          ))}
-        </ul>
+                  {isImage && getImageUrl() ? (
+                    <>
+                      <img
+                        src={getImageUrl()}
+                        alt={file.name}
+                        className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="text-white text-sm font-semibold">View</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-32 bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-all">
+                      <FaFileImage className="w-10 h-10 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="p-2 bg-white border-t border-gray-300">
+                    <p className="text-xs font-medium text-gray-600 truncate" title={file.name}>
+                      {file.name || `File ${idx + 1}`}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   };
@@ -244,6 +362,7 @@ const ViewLabResult = () => {
               {displaySection("Haematology", labResult?.form?.haematology)}
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
+              {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
               {displaySection("Urinalysis", labResult?.form?.urinalysis)}
@@ -368,8 +487,17 @@ const ViewLabResult = () => {
         labResultId={labResultId}
         investigationRequestId={effectiveInvestigationId}
         patientId={labResult?.patientId}
+        currentStatus={patient?.status || []}
         patientName={patientName}
         onSuccess={() => navigate("/dashboard/laboratory")}
+      />
+
+      <AttachmentViewerModal
+        isOpen={isAttachmentViewerOpen}
+        onClose={() => setIsAttachmentViewerOpen(false)}
+        attachments={attachedFiles}
+        initialIndex={currentFileIndex}
+        title="Lab Result Attachments"
       />
     </div>
   );

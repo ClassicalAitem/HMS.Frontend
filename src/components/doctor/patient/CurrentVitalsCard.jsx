@@ -70,7 +70,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span className="text-2xl font-semibold">{latest?.bloodPressure ?? latest?.bp ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">bpm</span>
+                  <span className="text-sm text-base-content/70">mnHg</span>
                 </div>
               </div>
 
