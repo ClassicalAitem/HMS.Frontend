@@ -6,6 +6,8 @@ import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
 import TestRequestModal from "./modals/TestRequestModal";
 import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
 import { getPatientById, getPatients } from "@/services/api/patientsAPI";
+import { hasStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
@@ -29,7 +31,9 @@ const IncomingLaboratory = () => {
         ? patientsResponse 
         : (patientsResponse?.data || []);
       
-      const awaitingLabPatients = allPatients.filter((p) => p.status === "awaiting_lab");
+      const awaitingLabPatients = allPatients.filter((p) => 
+        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB)
+      );
       console.log("Patients with awaiting_lab status:", awaitingLabPatients.length);
 
       // Step 2: Fetch all investigation requests

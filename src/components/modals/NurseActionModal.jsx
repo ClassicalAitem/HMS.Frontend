@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { mergePatientStatus } from '@/utils/statusUtils';
 
-const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaiting_vitals', onUpdated }) => {
+const NurseActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = [PATIENT_STATUS.AWAITING_VITALS], onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
@@ -11,7 +13,9 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
   const handleConfirm = async () => {
     try {
       setIsSending(true);
-      const promise = updatePatientStatus(patientId, selectedAction);
+      // Merge current status with new status (removes nurse-related statuses, adds new one)
+      const mergedStatus = mergePatientStatus(currentStatus, 'nurse', Array.isArray(selectedAction) ? selectedAction : [selectedAction]);
+      const promise = updatePatientStatus(patientId, mergedStatus);
       toast.promise(promise, {
         loading: 'Sending to nurse...',
         success: 'Patient sent to nurse successfully',
@@ -38,16 +42,16 @@ const NurseActionModal = ({ isOpen, onClose, patientId, defaultAction = 'awaitin
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {['awaiting_vitals','awaiting_sampling','awaiting_injection', 'awaiting_vaccination'].map(action => (
+            {[PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_INJECTION, 'awaiting_vaccination'].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="nurseAction"
                   className="radio radio-primary"
-                  checked={selectedAction === action}
+                  checked={selectedAction === action || (Array.isArray(selectedAction) && selectedAction[0] === action)}
                   onChange={() => setSelectedAction(action)}
                 />
-                <span className="capitalize">{action.replace('awaiting_', 'Awaiting ')}</span>
+                <span className="capitalize">{action.replace(/_/g, ' ')}</span>
               </label>
             ))}
           </div>

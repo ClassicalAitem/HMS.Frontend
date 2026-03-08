@@ -7,6 +7,8 @@ import { getPatients } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
+import { mergePatientStatus, hasStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 
 const PatientVitals = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -96,7 +98,9 @@ const PatientVitals = () => {
       data = data.filter((p) => (p.gender || "").toLowerCase() === genderFilter);
     }
     if (statusFilter !== "all") {
-      data = data.filter((p) => (p.status || "").toLowerCase().includes(statusFilter));
+      data = data.filter((p) => Array.isArray(p.status)
+  ? p.status.some((s) => s.toLowerCase().includes(statusFilter))
+  : (p.status || "").toLowerCase().includes(statusFilter));
     }
     return data;
   }, [items, searchQuery, genderFilter, statusFilter]);
@@ -278,7 +282,9 @@ const PatientVitals = () => {
                         <td className="text-center">{p.age}</td>
                         <td className="text-center">{p.blood}</td>
                         <td className="text-center">
-                          <span className={statusBadgeClass(p.status)}>{p.status}</span>
+                         <span className={statusBadgeClass(p.status)}>
+  {Array.isArray(p.status) ? p.status.join(", ") : p.status}
+</span>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2 justify-center">
@@ -397,7 +403,8 @@ const PatientVitals = () => {
                 isOpen={isSendPharmacyOpen}
                 onClose={() => setIsSendPharmacyOpen(false)}
                 patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                defaultStatus={"awaiting_pharmacy"}
+                currentStatus={selectedPatient?.status || []}
+                defaultStatus={[PATIENT_STATUS.AWAITING_PHARMACY]}
                 itemsCount={0}
                 medicationNames={[]}
                 patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
@@ -411,7 +418,8 @@ const PatientVitals = () => {
                 isOpen={isSendCashierOpen}
                 onClose={() => setIsSendCashierOpen(false)}
                 patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                defaultStatus={"awaiting_cashier"}
+                currentStatus={selectedPatient?.status || []}
+                defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
                 mode={"confirm"}
                 patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
                 onUpdated={() => setIsSendCashierOpen(false)}

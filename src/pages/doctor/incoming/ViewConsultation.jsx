@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
-import { getConsultationById } from "@/services/api/consultationAPI";
+import { getConsultationById, getConsultationFile } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask } from "react-icons/fa";
+import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
 import OrderInvestigationModal from "./modals/OrderInvestigationModal";
+import SendToNurseModal from "./modals/SendToNurseModal";
+import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
+
 import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
 import { getInvestigationByConsultationId } from "@/services/api/investigationAPI";
 
@@ -16,7 +19,7 @@ const ViewConsultation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState(null);
@@ -25,6 +28,12 @@ const ViewConsultation = () => {
   const [labRequests, setLabRequests] = useState([]); // Placeholder for future lab data
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
+  const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [isAttachmentViewerOpen, setIsAttachmentViewerOpen] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState([]);
+  const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
 
   const loadData = async () => {
     try {
@@ -88,6 +97,49 @@ const ViewConsultation = () => {
     }
   };
 
+  const handleOpenAttachmentViewer = async (fileIndex = 0) => {
+    if (!consultation?.attachedFileIds || consultation.attachedFileIds.length === 0) {
+      setAttachedFiles([]);
+      setCurrentFileIndex(0);
+      setIsAttachmentViewerOpen(true);
+      return;
+    }
+
+    setIsLoadingFiles(true);
+    try {
+      const files = await Promise.all(
+        consultation.attachedFileIds.map(async (fileId) => {
+          try {
+            const response = await getConsultationFile(fileId);
+            const mimeType = response.headers['content-type'] || 'application/octet-stream';
+            const filename = response.headers['content-disposition']?.match(/filename="(.+?)"/)?.[1] || `file-${fileId}`;
+            
+            return {
+              _id: fileId,
+              id: fileId,
+              name: filename,
+              filename: filename,
+              mimetype: mimeType,
+              data: new Uint8Array(response.data)
+            };
+          } catch (error) {
+            console.error(`Error loading file ${fileId}:`, error);
+            return null;
+          }
+        })
+      );
+      
+      const validFiles = files.filter(f => f !== null);
+      setAttachedFiles(validFiles);
+      setCurrentFileIndex(Math.min(fileIndex, validFiles.length - 1));
+      setIsAttachmentViewerOpen(true);
+    } catch (error) {
+      console.error("Error loading attachments:", error);
+    } finally {
+      setIsLoadingFiles(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [patientId, consultationId]);
@@ -112,10 +164,7 @@ const ViewConsultation = () => {
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
   const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
 
-  // Filter prescriptions related to this consultation (if there's a link) or just show recent ones
-  // Since the API doesn't seem to link prescription to consultationId directly yet, 
-  // we'll display the most recent prescription if it matches the consultation date closely, or just list recent ones.
-  // For now, let's show all prescriptions for this patient as a reference.
+
   const recentPrescriptions = prescriptions.slice(0, 3);
 
   // Helper for Skeleton Loading
@@ -186,7 +235,40 @@ const ViewConsultation = () => {
         onOrderCreated={() => {
            // Optional: Reload data or show success notification
            console.log("Investigation ordered");
-        }}
+        }} 
+        />
+
+       <SendToNurseModal
+        isOpen={isSendToNurseModalOpen}
+        onClose={() => setIsSendToNurseModalOpen(false)}
+        consultation={consultation}
+        patient={patient}
+        prescriptions={prescriptions}
+        labRequests={labRequests}
+        additionalNotes={additionalNotes}
+        patientName={patientName}
+        doctorName={doctorName}
+        consultationDate={consultationDate}
+        complaints={complaints}
+        medicalHistory={medicalHistory}
+        surgicalHistory={surgicalHistory}
+        familyHistory={familyHistory}
+        socialHistory={socialHistory}
+        allergyHistory={allergyHistory}
+        notes={notes}
+        visitReason={visitReason}
+        diagnosis={diagnosis}
+        patientId={patientId}
+        consultationId={consultationId}
+        onSentSuccessfully={() => navigate(fromIncoming ? '/dashboard/doctor/incoming' : `/dashboard/doctor/medical-history/${patientId}`)}
+       />
+
+      <AttachmentViewerModal
+        isOpen={isAttachmentViewerOpen}
+        onClose={() => setIsAttachmentViewerOpen(false)}
+        attachments={attachedFiles}
+        initialIndex={currentFileIndex}
+        title="Consultation Attachments"
       />
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
@@ -305,6 +387,87 @@ const ViewConsultation = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Attachments */}
+                    {consultation?.attachedFileIds && consultation.attachedFileIds.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-3 flex items-center gap-2">
+                          <FaFileImage className="w-4 h-4" /> Attachments ({consultation.attachedFileIds.length})
+                        </h4>
+                        {!attachedFiles.length && !isLoadingFiles ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {consultation.attachedFileIds.map((fileId, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => handleOpenAttachmentViewer(idx)}
+                                disabled={isLoadingFiles}
+                                className="flex items-center justify-center p-3 bg-base-200/50 rounded-lg border border-base-200 hover:border-primary hover:bg-primary/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Click to load and view"
+                              >
+                                <div className="flex flex-col items-center gap-1 w-full">
+                                  <FaFileImage className="w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
+                                  <span className="text-xs font-medium text-base-content/70 group-hover:text-primary text-center truncate w-full px-1">
+                                    Load File {idx + 1}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : isLoadingFiles ? (
+                          <div className="flex justify-center p-8">
+                            <span className="loading loading-spinner loading-lg text-primary"></span>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            {attachedFiles.map((file, idx) => {
+                              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || file.filename);
+                              const getImageUrl = () => {
+                                if (!file.data) return '';
+                                if (typeof file.data === 'string') {
+                                  return file.data.startsWith('data:') || file.data.startsWith('http') 
+                                    ? file.data 
+                                    : `data:${file.mimetype};base64,${file.data}`;
+                                }
+                                if (file.data instanceof Uint8Array) {
+                                  const blob = new Blob([file.data], { type: file.mimetype });
+                                  return URL.createObjectURL(blob);
+                                }
+                                return '';
+                              };
+                              return (
+                                <div
+                                  key={idx}
+                                  className="relative group rounded-lg overflow-hidden border border-base-300 hover:border-primary transition-all cursor-pointer"
+                                  onClick={() => setCurrentFileIndex(idx) || setIsAttachmentViewerOpen(true)}
+                                >
+                                  {isImage && getImageUrl() ? (
+                                    <>
+                                      <img
+                                        src={getImageUrl()}
+                                        alt={file.name}
+                                        className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
+                                      />
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <span className="text-white text-sm font-semibold">View</span>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="w-full h-32 bg-base-200 flex items-center justify-center group-hover:bg-base-300 transition-all">
+                                      <FaFileImage className="w-10 h-10 text-base-content/40" />
+                                    </div>
+                                  )}
+                                  <div className="p-2 bg-base-100 border-t border-base-300">
+                                    <p className="text-xs font-medium text-base-content truncate" title={file.name}>
+                                      {file.name || `File ${idx + 1}`}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -318,10 +481,10 @@ const ViewConsultation = () => {
                       <h3 className="font-bold text-lg text-base-content">Treatment Plan & Orders</h3>
                     </div>
                     <div className="flex gap-2">
-                      <button 
-                        className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2"
+                     <button   
+                      className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2"
                         onClick={() => setIsInvestigationModalOpen(true)}
-                      >
+                      > 
                         <FaFlask /> Order Labs
                       </button>
                       <button 
@@ -333,6 +496,12 @@ const ViewConsultation = () => {
                         }}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-info gap-2"
+                        onClick={() => setIsSendToNurseModalOpen(true)}
+                      >
+                        <FaUserMd /> Send to Nurse
                       </button>
                     </div>
                   </div>
@@ -347,12 +516,12 @@ const ViewConsultation = () => {
                       </h4>
                       {labRequests.length > 0 ? (
                         <div className="grid gap-3">
-                          {labRequests.map((lab, idx) => (
+                     {labRequests.map((lab, idx) => (
                             <div key={idx} className="border border-base-200 rounded-lg p-3 hover:shadow-sm transition-shadow bg-base-50">
                               <div className="flex justify-between items-start mb-2">
                                 <div className="flex items-center gap-2">
                                   <span className={`badge ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'} badge-sm`}>
-                                    {lab.status.replace('_', ' ')}
+                                   {lab.status.replace('_', ' ')}
                                   </span>
                                   <span className="text-xs text-base-content/50">
                                     Requested {new Date(lab.createdAt).toLocaleDateString()}
@@ -420,6 +589,21 @@ const ViewConsultation = () => {
                           <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>
                         </div>
                       )}
+                    </div>
+
+                    {/* Additional Notes for Nurse */}
+                    <div>
+                      <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-warning"></span>
+                        Additional Notes for Nurse
+                      </h4>
+                      <textarea
+                        className="textarea textarea-bordered w-full"
+                        placeholder="Enter any additional instructions or notes for the nurse..."
+                        rows={3}
+                        value={additionalNotes}
+                        onChange={(e) => setAdditionalNotes(e.target.value)}
+                      />
                     </div>
 
                   </div>
