@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaPlus, FaFlask, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { createInvestigation } from '@/services/api/investigationAPI';
+import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
 const testSchema = yup.object({
   name: yup.string().required('Test name is required'),
@@ -18,10 +19,46 @@ const investigationSchema = yup.object({
 const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, doctorId, onOrderCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
 
+  const [serviceCharges, setServiceCharges] = useState([]);
+  const [filteredCharges, setFilteredCharges] = useState([]);
+  const [testSearch, setTestSearch] = useState("");
+
+const [testDropdownIndex, setTestDropdownIndex] = useState(null);
+const testWrapperRef = useRef(null);
+
+
+const filteredTests = serviceCharges.filter((test) =>
+  testSearch
+    ? test.service?.toLowerCase().includes(testSearch.toLowerCase())
+    : true
+);
+
+
+useEffect(() => {
+  const loadCharges = async () => {
+    try {
+      const res = await getServiceCharges();
+      const data = res?.data ?? res ?? [];
+
+      const labCharges = data.filter(
+        (item) => (item.category || '').toLowerCase() === 'laboratory'
+      );
+
+      setServiceCharges(labCharges);
+      setFilteredCharges(labCharges);
+    } catch (err) {
+      console.error('Failed to load service charges', err);
+    }
+  };
+
+  if (isOpen) loadCharges();
+}, [isOpen]);
   const {
     register,
     control,
     handleSubmit,
+    setValue,
+     watch, 
     formState: { errors },
     reset
   } = useForm({
@@ -32,10 +69,24 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, d
     }
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append,  remove } = useFieldArray({
     control,
     name: "tests"
   });
+
+  useEffect(() => {
+  const handleClick = (e) => {
+    if (
+      testWrapperRef.current &&
+      !testWrapperRef.current.contains(e.target)
+    ) {
+      setTestDropdownIndex(null);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClick);
+  return () => document.removeEventListener("mousedown", handleClick);
+}, []);
 
   const onSubmit = async (data) => {
     setIsLoading(true);
@@ -124,15 +175,58 @@ const OrderInvestigationModal = ({ isOpen, onClose, patientId, consultationId, d
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="form-control">
-                        <label className="label pb-1">
-                          <span className="label-text text-xs">Test Name *</span>
-                        </label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. Complete Blood Count" 
-                          className={`input input-bordered input-sm w-full ${errors.tests?.[index]?.name ? 'input-error' : ''}`}
-                          {...register(`tests.${index}.name`)}
-                        />
+                       
+                       <div className="form-control relative" ref={testWrapperRef}>
+                          <label className="label">
+                            <span className="label-text">Test Name</span>
+                          </label>
+
+                          <input
+                            type="text"
+                            placeholder="Search lab test..."
+                            className="input input-bordered w-full"
+                            value={testDropdownIndex === index ? testSearch : watch(`tests.${index}.name`) || ""}
+                            onFocus={() => {
+                              setTestDropdownIndex(index);
+                              setTestSearch("");
+                            }}
+                            onChange={(e) => {
+                              setTestSearch(e.target.value);
+                              setTestDropdownIndex(index);
+                            }}
+                          />
+
+                          {testDropdownIndex === index && (
+                            <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                              <ul>
+                                {filteredTests.map((test) => (
+                                  <li
+                                    key={test.id}
+                                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                    onClick={() => {
+                                    setValue(`tests.${index}.name`, test.service);
+                                      setTestDropdownIndex(null);
+                                      setTestSearch("");
+                                    }}
+                                  >
+                                    <div className="flex justify-between">
+                                      <span>{test.service}</span>
+                                      <span className="text-xs text-gray-500">
+                                        ₦{Number(test.amount).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </li>
+                                ))}
+
+                                {filteredTests.length === 0 && (
+                                  <li className="px-4 py-2 text-gray-400 text-sm">
+                                    No matches found
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                         {errors.tests?.[index]?.name && (
                           <span className="text-error text-xs mt-1">{errors.tests[index].name.message}</span>
                         )}

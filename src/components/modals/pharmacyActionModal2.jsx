@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { mergePatientStatus } from '@/utils/statusUtils';
 
-const PharmacyActionModal2 = ({ isOpen, onClose, patientId, defaultAction = 'awaiting_pharmacy', onUpdated }) => {
+const PharmacyActionModal2 = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = [PATIENT_STATUS.AWAITING_PHARMACY], onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
@@ -11,7 +13,9 @@ const PharmacyActionModal2 = ({ isOpen, onClose, patientId, defaultAction = 'awa
   const handleConfirm = async () => {
     try {
       setIsSending(true);
-      const promise = updatePatientStatus(patientId, selectedAction);
+      // Merge current status with new status (removes pharmacy-related statuses, adds new one)
+      const mergedStatus = mergePatientStatus(currentStatus, 'pharmacy', Array.isArray(selectedAction) ? selectedAction : [selectedAction]);
+      const promise = updatePatientStatus(patientId, mergedStatus);
       toast.promise(promise, {
         loading: 'Sending to pharmacy...',
         success: 'Patient sent to pharmacy successfully',
@@ -38,16 +42,16 @@ const PharmacyActionModal2 = ({ isOpen, onClose, patientId, defaultAction = 'awa
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {['awaiting_pharmacy'].map(action => (
+            {[PATIENT_STATUS.AWAITING_PHARMACY].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="pharmacyAction"
                   className="radio radio-primary"
-                  checked={selectedAction === action}
+                  checked={selectedAction === action || (Array.isArray(selectedAction) && selectedAction[0] === action)}
                   onChange={() => setSelectedAction(action)}
                 />
-                <span className="capitalize">{action.replace('awaiting_', 'Awaiting ')}</span>
+                <span className="capitalize">{action.replace(/_/g, ' ')}</span>
               </label>
             ))}
           </div>

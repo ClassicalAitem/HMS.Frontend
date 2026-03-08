@@ -10,6 +10,8 @@ import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import { getMetrics } from '@/services/api/metricsAPI';
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI';
+import { hasAnyStatus } from '@/utils/statusUtils';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const CashierDashboard = () => {
   console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
@@ -42,8 +44,8 @@ const CashierDashboard = () => {
         // if (mounted) setTotalPatients(count);
         const invoiceCount = Number(data.totalPendingReceipt) || 0;
         if(mounted) setTotalPendingInvoice(invoiceCount)
-        const filteredPatient = patients.filter(
-          (p) => p.status === 'awaiting_cashier' || p.status === 'awaiting_payment'
+        const filteredPatient = patients.filter((p) =>
+          hasAnyStatus(p.status, [PATIENT_STATUS.AWAITING_CASHIER, PATIENT_STATUS.AWAITING_PAYMENT])
         );
 
         console.log({filteredPatient, patients});

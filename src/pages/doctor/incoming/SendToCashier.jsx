@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { createBilling } from "@/services/api/billingAPI";
 import { SelectServiceChargeModal } from "@/components/modals";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useAppSelector } from "@/store/hooks";
 
 const SendToCashier = () => {
@@ -21,6 +22,7 @@ const SendToCashier = () => {
   const { user } = useAppSelector((state) => state.auth);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [billingCreated, setBillingCreated] = useState(false);
+  const [loadingPatient, setLoadingPatient] = useState(false);
 
   const [items, setItems] = useState([]);
   const [diagnosis, setDiagnosis] = useState("");
@@ -39,7 +41,9 @@ const SendToCashier = () => {
         const res = await getPatientById(patientId);
         const data = res?.data ?? res;
         if (mounted) setPatient(data);
-      } finally {
+      } catch (e) {
+        toast.error(e?.response?.data?.message || "Failed to load patient data");
+        if (mounted) setPatient(null);
       }
     };
     load();
@@ -97,7 +101,7 @@ const SendToCashier = () => {
         });
         setBillingCreated(true);
       }
-      const statusPromise = updatePatientStatus(patientId, 'awaiting_cashier');
+      const statusPromise = updatePatientStatus(patientId, [PATIENT_STATUS.AWAITING_CASHIER]);
       await toast.promise(statusPromise, {
         loading: 'Updating status...',
         success: 'Patient sent to cashier',

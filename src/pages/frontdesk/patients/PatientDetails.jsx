@@ -230,7 +230,8 @@ const PatientDetails = () => {
         isOpen={isSendToNurseOpen}
         onClose={() => setIsSendToNurseOpen(false)}
         patientId={patient?.id || patientId}
-        defaultAction={'awaiting_vitals'}
+        currentStatus={patient?.status || []}
+        defaultAction={['awaiting_vitals']}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 
@@ -239,7 +240,8 @@ const PatientDetails = () => {
         isOpen={isSendToCashierOpen}
         onClose={() => setIsSendToCashierOpen(false)}
         patientId={patient?.id || patientId}
-        defaultStatus={'awaiting_cashier'}
+        currentStatus={patient?.status || []}
+        defaultStatus={['awaiting_cashier']}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 
