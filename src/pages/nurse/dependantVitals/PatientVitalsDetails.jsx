@@ -9,6 +9,8 @@ import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
+import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
@@ -251,21 +253,21 @@ const PatientVitalsDetails = () => {
                     <span>Last updated {formatRelativeTime(latest?.createdAt)}</span>
                   </div>
                 </div>
-                  {patient?.status === "awaiting_vitals" ? (
+                  {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_VITALS) ? (
                     <button
                       className="btn btn-success btn-sm"
                       onClick={() => setIsRecordOpen(true)}
                     >
                       + Record Vitals
                     </button>
-                  ) : patient?.status === "awaiting_injection" ? (
+                  ) : hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION) ? (
                     <button
                       className="btn btn-success btn-sm"
                       onClick={() => setIsRecordInjection(true)}
                     >
                       + Record Injection
                     </button>
-                  ) : patient?.status === "awaiting_sampling" ? (
+                  ) : hasStatus(patient?.status, PATIENT_STATUS.AWAITING_SAMPLING) ? (
                     <button
                       className="btn btn-success btn-sm"
                       onClick={() => setIsRecordSampling(true)}
@@ -305,7 +307,7 @@ const PatientVitalsDetails = () => {
                       </div>
                       <div className="mt-2 flex items-baseline gap-2">
                         <span className="text-2xl font-semibold">{latest?.bloodPressure ?? latest?.bp ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">bpm</span>
+                        <span className="text-sm text-base-content/70">mnHg</span>
                       </div>
                     </div>
 
@@ -571,7 +573,8 @@ const PatientVitalsDetails = () => {
               isOpen={isSendPharmacyOpen}
               onClose={() => setIsSendPharmacyOpen(false)}
               patientId={patientUUID || patientId}
-              defaultStatus={"awaiting_pharmacy"}
+              currentStatus={patient?.status || []}
+              defaultStatus={[PATIENT_STATUS.AWAITING_PHARMACY]}
               itemsCount={0}
               medicationNames={[]}
               patientLabel={`${patientName} (${patientHospitalId || '—'})`}
@@ -585,7 +588,8 @@ const PatientVitalsDetails = () => {
               isOpen={isSendCashierOpen}
               onClose={() => setIsSendCashierOpen(false)}
               patientId={patientUUID || patientId}
-              defaultStatus={"awaiting_cashier"}
+              currentStatus={patient?.status || []}
+              defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
               mode={"confirm"}
               patientLabel={`${patientName} (${patientHospitalId || '—'})`}
               onUpdated={() => setIsSendCashierOpen(false)}

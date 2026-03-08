@@ -119,9 +119,9 @@ useEffect(() => {
 
           <div className="flex gap-4 items-center mb-4 justify-between">
             <div className="flex gap-4 items-center">
-              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Cashier</button>
+              {/* <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-cashier/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Cashier</button> */}
               <button className="btn btn-success btn-sm">Send to Pharmacy</button>
-              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Nurse</button>
+              {/* <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Nurse</button> */}
             </div>
             <div className="hidden">
               <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}>Back</button>
@@ -282,7 +282,7 @@ useEffect(() => {
             isOpen={isPharmacyOpen}
             onClose={() => setIsPharmacyOpen(false)}
             patientId={patientId}
-            defaultStatus="awaiting_pharmacy"
+            defaultStatus={["awaiting_pharmacy"]}
             itemsCount={meds.length}
             medicationNames={meds.map(m => `${m.name}${m.dosage ? ` ${m.dosage}` : ''}`)}
             patientLabel={`${patientName || "Unknown"} (${patient?.hospitalId || patientId || "—"})`}

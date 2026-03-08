@@ -112,7 +112,7 @@ const ranges = {
   CA125: '0-35 ku/L',
 };
 
-const InputField = ({ label, value, onChange, placeholder = "", type = "text" }) => {
+const InputField = ({ label, value, onChange, placeholder = "", type = "text", disabled = false }) => {
   const displayLabel = ranges[label] ? `${label} ${ranges[label]}` : label;
   return (
     <div className="flex flex-col gap-1">
@@ -122,7 +122,8 @@ const InputField = ({ label, value, onChange, placeholder = "", type = "text" })
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C] focus:ring-1 focus:ring-[#00943C] resize-vertical"
+        disabled={disabled}
+        className={`px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C] focus:ring-1 focus:ring-[#00943C] resize-vertical ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
       />
     </div>
   );
@@ -204,6 +205,15 @@ const AddLabResult = () => {
       AFB: "",
       "TB(Serum)": "",
       "H. PYLORI": "",
+    },
+
+    bloodCrossmaching: {
+      Name: "",
+      "BD-Recipiant": "",
+      BagNo: "",
+      BigDonor: "",
+      ExpiryDate: "",
+      Compatibility: "",
     },
 
     hormoneProfile: {
@@ -349,6 +359,7 @@ const AddLabResult = () => {
         Cefexime: "",
         Others: "",
       },
+   
     },
   });
 
@@ -474,10 +485,10 @@ const AddLabResult = () => {
   };
 
   const handleAttachmentsChange = (e) => {
-    const files = Array.from(e.target.files || []);
+    const newFiles = Array.from(e.target.files || []);
     setFormData((prev) => ({
       ...prev,
-      attachments: files,
+      attachments: [...(prev.attachments || []), ...newFiles],
     }));
   };
 
@@ -615,6 +626,7 @@ const AddLabResult = () => {
                       onChange={(val) => handleInputChange("labNo", null, val)}
                       placeholder="Lab technician name"
                       type="text"
+                      disabled={true}
                     />
                     <InputField
                       label="Date"
@@ -692,6 +704,24 @@ const AddLabResult = () => {
                         value={value}
                         onChange={(val) => handleInputChange("serology", key, val)}
                         placeholder="Negative/Positive"
+                      />
+                    ))}
+                  </SectionContent>
+                )}
+              </div>
+
+              {/* BLOOD CROSS-MATCHING SECTION */}
+              <div className="bg-white rounded-lg shadow">
+                <SectionHeader title="Blood Cross-Matching" id="bloodCrossmaching" count={6} expandedSection={expandedSection} toggleSection={toggleSection} />
+                {expandedSection === "bloodCrossmaching" && (
+                  <SectionContent>
+                    {Object.entries(formData.bloodCrossmaching).map(([key, value]) => (
+                      <InputField
+                        key={key}
+                        label={key}
+                        value={value}
+                        onChange={(val) => handleInputChange("bloodCrossmaching", key, val)}
+                        placeholder="Enter value"
                       />
                     ))}
                   </SectionContent>
@@ -1011,15 +1041,47 @@ const AddLabResult = () => {
                   <input
                     type="file"
                     multiple
+                    accept="image/*,.pdf"
                     onChange={handleAttachmentsChange}
                     className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C]"
                   />
                   {formData.attachments.length > 0 && (
-                    <ul className="mt-2 list-disc list-inside text-sm text-[#605D66]">
-                      {formData.attachments.map((file, i) => (
-                        <li key={i}>{file.name}</li>
-                      ))}
-                    </ul>
+                    <div className="mt-3 space-y-3">
+                      <p className="text-sm font-medium text-[#00943C]">Attached Files ({formData.attachments.length}):</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {formData.attachments.map((file, i) => {
+                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+                          const isPdf = /\.pdf$/i.test(file.name);
+                          const fileUrl = isImage ? URL.createObjectURL(file) : null;
+
+                          return (
+                            <div
+                              key={i}
+                              className="relative flex flex-col items-center p-2 bg-[#00943C]/5 border border-[#00943C]/20 rounded-lg hover:border-[#00943C]/50 transition-all group"
+                            >
+                              {isImage && fileUrl ? (
+                                <img
+                                  src={fileUrl}
+                                  alt={file.name}
+                                  className="w-full h-20 object-cover rounded mb-1"
+                                />
+                              ) : isPdf ? (
+                                <div className="w-full h-20 flex items-center justify-center bg-red-50 rounded mb-1">
+                                  <span className="text-xl font-bold text-red-600">PDF</span>
+                                </div>
+                              ) : (
+                                <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded mb-1">
+                                  <span className="text-xs text-gray-600 text-center">File</span>
+                                </div>
+                              )}
+                              <p className="text-xs text-[#605D66] text-center truncate w-full px-1 group-hover:text-[#00943C]">
+                                {file.name}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
