@@ -7,6 +7,8 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
+import { hasAnyStatus } from '@/utils/statusUtils';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const CashierPatients = () => {
   const navigate = useNavigate();
@@ -32,21 +34,18 @@ const CashierPatients = () => {
   }, [error, dispatch]);
 
   const StatusBadge = ({ status }) => {
-    const getBadgeClass = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'awaiting_cashier':
-          return 'badge badge-success';
-        case 'awaiting_payment':
-          return 'badge badge-success';
-        default:
-          return 'badge badge-neutral';
-      }
-    };
-
     return (
-      <span className={getBadgeClass(status)}>
-        {status || 'Unknown'}
-      </span>
+      <div className="flex flex-wrap gap-1">
+        {Array.isArray(status) && status.length > 0 ? (
+          status.map((s) => (
+            <span key={s} className="badge badge-primary badge-sm">
+              {s?.replace(/_/g, ' ').toUpperCase()}
+            </span>
+          ))
+        ) : (
+          <span className="badge badge-neutral">Unknown</span>
+        )}
+      </div>
     );
   };
 
@@ -104,9 +103,9 @@ const CashierPatients = () => {
     }
   ], [navigate]);
 
-  const filteredPatient = patients.filter(
-      (p) => p.status === 'awaiting_cashier' || p.status === 'awaiting_payment'
-    );
+  const filteredPatient = patients.filter((p) =>
+    hasAnyStatus(p.status, [PATIENT_STATUS.AWAITING_CASHIER, PATIENT_STATUS.AWAITING_PAYMENT])
+  );
 
 
   return (
