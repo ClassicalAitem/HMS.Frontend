@@ -167,10 +167,10 @@ const NurseDashboard = () => {
     <div className="flex h-screen bg-base-200">
       <Sidebar />
 
-      <div className="flex overflow-hidden flex-col flex-1 ">
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header />
 
-        <div className="overflow-y-auto flex flex-col gap-1 p-2  h-full">
+        <div className="overflow-y-auto flex flex-col gap-4 sm:gap-6 2xl:gap-8 p-4 sm:p-6 2xl:p-8 h-full">
           <TaskAssigned
             tasksCount={tasksCount}
             incoming={incomingItems}

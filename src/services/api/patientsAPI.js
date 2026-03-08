@@ -1,17 +1,33 @@
 import apiClient from './apiClient';
 
+
+
+export const addPatientStatus = async (patient, newStatus) => {
+  const merged = Array.from(
+    new Set([...(patient?.status || []), newStatus])
+  );
+
+  return updatePatientStatus(patient.id, merged);
+};
+
 // Get all patients
 export const getPatients = async () => {
   try {
-    console.log('📥 PatientsAPI: Fetching all patients');
     const response = await apiClient.get('/patient');
-    console.log('✅ PatientsAPI: Patients fetched successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
-    return response.data;
+
+    const patients = Array.isArray(response.data?.data)
+      ? response.data.data.map((p) => ({
+          ...p,
+          status: Array.isArray(p.status) ? p.status : []
+        }))
+      : [];
+
+    return {
+      ...response.data,
+      data: patients
+    };
   } catch (error) {
-    console.error('❌ PatientsAPI: Get patients error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
+    console.error('Get patients error', error);
     throw error;
   }
 };
@@ -37,15 +53,17 @@ export const updatePatientStatus = async (patientId, status) => {
 // Get patient by ID
 export const getPatientById = async (patientId) => {
   try {
-    console.log('📥 PatientsAPI: Fetching patient by ID:', patientId);
     const response = await apiClient.get(`/patient/${patientId}`);
-    console.log('✅ PatientsAPI: Patient fetched successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
+
+    const patient = response.data?.data;
+
+    if (patient) {
+      patient.status = Array.isArray(patient.status) ? patient.status : [];
+    }
+
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Get patient by ID error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
+    console.error('Get patient by ID error', error);
     throw error;
   }
 };

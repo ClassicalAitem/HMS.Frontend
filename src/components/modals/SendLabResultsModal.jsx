@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import { updateInvestigationRequest } from "@/services/api/investigationRequestAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 import ConfirmationModal from "./ConfirmationModal";
 
-const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationRequestId, patientId, patientName, onSuccess }) => {
+import { mergePatientStatus } from '@/utils/statusUtils';
+
+const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationRequestId, patientId, patientName, currentStatus = [], onSuccess }) => {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -19,13 +22,15 @@ const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationReques
       setError(null);
 
       await updateInvestigationRequest(investigationRequestId, {
-        status: "processing",
+        status: "completed",
         labResultId: labResultId,
       });
 
      try {
         if (patientId) {
-          await updatePatientStatus(patientId, "lab_completed");
+          // Merge current status with lab completed (removes lab awaiting status, adds completed)
+          const mergedStatus = mergePatientStatus(currentStatus, 'lab', [PATIENT_STATUS.LAB_COMPLETED]);
+          await updatePatientStatus(patientId, mergedStatus);
         } else {
           console.warn("SendLabResultsModal: patientId not provided, skipping patient status update");
         }

@@ -59,9 +59,18 @@ export const updateLabResult = async (id, payload) => {
   return response.data;
 };
 
+export const getLabResultFile = async (fileId) => {
+  if (!fileId) throw new Error('File ID is required');
+  const response = await apiClient.get(`/labResult/file/${fileId}`, {
+    responseType: 'arraybuffer'
+  });
+  return response;
+};
+
 export default {
   getLabResults,
   getLabResultById,
   createLabResult,
   updateLabResult,
+  getLabResultFile,
 };

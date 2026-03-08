@@ -5,6 +5,8 @@ import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
+import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 
 const Incoming = () => {
   const navigate = useNavigate();
@@ -23,6 +25,14 @@ const Incoming = () => {
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+const normalizeStatus = (status) => {
+  if (!status) return "";
+  // Handle arrays
+  if (Array.isArray(status)) status = status[status.length - 1];
+
+  // Replace spaces with underscores and lowercase
+  return status.replace(/\s+/g, "_").toLowerCase();
+};
   useEffect(() => {
     let mounted = true;
     const fetchIncoming = async () => {
@@ -30,41 +40,52 @@ const Incoming = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
-        const statuses = new Set([
-          "awaiting_injection",
-          "awaiting_sampling",
-          "awaiting_vitals",
-        ]);
-        const filtered = patients.filter((p) => statuses.has((p?.status || "").toLowerCase()));
+        const nurseStatuses = [
+          PATIENT_STATUS.AWAITING_INJECTION,
+          PATIENT_STATUS.AWAITING_SAMPLING,
+          PATIENT_STATUS.AWAITING_VITALS,
+          PATIENT_STATUS.AWAITING_NURSE,
+        ];
+
+        const filtered = patients.filter((p) =>
+          hasAnyStatus(p?.status, nurseStatuses)
+          );  
         const sorted = filtered.sort((a, b) => {
           const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
           return bTime - aTime;
         });
 
-        const prettifyStatus = (s) => {
-          switch ((s || '').toLowerCase()) {
+       const prettifyStatus = (s) => {
+          const status = normalizeStatus(s); // <-- ensure it's a string
+          switch ((status || '').toLowerCase()) {
             case 'awaiting_vitals': return 'Awaiting Vitals';
             case 'awaiting_sampling': return 'Awaiting Sampling';
             case 'awaiting_injection': return 'Awaiting Injection';
-            default: return s || '—';
-          }
-        };
+            case 'awaiting_nurse': return 'Awaiting Nurse';
+            default: return status || '—';
+            }
+          };
 
-        const mapped = sorted.map((p) => ({
+       const mapped = sorted.map((p) => {
+        const latestStatus = normalizeStatus(p?.status); // <-- ensures string
+        const prettyStatus = prettifyStatus(latestStatus);
+
+        return {
           id: p?.id,
           hospitalId: p?.hospitalId,
           snapshot: p,
           name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
           patientId: p?.hospitalId || p?.id || '—',
-          illness: prettifyStatus(p?.status),
+          illness: prettyStatus,
           insurance: p?.hmos?.provider || '—',
-          registered: (p?.createdAt)
+          registered: p?.createdAt
             ? new Date(p.createdAt).toLocaleString([], { hour: '2-digit', minute: '2-digit' })
             : '—',
-          alert: prettifyStatus(p?.status),
-          status: (p?.status || '').toLowerCase(),
-        }));
+          alert: prettyStatus,
+          status: latestStatus.toLowerCase(), // <-- safe string now
+        };
+      });
 
         if (mounted) setItems(mapped);
       } catch (err) {
@@ -206,9 +227,10 @@ const Incoming = () => {
 
                   return visible.map((data, index) => {
                     const primary =
-                      data.status === 'awaiting_vitals' ? 'vitals' :
-                      data.status === 'awaiting_sampling' ? 'sampling' :
-                      data.status === 'awaiting_injection' ? 'injection' : '';
+                      hasStatus(data.status, PATIENT_STATUS.AWAITING_VITALS) ? 'vitals' :
+                      hasStatus(data.status, PATIENT_STATUS.AWAITING_NURSE) ? 'nurse' :
+                      hasStatus(data.status, PATIENT_STATUS.AWAITING_SAMPLING) ? 'sampling' :
+                      hasStatus(data.status, PATIENT_STATUS.AWAITING_INJECTION) ? 'injection' : '';
                     return (
                       <div
                         key={index}
@@ -230,7 +252,14 @@ const Incoming = () => {
                             <div className="space-y-1">
                               <span className="block">Insurance: {data.insurance}</span>
                               <span className="block">Registered: {data.registered}</span>
-                              <span className="block">Alert: {data.alert}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="block">Alert: {data.alert}</span>
+                                {primary && (
+                                  <span className="badge badge-primary badge-sm text-xs capitalize">
+                                    {primary}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
