@@ -60,9 +60,9 @@ const HmoDependantsSection = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                     {patient.hmos.map((hmo, index) => (
                       <div key={index} className="p-4 rounded-lg border border-base-300">
-                        <div className="text-sm font-semibold text-primary">
+                        {/* <div className="text-sm font-semibold text-primary">
                           {hmo.planName || hmo.plan || hmo.planType || 'Unknown Plan'}
-                        </div>
+                        </div> */}
                         <div className="mt-2 space-y-1">
                           <div className="text-xs text-base-content/70">
                             <span className="font-medium">Provider:</span> {hmo.provider || '—'}
@@ -71,7 +71,7 @@ const HmoDependantsSection = ({
                             <span className="font-medium">Member ID:</span> {hmo.memberId || '—'}
                           </div>
                           <div className="text-xs text-base-content/70">
-                            <span className="font-medium">Expires:</span> {hmo.expirationDate ? new Date(hmo.expirationDate).toLocaleDateString('en-US') : '—'}
+                            <span className="font-medium">Expires:</span> {hmo.expiresAt ? new Date(hmo.expiresAt).toLocaleDateString('en-US') : '—'}
                           </div>
                         </div>
                       </div>

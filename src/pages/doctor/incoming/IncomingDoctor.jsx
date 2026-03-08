@@ -27,27 +27,33 @@ const IncomingDoctor = () => {
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
         const filtered = patients.filter((p) => {
-          const status = (p?.status || "").toLowerCase();
-          return status === "awaiting_consultation" || status === "lab_completed";
+          if (!p?.status) return false;
+          const statuses = Array.isArray(p.status) ? p.status : [p.status];
+          return statuses.some(
+            (s) => ["awaiting_consultation", "lab_completed"].includes(s.toLowerCase())
+          );
         });
         const sorted = filtered.sort((a, b) => {
           const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
           return bTime - aTime;
         });
-        const prettifyStatus = (s) => (s || "").replace(/_/g, " ").replace(/^awaiting/i, "Awaiting");
+        const prettifyStatusArray = (arr) =>
+        (Array.isArray(arr) ? arr : [arr])
+          .map(s => s.replace(/_/g, " ").replace(/^awaiting/i, "Awaiting"))
+          .join(", ");
         const mapped = sorted.map((p) => ({
           id: p?.id,
           hospitalId: p?.hospitalId,
           snapshot: p,
           name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
           patientId: p?.hospitalId || p?.id || "—",
-          reason: prettifyStatus(p?.status) || "Consultation",
+          reason: prettifyStatusArray(p?.status) || "Consultation",
           insurance: p?.hmos?.provider || "—",
           registered: (p?.createdAt)
-            ? new Date(p.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })
-            : "—",
-          status: (p?.status || "").toLowerCase(),
+          ? new Date(p.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })
+          : "—",
+          status: (Array.isArray(p?.status) ? p.status.join(", ") : p?.status || "").toLowerCase(),
         }));
         if (mounted) setItems(mapped);
       } catch (err) {

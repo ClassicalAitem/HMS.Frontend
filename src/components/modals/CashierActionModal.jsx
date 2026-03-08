@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { mergePatientStatus } from '@/utils/statusUtils';
 
 const CashierActionModal = ({
   isOpen,
   onClose,
   patientId,
-  defaultStatus = 'awaiting_cashier',
+  currentStatus = [],
+  defaultStatus = [PATIENT_STATUS.AWAITING_CASHIER],
   onUpdated,
   mode = 'confirm',
   totalAmount,
@@ -22,7 +25,9 @@ const CashierActionModal = ({
     try {
       setIsSending(true);
       const statusToSend = selectedStatus || defaultStatus;
-      const promise = updatePatientStatus(patientId, statusToSend);
+      // Merge current status with new status (removes cashier-related statuses, adds new one)
+      const mergedStatus = mergePatientStatus(currentStatus, 'cashier', statusToSend);
+      const promise = updatePatientStatus(patientId, mergedStatus);
       toast.promise(promise, {
         loading: 'Sending to cashier...',
         success: 'Patient sent to cashier successfully',
@@ -74,7 +79,7 @@ const CashierActionModal = ({
             <>
               <p className="mb-3 text-sm text-base-content/70">Select the status for this patient:</p>
               <div className="space-y-2">
-                {['awaiting_cashier','awaiting_payment'].map(status => (
+                {[PATIENT_STATUS.AWAITING_CASHIER, PATIENT_STATUS.AWAITING_PAYMENT].map(status => (
                   <label key={status} className="flex items-center gap-3">
                     <input
                       type="radio"
@@ -83,7 +88,7 @@ const CashierActionModal = ({
                       checked={selectedStatus === status}
                       onChange={() => setSelectedStatus(status)}
                     />
-                    <span className="capitalize">{status.replace('awaiting_', 'Awaiting ')}</span>
+                    <span className="capitalize">{status.replace(/_/g, ' ')}</span>
                   </label>
                 ))}
               </div>

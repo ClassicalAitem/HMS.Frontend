@@ -47,9 +47,17 @@ export const getInvestigationRequestById = async (id) => {
  */
 export const getInvestigationRequestByPatientId = async (patientId) => {
   if (!patientId) throw new Error('Patient ID is required');
-  const url = `/investigation/getInvestigationRequestByPatientId/${patientId}`;
-  const response = await apiClient.get(url);
-  return response.data;
+  try {
+    const url = `/investigation/getInvestigationRequestByPatientId/${patientId}`;
+    const response = await apiClient.get(url);
+    return response.data;
+  } catch (error) {
+    // Suppress 404 errors (patient has no investigations)
+    if (error?.response?.status !== 404) {
+      console.error('investigationRequestAPI: getInvestigationRequestByPatientId error', error);
+    }
+    throw error;
+  }
 };
 
 /**

@@ -42,6 +42,7 @@ const AddDiagnosis = () => {
   const [diagnosis, setDiagnosis] = useState("");
   const [cid, setCid] = useState(null);
   const [items, setItems] = useState([]);
+  const [attachments, setAttachments] = useState([]);
 
   // Modals State
   const [activeModal, setActiveModal] = useState(null); // 'complaint', 'medical', 'surgical', 'family', 'social', 'allergy'
@@ -131,6 +132,15 @@ const AddDiagnosis = () => {
   const removeSocial = (idx) => setSocialHistory(socialHistory.filter((_, i) => i !== idx));
   const removeAllergy = (idx) => setAllergyHistory(allergyHistory.filter((_, i) => i !== idx));
 
+  const handleAttachmentsChange = (e) => {
+    const newFiles = Array.from(e.target.files || []);
+    setAttachments([...attachments, ...newFiles]);
+  };
+
+  const removeAttachment = (idx) => {
+    setAttachments(attachments.filter((_, i) => i !== idx));
+  };
+
   const onSave = async () => {
     setIsConfirmOpen(true);
   };
@@ -148,6 +158,7 @@ const AddDiagnosis = () => {
       complaintHistory: "History", 
       diagnosis: "Pending Assessment", // Or derived from a new input if required
       notes: notes,
+      attachments: attachments, // Include attachments
       complaint: complaints.map(c => {
         // Calculate total days based on unit
         let days = c.value || parseInt(c.duration) || 1;
@@ -482,6 +493,39 @@ const AddDiagnosis = () => {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
+            </div>
+          </div>
+
+          {/* File Attachments */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-4">
+              <h3 className="card-title text-lg font-semibold text-base-content mb-3">Attachments <span className="text-sm font-normal text-base-content/60">(optional)</span></h3>
+              <input
+                type="file"
+                multiple
+                accept="image/*,.pdf"
+                onChange={handleAttachmentsChange}
+                className="file-input file-input-bordered w-full"
+              />
+              {attachments.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <p className="text-sm font-medium text-base-content">Selected Files:</p>
+                  <ul className="space-y-2">
+                    {attachments.map((file, i) => (
+                      <li key={i} className="flex items-center justify-between p-2 bg-base-200/50 rounded-lg">
+                        <span className="text-sm text-base-content truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(i)}
+                          className="btn btn-ghost btn-xs text-error"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
 
