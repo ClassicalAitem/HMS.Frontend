@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { mergePatientStatus } from '@/utils/statusUtils';
 
 const PharmacyActionModal = ({
   isOpen,
   onClose,
   patientId,
-  defaultStatus = 'awaiting_pharmacy',
+  currentStatus = [],
+  defaultStatus = [PATIENT_STATUS.AWAITING_PHARMACY],
   onUpdated,
   itemsCount,
   medicationNames = [],
@@ -19,7 +22,9 @@ const PharmacyActionModal = ({
   const handleConfirm = async () => {
     try {
       setIsSending(true);
-      const promise = updatePatientStatus(patientId, defaultStatus);
+      // Merge current status with new status (removes pharmacy-related statuses, adds pharmacy status)
+      const mergedStatus = mergePatientStatus(currentStatus, 'pharmacy', defaultStatus);
+      const promise = updatePatientStatus(patientId, mergedStatus);
       toast.promise(promise, {
         loading: 'Sending to pharmacy...',
         success: 'Prescription sent to pharmacy successfully',

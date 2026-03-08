@@ -7,6 +7,8 @@ import PatientSummaryCard from "@/components/doctor/patient/PatientSummaryCard";
 import MedicalHistoryTable from "@/components/doctor/patient/MedicalHistoryTable";
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
+import LabHistoryTable from "@/components/doctor/patient/LabHistoryTable";
+import LabInvestigationRequestCard from "@/components/doctor/patient/LabInvestigationRequestCard";
 import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -14,11 +16,15 @@ import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
 import { getInventories } from "@/services/api/inventoryAPI";
+import { getInvestigationByPatientId } from "@/services/api/investigationAPI";
+import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHistoryTable";
 import CreateBillModal from "@/components/modals/CreateBillModal";
+import { FaUserMd } from "react-icons/fa";
+import SendToNurseModal from "./modals/SendToNurseModal";
 
 const PatientMedicalHistory = () => {
-  const { patientId } = useParams();
+    const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
@@ -37,6 +43,22 @@ const PatientMedicalHistory = () => {
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [inventoryData, setInventoryData] = useState([]);
+  const [serviceCharges, setServiceCharges] = useState([]);
+    const [consultation, setConsultation] = useState(null);
+  const [labRequests, setLabRequests] = useState([]);
+  const [labInvestigations, setLabInvestigations] = useState([]);
+  const [investigationsLoading, setInvestigationsLoading] = useState(false);
+  const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
+  const [additionalNotes, setAdditionalNotes] = useState("");
+  const [billDefaults, setBillDefaults] = useState([]);
+
+    const normalizeStatus = (status) => {
+  if (!status) return 'Pending';
+  if (Array.isArray(status)) {
+    return status.map(s => s.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())).join(', ');
+  }
+  return status.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+};
 
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
@@ -73,6 +95,24 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+    const patientName = useMemo(() => (
+      patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
+    ), [patient]);
+    
+  // Mapped Data
+  const complaints = consultation?.complaint || [];
+  const medicalHistory = consultation?.medicalHistory || [];
+  const surgicalHistory = consultation?.surgicalHistory || [];
+  const familyHistory = consultation?.familyHistory || [];
+  const socialHistory = consultation?.socialHistory || [];
+  const allergyHistory = consultation?.allergicHistory || [];
+  const notes = consultation?.notes || "";
+  const visitReason = consultation?.visitReason || "Not specified";
+  const diagnosis = consultation?.diagnosis || "Pending diagnosis";
+  const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
+  const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
+
+
   useEffect(() => {
     let mounted = true;
     const loadConsultations = async () => {
@@ -80,7 +120,14 @@ const PatientMedicalHistory = () => {
         const res = await getConsultations({ patientId });
         const raw = res?.data ?? res ?? [];
         const list = Array.isArray(raw) ? raw : raw?.data ?? [];
-        if (mounted) setConsultations(list);
+        if (mounted) {
+          setConsultations(list);
+          // Set the latest consultation automatically
+          if (list.length > 0) {
+            const latest = list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+            setConsultation(latest);
+          }
+        }
       } catch {
         console.error("Failed to load consultations");
       }
@@ -152,6 +199,50 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, []);
 
+  // Fetch service charges for lab investigations pricing
+  useEffect(() => {
+    let mounted = true;
+    const loadServiceCharges = async () => {
+      try {
+        const res = await getServiceCharges();
+        const rawData = res?.data ?? res;
+        const list = Array.isArray(rawData) ? rawData : (rawData?.data ?? []);
+        if (mounted) setServiceCharges(list);
+      } catch (err) {
+        console.error("Failed to load service charges", err);
+      }
+    };
+    loadServiceCharges();
+    return () => { mounted = false; };
+  }, []);
+
+  // Fetch lab investigations for this patient
+  useEffect(() => {
+    let mounted = true;
+    const loadInvestigations = async () => {
+      try {
+        setInvestigationsLoading(true);
+        const res = await getInvestigationByPatientId(patientId);
+        const rawData = res?.data ?? res;
+        let list = [];
+        if (Array.isArray(rawData)) {
+          list = rawData;
+        } else if (rawData && typeof rawData === 'object') {
+          if (Object.keys(rawData).length > 0) {
+            list = [rawData];
+          }
+        }
+        if (mounted) setLabInvestigations(list);
+      } catch (err) {
+        console.error("Failed to load lab investigations", err);
+      } finally {
+        if (mounted) setInvestigationsLoading(false);
+      }
+    };
+    if (patientId) loadInvestigations();
+    return () => { mounted = false; };
+  }, [patientId]);
+
   const latest = useMemo(() => getLatestVital(vitals), [vitals]);
 
   const sortedVitals = useMemo(() => sortVitalsByTime(vitals), [vitals]);
@@ -176,6 +267,81 @@ const PatientMedicalHistory = () => {
     });
     return inventoryDrug?.sellingPrice || null;
   };
+
+  // Helper function to find lab investigation price from service charges
+  const getLabInvestigationPrice = (testName, investigationType) => {
+    if (!testName) return 0;
+    
+    const testNameLower = testName.toLowerCase().trim();
+    const investTypeLower = (investigationType || '').toLowerCase().trim();
+    
+    // First try exact match or close match on test name
+    const exactMatch = serviceCharges.find(charge => {
+      const chargeService = (charge?.service || '').toLowerCase().trim();
+      const chargeName = (charge?.name || '').toLowerCase().trim();
+      
+      // Exact or very close match
+      return chargeService === testNameLower || 
+             chargeName === testNameLower ||
+             chargeService.includes(testNameLower) ||
+             chargeName.includes(testNameLower);
+    });
+    
+    if (exactMatch) {
+      return Number(exactMatch?.amount || exactMatch?.price || 0);
+    }
+    
+    // If no exact match and we have investigation type, try matching by type
+    if (investTypeLower) {
+      const typeMatch = serviceCharges.find(charge => {
+        const chargeService = (charge?.service || '').toLowerCase().trim();
+        const chargeName = (charge?.name || '').toLowerCase().trim();
+        const chargeCategory = (charge?.category || '').toLowerCase().trim();
+        
+        return chargeCategory.includes(investTypeLower) ||
+               chargeService.includes(investTypeLower) ||
+               chargeName.includes(investTypeLower);
+      });
+      
+      if (typeMatch) {
+        return Number(typeMatch?.amount || typeMatch?.price || 0);
+      }
+    }
+    
+    return 0;
+  };
+
+  // Helper function to check if item is within last 48 hours
+  const isWithin48Hours = (createdAt) => {
+    if (!createdAt) return false;
+    const itemTime = new Date(createdAt).getTime();
+    const now = Date.now();
+    const hours48Ms = 48 * 60 * 60 * 1000;
+    return now - itemTime < hours48Ms;
+  };
+
+  // Filter investigations to last 48 hours and exclude completed ones
+  const investigations48h = useMemo(() => 
+    Array.isArray(labInvestigations) ? labInvestigations.filter(inv => {
+      const withinTime = isWithin48Hours(inv?.createdAt);
+      const status = (inv?.status || '').toLowerCase();
+      const isNotCompleted = !status.includes('completed') && !status.includes('done');
+      return withinTime && isNotCompleted;
+    }) : [],
+    [labInvestigations]
+  );
+
+  // Filter lab results to last 48 hours
+  const labResults48h = useMemo(() => 
+    Array.isArray(labResults) ? labResults.filter(lab => isWithin48Hours(lab?.createdAt)) : [],
+    [labResults]
+  );
+
+  // Filter prescriptions to last 48 hours
+  const prescriptions48h = useMemo(() => 
+    Array.isArray(prescriptions) ? prescriptions.filter(p => isWithin48Hours(p?.createdAt)) : [],
+    [prescriptions]
+  );
 
   return (
     <div className="flex h-screen">
@@ -234,22 +400,41 @@ const PatientMedicalHistory = () => {
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
             rows={useMemo(() => (
-              Array.isArray(prescriptions) ? prescriptions.map((p) => {
-                // Calculate total price by matching each drug to inventory
-                const totalPrice = (p?.medications || []).reduce((sum, med) => {
-                  const price = getDrugPrice(med?.drugName);
-                  return sum + (Number(price) || 0);
-                }, 0);
-                return {
-                  id: p?._id || p?.id,
-                  status: p?.status || 'pending',
-                  date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
-                  medicationsCount: p?.medications?.length || 0,
-                  medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
-                  totalPrice: totalPrice > 0 ? totalPrice : null
-                };
-              }) : []
-            ), [prescriptions, inventoryData])}
+            Array.isArray(prescriptions) ? prescriptions.map((p) => {
+              const totalPrice = (p?.medications || []).reduce((sum, med) => {
+                const price = getDrugPrice(med?.drugName);
+                return sum + (Number(price) || 0);
+              }, 0);
+              return {
+                id: p?._id || p?.id,
+                status: normalizeStatus(p?.status),
+                date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
+                medicationsCount: p?.medications?.length || 0,
+                medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
+                totalPrice: totalPrice > 0 ? totalPrice : null
+              };
+            }) : []
+          ), [prescriptions, inventoryData])}
+          />
+
+          <LabInvestigationRequestCard 
+            investigations={investigations48h}
+            loading={investigationsLoading}
+          />
+
+          <LabHistoryTable
+            rows={useMemo(() => (
+              Array.isArray(labResults48h) ? labResults48h.map((lab) => ({
+                id: lab?._id || lab?.id,
+                status: lab?.status || lab?.form?.status || 'pending',
+                type: lab?.type || 'Lab',
+                date: lab?.createdAt ? new Date(lab.createdAt).toLocaleDateString("en-US") : "—",
+                tests: lab?.form?.tests || lab?.result?.map(r => r.code) || [],
+                priority: lab?.priority || 'normal'
+              })) : []
+            ), [labResults48h])}
+            loading={labLoading}
+            onViewResult={(row) => row?.id && navigate(`/dashboard/doctor/labResults/${row.id}`)}
           />
 
           <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
@@ -285,7 +470,53 @@ const PatientMedicalHistory = () => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => setIsBillModalOpen(true)}
+               onClick={() => {
+  // Include only items from last 48 hours
+  const prescriptionItems = (prescriptions48h || []).flatMap(p =>
+    (p?.medications || []).map(m => ({
+      serviceChargeId: "",
+      code: "DRUG",
+      description: m?.drugName || "Medication",
+      quantity: 1,
+      price: Number(getDrugPrice(m?.drugName)) || 0
+    }))
+  );
+
+  // Add lab investigation charges from last 48 hours - EXCLUDING COMPLETED ones
+  const investigationItems = (investigations48h || []).flatMap(inv => {
+    // Skip completed investigations - only include pending/requested/in_progress
+    const status = (inv?.status || '').toLowerCase();
+    if (status.includes('completed') || status.includes('done')) {
+      return [];
+    }
+    
+    // Handle if tests is an array of strings or objects
+    const tests = inv.tests || [];
+    if (tests.length === 0) return [];
+    
+    return tests.map((test, idx) => {
+      const testName = typeof test === 'string' ? test : (test?.name || test?.code || 'Lab Test');
+      const price = getLabInvestigationPrice(testName, inv?.type);
+      
+      return {
+        serviceChargeId: inv.id || inv._id || "",
+        code: "LAB",
+        description: `${testName} (${inv.type || 'Lab Investigation'})`,
+        quantity: 1,
+        price: price > 0 ? price : 0,
+        investigationId: inv.id || inv._id
+      };
+    });
+  });
+
+  const allItems = [...prescriptionItems, ...investigationItems];
+  if (allItems.length === 0) {
+    alert('No pending prescriptions or lab investigations from the last 48 hours');
+    return;
+  }
+  setBillDefaults(allItems);
+  setIsBillModalOpen(true);
+}}
               >
                 Send to cashier
               </button>
@@ -313,16 +544,48 @@ const PatientMedicalHistory = () => {
               </button>
               <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
             </div>
+            
             <div>
-              <button
-                className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+              <button 
+                className="btn btn-sm btn-info gap-2"
+                onClick={() => {
+                  if (!consultation) {
+                    alert('Please wait for consultation data to load or select a consultation');
+                    return;
+                  }
+                  setIsSendToNurseModalOpen(true);
+                }}
               >
-                Send to Nurse
+                <FaUserMd /> Send to Nurse
               </button>
               <div className="text-xs text-base-content/70">(assign nursing tasks)</div>
             </div>
           </div>
+
+                 <SendToNurseModal
+        isOpen={isSendToNurseModalOpen}
+        onClose={() => setIsSendToNurseModalOpen(false)}
+        consultation={consultation}
+        patient={patient}
+        prescriptions={prescriptions48h}
+        labRequests={investigations48h}
+        additionalNotes={additionalNotes}
+        patientName={patientName}
+        doctorName={doctorName}
+        consultationDate={consultationDate}
+        complaints={complaints}
+        medicalHistory={medicalHistory}
+        surgicalHistory={surgicalHistory}
+        familyHistory={familyHistory}
+        socialHistory={socialHistory}
+        allergyHistory={allergyHistory}
+        notes={notes}
+        visitReason={visitReason}
+        diagnosis={diagnosis}
+        patientId={patientId}
+        consultationId={consultation?._id || consultation?.id}
+        onSentSuccessfully={() => navigate('/dashboard/doctor/incoming')}
+       />
 
           <RecordVitalsModal
             isOpen={isRecordOpen}
@@ -356,6 +619,7 @@ const PatientMedicalHistory = () => {
             isOpen={isBillModalOpen}
             onClose={() => setIsBillModalOpen(false)}
             patientId={patientId}
+  defaultItems={billDefaults}
             onSuccess={() => {
               // Optionally refresh billing history or navigate away
             }}

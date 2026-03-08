@@ -7,6 +7,8 @@ import { fetchPatientById, clearPatientsError } from '../../../store/slices/pati
 import toast from 'react-hot-toast';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import { LabActionModal, DoctorActionModal, FrontDeskActionModal, NurseActionModal, PharmacyActionModal2, ReceiptModal} from '@/components/modals';
+import { mergePatientStatus } from '@/utils/statusUtils';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 
 const CashierPatientDetails = () => {
@@ -446,32 +448,36 @@ const CashierPatientDetails = () => {
         <NurseActionModal isOpen={isSendToNurseOpen}
                 onClose={() => setIsSendToNurseOpen(false)}
                 patientId={patient?.id || patientId}
-                defaultAction={'awaiting_vitals'}
+                defaultAction={['awaiting_vitals']}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
           <PharmacyActionModal2 isOpen={isSendToPharmacyOpen}
                 onClose={() => setIsSendToPharmacyOpen(false)}
                 patientId={patient?.id || patientId}
-                defaultAction={'awaiting_pharmacy'}
+                currentStatus={patient?.status || []}
+                defaultAction={[PATIENT_STATUS.AWAITING_PHARMACY]}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
 
           <FrontDeskActionModal isOpen={isSendToFrontDeskOpen}
                 onClose={() => setIsSendToFrontDeskOpen(false)}
                 patientId={patient?.id || patientId}
-                defaultAction={'awaiting_front_desk'}
+                currentStatus={patient?.status || []}
+                defaultAction={[PATIENT_STATUS.AWAITING_FRONT_DESK]}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
           <DoctorActionModal isOpen={isSendToDoctorOpen}
                 onClose={() => setIsSendToDoctorOpen(false)}
                 patientId={patient?.id || patientId}
-                defaultAction={'awaiting_consultation'}
+                currentStatus={patient?.status || []}
+                defaultAction={[PATIENT_STATUS.AWAITING_CONSULTATION]}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
           <LabActionModal isOpen={isSendToLabOpen}
                 onClose={() => setIsSendToLabOpen(false)}
                 patientId={patient?.id || patientId}
-                defaultAction={'awaiting_lab'}
+                currentStatus={patient?.status || []}
+                defaultAction={[PATIENT_STATUS.AWAITING_LAB]}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
 

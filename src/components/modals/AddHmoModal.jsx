@@ -19,26 +19,33 @@ const AddHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
   const addRow = () => setHmos(prev => [ ...prev, { ...emptyHmo } ]);
   const removeRow = (index) => setHmos(prev => prev.filter((_, i) => i !== index));
 
+
   const validate = () => {
     for (const h of hmos) {
-      if (!h.provider || !h.memberId || !h.plan || !h.expiresAt) {
+      if (!h.provider || !h.memberId) {
         return 'Please fill provider, memberId, plan, and expiresAt for all HMOs';
       }
     }
     return null;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const error = validate();
-    if (error) {
-      toast.error(error);
-      return;
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  const error = validate();
+  if (error) {
+    toast.error(error);
+    return;
+  }
 
-    setIsLoading(true);
-    try {
-      const promise = addHmoForPatient(patient.id, hmos);
+  // 🔥 Convert empty expiresAt to null
+  const formattedHmos = hmos.map(h => ({
+    ...h,
+    expiresAt: h.expiresAt || null
+  }));
+
+  setIsLoading(true);
+  try {
+    const promise = addHmoForPatient(patient.id, formattedHmos);
       toast.promise(promise, {
         loading: 'Adding HMO(s)...',
         success: 'HMO(s) added successfully',
@@ -106,7 +113,7 @@ const AddHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
                         className="w-full input input-bordered"
                         value={hmo.plan}
                         onChange={(e) => handleChange(index, 'plan', e.target.value)}
-                        required
+                        
                       />
                     </div>
                     <div>
@@ -126,7 +133,7 @@ const AddHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
                         className="w-full input input-bordered"
                         value={hmo.expiresAt}
                         onChange={(e) => handleChange(index, 'expiresAt', e.target.value)}
-                        required
+                        
                       />
                     </div>
                   </div>

@@ -128,7 +128,7 @@ const Registration = () => {
         lastName: formData.lastName,
         middleName: formData.middleName || undefined,
         phone: formData.phone,
-        address: formData.address,
+        address: formData.address || undefined,
         dob: formData.dob,
         gender: formData.gender,
         nextOfKin: formData.nextOfKin,
@@ -464,6 +464,7 @@ const Registration = () => {
                         onChange={handleInputChange}
                         placeholder="Enter next of kin name"
                         className="w-full input input-bordered"
+                        required
                       />
                     </div>
                     <div>
@@ -475,6 +476,7 @@ const Registration = () => {
                         onChange={handleInputChange}
                         placeholder="Enter phone number"
                         className="w-full input input-bordered"
+                        required
                       />
                     </div>
                   </div>
@@ -489,6 +491,7 @@ const Registration = () => {
                       value={formData.nextOfKin.relationship}
                       onChange={handleInputChange}
                       className="w-full select select-bordered"
+                      required
                     >
                       <option value="">Select Relationship</option>
                       <option value="spouse">Spouse</option>
