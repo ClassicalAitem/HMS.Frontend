@@ -23,6 +23,7 @@ import InjectionModals from "../incoming/modals/InjectionModals";
 import SamplingModals from "../incoming/modals/SamplingModals";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import CreateBillModal from "@/components/modals/CreateBillModal";
+import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
 import { useDispatch } from "react-redux";
 
@@ -53,6 +54,7 @@ const PatientVitalsDetails = () => {
   const [dependants, setDependants] = useState([]);
   const [dependantsLoading, setDependantsLoading] = useState(true);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
+  const [isReviewBillOpen, setIsReviewBillOpen] = useState(false);
   // Doctor's consultation data
   const [consultation, setConsultation] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
@@ -370,10 +372,11 @@ useEffect(() => {
                     <span className="text-sm text-base-content/70">None</span>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button className="btn btn-primary btn-sm" onClick={() => setIsSendDoctorOpen(true)}>Send to Doctor</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setIsCreateBillOpen(true)}>Send to Cashier</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
+                  {/* <button className="btn btn-outline btn-sm" onClick={() => setIsCreateBillOpen(true)}>Send to Cashier</button> */}
                 </div>
               </div>
             </div>
@@ -1156,7 +1159,7 @@ useEffect(() => {
             <CashierActionModal
               isOpen={isSendCashierOpen}
               onClose={() => setIsSendCashierOpen(false)}
-              patientId={patient?.id || patientId}
+              patientId={patientId}
               currentStatus={patient?.status || []}
               defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
               onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
@@ -1167,9 +1170,20 @@ useEffect(() => {
             isOpen={isCreateBillOpen}
             onClose={() => setIsCreateBillOpen(false)}
             patientId={patientId}
+            prescriptions={prescriptions}
+            investigations={investigations}
             onSuccess={() => {
               setIsSendCashierOpen(true);
             }}
+          />
+
+          <DoctorBillModal
+            isOpen={isReviewBillOpen}
+            onClose={() => setIsReviewBillOpen(false)}
+            patientId={patientId}
+            currentStatus={patient?.status || []}
+            patientLabel={`${subjectName} (${subjectHospitalId || '—'})`}
+            onSuccess={() => setIsReviewBillOpen(false)}
           />
 
           {/* Injection Modal */}
