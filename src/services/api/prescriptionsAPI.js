@@ -63,11 +63,22 @@ export const createPrescription = async (data, consultationId) => {
   }
 }
 
+export const deletePrescription = async (id) => {
+  try {
+    const response = await apiClient.delete(`/prescription/${id}`)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('prescriptionsAPI: deletePrescription error', err)
+    throw err
+  }
+}
+
 export default {
   getPrescriptions,
   getPrescriptionsForConsultation,
   getPrescriptionById,
   getPrescriptionByPatientId,
   updatePrescription,
-  createPrescription
+  createPrescription,
+  deletePrescription
 }

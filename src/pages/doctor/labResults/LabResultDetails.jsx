@@ -67,6 +67,40 @@ const LabResultDetails = () => {
     }
   }, [labResultId, investigationIdState]);
 
+  const handleDownload = (file) => {
+  if (!file.data) return;
+
+  let blob;
+  if (file.data instanceof Uint8Array) {
+    blob = new Blob([file.data], { type: file.mimetype });
+  } else if (file.data.type === 'Buffer' && Array.isArray(file.data.data)) {
+    // Handle Buffer object from backend
+    const uint8Array = new Uint8Array(file.data.data);
+    blob = new Blob([uint8Array], { type: file.mimetype });
+  } else if (typeof file.data === "string" && file.data.startsWith("data:")) {
+    // If already a data URL
+    const a = document.createElement("a");
+    a.href = file.data;
+    a.download = file.filename || "file";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  } else {
+    console.warn("Unsupported file format for download", file);
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.filename || "file";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
   const handleOpenAttachmentViewer = async (fileIndex = 0) => {
     const atts = labResult?.attachedFiles || labResult?.form?.attachments;
     if (!atts || atts.length === 0) {
@@ -159,92 +193,115 @@ const LabResultDetails = () => {
     );
   };
 
-  const displayAttachments = () => {
-    const atts = labResult?.attachedFiles || labResult?.form?.attachments;
-    if (!atts || !atts.length) return null;
+const displayAttachments = () => {
+  const atts = labResult?.attachedFiles || labResult?.form?.attachments;
+  if (!atts || !atts.length) return null;
 
-    return (
-      <div className="mb-6">
-        <h3 className="text-lg font-bold text-[#00943C] mb-4 pb-2 border-b-2 border-[#00943C] flex items-center gap-2">
-          <FaFileImage className="w-5 h-5" /> Attachments ({atts.length})
-        </h3>
-        
-        {attachedFiles.length === 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {atts.map((file, idx) => (
-              <button
+  return (
+    <div className="mb-6">
+      <h3 className="text-lg font-bold text-[#00943C] mb-4 pb-2 border-b-2 border-[#00943C] flex items-center gap-2">
+        <FaFileImage className="w-5 h-5" /> Attachments ({atts.length})
+      </h3>
+
+      {attachedFiles.length === 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {atts.map((file, idx) => (
+            <button
+              key={idx}
+              onClick={() => handleOpenAttachmentViewer(idx)}
+              disabled={isLoadingFiles}
+              className="flex items-center justify-center p-3 bg-base-200/50 rounded-lg border border-base-200 hover:border-[#00943C] hover:bg-[#00943C]/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Click to load and view"
+            >
+              <div className="flex flex-col items-center gap-1 w-full">
+                <FaFileImage className="w-6 h-6 text-[#00943C] group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium text-gray-600 group-hover:text-[#00943C] text-center truncate w-full px-1">
+                  Load File {idx + 1}
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : isLoadingFiles ? (
+        <div className="flex justify-center p-8">
+          <span className="loading loading-spinner loading-lg text-[#00943C]"></span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {attachedFiles.map((file, idx) => {
+            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || file.filename);
+
+            // Get URL for display
+            const getImageUrl = () => {
+              if (!file.data) return '';
+              if (typeof file.data === 'string') {
+                return file.data.startsWith('data:') || file.data.startsWith('http') 
+                  ? file.data 
+                  : `data:${file.mimetype};base64,${file.data}`;
+              }
+              if (file.data instanceof Uint8Array) {
+                const blob = new Blob([file.data], { type: file.mimetype });
+                return URL.createObjectURL(blob);
+              }
+              return '';
+            };
+
+            // Download handler
+            const handleDownload = () => {
+              if (!file.data) return;
+              const blob = file.data instanceof Uint8Array ? new Blob([file.data], { type: file.mimetype }) : null;
+              if (!blob) return;
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = file.name || `file-${idx + 1}`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            };
+
+            return (
+              <div
                 key={idx}
-                onClick={() => handleOpenAttachmentViewer(idx)}
-                disabled={isLoadingFiles}
-                className="flex items-center justify-center p-3 bg-base-200/50 rounded-lg border border-base-200 hover:border-[#00943C] hover:bg-[#00943C]/5 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Click to load and view"
+                className="relative group rounded-lg overflow-hidden border border-gray-300 hover:border-[#00943C] transition-all cursor-pointer"
               >
-                <div className="flex flex-col items-center gap-1 w-full">
-                  <FaFileImage className="w-6 h-6 text-[#00943C] group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-medium text-gray-600 group-hover:text-[#00943C] text-center truncate w-full px-1">
-                    Load File {idx + 1}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : isLoadingFiles ? (
-          <div className="flex justify-center p-8">
-            <span className="loading loading-spinner loading-lg text-[#00943C]"></span>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {attachedFiles.map((file, idx) => {
-              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || file.filename);
-              const getImageUrl = () => {
-                if (!file.data) return '';
-                if (typeof file.data === 'string') {
-                  return file.data.startsWith('data:') || file.data.startsWith('http') 
-                    ? file.data 
-                    : `data:${file.mimetype};base64,${file.data}`;
-                }
-                if (file.data instanceof Uint8Array) {
-                  const blob = new Blob([file.data], { type: file.mimetype });
-                  return URL.createObjectURL(blob);
-                }
-                return '';
-              };
-              
-              return (
-                <div
-                  key={idx}
-                  className="relative group rounded-lg overflow-hidden border border-gray-300 hover:border-[#00943C] transition-all cursor-pointer"
-                  onClick={() => setCurrentFileIndex(idx) || setIsAttachmentViewerOpen(true)}
-                >
-                  {isImage && getImageUrl() ? (
-                    <>
-                      <img
-                        src={getImageUrl()}
-                        alt={file.name}
-                        className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <span className="text-white text-sm font-semibold">View</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-32 bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-all">
-                      <FaFileImage className="w-10 h-10 text-gray-400" />
+                {isImage && getImageUrl() ? (
+                  <>
+                    <img
+                      src={getImageUrl()}
+                      alt={file.name}
+                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
+                      onClick={() => setCurrentFileIndex(idx) || setIsAttachmentViewerOpen(true)}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                        className="px-2 py-1 bg-white text-gray-700 text-xs font-semibold rounded"
+                      >
+                        Download
+                      </button>
+                      <span className="text-white text-sm font-semibold">View</span>
                     </div>
-                  )}
-                  <div className="p-2 bg-white border-t border-gray-300">
-                    <p className="text-xs font-medium text-gray-600 truncate" title={file.name}>
-                      {file.name || `File ${idx + 1}`}
-                    </p>
+                  </>
+                ) : (
+                  <div className="w-full h-32 bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-all">
+                    <FaFileImage className="w-10 h-10 text-gray-400" />
                   </div>
+                )}
+                <div className="p-2 bg-white border-t border-gray-300">
+                  <p className="text-xs font-medium text-gray-600 truncate" title={file.name}>
+                    {file.name || `File ${idx + 1}`}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
   if (loading) {
     return (
@@ -446,13 +503,6 @@ const LabResultDetails = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
-                <button
-                  onClick={() => setShowSendModal(true)}
-                  disabled={!effectiveInvestigationId}
-                  className={`flex-1 px-6 py-3 ${effectiveInvestigationId ? "bg-[#00943C] text-white hover:bg-[#007a31]" : "bg-gray-200 text-gray-500 cursor-not-allowed"} font-semibold rounded-lg transition-all`}
-                >
-                  Send to Doctor
-                </button>
                 <button
                   onClick={handlePrint}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
