@@ -60,10 +60,22 @@ export const updateInvestigation = async (id, data) => {
   }
 };
 
+export const deleteInvestigation = async (id) => {
+  try {
+    const response = await apiClient.delete(`/investigation/${id}`);
+    return response.data ?? response;
+  } catch (error) {
+    console.error('investigationAPI: deleteInvestigation error', error);
+    throw error;
+  }
+};
+
 export default {
   createInvestigation,
   getInvestigations,
   getInvestigationById,
   getInvestigationByPatientId,
+  getInvestigationByConsultationId,
   updateInvestigation,
+  deleteInvestigation
 };

@@ -39,12 +39,7 @@ const PharmacistPaymentRecords = () => {
         endOfToday.setHours(23, 59, 59, 999);
 
         // Filter only receipts updated/paid today
-        const todayReceipts = filteredList.filter(a => {
-          const paidDate = new Date(a.paidAt || a.updatedAt);
-          return paidDate >= startOfToday && paidDate <= endOfToday;
-        });
-
-        const mapped = todayReceipts.map((a, idx) => ({
+       const mapped = filteredList.map((a, idx) => ({
           receiptId: a.id,
           transactionId: a.reference || `Kolak-${idx + 1}`,
           name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
@@ -90,6 +85,114 @@ const PharmacistPaymentRecords = () => {
     setSelectedPayment(payment);
     setIsModalOpen(true);
   };
+
+    const generateReceiptHTML = (payment) => {
+  return `
+<html>
+<head>
+<title>Receipt - ${payment.transactionId}</title>
+
+<style>
+
+body{
+  font-family: monospace;
+  background:#fff;
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+
+.receipt{
+  width:280px;
+  border:1px dashed #ccc;
+  padding:15px;
+}
+
+h2{
+  text-align:center;
+  font-size:16px;
+  margin-bottom:10px;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  margin:4px 0;
+}
+
+.label{
+  font-weight:bold;
+}
+
+.divider{
+  border-top:1px dashed #999;
+  margin:10px 0;
+}
+
+.footer{
+  text-align:center;
+  font-size:11px;
+  margin-top:10px;
+}
+
+@media print {
+  body{
+    padding:0;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="receipt">
+
+
+
+ <img src="/src/assets/images/logo.png" 
+       alt="Kolak Hospital" 
+       style="width:80px; height:auto;" />
+<div class="divider"></div>
+
+<div class="row"><span class="label">Txn:</span> <span>${payment.transactionId}</span></div>
+<div class="row"><span class="label">Patient:</span> <span>${payment.name}</span></div>
+<div class="row"><span class="label">Amount:</span> <span>${payment.amount}</span></div>
+<div class="row"><span class="label">Method:</span> <span>${payment.paymentMethod}</span></div>
+<div class="row"><span class="label">Dept:</span> <span>${payment.paymentDestination}</span></div>
+<div class="row"><span class="label">Paid By:</span> <span>${payment.paidBy}</span></div>
+<div class="row"><span class="label">Cashier:</span> <span>${payment.cashierName}</span></div>
+<div class="row"><span class="label">Date:</span> <span>${payment.dateTime}</span></div>
+<div class="row"><span class="label">Status:</span> <span>${payment.status}</span></div>
+
+<div class="divider"></div>
+
+<div class="footer">
+Thank you for your payment
+</div>
+
+</div>
+
+</body>
+</html>
+`;
+};
+
+
+
+const handlePrintReceipt = (payment) => {
+  const receiptWindow = window.open("", "_blank");
+
+  receiptWindow.document.write(generateReceiptHTML(payment));
+  receiptWindow.document.close();
+
+  receiptWindow.focus();
+
+  setTimeout(() => {
+    receiptWindow.print();
+  }, 500);
+};
 
   const columns = useMemo(() => [
     {
@@ -153,27 +256,24 @@ const PharmacistPaymentRecords = () => {
       title: 'Actions',
       className: 'text-base-content/70',
       render: (value, row) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={() => handleViewDetails(row)}
-            className="btn btn-ghost btn-xs"
-            title="View Details"
-          >
-            <FaEye className="w-3 h-3" />
-          </button>
-          <button
-            className="btn btn-ghost btn-xs"
-            title="Download"
-          >
-            <FaDownload className="w-3 h-3" />
-          </button>
-          <button
-            className="btn btn-ghost btn-xs"
-            title="Print"
-          >
-            <FaPrint className="w-3 h-3" />
-          </button>
-        </div>
+         <div className="flex space-x-2">
+                  <button
+                    onClick={() => handleViewDetails(row)}
+                    className="btn btn-ghost btn-xs"
+                    title="View Details"
+                  >
+                    <FaEye className="w-3 h-3" />
+                  </button>
+                  
+           
+                  <button
+                  onClick={()=> handlePrintReceipt(row)}
+                    className="btn btn-ghost btn-xs"
+                    title="Print"
+                  >
+                    <FaPrint className="w-3 h-3" />
+                  </button>
+                </div>
       )
     }
   ], []);
@@ -270,8 +370,8 @@ const PharmacistPaymentRecords = () => {
       {/* Payment Details Modal */}
       {isModalOpen && selectedPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100">
-            <div className="p-6 card-body">
+            <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col">
+          <div className="p-6 card-body overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-base-content">Payment Details - {selectedPayment.transactionId}</h2>
                 <button
@@ -317,16 +417,16 @@ const PharmacistPaymentRecords = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-6">
-                <button className="btn btn-outline flex-1">
-                  <FaDownload className="w-4 h-4 mr-2" />
-                  Download Receipt
-                </button>
-                <button className="btn btn-primary flex-1">
-                  <FaPrint className="w-4 h-4 mr-2" />
-                  Print Receipt
-                </button>
-              </div>
+                        <div className="flex gap-3 mt-6"> 
+                      <button
+                        onClick={() => handlePrintReceipt(selectedPayment)}
+                        className="btn btn-primary  flex-1"
+                        title="Print"
+                      >
+                        <FaPrint className="w-4 h-4 mr-2" />
+                        Print Receipt
+                      </button>
+                        </div>
 
               {/* Edit Workflow */}
               <div className="flex gap-3 justify-end pt-4">
