@@ -68,6 +68,137 @@ const PaymentRecords = () => {
     setSelectedBilling(payment);
     setIsModalOpen(true);
   };
+  const generateReceiptHTML = (billing) => {
+
+  const items = billing.itemDetails?.map(item => `
+    <tr>
+      <td>${item.code}</td>
+      <td>${item.description}</td>
+      <td>${item.quantity}</td>
+      <td>₦ ${Number(item.price).toLocaleString()}</td>
+      <td>₦ ${Number(item.total).toLocaleString()}</td>
+    </tr>
+  `).join("");
+
+  return `
+  <html>
+  <head>
+    <title>Receipt - ${billing.billingId}</title>
+
+    <style>
+      body{
+        font-family: monospace;
+        display:flex;
+        justify-content:center;
+        padding:20px;
+      }
+
+      .receipt{
+        width:300px;
+        border:1px dashed #ccc;
+        padding:15px;
+      }
+
+      h2{
+        text-align:center;
+        font-size:16px;
+        margin-bottom:10px;
+      }
+
+      .divider{
+        border-top:1px dashed #999;
+        margin:10px 0;
+      }
+
+      table{
+        width:100%;
+        font-size:11px;
+        border-collapse:collapse;
+      }
+
+      td{
+        padding:2px 0;
+      }
+
+      .footer{
+        text-align:center;
+        font-size:11px;
+        margin-top:10px;
+      }
+
+      @media print{
+        body{margin:0;padding:0;}
+      }
+    </style>
+
+  </head>
+
+  <body>
+
+  <div class="receipt">
+
+    <h2>KOLAK HOSPITAL</h2>
+
+    <div class="divider"></div>
+
+    <div>Billing ID: ${billing.billingId}</div>
+    <div>Patient: ${billing.name}</div>
+    <div>Cashier: ${billing.cashierName}</div>
+    <div>Date: ${billing.dateTime}</div>
+
+    <div class="divider"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <td><b>Item</b></td>
+          <td></td>
+          <td><b>Qty</b></td>
+          <td><b>Price</b></td>
+          <td><b>Total</b></td>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${items}
+      </tbody>
+    </table>
+
+    <div class="divider"></div>
+
+    <div>Total: ${billing.totalAmount}</div>
+    <div>Outstanding: ${billing.outstandingBill}</div>
+
+    <div class="divider"></div>
+
+    <div class="footer">
+      Thank you for your payment
+    </div>
+
+  </div>
+
+  </body>
+  </html>
+  `;
+};
+
+
+
+
+const handlePrintReceipt = (billing) => {
+
+  const receiptWindow = window.open("", "_blank");
+
+  receiptWindow.document.write(generateReceiptHTML(billing));
+
+  receiptWindow.document.close();
+
+  receiptWindow.focus();
+
+  setTimeout(() => {
+    receiptWindow.print();
+  }, 500);
+};
 
   const columns = useMemo(() => [
     {
@@ -110,29 +241,29 @@ const PaymentRecords = () => {
       key: 'actions',
       title: 'Actions',
       className: 'text-base-content/70',
-      render: (value, row) => (
-        <div className="flex space-x-2">
-          <button
-            onClick={() => handleViewDetails(row)}
-            className="btn btn-ghost btn-xs"
-            title="View Details"
-          >
-            <FaEye className="w-3 h-3" />
-          </button>
-          <button
-            className="btn btn-ghost btn-xs"
-            title="Download"
-          >
-            <FaDownload className="w-3 h-3" />
-          </button>
-          <button
-            className="btn btn-ghost btn-xs"
-            title="Print"
-          >
-            <FaPrint className="w-3 h-3" />
-          </button>
-        </div>
-      )
+   render: (value, row) => (
+  <div className="flex space-x-2">
+
+    <button
+      onClick={() => handleViewDetails(row)}
+      className="btn btn-ghost btn-xs"
+      title="View Details"
+    >
+      <FaEye className="w-3 h-3" />
+    </button>
+
+ 
+
+    <button
+      onClick={() => handlePrintReceipt(row)}
+      className="btn btn-ghost btn-xs"
+      title="Print"
+    >
+      <FaPrint className="w-3 h-3" />
+    </button>
+
+  </div>
+)
     }
   ], []);
 
@@ -224,8 +355,8 @@ const PaymentRecords = () => {
       {/* Payment Details Modal */}
       {isModalOpen && selectedBilling && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100">
-            <div className="p-6 card-body">
+          <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col">
+            <div className="p-6 card-body overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-base-content">Billing Details - {selectedBilling.billingId}</h2>
                 <button
@@ -301,14 +432,15 @@ const PaymentRecords = () => {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button className="btn btn-outline flex-1">
-                  <FaDownload className="w-4 h-4 mr-2" />
-                  Download Receipt
-                </button>
-                <button className="btn btn-primary flex-1">
-                  <FaPrint className="w-4 h-4 mr-2" />
-                  Print Receipt
-                </button>
+              
+
+<button
+  onClick={() => handlePrintReceipt(selectedBilling)}
+  className="btn btn-primary flex-1"
+>
+  <FaPrint className="w-4 h-4 mr-2" />
+  Print Receipt
+</button>
               </div>
             </div>
           </div>
