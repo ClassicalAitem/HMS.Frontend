@@ -25,19 +25,69 @@ const AttachmentViewerModal = ({ isOpen, onClose, attachments = [], initialIndex
     setCurrentIndex((prev) => (prev === attachments.length - 1 ? 0 : prev + 1));
   };
 
-  const handleDownload = () => {
-    if (!currentAttachment?.data) return;
-    
-    const blob = new Blob([currentAttachment.data], { type: currentAttachment.mimetype });
+const handleDownload = (file) => {
+  if (!file.data) return;
+
+  let blob;
+  if (file.data instanceof Uint8Array) {
+    blob = new Blob([file.data], { type: file.mimetype });
+  } else if (file.data.type === 'Buffer' && Array.isArray(file.data.data)) {
+    // Handle Buffer object from backend
+    const uint8Array = new Uint8Array(file.data.data);
+    blob = new Blob([uint8Array], { type: file.mimetype });
+  } else if (typeof file.data === "string" && file.data.startsWith("data:")) {
+    // Already a data URL
+    blob = dataURLtoBlob(file.data);
+  } else {
+    console.warn("Unsupported file format", file);
+    return;
+  }
+
+  // Convert .webp to .png if needed
+  if (file.mimetype === "image/webp") {
+    const img = new Image();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = currentAttachment.name || currentAttachment.filename || 'attachment';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+    img.src = url;
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+
+      canvas.toBlob((pngBlob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(pngBlob);
+        a.download = (file.filename?.replace(/\.webp$/i, ".png")) || "file.png";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, "image/png");
+
+      URL.revokeObjectURL(url);
+    };
+
+    return;
+  }
+
+  // Otherwise, download as is
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = file.filename || "file";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Helper: convert base64 dataURL to Blob
+const dataURLtoBlob = (dataURL) => {
+  const arr = dataURL.split(",");
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
+};
 
   const getFileIcon = () => {
     if (isPdf) return <FaFilePdf className="w-16 h-16 text-red-500" />;
@@ -136,9 +186,9 @@ const AttachmentViewerModal = ({ isOpen, onClose, attachments = [], initialIndex
 
               <div className="flex gap-2">
                 <button
-                  onClick={handleDownload}
-                  className="btn btn-ghost btn-sm gap-2"
-                  title="Download attachment"
+                  onClick={(e) => { e.stopPropagation(); handleDownload(currentAttachment); }}
+    className="bg-white p-1 rounded hover:bg-gray-100 border"
+    title="Download"
                 >
                   <IoDownload className="w-4 h-4" />
                 </button>
