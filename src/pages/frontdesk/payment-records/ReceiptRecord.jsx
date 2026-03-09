@@ -27,8 +27,8 @@ const FrontDeskPaymentRecords = () => {
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
 
-        const frontdeskDestinations = ['form'];
-        const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
+        // const frontdeskDestinations = ['form'];
+        // const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
 
         // Get start of today (midnight local time)
         const startOfToday = new Date();
@@ -38,25 +38,27 @@ const FrontDeskPaymentRecords = () => {
         const endOfToday = new Date();
         endOfToday.setHours(23, 59, 59, 999);
 
-        // Filter only receipts updated/paid today
-        const todayReceipts = filteredList.filter(a => {
-          const paidDate = new Date(a.paidAt || a.updatedAt);
-          return paidDate >= startOfToday && paidDate <= endOfToday;
-        });
 
-        const mapped = todayReceipts.map((a, idx) => ({
-          receiptId: a.id,
-          transactionId: a.reference || `Kolak-${idx + 1}`,
-          name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
-          paymentMethod: a.paymentMethod,
-          paymentDestination: a.paymentDestination || 'N/A',
-          paidBy: a.paidBy || 'N/A',
-          status: a.status || 'pending',
-          amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: new Date(a.paidAt).toLocaleString(),
-          cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
-        }));
-        setPaymentRecords(mapped);
+console.log("All list:", list.map(r => r.paymentDestination));
+
+       // Optional: filter by frontdeskDestinations if you want
+const frontdeskDestinations = ['form', 'consultation', 'laboratory', 'pharmacy', 'admission'];
+const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
+
+const mapped = filteredList.map((a, idx) => ({
+  receiptId: a.id,
+  transactionId: a.reference || `Kolak-${idx + 1}`,
+  name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
+  paymentMethod: a.paymentMethod,
+  paymentDestination: a.paymentDestination || 'N/A',
+  paidBy: a.paidBy || 'N/A',
+  status: a.status || 'pending',
+  amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
+  dateTime: new Date(a.paidAt || a.updatedAt).toLocaleString(),
+  cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
+}));
+
+setPaymentRecords(mapped);
       } finally {
         setIsLoading(false);
       }
@@ -90,6 +92,115 @@ const FrontDeskPaymentRecords = () => {
     setSelectedPayment(payment);
     setIsModalOpen(true);
   };
+
+const generateReceiptHTML = (payment) => {
+  return `
+<html>
+<head>
+<title>Receipt - ${payment.transactionId}</title>
+
+<style>
+
+body{
+  font-family: monospace;
+  background:#fff;
+  display:flex;
+  justify-content:center;
+  padding:20px;
+}
+
+.receipt{
+  width:280px;
+  border:1px dashed #ccc;
+  padding:15px;
+}
+
+h2{
+  text-align:center;
+  font-size:16px;
+  margin-bottom:10px;
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  margin:4px 0;
+}
+
+.label{
+  font-weight:bold;
+}
+
+.divider{
+  border-top:1px dashed #999;
+  margin:10px 0;
+}
+
+.footer{
+  text-align:center;
+  font-size:11px;
+  margin-top:10px;
+}
+
+@media print {
+  body{
+    padding:0;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="receipt">
+
+
+
+ <img src="/src/assets/images/logo.png" 
+       alt="Kolak Hospital" 
+       style="width:80px; height:auto;" />
+<div class="divider"></div>
+
+<div class="row"><span class="label">Txn:</span> <span>${payment.transactionId}</span></div>
+<div class="row"><span class="label">Patient:</span> <span>${payment.name}</span></div>
+<div class="row"><span class="label">Amount:</span> <span>${payment.amount}</span></div>
+<div class="row"><span class="label">Method:</span> <span>${payment.paymentMethod}</span></div>
+<div class="row"><span class="label">Dept:</span> <span>${payment.paymentDestination}</span></div>
+<div class="row"><span class="label">Paid By:</span> <span>${payment.paidBy}</span></div>
+<div class="row"><span class="label">Cashier:</span> <span>${payment.cashierName}</span></div>
+<div class="row"><span class="label">Date:</span> <span>${payment.dateTime}</span></div>
+<div class="row"><span class="label">Status:</span> <span>${payment.status}</span></div>
+
+<div class="divider"></div>
+
+<div class="footer">
+Thank you for your payment
+</div>
+
+</div>
+
+</body>
+</html>
+`;
+};
+
+
+
+const handlePrintReceipt = (payment) => {
+  const receiptWindow = window.open("", "_blank");
+
+  receiptWindow.document.write(generateReceiptHTML(payment));
+  receiptWindow.document.close();
+
+  receiptWindow.focus();
+
+  setTimeout(() => {
+    receiptWindow.print();
+  }, 500);
+};
+
 
   const columns = useMemo(() => [
     {
@@ -161,13 +272,10 @@ const FrontDeskPaymentRecords = () => {
           >
             <FaEye className="w-3 h-3" />
           </button>
+          
+   
           <button
-            className="btn btn-ghost btn-xs"
-            title="Download"
-          >
-            <FaDownload className="w-3 h-3" />
-          </button>
-          <button
+          onClick={()=> handlePrintReceipt(row)}
             className="btn btn-ghost btn-xs"
             title="Print"
           >
@@ -318,14 +426,17 @@ const FrontDeskPaymentRecords = () => {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button className="btn btn-outline flex-1">
-                  <FaDownload className="w-4 h-4 mr-2" />
-                  Download Receipt
-                </button>
-                <button className="btn btn-primary flex-1">
-                  <FaPrint className="w-4 h-4 mr-2" />
-                  Print Receipt
-                </button>
+      
+      
+
+            <button
+              onClick={() => handlePrintReceipt(selectedPayment)}
+              className="btn btn-ghost btn-xs"
+              title="Print"
+            >
+              <FaPrint className="w-4 h-4 mr-2" />
+              Print Receipt
+            </button>
               </div>
 
               {/* Edit Workflow */}

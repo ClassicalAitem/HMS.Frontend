@@ -10,9 +10,11 @@ import AddDiagnosisModal from "./modals/AddDiagnosisModal";
 import OrderInvestigationModal from "./modals/OrderInvestigationModal";
 import SendToNurseModal from "./modals/SendToNurseModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
-
 import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
 import { getInvestigationByConsultationId } from "@/services/api/investigationAPI";
+import { updateInvestigation, deleteInvestigation } from "@/services/api/investigationAPI";
+import { updatePrescription, deletePrescription } from "@/services/api/prescriptionsAPI";
+import { FaTrash, FaEdit } from "react-icons/fa";
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -23,8 +25,10 @@ const ViewConsultation = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState(null);
-  const [patient, setPatient] = useState(null);
-  const [prescriptions, setPrescriptions] = useState([]);
+  const [patient, setPatient] = useState(null);const [prescriptions, setPrescriptions] = useState(() => {
+  const saved = localStorage.getItem('currentPrescriptions');
+  return saved ? JSON.parse(saved) : [];
+});
   const [labRequests, setLabRequests] = useState([]); // Placeholder for future lab data
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
@@ -34,6 +38,7 @@ const ViewConsultation = () => {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+const [editingLab, setEditingLab] = useState(null);
 
   const loadData = async () => {
     try {
@@ -96,6 +101,61 @@ const ViewConsultation = () => {
       setLoading(false);
     }
   };
+
+  // ================= LAB INVESTIGATION =================
+
+const handleDeleteLab = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this lab investigation?")) return;
+
+  try {
+    await deleteInvestigation(id);
+    await loadData();
+  } catch (error) {
+    console.error("Error deleting investigation", error);
+  }
+};
+
+const handleEditLab = async (lab, e) => {
+   e?.preventDefault();
+  try {
+    const updatedData = {
+      status: lab.status === "pending" ? "in_progress" : "pending"
+    };
+
+    await updateInvestigation(lab._id, updatedData);
+    await loadData();
+  } catch (error) {
+    console.error("Error updating investigation", error);
+  }
+};
+
+
+// ================= PRESCRIPTION =================
+
+const handleDeletePrescription = async (id) => {
+  if (!window.confirm("Delete this prescription?")) return;
+
+  try {
+    await deletePrescription(id);
+    await loadData();
+  } catch (error) {
+    console.error("Error deleting prescription", error);
+  }
+};
+
+const handleEditPrescription = async (pres, e) => {
+   e?.preventDefault();
+  try {
+    const updatedData = {
+      status: pres.status === "pending" ? "active" : "pending"
+    };
+
+    await updatePrescription(pres._id, updatedData);
+    await loadData();
+  } catch (error) {
+    console.error("Error updating prescription", error);
+  }
+};
 
   const handleOpenAttachmentViewer = async (fileIndex = 0) => {
     if (!consultation?.attachedFileIds || consultation.attachedFileIds.length === 0) {
@@ -227,16 +287,17 @@ const ViewConsultation = () => {
         consultationId={consultationId}
         onDiagnosisAdded={loadData}
       />
-      <OrderInvestigationModal 
-        isOpen={isInvestigationModalOpen}
-        onClose={() => setIsInvestigationModalOpen(false)}
-        patientId={patientId}
-        consultationId={consultationId}
-        onOrderCreated={() => {
-           // Optional: Reload data or show success notification
-           console.log("Investigation ordered");
-        }} 
-        />
+<OrderInvestigationModal
+  isOpen={isInvestigationModalOpen}
+  onClose={() => {
+    setIsInvestigationModalOpen(false);
+    setEditingLab(null);
+  }}
+  patientId={patientId}
+  consultationId={consultationId}
+  investigation={editingLab}
+  onOrderCreated={loadData}
+/>
 
        <SendToNurseModal
         isOpen={isSendToNurseModalOpen}
@@ -490,9 +551,7 @@ const ViewConsultation = () => {
                       <button 
                         className="btn btn-sm btn-primary gap-2"
                         onClick={() => {
-                          navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, {
-                             state: { from: fromIncoming ? "incoming" : "patients" } 
-                          });
+                       navigate(`/dashboard/doctor/write-prescription/${patientId}/${consultationId}`);
                         }}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
@@ -517,27 +576,50 @@ const ViewConsultation = () => {
                       {labRequests.length > 0 ? (
                         <div className="grid gap-3">
                      {labRequests.map((lab, idx) => (
-                            <div key={idx} className="border border-base-200 rounded-lg p-3 hover:shadow-sm transition-shadow bg-base-50">
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-2">
-                                  <span className={`badge ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'} badge-sm`}>
-                                   {lab.status.replace('_', ' ')}
-                                  </span>
-                                  <span className="text-xs text-base-content/50">
-                                    Requested {new Date(lab.createdAt).toLocaleDateString()}
-                                  </span>
-                                  {lab.priority === 'urgent' && <span className="badge badge-error badge-outline badge-xs">Urgent</span>}
-                                </div>
-                              </div>
-                              <div className="space-y-1">
-                                {lab.tests?.map((test, tIdx) => (
-                                  <div key={tIdx} className="flex items-center gap-2 text-sm">
-                                    <span className="font-medium text-base-content">{test.name}</span>
-                                    {test.code && <span className="text-xs text-base-content/50">({test.code})</span>}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                        <div className="flex justify-between items-start mb-2">
+
+                      <div className="flex items-center gap-2">
+                        <span className={`badge ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'} badge-sm`}>
+                          {lab.status.replace('_', ' ')}
+                        </span>
+
+                        <span className="text-xs text-base-content/50">
+                          Requested {new Date(lab.createdAt).toLocaleDateString()}
+                        </span>
+
+                        {lab.priority === 'urgent' && (
+                          <span className="badge badge-error badge-outline badge-xs">
+                            Urgent
+                          </span>
+                        )}
+                      </div>
+
+
+                          {/* ACTION BUTTONS */}
+                          <div className="flex gap-2">
+
+                    <button
+  type="button"
+  className="btn btn-xs btn-ghost text-warning"
+  onClick={() => {
+    setEditingLab(lab);
+    setIsInvestigationModalOpen(true);
+  }}
+>
+  <FaEdit />
+</button>
+
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost text-error"
+                    onClick={() => handleDeleteLab(lab._id)}
+                  >
+                    <FaTrash />
+                  </button>
+
+                          </div>
+
+                        </div>
                           ))}
                         </div>
                       ) : (
@@ -560,15 +642,41 @@ const ViewConsultation = () => {
                         <div className="grid gap-3">
                           {recentPrescriptions.map((pres, idx) => (
                             <div key={idx} className="border border-base-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
-                              <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-2">
+                           <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+
                                   <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}>
                                     {pres.status}
                                   </span>
+
                                   <span className="text-xs text-base-content/50">
                                     Ordered {new Date(pres.createdAt).toLocaleDateString()}
                                   </span>
+
                                 </div>
+
+
+                                {/* ACTION BUTTONS */}
+                                <div className="flex gap-2">
+
+                                <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-warning"
+                                onClick={() => handleEditPrescription(pres)}
+                              >
+                                <FaEdit />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-error"
+                                onClick={() => handleDeletePrescription(pres._id)}
+                              >
+                                <FaTrash />
+                              </button>
+
+                                </div>
+
                               </div>
                               <div className="space-y-1">
                                 {pres.medications?.map((med, mIdx) => (
