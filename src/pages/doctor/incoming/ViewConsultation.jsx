@@ -551,7 +551,7 @@ const handleEditPrescription = async (pres, e) => {
                       <button 
                         className="btn btn-sm btn-primary gap-2"
                         onClick={() => {
-                       navigate(`/dashboard/doctor/write-prescription/${patientId}/${consultationId}`);
+                       navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { consultationId, patientId } });
                         }}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
