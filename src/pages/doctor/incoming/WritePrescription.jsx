@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, get } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Header } from '@/components/common';
 import Sidebar from '@/components/doctor/dashboard/Sidebar';
 import { getConsultationById } from '@/services/api/consultationAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
-import { createPrescription } from '@/services/api/prescriptionsAPI';
+import { createPrescription, getPrescriptionsForConsultation, updatePrescription } from '@/services/api/prescriptionsAPI';
 import { IoIosCloseCircleOutline, IoMdAdd, IoMdTrash } from 'react-icons/io';
 import { FaPrescriptionBottleAlt, FaSyringe, FaPills, FaNotesMedical, FaFileMedicalAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -53,6 +53,23 @@ const [drugList, setDrugList] = useState([]);
 const [drugDropdownIndex, setDrugDropdownIndex] = useState(null);
 const [drugSearch, setDrugSearch] = useState("");
 const drugWrapperRef = useRef(null);
+const [prescriptions, setPrescriptions] = useState([]);
+
+useEffect(() => {
+  const loadPrescriptions = async () => {
+    try {
+      const res = await getPrescriptionsForConsultation(consultationId);
+      const rawData = res?.data ?? res;
+      setPrescriptions(Array.isArray(rawData) ? rawData : [rawData]);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  loadPrescriptions();
+}, [consultationId]);
+
+const editingPrescription = location?.state?.prescription;
+const isEdit = !!editingPrescription;
   
   const { register, control, setValue, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
@@ -74,6 +91,24 @@ const drugWrapperRef = useRef(null);
     control,
     name: "medications"
   });
+  useEffect(() => {
+  if (editingPrescription) {
+
+    const meds = editingPrescription.medications.map((med) => ({
+      medicationType: med.medicationType || 'oral',
+      drugName: med.drugName || '',
+      dosage: med.dosage || '',
+      frequency: med.frequency || '',
+      duration: med.duration || '',
+      instructions: med.instructions || '',
+      dosesGiven: med.dosesGiven || 0,
+      injectionStatus: med.injectionStatus || 'pending'
+    }));
+
+    setValue("medications", meds);
+
+  }
+}, [editingPrescription, setValue]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -103,38 +138,64 @@ const drugWrapperRef = useRef(null);
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  const onSubmit = async (data) => {
-    setSaving(true);
-    try {
-      const payload = {
-        patientId,
-        consultationId, // Add consultationId to link prescription to consultation
-        medications: data.medications.map(med => {
-          // eslint-disable-next-line no-unused-vars
-          const { _selectedDrug, ...medData } = med;
-          return {
-            ...medData,
-            // Convert empty instructions to undefined to avoid sending empty strings if backend disallows it
-            instructions: medData.instructions ? medData.instructions : undefined,
-            // Ensure injection specific fields are handled correctly
-            dosesGiven: medData.medicationType === 'injection' ? Number(medData.dosesGiven) : undefined,
-            injectionStatus: medData.medicationType === 'injection' ? medData.injectionStatus : undefined
-          };
-        }),
-        status: 'pending'
-      };
+const onSubmit = async (data) => {
+  setSaving(true);
 
-      console.log("Submitting prescription payload:", payload);
+  try {
+
+    const payload = {
+      patientId,
+      consultationId,
+      medications: data.medications.map((med) => {
+        const { _selectedDrug, ...medData } = med;
+
+        return {
+          ...medData,
+          instructions: medData.instructions || undefined,
+          dosesGiven:
+            medData.medicationType === "injection"
+              ? Number(medData.dosesGiven)
+              : undefined,
+          injectionStatus:
+            medData.medicationType === "injection"
+              ? medData.injectionStatus
+              : undefined
+        };
+      }),
+      status: editingPrescription?.status || "pending"
+    };
+
+    if (isEdit) {
+
+      await updatePrescription(editingPrescription._id, payload);
+
+      toast.success("Prescription updated successfully");
+
+    } else {
+
       await createPrescription(payload, consultationId);
-      toast.success("Prescription created successfully!");
-      navigate(`/dashboard/doctor/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } });
-    } catch (error) {
-      console.error("Error creating prescription:", error);
-      toast.error(error.response?.data?.message || "Failed to create prescription");
-    } finally {
-      setSaving(false);
+
+      toast.success("Prescription created successfully");
+
     }
-  };
+
+    navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+      state: { from: fromIncoming ? "incoming" : "patients" }
+    });
+
+  } catch (error) {
+
+    console.error("Prescription error:", error);
+
+    toast.error(
+      error.response?.data?.message ||
+      "Failed to save prescription"
+    );
+
+  } finally {
+    setSaving(false);
+  }
+};
 
   useEffect(() => {
 
@@ -241,7 +302,7 @@ useEffect(() => {
                 <FaPrescriptionBottleAlt className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-base-content">Write Prescription</h1>
+                <h1 className="text-xl font-bold text-base-content">{isEdit ? "Update Prescription" : "Write Prescription"}</h1>
                 <p className="text-sm text-base-content/70">
                   Patient: <span className="font-medium text-primary">{patientName}</span>
                 </p>
