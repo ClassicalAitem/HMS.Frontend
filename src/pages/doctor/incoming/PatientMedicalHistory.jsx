@@ -619,7 +619,7 @@ const PatientMedicalHistory = () => {
             isOpen={isBillModalOpen}
             onClose={() => setIsBillModalOpen(false)}
             patientId={patientId}
-  defaultItems={billDefaults}
+            defaultItems={billDefaults}
             onSuccess={() => {
               // Optionally refresh billing history or navigate away
             }}
