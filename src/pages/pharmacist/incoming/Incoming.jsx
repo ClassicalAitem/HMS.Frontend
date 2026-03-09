@@ -21,15 +21,21 @@ const Incoming = () => {
       try {
         const res = await getPatients()
         const list = Array.isArray(res?.data) ? res.data : []
-        const statuses = new Set(['awaiting_pharmacy', 'pharmacy_completed'])
-        const filtered = list.filter((p) => statuses.has(String(p?.status || '').toLowerCase()))
+       const statuses = new Set(['awaiting_pharmacy', 'pharmacy_completed'])
+
+const filtered = list.filter((p) => {
+  const statusArray = Array.isArray(p?.status) ? p.status : [p?.status]
+  return statusArray.some(s => statuses.has(String(s).toLowerCase()))
+})
         const mapped = filtered.map((p) => ({
           id: p?.id || p?._id || p?.patientId,
           snapshot: p,
           name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
           patientId: p?.id || p?._id || p?.hospitalId || '—',
           profilePicture: p?.profilePicture || p?.photo || null,
-          status: p?.status || '—',
+          status: Array.isArray(p?.status)
+  ? p.status.find(s => s.toLowerCase().includes('pharmacy')) || p.status[0]
+  : p?.status || '—',
           updatedAt: p?.updatedAt || p?.createdAt,
         }))
         if (mounted) setPatients(mapped)
