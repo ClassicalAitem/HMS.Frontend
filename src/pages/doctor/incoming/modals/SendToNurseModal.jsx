@@ -7,8 +7,6 @@ import { updatePatientStatus } from '@/services/api/patientsAPI';
 const SendToNurseModal = ({
   isOpen,
   onClose,
-  consultation,
-  patient,
   prescriptions,
   labRequests,
   additionalNotes,
@@ -16,16 +14,10 @@ const SendToNurseModal = ({
   doctorName,
   consultationDate,
   complaints,
-  medicalHistory,
-  surgicalHistory,
-  familyHistory,
-  socialHistory,
-  allergyHistory,
   notes,
   visitReason,
   diagnosis,
   patientId,
-  consultationId,
   onSentSuccessfully
 }) => {
   const [isSending, setIsSending] = useState(false);
@@ -202,110 +194,7 @@ const SendToNurseModal = ({
             </div>
           </div>
 
-          {/* Medical History */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="card bg-base-100 shadow-sm border border-base-200">
-              <div className="card-body p-4">
-                <div className="flex items-center gap-2 mb-4 text-primary">
-                  <FaHistory />
-                  <h3 className="font-bold text-sm tracking-wider">Medical History</h3>
-                </div>
-                {medicalHistory.length > 0 ? (
-                  <ul className="space-y-2">
-                    {medicalHistory.map((item, idx) => (
-                      <li key={idx} className="text-sm border-b border-base-200 last:border-0 pb-1 last:pb-0">
-                        <span className="font-medium">{typeof item === 'object' ? item.title || item.name : item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-base-content/50 italic">None recorded</p>
-                )}
-              </div>
-            </div>
-
-            <div className="card bg-base-100 shadow-sm border border-base-200">
-              <div className="card-body p-4">
-                <div className="flex items-center gap-2 mb-4 text-secondary">
-                  <FaSyringe />
-                  <h3 className="font-bold text-sm tracking-wider">Surgical History</h3>
-                </div>
-                {surgicalHistory.length > 0 ? (
-                  <ul className="space-y-2">
-                    {surgicalHistory.map((item, idx) => (
-                      <li key={idx} className="text-sm border-b border-base-200 last:border-0 pb-1 last:pb-0">
-                        <span className="font-medium">{typeof item === 'object' ? item.procedureName || item.procedure : item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-base-content/50 italic">None recorded</p>
-                )}
-              </div>
-            </div>
-
-            <div className="card bg-base-100 shadow-sm border border-base-200">
-              <div className="card-body p-4">
-                <div className="flex items-center gap-2 mb-4 text-info">
-                  <FaUsers />
-                  <h3 className="font-bold text-sm tracking-wider">Family History</h3>
-                </div>
-                {familyHistory.length > 0 ? (
-                  <ul className="space-y-2">
-                    {familyHistory.map((item, idx) => (
-                      <li key={idx} className="text-sm border-b border-base-200 last:border-0 pb-1 last:pb-0">
-                        <span className="font-medium">{typeof item === 'object' ? item.relation : item}</span>
-                        <span className="text-base-content/70">: {typeof item === 'object' ? item.condition : ''}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-base-content/50 italic">None recorded</p>
-                )}
-              </div>
-            </div>
-
-            <div className="card bg-base-100 shadow-sm border border-base-200">
-              <div className="card-body p-4">
-                <div className="flex items-center gap-2 mb-4 text-success">
-                  <FaUsers />
-                  <h3 className="font-bold text-sm tracking-wider">Social History</h3>
-                </div>
-                {socialHistory.length > 0 ? (
-                  <ul className="space-y-2">
-                    {socialHistory.map((item, idx) => (
-                      <li key={idx} className="text-sm border-b border-base-200 last:border-0 pb-1 last:pb-0">
-                        <span className="font-medium">{typeof item === 'object' ? item.title || item.habit : item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-base-content/50 italic">None recorded</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Allergies */}
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body p-4">
-              <div className="flex items-center gap-2 mb-4 text-error">
-                <FaAllergies />
-                <h3 className="font-bold text-sm tracking-wider">Allergies</h3>
-              </div>
-              {allergyHistory.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {allergyHistory.map((item, idx) => (
-                    <div key={idx} className="badge badge-error badge-outline">
-                      <span className="font-medium">{typeof item === 'object' ? item.allergen : item}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-base-content/50 italic">None recorded</p>
-              )}
-            </div>
-          </div>
+     
 
         </div>
 
