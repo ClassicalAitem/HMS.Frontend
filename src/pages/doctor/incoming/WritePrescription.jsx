@@ -593,7 +593,7 @@ useEffect(() => {
                     className={`btn btn-primary px-8 ${saving ? 'loading' : ''}`}
                     disabled={saving}
                   >
-                    Create Prescription
+                   {isEdit ? "Update Prescription" : "Create Prescription"}
                   </button>
                 </div>
               </form>
