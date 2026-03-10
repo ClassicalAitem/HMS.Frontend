@@ -254,11 +254,7 @@ const normalizeStatus = (status) => {
                               <span className="block">Registered: {data.registered}</span>
                               <div className="flex items-center gap-2">
                                 <span className="block">Alert: {data.alert}</span>
-                                {primary && (
-                                  <span className="badge badge-primary badge-sm text-xs capitalize">
-                                    {primary}
-                                  </span>
-                                )}
+                                
                               </div>
                             </div>
                           </div>

@@ -65,13 +65,17 @@ const NurseDashboard = () => {
         // Update patients map for name resolution across the dashboard
         const map = buildPatientsMap(patients);
         if (mounted) setPatientsById(map);
-        const statuses = new Set([
+        const nurseStatuses = new Set([
           "awaiting_injection",
           "awaiting_sampling",
           "awaiting_vitals",
           "awaiting_nurse",
         ]);
-        const filtered = patients.filter((p) => statuses.has((p?.status || "").toLowerCase()));
+        const filtered = patients.filter((p) => {
+          if (!p?.status) return false;
+          const list = Array.isArray(p.status) ? p.status : [p.status];
+          return list.some(s => nurseStatuses.has(String(s).toLowerCase()));
+        });
 
         // Sort by updatedAt or createdAt desc if available
         const sorted = filtered.sort((a, b) => {

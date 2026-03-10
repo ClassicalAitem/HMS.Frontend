@@ -26,12 +26,20 @@ const IncomingDoctor = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
+        
+        // only include statuses relevant to doctors
+        const doctorStatuses = new Set([
+          'awaiting_consultation',
+          'awaiting_doctor',
+          'in_consultation',
+          'consultation_completed',
+          'awaiting_surgery',
+        ]);
+
         const filtered = patients.filter((p) => {
           if (!p?.status) return false;
           const statuses = Array.isArray(p.status) ? p.status : [p.status];
-          return statuses.some(
-            (s) => ["awaiting_consultation", "lab_completed"].includes(s.toLowerCase())
-          );
+          return statuses.some(s => doctorStatuses.has(String(s).toLowerCase()));
         });
         const sorted = filtered.sort((a, b) => {
           const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
@@ -40,6 +48,7 @@ const IncomingDoctor = () => {
         });
         const prettifyStatusArray = (arr) =>
         (Array.isArray(arr) ? arr : [arr])
+          .filter(s => doctorStatuses.has(String(s).toLowerCase()))
           .map(s => s.replace(/_/g, " ").replace(/^awaiting/i, "Awaiting"))
           .join(", ");
         const mapped = sorted.map((p) => ({
