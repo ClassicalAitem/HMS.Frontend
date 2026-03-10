@@ -127,7 +127,7 @@ const OrderInvestigationModal = ({
         type: "lab",
         tests: data.tests,
         priority: data.priority,
-        status: investigation?.status || "pending"
+        status: investigation?.status || "in_progress"
       };
 
       if (isEdit) {
