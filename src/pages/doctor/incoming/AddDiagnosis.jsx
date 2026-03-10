@@ -154,9 +154,9 @@ const AddDiagnosis = () => {
     // Construct payload matching the new API documentation
     const payload = {
       patientId,
-      visitReason: "Consultation", // This could be a form field if needed, defaulting for now
-      complaintHistory: "History", 
-      diagnosis: "Pending Assessment", // Or derived from a new input if required
+      visitReason: visitReason, // This could be a form field if needed, defaulting for now
+      complaintHistory: historyOfPresentingComplaint, 
+      diagnosis: "Pending Diagnosis", // Or derived from a new input if required
       notes: notes,
       attachments: attachments, // Include attachments
       complaint: complaints.map(c => {

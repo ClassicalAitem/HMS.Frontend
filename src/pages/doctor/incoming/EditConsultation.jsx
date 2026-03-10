@@ -194,7 +194,7 @@ const EditConsultation = () => {
     // construct payload same as create but patch instead
     const payload = {
       patientId,
-      visitReason: visitReason || "Consultation",
+      visitReason: visitReason,
       complaintHistory: historyOfPresentingComplaint || "",
       diagnosis: diagnosis || "",
       notes: notes,
