@@ -381,7 +381,7 @@ const handleEditPrescription = async (pres, e) => {
                       <FaNotesMedical className="text-primary w-5 h-5" />
                       <h3 className="font-bold text-lg text-base-content">Consultation Overview</h3>
                     </div>
-                    {(diagnosis === "Pending Assessment" || diagnosis === "Pending diagnosis") && (
+                    {( diagnosis === "Pending diagnosis") && (
                       <button 
                         className="btn btn-sm btn-outline btn-success gap-2"
                         onClick={() => setIsDiagnosisModalOpen(true)}
@@ -576,9 +576,10 @@ const handleEditPrescription = async (pres, e) => {
                       {labRequests.length > 0 ? (
                         <div className="grid gap-3">
                      {labRequests.map((lab, idx) => (
-                        <div className="flex justify-between items-start mb-2">
+                        <div key={idx} className="flex justify-between items-start mb-2">
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
                         <span className={`badge ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'} badge-sm`}>
                           {lab.status.replace('_', ' ')}
                         </span>
@@ -592,6 +593,11 @@ const handleEditPrescription = async (pres, e) => {
                             Urgent
                           </span>
                         )}
+                      </div>
+
+                      <div className="text-sm text-base-content/70">
+                        {lab.tests?.map(test => test.name).join(', ')}
+                      </div>
                       </div>
 
 
@@ -662,7 +668,7 @@ const handleEditPrescription = async (pres, e) => {
                                 <button
                                 type="button"
                                 className="btn btn-xs btn-ghost text-warning"
-                                onClick={() => handleEditPrescription(pres)}
+                                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
                               >
                                 <FaEdit />
                               </button>
