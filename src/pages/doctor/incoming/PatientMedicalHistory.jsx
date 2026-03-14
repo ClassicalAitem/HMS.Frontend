@@ -22,6 +22,7 @@ import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHi
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import { FaUserMd } from "react-icons/fa";
 import SendToNurseModal from "./modals/SendToNurseModal";
+import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -31,6 +32,8 @@ const PatientMedicalHistory = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [vitals, setVitals] = useState([]);
+  const [sortedVitals, setSortedVitals] = useState([]);
+  const [latest, setLatest] = useState([]);
   const [patient, setPatient] = useState(null);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
@@ -51,6 +54,8 @@ const PatientMedicalHistory = () => {
   const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [billDefaults, setBillDefaults] = useState([]);
+  const [antenatalRecords, setAntenatalRecords] = useState([]);
+  const [antenatalLoading, setAntenatalLoading] = useState(false);
 
     const normalizeStatus = (status) => {
   if (!status) return 'Pending';
@@ -243,9 +248,47 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  const latest = useMemo(() => getLatestVital(vitals), [vitals]);
+  const isEligibleForAntenatal = useMemo(() => {
+    if (!patient) return false;
+    const gender = patient.gender?.toLowerCase();
+    if (gender !== 'female') return false;
+    const dob = patient.dateOfBirth || patient.dob;
+    if (!dob) return false;
 
-  const sortedVitals = useMemo(() => sortVitalsByTime(vitals), [vitals]);
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age > 16;
+  }, [patient]);
+
+  // Fetch antenatal records for eligible female patients
+  useEffect(() => {
+    if (!isEligibleForAntenatal) return;
+
+    let mounted = true;
+    const loadAntenatalRecords = async () => {
+      try {
+        setAntenatalLoading(true);
+        const res = await getAnteNatalRecordByPatientId(patientId);
+        const records = res?.data ?? res ?? [];
+        if (mounted) {
+          setAntenatalRecords(Array.isArray(records) ? records : []);
+        }
+      } catch (err) {
+        console.error("Failed to load antenatal records", err);
+        // Don't show error for missing records, just leave as empty array
+      } finally {
+        if (mounted) setAntenatalLoading(false);
+      }
+    };
+
+    loadAntenatalRecords();
+    return () => { mounted = false; };
+  }, [patientId, isEligibleForAntenatal]);
 
   const latestLab = useMemo(() => {
     if (!Array.isArray(labResults) || labResults.length === 0) return null;
@@ -371,6 +414,106 @@ const PatientMedicalHistory = () => {
 
           <PatientSummaryCard patient={patient} loading={loading} />
 
+          {/* Antenatal Records Section */}
+          {isEligibleForAntenatal && (
+            <div className="card bg-base-100 shadow-sm mb-4">
+              <div className="card-body p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="card-title text-lg font-semibold text-base-content">Antenatal Records</h3>
+                  <div className="flex gap-2">
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`)}
+                      disabled={antenatalRecords.length === 0}
+                    >
+                      View Records ({antenatalRecords.length})
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm gap-2"
+                      onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
+                    >
+                      <span>+</span> {antenatalRecords.length > 0 ? 'Add New Record' : 'Add First Record'}
+                    </button>
+                  </div>
+                </div>
+
+                {antenatalLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="loading loading-spinner loading-md"></div>
+                  </div>
+                ) : antenatalRecords.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Summary Stats */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-base-content text-sm">Summary</h4>
+                      <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-base-content/70">Total Pregnancies:</span>
+                          <span className="font-medium">{antenatalRecords.length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-base-content/70">Latest EDD:</span>
+                          <span className="font-medium">
+                            {antenatalRecords
+                              .map(r => r.presentPregnancyHistories?.[0]?.EDD)
+                              .filter(Boolean)
+                              .sort((a, b) => new Date(b) - new Date(a))[0]
+                              ? new Date(antenatalRecords
+                                  .map(r => r.presentPregnancyHistories?.[0]?.EDD)
+                                  .filter(Boolean)
+                                  .sort((a, b) => new Date(b) - new Date(a))[0]
+                                ).toLocaleDateString()
+                              : '-'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-base-content/70">Total Examinations:</span>
+                          <span className="font-medium">
+                            {antenatalRecords.reduce((sum, r) => sum + (r.anteNatalExamination?.length || 0), 0)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Latest Record Summary */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-base-content text-sm">Latest Pregnancy</h4>
+                      <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
+                        {(() => {
+                          const latest = antenatalRecords.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                          const pregnancy = latest?.presentPregnancyHistories?.[0];
+                          return pregnancy ? (
+                            <>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-base-content/70">EDD:</span>
+                                <span className="font-medium">{pregnancy.EDD ? new Date(pregnancy.EDD).toLocaleDateString() : '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-base-content/70">LMP:</span>
+                                <span className="font-medium">{pregnancy.LMP ? new Date(pregnancy.LMP).toLocaleDateString() : '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-base-content/70">Gestational Age:</span>
+                                <span className="font-medium">{pregnancy.durationOfPregnancyInWeek || 0} weeks</span>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-base-content/50 text-sm">No pregnancy data</p>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-base-content/70">
+                    <p>No antenatal records found for this patient.</p>
+                    <p className="text-sm mt-2">Click the button above to create the first antenatal record.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <MedicalHistoryTable rows={useMemo(() => (
             Array.isArray(consultations) ? consultations.map((c) => {
               const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
@@ -394,6 +537,7 @@ const PatientMedicalHistory = () => {
               const cid = row?.id;
               if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
             }} />
+
 
           <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
