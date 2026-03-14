@@ -54,6 +54,7 @@ const AddDiagnosis = () => {
     allergic: []
   });
 
+
   useEffect(() => {
       let mounted = true;
       const load = async () => {
@@ -109,7 +110,6 @@ const AddDiagnosis = () => {
     load();
     return () => { mounted = false; };
   }, [patientId, snapshot]);
-
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
@@ -131,6 +131,7 @@ const AddDiagnosis = () => {
   const removeFamily = (idx) => setFamilyHistory(familyHistory.filter((_, i) => i !== idx));
   const removeSocial = (idx) => setSocialHistory(socialHistory.filter((_, i) => i !== idx));
   const removeAllergy = (idx) => setAllergyHistory(allergyHistory.filter((_, i) => i !== idx));
+
 
   const handleAttachmentsChange = (e) => {
     const newFiles = Array.from(e.target.files || []);
@@ -482,7 +483,6 @@ const AddDiagnosis = () => {
               </div>
             </div>
           </div>
-
           {/* Notes */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
