@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 
-const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, loading = false }) => {
+const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, loading = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -17,7 +17,10 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, loading = fal
       <div className="p-4 card-body">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold text-base-content">Medical History</h2>
-          <button className="btn btn-success btn-sm" onClick={onAdd}>+ Add New Consultation</button>
+          <div className="flex gap-2">
+            <button className="btn btn-success btn-sm" onClick={onAdd}>+ Add New Consultation</button>
+            <button className="btn btn-outline btn-sm" onClick={typeof onViewAll === 'function' ? onViewAll : undefined}>View Consultation Records</button>
+          </div>
         </div>
         {loading ? (
           <div className="space-y-3">
@@ -54,25 +57,44 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, loading = fal
                 <tbody>
                   {paginationData.paginatedItems.length > 0 ? (
                     paginationData.paginatedItems.map((row, idx) => (
-                      <tr key={idx} className="hover">
-                        <td>{row.type}</td>
-                        <td>{row.diagnosis}</td>
-                        <td>{row.time}</td>
-                        <td>{row.date}</td>
-                        <td>{row.notes}</td>
-                        <td className="space-x-2">
-                          <button className="text-primary hover:underline text-sm" onClick={() => { if (typeof onViewDetails === 'function') onViewDetails(row, idx); }}>View Details</button>
-                          {typeof onEdit === 'function' && (
-                            <button
-                              className={`text-secondary hover:underline text-sm ${row.canEdit ? '' : 'opacity-50 cursor-not-allowed'}`}
-                              onClick={() => { if (row.canEdit) onEdit(row, idx); }}
-                              disabled={!row.canEdit}
-                            >
-                              Edit
+                      <React.Fragment key={idx}>
+                        <tr className="hover">
+                          <td>{row.type}</td>
+                          <td>{row.diagnosis}</td>
+                          <td>{row.time}</td>
+                          <td>{row.date}</td>
+                          <td>{row.notes}</td>
+                          <td className="space-x-2">
+                            <button className="text-primary hover:underline text-sm" onClick={() => setCurrentPage(idx + 1)}>
+                              {row._expanded ? 'Hide Details' : 'View Details'}
                             </button>
-                          )}
-                        </td>
-                      </tr>
+                            {typeof onEdit === 'function' && (
+                              <button
+                                className={`text-secondary hover:underline text-sm ${row.canEdit ? '' : 'opacity-50 cursor-not-allowed'}`}
+                                onClick={() => { if (row.canEdit) onEdit(row, idx); }}
+                                disabled={!row.canEdit}
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {row._expanded && (
+                          <tr>
+                            <td colSpan={6} className="bg-base-200/40 p-4 text-left">
+                              <div className="collapse collapse-open">
+                                <div className="collapse-content">
+                                  <strong>Diagnosis:</strong> {row.diagnosis}<br />
+                                  <strong>Notes:</strong> {row.notes}<br />
+                                  <strong>Date:</strong> {row.date}<br />
+                                  <strong>Time:</strong> {row.time}<br />
+                                  {/* Add more consultation details here as needed */}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))
                   ) : (
                     <tr>
