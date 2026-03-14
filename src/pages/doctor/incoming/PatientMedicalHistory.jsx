@@ -536,7 +536,9 @@ const PatientMedicalHistory = () => {
             onEdit={(row) => {
               const cid = row?.id;
               if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-            }} />
+            }}
+             onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)} 
+            />
 
 
           <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
