@@ -26,12 +26,11 @@ const Incoming = () => {
           'awaiting_cashier',
           'awaiting_payment'
         ]);
-    const filtered = patients.filter((p) => {
-  const patientStatuses = Array.isArray(p?.status) ? p.status : [];
+    // const statuses = new Set(['awaiting_cashier']); // ✅ remove 'awaiting_payment'
 
-  return patientStatuses.some((s) =>
-    statuses.has(String(s).toLowerCase())
-  );
+const filtered = patients.filter((p) => {
+  const patientStatuses = Array.isArray(p?.status) ? p.status : [];
+  return patientStatuses.some((s) => statuses.has(String(s).toLowerCase()));
 });
   const mapped = filtered.map((p) => ({
           id: p?.id,
