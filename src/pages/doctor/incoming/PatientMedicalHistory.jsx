@@ -103,7 +103,17 @@ const PatientMedicalHistory = () => {
     const patientName = useMemo(() => (
       patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
     ), [patient]);
-    
+
+  const formatUTC = (value, options) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(date);
+  };
+
+  const formatUTCDate = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric" });
+  const formatUTCTime = (value) => formatUTC(value, { hour: "2-digit", minute: "2-digit", hour12: false });
+  const formatUTCDateTime = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+
   // Mapped Data
   const complaints = consultation?.complaint || [];
   const medicalHistory = consultation?.medicalHistory || [];
@@ -115,7 +125,7 @@ const PatientMedicalHistory = () => {
   const visitReason = consultation?.visitReason || "Not specified";
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
-  const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
+  const consultationDate = consultation?.createdAt ? formatUTCDateTime(consultation.createdAt) : "";
 
 
   useEffect(() => {
@@ -248,22 +258,11 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  const isEligibleForAntenatal = useMemo(() => {
-    if (!patient) return false;
-    const gender = patient.gender?.toLowerCase();
-    if (gender !== 'female') return false;
-    const dob = patient.dateOfBirth || patient.dob;
-    if (!dob) return false;
-
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age > 16;
-  }, [patient]);
+const isEligibleForAntenatal = useMemo(() => {
+  if (!patient) return false;
+  const gender = patient.gender?.toLowerCase();
+  return gender === 'female';
+}, [patient]);
 
   // Fetch antenatal records for eligible female patients
   useEffect(() => {
@@ -454,16 +453,13 @@ const PatientMedicalHistory = () => {
                         <div className="flex justify-between text-sm">
                           <span className="text-base-content/70">Latest EDD:</span>
                           <span className="font-medium">
-                            {antenatalRecords
-                              .map(r => r.presentPregnancyHistories?.[0]?.EDD)
-                              .filter(Boolean)
-                              .sort((a, b) => new Date(b) - new Date(a))[0]
-                              ? new Date(antenatalRecords
-                                  .map(r => r.presentPregnancyHistories?.[0]?.EDD)
-                                  .filter(Boolean)
-                                  .sort((a, b) => new Date(b) - new Date(a))[0]
-                                ).toLocaleDateString()
-                              : '-'}
+                            {(() => {
+                              const latestEDD = antenatalRecords
+                                .map(r => r.presentPregnancyHistories?.[0]?.EDD)
+                                .filter(Boolean)
+                                .sort((a, b) => new Date(b) - new Date(a))[0];
+                              return latestEDD ? formatUTCDate(latestEDD) : '-';
+                            })()}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
@@ -486,11 +482,11 @@ const PatientMedicalHistory = () => {
                             <>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">EDD:</span>
-                                <span className="font-medium">{pregnancy.EDD ? new Date(pregnancy.EDD).toLocaleDateString() : '-'}</span>
+                                <span className="font-medium">{pregnancy.EDD ? formatUTCDate(pregnancy.EDD) : '-'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">LMP:</span>
-                                <span className="font-medium">{pregnancy.LMP ? new Date(pregnancy.LMP).toLocaleDateString() : '-'}</span>
+                                <span className="font-medium">{pregnancy.LMP ? formatUTCDate(pregnancy.LMP) : '-'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">Gestational Age:</span>
@@ -514,32 +510,48 @@ const PatientMedicalHistory = () => {
             </div>
           )}
 
-          <MedicalHistoryTable rows={useMemo(() => (
-            Array.isArray(consultations) ? consultations.map((c) => {
-              const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
-              const now = Date.now();
-              const within24h = now - createdTime < 24 * 60 * 60 * 1000;
-              return {
-                id: c?._id || c?.id,
-                type: "Consultation",
-                diagnosis: c?.diagnosis || "—",
-                time: c?.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
-                date: c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-US") : "—",
-                notes: c?.notes || "—",
-                canEdit: within24h,
-              };
-            }) : []
-          ), [consultations])} loading={loading} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} onViewDetails={(row) => {
-            const cid = row?.id;
-            if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-          }}
-            onEdit={(row) => {
-              const cid = row?.id;
-              if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-            }}
-             onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)} 
-            />
+          <MedicalHistoryTable
+  rows={useMemo(() => (
+    Array.isArray(consultations) ? consultations.map((c) => {
+      const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
+      const now = Date.now();
+      const within24h = now - createdTime < 24 * 60 * 60 * 1000;
 
+      // ✅ Determine if consultation is for a dependant or main patient
+      const isForDependant = !!c?.dependantId && !!c?.dependant;
+      const forName = isForDependant
+        ? `${c.dependant.firstName || ""} ${c.dependant.lastName || ""}`.trim()
+        : patientName;
+      const forRelation = isForDependant
+        ? c.dependant.relationshipType || "Dependant"
+        : "Patient";
+
+      return {
+        id: c?._id || c?.id,
+        type: "Consultation",
+        diagnosis: c?.diagnosis || "—",
+        time: c?.createdAt ? formatUTCTime(c.createdAt) : "—",
+        date: c?.createdAt ? formatUTCDate(c.createdAt) : "—",
+        notes: c?.notes || "—",
+        canEdit: within24h,
+        forName,        // ✅ who the consultation is for
+        forRelation,    // ✅ their relation
+        isForDependant, // ✅ flag
+      };
+    }) : []
+  ), [consultations, patientName])}
+  loading={loading}
+  onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
+  onViewDetails={(row) => {
+    const cid = row?.id;
+    if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+  }}
+  onEdit={(row) => {
+    const cid = row?.id;
+    if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+  }}
+  onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
+/>
 
           <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
@@ -554,7 +566,7 @@ const PatientMedicalHistory = () => {
               return {
                 id: p?._id || p?.id,
                 status: normalizeStatus(p?.status),
-                date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
+                date: p?.createdAt ? formatUTCDate(p.createdAt) : "—",
                 medicationsCount: p?.medications?.length || 0,
                 medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
                 totalPrice: totalPrice > 0 ? totalPrice : null
@@ -574,7 +586,7 @@ const PatientMedicalHistory = () => {
                 id: lab?._id || lab?.id,
                 status: lab?.status || lab?.form?.status || 'pending',
                 type: lab?.type || 'Lab',
-                date: lab?.createdAt ? new Date(lab.createdAt).toLocaleDateString("en-US") : "—",
+                date: lab?.createdAt ? formatUTCDate(lab.createdAt) : "—",
                 tests: lab?.form?.tests || lab?.result?.map(r => r.code) || [],
                 priority: lab?.priority || 'normal'
               })) : []
@@ -594,7 +606,7 @@ const PatientMedicalHistory = () => {
                     <div className="skeleton h-4 w-48 mt-2" />
                   ) : latestLab ? (
                     <div className="text-sm text-base-content/70">
-                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? new Date(latestLab.createdAt).toLocaleString() : '—'}
+                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatUTCDateTime(latestLab.createdAt) : '—'}
                     </div>
                   ) : (
                     <div className="text-sm text-base-content/70">No lab results</div>
