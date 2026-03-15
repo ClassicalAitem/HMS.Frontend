@@ -149,41 +149,17 @@ const ManageUsers = () => {
     }
   };
 
-  const handleToggleUserStatus = async (userId, currentStatus) => {
-    console.log('🔄 ManageUsers: Toggling user status:', userId, 'current status:', currentStatus);
-    console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
-    const result = await dispatch(toggleUserStatus({ userId, isDisabled: !currentStatus }));
+const handleToggleUserStatus = async (userId, currentIsDisabled) => {
+  const result = await dispatch(toggleUserStatus({ userId, isDisabled: !currentIsDisabled }));
 
-    if (toggleUserStatus.fulfilled.match(result)) {
-      toast.success(`User ${!currentStatus ? 'disabled' : 'enabled'} successfully`);
-    } else {
-      toast.error('Failed to update user status');
-
-      // Determine the action based on current status (if active, we want to disable, so isActive should be false)
-      const newStatus = !currentStatus;
-
-      // For disabling/enabling account, the API expects isActive boolean
-      // When disabling (newStatus is false), we might also want to send isDisabled: true depending on backend logic
-      // But based on usersAPI.disableUserAccount, it accepts userData object
-
-      try {
-        const result = await dispatch(toggleUserStatus({ userId, isDisabled: newStatus }));
-
-        if (toggleUserStatus.fulfilled.match(result)) {
-          toast.success(`User ${newStatus ? 'disabled' : 'enabled'} successfully`);
-          // Refresh the list to reflect changes
-          dispatch(fetchUsers());
-        } else {
-          // Handle error from the thunk
-          const errorMessage = result.payload || 'Failed to update user status';
-          toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
-        }
-      } catch (error) {
-        console.error('❌ ManageUsers: Error toggling status:', error);
-        toast.error('An unexpected error occurred');
-      }
-    }
-  };
+  if (toggleUserStatus.fulfilled.match(result)) {
+    toast.success(`User ${!currentIsDisabled ? 'disabled' : 'enabled'} successfully`);
+    dispatch(fetchUsers());
+  } else {
+    const errorMessage = result.payload || 'Failed to update user status';
+    toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
+  }
+};
 
   const handleUserAdded = () => {
     console.log('🔄 ManageUsers: User added, refreshing users list');
@@ -265,12 +241,12 @@ const ManageUsers = () => {
       render: (value, row) => (
         <div className="flex space-x-2">
           <button
-            onClick={() => handleToggleUserStatus(row.id, row.isDisabled)}
-            className={`btn btn-ghost btn-xs ${row.isDisabled ? 'text-warning' : 'text-success'}`}
-            title={row.isDisabled ? 'Disable User' : 'Enable User'}
-          >
-            {row.isDisabled ? <FaToggleOn className="w-3 h-3" /> : <FaToggleOff className="w-3 h-3" />}
-          </button>
+  onClick={() => handleToggleUserStatus(row.id, row.isDisabled)}
+  className={`btn btn-ghost btn-xs ${row.isDisabled ? 'text-success' : 'text-warning'}`}
+  title={row.isDisabled ? 'Enable User' : 'Disable User'}
+>
+  {row.isDisabled ? <FaToggleOn className="w-3 h-3" /> : <FaToggleOff className="w-3 h-3" />}
+</button>
           <button
             onClick={() => {
               setSelectedUser(row);

@@ -33,19 +33,24 @@ export const getPatients = async () => {
 };
 
 // Update patient status
-export const updatePatientStatus = async (patientId, status) => {
+// Update patient status — supports full replace OR add/remove
+export const updatePatientStatus = async (patientId, statusOrOptions) => {
   try {
     if (!patientId) throw new Error('Patient ID is required');
-    if (!status) throw new Error('Status is required');
-    console.log('📤 PatientsAPI: Updating patient status', { patientId, status });
-    const response = await apiClient.patch(`/patient/patientStatus/${patientId}`, { status });
-    console.log('✅ PatientsAPI: Patient status updated successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
+
+    // ✅ If it's an array, it's a full merged array (backward compat)
+    // ✅ If it's an object with addStatus/removeStatus, use new pattern
+    const payload = Array.isArray(statusOrOptions)
+      ? { status: statusOrOptions }
+      : statusOrOptions;
+
+    const response = await apiClient.patch(
+      `/patient/patientStatus/${patientId}`,
+      payload
+    );
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Update patient status error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
+    console.error('❌ PatientsAPI: Update patient status error', error);
     throw error;
   }
 };
