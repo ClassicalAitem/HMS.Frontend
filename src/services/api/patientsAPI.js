@@ -1,13 +1,21 @@
 import apiClient from './apiClient';
 
-
+/**
+ * Normalize patient status to a single string (backend now uses single status string).
+ * If an array is provided, we take the latest (last) item.
+ */
+const normalizePatientStatus = (status) => {
+  if (Array.isArray(status)) {
+    const list = status.filter((s) => typeof s === 'string' && s.trim());
+    return list.length ? list[list.length - 1] : '';
+  }
+  return typeof status === 'string' ? status : '';
+};
 
 export const addPatientStatus = async (patient, newStatus) => {
-  const merged = Array.from(
-    new Set([...(patient?.status || []), newStatus])
-  );
-
-  return updatePatientStatus(patient.id, merged);
+  // Backwards compatible helper; treats status as a single-valued field now.
+  const normalizedStatus = normalizePatientStatus(newStatus);
+  return updatePatientStatus(patient.id, normalizedStatus);
 };
 
 // Get all patients
@@ -18,7 +26,7 @@ export const getPatients = async () => {
     const patients = Array.isArray(response.data?.data)
       ? response.data.data.map((p) => ({
           ...p,
-          status: Array.isArray(p.status) ? p.status : []
+          status: normalizePatientStatus(p.status)
         }))
       : [];
 
@@ -32,17 +40,19 @@ export const getPatients = async () => {
   }
 };
 
-// Update patient status
-// Update patient status — supports full replace OR add/remove
 export const updatePatientStatus = async (patientId, statusOrOptions) => {
   try {
     if (!patientId) throw new Error('Patient ID is required');
 
-    // ✅ If it's an array, it's a full merged array (backward compat)
-    // ✅ If it's an object with addStatus/removeStatus, use new pattern
-    const payload = Array.isArray(statusOrOptions)
-      ? { status: statusOrOptions }
-      : statusOrOptions;
+    // ✅ Handle string, array, or object
+    let payload;
+    if (typeof statusOrOptions === 'string') {
+      payload = { status: statusOrOptions };
+    } else if (Array.isArray(statusOrOptions)) {
+      payload = { status: statusOrOptions };
+    } else {
+      payload = statusOrOptions; // already { status: "..." } or { addStatus, removeStatus }
+    }
 
     const response = await apiClient.patch(
       `/patient/patientStatus/${patientId}`,
@@ -63,7 +73,7 @@ export const getPatientById = async (patientId) => {
     const patient = response.data?.data;
 
     if (patient) {
-      patient.status = Array.isArray(patient.status) ? patient.status : [];
+      patient.status = normalizePatientStatus(patient.status);
     }
 
     return response.data;

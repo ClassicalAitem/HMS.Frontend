@@ -92,10 +92,22 @@ useEffect(() => {
         // ✅ Dependant — fetch by dependantId
         res = await getConsultations({ dependantId: selectedPatientId });
       }
-
+      
       const raw = res?.data ?? res ?? [];
       const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-      const sorted = [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+       // ✅ Filter based on who is selected
+      const filtered = list.filter(c => {
+        if (selectedInfo?.isMain) {
+          // ✅ Main patient — only show consultations with NO dependantId
+          return !c.dependantId;
+        } else {
+          // ✅ Dependant — only show consultations matching this dependantId
+          return c.dependantId === selectedPatientId;
+        }
+      });
+       const sorted = [...filtered].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
 
       if (mounted) {
         setConsultations(sorted);
@@ -186,7 +198,7 @@ useEffect(() => {
           {selectedPatientInfo && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-base-content/60">Viewing consultations for:</span>
-              <span className={`badge ${selectedPatientInfo.isMain ? 'badge-primary' : 'badge-secondary'}`}>
+              <span className={`badge ${selectedPatientInfo.isMain ? 'badge-primary' : 'badge-primary badge-outline'} badge-sm`}>
                 {selectedPatientInfo.name}
               </span>
               <span className="badge badge-outline badge-sm">{selectedPatientInfo.relation}</span>
@@ -259,9 +271,9 @@ useEffect(() => {
   </span>
   {/* ✅ Show who this consultation is actually for */}
   {c.dependantId && c.dependant ? (
-    <span className="badge badge-secondary badge-sm">
+    <span className="badge badge-primary badge-sm">
       {c.dependant.firstName} {c.dependant.lastName}
-      <span className="ml-1 opacity-70">({c.dependant.relationshipType})</span>
+      {/* <span className="ml-1 opacity-70">({c.dependant.relation}) </span> */}
     </span>
   ) : (
     <span className="badge badge-primary badge-sm">

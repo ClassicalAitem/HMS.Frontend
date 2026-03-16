@@ -573,8 +573,8 @@ const PatientVitalsDetails = () => {
               isOpen={isSendPharmacyOpen}
               onClose={() => setIsSendPharmacyOpen(false)}
               patientId={patientUUID || patientId}
-              currentStatus={patient?.status || []}
-              defaultStatus={[PATIENT_STATUS.AWAITING_PHARMACY]}
+              currentStatus={patient?.status || ''}
+              defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
               itemsCount={0}
               medicationNames={[]}
               patientLabel={`${patientName} (${patientHospitalId || '—'})`}
@@ -588,8 +588,8 @@ const PatientVitalsDetails = () => {
               isOpen={isSendCashierOpen}
               onClose={() => setIsSendCashierOpen(false)}
               patientId={patientUUID || patientId}
-              currentStatus={patient?.status || []}
-              defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
+              currentStatus={patient?.status || ''}
+              defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
               mode={"confirm"}
               patientLabel={`${patientName} (${patientHospitalId || '—'})`}
               onUpdated={() => setIsSendCashierOpen(false)}

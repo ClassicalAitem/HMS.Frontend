@@ -10,6 +10,7 @@ import {
   getAnteNatalRecord,
   updateAnteNatalRecord
 } from "@/services/api/anteNatalAPI";
+import { getAllDependantsForPatient } from "@/services/api/dependantAPI"; 
 
 const emptyForm = (doctorName = "") => ({
   previousMedicalHistory: {
@@ -41,6 +42,40 @@ const AntenatalRecords = () => {
   const [patient, setPatient] = useState(null);
   const [formData, setFormData] = useState(emptyForm(doctorName));
 
+  const [dependants, setDependants] = useState([]);
+const [selectedDependantId, setSelectedDependantId] = useState("");
+
+const selectedDependant = useMemo(() => {
+  if (!selectedDependantId) return null;
+  return dependants.find(d => (d.id || d._id) === selectedDependantId) || null;
+}, [selectedDependantId, dependants]);
+
+
+
+useEffect(() => {
+  let mounted = true;
+  const fetchDependants = async () => {
+    try {
+      const res = await getAllDependantsForPatient(patientId);
+      const raw =
+        res?.data?.data?.dependants ??
+        res?.data?.dependants ??
+        res?.data ??
+        [];
+      const normalized = (Array.isArray(raw) ? raw : []).map(dep => ({
+        ...dep,
+        id: dep.id || dep._id,
+        fullName: dep.fullName || `${dep.firstName || ""} ${dep.lastName || ""}`.trim(),
+      }));
+      if (mounted) setDependants(normalized);
+    } catch (err) {
+      console.error("Failed to fetch dependants", err);
+    }
+  };
+  if (patientId) fetchDependants();
+  return () => { mounted = false; };
+}, [patientId]);
+
   // Load patient
   useEffect(() => {
     let mounted = true;
@@ -71,6 +106,9 @@ const AntenatalRecords = () => {
         if (mounted && record) {
           setFormData(transformBackendToFrontend(record, doctorName));
         }
+          if (record.dependantId) {
+        setSelectedDependantId(record.dependantId);
+      }
       } catch (err) {
         toast.error("Failed to load record data");
       } finally {
@@ -154,7 +192,14 @@ const AntenatalRecords = () => {
   };
 
   const transformFrontendToBackend = (fd) => {
-    const out = { patientId, doctorId: user?.id || user?._id };
+    const out = {
+    patientId,
+    doctorId: user?.id || user?._id,
+    // ✅ Include dependant if selected
+    ...(selectedDependantId && { dependantId: selectedDependantId }),
+    ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
+  };
+
 
     const med = {};
     if (fd.previousMedicalHistory.heartDisease?.trim()) med.heartDisease = fd.previousMedicalHistory.heartDisease.trim();
@@ -299,6 +344,39 @@ const AntenatalRecords = () => {
               >✕</button>
             </div>
           </div>
+          {/* Record For — Dependant Selection */}
+<div className="card bg-base-100 shadow-sm">
+  <div className="card-body p-4">
+    <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
+    <select
+      className="select select-bordered w-full"
+      value={selectedDependantId}
+      onChange={e => setSelectedDependantId(e.target.value)}
+    >
+      <option value="">Patient ({patientName})</option>
+      {dependants.length > 0 ? (
+        dependants.map(dep => (
+          <option key={dep.id} value={dep.id}>
+            {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
+          </option>
+        ))
+      ) : (
+        <option disabled value="">No dependants found</option>
+      )}
+    </select>
+    {selectedDependant && (
+      <div className="mt-2 text-sm text-base-content/70">
+        <span className="badge badge-secondary mr-2">Dependant</span>
+        <span>{selectedDependant.fullName}</span>
+        {selectedDependant.relationshipType && (
+          <span className="ml-2 badge badge-outline badge-sm">
+            {selectedDependant.relationshipType}
+          </span>
+        )}
+      </div>
+    )}
+  </div>
+</div>
 
           {/* Previous Medical History */}
           <div className="card bg-base-100 shadow-sm">
@@ -566,7 +644,10 @@ const AntenatalRecords = () => {
                       placeholder="Signature"
                       value={item.signature || doctorName}
                       onChange={(e) => updateExamination(idx, 'signature', e.target.value)}
+                      disabled
                     />
+                  {/* <input type="text" className="input input-bordered w-full" value={formData.presentPregnancy.takenBy || doctorName} disabled /> */}
+
                   </td>
                 </tr>
               </tbody>

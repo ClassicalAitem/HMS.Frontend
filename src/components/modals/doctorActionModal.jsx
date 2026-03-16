@@ -4,7 +4,7 @@ import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { mergePatientStatus } from '@/utils/statusUtils';
 
-const DoctorActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = [PATIENT_STATUS.AWAITING_CONSULTATION], onUpdated }) => {
+const DoctorActionModal = ({ isOpen, onClose, patientId, currentStatus = '', defaultAction = PATIENT_STATUS.AWAITING_CONSULTATION, onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
@@ -13,7 +13,7 @@ const DoctorActionModal = ({ isOpen, onClose, patientId, currentStatus = [], def
   const handleConfirm = async () => {
     try {
       setIsSending(true);
-      // Merge current status with new status (removes frontdesk/nurse statuses, adds doctor status)
+      // Merge current status with new status (single-status model)
       const mergedStatus = mergePatientStatus(currentStatus, 'frontdesk', selectedAction);
       const promise = updatePatientStatus(patientId, mergedStatus);
       toast.promise(promise, {

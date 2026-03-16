@@ -44,7 +44,7 @@ const CashierPatientDetails = () => {
   const phone = patient?.phone || patient?.phoneNumber || snapshot?.phone || '—';
   const patientIdDisplay = patient?.id || patient?.patientId || patient?.hospitalId || '—';
   const insuranceProvider = patient?.hmos?.length
-    ? patient.hmos.map(h => `${h.provider} (${h.plan})`).join(', ')
+    ? patient.hmos.map(h => `${h.provider} (${h.memberId})`).join(', ')
     : snapshot?.insurance || '—';
   const insuranceStatus = patient?.hmos?.length
     ? patient.hmos.map(h => {
@@ -232,16 +232,7 @@ const CashierPatientDetails = () => {
           </div>
           <div className="mt-4 pt-4 border-t border-base-300 flex items-center justify-between">
             <p className="text-sm text-base-content/70">• Insurance: <span className="font-medium text-base-content">{insuranceProvider}</span></p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-base-content/50">Status</span>
-              <span className={`badge ${
-                String(insuranceStatus).toLowerCase().includes('expired') ? 'badge-error' :
-                String(insuranceStatus).toLowerCase().includes('active') ? 'badge-info' :
-                'badge-neutral'
-              }`}>{insuranceStatus}</span>
-            </div>
-            {/* <button className=" hidden text-sm text-primary font-semibold hover:underline">Make Payments Now</button> */}
-          </div>
+       </div>
         </div>
 
         {/* Outstanding Bills */}
@@ -280,21 +271,16 @@ const CashierPatientDetails = () => {
               <td className="text-success">{bill.raisedBy.accountType}</td>
               <td>
                 {bill.isCleared ? (
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    disabled
-                  >
-                    Completed
-                  </button>
+                  <button className="btn btn-sm btn-ghost" disabled>Completed</button>
+                ) : bill.outstandingBill === 0 ? (
+                  // ✅ All items HMO covered — nothing to pay
+                  <button className="btn btn-sm btn-ghost btn-success" disabled>HMO Covered</button>
                 ) : (
                   <button
-                    onClick={() => {
-                      setIsReceiptModalOpen(true);
-                      setSelectedBillingId(bill.id);
-                    }}
-                    className="btn btn-sm btn-ghost"
+                    onClick={() => { setIsReceiptModalOpen(true); setSelectedBillingId(bill.id); }}
+                    className="btn btn-sm btn-primary"
                   >
-                    Pay now
+                    Pay Now (₦{bill.outstandingBill.toLocaleString()})
                   </button>
                 )}
               </td>
@@ -315,6 +301,7 @@ const CashierPatientDetails = () => {
                           <th>Price</th>
                           <th>Quantity</th>
                           <th>Total</th>
+                          <th>HMO Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -325,6 +312,15 @@ const CashierPatientDetails = () => {
                             <td> ₦ {Number(item.price).toLocaleString()}</td>
                             <td>{item.quantity}</td>
                             <td> ₦ {Number(item.total).toLocaleString()}</td>
+                             <td>
+                            {item.hmoStatus === 'approved' ? (
+                              <span className="badge badge-success badge-sm">HMO Covered</span>
+                            ) : item.hmoStatus === 'rejected' ? (
+                              <span className="badge badge-error badge-sm">Self-Pay</span>
+                            ) : (
+                              <span className="badge badge-ghost badge-sm">—</span>
+                            )}
+                          </td>
                           </tr>
                         ))}
                       </tbody>
@@ -445,39 +441,45 @@ const CashierPatientDetails = () => {
             </div>
           </div>
         )}
-        <NurseActionModal isOpen={isSendToNurseOpen}
+          <NurseActionModal
+                isOpen={isSendToNurseOpen}
                 onClose={() => setIsSendToNurseOpen(false)}
                 patientId={patient?.id || patientId}
-                defaultAction={['awaiting_vitals']}
+                currentStatus={patient?.status || ''}
+                defaultAction={PATIENT_STATUS.AWAITING_VITALS}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <PharmacyActionModal2 isOpen={isSendToPharmacyOpen}
+          <PharmacyActionModal2
+                isOpen={isSendToPharmacyOpen}
                 onClose={() => setIsSendToPharmacyOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={[PATIENT_STATUS.AWAITING_PHARMACY]}
+                currentStatus={patient?.status || ''}
+                defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
 
-          <FrontDeskActionModal isOpen={isSendToFrontDeskOpen}
+          <FrontDeskActionModal
+                isOpen={isSendToFrontDeskOpen}
                 onClose={() => setIsSendToFrontDeskOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={[PATIENT_STATUS.AWAITING_FRONT_DESK]}
+                currentStatus={patient?.status || ''}
+                defaultAction={PATIENT_STATUS.AWAITING_FRONT_DESK}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <DoctorActionModal isOpen={isSendToDoctorOpen}
+          <DoctorActionModal
+                isOpen={isSendToDoctorOpen}
                 onClose={() => setIsSendToDoctorOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={[PATIENT_STATUS.AWAITING_CONSULTATION]}
+                currentStatus={patient?.status || ''}
+                defaultAction={PATIENT_STATUS.AWAITING_CONSULTATION}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <LabActionModal isOpen={isSendToLabOpen}
+          <LabActionModal
+                isOpen={isSendToLabOpen}
                 onClose={() => setIsSendToLabOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={[PATIENT_STATUS.AWAITING_LAB]}
+                currentStatus={patient?.status || ''}
+                defaultAction={PATIENT_STATUS.AWAITING_LAB}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
 
