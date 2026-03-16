@@ -1,13 +1,21 @@
 import apiClient from './apiClient';
 
-
+/**
+ * Normalize patient status to a single string (backend now uses single status string).
+ * If an array is provided, we take the latest (last) item.
+ */
+const normalizePatientStatus = (status) => {
+  if (Array.isArray(status)) {
+    const list = status.filter((s) => typeof s === 'string' && s.trim());
+    return list.length ? list[list.length - 1] : '';
+  }
+  return typeof status === 'string' ? status : '';
+};
 
 export const addPatientStatus = async (patient, newStatus) => {
-  const merged = Array.from(
-    new Set([...(patient?.status || []), newStatus])
-  );
-
-  return updatePatientStatus(patient.id, merged);
+  // Backwards compatible helper; treats status as a single-valued field now.
+  const normalizedStatus = normalizePatientStatus(newStatus);
+  return updatePatientStatus(patient.id, normalizedStatus);
 };
 
 // Get all patients
@@ -18,7 +26,7 @@ export const getPatients = async () => {
     const patients = Array.isArray(response.data?.data)
       ? response.data.data.map((p) => ({
           ...p,
-          status: Array.isArray(p.status) ? p.status : []
+          status: normalizePatientStatus(p.status)
         }))
       : [];
 
@@ -32,20 +40,27 @@ export const getPatients = async () => {
   }
 };
 
-// Update patient status
-export const updatePatientStatus = async (patientId, status) => {
+export const updatePatientStatus = async (patientId, statusOrOptions) => {
   try {
     if (!patientId) throw new Error('Patient ID is required');
-    if (!status) throw new Error('Status is required');
-    console.log('📤 PatientsAPI: Updating patient status', { patientId, status });
-    const response = await apiClient.patch(`/patient/patientStatus/${patientId}`, { status });
-    console.log('✅ PatientsAPI: Patient status updated successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
+
+    // ✅ Handle string, array, or object
+    let payload;
+    if (typeof statusOrOptions === 'string') {
+      payload = { status: statusOrOptions };
+    } else if (Array.isArray(statusOrOptions)) {
+      payload = { status: statusOrOptions };
+    } else {
+      payload = statusOrOptions; // already { status: "..." } or { addStatus, removeStatus }
+    }
+
+    const response = await apiClient.patch(
+      `/patient/patientStatus/${patientId}`,
+      payload
+    );
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Update patient status error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
+    console.error('❌ PatientsAPI: Update patient status error', error);
     throw error;
   }
 };
@@ -58,7 +73,7 @@ export const getPatientById = async (patientId) => {
     const patient = response.data?.data;
 
     if (patient) {
-      patient.status = Array.isArray(patient.status) ? patient.status : [];
+      patient.status = normalizePatientStatus(patient.status);
     }
 
     return response.data;

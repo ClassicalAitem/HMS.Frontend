@@ -10,26 +10,25 @@ const PharmacyActionModal2 = ({ isOpen, onClose, patientId, currentStatus = [], 
 
   if (!isOpen) return null;
 
-  const handleConfirm = async () => {
-    try {
-      setIsSending(true);
-      // Merge current status with new status (removes pharmacy-related statuses, adds new one)
-      const mergedStatus = mergePatientStatus(currentStatus, 'pharmacy', Array.isArray(selectedAction) ? selectedAction : [selectedAction]);
-      const promise = updatePatientStatus(patientId, mergedStatus);
-      toast.promise(promise, {
-        loading: 'Sending to pharmacy...',
-        success: 'Patient sent to pharmacy successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to send to pharmacy',
-      });
-      await promise;
-      onClose();
-      if (onUpdated) onUpdated();
-    } catch (e) {
-      // handled by toast
-    } finally {
-      setIsSending(false);
-    }
-  };
+const handleConfirm = async () => {
+  try {
+    setIsSending(true);
+    // ✅ Status is now a single string — just send it directly
+    const promise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_PHARMACY });
+    toast.promise(promise, {
+      loading: 'Sending to pharmacy...',
+      success: 'Patient sent to pharmacy successfully',
+      error: (err) => err?.response?.data?.message || 'Failed to send to pharmacy',
+    });
+    await promise;
+    onClose();
+    if (onUpdated) onUpdated();
+  } catch (e) {
+    // handled by toast
+  } finally {
+    setIsSending(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

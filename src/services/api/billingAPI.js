@@ -240,6 +240,16 @@ export const updateReceipt = async(receiptId, status) => {
     }
   };
 
+  export const updateBilling = async (billingId, data) => {
+  try {
+    const response = await apiClient.patch(`/billing/${billingId}`, data);
+    return response.data;
+  } catch (error) {
+    console.error('Update billing error', error);
+    throw error;
+  }
+};
+
 export default {
   createBill,
   createBilling,
@@ -251,4 +261,5 @@ export default {
   createReceipt,
   updateReceipt,
   deleteBilling,
+  updateBilling,
 };

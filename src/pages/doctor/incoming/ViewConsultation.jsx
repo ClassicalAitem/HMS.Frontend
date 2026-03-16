@@ -223,9 +223,17 @@ const handleEditPrescription = async (pres, e) => {
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
   const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
-
-
   const recentPrescriptions = prescriptions.slice(0, 3);
+
+  const isForDependant = !!consultation?.dependantId;
+const consultationSubject = isForDependant
+  ? consultation?.dependant
+    ? `${consultation.dependant.firstName || ""} ${consultation.dependant.lastName || ""}`.trim()
+    : "Dependant"
+  : patientName;
+const subjectRelation = isForDependant
+  ? consultation?.dependant?.relationshipType || "Dependant"
+  : "Main Patient";
 
   // Helper for Skeleton Loading
   const SkeletonCard = ({ title, icon }) => (
@@ -356,7 +364,17 @@ const handleEditPrescription = async (pres, e) => {
                   <span className="hidden sm:inline">•</span>
                   <span className="flex items-center gap-1"><FaCalendarAlt className="w-3 h-3" /> {consultationDate}</span>
                   <span className="hidden sm:inline">•</span>
-                  <span className="font-medium text-primary">{patientName}</span>
+                  <div className="flex items-center gap-2">
+    <span className="font-medium text-primary">{consultationSubject}</span>
+    <span className={`badge badge-sm ${isForDependant ? 'badge-secondary' : 'badge-primary'}`}>
+      {subjectRelation}
+    </span>
+    {isForDependant && (
+      <span className="text-xs text-base-content/50">
+        (of {patientName})
+      </span>
+    )}
+  </div>
                 </div>
               </div>
             </div>
@@ -381,7 +399,7 @@ const handleEditPrescription = async (pres, e) => {
                       <FaNotesMedical className="text-primary w-5 h-5" />
                       <h3 className="font-bold text-lg text-base-content">Consultation Overview</h3>
                     </div>
-                    {( diagnosis === "Pending diagnosis") && (
+                    {(!diagnosis || diagnosis.toLowerCase().includes("pending")) && (
                       <button 
                         className="btn btn-sm btn-outline btn-success gap-2"
                         onClick={() => setIsDiagnosisModalOpen(true)}
@@ -751,7 +769,43 @@ const handleEditPrescription = async (pres, e) => {
                   )}
                 </div>
               </div>
-
+{/* Dependant Info — show only if consultation is for a dependant */}
+{isForDependant && consultation?.dependant && (
+  <div className="card bg-secondary/10 shadow-sm border border-secondary/20">
+    <div className="card-body p-5">
+      <div className="flex items-center gap-2 mb-3 text-secondary">
+        <FaUsers />
+        <h3 className="font-bold uppercase text-sm tracking-wider">Consultation For</h3>
+      </div>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-base-content/60">Name:</span>
+          <span className="font-medium">
+            {consultation.dependant.firstName} {consultation.dependant.lastName}
+          </span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-base-content/60">Relation:</span>
+          <span className="badge badge-secondary badge-sm">
+            {consultation.dependant.relationshipType}
+          </span>
+        </div>
+        {consultation.dependant.dob && (
+          <div className="flex justify-between">
+            <span className="text-base-content/60">DOB:</span>
+            <span>{new Date(consultation.dependant.dob).toLocaleDateString()}</span>
+          </div>
+        )}
+        {consultation.dependant.gender && (
+          <div className="flex justify-between">
+            <span className="text-base-content/60">Gender:</span>
+            <span className="capitalize">{consultation.dependant.gender}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
               {/* Surgical History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-5">
@@ -788,12 +842,24 @@ const handleEditPrescription = async (pres, e) => {
                       {allergyHistory.map((item, idx) => (
                         <div key={idx} className="badge badge-error badge-outline gap-1 h-auto py-1">
                           <span className="font-medium">{typeof item === 'object' ? item.allergen || item.title || item.name || JSON.stringify(item) : item}</span>
-                          <span className="text-xs opacity-75">(reaction)</span>
+                          {typeof item === 'object' && item.reaction && (
+                            <span className="text-xs opacity-75">({item.reaction})</span>
+                          )}
+                          {!item.reaction && <span className="text-xs opacity-75">(reaction)</span>}
                         </div>
                       ))}
                     </div>
                   ) : (
                     <p className="text-sm text-base-content/50 italic">None recorded</p>
+                  )}
+                  {/* Show patient/dependant info if available */}
+                  {consultation?.dependantName && (
+                    <div className="mt-2">
+                      <span className="badge badge-info badge-sm">Dependant: {consultation.dependantName}</span>
+                      {consultation.dependantRelation && (
+                        <span className="badge badge-outline badge-sm ml-2">{consultation.dependantRelation}</span>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
