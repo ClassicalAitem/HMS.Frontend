@@ -4,6 +4,8 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import toast from "react-hot-toast";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -15,6 +17,7 @@ const AntenatalRecordDetails = () => {
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [error, setError] = useState(null);
+  const [dependants, setDependants] = useState([]);
 
   useEffect(() => {
     console.log('AntenatalRecordDetails: Component mounted with patientId:', patientId);
@@ -91,6 +94,30 @@ const AntenatalRecordDetails = () => {
 
     return () => { mounted = false; };
   }, [patientId]);
+  useEffect(() => {
+  let mounted = true;
+  const fetchDependants = async () => {
+    try {
+      const res = await getAllDependantsForPatient(patientId);
+      const raw = res?.data?.data?.dependants ?? res?.data?.dependants ?? res?.data ?? [];
+      const normalized = (Array.isArray(raw) ? raw : []).map(dep => ({
+        ...dep,
+        id: dep.id || dep._id,
+        fullName: dep.fullName || `${dep.firstName || ""} ${dep.lastName || ""}`.trim(),
+      }));
+      if (mounted) setDependants(normalized);
+    } catch {
+      toast.error("Failed to load dependants for patient. Dependant-related features may not work properly.");
+    }
+  };
+  if (patientId) fetchDependants();
+  return () => { mounted = false; };
+}, [patientId]);
+const getDependantName = (dependantId) => {
+  if (!dependantId) return null;
+  const dep = dependants.find(d => d.id === dependantId);
+  return dep ? `${dep.fullName} (${dep.relationshipType || 'Dependant'})` : null;
+};
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -168,39 +195,57 @@ const AntenatalRecordDetails = () => {
                 <div className="card-body p-6">
                   <h3 className="card-title text-lg font-semibold text-base-content mb-4">Antenatal Records</h3>
                   <div className="space-y-4">
-                    {antenatalRecords.map((record, index) => (
-                      <div key={record._id || record.id || index} className="border border-base-300 rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h4 className="font-medium text-base-content">
-                              Pregnancy #{index + 1}
-                              {record.presentPregnancyHistories?.[0]?.EDD && (
-                                <span className="text-sm text-base-content/70 ml-2">
-                                  (EDD: {new Date(record.presentPregnancyHistories[0].EDD).toLocaleDateString()})
-                                </span>
-                              )}
-                            </h4>
-                            <p className="text-sm text-base-content/70 mt-1">
-                              Created: {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              className="btn btn-sm btn-outline"
-                              onClick={() => setSelectedRecord(selectedRecord?._id === record._id ? null : record)}
-                            >
-                              {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
-                            </button>
-                            <button
-                              className="btn btn-sm btn-primary"
-                             onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/edit/${index}`)}
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    {antenatalRecords.map((record, index) => {
+  const dependantName = getDependantName(record.dependantId);
+  return (
+    <div key={record._id || record.id || index} className="border border-base-300 rounded-lg p-4">
+      <div className="flex justify-between items-start">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className="font-medium text-base-content">
+              Pregnancy #{index + 1}
+              {record.presentPregnancyHistories?.[0]?.EDD && (
+                <span className="text-sm text-base-content/70 ml-2">
+                  (EDD: {new Date(record.presentPregnancyHistories[0].EDD).toLocaleDateString()})
+                </span>
+              )}
+            </h4>
+          </div>
+
+          {/* ✅ Show who this record is for */}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs text-base-content/50">Record for:</span>
+            {dependantName ? (
+              <span className="badge badge-secondary badge-sm">{dependantName}</span>
+            ) : (
+              <span className="badge badge-primary badge-sm">
+                {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()} (Patient)
+              </span>
+            )}
+          </div>
+
+          <p className="text-sm text-base-content/70">
+            Created: {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : 'N/A'}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            className="btn btn-sm btn-outline"
+            onClick={() => setSelectedRecord(selectedRecord?._id === record._id ? null : record)}
+          >
+            {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
+          </button>
+          <button
+            className="btn btn-sm btn-primary"
+            onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/edit/${index}`)}
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+})}
                   </div>
                 </div>
               </div>

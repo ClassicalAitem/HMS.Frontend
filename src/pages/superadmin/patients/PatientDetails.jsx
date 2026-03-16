@@ -16,6 +16,7 @@ import AdditionalInfoCard from '@/components/frontdesk/patients/AdditionalInfoCa
 import HmoDependantsSection from '@/components/frontdesk/patients/HmoDependantsSection';
 import AdditionalInformationCard from '@/components/frontdesk/patients/AdditionalInformationCard';
 import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -230,8 +231,8 @@ const PatientDetails = () => {
         isOpen={isSendToNurseOpen}
         onClose={() => setIsSendToNurseOpen(false)}
         patientId={patient?.id || patientId}
-        currentStatus={patient?.status || []}
-        defaultAction={['awaiting_vitals']}
+        currentStatus={patient?.status || ''}
+        defaultAction={PATIENT_STATUS.AWAITING_VITALS}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 
@@ -240,8 +241,8 @@ const PatientDetails = () => {
         isOpen={isSendToCashierOpen}
         onClose={() => setIsSendToCashierOpen(false)}
         patientId={patient?.id || patientId}
-        currentStatus={patient?.status || []}
-        defaultStatus={['awaiting_cashier']}
+        currentStatus={patient?.status || ''}
+        defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 

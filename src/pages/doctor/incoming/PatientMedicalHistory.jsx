@@ -11,7 +11,7 @@ import LabHistoryTable from "@/components/doctor/patient/LabHistoryTable";
 import LabInvestigationRequestCard from "@/components/doctor/patient/LabInvestigationRequestCard";
 import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
-import { getPatientById } from "@/services/api/patientsAPI";
+import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
@@ -23,6 +23,7 @@ import CreateBillModal from "@/components/modals/CreateBillModal";
 import { FaUserMd } from "react-icons/fa";
 import SendToNurseModal from "./modals/SendToNurseModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
+import { SendToHmoModal } from "@/components/modals";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -52,10 +53,35 @@ const PatientMedicalHistory = () => {
   const [labInvestigations, setLabInvestigations] = useState([]);
   const [investigationsLoading, setInvestigationsLoading] = useState(false);
   const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
+  const [isSendToHmoModalOpen, setIsSendToHmoModalOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [billDefaults, setBillDefaults] = useState([]);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [antenatalLoading, setAntenatalLoading] = useState(false);
+
+  const [isNavigating, setIsNavigating] = useState(false);
+
+// Helper to navigate with loading
+const safeNavigate = (path, options) => {
+  setIsNavigating(true);
+  navigate(path, options);
+};
+
+// Lock the patient record for this doctor before navigation
+const lockPatientForConsultation = async () => {
+  if (!patientId) return;
+  try {
+    await updatePatientStatus(patientId, "in_consultation");
+  } catch (err) {
+    console.error("Failed to lock patient for consultation", err);
+  }
+};
+
+const lockAndNavigate = async (path, options) => {
+  setIsNavigating(true);
+  await lockPatientForConsultation();
+  navigate(path, options);
+};
 
     const normalizeStatus = (status) => {
   if (!status) return 'Pending';
@@ -98,6 +124,14 @@ const PatientMedicalHistory = () => {
     };
     load();
     return () => { mounted = false; };
+  }, [patientId]);
+
+  // When this page unmounts, release the lock so another doctor can open the profile
+  useEffect(() => {
+    return () => {
+      if (!patientId) return;
+      updatePatientStatus(patientId, "in_consultation").catch(() => {});      // Trigger refresh in other tabs/windows
+      localStorage.setItem('refreshIncoming', Date.now().toString());    };
   }, [patientId]);
 
     const patientName = useMemo(() => (
@@ -413,6 +447,9 @@ const isEligibleForAntenatal = useMemo(() => {
 
           <PatientSummaryCard patient={patient} loading={loading} />
 
+          <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+
+
           {/* Antenatal Records Section */}
           {isEligibleForAntenatal && (
             <div className="card bg-base-100 shadow-sm mb-4">
@@ -429,7 +466,7 @@ const isEligibleForAntenatal = useMemo(() => {
                     </button>
                     <button
                       className="btn btn-secondary btn-sm gap-2"
-                      onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
+                      onClick={() => lockAndNavigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
                     >
                       <span>+</span> {antenatalRecords.length > 0 ? 'Add New Record' : 'Add First Record'}
                     </button>
@@ -541,19 +578,23 @@ const isEligibleForAntenatal = useMemo(() => {
     }) : []
   ), [consultations, patientName])}
   loading={loading}
-  onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}
-  onViewDetails={(row) => {
+ onAdd={() => lockAndNavigate(
+  `/dashboard/doctor/medical-history/${patientId}/add`,
+  { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+)} onViewDetails={(row) => {
     const cid = row?.id;
-    if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+    if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
   }}
   onEdit={(row) => {
-    const cid = row?.id;
-    if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-  }}
+  const cid = row?.id;
+  if (cid) lockAndNavigate(
+    `/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`,
+    { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+  );
+}}
   onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
 />
 
-          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
@@ -579,23 +620,10 @@ const isEligibleForAntenatal = useMemo(() => {
             investigations={investigations48h}
             loading={investigationsLoading}
           />
+          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
-          <LabHistoryTable
-            rows={useMemo(() => (
-              Array.isArray(labResults48h) ? labResults48h.map((lab) => ({
-                id: lab?._id || lab?.id,
-                status: lab?.status || lab?.form?.status || 'pending',
-                type: lab?.type || 'Lab',
-                date: lab?.createdAt ? formatUTCDate(lab.createdAt) : "—",
-                tests: lab?.form?.tests || lab?.result?.map(r => r.code) || [],
-                priority: lab?.priority || 'normal'
-              })) : []
-            ), [labResults48h])}
-            loading={labLoading}
-            onViewResult={(row) => row?.id && navigate(`/dashboard/doctor/labResults/${row.id}`)}
-          />
 
-          <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+      
 
           <div className="shadow-xl card bg-base-100 mb-4">
             <div className="p-4 card-body">
@@ -628,8 +656,8 @@ const isEligibleForAntenatal = useMemo(() => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-               onClick={() => {
-  // Include only items from last 48 hours
+              // Find this onClick and replace it:
+onClick={() => {
   const prescriptionItems = (prescriptions48h || []).flatMap(p =>
     (p?.medications || []).map(m => ({
       serviceChargeId: "",
@@ -640,22 +668,14 @@ const isEligibleForAntenatal = useMemo(() => {
     }))
   );
 
-  // Add lab investigation charges from last 48 hours - EXCLUDING COMPLETED ones
   const investigationItems = (investigations48h || []).flatMap(inv => {
-    // Skip completed investigations - only include pending/requested/in_progress
     const status = (inv?.status || '').toLowerCase();
-    if (status.includes('completed') || status.includes('done')) {
-      return [];
-    }
-    
-    // Handle if tests is an array of strings or objects
+    if (status.includes('completed') || status.includes('done')) return [];
     const tests = inv.tests || [];
     if (tests.length === 0) return [];
-    
-    return tests.map((test, idx) => {
+    return tests.map((test) => {
       const testName = typeof test === 'string' ? test : (test?.name || test?.code || 'Lab Test');
       const price = getLabInvestigationPrice(testName, inv?.type);
-      
       return {
         serviceChargeId: inv.id || inv._id || "",
         code: "LAB",
@@ -667,14 +687,12 @@ const isEligibleForAntenatal = useMemo(() => {
     });
   });
 
+  // ✅ Always open the modal — even if no items, user can add manually
   const allItems = [...prescriptionItems, ...investigationItems];
-  if (allItems.length === 0) {
-    alert('No pending prescriptions or lab investigations from the last 48 hours');
-    return;
-  }
-  setBillDefaults(allItems);
+  setBillDefaults(allItems); // will be empty array if nothing in 48h — that's fine
   setIsBillModalOpen(true);
 }}
+disabled={isNavigating}
               >
                 Send to cashier
               </button>
@@ -705,7 +723,7 @@ const isEligibleForAntenatal = useMemo(() => {
             
             <div>
               <button 
-                className="btn btn-sm btn-info gap-2"
+                className="text-primary text-lg font-semibold hover:underline"
                 onClick={() => {
                   if (!consultation) {
                     alert('Please wait for consultation data to load or select a consultation');
@@ -713,10 +731,53 @@ const isEligibleForAntenatal = useMemo(() => {
                   }
                   setIsSendToNurseModalOpen(true);
                 }}
+                disabled={isNavigating || !consultation}
               >
-                <FaUserMd /> Send to Nurse
+                 Send to Nurse
               </button>
               <div className="text-xs text-base-content/70">(assign nursing tasks)</div>
+            </div>
+
+            <div>
+              <button 
+                className="text-primary text-lg font-semibold hover:underline"
+               onClick={() => {
+  if (!consultation) {
+    alert('Please wait for consultation data to load');
+    return;
+  }
+  // ✅ Build items same as cashier
+  const prescriptionItems = (prescriptions48h || []).flatMap(p =>
+    (p?.medications || []).map(m => ({
+      serviceChargeId: "",
+      code: "DRUG",
+      description: m?.drugName || "Medication",
+      quantity: 1,
+      price: Number(getDrugPrice(m?.drugName)) || 0
+    }))
+  );
+  const investigationItems = (investigations48h || []).flatMap(inv => {
+    const status = (inv?.status || '').toLowerCase();
+    if (status.includes('completed') || status.includes('done')) return [];
+    return (inv.tests || []).map(test => {
+      const testName = typeof test === 'string' ? test : (test?.name || 'Lab Test');
+      return {
+        serviceChargeId: inv.id || inv._id || "",
+        code: "LAB",
+        description: `${testName} (${inv.type || 'Lab'})`,
+        quantity: 1,
+        price: getLabInvestigationPrice(testName, inv?.type) || 0,
+      };
+    });
+  });
+  setBillDefaults([...prescriptionItems, ...investigationItems]);
+  setIsSendToHmoModalOpen(true);
+}}
+disabled={isNavigating || !consultation}
+              >
+                 Send to HMO
+              </button>
+              <div className="text-xs text-base-content/70">(submit for insurance approval)</div>
             </div>
           </div>
 
@@ -745,6 +806,19 @@ const isEligibleForAntenatal = useMemo(() => {
         onSentSuccessfully={() => navigate('/dashboard/doctor/incoming')}
        />
 
+     <SendToHmoModal
+  isOpen={isSendToHmoModalOpen}
+  onClose={() => setIsSendToHmoModalOpen(false)}
+  patientId={patientId}
+  patientName={patientName}
+  doctorName={doctorName}
+  consultationDate={consultationDate}
+  visitReason={visitReason}
+  diagnosis={diagnosis}
+  defaultItems={billDefaults}  // ✅ same items as cashier
+  onSentSuccessfully={() => navigate('/dashboard/hmo/incoming')}
+/>
+        
           <RecordVitalsModal
             isOpen={isRecordOpen}
             patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}

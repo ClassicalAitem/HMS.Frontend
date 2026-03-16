@@ -138,14 +138,14 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
               </div>
             </div>
 
-            <div className="mt-4">
+            {/* <div className="mt-4">
               <div className="rounded-xl border border-base-300 p-4">
                 <div className="text-base font-medium text-base-content">Additional Notes</div>
                 <div className="mt-2 text-sm text-base-content/80 min-h-24 whitespace-pre-wrap">
                   {latest?.notes ? latest.notes : "—"}
                 </div>
               </div>
-            </div>
+            </div> */}
           </>
         ) : (
           <div>

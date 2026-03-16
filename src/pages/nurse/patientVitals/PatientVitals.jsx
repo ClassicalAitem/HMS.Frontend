@@ -382,14 +382,8 @@ const statusBadgeClass = (status) => {
                         onClick={async () => {
                           try {
                             const pid = selectedPatient?.id || selectedPatient?.hospitalId;
-                            const currentStatuses = Array.isArray(selectedPatient?.status)
-                                      ? selectedPatient.status
-                                      : [];
-
-                                    const newStatuses = Array.from(
-                                      new Set([...currentStatuses, "awaiting_consultation"])
-                                    );
-                            const promise = updatePatientStatus(pid, ['awaiting_consultation']);
+                            const newStatus = PATIENT_STATUS.AWAITING_CONSULTATION;
+                            const promise = updatePatientStatus(pid, newStatus);
                             toast.promise(promise, {
                               loading: 'Sending to doctor...',
                               success: 'Patient sent to doctor successfully',
@@ -416,8 +410,8 @@ const statusBadgeClass = (status) => {
                 isOpen={isSendPharmacyOpen}
                 onClose={() => setIsSendPharmacyOpen(false)}
                 patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                currentStatus={selectedPatient?.status || []}
-                defaultStatus={[PATIENT_STATUS.AWAITING_PHARMACY]}
+                currentStatus={selectedPatient?.status || ''}
+                defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
                 itemsCount={0}
                 medicationNames={[]}
                 patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
@@ -431,8 +425,8 @@ const statusBadgeClass = (status) => {
                 isOpen={isSendCashierOpen}
                 onClose={() => setIsSendCashierOpen(false)}
                 patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                currentStatus={selectedPatient?.status || []}
-                defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
+                currentStatus={selectedPatient?.status || ''}
+                defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
                 mode={"confirm"}
                 patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
                 onUpdated={() => setIsSendCashierOpen(false)}

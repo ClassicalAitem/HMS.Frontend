@@ -64,7 +64,7 @@ const PatientSummaryCard = ({ patient, loading }) => {
                     <div className="flex flex-wrap gap-2">
                       {patient.hmos.map((h, i) => (
                         <span key={i} className="badge badge-outline font-normal text-sm">
-                           {`${h?.memberId || "—"} - ${h?.provider || "—"} - ${h?.plan || "—"} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString("en-US") : "—"})`}
+                           {`${h?.memberId || "—"} - ${h?.provider || "—"} - ${h?.plan || "—"} `}
                         </span>
                       ))}
                     </div>

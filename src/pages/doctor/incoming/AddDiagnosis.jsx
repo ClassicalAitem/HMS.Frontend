@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
-import { getPatientById } from "@/services/api/patientsAPI";
+import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
@@ -183,9 +183,9 @@ const AddDiagnosis = () => {
   const onSave = () => setIsConfirmOpen(true);
 
   // ✅ Fix 4 — handleConfirmSave is now clean with dependantId included
-  const handleConfirmSave = async () => {
-    setIsConfirmOpen(false);
-    if (!patientId) return;
+const handleConfirmSave = async () => {
+  setIsConfirmOpen(false);
+  if (!patientId) return;
 
     const payload = {
       patientId,
@@ -224,22 +224,24 @@ const AddDiagnosis = () => {
       })),
     };
 
-    setSaving(true);
-    toast.promise(
-      createConsultation(payload),
-      {
-        loading: "Saving consultation...",
-        success: (res) => {
-          const data = res?.data ?? res;
-          setCid(data.id || data._id);
-          return "Consultation saved successfully";
-        },
-        error: (err) =>
-          err?.response?.data?.message || "Failed to save consultation",
-      }
-    ).finally(() => setSaving(false));
-  };
 
+  setSaving(true);
+  toast.promise(
+    createConsultation(payload),
+    {
+      loading: "Saving consultation...",
+      success: (res) => {
+        const data = res?.data ?? res;
+        setCid(data.id || data._id);
+
+
+        return "Consultation saved successfully";
+      },
+      error: (err) =>
+        err?.response?.data?.message || "Failed to save consultation",
+    }
+  ).finally(() => setSaving(false));
+};
   return (
     <div className="flex h-screen bg-base-200/50">
       {isSidebarOpen && (
@@ -283,7 +285,7 @@ const AddDiagnosis = () => {
                 value={selectedDependantId}
                 onChange={e => setSelectedDependantId(e.target.value)}
               >
-                <option value="">Main Patient ({patientName})</option>
+                <option value=""> Patient ({patientName})</option>
                 {dependants.length > 0 ? (
                   dependants.map(dep => (
                     <option key={dep.id} value={dep.id}>

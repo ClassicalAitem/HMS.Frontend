@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
-import { getPatients } from "@/services/api/patientsAPI";
+import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 
 const IncomingDoctor = () => {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ const IncomingDoctor = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
+  const [navigatingId, setNavigatingId] = useState(null);
   const pageSize = 10;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
@@ -62,6 +63,7 @@ const IncomingDoctor = () => {
           patientId: p?.hospitalId || p?.id || "—",
           reason: prettifyStatus(p?.status) || "Consultation",
           insurance: p?.hmos?.provider || "—",
+          rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
           registered: p?.createdAt
             ? new Date(p.createdAt).toLocaleString([], {
                 dateStyle: "medium",
@@ -91,6 +93,18 @@ const IncomingDoctor = () => {
       mounted = false;
     };
   }, [refreshKey]);
+
+  // Listen for refresh triggers from other tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'refreshIncoming') {
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
 
   useEffect(() => {
     setPage(0);
@@ -188,7 +202,7 @@ const IncomingDoctor = () => {
                 <div className="col-span-2">Patient ID</div>
                 <div className="col-span-2">Status</div>
                 <div className="col-span-2">Registered</div>
-                <div className="col-span-1 text-right">Action</div>
+                  <div className="col-span-2 text-right">Action</div> 
               </div>
             )}
 
@@ -277,26 +291,66 @@ const IncomingDoctor = () => {
                       </span>
                     </div>
 
-                    {/* Action */}
-                    <div className="col-span-1 flex justify-end">
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={() =>
-                          data.id &&
-                          navigate(
-                            `/dashboard/doctor/medical-history/${data.id}`,
-                            {
-                              state: {
-                                from: "incoming",
-                                patientSnapshot: data.snapshot,
-                              },
-                            }
-                          )
-                        }
-                      >
-                        View
-                      </button>
-                    </div>
+                 
+               
+{/* Action — col-span-2 */}
+<div className="col-span-2 flex justify-end">
+  {['in_consultation', 'in consultation'].some((v) => data.rawStatus?.includes(v)) ? (
+    // ✅ Stack vertically, no overflow
+    <div className="flex flex-col items-end gap-5">
+      <button
+        className="btn btn-xs btn-outline btn-warning w-full"
+        onClick={async () => {
+          try {
+            await updatePatientStatus(data.id, { status: 'awaiting_consultation' });
+            localStorage.setItem('refreshIncoming', Date.now().toString());
+            onRefresh();
+          } catch (err) {
+            console.error('Failed to reset patient status', err);
+          }
+        }}
+      >
+        ↺ Reset
+      </button>
+      <button className="btn btn-xs btn-disabled w-full" disabled>
+        View
+      </button>
+    </div>
+  ) : (
+    <button
+      className="btn btn-sm btn-primary"
+      disabled={navigatingId === data.id}
+      onClick={async () => {
+        if (!data.id) return;
+        setNavigatingId(data.id);
+        try {
+          const latest = await getPatientById(data.id);
+          const latestStatus = (latest?.data?.status ?? latest?.status ?? "").toString().toLowerCase();
+          const isAlreadyInConsultation = ['in_consultation', 'in consultation'].some((v) => latestStatus.includes(v));
+          if (isAlreadyInConsultation) {
+            alert("This patient is currently in consultation. Please pick another patient.");
+            setNavigatingId(null);
+            return;
+          }
+          await updatePatientStatus(data.id, { status: 'in_consultation' });
+          localStorage.setItem('refreshIncoming', Date.now().toString());
+        } catch (err) {
+          console.error("Failed to set patient status to in_consultation", err);
+          setNavigatingId(null);
+          return;
+        }
+        navigate(`/dashboard/doctor/medical-history/${data.id}`, {
+          state: { from: "incoming", patientSnapshot: data.snapshot },
+        });
+      }}
+    >
+      {navigatingId === data.id
+        ? <span className="loading loading-spinner loading-xs" />
+        : 'View'
+      }
+    </button>
+  )}
+</div>
                   </div>
                 ))
               )}
