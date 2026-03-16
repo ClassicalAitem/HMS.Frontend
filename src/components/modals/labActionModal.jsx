@@ -10,26 +10,25 @@ const LabActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaul
 
   if (!isOpen) return null;
 
-  const handleConfirm = async () => {
-    try {
-      setIsSending(true);
-      // Merge current status with new status (removes radiology/lab statuses if needed, adds lab status)
-      const mergedStatus = mergePatientStatus(currentStatus, 'radiology', Array.isArray(selectedAction) ? selectedAction : [selectedAction]);
-      const promise = updatePatientStatus(patientId, mergedStatus);
-      toast.promise(promise, {
-        loading: 'Sending to lab...',
-        success: 'Patient sent to lab successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to send to lab',
-      });
-      await promise;
-      onClose();
-      if (onUpdated) onUpdated();
-    } catch (e) {
-      // handled by toast
-    } finally {
-      setIsSending(false);
-    }
-  };
+const handleConfirm = async () => {
+  try {
+    setIsSending(true);
+    // ✅ Single string status
+    const promise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_LAB });
+    toast.promise(promise, {
+      loading: 'Sending to lab...',
+      success: 'Patient sent to lab successfully',
+      error: (err) => err?.response?.data?.message || 'Failed to send to lab',
+    });
+    await promise;
+    onClose();
+    if (onUpdated) onUpdated();
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'An error occurred while sending to lab');
+  } finally {
+    setIsSending(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

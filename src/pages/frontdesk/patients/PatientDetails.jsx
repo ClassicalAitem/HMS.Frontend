@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
@@ -230,8 +231,8 @@ const PatientDetails = () => {
         isOpen={isSendToNurseOpen}
         onClose={() => setIsSendToNurseOpen(false)}
         patientId={patient?.id || patientId}
-        currentStatus={patient?.status || []}
-        defaultAction={['awaiting_vitals']}
+        currentStatus={patient?.status || ''}
+        defaultAction={PATIENT_STATUS.AWAITING_VITALS}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 
@@ -240,8 +241,8 @@ const PatientDetails = () => {
         isOpen={isSendToCashierOpen}
         onClose={() => setIsSendToCashierOpen(false)}
         patientId={patient?.id || patientId}
-        currentStatus={patient?.status || []}
-        defaultStatus={['awaiting_cashier']}
+        currentStatus={patient?.status || ''}
+        defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       />
 

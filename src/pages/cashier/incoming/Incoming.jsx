@@ -23,16 +23,14 @@ const Incoming = () => {
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
         const statuses = new Set([
-          'awaiting_cashier',
-          'awaiting_payment'
+          'awaiting_cashier'
         ]);
-    const filtered = patients.filter((p) => {
-  const patientStatuses = Array.isArray(p?.status) ? p.status : [];
-
-  return patientStatuses.some((s) =>
-    statuses.has(String(s).toLowerCase())
-  );
+    /// ✅ Fix — handle single string
+const filtered = patients.filter((p) => {
+  const s = typeof p?.status === 'string' ? p.status.toLowerCase() : '';
+  return statuses.has(s);
 });
+
   const mapped = filtered.map((p) => ({
           id: p?.id,
           snapshot: p,
