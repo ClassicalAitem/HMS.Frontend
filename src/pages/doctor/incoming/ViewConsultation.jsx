@@ -399,7 +399,7 @@ const subjectRelation = isForDependant
                       <FaNotesMedical className="text-primary w-5 h-5" />
                       <h3 className="font-bold text-lg text-base-content">Consultation Overview</h3>
                     </div>
-                    {( diagnosis === "Pending diagnosis") && (
+                    {(!diagnosis || diagnosis.toLowerCase().includes("pending")) && (
                       <button 
                         className="btn btn-sm btn-outline btn-success gap-2"
                         onClick={() => setIsDiagnosisModalOpen(true)}

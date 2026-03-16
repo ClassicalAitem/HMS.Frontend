@@ -25,6 +25,7 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, lo
             <button
               className="btn btn-success btn-sm"
               onClick={onAdd}
+              
             >
               + Add New Consultation
             </button>

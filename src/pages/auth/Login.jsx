@@ -114,6 +114,7 @@ const Login = () => {
           'super-admin': '/dashboard/superadmin',
           'cashier': '/cashier/dashboard',
           'pharmacist': '/dashboard/pharmacist',
+          'hmo': '/dashboard/hmo',
         };
         const roleOrType = user.role || user.accountType;
         redirectPath = roleRoutes[roleOrType] || '/frontdesk/dashboard';
@@ -202,6 +203,8 @@ const Login = () => {
         return '/cashier/dashboard';
       case 'pharmacist':
         return '/dashboard/pharmacist';
+      case 'hmo':
+        return '/dashboard/hmo';
       default:
         return '/frontdesk/dashboard';
     }
