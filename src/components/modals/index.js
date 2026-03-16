@@ -19,6 +19,7 @@ export { default as LabActionModal } from './labActionModal';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { default as AddDrugModal } from './addDrugModal';
 export { default as SendLabResultsModal } from './SendLabResultsModal';
+export { default as SendToHmoModal } from './SendToHmoModal';
 export { default as CreateBillModal } from './CreateBillModal';
 export { default as DoctorBillModal } from './DoctorBillModal';
 export { default as AppointmentDetailsModal } from './AppointmentDetailsModal';

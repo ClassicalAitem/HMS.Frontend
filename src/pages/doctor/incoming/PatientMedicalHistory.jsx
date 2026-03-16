@@ -11,7 +11,7 @@ import LabHistoryTable from "@/components/doctor/patient/LabHistoryTable";
 import LabInvestigationRequestCard from "@/components/doctor/patient/LabInvestigationRequestCard";
 import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
-import { getPatientById } from "@/services/api/patientsAPI";
+import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
@@ -23,6 +23,7 @@ import CreateBillModal from "@/components/modals/CreateBillModal";
 import { FaUserMd } from "react-icons/fa";
 import SendToNurseModal from "./modals/SendToNurseModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
+import { SendToHmoModal } from "@/components/modals";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -52,10 +53,35 @@ const PatientMedicalHistory = () => {
   const [labInvestigations, setLabInvestigations] = useState([]);
   const [investigationsLoading, setInvestigationsLoading] = useState(false);
   const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
+  const [isSendToHmoModalOpen, setIsSendToHmoModalOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [billDefaults, setBillDefaults] = useState([]);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [antenatalLoading, setAntenatalLoading] = useState(false);
+
+  const [isNavigating, setIsNavigating] = useState(false);
+
+// Helper to navigate with loading
+const safeNavigate = (path, options) => {
+  setIsNavigating(true);
+  navigate(path, options);
+};
+
+// Lock the patient record for this doctor before navigation
+const lockPatientForConsultation = async () => {
+  if (!patientId) return;
+  try {
+    await updatePatientStatus(patientId, "in_consultation");
+  } catch (err) {
+    console.error("Failed to lock patient for consultation", err);
+  }
+};
+
+const lockAndNavigate = async (path, options) => {
+  setIsNavigating(true);
+  await lockPatientForConsultation();
+  navigate(path, options);
+};
 
     const normalizeStatus = (status) => {
   if (!status) return 'Pending';
@@ -100,10 +126,28 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  // When this page unmounts, release the lock so another doctor can open the profile
+  useEffect(() => {
+    return () => {
+      if (!patientId) return;
+      updatePatientStatus(patientId, "in_consultation").catch(() => {});      // Trigger refresh in other tabs/windows
+      localStorage.setItem('refreshIncoming', Date.now().toString());    };
+  }, [patientId]);
+
     const patientName = useMemo(() => (
       patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
     ), [patient]);
-    
+
+  const formatUTC = (value, options) => {
+    if (!value) return "";
+    const date = new Date(value);
+    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(date);
+  };
+
+  const formatUTCDate = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric" });
+  const formatUTCTime = (value) => formatUTC(value, { hour: "2-digit", minute: "2-digit", hour12: false });
+  const formatUTCDateTime = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+
   // Mapped Data
   const complaints = consultation?.complaint || [];
   const medicalHistory = consultation?.medicalHistory || [];
@@ -115,7 +159,7 @@ const PatientMedicalHistory = () => {
   const visitReason = consultation?.visitReason || "Not specified";
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
-  const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
+  const consultationDate = consultation?.createdAt ? formatUTCDateTime(consultation.createdAt) : "";
 
 
   useEffect(() => {
@@ -248,22 +292,11 @@ const PatientMedicalHistory = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  const isEligibleForAntenatal = useMemo(() => {
-    if (!patient) return false;
-    const gender = patient.gender?.toLowerCase();
-    if (gender !== 'female') return false;
-    const dob = patient.dateOfBirth || patient.dob;
-    if (!dob) return false;
-
-    const birthDate = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age > 16;
-  }, [patient]);
+const isEligibleForAntenatal = useMemo(() => {
+  if (!patient) return false;
+  const gender = patient.gender?.toLowerCase();
+  return gender === 'female';
+}, [patient]);
 
   // Fetch antenatal records for eligible female patients
   useEffect(() => {
@@ -414,6 +447,9 @@ const PatientMedicalHistory = () => {
 
           <PatientSummaryCard patient={patient} loading={loading} />
 
+          <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+
+
           {/* Antenatal Records Section */}
           {isEligibleForAntenatal && (
             <div className="card bg-base-100 shadow-sm mb-4">
@@ -430,7 +466,7 @@ const PatientMedicalHistory = () => {
                     </button>
                     <button
                       className="btn btn-secondary btn-sm gap-2"
-                      onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
+                      onClick={() => lockAndNavigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
                     >
                       <span>+</span> {antenatalRecords.length > 0 ? 'Add New Record' : 'Add First Record'}
                     </button>
@@ -454,16 +490,13 @@ const PatientMedicalHistory = () => {
                         <div className="flex justify-between text-sm">
                           <span className="text-base-content/70">Latest EDD:</span>
                           <span className="font-medium">
-                            {antenatalRecords
-                              .map(r => r.presentPregnancyHistories?.[0]?.EDD)
-                              .filter(Boolean)
-                              .sort((a, b) => new Date(b) - new Date(a))[0]
-                              ? new Date(antenatalRecords
-                                  .map(r => r.presentPregnancyHistories?.[0]?.EDD)
-                                  .filter(Boolean)
-                                  .sort((a, b) => new Date(b) - new Date(a))[0]
-                                ).toLocaleDateString()
-                              : '-'}
+                            {(() => {
+                              const latestEDD = antenatalRecords
+                                .map(r => r.presentPregnancyHistories?.[0]?.EDD)
+                                .filter(Boolean)
+                                .sort((a, b) => new Date(b) - new Date(a))[0];
+                              return latestEDD ? formatUTCDate(latestEDD) : '-';
+                            })()}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
@@ -486,11 +519,11 @@ const PatientMedicalHistory = () => {
                             <>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">EDD:</span>
-                                <span className="font-medium">{pregnancy.EDD ? new Date(pregnancy.EDD).toLocaleDateString() : '-'}</span>
+                                <span className="font-medium">{pregnancy.EDD ? formatUTCDate(pregnancy.EDD) : '-'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">LMP:</span>
-                                <span className="font-medium">{pregnancy.LMP ? new Date(pregnancy.LMP).toLocaleDateString() : '-'}</span>
+                                <span className="font-medium">{pregnancy.LMP ? formatUTCDate(pregnancy.LMP) : '-'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">Gestational Age:</span>
@@ -514,32 +547,54 @@ const PatientMedicalHistory = () => {
             </div>
           )}
 
-          <MedicalHistoryTable rows={useMemo(() => (
-            Array.isArray(consultations) ? consultations.map((c) => {
-              const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
-              const now = Date.now();
-              const within24h = now - createdTime < 24 * 60 * 60 * 1000;
-              return {
-                id: c?._id || c?.id,
-                type: "Consultation",
-                diagnosis: c?.diagnosis || "—",
-                time: c?.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
-                date: c?.createdAt ? new Date(c.createdAt).toLocaleDateString("en-US") : "—",
-                notes: c?.notes || "—",
-                canEdit: within24h,
-              };
-            }) : []
-          ), [consultations])} loading={loading} onAdd={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} onViewDetails={(row) => {
-            const cid = row?.id;
-            if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-          }}
-            onEdit={(row) => {
-              const cid = row?.id;
-              if (cid) navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-            }} />
+          <MedicalHistoryTable
+  rows={useMemo(() => (
+    Array.isArray(consultations) ? consultations.map((c) => {
+      const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
+      const now = Date.now();
+      const within24h = now - createdTime < 24 * 60 * 60 * 1000;
 
+      // ✅ Determine if consultation is for a dependant or main patient
+      const isForDependant = !!c?.dependantId && !!c?.dependant;
+      const forName = isForDependant
+        ? `${c.dependant.firstName || ""} ${c.dependant.lastName || ""}`.trim()
+        : patientName;
+      const forRelation = isForDependant
+        ? c.dependant.relationshipType || "Dependant"
+        : "Patient";
 
-          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
+      return {
+        id: c?._id || c?.id,
+        type: "Consultation",
+        diagnosis: c?.diagnosis || "—",
+        time: c?.createdAt ? formatUTCTime(c.createdAt) : "—",
+        date: c?.createdAt ? formatUTCDate(c.createdAt) : "—",
+        notes: c?.notes || "—",
+        canEdit: within24h,
+        forName,        // ✅ who the consultation is for
+        forRelation,    // ✅ their relation
+        isForDependant, // ✅ flag
+      };
+    }) : []
+  ), [consultations, patientName])}
+  loading={loading}
+ onAdd={() => lockAndNavigate(
+  `/dashboard/doctor/medical-history/${patientId}/add`,
+  { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+)} onViewDetails={(row) => {
+    const cid = row?.id;
+    if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+  }}
+  onEdit={(row) => {
+  const cid = row?.id;
+  if (cid) lockAndNavigate(
+    `/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`,
+    { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+  );
+}}
+  onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
+/>
+
 
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
@@ -552,7 +607,7 @@ const PatientMedicalHistory = () => {
               return {
                 id: p?._id || p?.id,
                 status: normalizeStatus(p?.status),
-                date: p?.createdAt ? new Date(p.createdAt).toLocaleDateString("en-US") : "—",
+                date: p?.createdAt ? formatUTCDate(p.createdAt) : "—",
                 medicationsCount: p?.medications?.length || 0,
                 medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
                 totalPrice: totalPrice > 0 ? totalPrice : null
@@ -565,23 +620,10 @@ const PatientMedicalHistory = () => {
             investigations={investigations48h}
             loading={investigationsLoading}
           />
+          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
 
-          <LabHistoryTable
-            rows={useMemo(() => (
-              Array.isArray(labResults48h) ? labResults48h.map((lab) => ({
-                id: lab?._id || lab?.id,
-                status: lab?.status || lab?.form?.status || 'pending',
-                type: lab?.type || 'Lab',
-                date: lab?.createdAt ? new Date(lab.createdAt).toLocaleDateString("en-US") : "—",
-                tests: lab?.form?.tests || lab?.result?.map(r => r.code) || [],
-                priority: lab?.priority || 'normal'
-              })) : []
-            ), [labResults48h])}
-            loading={labLoading}
-            onViewResult={(row) => row?.id && navigate(`/dashboard/doctor/labResults/${row.id}`)}
-          />
 
-          <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+      
 
           <div className="shadow-xl card bg-base-100 mb-4">
             <div className="p-4 card-body">
@@ -592,7 +634,7 @@ const PatientMedicalHistory = () => {
                     <div className="skeleton h-4 w-48 mt-2" />
                   ) : latestLab ? (
                     <div className="text-sm text-base-content/70">
-                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? new Date(latestLab.createdAt).toLocaleString() : '—'}
+                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatUTCDateTime(latestLab.createdAt) : '—'}
                     </div>
                   ) : (
                     <div className="text-sm text-base-content/70">No lab results</div>
@@ -614,8 +656,8 @@ const PatientMedicalHistory = () => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-               onClick={() => {
-  // Include only items from last 48 hours
+              // Find this onClick and replace it:
+onClick={() => {
   const prescriptionItems = (prescriptions48h || []).flatMap(p =>
     (p?.medications || []).map(m => ({
       serviceChargeId: "",
@@ -626,22 +668,14 @@ const PatientMedicalHistory = () => {
     }))
   );
 
-  // Add lab investigation charges from last 48 hours - EXCLUDING COMPLETED ones
   const investigationItems = (investigations48h || []).flatMap(inv => {
-    // Skip completed investigations - only include pending/requested/in_progress
     const status = (inv?.status || '').toLowerCase();
-    if (status.includes('completed') || status.includes('done')) {
-      return [];
-    }
-    
-    // Handle if tests is an array of strings or objects
+    if (status.includes('completed') || status.includes('done')) return [];
     const tests = inv.tests || [];
     if (tests.length === 0) return [];
-    
-    return tests.map((test, idx) => {
+    return tests.map((test) => {
       const testName = typeof test === 'string' ? test : (test?.name || test?.code || 'Lab Test');
       const price = getLabInvestigationPrice(testName, inv?.type);
-      
       return {
         serviceChargeId: inv.id || inv._id || "",
         code: "LAB",
@@ -653,14 +687,12 @@ const PatientMedicalHistory = () => {
     });
   });
 
+  // ✅ Always open the modal — even if no items, user can add manually
   const allItems = [...prescriptionItems, ...investigationItems];
-  if (allItems.length === 0) {
-    alert('No pending prescriptions or lab investigations from the last 48 hours');
-    return;
-  }
-  setBillDefaults(allItems);
+  setBillDefaults(allItems); // will be empty array if nothing in 48h — that's fine
   setIsBillModalOpen(true);
 }}
+disabled={isNavigating}
               >
                 Send to cashier
               </button>
@@ -691,7 +723,7 @@ const PatientMedicalHistory = () => {
             
             <div>
               <button 
-                className="btn btn-sm btn-info gap-2"
+                className="text-primary text-lg font-semibold hover:underline"
                 onClick={() => {
                   if (!consultation) {
                     alert('Please wait for consultation data to load or select a consultation');
@@ -699,10 +731,53 @@ const PatientMedicalHistory = () => {
                   }
                   setIsSendToNurseModalOpen(true);
                 }}
+                disabled={isNavigating || !consultation}
               >
-                <FaUserMd /> Send to Nurse
+                 Send to Nurse
               </button>
               <div className="text-xs text-base-content/70">(assign nursing tasks)</div>
+            </div>
+
+            <div>
+              <button 
+                className="text-primary text-lg font-semibold hover:underline"
+               onClick={() => {
+  if (!consultation) {
+    alert('Please wait for consultation data to load');
+    return;
+  }
+  // ✅ Build items same as cashier
+  const prescriptionItems = (prescriptions48h || []).flatMap(p =>
+    (p?.medications || []).map(m => ({
+      serviceChargeId: "",
+      code: "DRUG",
+      description: m?.drugName || "Medication",
+      quantity: 1,
+      price: Number(getDrugPrice(m?.drugName)) || 0
+    }))
+  );
+  const investigationItems = (investigations48h || []).flatMap(inv => {
+    const status = (inv?.status || '').toLowerCase();
+    if (status.includes('completed') || status.includes('done')) return [];
+    return (inv.tests || []).map(test => {
+      const testName = typeof test === 'string' ? test : (test?.name || 'Lab Test');
+      return {
+        serviceChargeId: inv.id || inv._id || "",
+        code: "LAB",
+        description: `${testName} (${inv.type || 'Lab'})`,
+        quantity: 1,
+        price: getLabInvestigationPrice(testName, inv?.type) || 0,
+      };
+    });
+  });
+  setBillDefaults([...prescriptionItems, ...investigationItems]);
+  setIsSendToHmoModalOpen(true);
+}}
+disabled={isNavigating || !consultation}
+              >
+                 Send to HMO
+              </button>
+              <div className="text-xs text-base-content/70">(submit for insurance approval)</div>
             </div>
           </div>
 
@@ -731,6 +806,19 @@ const PatientMedicalHistory = () => {
         onSentSuccessfully={() => navigate('/dashboard/doctor/incoming')}
        />
 
+     <SendToHmoModal
+  isOpen={isSendToHmoModalOpen}
+  onClose={() => setIsSendToHmoModalOpen(false)}
+  patientId={patientId}
+  patientName={patientName}
+  doctorName={doctorName}
+  consultationDate={consultationDate}
+  visitReason={visitReason}
+  diagnosis={diagnosis}
+  defaultItems={billDefaults}  // ✅ same items as cashier
+  onSentSuccessfully={() => navigate('/dashboard/hmo/incoming')}
+/>
+        
           <RecordVitalsModal
             isOpen={isRecordOpen}
             patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}
