@@ -9,8 +9,8 @@ const CashierActionModal = ({
   isOpen,
   onClose,
   patientId,
-  currentStatus = [],
-  defaultStatus = [PATIENT_STATUS.AWAITING_CASHIER],
+  currentStatus = '',
+  defaultStatus = PATIENT_STATUS.AWAITING_CASHIER,
   onUpdated,
   mode = 'confirm',
   totalAmount,
@@ -61,7 +61,7 @@ const CashierActionModal = ({
     try {
       setIsSending(true);
       const statusToSend = selectedStatus || defaultStatus;
-      // Merge current status with new status (removes cashier-related statuses, adds new one)
+      // Merge current status with new status (single-status model)
       const mergedStatus = mergePatientStatus(currentStatus, 'cashier', statusToSend);
       const promise = updatePatientStatus(patientId, mergedStatus);
       toast.promise(promise, {

@@ -10,6 +10,7 @@ import {
   getAnteNatalRecord,
   updateAnteNatalRecord
 } from "@/services/api/anteNatalAPI";
+import { getAllDependantsForPatient } from "@/services/api/dependantAPI"; 
 
 const emptyForm = (doctorName = "") => ({
   previousMedicalHistory: {
@@ -41,6 +42,40 @@ const AntenatalRecords = () => {
   const [patient, setPatient] = useState(null);
   const [formData, setFormData] = useState(emptyForm(doctorName));
 
+  const [dependants, setDependants] = useState([]);
+const [selectedDependantId, setSelectedDependantId] = useState("");
+
+const selectedDependant = useMemo(() => {
+  if (!selectedDependantId) return null;
+  return dependants.find(d => (d.id || d._id) === selectedDependantId) || null;
+}, [selectedDependantId, dependants]);
+
+
+
+useEffect(() => {
+  let mounted = true;
+  const fetchDependants = async () => {
+    try {
+      const res = await getAllDependantsForPatient(patientId);
+      const raw =
+        res?.data?.data?.dependants ??
+        res?.data?.dependants ??
+        res?.data ??
+        [];
+      const normalized = (Array.isArray(raw) ? raw : []).map(dep => ({
+        ...dep,
+        id: dep.id || dep._id,
+        fullName: dep.fullName || `${dep.firstName || ""} ${dep.lastName || ""}`.trim(),
+      }));
+      if (mounted) setDependants(normalized);
+    } catch (err) {
+      console.error("Failed to fetch dependants", err);
+    }
+  };
+  if (patientId) fetchDependants();
+  return () => { mounted = false; };
+}, [patientId]);
+
   // Load patient
   useEffect(() => {
     let mounted = true;
@@ -71,6 +106,9 @@ const AntenatalRecords = () => {
         if (mounted && record) {
           setFormData(transformBackendToFrontend(record, doctorName));
         }
+          if (record.dependantId) {
+        setSelectedDependantId(record.dependantId);
+      }
       } catch (err) {
         toast.error("Failed to load record data");
       } finally {
@@ -154,7 +192,14 @@ const AntenatalRecords = () => {
   };
 
   const transformFrontendToBackend = (fd) => {
-    const out = { patientId, doctorId: user?.id || user?._id };
+    const out = {
+    patientId,
+    doctorId: user?.id || user?._id,
+    // ✅ Include dependant if selected
+    ...(selectedDependantId && { dependantId: selectedDependantId }),
+    ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
+  };
+
 
     const med = {};
     if (fd.previousMedicalHistory.heartDisease?.trim()) med.heartDisease = fd.previousMedicalHistory.heartDisease.trim();
@@ -299,6 +344,39 @@ const AntenatalRecords = () => {
               >✕</button>
             </div>
           </div>
+          {/* Record For — Dependant Selection */}
+<div className="card bg-base-100 shadow-sm">
+  <div className="card-body p-4">
+    <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
+    <select
+      className="select select-bordered w-full"
+      value={selectedDependantId}
+      onChange={e => setSelectedDependantId(e.target.value)}
+    >
+      <option value="">Patient ({patientName})</option>
+      {dependants.length > 0 ? (
+        dependants.map(dep => (
+          <option key={dep.id} value={dep.id}>
+            {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
+          </option>
+        ))
+      ) : (
+        <option disabled value="">No dependants found</option>
+      )}
+    </select>
+    {selectedDependant && (
+      <div className="mt-2 text-sm text-base-content/70">
+        <span className="badge badge-secondary mr-2">Dependant</span>
+        <span>{selectedDependant.fullName}</span>
+        {selectedDependant.relationshipType && (
+          <span className="ml-2 badge badge-outline badge-sm">
+            {selectedDependant.relationshipType}
+          </span>
+        )}
+      </div>
+    )}
+  </div>
+</div>
 
           {/* Previous Medical History */}
           <div className="card bg-base-100 shadow-sm">
@@ -428,44 +506,178 @@ const AntenatalRecords = () => {
             </div>
           </div>
 
-          {/* Antenatal Examinations */}
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">ANTE-NATAL EXAMINATIONS</h3>
-              <div className="overflow-x-auto">
-                <table className="table w-full">
-                  <thead>
-                    <tr className="border-b border-base-200">
-                      {['Date', 'Height Of Fundus', 'E.G.A', 'Presentation And Lie', 'Relations of P.P to Birth', 'Foetal Heart', 'Urine', 'Weight(kg)', 'B.P(MnHg)', 'Next Visit (week)', 'Remarks', 'Signature', ''].map(h => (
-                        <th key={h} className="font-medium text-base-content/70 py-2">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.antenatalExaminations.map((item, idx) => (
-                      <tr key={idx} className="border-b border-base-200 last:border-0">
-                        <td className="py-2"><input type="date" className="input input-bordered input-sm w-full" value={item.date} onChange={(e) => updateExamination(idx, 'date', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="cm" value={item.heightOfFundus} onChange={(e) => updateExamination(idx, 'heightOfFundus', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="weeks" value={item.ega} onChange={(e) => updateExamination(idx, 'ega', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="e.g. Cephalic" value={item.presentationAndLie} onChange={(e) => updateExamination(idx, 'presentationAndLie', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="Relations" value={item.relationsOfPpToBirth} onChange={(e) => updateExamination(idx, 'relationsOfPpToBirth', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="bpm" value={item.foetalHeart} onChange={(e) => updateExamination(idx, 'foetalHeart', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="Results" value={item.urine} onChange={(e) => updateExamination(idx, 'urine', e.target.value)} /></td>
-                        <td className="py-2"><input type="number" step="0.1" className="input input-bordered input-sm w-full" placeholder="kg" value={item.weight} onChange={(e) => updateExamination(idx, 'weight', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="120/80" value={item.bp} onChange={(e) => updateExamination(idx, 'bp', e.target.value)} /></td>
-                        <td className="py-2"><input type="number" className="input input-bordered input-sm w-full" placeholder="week" value={item.nextVisit} onChange={(e) => updateExamination(idx, 'nextVisit', e.target.value)} /></td>
-                        <td className="py-2"><textarea className="textarea textarea-bordered textarea-sm w-full" placeholder="remarks" value={item.remarks} onChange={(e) => updateExamination(idx, 'remarks', e.target.value)} /></td>
-                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="Signature" value={item.signature || doctorName} onChange={(e) => updateExamination(idx, 'signature', e.target.value)} /></td>
-                        <td className="py-2 text-right"><button onClick={() => removeExamination(idx)} className="btn btn-ghost btn-xs text-error"><span className="text-lg font-bold">−</span></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <button className="btn btn-sm btn-outline mt-4" onClick={addExamination}>+ Add Ante-Natal Examination</button>
-              </div>
-            </div>
+        {/* Antenatal Examinations */}
+<div className="card bg-base-100 shadow-sm">
+  <div className="card-body p-4">
+    <h3 className="card-title text-lg font-semibold mb-4">ANTE-NATAL EXAMINATIONS</h3>
+    <div className="space-y-6">
+      {formData.antenatalExaminations.map((item, idx) => (
+        <div key={idx} className="border border-base-200 rounded-lg overflow-hidden">
+          
+          {/* Row header */}
+          <div className="flex items-center justify-between px-4 py-2 bg-base-200/40 border-b border-base-200">
+            <span className="text-sm font-semibold text-base-content/70">
+              Examination #{idx + 1}
+            </span>
+            <button
+              onClick={() => removeExamination(idx)}
+              className="btn btn-ghost btn-xs text-error"
+            >
+              <span className="text-lg font-bold">−</span> Remove
+            </button>
           </div>
 
+          {/* Main fields — scrollable row */}
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead>
+                <tr className="border-b border-base-200">
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Date</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Height Of Fundus</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">E.G.A</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Presentation & Lie</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">P.P to Brim</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Foetal Heart</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Urine</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Weight (kg)</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">B.P (mmHg)</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Next Visit (wk)</th>
+                  <th className="font-medium text-base-content/70 py-2 text-xs">Signature</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="py-2">
+                    <input
+                      type="date"
+                      className="input input-bordered input-sm w-full min-w-[130px]"
+                      value={item.date}
+                      onChange={(e) => updateExamination(idx, 'date', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[80px]"
+                      placeholder="cm"
+                      value={item.heightOfFundus}
+                      onChange={(e) => updateExamination(idx, 'heightOfFundus', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[70px]"
+                      placeholder="weeks"
+                      value={item.ega}
+                      onChange={(e) => updateExamination(idx, 'ega', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[100px]"
+                      placeholder="e.g. Cephalic"
+                      value={item.presentationAndLie}
+                      onChange={(e) => updateExamination(idx, 'presentationAndLie', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[80px]"
+                      placeholder="Relations"
+                      value={item.relationsOfPpToBirth}
+                      onChange={(e) => updateExamination(idx, 'relationsOfPpToBirth', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[70px]"
+                      placeholder="bpm"
+                      value={item.foetalHeart}
+                      onChange={(e) => updateExamination(idx, 'foetalHeart', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[80px]"
+                      placeholder="Results"
+                      value={item.urine}
+                      onChange={(e) => updateExamination(idx, 'urine', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="input input-bordered input-sm w-full min-w-[70px]"
+                      placeholder="kg"
+                      value={item.weight}
+                      onChange={(e) => updateExamination(idx, 'weight', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[80px]"
+                      placeholder="120/80"
+                      value={item.bp}
+                      onChange={(e) => updateExamination(idx, 'bp', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="number"
+                      className="input input-bordered input-sm w-full min-w-[70px]"
+                      placeholder="week"
+                      value={item.nextVisit}
+                      onChange={(e) => updateExamination(idx, 'nextVisit', e.target.value)}
+                    />
+                  </td>
+                  <td className="py-2">
+                    <input
+                      type="text"
+                      className="input input-bordered input-sm w-full min-w-[100px]"
+                      placeholder="Signature"
+                      value={item.signature || doctorName}
+                      onChange={(e) => updateExamination(idx, 'signature', e.target.value)}
+                      disabled
+                    />
+                  {/* <input type="text" className="input input-bordered w-full" value={formData.presentPregnancy.takenBy || doctorName} disabled /> */}
+
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* ✅ Remarks — full width below the table row */}
+          <div className="px-4 pb-4 pt-3 border-t border-base-200">
+            <label className="label pb-1">
+              <span className="label-text font-medium text-base-content/70 text-sm">Remarks</span>
+            </label>
+            <textarea
+              className="textarea textarea-bordered w-full resize-y min-h-[80px]"
+              placeholder="Enter remarks, observations, or additional notes for this examination..."
+              value={item.remarks}
+              onChange={(e) => updateExamination(idx, 'remarks', e.target.value)}
+            />
+          </div>
+        </div>
+      ))}
+
+      <button
+        className="btn btn-sm btn-outline"
+        onClick={addExamination}
+      >
+        + Add Ante-Natal Examination
+      </button>
+    </div>
+  </div>
+</div>
           {/* Action Buttons */}
           <div className="flex justify-center gap-4 pt-4 pb-12">
             <button

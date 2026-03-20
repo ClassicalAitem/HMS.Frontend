@@ -19,10 +19,15 @@ import SurgeonAppointments from "@/pages/surgeon/appointment/Appointment"
 import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
 import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
 
+import ViewConsultationRecords from "@/pages/doctor/incoming/ViewConsultationRecords";
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import LabResults from "@/pages/doctor/labResults/LabResults";
 import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
 import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
+
+import HmoDashboard from "@/pages/hmo/dashboard/HmoDashboard";
+import IncomingHmo from "@/pages/hmo/incoming/IncomingHmo";
+import IncomingHmoDetails from "@/pages/hmo/incoming/IncomingHmoDetails";
 import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
 import AntenatalRecords from "@/pages/doctor/incoming/AntenatalRecords";
 import AntenatalRecordDetails from "@/pages/doctor/incoming/AntenatalRecordDetails";
@@ -254,6 +259,11 @@ const AppRoutes = () => {
       <PatientMedicalHistory />
     </ProtectedRoute>
   } />
+  <Route path="/dashboard/doctor/view-consultation-records/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ViewConsultationRecords />
+    </ProtectedRoute>
+  } />
   <Route path="/dashboard/doctor/antenatal-records/:patientId/:recordId?" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <AntenatalRecords />
@@ -336,6 +346,22 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
 
+      {/* HMO Dashboard Routes */}
+      <Route path="/dashboard/hmo" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <HmoDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hmo/incoming" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <IncomingHmo />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hmo/incoming/:patientId" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <IncomingHmoDetails />
+        </ProtectedRoute>
+      } />
 
       {/*==============================================================================================================
 

@@ -1113,11 +1113,7 @@ useEffect(() => {
                       className="btn btn-success"
                       onClick={async () => {
                         try {
-                          const newStatus = Array.from(
-                            new Set([...(patient?.status || []), PATIENT_STATUS.AWAITING_CONSULTATION])
-                          );
-
-                          updatePatientStatus(patientUUID || patientId, newStatus);
+                          const newStatus = PATIENT_STATUS.AWAITING_CONSULTATION;
                           const promise = updatePatientStatus(patientUUID || patientId, newStatus);
                           toast.promise(promise, {
                             loading: 'Sending to doctor...',
@@ -1145,8 +1141,8 @@ useEffect(() => {
               isOpen={isSendPharmacyOpen}
               onClose={() => setIsSendPharmacyOpen(false)}
               patientId={patientUUID || patientId}
-              currentStatus={patient?.status || []}
-              defaultStatus={[PATIENT_STATUS.AWAITING_PHARMACY]}
+              currentStatus={patient?.status || ''}
+              defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
               itemsCount={0}
               medicationNames={[]}
               patientLabel={`${subjectName} (${subjectHospitalId || '—'})`}
@@ -1160,8 +1156,8 @@ useEffect(() => {
               isOpen={isSendCashierOpen}
               onClose={() => setIsSendCashierOpen(false)}
               patientId={patientId}
-              currentStatus={patient?.status || []}
-              defaultStatus={[PATIENT_STATUS.AWAITING_CASHIER]}
+              currentStatus={patient?.status || ''}
+              defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
               onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
             />
 
@@ -1181,11 +1177,8 @@ useEffect(() => {
             isOpen={isReviewBillOpen}
             onClose={() => setIsReviewBillOpen(false)}
             patientId={patientId}
-            currentStatus={patient?.status || []}
-            patientLabel={`${subjectName} (${subjectHospitalId || '—'})`}
-            onSuccess={() => setIsReviewBillOpen(false)}
-          />
-
+              currentStatus={patient?.status || ''}
+/>
           {/* Injection Modal */}
           {isRecordInjection && (
             <InjectionModals
