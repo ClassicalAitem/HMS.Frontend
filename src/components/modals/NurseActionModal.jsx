@@ -41,7 +41,7 @@ const handleConfirm = async () => {
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {[PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_INJECTION, 'awaiting_vaccination'].map(action => (
+            {[PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_INJECTION].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
