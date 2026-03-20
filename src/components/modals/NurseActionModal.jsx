@@ -4,32 +4,31 @@ import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { mergePatientStatus } from '@/utils/statusUtils';
 
-const NurseActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = [PATIENT_STATUS.AWAITING_VITALS], onUpdated }) => {
+const NurseActionModal = ({ isOpen, onClose, patientId, currentStatus = '', defaultAction = PATIENT_STATUS.AWAITING_VITALS, onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleConfirm = async () => {
-    try {
-      setIsSending(true);
-      // Merge current status with new status (removes nurse-related statuses, adds new one)
-      const mergedStatus = mergePatientStatus(currentStatus, 'nurse', Array.isArray(selectedAction) ? selectedAction : [selectedAction]);
-      const promise = updatePatientStatus(patientId, mergedStatus);
-      toast.promise(promise, {
-        loading: 'Sending to nurse...',
-        success: 'Patient sent to nurse successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to send to nurse',
-      });
-      await promise;
-      onClose();
-      if (onUpdated) onUpdated();
-    } catch (e) {
-      // handled by toast
-    } finally {
-      setIsSending(false);
-    }
-  };
+// Every modal's handleConfirm should look like this:
+const handleConfirm = async () => {
+  try {
+    setIsSending(true);
+    const promise = updatePatientStatus(patientId, { status: selectedAction });
+    toast.promise(promise, {
+      loading: 'Updating...',
+      success: 'Patient status updated',
+      error: (err) => err?.response?.data?.message || 'Failed',
+    });
+    await promise;
+    onClose();
+    if (onUpdated) onUpdated();
+  } catch (e) {
+    toast.error(e?.response?.data?.message || 'An error occurred');
+  } finally {
+    setIsSending(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -42,13 +41,13 @@ const NurseActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defa
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {[PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_INJECTION, 'awaiting_vaccination'].map(action => (
+            {[PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_INJECTION].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="nurseAction"
                   className="radio radio-primary"
-                  checked={selectedAction === action || (Array.isArray(selectedAction) && selectedAction[0] === action)}
+                  checked={selectedAction === action}
                   onChange={() => setSelectedAction(action)}
                 />
                 <span className="capitalize">{action.replace(/_/g, ' ')}</span>

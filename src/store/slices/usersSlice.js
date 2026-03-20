@@ -179,16 +179,11 @@ export const deleteUser = createAsyncThunk(
 );
 
 export const toggleUserStatus = createAsyncThunk(
-  'users/toggleUserStatustoggleUserStatus',
+  'users/toggleUserStatus',
   async ({ userId, isDisabled }, { rejectWithValue }) => {
-    console.log('🔄 UsersSlice: Starting toggleUserStatus thunk');
-    console.log('📤 UsersSlice: User ID:', userId);
-    console.log('📤 UsersSlice: Is Disabled:', isDisabled);
     try {
       const response = await usersAPI.toggleUserStatus(userId, isDisabled);
-      console.log('✅ UsersSlice: API response received:', response);
 
-      // Handle both success: true/false and direct response structures
       const userData = response?.data?.data || response?.data;
       const hasSuccess = response?.data?.success !== false;
 
@@ -196,9 +191,9 @@ export const toggleUserStatus = createAsyncThunk(
         const user = {
           ...userData,
           id: userData.id || userId,
-          isActive: isActive
+          isDisabled: isDisabled,           // ✅ use the param we passed in
+          isActive: !isDisabled,            // ✅ derive from isDisabled, not undefined variable
         };
-        console.log('📦 UsersSlice: User status toggled:', user);
         return user;
       } else {
         throw new Error(response?.data?.message || 'Failed to toggle user status');
@@ -210,7 +205,6 @@ export const toggleUserStatus = createAsyncThunk(
     }
   }
 );
-
 // Users slice
 const usersSlice = createSlice({
   name: 'users',
