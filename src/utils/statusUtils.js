@@ -1,21 +1,25 @@
 /**
  * Status Utility Functions
- * Handles conversion and display of patient status which is now an array
+ * 
+ * The patient status field has transitioned from an array to a single status string.
+ * These helpers keep backwards compatibility with older array-based status values.
  */
 
 /**
- * Normalize status to ensure it's always an array
- * @param {string|string[]|null|undefined} status - The status to normalize
- * @returns {string[]} - Array of statuses
+ * Normalize status to a single string.
+ * If an array is provided, we take the last non-empty status (assumed to be the "current" status).
+ * @param {string|string[]|null|undefined} status - The status value(s)
+ * @returns {string} - Normalized status string
  */
 export const normalizeStatus = (status) => {
   if (Array.isArray(status)) {
-    return status.filter(s => s && typeof s === 'string');
+    const list = status.filter((s) => typeof s === 'string' && s.trim());
+    return list.length ? list[list.length - 1] : '';
   }
-  if (typeof status === 'string' && status.trim()) {
-    return [status];
+  if (typeof status === 'string') {
+    return status;
   }
-  return [];
+  return '';
 };
 
 /**
@@ -27,7 +31,7 @@ export const getStatusDisplayText = (status) => {
   if (!status) return '';
   return status
     .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 };
 
@@ -40,42 +44,44 @@ export const getStatusBadgeClass = (status) => {
   if (!status) return 'badge badge-ghost';
 
   const s = status.toLowerCase();
-  
+
   // Active/Positive statuses
   if (s.includes('completed') || s.includes('admitted') || s.includes('lab_completed') || s.includes('pharmacy_completed') || s.includes('radiology_completed')) {
     return 'badge badge-success';
   }
-  
+
   // Waiting/Pending statuses
   if (s.includes('awaiting') || s.includes('pending') || s.includes('under_observation')) {
     return 'badge badge-warning';
   }
-  
+
   // Negative/Exit statuses
   if (s.includes('discharged') || s.includes('deceased') || s.includes('cancelled') || s.includes('no_show')) {
     return 'badge badge-error';
   }
-  
+
   // In-process statuses
   if (s.includes('in_') || s.includes('consultation') || s.includes('registered') || s.includes('referred') || s.includes('transferred') || s.includes('isolated')) {
     return 'badge badge-info';
   }
-  
+
   return 'badge badge-ghost';
 };
 
 /**
- * Get all badge classes for status array
+ * Get badge objects for a status or list of statuses
  * @param {string|string[]} status - The status value(s)
- * @returns {Array} - Array of {text, class} objects for display
+ * @returns {Array} - Array of {value, text, class} objects for display
  */
 export const getStatusBadges = (status) => {
-  const normalized = normalizeStatus(status);
-  return normalized.map(s => ({
-    value: s,
-    text: getStatusDisplayText(s),
-    class: getStatusBadgeClass(s)
-  }));
+  const normalized = Array.isArray(status) ? status : [status];
+  return normalized
+    .filter((s) => typeof s === 'string' && s.trim())
+    .map((s) => ({
+      value: s,
+      text: getStatusDisplayText(s),
+      class: getStatusBadgeClass(s)
+    }));
 };
 
 /**
@@ -83,10 +89,7 @@ export const getStatusBadges = (status) => {
  * @param {string|string[]} status - The status value(s)
  * @returns {string} - The primary status string
  */
-export const getPrimaryStatus = (status) => {
-  const normalized = normalizeStatus(status);
-  return normalized.length > 0 ? normalized[normalized.length - 1] : '';
-};
+export const getPrimaryStatus = (status) => normalizeStatus(status);
 
 /**
  * Check if a patient has a specific status
@@ -95,7 +98,7 @@ export const getPrimaryStatus = (status) => {
  * @returns {boolean} - Whether the patient has that status
  */
 export const hasStatus = (patientStatus, statusToCheck) => {
-  const normalized = normalizeStatus(patientStatus);
+  const normalized = Array.isArray(patientStatus) ? patientStatus : [patientStatus];
   return normalized.includes(statusToCheck);
 };
 
@@ -106,8 +109,8 @@ export const hasStatus = (patientStatus, statusToCheck) => {
  * @returns {boolean} - Whether the patient has any of those statuses
  */
 export const hasAnyStatus = (patientStatus, statusesToCheck) => {
-  const normalized = normalizeStatus(patientStatus);
-  return statusesToCheck.some(s => normalized.includes(s));
+  const normalized = Array.isArray(patientStatus) ? patientStatus : [patientStatus];
+  return statusesToCheck.some((s) => normalized.includes(s));
 };
 
 /**
@@ -117,48 +120,20 @@ export const hasAnyStatus = (patientStatus, statusesToCheck) => {
  */
 export const formatStatusForDisplay = (status) => {
   const badges = getStatusBadges(status);
-  return badges.map(b => b.text).join(', ') || '—';
+  return badges.map((b) => b.text).join(', ') || '—';
 };
 
 /**
- * Merge patient status intelligently when transitioning between departments
- * Removes the completing role's status and adds the new status
+ * Merge patient status when transitioning roles.
+ * With the new single-status model, this helper simply returns the new status.
+ * It remains backwards compatible with array inputs.
+ *
  * @param {string|string[]} currentStatus - Patient's current status
- * @param {string} completingRole - Role completing (e.g., 'nurse', 'doctor', 'pharmacist')
- * @param {string|string[]} newStatus - New status to add
- * @returns {string[]} - Merged status array
- * 
- * Example: 
- * mergePatientStatus(['awaiting_nurse', 'awaiting_lab'], 'nurse', 'awaiting_doctor')
- * returns ['awaiting_lab', 'awaiting_doctor']
+ * @param {string} completingRole - Role completing (unused for single status mode)
+ * @param {string|string[]} newStatus - New status to apply
+ * @returns {string} - The resulting status string
  */
 export const mergePatientStatus = (currentStatus, completingRole, newStatus) => {
-  const normalized = normalizeStatus(currentStatus);
-  const newStatusArr = normalizeStatus(newStatus);
-  
-  // Map role to status patterns to remove when that role completes
-  const roleCompletionPatterns = {
-    'nurse': ['awaiting_vitals', 'vitals_completed', 'awaiting_sampling', 'sampling_completed', 'awaiting_injection', 'injection_completed', 'awaiting_vaccination', 'awaiting_nurse'],
-    'doctor': ['awaiting_doctor', 'awaiting_consultation', 'in_consultation', 'consultation_completed', 'awaiting_surgery', 'surgery_in_progress', 'post_surgery_recovery', 'post_surgery_observation', 'surgery_completed'],
-    'lab': ['awaiting_lab', 'lab_in_progress', 'lab_completed'],
-    'radiology': ['awaiting_radiology', 'radiology_in_progress', 'radiology_completed'],
-    'pharmacy': ['awaiting_pharmacy', 'pharmacy_completed'],
-    'cashier': ['awaiting_cashier', 'awaiting_payment', 'payment_completed'],
-    'frontdesk': ['awaiting_front_desk', 'registered'],
-    'review': ['awaiting_review', 'review_completed'],
-    'discharge': ['awaiting_discharge_approval', 'discharge_in_progress'],
-  };
-  
-  // Remove the completing role's statuses
-  let merged = normalized.filter(s => !roleCompletionPatterns[completingRole]?.includes(s));
-  
-  // Add new statuses (avoiding duplicates)
-  newStatusArr.forEach(newS => {
-    if (!merged.includes(newS)) {
-      merged.push(newS);
-    }
-  });
-  
-  // If nothing left, just return the new status
-  return merged.length > 0 ? merged : newStatusArr;
+  const normalizedNew = normalizeStatus(newStatus);
+  return normalizedNew;
 };

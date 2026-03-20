@@ -487,7 +487,7 @@ const ViewLabResult = () => {
         labResultId={labResultId}
         investigationRequestId={effectiveInvestigationId}
         patientId={labResult?.patientId}
-        currentStatus={patient?.status || []}
+        currentStatus={patient?.status || ''}
         patientName={patientName}
         onSuccess={() => navigate("/dashboard/laboratory")}
       />

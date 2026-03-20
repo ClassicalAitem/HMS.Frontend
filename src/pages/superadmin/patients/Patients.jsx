@@ -39,26 +39,34 @@ const Patients = () => {
   };
 
 
-  const StatusBadge = ({ status }) => {
-    const getBadgeClass = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'registered':
-          return 'badge badge-success';
-        case 'active':
-          return 'badge badge-success';
-        case 'inactive':
-          return 'badge badge-neutral';
-        default:
-          return 'badge badge-neutral';
-      }
-    };
+const StatusBadge = ({ status }) => {
+  // ✅ Handle array or string
+  const statusValue = Array.isArray(status)
+    ? status[0]
+    : status;
 
-    return (
-      <span className={getBadgeClass(status)}>
-        {status || 'Unknown'}
-      </span>
-    );
+  const getBadgeClass = (s) => {
+    switch (s?.toLowerCase()) {
+      case 'registered':
+      case 'active':
+        return 'badge badge-success';
+      case 'inactive':
+        return 'badge badge-neutral';
+      default:
+        return 'badge badge-neutral';
+    }
   };
+
+  const displayValue = Array.isArray(status)
+    ? status.map(s => s.replace(/_/g, ' ')).join(', ')
+    : status;
+
+  return (
+    <span className={getBadgeClass(statusValue)}>
+      {displayValue || 'Unknown'}
+    </span>
+  );
+};
 
   // Calculate age from date of birth
   const calculateAge = (dob) => {
