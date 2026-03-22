@@ -1,34 +1,31 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
-import { PATIENT_STATUS } from '@/constants/patientStatus';
-import { mergePatientStatus } from '@/utils/statusUtils';
 
-const PharmacyActionModal2 = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = [PATIENT_STATUS.AWAITING_PHARMACY], onUpdated }) => {
+const PharmacyActionModal2 = ({ isOpen, onClose, patientId, defaultAction = 'awaiting_pharmacy', onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
   if (!isOpen) return null;
 
-const handleConfirm = async () => {
-  try {
-    setIsSending(true);
-    // ✅ Status is now a single string — just send it directly
-    const promise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_PHARMACY });
-    toast.promise(promise, {
-      loading: 'Sending to pharmacy...',
-      success: 'Patient sent to pharmacy successfully',
-      error: (err) => err?.response?.data?.message || 'Failed to send to pharmacy',
-    });
-    await promise;
-    onClose();
-    if (onUpdated) onUpdated();
-  } catch (e) {
-    // handled by toast
-  } finally {
-    setIsSending(false);
-  }
-};
+  const handleConfirm = async () => {
+    try {
+      setIsSending(true);
+      const promise = updatePatientStatus(patientId, selectedAction);
+      toast.promise(promise, {
+        loading: 'Sending to pharmacy...',
+        success: 'Patient sent to pharmacy successfully',
+        error: (err) => err?.response?.data?.message || 'Failed to send to pharmacy',
+      });
+      await promise;
+      onClose();
+      if (onUpdated) onUpdated();
+    } catch (e) {
+      // handled by toast
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -41,16 +38,16 @@ const handleConfirm = async () => {
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {[PATIENT_STATUS.AWAITING_PHARMACY].map(action => (
+            {['awaiting_pharmacy'].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="pharmacyAction"
                   className="radio radio-primary"
-                  checked={selectedAction === action || (Array.isArray(selectedAction) && selectedAction[0] === action)}
+                  checked={selectedAction === action}
                   onChange={() => setSelectedAction(action)}
                 />
-                <span className="capitalize">{action.replace(/_/g, ' ')}</span>
+                <span className="capitalize">{action.replace('awaiting_', 'Awaiting ')}</span>
               </label>
             ))}
           </div>
