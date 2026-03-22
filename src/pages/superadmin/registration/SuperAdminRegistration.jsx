@@ -35,7 +35,7 @@ const registrationSchema = yup.object({
     .string()
     .required('Role is required')
     .oneOf(
-      ['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'lab-technician', 'surgeon', 'pharmacist'],
+      ['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'lab-technician', 'surgeon', 'pharmacist', 'hmo'],
       'Please select a valid role'
     ),
 
@@ -247,6 +247,7 @@ const onSubmit = async (data) => {
                     <option value="lab-technician">Lab Technician</option>
                     <option value="surgeon">Surgeon</option>
                     <option value="pharmacist">Pharmacist</option>
+                    <option value="hmo">HMO</option>
                   </select>
                   {errors.role && (
                     <p className="mt-1 text-xs text-error">{errors.role.message}</p>

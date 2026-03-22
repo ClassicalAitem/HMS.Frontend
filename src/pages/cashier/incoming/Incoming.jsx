@@ -31,19 +31,36 @@ const filtered = patients.filter((p) => {
   return statuses.has(s);
 });
 
-  const mapped = filtered.map((p) => ({
-          id: p?.id,
-          snapshot: p,
-          name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
-          patientId: p?.hospitalId || p?.id || '—',
-          photo: p?.profilePicture || p?.photo || 'https://randomuser.me/api/portraits/lego/1.jpg',
-          gender: p?.gender || '—',
-          phone: p?.phone || p?.phoneNumber || '—',
-          insurance: p?.hmos?.provider || 'Self-pay',
-          registeredTime: p?.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
-          updatedAt: p?.updatedAt || p?.createdAt,
-          updatedAtDisplay: (p?.updatedAt || p?.createdAt) ? new Date(p?.updatedAt || p?.createdAt).toLocaleString() : '—'
-        }));
+const mapped = filtered.map((p) => ({
+  id: p?.id,
+  snapshot: p,
+  name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+  patientId: p?.hospitalId || p?.id || '—',
+  photo: p?.profilePicture || p?.photo || 'https://randomuser.me/api/portraits/lego/1.jpg',
+  gender: p?.gender || '—',
+  phone: p?.phone || p?.phoneNumber || '—',
+  insurance: Array.isArray(p?.hmos) && p.hmos.length > 0
+    ? p.hmos.map(h => h.provider).filter(Boolean).join(', ')
+    : 'Self-pay',
+  // ✅ Nigeria time for registered
+  registeredTime: p?.createdAt
+    ? new Date(p.createdAt).toLocaleTimeString('en-NG', {
+        timeZone: 'Africa/Lagos',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+    : '—',
+  updatedAt: p?.updatedAt || p?.createdAt,
+  // ✅ Nigeria time for updated display
+  updatedAtDisplay: (p?.updatedAt || p?.createdAt)
+    ? new Date(p?.updatedAt || p?.createdAt).toLocaleString('en-NG', {
+        timeZone: 'Africa/Lagos',
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    : '—'
+}));
         if (mounted) setIncomingPatients(mapped);
       } catch (err) {
         if (mounted) setIncomingPatients([]);
@@ -59,19 +76,20 @@ const filtered = patients.filter((p) => {
     const q = searchQuery.trim().toLowerCase();
     const now = new Date();
     const start = (() => {
-      if (dateFilter === 'today') {
-        const d = new Date(now);
-        d.setHours(0, 0, 0, 0);
-        return d.getTime();
-      }
-      if (dateFilter === 'week') {
-        return now.getTime() - 7 * 24 * 60 * 60 * 1000;
-      }
-      if (dateFilter === 'month') {
-        return now.getTime() - 30 * 24 * 60 * 60 * 1000;
-      }
-      return 0;
-    })();
+  if (dateFilter === 'today') {
+    // ✅ Nigeria is UTC+1, fixed offset — midnight Nigeria time
+    const nowNigeria = new Date(now.getTime() + 60 * 60 * 1000); // shift to WAT
+    nowNigeria.setUTCHours(0, 0, 0, 0); // midnight in WAT = UTC 23:00 prev day
+    return nowNigeria.getTime() - 60 * 60 * 1000; // shift back to UTC
+  }
+  if (dateFilter === 'week') {
+    return now.getTime() - 7 * 24 * 60 * 60 * 1000;
+  }
+  if (dateFilter === 'month') {
+    return now.getTime() - 30 * 24 * 60 * 60 * 1000;
+  }
+  return 0;
+})();
 
     const filtered = incomingPatients.filter((p) => {
       const matches = !q || p.name.toLowerCase().includes(q) || String(p.patientId).toLowerCase().includes(q) || String(p.phone || '').toLowerCase().includes(q);
