@@ -6,6 +6,7 @@ import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActio
 import toast from "react-hot-toast";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { useAppSelector } from "@/store/hooks";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const SendToNurse = () => {
   const { patientId } = useParams();
@@ -228,8 +229,8 @@ const SendToNurse = () => {
                 <div className="p-4 card-body">
                   <h3 className="mb-3 text-lg font-medium text-base-content">Assignment Information</h3>
                   <div className="space-y-2 text-sm text-base-content/70">
-                    <div className="flex justify-between"><span>Assignment Date</span><span>{new Date().toLocaleDateString()}</span></div>
-                    <div className="flex justify-between"><span>Assignment Time</span><span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>
+                    <div className="flex justify-between"><span>Assignment Date</span><span>{formatNigeriaDate()}</span></div>
+                    <div className="flex justify-between"><span>Assignment Time</span><span>{formatNigeriaTime()}</span></div>
                     <div className="flex justify-between"><span>Assigned By</span><span>Dr. {user ? `${user.firstName} ${user.lastName}` : "—"}</span></div>
                     <div className="flex justify-between"><span>Total Tasks</span><span>{tasks.length}</span></div>
                   </div>

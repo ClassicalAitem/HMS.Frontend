@@ -33,6 +33,7 @@ const IncomingDoctor = () => {
           "in_consultation",
           "consultation_completed",
           "awaiting_surgery",
+          "lab_completed",
         ]);
 
         const filtered = patients.filter((p) => {
