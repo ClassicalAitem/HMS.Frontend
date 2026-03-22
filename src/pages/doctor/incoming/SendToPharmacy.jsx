@@ -6,6 +6,7 @@ import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActio
 import { getPatientById } from "@/services/api/patientsAPI";
 import { PharmacyActionModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const SendToPharmacy = () => {
   const { patientId } = useParams();
@@ -255,7 +256,7 @@ useEffect(() => {
                 <div className="p-4 card-body">
                   <h3 className="mb-3 text-lg font-medium text-base-content">Prescription Information</h3>
                   <div className="space-y-2 text-sm text-base-content/70">
-                    <div className="flex justify-between"><span>Visit Date</span><span>{new Date().toLocaleDateString()}</span></div>
+                    <div className="flex justify-between"><span>Visit Date</span><span>{formatNigeriaDate()}</span></div>
                     <div className="flex justify-between"><span>Prescribing Doctor</span><span>Dr. {patient?.doctorName || "—"}</span></div>
                     <div className="flex justify-between"><span>Total Medications</span><span>{meds.length}</span></div>
                   </div>

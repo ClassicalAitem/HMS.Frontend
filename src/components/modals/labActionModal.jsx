@@ -4,7 +4,7 @@ import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { mergePatientStatus } from '@/utils/statusUtils';
 
-const LabActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = [PATIENT_STATUS.AWAITING_LAB], onUpdated }) => {
+const LabActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaultAction = { status: PATIENT_STATUS.AWAITING_LAB }, onUpdated }) => {
   const [selectedAction, setSelectedAction] = useState(defaultAction);
   const [isSending, setIsSending] = useState(false);
 
@@ -41,8 +41,8 @@ const handleConfirm = async () => {
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {[PATIENT_STATUS.AWAITING_LAB].map(action => (
-              <label key={action} className="flex items-center gap-3">
+            {{ status: PATIENT_STATUS.AWAITING_LAB }.map(action => (
+              <label key={action.status} className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="labAction"
