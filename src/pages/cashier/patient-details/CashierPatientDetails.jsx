@@ -240,95 +240,193 @@ const CashierPatientDetails = () => {
           <h3 className="text-xl font-bold text-primary mb-4">Patient Billings</h3>
           <div className="overflow-x-auto">
             <table className="table w-full">
-      <thead>
-        <tr>
-          <th></th>
-          <th>Billing ID</th>
-          <th>Total amount</th>
-          <th>Outstanding Bills</th>
-          <th>Raised By</th>
-          <th>Role</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
+     <thead>
+  <tr>
+    <th></th>
+    <th>Billing ID</th>
+    <th>Total Amount</th>
+    <th>HMO Covers</th>      {/* ✅ new */}
+    <th>Outstanding</th>
+    <th>Raised By</th>
+    <th>Role</th>
+    <th>Actions</th>
+  </tr>
+</thead>
 
       <tbody>
         {billings.map((bill) => (
           <React.Fragment key={bill.id}>
-            <tr className="text-sm">
-              <td
-                onClick={() => toggleRow(bill.id)}
-                className="cursor-pointer select-none"
-                title={openRow === bill.id ? "Collapse" : "Expand"}
-              >
-                {openRow === bill.id ? "▼" : "▶"}
-              </td>
+        <tr className="text-sm">
+  <td onClick={() => toggleRow(bill.id)} className="cursor-pointer select-none">
+    {openRow === bill.id ? "▼" : "▶"}
+  </td>
+  <td className="font-medium">{bill.id?.slice(-8)}</td>
+  <td>₦{bill.totalAmount.toLocaleString()}</td>
 
-              <td className="font-medium">{bill.id}</td>
-              <td> ₦ {bill.totalAmount.toLocaleString()}</td>
-              <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
-              <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
-              <td className="text-success">{bill.raisedBy.accountType}</td>
-              <td>
-                {bill.isCleared ? (
-                  <button className="btn btn-sm btn-ghost" disabled>Completed</button>
-                ) : bill.outstandingBill === 0 ? (
-                  // ✅ All items HMO covered — nothing to pay
-                  <button className="btn btn-sm btn-ghost btn-success" disabled>HMO Covered</button>
-                ) : (
-                  <button
-                    onClick={() => { setIsReceiptModalOpen(true); setSelectedBillingId(bill.id); }}
-                    className="btn btn-sm btn-primary"
-                  >
-                    Pay Now (₦{bill.outstandingBill.toLocaleString()})
-                  </button>
-                )}
-              </td>
+  {/* ✅ HMO covered column */}
+  <td>
+    {Number(bill.hmoCoveredAmount || 0) > 0 ? (
+      <span className="text-success font-medium">
+        ₦{Number(bill.hmoCoveredAmount).toLocaleString()}
+      </span>
+    ) : (
+      <span className="text-base-content/40">—</span>
+    )}
+  </td>
 
+  <td>₦{bill.outstandingBill.toLocaleString()}</td>
+  <td className="text-success">{bill.raisedBy.firstName} {bill.raisedBy.lastName}</td>
+  <td className="text-success">{bill.raisedBy.accountType}</td>
+  <td>
+    {bill.isCleared ? (
+      <button className="btn btn-sm btn-ghost" disabled>Completed</button>
+    ) : bill.outstandingBill === 0 ? (
+      <button className="btn btn-sm btn-ghost btn-success" disabled>HMO Covered</button>
+    ) : (
+      <div className="flex flex-col items-end gap-1">
+        <button
+          onClick={() => { setIsReceiptModalOpen(true); setSelectedBillingId(bill.id); }}
+          className="btn btn-sm btn-primary"
+        >
+          Pay Now
+        </button>
+        {/* ✅ Show partial payment context */}
+        {Number(bill.hmoCoveredAmount || 0) > 0 && (
+          <span className="text-xs text-success">
+            HMO: ₦{Number(bill.hmoCoveredAmount).toLocaleString()} covered
+          </span>
+        )}
+        <span className="text-xs text-error">
+          Patient: ₦{Number(bill.outstandingBill).toLocaleString()} due
+        </span>
+        {/* ✅ Show if partial cash payment already made */}
+        {Number(bill.totalAmount) > Number(bill.outstandingBill) + Number(bill.hmoCoveredAmount || 0) && (
+          <span className="text-xs text-warning">
+            Partial payment made
+          </span>
+        )}
+      </div>
+    )}
+  </td>
+</tr>
 
+        {openRow === bill.id && (
+  <tr>
+    <td colSpan={7} className="bg-base-200">
+      <div className="p-3">
+        <h4 className="font-semibold mb-2">Item Details</h4>
+        <table className="table w-full">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th>Code</th>
+              <th>Price</th>
+              <th>Quantity</th>
+              <th>Total</th>
+              <th>HMO Covers</th>
+              <th>Patient Pays</th>
+              <th>HMO Status</th>
             </tr>
+          </thead>
+          <tbody>
+            {bill.itemDetails.map((item, idx) => {
+              const itemTotal = Number(item.total || 0);
+              const hmoCovered = Number(item.hmoCovered || 0);
+              const patientOwes = Number(item.patientOwes ?? (
+                item.hmoStatus === 'approved' ? 0 :
+                item.hmoStatus === 'rejected' ? itemTotal :
+                itemTotal - hmoCovered
+              ));
 
-            {openRow === bill.id && (
-              <tr>
-                <td colSpan={7} className="bg-base-200">
-                  <div className="p-3">
-                    <h4 className="font-semibold mb-2">Item Details</h4>
-                    <table className="table w-full">
-                      <thead>
-                        <tr>
-                          <th>Description</th>
-                          <th>Code</th>
-                          <th>Price</th>
-                          <th>Quantity</th>
-                          <th>Total</th>
-                          <th>HMO Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bill.itemDetails.map((item, idx) => (
-                          <tr key={idx}>
-                            <td>{item.description}</td>
-                            <td>{item.code}</td>
-                            <td> ₦ {Number(item.price).toLocaleString()}</td>
-                            <td>{item.quantity}</td>
-                            <td> ₦ {Number(item.total).toLocaleString()}</td>
-                             <td>
-                            {item.hmoStatus === 'approved' ? (
-                              <span className="badge badge-success badge-sm">HMO Covered</span>
-                            ) : item.hmoStatus === 'rejected' ? (
-                              <span className="badge badge-error badge-sm">Self-Pay</span>
-                            ) : (
-                              <span className="badge badge-ghost badge-sm">—</span>
-                            )}
-                          </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </td>
-              </tr>
+              return (
+                <tr key={idx}>
+                  <td>{item.description}</td>
+                  <td>{item.code}</td>
+                  <td>₦{Number(item.price).toLocaleString()}</td>
+                  <td>{item.quantity}</td>
+                  <td>₦{itemTotal.toLocaleString()}</td>
+
+                  {/* ✅ HMO covered amount */}
+                  <td>
+                    {hmoCovered > 0 ? (
+                      <span className="text-success font-medium">
+                        ₦{hmoCovered.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-base-content/40">—</span>
+                    )}
+                  </td>
+
+                  {/* ✅ Patient owes */}
+                  <td>
+                    {patientOwes > 0 ? (
+                      <span className="text-error font-medium">
+                        ₦{patientOwes.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-success font-medium">₦0</span>
+                    )}
+                  </td>
+
+                  {/* ✅ HMO Status badge */}
+                  <td>
+                    {item.hmoStatus === 'approved' ? (
+                      <span className="badge badge-success badge-sm">HMO Full</span>
+                    ) : item.hmoStatus === 'partial' ? (
+                      <span className="badge badge-warning badge-sm">Partial</span>
+                    ) : item.hmoStatus === 'rejected' ? (
+                      <span className="badge badge-error badge-sm">Self-Pay</span>
+                    ) : (
+                      <span className="badge badge-ghost badge-sm">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+
+          {/* ✅ Per-bill summary footer */}
+          <tfoot>
+            <tr className="border-t-2 border-base-300">
+              <td colSpan={5} className="text-right font-semibold text-sm pr-2">
+                Bill Total: ₦{Number(bill.totalAmount || 0).toLocaleString()}
+              </td>
+              <td className="text-success font-semibold text-sm">
+                ₦{bill.itemDetails.reduce((s, i) => s + Number(i.hmoCovered || 0), 0).toLocaleString()}
+              </td>
+              <td className="text-error font-semibold text-sm">
+                ₦{Number(bill.outstandingBill || 0).toLocaleString()}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {/* ✅ HMO coverage summary box */}
+        {bill.itemDetails.some(i => i.hmoStatus && i.hmoStatus !== 'pending') && (
+          <div className="mt-3 flex flex-wrap gap-3">
+            {Number(bill.hmoCoveredAmount || 0) > 0 && (
+              <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-lg px-3 py-2">
+                <span className="w-2 h-2 rounded-full bg-success"></span>
+                <span className="text-sm text-success font-medium">
+                  HMO Coverage: ₦{Number(bill.hmoCoveredAmount || 0).toLocaleString()}
+                </span>
+              </div>
             )}
+            {Number(bill.outstandingBill || 0) > 0 && (
+              <div className="flex items-center gap-2 bg-error/10 border border-error/20 rounded-lg px-3 py-2">
+                <span className="w-2 h-2 rounded-full bg-error"></span>
+                <span className="text-sm text-error font-medium">
+                  Patient Owes: ₦{Number(bill.outstandingBill || 0).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </td>
+  </tr>
+)}
           </React.Fragment>
         ))}
       </tbody>
@@ -422,7 +520,7 @@ const CashierPatientDetails = () => {
               </button>
               <button
                 onClick={() => setIsSendToNurseOpen(true)}
-                className="btn btn-outline text-white"
+                className="btn btn-secondary text-white"
               >
                 Send to Nurse
               </button>

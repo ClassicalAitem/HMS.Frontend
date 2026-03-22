@@ -29,7 +29,7 @@ const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationReques
      try {
         if (patientId) {
           // Merge current status with lab completed (removes lab awaiting status, adds completed)
-          const mergedStatus = mergePatientStatus(currentStatus, 'lab', [PATIENT_STATUS.LAB_COMPLETED]);
+          const mergedStatus = mergePatientStatus(currentStatus, 'lab',{ status: PATIENT_STATUS.LAB_COMPLETED });
           await updatePatientStatus(patientId, mergedStatus);
         } else {
           console.warn("SendLabResultsModal: patientId not provided, skipping patient status update");
