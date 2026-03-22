@@ -12,6 +12,7 @@ import { getMetrics } from '@/services/api/metricsAPI';
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI';
 import { hasAnyStatus } from '@/utils/statusUtils';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 const CashierDashboard = () => {
   console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
@@ -45,7 +46,7 @@ const CashierDashboard = () => {
         const invoiceCount = Number(data.totalPendingReceipt) || 0;
         if(mounted) setTotalPendingInvoice(invoiceCount)
         const filteredPatient = patients.filter((p) =>
-          hasAnyStatus(p.status, [PATIENT_STATUS.AWAITING_CASHIER, PATIENT_STATUS.AWAITING_PAYMENT])
+          hasAnyStatus(p.status, {status:PATIENT_STATUS.AWAITING_CASHIER})
         );
 
         console.log({filteredPatient, patients});
@@ -107,7 +108,7 @@ const CashierDashboard = () => {
           });
 
           setBillingData(transformedActivities);
-          setLastUpdated(new Date().toLocaleString());
+          setLastUpdated(formatNigeriaDateTime());
         }
       } catch (error) {
         console.error('Error fetching billing data:', error);

@@ -24,6 +24,7 @@ import { FaUserMd } from "react-icons/fa";
 import SendToNurseModal from "./modals/SendToNurseModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { SendToHmoModal } from "@/components/modals";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -127,12 +128,24 @@ const lockAndNavigate = async (path, options) => {
   }, [patientId]);
 
   // When this page unmounts, release the lock so another doctor can open the profile
-  useEffect(() => {
-    return () => {
-      if (!patientId) return;
-      updatePatientStatus(patientId, "in_consultation").catch(() => {});      // Trigger refresh in other tabs/windows
-      localStorage.setItem('refreshIncoming', Date.now().toString());    };
-  }, [patientId]);
+useEffect(() => {
+  return () => {
+    if (!patientId) return;
+    // ✅ Release lock — don't override awaiting_hmo, awaiting_cashier etc
+    // Only reset if still in_consultation
+    getPatientById(patientId)
+      .then((res) => {
+        const currentStatus = res?.data?.status ?? res?.status ?? '';
+        if (String(currentStatus).toLowerCase() === 'in_consultation') {
+          // ✅ Only release if still locked — don't touch awaiting_hmo etc
+          updatePatientStatus(patientId, { status: 'consultation_completed' })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+    localStorage.setItem('refreshIncoming', Date.now().toString());
+  };
+}, [patientId]);
 
     const patientName = useMemo(() => (
       patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
@@ -144,9 +157,9 @@ const lockAndNavigate = async (path, options) => {
     return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...options }).format(date);
   };
 
-  const formatUTCDate = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric" });
+  const formatNigeriaDate = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric" });
   const formatUTCTime = (value) => formatUTC(value, { hour: "2-digit", minute: "2-digit", hour12: false });
-  const formatUTCDateTime = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 
   // Mapped Data
   const complaints = consultation?.complaint || [];
@@ -159,7 +172,7 @@ const lockAndNavigate = async (path, options) => {
   const visitReason = consultation?.visitReason || "Not specified";
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
-  const consultationDate = consultation?.createdAt ? formatUTCDateTime(consultation.createdAt) : "";
+  const consultationDate = consultation?.createdAt ? formatNigeriaDateTime(consultation.createdAt) : "";
 
 
   useEffect(() => {
@@ -495,7 +508,7 @@ const isEligibleForAntenatal = useMemo(() => {
                                 .map(r => r.presentPregnancyHistories?.[0]?.EDD)
                                 .filter(Boolean)
                                 .sort((a, b) => new Date(b) - new Date(a))[0];
-                              return latestEDD ? formatUTCDate(latestEDD) : '-';
+                              return latestEDD ? formatNigeriaDate(latestEDD) : '-';
                             })()}
                           </span>
                         </div>
@@ -519,11 +532,11 @@ const isEligibleForAntenatal = useMemo(() => {
                             <>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">EDD:</span>
-                                <span className="font-medium">{pregnancy.EDD ? formatUTCDate(pregnancy.EDD) : '-'}</span>
+                                <span className="font-medium">{pregnancy.EDD ? formatNigeriaDate(pregnancy.EDD) : '-'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">LMP:</span>
-                                <span className="font-medium">{pregnancy.LMP ? formatUTCDate(pregnancy.LMP) : '-'}</span>
+                                <span className="font-medium">{pregnancy.LMP ? formatNigeriaDate(pregnancy.LMP) : '-'}</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-base-content/70">Gestational Age:</span>
@@ -567,8 +580,8 @@ const isEligibleForAntenatal = useMemo(() => {
         id: c?._id || c?.id,
         type: "Consultation",
         diagnosis: c?.diagnosis || "—",
-        time: c?.createdAt ? formatUTCTime(c.createdAt) : "—",
-        date: c?.createdAt ? formatUTCDate(c.createdAt) : "—",
+        time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
+        date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
         notes: c?.notes || "—",
         canEdit: within24h,
         forName,        // ✅ who the consultation is for
@@ -607,7 +620,7 @@ const isEligibleForAntenatal = useMemo(() => {
               return {
                 id: p?._id || p?.id,
                 status: normalizeStatus(p?.status),
-                date: p?.createdAt ? formatUTCDate(p.createdAt) : "—",
+                date: p?.createdAt ? formatNigeriaDate(p.createdAt) : "—",
                 medicationsCount: p?.medications?.length || 0,
                 medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
                 totalPrice: totalPrice > 0 ? totalPrice : null
@@ -634,7 +647,7 @@ const isEligibleForAntenatal = useMemo(() => {
                     <div className="skeleton h-4 w-48 mt-2" />
                   ) : latestLab ? (
                     <div className="text-sm text-base-content/70">
-                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatUTCDateTime(latestLab.createdAt) : '—'}
+                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
                     </div>
                   ) : (
                     <div className="text-sm text-base-content/70">No lab results</div>
