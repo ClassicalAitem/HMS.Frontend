@@ -3,13 +3,14 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getAllBillings, updateBilling } from "@/services/api/billingAPI";
+import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
 import toast from "react-hot-toast";
 import { getAllHmos } from "@/services/api/hmoAPI";
 import apiClient from "@/services/api/apiClient";
 import { LabActionModal, PharmacyActionModal2 } from "@/components/modals";
+import { fetchPatientById } from "@/store/slices/patientsSlice";
 
 const IncomingHmoDetails = () => {
   const { patientId } = useParams();
@@ -24,7 +25,6 @@ const IncomingHmoDetails = () => {
   const [hmos, setHmos] = useState([]);
   const [isSendToLabOpen, setIsSendToLabOpen] = useState(false);
 const [isSendToPharmacyOpen, setIsSendToPharmacyOpen] = useState(false);
-
   const [itemDecisions, setItemDecisions] = useState({});
 
   useEffect(() => {
@@ -85,21 +85,26 @@ setBillings(unreviewedBills);
   }, [patientId]);
 
 // ✅ One function handles both single and bulk
-const setDecision = (billingId, itemIdx, decision) => {
+const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
   setItemDecisions(prev => ({
     ...prev,
-    [billingId]: { ...prev[billingId], [itemIdx]: decision }
+    [billingId]: {
+      ...prev[billingId],
+      [itemIdx]: { status, hmoCovered: Number(hmoCovered) || 0 }
+    }
   }));
 };
 
-// ✅ Bulk just iterates and calls setDecision logic directly
-const setAllDecisions = (decision) => {
+const setAllDecisions = (status) => {
   setItemDecisions(() => {
     const next = {};
     billings.forEach(bill => {
       next[bill.id] = {};
-      (bill.itemDetails || []).forEach((_, idx) => {
-        next[bill.id][idx] = decision;
+      (bill.itemDetails || []).forEach((item, idx) => {
+        next[bill.id][idx] = {
+          status,
+          hmoCovered: status === 'approved' ? Number(item.total || 0) : 0
+        };
       });
     });
     return next;
@@ -107,60 +112,80 @@ const setAllDecisions = (decision) => {
 };
 
 
-//✅ Approved total
-  const approvedTotal = useMemo(() => {
-    let total = 0;
-    billings.forEach(bill => {
-      (bill.itemDetails || []).forEach((item, idx) => {
-        if (itemDecisions[bill.id]?.[idx] === 'approved') {
-          total += Number(item.total || 0);
-        }
-      });
+const approvedTotal = useMemo(() => {
+  let total = 0;
+  billings.forEach(bill => {
+    (bill.itemDetails || []).forEach((item, idx) => {
+      const decision = itemDecisions[bill.id]?.[idx];
+      if (decision?.status === 'approved') {
+        total += Number(item.total || 0);
+      } else if (decision?.status === 'partial') {
+        total += Number(decision.hmoCovered || 0);
+      }
     });
-    return total;
-  }, [billings, itemDecisions]);
+  });
+  return total;
+}, [billings, itemDecisions]);  
 
-  const handleSubmit = async () => {
-   
-    setSubmitting(true);
-    try {
-      // ✅ Step 1 — Update each billing's itemDetails with hmoStatus
-      await Promise.all(
-        billings.map(async (bill) => {
-          const updatedItems = (bill.itemDetails || []).map((item, idx) => ({
+const handleSubmit = async () => {
+  setSubmitting(true);
+  try {
+    await Promise.all(
+      billings.map(async (bill) => {
+        const updatedItems = (bill.itemDetails || []).map((item, idx) => {
+          const decision = itemDecisions[bill.id]?.[idx] || { status: 'pending', hmoCovered: 0 };
+          const itemTotal = Number(item.total || 0);
+
+          let hmoCovered = 0;
+          if (decision.status === 'approved') hmoCovered = itemTotal;
+          else if (decision.status === 'partial') hmoCovered = Number(decision.hmoCovered || 0);
+          else hmoCovered = 0;
+
+          const patientPays = itemTotal - hmoCovered;
+
+          return {
             ...item,
-            hmoStatus: itemDecisions[bill.id]?.[idx] || 'pending',
-          }));
+            hmoStatus: decision.status,
+            hmoCovered,          // ✅ how much HMO covers for this item
+            patientOwes: patientPays, // ✅ how much patient pays for this item
+          };
+        });
 
-          // ✅ Recalculate outstanding — only rejected items need to be paid by patient
-          const rejectedTotal = updatedItems
-            .filter(item => item.hmoStatus === 'rejected')
-            .reduce((sum, item) => sum + Number(item.total || 0), 0);
+        // ✅ Outstanding = sum of what patient owes per item
+        const outstandingBill = updatedItems.reduce(
+          (sum, item) => sum + Number(item.patientOwes || 0), 0
+        );
 
-          await updateBilling(bill.id, {
-            itemDetails: updatedItems,
-            outstandingBill: rejectedTotal, // ✅ only rejected items are outstanding
-          });
-        })
-      );
+        // ✅ HMO covered = sum of what HMO covers per item
+        const hmoCoveredAmount = updatedItems.reduce(
+          (sum, item) => sum + Number(item.hmoCovered || 0), 0
+        );
 
-      // ✅ Step 2 — Send patient to cashier regardless
-      await toast.promise(
-        updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER }),
-        {
-          loading: 'Sending to cashier...',
-          success: 'Patient sent to cashier',
-          error: (err) => err?.response?.data?.message || 'Failed to update status',
-        }
-      );
+        await updateBilling(bill.id, {
+          itemDetails: updatedItems,
+          outstandingBill,
+          hmoCoveredAmount,
+        });
+      })
+    );
 
-      navigate('/dashboard/hmo/incoming');
-    } catch (err) {
-      console.error('HMO submit error', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    await toast.promise(
+      updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER }),
+      {
+        loading: 'Sending to cashier...',
+        success: 'Patient sent to cashier',
+        error: (err) => err?.response?.data?.message || 'Failed to update status',
+      }
+    );
+
+    navigate('/dashboard/hmo/incoming');
+  } catch (err) {
+    console.error('HMO submit error', err);
+    toast.error('Failed to submit HMO decisions');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const handleSendBackToDoctor = async () => {
     setSubmitting(true);
@@ -349,37 +374,109 @@ const setAllDecisions = (decision) => {
                                 'hover:bg-base-200/30'
                               }`}
                             >
-                              <td>
-                                <p className="font-medium">{item.description}</p>
-                                {decision === 'approved' && (
-                                  <span className="text-xs text-success">HMO Covered</span>
-                                )}
-                                {decision === 'rejected' && (
-                                  <span className="text-xs text-error">Patient Self-Pay</span>
-                                )}
-                              </td>
+                       <td>
+  <p className="font-medium">{item.description}</p>
+  {(() => {
+    const d = itemDecisions[bill.id]?.[idx];
+    if (d?.status === 'approved') return <span className="text-xs text-success">HMO Covers Full ₦{Number(item.total).toLocaleString()}</span>;
+    if (d?.status === 'rejected') return <span className="text-xs text-error">Patient Self-Pay ₦{Number(item.total).toLocaleString()}</span>;
+    if (d?.status === 'partial') return (
+      <span className="text-xs text-warning">
+        Partial — HMO: ₦{Number(d.hmoCovered || 0).toLocaleString()} · Patient: ₦{(Number(item.total) - Number(d.hmoCovered || 0)).toLocaleString()}
+      </span>
+    );
+    return null;
+  })()}
+</td>
                               <td className="text-xs text-base-content/60">{item.code}</td>
                               <td className="text-right">₦{Number(item.price || 0).toLocaleString()}</td>
                               <td className="text-right">{item.quantity}</td>
                               <td className="text-right font-medium">₦{Number(item.total || 0).toLocaleString()}</td>
-                            <td className="text-center">
-                            <div className="flex items-center justify-center gap-2">
-                                <button
-                                className={`btn btn-xs ${decision === 'approved' ? 'btn-success' : 'btn-outline btn-success'}`}
-                                onClick={() => setDecision(bill.id, idx, decision === 'approved' ? 'pending' : 'approved')}
-                                disabled={submitting}
-                                >
-                                ✓ Approve
-                                </button>
-                                <button
-                                className={`btn btn-xs ${decision === 'rejected' ? 'btn-error' : 'btn-outline btn-error'}`}
-                                onClick={() => setDecision(bill.id, idx, decision === 'rejected' ? 'pending' : 'rejected')}
-                                disabled={submitting}
-                                >
-                                ✕ Reject
-                                </button>
-                            </div>
-                            </td>
+                       <td className="text-center">
+  <div className="flex flex-col items-center gap-2">
+    {/* Approve / Reject / Partial toggle buttons */}
+    <div className="flex items-center gap-1">
+      <button
+        className={`btn btn-xs ${
+          itemDecisions[bill.id]?.[idx]?.status === 'approved'
+            ? 'btn-success' : 'btn-outline btn-success'
+        }`}
+        onClick={() => setDecision(bill.id, idx, 
+          itemDecisions[bill.id]?.[idx]?.status === 'approved' ? 'pending' : 'approved',
+          item.total  // HMO covers full amount
+        )}
+        disabled={submitting}
+      >
+        ✓ Full
+      </button>
+      <button
+        className={`btn btn-xs ${
+          itemDecisions[bill.id]?.[idx]?.status === 'partial'
+            ? 'btn-warning' : 'btn-outline btn-warning'
+        }`}
+        onClick={() => setDecision(bill.id, idx, 
+          itemDecisions[bill.id]?.[idx]?.status === 'partial' ? 'pending' : 'partial',
+          0  // user will enter amount
+        )}
+        disabled={submitting}
+      >
+        ½ Partial
+      </button>
+      <button
+        className={`btn btn-xs ${
+          itemDecisions[bill.id]?.[idx]?.status === 'rejected'
+            ? 'btn-error' : 'btn-outline btn-error'
+        }`}
+        onClick={() => setDecision(bill.id, idx,
+          itemDecisions[bill.id]?.[idx]?.status === 'rejected' ? 'pending' : 'rejected',
+          0
+        )}
+        disabled={submitting}
+      >
+        ✕ None
+      </button>
+    </div>
+
+    {/* ✅ Show amount input only when partial is selected */}
+    {itemDecisions[bill.id]?.[idx]?.status === 'partial' && (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="text-xs text-base-content/60">₦</span>
+        <input
+          type="number"
+          className="input input-bordered input-xs w-24 text-right"
+          placeholder="HMO amount"
+          min={0}
+          max={Number(item.total || 0)}
+          value={itemDecisions[bill.id]?.[idx]?.hmoCovered || ''}
+          onChange={(e) => {
+            const val = Math.min(
+              Number(e.target.value) || 0,
+              Number(item.total || 0)
+            );
+            setDecision(bill.id, idx, 'partial', val);
+          }}
+          disabled={submitting}
+        />
+        <span className="text-xs text-base-content/40">
+          / ₦{Number(item.total || 0).toLocaleString()}
+        </span>
+      </div>
+    )}
+
+    {/* Show per-item breakdown */}
+    {itemDecisions[bill.id]?.[idx]?.status === 'partial' && (
+      <div className="text-xs mt-0.5">
+        <span className="text-success">
+          HMO: ₦{Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0).toLocaleString()}
+        </span>
+        <span className="text-base-content/40 mx-1">·</span>
+        <span className="text-error">
+          Patient: ₦{(Number(item.total || 0) - Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0)).toLocaleString()}
+        </span>
+      </div>
+    )}
+  </div>
+</td>
                             </tr>
                           );
                         })}
@@ -392,29 +489,66 @@ const setAllDecisions = (decision) => {
           )}
 
      {/* Submit Footer */}
+{/* Submit Footer */}
 {!loading && billings.length > 0 && (
   <div className="card bg-base-100 border border-base-200 mt-6">
     <div className="card-body p-5">
       <div className="flex items-center justify-between flex-wrap gap-4">
+        
+        {/* ✅ Breakdown summary */}
         <div className="space-y-1">
+          {/* Total bill */}
+          <p className="text-sm text-base-content/60">
+            Total Bill: <span className="font-medium text-base-content">
+              ₦{billings.reduce((s, b) => s + Number(b.totalAmount || 0), 0).toLocaleString()}
+            </span>
+          </p>
+
+          {/* HMO covers */}
           {approvedTotal > 0 && (
             <p className="text-sm text-success font-medium">
-              ✓ ₦{approvedTotal.toLocaleString()} covered by HMO
+              ✓ HMO Covers: ₦{approvedTotal.toLocaleString()}
             </p>
           )}
-          
+
+          {/* Patient pays */}
+          {(() => {
+            const rejectedTotal = billings.reduce((sum, bill) => {
+              return sum + (bill.itemDetails || []).reduce((s, item, idx) => {
+                if (itemDecisions[bill.id]?.[idx] === 'rejected') {
+                  return s + Number(item.total || 0);
+                }
+                return s;
+              }, 0);
+            }, 0);
+            return rejectedTotal > 0 ? (
+              <p className="text-sm text-error font-medium">
+                ✕ Patient Pays: ₦{rejectedTotal.toLocaleString()}
+              </p>
+            ) : null;
+          })()}
+
+          {/* Pending items warning */}
+          {(() => {
+            const hasPending = billings.some(bill =>
+              (bill.itemDetails || []).some((_, idx) =>
+                !itemDecisions[bill.id]?.[idx] || itemDecisions[bill.id]?.[idx] === 'pending'
+              )
+            );
+            return hasPending ? (
+              <p className="text-xs text-warning">⚠ Some items still need a decision</p>
+            ) : null;
+          })()}
         </div>
+
         <div className="flex flex-wrap gap-3">
-          {/* ✅ Send to Lab */}
           <button
-            className="btn  btn-sm"
+            className="btn btn-sm"
             onClick={() => setIsSendToLabOpen(true)}
             disabled={submitting}
           >
             Send to Lab
           </button>
-
-          {/* ✅ Send to Pharmacy */}
           <button
             className="btn btn-primary btn-sm"
             onClick={() => setIsSendToPharmacyOpen(true)}
@@ -422,7 +556,6 @@ const setAllDecisions = (decision) => {
           >
             Send to Pharmacy
           </button>
-
           <button
             className="btn btn-outline btn-warning btn-sm"
             onClick={handleSendBackToDoctor}
@@ -430,7 +563,6 @@ const setAllDecisions = (decision) => {
           >
             Send Back to Doctor
           </button>
-
           <button
             className="btn btn-primary"
             onClick={handleSubmit}
@@ -446,7 +578,6 @@ const setAllDecisions = (decision) => {
     </div>
   </div>
 )}
-
 {/* Modals — outside the card */}
 <LabActionModal
   isOpen={isSendToLabOpen}
