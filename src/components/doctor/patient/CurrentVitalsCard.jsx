@@ -52,90 +52,100 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
         ) : latest ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <FiHeart className="w-5 h-5" />
-                  <span>Heart Rate</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.heartRate ?? latest?.pulse ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">bpm</span>
-                </div>
-              </div>
+   {/* Heart Rate / Pulse */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <FiHeart className="w-5 h-5" />
+    <span>Heart Rate</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.pulse ?? "—"}</span>
+    <span className="text-sm text-base-content/70">bpm</span>
+  </div>
+</div>
 
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <TbHeartbeat className="w-5 h-5" />
-                  <span>Blood Pressure</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.bloodPressure ?? latest?.bp ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">mnHg</span>
-                </div>
-              </div>
+{/* Blood Pressure */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <TbHeartbeat className="w-5 h-5" />
+    <span>Blood Pressure</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.bp ?? "—"}</span>
+    <span className="text-sm text-base-content/70">mmHg</span>
+  </div>
+</div>
 
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <LuDroplet className="w-5 h-5" />
-                  <span>Oxygen</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.oxygenSaturation ?? latest?.oxygen ?? latest?.spo2 ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">%</span>
-                </div>
-              </div>
+{/* Oxygen */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <LuDroplet className="w-5 h-5" />
+    <span>Oxygen</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.spo2 ?? "—"}</span>
+    <span className="text-sm text-base-content/70">%</span>
+  </div>
+</div>
 
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <LuThermometer className="w-5 h-5" />
-                  <span>Temperature</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.temperature ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">°F</span>
-                </div>
-              </div>
+{/* Temperature */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <LuThermometer className="w-5 h-5" />
+    <span>Temperature</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.temperature ?? "—"}</span>
+    <span className="text-sm text-base-content/70">°C</span>
+  </div>
+</div>
 
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <GiWeightLiftingUp className="w-5 h-5" />
-                  <span>Weight</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.weight ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">kg</span>
-                </div>
-              </div>
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <GiBodyHeight className="w-5 h-5" />
-                  <span>Height</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.height ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">cm</span>
-                </div>
-              </div>
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <LuActivity className="w-5 h-5" />
-                  <span>Respitory Rate</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? "—"}</span>
-                  <span className="text-sm text-base-content/70">bpm</span>
-                </div>
-              </div>
+{/* Weight */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <GiWeightLiftingUp className="w-5 h-5" />
+    <span>Weight</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.weight ?? "—"}</span>
+    <span className="text-sm text-base-content/70">kg</span>
+  </div>
+</div>
 
-              <div className="rounded-xl border border-base-300 p-3">
-                <div className="flex items-center gap-2 text-sm text-base-content/80">
-                  <FiClock className="w-5 h-5" />
-                  <span>Last Updated</span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-semibold">{formatRelativeTime(latest?.createdAt) || "—"}</span>
-                </div>
-              </div>
+{/* Height */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <GiBodyHeight className="w-5 h-5" />
+    <span>Height</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.height ?? "—"}</span>
+    <span className="text-sm text-base-content/70">cm</span>
+  </div>
+</div>
+
+{/* Respiratory Rate */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <LuActivity className="w-5 h-5" />
+    <span>Respiratory Rate</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? "—"}</span>
+    <span className="text-sm text-base-content/70">bpm</span>
+  </div>
+</div>
+
+{/* Last Updated */}
+<div className="rounded-xl border border-base-300 p-3">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <FiClock className="w-5 h-5" />
+    <span>Last Updated</span>
+  </div>
+  <div className="mt-2">
+    <span className="text-sm font-semibold">{formatRelativeTime(latest?.createdAt) || "—"}</span>
+  </div>
+</div>
             </div>
 
             {/* <div className="mt-4">
