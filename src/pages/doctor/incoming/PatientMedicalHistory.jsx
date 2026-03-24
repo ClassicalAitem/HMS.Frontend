@@ -35,7 +35,7 @@ const PatientMedicalHistory = () => {
   const [loading, setLoading] = useState(true);
   const [vitals, setVitals] = useState([]);
   const [sortedVitals, setSortedVitals] = useState([]);
-  const [latest, setLatest] = useState([]);
+const [latest, setLatest] = useState(null);
   const [patient, setPatient] = useState(null);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [recordLoading, setRecordLoading] = useState(false);
@@ -108,6 +108,13 @@ const lockAndNavigate = async (path, options) => {
         const list = normalizeVitalsResponse(res);
         if (mounted) setVitals(list);
 
+         if (list.length > 0) {
+          const sorted = [...list].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setLatest(sorted[0]);
+          setSortedVitals(sorted);
+        }
         const fromVitalsPatient = list?.[0]?.patient;
         if (fromVitalsPatient) {
           if (mounted) setPatient(fromVitalsPatient);
@@ -832,7 +839,7 @@ disabled={isNavigating || !consultation}
   onSentSuccessfully={() => navigate('/dashboard/hmo/incoming')}
 />
         
-          <RecordVitalsModal
+          {/* <RecordVitalsModal
             isOpen={isRecordOpen}
             patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}
             recordForm={recordForm}
@@ -858,7 +865,7 @@ disabled={isNavigating || !consultation}
                 setRecordLoading(false);
               }
             }}
-          />
+          /> */}
           
           <CreateBillModal 
             isOpen={isBillModalOpen}
@@ -866,7 +873,6 @@ disabled={isNavigating || !consultation}
             patientId={patientId}
             defaultItems={billDefaults}
             onSuccess={() => {
-              // Optionally refresh billing history or navigate away
             }}
           />
         </div>
