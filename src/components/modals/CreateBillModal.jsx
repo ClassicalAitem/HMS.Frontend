@@ -174,8 +174,8 @@ const payload = {
       toast.success('Bill created successfully!');
 
       // Update patient status to awaiting cashier so incoming list removes the patient
-      try {
-        const statusPromise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER });
+      try {const statusPromise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER });
+        
         await toast.promise(statusPromise, {
           loading: 'Updating patient status...',
           success: 'Patient sent to cashier',

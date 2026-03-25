@@ -44,7 +44,7 @@ const CashierPatientDetails = () => {
   const phone = patient?.phone || patient?.phoneNumber || snapshot?.phone || '—';
   const patientIdDisplay = patient?.id || patient?.patientId || patient?.hospitalId || '—';
   const insuranceProvider = patient?.hmos?.length
-    ? patient.hmos.map(h => `${h.provider} (${h.memberId})`).join(', ')
+    ? patient.hmos.map(h => `${h.provider} (${h.plan})`).join(', ')
     : snapshot?.insurance || '—';
   const insuranceStatus = patient?.hmos?.length
     ? patient.hmos.map(h => {
@@ -58,6 +58,15 @@ const CashierPatientDetails = () => {
       }).join(', ')
     : 'Inactive';
   const statusDisplay = (patient?.status || snapshot?.status || 'Unknown');
+
+  const getReceiptStatus = (receipt) => {
+  if (!receipt.hmoId) return "paid"; // self-pay, cashier collected
+  const items = receipt.items || []; // each item in the billing
+  if (items.every(i => i.hmoStatus === "approved")) return "approved";
+  if (items.some(i => i.hmoStatus === "partial")) return "partial";
+  if (items.every(i => i.hmoStatus === "rejected")) return "rejected";
+  return "pending";
+}
 
   // Fetch patient details from backend
   useEffect(() => {
@@ -75,7 +84,12 @@ const CashierPatientDetails = () => {
     }
   }, [error, dispatch, snapshot, currentPatient]);
 
-
+const getHmoCoveredAmount = (bill) => {
+  return (bill.itemDetails || []).reduce(
+    (sum, item) => sum + Number(item.hmoCovered || 0),
+    0
+  );
+};
   useEffect(() => {
     const fetchBillings = async () => {
       setIsReceiptModalOpen(false);
@@ -232,201 +246,138 @@ const CashierPatientDetails = () => {
           </div>
           <div className="mt-4 pt-4 border-t border-base-300 flex items-center justify-between">
             <p className="text-sm text-base-content/70">• Insurance: <span className="font-medium text-base-content">{insuranceProvider}</span></p>
-       </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-base-content/50">Status</span>
+              <span className={`badge ${
+                String(insuranceStatus).toLowerCase().includes('expired') ? 'badge-error' :
+                String(insuranceStatus).toLowerCase().includes('active') ? 'badge-info' :
+                'badge-neutral'
+              }`}>{insuranceStatus}</span>
+            </div>
+            {/* <button className=" hidden text-sm text-primary font-semibold hover:underline">Make Payments Now</button> */}
+          </div>
         </div>
 
         {/* Outstanding Bills */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
           <h3 className="text-xl font-bold text-primary mb-4">Patient Billings</h3>
           <div className="overflow-x-auto">
+            
             <table className="table w-full">
-     <thead>
-  <tr>
-    <th></th>
-    <th>Billing ID</th>
-    <th>Total Amount</th>
-    <th>HMO Covers</th>      {/* ✅ new */}
-    <th>Outstanding</th>
-    <th>Raised By</th>
-    <th>Role</th>
-    <th>Actions</th>
-  </tr>
-</thead>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Billing ID</th>
+          <th>Total amount</th>
+          <th>Outstanding Bills</th>
+          <th>Raised By</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
 
       <tbody>
         {billings.map((bill) => (
+          
           <React.Fragment key={bill.id}>
-        <tr className="text-sm">
-  <td onClick={() => toggleRow(bill.id)} className="cursor-pointer select-none">
-    {openRow === bill.id ? "▼" : "▶"}
-  </td>
-  <td className="font-medium">{bill.id?.slice(-8)}</td>
-  <td>₦{bill.totalAmount.toLocaleString()}</td>
+            
+            <tr className="text-sm">
+              <td
+                onClick={() => toggleRow(bill.id)}
+                className="cursor-pointer select-none"
+                title={openRow === bill.id ? "Collapse" : "Expand"}
+              >
+                {openRow === bill.id ? "▼" : "▶"}
+              </td>
+              
 
-  {/* ✅ HMO covered column */}
-  <td>
-    {Number(bill.hmoCoveredAmount || 0) > 0 ? (
-      <span className="text-success font-medium">
-        ₦{Number(bill.hmoCoveredAmount).toLocaleString()}
-      </span>
-    ) : (
-      <span className="text-base-content/40">—</span>
-    )}
-  </td>
+              <td className="font-medium">{bill.id}</td>
+              <td> ₦ {bill.totalAmount.toLocaleString()}</td>
+              <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
+              <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
+              <td className="text-success">{bill.raisedBy.accountType}</td>
+              <td>
+                {bill.isCleared ? (
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    disabled
+                  >
+                    Completed
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsReceiptModalOpen(true);
+                      setSelectedBillingId(bill.id);
+                    }}
+                    className="btn btn-sm btn-ghost"
+                  >
+                    Pay now
+                  </button>
+                )}
+              </td>
 
-  <td>₦{bill.outstandingBill.toLocaleString()}</td>
-  <td className="text-success">{bill.raisedBy.firstName} {bill.raisedBy.lastName}</td>
-  <td className="text-success">{bill.raisedBy.accountType}</td>
-  <td>
-    {bill.isCleared ? (
-      <button className="btn btn-sm btn-ghost" disabled>Completed</button>
-    ) : bill.outstandingBill === 0 ? (
-      <button className="btn btn-sm btn-ghost btn-success" disabled>HMO Covered</button>
-    ) : (
-      <div className="flex flex-col items-end gap-1">
-        <button
-          onClick={() => { setIsReceiptModalOpen(true); setSelectedBillingId(bill.id); }}
-          className="btn btn-sm btn-primary"
-        >
-          Pay Now
-        </button>
-        {/* ✅ Show partial payment context */}
-        {Number(bill.hmoCoveredAmount || 0) > 0 && (
-          <span className="text-xs text-success">
-            HMO: ₦{Number(bill.hmoCoveredAmount).toLocaleString()} covered
-          </span>
-        )}
-        <span className="text-xs text-error">
-          Patient: ₦{Number(bill.outstandingBill).toLocaleString()} due
-        </span>
-        {/* ✅ Show if partial cash payment already made */}
-        {Number(bill.totalAmount) > Number(bill.outstandingBill) + Number(bill.hmoCoveredAmount || 0) && (
-          <span className="text-xs text-warning">
-            Partial payment made
-          </span>
-        )}
-      </div>
-    )}
-  </td>
-</tr>
 
-        {openRow === bill.id && (
-  <tr>
-    <td colSpan={7} className="bg-base-200">
-      <div className="p-3">
-        <h4 className="font-semibold mb-2">Item Details</h4>
-        <table className="table w-full">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Code</th>
-              <th>Price</th>
-              <th>Quantity</th>
-              <th>Total</th>
-              <th>HMO Covers</th>
-              <th>Patient Pays</th>
-              <th>HMO Status</th>
             </tr>
-          </thead>
-          <tbody>
-            {bill.itemDetails.map((item, idx) => {
-              const itemTotal = Number(item.total || 0);
-              const hmoCovered = Number(item.hmoCovered || 0);
-              const patientOwes = Number(item.patientOwes ?? (
-                item.hmoStatus === 'approved' ? 0 :
-                item.hmoStatus === 'rejected' ? itemTotal :
-                itemTotal - hmoCovered
-              ));
 
-              return (
-                <tr key={idx}>
-                  <td>{item.description}</td>
-                  <td>{item.code}</td>
-                  <td>₦{Number(item.price).toLocaleString()}</td>
-                  <td>{item.quantity}</td>
-                  <td>₦{itemTotal.toLocaleString()}</td>
+            {openRow === bill.id && (
+              
+              <tr>
+                <td colSpan={7} className="bg-base-200">
+                  <div className="p-3">
+                     <div className="mb-3 text-sm space-y-1">
+                    <p>Total:  ₦{Number(bill.totalAmount).toLocaleString()}</p>
+                    <p className="text-success">
+                    HMO:  ₦{getHmoCoveredAmount(bill).toLocaleString()}
+                    </p>
+              
+                  </div>
+                    <h4 className="font-semibold mb-2">Item Details</h4>
+                    <table className="table w-full">
+                      <thead>
+                        <tr>
+                          <th>Description</th>
+                        <th>Code</th>
+                        <th>Price</th>
+                        <th>Qty</th>
+                        <th>Total</th>
+                        <th>HMO Covers</th>
+                        <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bill.itemDetails.map((item, idx) => (
+                          <tr key={idx}>
+                            <td>{item.description}</td>
+                            <td>{item.code}</td>
+                            <td> ₦ {Number(item.price).toLocaleString()}</td>
+                            <td>{item.quantity}</td>
+                           <td>₦ {Number(item.total).toLocaleString()}</td>
 
-                  {/* ✅ HMO covered amount */}
-                  <td>
-                    {hmoCovered > 0 ? (
-                      <span className="text-success font-medium">
-                        ₦{hmoCovered.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-base-content/40">—</span>
-                    )}
-                  </td>
+                            <td className="text-success">
+                              ₦ {Number(item.hmoCovered || 0).toLocaleString()}
+                            </td>
 
-                  {/* ✅ Patient owes */}
-                  <td>
-                    {patientOwes > 0 ? (
-                      <span className="text-error font-medium">
-                        ₦{patientOwes.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-success font-medium">₦0</span>
-                    )}
-                  </td>
+                            
 
-                  {/* ✅ HMO Status badge */}
-                  <td>
-                    {item.hmoStatus === 'approved' ? (
-                      <span className="badge badge-success badge-sm">HMO Full</span>
-                    ) : item.hmoStatus === 'partial' ? (
-                      <span className="badge badge-warning badge-sm">Partial</span>
-                    ) : item.hmoStatus === 'rejected' ? (
-                      <span className="badge badge-error badge-sm">Self-Pay</span>
-                    ) : (
-                      <span className="badge badge-ghost badge-sm">—</span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-
-          {/* ✅ Per-bill summary footer */}
-          <tfoot>
-            <tr className="border-t-2 border-base-300">
-              <td colSpan={5} className="text-right font-semibold text-sm pr-2">
-                Bill Total: ₦{Number(bill.totalAmount || 0).toLocaleString()}
-              </td>
-              <td className="text-success font-semibold text-sm">
-                ₦{bill.itemDetails.reduce((s, i) => s + Number(i.hmoCovered || 0), 0).toLocaleString()}
-              </td>
-              <td className="text-error font-semibold text-sm">
-                ₦{Number(bill.outstandingBill || 0).toLocaleString()}
-              </td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-
-        {/* ✅ HMO coverage summary box */}
-        {bill.itemDetails.some(i => i.hmoStatus && i.hmoStatus !== 'pending') && (
-          <div className="mt-3 flex flex-wrap gap-3">
-            {Number(bill.hmoCoveredAmount || 0) > 0 && (
-              <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-lg px-3 py-2">
-                <span className="w-2 h-2 rounded-full bg-success"></span>
-                <span className="text-sm text-success font-medium">
-                  HMO Coverage: ₦{Number(bill.hmoCoveredAmount || 0).toLocaleString()}
-                </span>
-              </div>
+                            <td>
+                              <span className={`badge badge-sm ${
+                                item.hmoStatus === 'approved' ? 'badge-success' :
+                                item.hmoStatus === 'partial' ? 'badge-warning' :
+                                item.hmoStatus === 'rejected' ? 'badge-error' :
+                                'badge-neutral'
+                              }`}>
+                                {item.hmoStatus || 'self-pay'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
             )}
-            {Number(bill.outstandingBill || 0) > 0 && (
-              <div className="flex items-center gap-2 bg-error/10 border border-error/20 rounded-lg px-3 py-2">
-                <span className="w-2 h-2 rounded-full bg-error"></span>
-                <span className="text-sm text-error font-medium">
-                  Patient Owes: ₦{Number(bill.outstandingBill || 0).toLocaleString()}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </td>
-  </tr>
-)}
           </React.Fragment>
         ))}
       </tbody>
@@ -437,6 +388,7 @@ const CashierPatientDetails = () => {
               <span className="w-3 h-3 rounded-full bg-error"></span>
               <span className="text-error font-semibold">Outstanding Balance: ₦{totalOutstanding.toLocaleString()}</span>
             </div>
+            
             <button
               onClick={() => navigate(`/cashier/generate-bill/${patientId}`)}
               className="btn btn-sm btn-primary hidden"
@@ -446,6 +398,7 @@ const CashierPatientDetails = () => {
             </button>
           </div>
         </div>
+        
 
         {/* Payment History */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6">
@@ -467,8 +420,8 @@ const CashierPatientDetails = () => {
                   <th>Status</th>
                   <th>Paid By</th>
                   <th>Time</th>
-                  {receipts.some(r => r.paidBy === "hmo") && <th>Provider</th>}
-                  {receipts.some(r => r.paidBy === "hmo") && <th>Plan</th>}
+                  {/* {receipts.some(r => r.paidBy === "hmo") && <th>Provider</th>}
+                  {receipts.some(r => r.paidBy === "hmo") && <th>Plan</th>} */}
 
                 </tr>
               </thead>
@@ -486,12 +439,18 @@ const CashierPatientDetails = () => {
                       <td>{payment.paymentMethod}</td>
                       <td>{payment.paymentDestination}</td>
                       <td>
-                        <span className="badge badge-success">{payment.status}</span>
-                      </td>
+  <span className={`badge badge-sm ${
+    payment.status === "paid" ? "badge-success" :
+    payment.status === "hmo-covered" ? "badge-info" :
+    "badge-neutral"
+  }`}>
+    {payment.status}
+  </span>
+</td>
                       <td>{payment.paidBy}</td>
                       <td>{time}</td>
-                      <td>{payment.paidBy === "hmo" ? payment.hmo?.provider || "-" : ""}</td>
-                      <td>{payment.paidBy === "hmo" ? payment.hmo?.plan || "-" : ""}</td>
+                      {/* <td>{payment.paidBy === "hmo" ? payment.hmo?.provider || "-" : ""}</td>
+                      <td>{payment.paidBy === "hmo" ? payment.hmo?.plan || "-" : ""}</td> */}
                     </tr>
                   );
                 })}
@@ -508,7 +467,7 @@ const CashierPatientDetails = () => {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setIsSendToLabOpen(true)}
-                className="btn btn-secondary text-white"
+                className="btn btn-primary text-white"
               >
                 Send to Lab
               </button>
@@ -520,63 +479,57 @@ const CashierPatientDetails = () => {
               </button>
               <button
                 onClick={() => setIsSendToNurseOpen(true)}
-                className="btn btn-secondary text-white"
+                className="btn btn-primary text-white"
               >
                 Send to Nurse
               </button>
               <button
                 onClick={() => setIsSendToDoctorOpen(true)}
-                className="btn btn-warning text-white"
+                className="btn btn-primary text-white"
               >
                 Send to Doctor
               </button>
               <button
                 onClick={() => setIsSendToFrontDeskOpen(true)}
-                className="btn btn-accent text-white"
+                className="btn btn-primary text-white"
               >
                 Send to Front Desk
               </button>
             </div>
           </div>
         )}
-          <NurseActionModal
-                isOpen={isSendToNurseOpen}
+        <NurseActionModal isOpen={isSendToNurseOpen}
                 onClose={() => setIsSendToNurseOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || ''}
-                defaultAction={PATIENT_STATUS.AWAITING_VITALS}
+               defaultAction={PATIENT_STATUS.AWAITING_VITALS}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <PharmacyActionModal2
-                isOpen={isSendToPharmacyOpen}
+          <PharmacyActionModal2 isOpen={isSendToPharmacyOpen}
                 onClose={() => setIsSendToPharmacyOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || ''}
-                defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
+                currentStatus={patient?.status || []}
+                defaultAction={PATIENT_STATUS.AWAITING_PHARMACY}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
 
-          <FrontDeskActionModal
-                isOpen={isSendToFrontDeskOpen}
+          <FrontDeskActionModal isOpen={isSendToFrontDeskOpen}
                 onClose={() => setIsSendToFrontDeskOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || ''}
+                currentStatus={patient?.status || []}
                 defaultAction={PATIENT_STATUS.AWAITING_FRONT_DESK}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <DoctorActionModal
-                isOpen={isSendToDoctorOpen}
+          <DoctorActionModal isOpen={isSendToDoctorOpen}
                 onClose={() => setIsSendToDoctorOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || ''}
+                currentStatus={patient?.status || []}
                 defaultAction={PATIENT_STATUS.AWAITING_CONSULTATION}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
-          <LabActionModal
-                isOpen={isSendToLabOpen}
+          <LabActionModal isOpen={isSendToLabOpen}
                 onClose={() => setIsSendToLabOpen(false)}
                 patientId={patient?.id || patientId}
-                currentStatus={patient?.status || ''}
+                currentStatus={patient?.status || []}
                 defaultAction={PATIENT_STATUS.AWAITING_LAB}
                 onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
               />
