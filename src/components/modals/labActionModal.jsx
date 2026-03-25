@@ -13,7 +13,6 @@ const LabActionModal = ({ isOpen, onClose, patientId, currentStatus = [], defaul
 const handleConfirm = async () => {
   try {
     setIsSending(true);
-    // ✅ Single string status
     const promise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_LAB });
     toast.promise(promise, {
       loading: 'Sending to lab...',
@@ -41,19 +40,22 @@ const handleConfirm = async () => {
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {{ status: PATIENT_STATUS.AWAITING_LAB }.map(action => (
-              <label key={action.status} className="flex items-center gap-3">
-                <input
-                  type="radio"
-                  name="labAction"
-                  className="radio radio-primary"
-                  checked={selectedAction === action || (Array.isArray(selectedAction) && selectedAction[0] === action)}
-                  onChange={() => setSelectedAction(action)}
-                />
-                <span className="capitalize">{action.replace(/_/g, ' ')}</span>
-              </label>
-            ))}
-          </div>
+          {[{ status: PATIENT_STATUS.AWAITING_LAB }].map(action => (
+            <label key={action.status} className="flex items-center gap-3">
+              <input
+                type="radio"
+                name="labActionModal"
+                className="radio radio-primary"
+                checked={selectedAction?.status === action.status}
+                onChange={() => setSelectedAction(action)}
+              />
+
+              <span className="capitalize">
+                {action.status.replace('awaiting_', 'Awaiting ')}
+              </span>
+            </label>
+          ))}
+        </div>
           <div className="flex justify-end gap-3 mt-6">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" disabled={isSending} onClick={handleConfirm}>Confirm</button>
