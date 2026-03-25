@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI'
+import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
-import { updatePrescription } from '@/services/api/prescriptionsAPI'
+import { getInventories } from '@/services/api/inventoryAPI'
 import { AddDrugModal } from '@/components/modals'
 import { hasStatus } from '@/utils/statusUtils'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
@@ -12,263 +12,322 @@ import toast from 'react-hot-toast'
 const IncomingDetails = () => {
   const { patientId } = useParams()
   const navigate = useNavigate()
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [prescriptions, setPrescriptions] = useState(null)
+
+  const [prescriptions, setPrescriptions] = useState({
+    active: [],
+    history: []
+  })
+
   const [patient, setPatient] = useState(null)
+  const [inventory, setInventory] = useState([])
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
 
   useEffect(() => {
     let mounted = true
+
     const fetch = async () => {
       setLoading(true)
       setError(null)
+
       try {
+        // inventory
+        const invRes = await getInventories()
+        const invData = invRes?.data ?? []
+        if (mounted) setInventory(invData)
+
+        // prescriptions
         const presRes = await getPrescriptionByPatientId(patientId)
         const presData = presRes?.data ?? presRes
         const list = Array.isArray(presData) ? presData : (presData ? [presData] : [])
-        if (mounted) setPrescriptions(list)
 
-        try {
-          const pRes = await getPatientById(patientId)
-          const pData = pRes?.data ?? pRes
-          if (mounted) setPatient(pData)
-        } catch (e) {
-      toast.error('Failed to load patient data')
-        }
+        const active = list.filter(p => String(p.status).toLowerCase() !== 'completed')
+        const history = list
+          .filter(p => String(p.status).toLowerCase() === 'completed')
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+
+        if (mounted) setPrescriptions({ active, history })
+
+        // patient
+        const pRes = await getPatientById(patientId)
+        const pData = pRes?.data ?? pRes
+        if (mounted) setPatient(pData)
+
       } catch (err) {
-        console.error('Failed fetching prescription for patient', err)
+        console.error(err)
         if (mounted) setError(err)
       } finally {
         if (mounted) setLoading(false)
       }
     }
+
     fetch()
     return () => { mounted = false }
   }, [patientId])
 
-  const renderMedications = () => {
-    if (!prescriptions || !prescriptions.length) {
-      return <div className="text-sm text-base-content/60">No medications found.</div>
+  // 🔥 reusable render
+  const renderMedications = (list = [], isHistory = false) => {
+    if (!list.length) {
+      return <div className="text-sm text-base-content/60">No data.</div>
     }
 
-    const medications = prescriptions.flatMap(p =>
-      (p.medications || []).map(m => ({
+    const meds = list.flatMap(p =>
+      (p.medications || []).map(m => {
+        const inv = inventory.find(
+          i => i.name.toLowerCase() === m.drugName.toLowerCase()
+        )
+
+       return {
         ...m,
+        form: inv?.form,
+        strength: inv?.strength,
         status: p.status,
-        consultationId: p.consultationId,
-        createdAt: p.createdAt
-      }))
+        _id: p._id,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt
+      }
+      })
     )
 
     return (
       <div className="space-y-3">
-        {medications.map((m, idx) => (
-          <div key={idx} className="p-4 rounded-lg border bg-base-100">
-            <div className="flex items-center justify-between">
+        {meds.map((m, i) => (
+          <div
+            key={i}
+            className={`p-3 rounded-lg border ${
+              isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'
+            }`}
+          >
+            <div className="flex justify-between">
+              
+               
               <div>
-                <div className="font-semibold text-base-content">{m.drugName}</div>
-                <div className="text-sm text-base-content/70">Dosage: {m.dosage || '—'}</div>
+                <div className="font-semibold">{m.drugName}</div>
+                <div className="text-sm text-base-content/70">
+                  {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
+                </div>
+                <div className="text-sm">Dosage: {m.dosage}</div>
+                <div className="text-sm">Frequency: {m.frequency}</div>
+                <div className="text-sm">Duration: {m.duration}</div>
               </div>
-              <div className="text-sm text-base-content/70 text-right">
-                <div>Status: {m.status}</div>
-                <div>Frequency: {m.frequency || '—'}</div>
-                <div>Duration: {m.duration || '—'}</div>
-              </div>
+<div className="text-sm text-right space-y-1">
+  <div>Status: {m.status}</div>
+
+  <div className="text-xs text-base-content/60">
+    Created: {m.createdAt
+      ? new Date(m.createdAt).toLocaleString('en-NG', {
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        })
+      : '—'}
+  </div>
+
+
+
+  {m.instructions && (
+    <div className="text-xs mt-1">
+      Instruction: {m.instructions}
+    </div>
+  )}
+</div>
             </div>
-            {m.instructions && (
-              <div className="mt-2 text-sm text-base-content/70">
-                Instructions: {m.instructions}
-              </div>
-            )}
           </div>
         ))}
       </div>
     )
   }
 
+  // 🔥 actions
+  const handleComplete = async () => {
+    const pres = prescriptions.active[0]
+    if (!pres) return
+
+    const pid = patient?.id || patient?._id || patient?.patientId
+
+    const promise = Promise.all([
+      updatePrescription(pres._id, { status: 'completed' }),
+      updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+    ])
+
+    toast.promise(promise, {
+      loading: 'Completing...',
+      success: 'Completed',
+      error: 'Failed'
+    })
+
+    try {
+      await promise
+
+      // move to history instantly
+      setPrescriptions(prev => {
+        const updatedActive = prev.active.filter(p => p._id !== pres._id)
+        const updatedHistory = [{ ...pres, status: 'completed' }, ...prev.history]
+        return { active: updatedActive, history: updatedHistory }
+      })
+
+      setPatient(prev => ({
+        ...(prev || {}),
+        status: PATIENT_STATUS.PHARMACY_COMPLETED
+      }))
+
+    } catch (e) {
+      toast.error('Failed to complete')
+    }
+  }
+
+  const handleSendToNurse = async () => {
+    const pres = prescriptions.active[0]
+    if (!pres) return
+
+    const pid = patient?.id || patient?._id || patient?.patientId
+
+    const promise = Promise.all([
+      updatePrescription(pres._id, { status: 'pending_nurse' }),
+      updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_INJECTION })
+    ])
+
+    toast.promise(promise, {
+      loading: 'Sending...',
+      success: 'Sent to nurse',
+      error: 'Failed'
+    })
+
+    try {
+      await promise
+
+      setPrescriptions(prev => ({
+        ...prev,
+        active: prev.active.map(p =>
+          p._id === pres._id ? { ...p, status: 'pending_nurse' } : p
+        )
+      }))
+
+      setPatient(prev => ({
+        ...(prev || {}),
+        status: PATIENT_STATUS.AWAITING_INJECTION
+      }))
+    } catch (e) {
+      toast.error('Failed to send to nurse')
+    }
+  }
+
   return (
     <PharmacistLayout>
       <div className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+
+        {/* header */}
+        <div className="mb-4 flex justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-primary">Incoming — Prescription Details</h1>
-            <p className="text-sm text-base-content/70">
-              Patient: {patient?.firstName ? `${patient.firstName} ${patient.lastName || ''}` : patientId}
+            <h1 className="text-2xl font-semibold text-primary">
+              Prescription Details
+            </h1>
+            <p className="text-sm">
+              {patient?.firstName} {patient?.lastName}
             </p>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>Back</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
+            Back
+          </button>
         </div>
 
-        <div className="rounded-xl bg-base-100 border border-base-300 p-6">
+        <div className="p-6 border rounded-xl bg-base-100">
+
           {loading ? (
-            <div className="animate-pulse h-24 w-full bg-base-200 rounded" />
+            <div className="h-20 bg-base-200 animate-pulse" />
           ) : error ? (
-            <div className="text-sm text-error">Failed to load prescription data.</div>
+            <div className="text-error">Error loading</div>
           ) : (
             <>
-              <div className="mb-4">
-                <div className="text-sm text-base-content/70">
-                  Status: <span className="font-medium">{prescriptions?.[0]?.status || '—'}</span>
-                </div>
-                <div className="text-sm text-base-content/70">
-                  Created: {prescriptions?.[0]?.createdAt
-                    ? new Date(prescriptions[0].createdAt).toLocaleString('en-NG', { timeZone: 'Africa/Lagos' })
-                    : '—'}
-                </div>
-              </div>
+              {/* ACTIVE */}
+              <h3 className="font-medium mb-3">Active</h3>
+              {renderMedications(prescriptions.active)}
 
-              <h3 className="text-lg font-medium mb-3">Medications</h3>
-              {renderMedications()}
-
-              <div className="mt-6 flex flex-wrap gap-3">
-
-                {/* Mark prescription completed */}
-                <button
-                  className="btn btn-outline btn-sm"
-                  disabled={!prescriptions?.[0] || prescriptions[0].status === 'completed'}
-                  onClick={async () => {
-                    if (!prescriptions?.[0]?._id) return
-                    const id = prescriptions[0]._id
-                    const promise = updatePrescription(id, { status: 'completed' })
-                    toast.promise(promise, {
-                      loading: 'Marking prescription completed...',
-                      success: 'Prescription marked completed',
-                      error: (err) => err?.response?.data?.message || 'Failed to update prescription'
-                    })
-                    try {
-                      const res = await promise
-                      const data = res?.data ?? res
-                      setPrescriptions(prev => {
-                        const updated = [...prev]
-                        updated[0] = { ...updated[0], status: data?.status ?? 'completed' }
-                        return updated
-                      })
-                    } catch (e) {
-                      toast.error(e?.response?.data?.message || 'An error occurred while updating prescription')  
-                    }
-                  }}
-                >
-                  Mark Prescription Completed
-                </button>
-
-                {/* Dispense Drug */}
-                {prescriptions?.[0]?.medications?.length > 0 && (
-                  <button
-                    className="btn btn-warning btn-sm"
-                    onClick={() => setIsSelectModalOpen(true)}
-                  >
-                    Dispense Drug
+              {/* BUTTONS */}
+              {prescriptions.active.length > 0 && (
+                <div className="mt-4 flex gap-3">
+                  <button className="btn btn-primary btn-sm" onClick={handleComplete}>
+                    Complete Pharmacy
                   </button>
-                )}
 
-                {/* Complete Pharmacy */}
-                <button
-                  className="btn btn-primary btn-sm"
-                  disabled={
-                    !patient ||
-                    !prescriptions?.[0] ||
-                    hasStatus(patient?.status, PATIENT_STATUS.PHARMACY_COMPLETED)
-                  }
-                  onClick={async () => {
-                    if (!prescriptions?.[0]?._id) return
-                    const presId = prescriptions[0]._id
-                    const pid = patient?.id || patient?._id || patient?.patientId
-                    if (!pid) return
-
-                    const tasks = [
-                      updatePrescription(presId, { status: 'completed' }),
-                      // ✅ Fixed — object instead of array
-                      updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
-                    ]
-
-                    const promise = Promise.all(tasks)
-                    toast.promise(promise, {
-                      loading: 'Completing pharmacy...',
-                      success: 'Pharmacy completed',
-                      error: (err) => err?.response?.data?.message || 'Failed to complete pharmacy'
-                    })
-                    try {
-                      const results = await promise
-                      const presData = results[0]?.data ?? results[0]
-                      setPrescriptions(prev => {
-                        const updated = [...prev]
-                        updated[0] = { ...updated[0], status: presData?.status ?? 'completed' }
-                        return updated
-                      })
-                      setPatient(prev => ({ ...(prev || {}), status: PATIENT_STATUS.PHARMACY_COMPLETED }))
-                    } catch (e) {
-                      toast.error(e?.response?.data?.message || 'An error occurred while completing pharmacy')
-                    }
-                  }}
-                >
-                  Complete Pharmacy
-                </button>
-
-                {/* Send to Cashier */}
-                <button
-                  className="btn btn-ghost btn-sm"
-                  disabled={
-                    !patient ||
-                    hasStatus(patient?.status, PATIENT_STATUS.AWAITING_CASHIER)
-                  }
-                  onClick={async () => {
-                    const pid = patient?.id || patient?._id || patient?.patientId
-                    if (!pid) return
-                    // ✅ Fixed — object instead of array, removed AWAITING_PAYMENT (use AWAITING_CASHIER)
-                    const promise = updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_CASHIER })
-                    toast.promise(promise, {
-                      loading: 'Sending to cashier...',
-                      success: 'Patient sent to cashier',
-                      error: (err) => err?.response?.data?.message || 'Failed to send to cashier'
-                    })
-                    try {
-                      await promise
-                      setPatient(prev => ({ ...(prev || {}), status: PATIENT_STATUS.AWAITING_CASHIER }))
-                    } catch (e) {
-                      toast.error(e?.response?.data?.message || 'An error occurred while sending to cashier')
-                    }
-                  }}
-                >
-                  Send to Cashier
-                </button>
-
-                {/* Discharge */}
-                {prescriptions?.[0]?.status === 'completed' && (
                   <button
-                    className="btn btn-success btn-sm"
-                    onClick={async () => {
-                      const pid = patient?.id || patient?._id || patient?.patientId
-                      if (!pid) return
-                      // ✅ Fixed — object instead of array
-                      const promise = updatePatientStatus(pid, { status: PATIENT_STATUS.DISCHARGED })
-                      toast.promise(promise, {
-                        loading: 'Discharging patient...',
-                        success: 'Patient discharged',
-                        error: (err) => err?.response?.data?.message || 'Failed to discharge'
-                      })
-                      try {
-                        await promise
-                        setPatient(prev => ({ ...(prev || {}), status: PATIENT_STATUS.DISCHARGED }))
-                      } catch (e) {
-                        toast.error(e?.response?.data?.message || 'An error occurred while discharging patient')
-                      }
-                    }}
-                  >
-                    Discharge
-                  </button>
-                )}
-              </div>
+  className="btn btn-primary btn-sm"
+  disabled={
+    !patient ||
+    prescriptions.active.length === 0 ||
+    hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
+  }
+  onClick={async () => {
+    const pres = prescriptions.active[0]
+    if (!pres) return
+
+    const pid = patient?.id || patient?._id || patient?.patientId
+    if (!pid) return
+
+    const promise = Promise.all([
+      // ✅ mark prescription done
+      updatePrescription(pres._id, { status: 'completed' }),
+
+      // ✅ move patient to nurse
+      updatePatientStatus(pid, {
+        status: PATIENT_STATUS.AWAITING_INJECTION
+      })
+    ])
+
+    toast.promise(promise, {
+      loading: 'Completing & sending to nurse...',
+      success: 'Sent to nurse',
+      error: 'Failed'
+    })
+
+    try {
+      await promise
+
+      // 🔥 move to history immediately
+      setPrescriptions(prev => {
+        const updatedActive = prev.active.filter(p => p._id !== pres._id)
+        const updatedHistory = [
+          { ...pres, status: 'completed' },
+          ...prev.history
+        ]
+
+        return {
+          active: updatedActive,
+          history: updatedHistory
+        }
+      })
+
+      setPatient(prev => ({
+        ...(prev || {}),
+        status: PATIENT_STATUS.AWAITING_INJECTION
+      }))
+
+    } catch (e) {
+      toast.error('Failed to send to nurse')
+    }
+  }}
+>
+  Complete & Send to Nurse
+</button>
+                </div>
+              )}
+
+              {/* HISTORY */}
+              <h3 className="font-medium mt-6 mb-3">History</h3>
+              {renderMedications(prescriptions.history, true)}
             </>
           )}
+
         </div>
 
         {isSelectModalOpen && (
           <AddDrugModal
             setIsSelectModalOpen={setIsSelectModalOpen}
-            prescriptionPatient={prescriptions?.[0]}
+            prescriptionPatient={prescriptions.active[0]}
           />
         )}
+
       </div>
     </PharmacistLayout>
   )

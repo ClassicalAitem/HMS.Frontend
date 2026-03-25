@@ -42,16 +42,19 @@ const FrontDeskActionModal = ({ isOpen, onClose, patientId, currentStatus = [], 
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {{ status: PATIENT_STATUS.AWAITING_FRONT_DESK}.map(action => (
+            {[{ status: PATIENT_STATUS.AWAITING_FRONT_DESK }].map(action => (
               <label key={action.status} className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="frontDeskAction"
                   className="radio radio-primary"
-                  checked={selectedAction === action}
+                  checked={selectedAction?.status === action.status}
                   onChange={() => setSelectedAction(action)}
                 />
-                <span className="capitalize">{action.replace('awaiting_', 'Awaiting ')}</span>
+
+                <span className="capitalize">
+                  {action.status.replace('awaiting_', 'Awaiting ')}
+                </span>
               </label>
             ))}
           </div>
