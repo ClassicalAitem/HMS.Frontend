@@ -71,8 +71,7 @@ const safeNavigate = (path, options) => {
 // Lock the patient record for this doctor before navigation
 const lockPatientForConsultation = async () => {
   if (!patientId) return;
-  try {
-    await updatePatientStatus(patientId, "in_consultation");
+  try {await updatePatientStatus(patientId, { status: "in_consultation" });
   } catch (err) {
     console.error("Failed to lock patient for consultation", err);
   }
@@ -718,7 +717,7 @@ disabled={isNavigating}
               </button>
               <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
             </div>
-            <div>
+            {/* <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
                 onClick={() => {
@@ -740,7 +739,7 @@ disabled={isNavigating}
               </button>
               <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
             </div>
-            
+             */}
             <div>
               <button 
                 className="text-primary text-lg font-semibold hover:underline"
@@ -762,10 +761,10 @@ disabled={isNavigating}
               <button 
                 className="text-primary text-lg font-semibold hover:underline"
                onClick={() => {
-  if (!consultation) {
-    alert('Please wait for consultation data to load');
-    return;
-  }
+  // if (!consultation) {
+  //   alert('Please wait for consultation data to load');
+  //   return;
+  // }
   // ✅ Build items same as cashier
   const prescriptionItems = (prescriptions48h || []).flatMap(p =>
     (p?.medications || []).map(m => ({
@@ -793,7 +792,6 @@ disabled={isNavigating}
   setBillDefaults([...prescriptionItems, ...investigationItems]);
   setIsSendToHmoModalOpen(true);
 }}
-disabled={isNavigating || !consultation}
               >
                  Send to HMO
               </button>

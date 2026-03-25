@@ -181,7 +181,7 @@ const SendToHmoModal = ({
         </div>
 
         {/* Consultation Summary */}
-        <div className="px-6 pt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* <div className="px-6 pt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: 'Patient', value: patientName },
             { label: 'Doctor', value: `Dr. ${doctorName}` },
@@ -193,7 +193,7 @@ const SendToHmoModal = ({
               <p className="text-sm font-medium text-base-content truncate">{value || '—'}</p>
             </div>
           ))}
-        </div>
+        </div> */}
 
         {/* Form Body */}
         <div className="p-6 overflow-y-auto flex-1">

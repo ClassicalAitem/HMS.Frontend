@@ -21,7 +21,7 @@ const Incoming = () => {
       try {
         const res = await getPatients()
         const list = Array.isArray(res?.data) ? res.data : []
-       const statuses = new Set(['awaiting_pharmacy', 'pharmacy_completed'])
+       const statuses = new Set(['awaiting_pharmacy'])
 
 const filtered = list.filter((p) => {
   const statusArray = Array.isArray(p?.status) ? p.status : [p?.status]
