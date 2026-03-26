@@ -42,6 +42,7 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
               <table className="table w-full text-center">
                 <thead>
                   <tr>
+                    <th>For</th>
                     <th>Status</th>
                     <th>Medications Count</th>
                     <th>Created At</th>
@@ -53,11 +54,42 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
                   {paginationData.paginatedItems.length > 0 ? (
                     paginationData.paginatedItems.map((row, idx) => (
                       <tr key={idx} className="hover">
-                        <td>
-                          <span className={`badge ${row.status === 'pending' ? 'badge-warning' : row.status === 'dispensed' ? 'badge-success' : 'badge-ghost'}`}>
-                            {row.status}
-                          </span>
-                        </td>
+                      <td className="py-3">
+  <div className="flex flex-col gap-1">
+
+    {/* 👤 NAME (MAIN LINE) */}
+    <span className="font-medium text-base-content">
+      {row.forName || "Unknown Patient"}
+    </span>
+
+    {/* 🏷️ BADGE + RELATION (SECOND LINE) */}
+    <div className="flex items-center gap-2">
+      {row.isForDependant ? (
+        <>
+          <span className="badge badge-secondary badge-sm">
+            Dependant
+          </span>
+
+          {row.forRelation && (
+            <span className="text-xs text-base-content/60">
+              {row.forRelation}
+            </span>
+          )}
+        </>
+      ) : (
+        <span className="badge badge-primary badge-sm">
+          Main Patient
+        </span>
+      )}
+    </div>
+
+  </div>
+</td>
+                      <td>
+                        <span className={`badge ${row.status === 'Pending' ? 'badge-warning' : row.status === 'Dispensed' ? 'badge-success' : 'badge-ghost'}`}>
+                          {row.status}
+                        </span>
+                      </td>
                         <td>{row.medicationsCount}</td>
                         <td>{row.date}</td>
                         <td className="text-left">
@@ -75,7 +107,7 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} className="py-6 text-base-content/70">No prescriptions found</td>
+                      <td colSpan={6} className="py-6 text-base-content/70">No prescriptions found</td>
                     </tr>
                   )}
                 </tbody>
