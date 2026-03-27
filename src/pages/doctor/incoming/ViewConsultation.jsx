@@ -303,6 +303,7 @@ const subjectRelation = isForDependant
   }}
   patientId={patientId}
   consultationId={consultationId}
+   dependantId={consultation?.dependantId || consultation?.dependant?._id || consultation?.dependant?.id}
   investigation={editingLab}
   onOrderCreated={loadData}
 />
@@ -569,7 +570,16 @@ const subjectRelation = isForDependant
                       <button 
                         className="btn btn-sm btn-primary gap-2"
                         onClick={() => {
-                       navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { consultationId, patientId } });
+                       navigate(
+                        `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
+                        {
+                          state: {
+                            consultationId,
+                            patientId,
+                            target: consultation?.dependant?._id || consultation?.dependant?.id || 'patient'
+                          }
+                        }
+                      );
                         }}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
