@@ -24,163 +24,185 @@ const IncomingDetails = () => {
   const [patient, setPatient] = useState(null)
   const [inventory, setInventory] = useState([])
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
+  const [dependants, setDependants] = useState([])
 
-  useEffect(() => {
-    let mounted = true
+useEffect(() => {
+  let mounted = true;
 
-    const fetch = async () => {
-      setLoading(true)
-      setError(null)
+  const fetch = async () => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        // inventory
-        const invRes = await getInventories()
-        const invData = invRes?.data ?? []
-        if (mounted) setInventory(invData)
+    try {
+      // inventory
+      const invRes = await getInventories();
+      const invData = invRes?.data ?? [];
+      if (mounted) setInventory(invData);
 
-        // prescriptions
-        const presRes = await getPrescriptionByPatientId(patientId)
-        const presData = presRes?.data ?? presRes
-        const list = Array.isArray(presData) ? presData : (presData ? [presData] : [])
+      // prescriptions
+      const presRes = await getPrescriptionByPatientId(patientId);
+      const presData = presRes?.data ?? presRes;
+      const list = Array.isArray(presData) ? presData : (presData ? [presData] : []);
 
-        const active = list.filter(p => String(p.status).toLowerCase() !== 'completed')
-        const history = list
-          .filter(p => String(p.status).toLowerCase() === 'completed')
-          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      const active = list.filter(p => String(p.status).toLowerCase() !== 'completed');
+      const history = list
+        .filter(p => String(p.status).toLowerCase() === 'completed')
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
-        if (mounted) setPrescriptions({ active, history })
+      if (mounted) setPrescriptions({ active, history });
 
-        // patient
-        const pRes = await getPatientById(patientId)
-        const pData = pRes?.data ?? pRes
-        if (mounted) setPatient(pData)
+      //  patient + dependants
+      const pRes = await getPatientById(patientId);
+      const pData = pRes?.data ?? pRes;
 
-      } catch (err) {
-        console.error(err)
-        if (mounted) setError(err)
-      } finally {
-        if (mounted) setLoading(false)
+      if (mounted) {
+        setPatient(pData);
+        setDependants(pData?.dependants || pData?.dependant || []);
       }
+
+    } catch (err) {
+      console.error(err);
+      if (mounted) setError(err);
+    } finally {
+      if (mounted) setLoading(false);
     }
-
-    fetch()
-    return () => { mounted = false }
-  }, [patientId])
-
-  const calculateQuantity = (med) => {
-  const freqMap = {
-    'once daily': 1,
-    'twice daily': 2,
-    'three times daily': 3,
-    'four times daily': 4,
   };
 
-  const frequency = freqMap[med.frequency?.toLowerCase()] || 1;
+  fetch();
+  return () => { mounted = false };
+}, [patientId]);
 
-  const days = parseInt(med.duration) || 1;
+  const calculateQuantity = (med) => {
+    const freqMap = {
+      'once daily': 1,
+      'twice daily': 2,
+      'three times daily': 3,
+      'four times daily': 4,
+    };
 
-  return frequency * days;
-};
+    const frequency = freqMap[med.frequency?.toLowerCase()] || 1;
+    const days = parseInt(med.duration) || 1;
 
-  // 🔥 reusable render
- const renderMedications = (list = [], isHistory = false) => {
-  if (!list.length) {
-    return <div className="text-sm text-base-content/60">No data.</div>
-  }
+    return frequency * days;
+  };
 
-  const meds = list.flatMap(p => {
-    // ✅ Determine who this prescription is for at prescription level
-    const isForDependant = !!p.dependantId;
+  //  reusable render
+  const renderMedications = (list = [], isHistory = false) => {
+    if (!list.length) {
+      return <div className="text-sm text-base-content/60">No data.</div>
+    }
 
-    return (p.medications || []).map(m => {
-      const inv = inventory.find(i => i.name.toLowerCase() === m.drugName.toLowerCase());
-      return {
-        ...m,
-        form: inv?.form,
-        strength: inv?.strength,
-        status: p.status,
-        _id: p._id,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-        // ✅ Who the prescription is for
-        isForDependant,
-        dependantId: p.dependantId,
-        patientId: p.patientId,
-      };
-    });
-  });
+    const meds = list.flatMap(p => {
+      const isForDependant = !!p.dependantId;
 
-  return (
-    <div className="space-y-3">
-      {meds.map((m, i) => (
-        <div
-          key={i}
-          className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
-        >
-          {/* ✅ Who is this for — banner at top of card */}
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-200">
+      const dependant = isForDependant
+        ? dependants.find(d => d.id === p.dependantId || d._id === p.dependantId)
+        : null;
+
+      const forName = isForDependant
+        ? dependant
+          ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+              : 'Dependant'
+            : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+
+          return (p.medications || []).map(m => {
+            const inv = inventory.find(i => i.name.toLowerCase() === m.drugName.toLowerCase());
+            return {
+              ...m,
+              form: inv?.form,
+              strength: inv?.strength,
+              status: p.status,
+              _id: p._id,
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt,
+              
+              isForDependant,
+              dependantId: p.dependantId,
+              patientId: p.patientId,
+              forName, 
+            };
+          });
+        });
+
+        return (
+          <div className="space-y-3">
+            {meds.map((m, i) => (
+              <div
+                key={i}
+                className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
+              >
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-200">
+
+            
+            <span className="font-medium text-sm">
+              {m.forName || 'Unknown'}
+            </span>
+
+
             {m.isForDependant ? (
-              <>
-                <span className="badge badge-secondary badge-sm">Dependant</span>
-                
-              </>
+              <span className="badge badge-secondary badge-sm font-medium">
+                Dependant
+              </span>
             ) : (
-              <span className="badge badge-primary badge-sm">Main Patient</span>
+              <span className="badge badge-primary badge-sm font-medium">
+                Main Patient
+              </span>
             )}
+
           </div>
 
-          <div className="flex justify-between">
-            <div>
-              <div className="font-semibold">{m.drugName}</div>
-              <div className="text-sm text-base-content/70">
-                {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
+            <div className="flex justify-between">
+              <div>
+                <div className="font-semibold">{m.drugName}</div>
+                <div className="text-sm text-base-content/70">
+                  {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
+                </div>
+                <div className="text-sm">Dosage: {m.dosage}</div>
+                <div className="text-sm">Frequency: {m.frequency}</div>
+                <div className="text-sm">Duration: {m.duration}</div>
               </div>
-              <div className="text-sm">Dosage: {m.dosage}</div>
-              <div className="text-sm">Frequency: {m.frequency}</div>
-              <div className="text-sm">Duration: {m.duration}</div>
-            </div>
-            <div className="text-sm text-right space-y-1">
-              <div>Status: {m.status}</div>
-              <div className="text-xs text-base-content/60">
-                Created: {m.createdAt
-                  ? new Date(m.createdAt).toLocaleString('en-NG', {
-                      timeZone: 'Africa/Lagos',
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })
-                  : '—'}
+              <div className="text-sm text-right space-y-1">
+                <div>Status: {m.status}</div>
+                <div className="text-xs text-base-content/60">
+                  Created: {m.createdAt
+                    ? new Date(m.createdAt).toLocaleString('en-NG', {
+                        timeZone: 'Africa/Lagos',
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })
+                    : '—'}
+                </div>
+                {m.instructions && (
+                  <div className="text-xs mt-1">Instruction: {m.instructions}</div>
+                )}
               </div>
-              {m.instructions && (
-                <div className="text-xs mt-1">Instruction: {m.instructions}</div>
-              )}
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const reduceInventoryStock = async (medications = []) => {
-  const updates = medications.map(async (med) => {
-    const inv = inventory.find(
-      i => i.name.toLowerCase() === med.drugName.toLowerCase()
+        ))}
+      </div>
     );
+  };
 
-    if (!inv) return;
+  const reduceInventoryStock = async (medications = []) => {
+    const updates = medications.map(async (med) => {
+      const inv = inventory.find(
+        i => i.name.toLowerCase() === med.drugName.toLowerCase()
+      );
 
-    const qtyToRemove = calculateQuantity(med);
+      if (!inv) return;
 
-    const newStock = Math.max((inv.stock || 0) - qtyToRemove, 0);
+      const qtyToRemove = calculateQuantity(med);
+      const newStock = Math.max((inv.stock || 0) - qtyToRemove, 0);
 
-    return updateInventory(inv._id, {
-      stock: newStock
+      return updateInventory(inv._id, {
+        stock: newStock
+      });
     });
-  });
 
-  return Promise.all(updates);
-};
-  // 🔥 actions
+    return Promise.all(updates);
+  };
+
+ 
   const handleComplete = async () => {
     const activePrescriptions = prescriptions.active;
     if (!activePrescriptions.length) return
@@ -188,18 +210,18 @@ const reduceInventoryStock = async (medications = []) => {
     const pid = patient?.id || patient?._id || patient?.patientId
 
     const promise = Promise.all([
-  ...activePrescriptions.map(p =>
-    updatePrescription(p._id, { status: 'completed' })
-  ),
+      ...activePrescriptions.map(p =>
+        updatePrescription(p._id, { status: 'completed' })
+      ),
 
-  updatePatientStatus(pid, {
-    status: PATIENT_STATUS.PHARMACY_COMPLETED
-  }),
+      updatePatientStatus(pid, {
+        status: PATIENT_STATUS.PHARMACY_COMPLETED
+      }),
 
-  ...activePrescriptions.map(p =>
-    reduceInventoryStock(p.medications)
-  )
-]);
+      ...activePrescriptions.map(p =>
+        reduceInventoryStock(p.medications)
+      )
+    ]);
 
     toast.promise(promise, {
       loading: 'Completing...',
@@ -210,33 +232,34 @@ const reduceInventoryStock = async (medications = []) => {
     try {
       await promise
 
-  setInventory(prev =>
-  prev.map(item => {
-    const meds = activePrescriptions.flatMap(p => p.medications || []);
+      setInventory(prev =>
+        prev.map(item => {
+          const meds = activePrescriptions.flatMap(p => p.medications || []);
 
-    const totalQtyToRemove = meds
-      .filter(m => m.drugName.toLowerCase() === item.name.toLowerCase())
-      .reduce((sum, m) => sum + calculateQuantity(m), 0);
+          const totalQtyToRemove = meds
+            .filter(m => m.drugName.toLowerCase() === item.name.toLowerCase())
+            .reduce((sum, m) => sum + calculateQuantity(m), 0);
 
-    if (!totalQtyToRemove) return item;
+          if (!totalQtyToRemove) return item;
 
-    return {
-      ...item,
-      stock: Math.max((item.stock || 0) - totalQtyToRemove, 0)
-    };
-  })
-);
-     setPrescriptions(prev => {
-  const updatedHistory = [
-    ...activePrescriptions.map(p => ({ ...p, status: 'completed' })),
-    ...prev.history
-  ];
+          return {
+            ...item,
+            stock: Math.max((item.stock || 0) - totalQtyToRemove, 0)
+          };
+        })
+      );
 
-  return {
-    active: [],
-    history: updatedHistory
-  };
-});
+      setPrescriptions(prev => {
+        const updatedHistory = [
+          ...activePrescriptions.map(p => ({ ...p, status: 'completed' })),
+          ...prev.history
+        ];
+
+        return {
+          active: [],
+          history: updatedHistory
+        };
+      });
 
       setPatient(prev => ({
         ...(prev || {}),
@@ -247,7 +270,6 @@ const reduceInventoryStock = async (medications = []) => {
       toast.error('Failed to complete')
     }
   }
-
 
   return (
     <PharmacistLayout>
@@ -288,89 +310,89 @@ const reduceInventoryStock = async (medications = []) => {
                   </button>
 
                   <button
-  className="btn btn-primary btn-sm"
-  disabled={
-    !patient ||
-    prescriptions.active.length === 0 ||
-    hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
-  }
-onClick={async () => {
-  const activePrescriptions = prescriptions.active;
-  if (!activePrescriptions.length) return;
+                    className="btn btn-primary btn-sm"
+                    disabled={
+                      !patient ||
+                      prescriptions.active.length === 0 ||
+                      hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
+                    }
+                    onClick={async () => {
+                      const activePrescriptions = prescriptions.active;
+                      if (!activePrescriptions.length) return;
 
-  const pid = patient?.id || patient?._id || patient?.patientId;
-  if (!pid) return;
+                      const pid = patient?.id || patient?._id || patient?.patientId;
+                      if (!pid) return;
 
-  const promise = Promise.all([
-    // ✅ complete ALL prescriptions
-    ...activePrescriptions.map(p =>
-      updatePrescription(p._id, { status: 'completed' })
-    ),
+                      const promise = Promise.all([
+                        //  complete ALL prescriptions
+                        ...activePrescriptions.map(p =>
+                          updatePrescription(p._id, { status: 'completed' })
+                        ),
 
-    // ✅ move patient to nurse
-    updatePatientStatus(pid, {
-      status: PATIENT_STATUS.AWAITING_INJECTION
-    }),
+                        // move patient to nurse
+                        updatePatientStatus(pid, {
+                          status: PATIENT_STATUS.AWAITING_INJECTION
+                        }),
 
-    // ✅ deduct stock for ALL prescriptions
-    ...activePrescriptions.map(p =>
-      reduceInventoryStock(p.medications)
-    )
-  ]);
+                        //  deduct stock for ALL prescriptions
+                        ...activePrescriptions.map(p =>
+                          reduceInventoryStock(p.medications)
+                        )
+                      ]);
 
-  toast.promise(promise, {
-    loading: 'Completing & sending to nurse...',
-    success: 'Sent to nurse',
-    error: 'Failed'
-  });
+                      toast.promise(promise, {
+                        loading: 'Completing & sending to nurse...',
+                        success: 'Sent to nurse',
+                        error: 'Failed'
+                      });
 
-  try {
-    await promise;
+                      try {
+                        await promise;
 
-    // 🔥 update inventory UI instantly (correct aggregation)
-    setInventory(prev =>
-      prev.map(item => {
-        const meds = activePrescriptions.flatMap(p => p.medications || []);
+                        // update inventory UI instantly (correct aggregation)
+                        setInventory(prev =>
+                          prev.map(item => {
+                            const meds = activePrescriptions.flatMap(p => p.medications || []);
 
-        const totalQtyToRemove = meds
-          .filter(m => m.drugName.toLowerCase() === item.name.toLowerCase())
-          .reduce((sum, m) => sum + calculateQuantity(m), 0);
+                            const totalQtyToRemove = meds
+                              .filter(m => m.drugName.toLowerCase() === item.name.toLowerCase())
+                              .reduce((sum, m) => sum + calculateQuantity(m), 0);
 
-        if (!totalQtyToRemove) return item;
+                            if (!totalQtyToRemove) return item;
 
-        return {
-          ...item,
-          stock: Math.max((item.stock || 0) - totalQtyToRemove, 0)
-        };
-      })
-    );
+                            return {
+                              ...item,
+                              stock: Math.max((item.stock || 0) - totalQtyToRemove, 0)
+                            };
+                          })
+                        );
 
-    // 🔥 move ALL to history
-    setPrescriptions(prev => {
-      const updatedHistory = [
-        ...activePrescriptions.map(p => ({ ...p, status: 'completed' })),
-        ...prev.history
-      ];
+                        //  move ALL to history
+                        setPrescriptions(prev => {
+                          const updatedHistory = [
+                            ...activePrescriptions.map(p => ({ ...p, status: 'completed' })),
+                            ...prev.history
+                          ];
 
-      return {
-        active: [],
-        history: updatedHistory
-      };
-    });
+                          return {
+                            active: [],
+                            history: updatedHistory
+                          };
+                        });
 
-    // ✅ update patient status
-    setPatient(prev => ({
-      ...(prev || {}),
-      status: PATIENT_STATUS.AWAITING_INJECTION
-    }));
+                        //  update patient status
+                        setPatient(prev => ({
+                          ...(prev || {}),
+                          status: PATIENT_STATUS.AWAITING_INJECTION
+                        }));
 
-  } catch (e) {
-    toast.error('Failed to send to nurse');
-  }
-}}
->
-  Complete & Send to Nurse
-</button>
+                      } catch (e) {
+                        toast.error('Failed to send to nurse');
+                      }
+                    }}
+                  >
+                    Complete & Send to Nurse
+                  </button>
                 </div>
               )}
 
