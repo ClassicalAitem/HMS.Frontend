@@ -114,7 +114,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setShowAdd(false)
-    } catch (e) {}
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to create item')
+    }
   }
 
   const handleEdit = async (id, payload) => {
@@ -124,7 +126,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setEditing(null)
-    } catch (e) {}
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to update item')  
+    }
   }
 
   const handleRestock = async (id, payload) => {
@@ -134,7 +138,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setRestockingFor(null)
-    } catch (e) { }
+    } catch (e) { 
+      toast.error(e?.response?.data?.message || 'Failed to restock')
+    }
   }
 
   return (
