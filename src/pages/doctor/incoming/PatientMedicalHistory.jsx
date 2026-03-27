@@ -143,10 +143,8 @@ useEffect(() => {
     getPatientById(patientId)
       .then((res) => {
         const currentStatus = res?.data?.status ?? res?.status ?? '';
-        if (String(currentStatus).toLowerCase() === 'in_consultation') {
-          // ✅ Only release if still locked — don't touch awaiting_hmo etc
-          updatePatientStatus(patientId, { status: 'consultation_completed' })
-            .catch(() => {});
+        if (currentStatus.toLowerCase() === 'in_consultation') {
+          updatePatientStatus(patientId, { status: "in_consultation" }).catch(() => {});
         }
       })
       .catch(() => {});
@@ -752,29 +750,7 @@ disabled={isNavigating}
               </button>
               <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
             </div>
-            {/* <div>
-              <button
-                className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => {
-                  const medsFromPrescriptions = (prescriptions || []).flatMap(p => (p?.medications || []).map((m, idx) => ({
-                    id: m?.id || `${p?._id || p?.id || 'pres'}-${idx}`,
-                    name: m?.drugName || m?.name || 'Medication',
-                    dosage: m?.dosage || '',
-                    frequency: m?.frequency || '',
-                    duration: m?.duration || '',
-                    instructions: m?.instructions || ''
-                  })));
-
-                  navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, {
-                    state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, meds: medsFromPrescriptions }
-                  });
-                }}
-              >
-                Send to Pharmacy
-              </button>
-              <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
-            </div>
-             */}
+     
             <div>
               <button 
                 className="text-primary text-lg font-semibold hover:underline"
@@ -871,34 +847,7 @@ disabled={isNavigating}
   defaultItems={billDefaults}  // ✅ same items as cashier
   onSentSuccessfully={() => navigate('/dashboard/hmo/incoming')}
 />
-        
-          {/* <RecordVitalsModal
-            isOpen={isRecordOpen}
-            patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}
-            recordForm={recordForm}
-            setRecordForm={setRecordForm}
-            recordError={recordError}
-            recordLoading={recordLoading}
-            onCancel={() => { setIsRecordOpen(false); setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" }); setRecordError(""); }}
-            onSubmit={async () => {
-              try {
-                setRecordLoading(true);
-                setRecordError("");
-                await createVital({ patientId, bp: recordForm.bp, pulse: recordForm.pulse, temperature: recordForm.temperature, weight: recordForm.weight, spo2: recordForm.spo2, height: recordForm.height, respiratoryRate: recordForm.respiratoryRate});
-                const res = await getVitalsByPatient(patientId);
-                const raw = res?.data ?? res ?? [];
-                const list = Array.isArray(raw) ? raw : raw?.data ?? [];
-                setVitals(list);
-                setIsRecordOpen(false);
-                setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" });
-              } catch (e) {
-                const msg = e?.response?.data?.message || "Failed to record vitals";
-                setRecordError(msg);
-              } finally {
-                setRecordLoading(false);
-              }
-            }}
-          /> */}
+
           
           <CreateBillModal 
             isOpen={isBillModalOpen}
