@@ -59,6 +59,7 @@ const [latest, setLatest] = useState(null);
   const [billDefaults, setBillDefaults] = useState([]);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [antenatalLoading, setAntenatalLoading] = useState(false);
+const [dependants, setDependants] = useState([]);
 
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -142,10 +143,8 @@ useEffect(() => {
     getPatientById(patientId)
       .then((res) => {
         const currentStatus = res?.data?.status ?? res?.status ?? '';
-        if (String(currentStatus).toLowerCase() === 'in_consultation') {
-          // ✅ Only release if still locked — don't touch awaiting_hmo etc
-          updatePatientStatus(patientId, { status: 'consultation_completed' })
-            .catch(() => {});
+        if (currentStatus.toLowerCase() === 'in_consultation') {
+          updatePatientStatus(patientId, { status: "in_consultation" }).catch(() => {});
         }
       })
       .catch(() => {});
@@ -221,34 +220,52 @@ useEffect(() => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadPrescriptions = async () => {
-      try {
-        setPrescriptionsLoading(true);
-        const res = await getPrescriptionByPatientId(patientId);
-       
-        const rawData = res?.data ?? res;
-        let list = [];
+useEffect(() => {
+  let mounted = true;
 
-        if (Array.isArray(rawData)) {
-          list = rawData;
-        } else if (rawData && typeof rawData === 'object') {
-          if (Object.keys(rawData).length > 0) {
-             list = [rawData];
-          }
+  const loadData = async () => {
+    try {
+      setPrescriptionsLoading(true);
+
+      const [presRes, patientRes] = await Promise.all([
+        getPrescriptionByPatientId(patientId),
+        getPatientById(patientId), 
+      ]);
+
+      //  prescriptions
+      const rawData = presRes?.data ?? presRes;
+      let list = [];
+
+      if (Array.isArray(rawData)) {
+        list = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        if (Object.keys(rawData).length > 0) {
+          list = [rawData];
         }
-        
-        if (mounted) setPrescriptions(list);
-      } catch (err) {
-        console.error("Failed to load prescriptions", err);
-      } finally {
-        if (mounted) setPrescriptionsLoading(false);
       }
-    };
-    loadPrescriptions();
-    return () => { mounted = false; };
-  }, [patientId]);
+
+      // patient + dependants
+      const patientData = patientRes?.data ?? patientRes;
+
+      if (mounted) {
+        setPrescriptions(list);
+        setPatient(patientData);
+
+        
+        setDependants(patientData?.dependants || []);
+      }
+
+    } catch (err) {
+      console.error("Failed to load data", err);
+    } finally {
+      if (mounted) setPrescriptionsLoading(false);
+    }
+  };
+
+  loadData();
+
+  return () => { mounted = false; };
+}, [patientId]);
 
   // Fetch inventory data to match drug prices
   useEffect(() => {
@@ -617,22 +634,38 @@ const isEligibleForAntenatal = useMemo(() => {
 
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
-            rows={useMemo(() => (
+           rows={useMemo(() => (
             Array.isArray(prescriptions) ? prescriptions.map((p) => {
               const totalPrice = (p?.medications || []).reduce((sum, med) => {
                 const price = getDrugPrice(med?.drugName);
                 return sum + (Number(price) || 0);
               }, 0);
+
+              //  Determine who it's for
+              const isForDependant = !!p?.dependantId;
+
+              const dependant = isForDependant
+                ? dependants.find(d => d.id === p.dependantId || d._id === p.dependantId)
+                : null;
+
+              const forName = isForDependant
+                ? dependant
+                  ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+                  : 'Dependant'
+                : patientName; 
+
               return {
                 id: p?._id || p?.id,
                 status: normalizeStatus(p?.status),
                 date: p?.createdAt ? formatNigeriaDate(p.createdAt) : "—",
                 medicationsCount: p?.medications?.length || 0,
                 medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
-                totalPrice: totalPrice > 0 ? totalPrice : null
+                totalPrice: totalPrice > 0 ? totalPrice : null,
+                isForDependant,
+                forName,
               };
             }) : []
-          ), [prescriptions, inventoryData])}
+          ), [prescriptions, inventoryData, dependants, patientName])}
           />
 
           <LabInvestigationRequestCard 
@@ -717,29 +750,7 @@ disabled={isNavigating}
               </button>
               <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
             </div>
-            {/* <div>
-              <button
-                className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => {
-                  const medsFromPrescriptions = (prescriptions || []).flatMap(p => (p?.medications || []).map((m, idx) => ({
-                    id: m?.id || `${p?._id || p?.id || 'pres'}-${idx}`,
-                    name: m?.drugName || m?.name || 'Medication',
-                    dosage: m?.dosage || '',
-                    frequency: m?.frequency || '',
-                    duration: m?.duration || '',
-                    instructions: m?.instructions || ''
-                  })));
-
-                  navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, {
-                    state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, meds: medsFromPrescriptions }
-                  });
-                }}
-              >
-                Send to Pharmacy
-              </button>
-              <div className="text-xs text-base-content/70">(send to Pharmacy for Prescription)</div>
-            </div>
-             */}
+     
             <div>
               <button 
                 className="text-primary text-lg font-semibold hover:underline"
@@ -836,34 +847,7 @@ disabled={isNavigating}
   defaultItems={billDefaults}  // ✅ same items as cashier
   onSentSuccessfully={() => navigate('/dashboard/hmo/incoming')}
 />
-        
-          {/* <RecordVitalsModal
-            isOpen={isRecordOpen}
-            patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}
-            recordForm={recordForm}
-            setRecordForm={setRecordForm}
-            recordError={recordError}
-            recordLoading={recordLoading}
-            onCancel={() => { setIsRecordOpen(false); setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" }); setRecordError(""); }}
-            onSubmit={async () => {
-              try {
-                setRecordLoading(true);
-                setRecordError("");
-                await createVital({ patientId, bp: recordForm.bp, pulse: recordForm.pulse, temperature: recordForm.temperature, weight: recordForm.weight, spo2: recordForm.spo2, height: recordForm.height, respiratoryRate: recordForm.respiratoryRate});
-                const res = await getVitalsByPatient(patientId);
-                const raw = res?.data ?? res ?? [];
-                const list = Array.isArray(raw) ? raw : raw?.data ?? [];
-                setVitals(list);
-                setIsRecordOpen(false);
-                setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "" });
-              } catch (e) {
-                const msg = e?.response?.data?.message || "Failed to record vitals";
-                setRecordError(msg);
-              } finally {
-                setRecordLoading(false);
-              }
-            }}
-          /> */}
+
           
           <CreateBillModal 
             isOpen={isBillModalOpen}

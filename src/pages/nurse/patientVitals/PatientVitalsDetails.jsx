@@ -168,8 +168,10 @@ useEffect(() => {
         getPrescriptionByPatientId(patientId),
         getInvestigationRequestByPatientId(patientId)
       ];
+       console.log('PatientVitalsDetails: promises created', promises);
 
       const results = await Promise.allSettled(promises);
+      console.log('PatientVitalsDetails: results from Promise.allSettled', results);
 
       // 1. Prescriptions
       if (results[0].status === 'fulfilled') {
@@ -1182,6 +1184,7 @@ useEffect(() => {
           {/* Injection Modal */}
           {isRecordInjection && (
             <InjectionModals
+              isOpen={isRecordInjection}
               setIsRecordInjection={setIsRecordInjection}
               patientId={patientId}
               patientData={patient}
