@@ -59,6 +59,7 @@ const [latest, setLatest] = useState(null);
   const [billDefaults, setBillDefaults] = useState([]);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [antenatalLoading, setAntenatalLoading] = useState(false);
+const [dependants, setDependants] = useState([]);
 
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -221,34 +222,52 @@ useEffect(() => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadPrescriptions = async () => {
-      try {
-        setPrescriptionsLoading(true);
-        const res = await getPrescriptionByPatientId(patientId);
-       
-        const rawData = res?.data ?? res;
-        let list = [];
+useEffect(() => {
+  let mounted = true;
 
-        if (Array.isArray(rawData)) {
-          list = rawData;
-        } else if (rawData && typeof rawData === 'object') {
-          if (Object.keys(rawData).length > 0) {
-             list = [rawData];
-          }
+  const loadData = async () => {
+    try {
+      setPrescriptionsLoading(true);
+
+      const [presRes, patientRes] = await Promise.all([
+        getPrescriptionByPatientId(patientId),
+        getPatientById(patientId), // 👈 already exists
+      ]);
+
+      //  prescriptions
+      const rawData = presRes?.data ?? presRes;
+      let list = [];
+
+      if (Array.isArray(rawData)) {
+        list = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        if (Object.keys(rawData).length > 0) {
+          list = [rawData];
         }
-        
-        if (mounted) setPrescriptions(list);
-      } catch (err) {
-        console.error("Failed to load prescriptions", err);
-      } finally {
-        if (mounted) setPrescriptionsLoading(false);
       }
-    };
-    loadPrescriptions();
-    return () => { mounted = false; };
-  }, [patientId]);
+
+      // patient + dependants
+      const patientData = patientRes?.data ?? patientRes;
+
+      if (mounted) {
+        setPrescriptions(list);
+        setPatient(patientData);
+
+        
+        setDependants(patientData?.dependants || []);
+      }
+
+    } catch (err) {
+      console.error("Failed to load data", err);
+    } finally {
+      if (mounted) setPrescriptionsLoading(false);
+    }
+  };
+
+  loadData();
+
+  return () => { mounted = false; };
+}, [patientId]);
 
   // Fetch inventory data to match drug prices
   useEffect(() => {
@@ -617,22 +636,38 @@ const isEligibleForAntenatal = useMemo(() => {
 
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
-            rows={useMemo(() => (
+           rows={useMemo(() => (
             Array.isArray(prescriptions) ? prescriptions.map((p) => {
               const totalPrice = (p?.medications || []).reduce((sum, med) => {
                 const price = getDrugPrice(med?.drugName);
                 return sum + (Number(price) || 0);
               }, 0);
+
+              //  Determine who it's for
+              const isForDependant = !!p?.dependantId;
+
+              const dependant = isForDependant
+                ? dependants.find(d => d.id === p.dependantId || d._id === p.dependantId)
+                : null;
+
+              const forName = isForDependant
+                ? dependant
+                  ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+                  : 'Dependant'
+                : patientName; 
+
               return {
                 id: p?._id || p?.id,
                 status: normalizeStatus(p?.status),
                 date: p?.createdAt ? formatNigeriaDate(p.createdAt) : "—",
                 medicationsCount: p?.medications?.length || 0,
                 medicationsSummary: p?.medications?.slice(0, 2).map(m => `${m.drugName} (${m.dosage})`) || [],
-                totalPrice: totalPrice > 0 ? totalPrice : null
+                totalPrice: totalPrice > 0 ? totalPrice : null,
+                isForDependant,
+                forName,
               };
             }) : []
-          ), [prescriptions, inventoryData])}
+          ), [prescriptions, inventoryData, dependants, patientName])}
           />
 
           <LabInvestigationRequestCard 
