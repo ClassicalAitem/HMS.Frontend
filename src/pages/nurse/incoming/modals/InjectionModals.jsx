@@ -125,18 +125,43 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
     const fetchPrescription = async () => {
       try {
         setLoading(true);
+        console.log("Fetching prescription for patientId:", patientId);
         const res = await apiClient.get(
           `/prescription/getPrescriptionByPatientId/${patientId}`
         );
 
+
         if (cancelled) return;
 
         const data = res.data.data;
-        const prescriptionData = Array.isArray(data) ? data[0] : data;
+       let prescriptionData;
 
-        setPrescription(prescriptionData);
-        setSelectedStatus(prescriptionData.status || "");
-        setIsFullyAdministered(checkAllCompleted(prescriptionData.medications));
+        if (Array.isArray(data)) {
+          prescriptionData = data.find(p => {
+            const injectionMeds = (p.medications || []).filter(
+              m => m.medicationType === "injection"
+            );
+
+            if (!injectionMeds.length) return false;
+
+
+            const hasPendingInjection = injectionMeds.some(
+              m => m.injectionStatus !== "completed"
+            );
+
+            return hasPendingInjection;
+          }) || null;
+        } else {
+          prescriptionData = data;
+        }
+
+                // console.log(data);
+                setPrescription(prescriptionData);
+                setSelectedStatus(prescriptionData?.status || "");
+        setIsFullyAdministered(
+          checkAllCompleted(prescriptionData?.medications || [])
+        );
+
       } catch (err) {
         if (!cancelled) console.error("Error fetching prescription:", err);
       } finally {
@@ -148,7 +173,7 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
     return () => { cancelled = true; };
   }, [isOpen, patientId]);
 
-  console.log(prescription);
+  // console.log(prescription);
 
   // ─── Medication field handlers ───────────────────────────────────────────────
   const updateMedicationField = useCallback((index, field, value) => {
