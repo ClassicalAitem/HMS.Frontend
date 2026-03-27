@@ -303,6 +303,7 @@ const subjectRelation = isForDependant
   }}
   patientId={patientId}
   consultationId={consultationId}
+   dependantId={consultation?.dependantId || consultation?.dependant?._id || consultation?.dependant?.id}
   investigation={editingLab}
   onOrderCreated={loadData}
 />
