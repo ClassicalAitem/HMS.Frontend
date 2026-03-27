@@ -231,7 +231,7 @@ useEffect(() => {
 
       const [presRes, patientRes] = await Promise.all([
         getPrescriptionByPatientId(patientId),
-        getPatientById(patientId), // 👈 already exists
+        getPatientById(patientId), 
       ]);
 
       //  prescriptions
