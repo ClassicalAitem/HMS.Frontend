@@ -20,6 +20,7 @@ const OrderInvestigationModal = ({
   isOpen,
   onClose,
   patientId,
+  dependantId,
   consultationId,
   investigation, // <-- NEW (edit mode)
   onOrderCreated
@@ -124,6 +125,7 @@ const OrderInvestigationModal = ({
 
       const payload = {
         patientId,
+        dependantId,
         type: "lab",
         tests: data.tests,
         priority: data.priority,
