@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 
 const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, loading = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 2;
 
   const paginationData = useMemo(() => {
     const totalItems = Array.isArray(rows) ? rows.length : 0;
