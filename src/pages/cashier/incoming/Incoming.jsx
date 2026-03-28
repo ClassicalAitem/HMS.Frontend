@@ -3,6 +3,7 @@ import { CashierLayout } from '@/layouts/cashier';
 import { Md6FtApart } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
 import { getPatients } from '@/services/api/patientsAPI';
+import { formatNigeriaDateTime, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 
 const Incoming = () => {
   const [incomingPatients, setIncomingPatients] = useState([]);
@@ -44,21 +45,12 @@ const mapped = filtered.map((p) => ({
     : 'Self-pay',
   // ✅ Nigeria time for registered
   registeredTime: p?.createdAt
-    ? new Date(p.createdAt).toLocaleTimeString('en-NG', {
-        timeZone: 'Africa/Lagos',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })
+    ? formatNigeriaTime(p.createdAt)
     : '—',
   updatedAt: p?.updatedAt || p?.createdAt,
   // ✅ Nigeria time for updated display
   updatedAtDisplay: (p?.updatedAt || p?.createdAt)
-    ? new Date(p?.updatedAt || p?.createdAt).toLocaleString('en-NG', {
-        timeZone: 'Africa/Lagos',
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
+    ? formatNigeriaDateTime(p?.updatedAt || p?.createdAt)
     : '—'
 }));
         if (mounted) setIncomingPatients(mapped);

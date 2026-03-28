@@ -5,6 +5,7 @@ import { PiUsersThreeDuotone } from 'react-icons/pi';
 import { LuUserRoundCheck } from 'react-icons/lu';
 import { MdOutlineStore } from 'react-icons/md';
 import { FiFileText } from 'react-icons/fi';
+import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchMetrics } from '../../../store/slices/metricsSlice';
@@ -49,14 +50,7 @@ const SuperAdminDashboard = () => {
   }, [dispatch]);
 
   const getCurrentDate = () => {
-    const now = new Date();
-    const options = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    };
-    return now.toLocaleDateString('en-US', options);
+    return formatNigeriaDate(new Date());
   };
 
   // Skeleton loader component for metrics cards
@@ -121,7 +115,7 @@ const SuperAdminDashboard = () => {
       title: 'Recorded At',
       sortable: true,
       className: 'text-base-content/70',
-      render: (value) => new Date(value).toLocaleString()
+      render: (value) => formatNigeriaDateTime(value)
     }
   ], []);
 

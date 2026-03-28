@@ -5,6 +5,7 @@ import * as yup from 'yup';
 import { FaTimes, FaUserEdit, FaEye, FaEyeSlash, FaSave } from 'react-icons/fa';
 import { usersAPI } from '../../../services/api/usersAPI';
 import toast from 'react-hot-toast';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 // Validation schema
 const resetPasswordSchema = yup.object({
@@ -140,7 +141,7 @@ const ResetPasswordModal = ({ isOpen, onClose, user, onUserUpdated }) => {
                   {user.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
-              <div><strong>Created:</strong> {new Date(user.createdAt).toLocaleDateString()}</div>
+              <div><strong>Created:</strong> {formatNigeriaDate(user.createdAt)}</div>
             </div>
           </div>
 

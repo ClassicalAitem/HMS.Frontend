@@ -4,6 +4,7 @@ import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 const FrontDeskPaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -54,7 +55,7 @@ const mapped = filteredList.map((a, idx) => ({
   paidBy: a.paidBy || 'N/A',
   status: a.status || 'pending',
   amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-  dateTime: new Date(a.paidAt || a.updatedAt).toLocaleString(),
+  dateTime: formatNigeriaDateTime(a.paidAt || a.updatedAt),
   cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
 }));
 

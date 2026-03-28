@@ -239,10 +239,10 @@ useEffect(() => {
                       ? `Dr. ${c.doctor.firstName || ""} ${c.doctor.lastName || ""}`.trim()
                       : "Unknown Doctor";
                     const date = c.createdAt
-                      ? new Date(c.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+                      ? formatNigeriaDate(c.createdAt)
                       : "N/A";
                     const time = c.createdAt
-                      ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                      ? formatNigeriaTime(c.createdAt)
                       : "";
 
                     return (

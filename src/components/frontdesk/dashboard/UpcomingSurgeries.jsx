@@ -4,6 +4,7 @@ import { BsInbox } from "react-icons/bs";
 import { GiFirstAidKit } from "react-icons/gi";
 import { getAllSurgeries } from '@/services/api/surgeryAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
+import { formatNigeriaDate, formatNigeriaDateShort } from '@/utils/formatDateTimeUtils';
 import { useNavigate } from 'react-router-dom';
 
 const UpcomingSurgeries = () => {
@@ -93,11 +94,7 @@ const UpcomingSurgeries = () => {
     } else if (date.getTime() === tomorrow.getTime()) {
       return 'Tomorrow';
     } else {
-      return date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
+      return formatNigeriaDateShort(date);
     }
   };
 

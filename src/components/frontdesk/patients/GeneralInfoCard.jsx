@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 // Use DaisyUI/Tailwind skeleton placeholders to match nurse dashboard style
 
 const GeneralInfoCard = ({ patient, isTransitionLoading }) => (
@@ -30,7 +31,7 @@ const GeneralInfoCard = ({ patient, isTransitionLoading }) => (
             <div className="skeleton h-4 w-32" />
           ) : (
             <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-              {patient.dob ? new Date(patient.dob).toLocaleDateString() : 'Not provided'}
+              {patient.dob ? formatNigeriaDate(patient.dob) : 'Not provided'}
             </span>
           )}
         </div>
@@ -50,7 +51,7 @@ const GeneralInfoCard = ({ patient, isTransitionLoading }) => (
             <div className="skeleton h-4 w-36" />
           ) : (
             <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-              {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}
+              {patient.createdAt ? formatNigeriaDate(patient.createdAt) : 'Not available'}
             </span>
           )}
         </div>
@@ -61,7 +62,7 @@ const GeneralInfoCard = ({ patient, isTransitionLoading }) => (
             <div className="skeleton h-4 w-36" />
           ) : (
             <span className="font-medium text-md 2xl:text-xl 2xl:font-regular">
-              {patient.updatedAt ? new Date(patient.updatedAt).toLocaleDateString() : 'Not available'}
+              {patient.updatedAt ? formatNigeriaDate(patient.updatedAt) : 'Not available'}
             </span>
           )}
         </div>
