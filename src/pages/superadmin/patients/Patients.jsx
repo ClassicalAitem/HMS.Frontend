@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
@@ -93,8 +94,8 @@ const StatusBadge = ({ status }) => {
     nextOfKinRelationship: patient.nextOfKin?.relationship || 'N/A',
     hmoCount: patient.hmos?.length || 0,
     dependantsCount: patient.dependants?.length || 0,
-    createdAtFormatted: new Date(patient.createdAt).toLocaleDateString(),
-    updatedAtFormatted: new Date(patient.updatedAt).toLocaleDateString(),
+    createdAtFormatted: formatNigeriaDate(patient.createdAt),
+    updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
   })), [patients]);
 
   // Define table columns

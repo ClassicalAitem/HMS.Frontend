@@ -15,6 +15,7 @@ import { getInvestigationByConsultationId } from "@/services/api/investigationAP
 import { updateInvestigation, deleteInvestigation } from "@/services/api/investigationAPI";
 import { updatePrescription, deletePrescription } from "@/services/api/prescriptionsAPI";
 import { FaTrash, FaEdit } from "react-icons/fa";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -222,7 +223,7 @@ const handleEditPrescription = async (pres, e) => {
   const visitReason = consultation?.visitReason || "Not specified";
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
   const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
-  const consultationDate = consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "";
+  const consultationDate = consultation?.createdAt ? formatNigeriaDate(consultation.createdAt) : "";
   const recentPrescriptions = prescriptions.slice(0, 3);
 
   const isForDependant = !!consultation?.dependantId;
@@ -604,7 +605,7 @@ const subjectRelation = isForDependant
                         </span>
 
                         <span className="text-xs text-base-content/50">
-                          Requested {new Date(lab.createdAt).toLocaleDateString()}
+                          Requested {formatNigeriaDate(lab.createdAt)}
                         </span>
 
                         {lab.priority === 'urgent' && (
@@ -675,7 +676,7 @@ const subjectRelation = isForDependant
                                   </span>
 
                                   <span className="text-xs text-base-content/50">
-                                    Ordered {new Date(pres.createdAt).toLocaleDateString()}
+                                    Ordered {formatNigeriaDate(pres.createdAt)}
                                   </span>
 
                                 </div>
@@ -794,7 +795,7 @@ const subjectRelation = isForDependant
                       {consultation.dependant.dob && (
                         <div className="flex justify-between">
                           <span className="text-base-content/60">DOB:</span>
-                          <span>{new Date(consultation.dependant.dob).toLocaleDateString()}</span>
+                          <span>{formatNigeriaDate(consultation.dependant.dob)}</span>
                         </div>
                       )}
                       {consultation.dependant.gender && (
@@ -820,7 +821,7 @@ const subjectRelation = isForDependant
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
                           <span className="font-medium">{typeof item === 'object' ? item.procedureName || item.procedure || item.title || item.name : item}</span>
                           {typeof item === 'object' && item.dateOfSurgery && (
-                            <span className="text-base-content/60 text-xs">{new Date(item.dateOfSurgery).toLocaleDateString()}</span>
+                            <span className="text-base-content/60 text-xs">{formatNigeriaDate(item.dateOfSurgery)}</span>
                           )}
                         </li>
                       ))}

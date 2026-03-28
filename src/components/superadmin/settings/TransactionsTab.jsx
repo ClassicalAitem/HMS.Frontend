@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { FaDownload, FaEye, FaSearch, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
+import { formatNigeriaDateShort } from '@/utils/formatDateTimeUtils';
 
 const TransactionsTab = () => {
   const [transactions, setTransactions] = useState([]);
@@ -93,11 +94,7 @@ const TransactionsTab = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-NG', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatNigeriaDateShort(dateString);
   };
 
   const getStatusBadgeClass = (status) => {

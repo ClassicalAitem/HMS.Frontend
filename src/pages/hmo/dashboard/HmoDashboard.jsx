@@ -3,6 +3,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getAllHmos } from "@/services/api/hmoAPI";
 import { useAppSelector } from "@/store/hooks";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const HmoDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -99,7 +100,7 @@ const HmoDashboard = () => {
                   {hmos.slice(0, 6).map((hmo) => {
                     const expiresAt = hmo.expiresAt ? new Date(hmo.expiresAt) : null;
                     const isExpired = expiresAt ? expiresAt.getTime() < Date.now() : false;
-                    const expiresLabel = expiresAt ? expiresAt.toLocaleDateString() : "—";
+                    const expiresLabel = hmo.expiresAt ? formatNigeriaDate(hmo.expiresAt) : "—";
 
                     return (
                       <div key={hmo.id || hmo._id} className="bg-base-200 border border-base-300 rounded-xl p-4">

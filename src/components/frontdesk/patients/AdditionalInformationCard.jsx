@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 // Use DaisyUI skeleton placeholders for loading state
 
 const AdditionalInformationCard = ({ patient, isLoading }) => (
@@ -36,7 +37,7 @@ const AdditionalInformationCard = ({ patient, isLoading }) => (
             <div className="skeleton h-4 w-40" />
           ) : (
             <p className="font-medium">
-              {patient.updatedAt ? new Date(patient.updatedAt).toLocaleString() : 'Not available'}
+              {patient.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : 'Not available'}
             </p>
           )}
         </div>

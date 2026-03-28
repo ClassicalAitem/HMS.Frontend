@@ -4,6 +4,7 @@ import { FaTimes, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useAppDispatch } from '../../store/hooks';
 import { editPatient } from '../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
   const dispatch = useAppDispatch();
@@ -443,7 +444,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                         <div>
                           <label className="block mb-1 text-sm text-base-content/70">Expires</label>
                           <p className="text-base-content font-medium">
-                            {hmo.expiresAt ? new Date(hmo.expiresAt).toLocaleDateString() : 'N/A'}
+                            {hmo.expiresAt ? formatNigeriaDate(hmo.expiresAt) : 'N/A'}
                           </p>
                         </div>
                       </div>

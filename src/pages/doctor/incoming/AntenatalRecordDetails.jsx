@@ -6,6 +6,7 @@ import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import toast from "react-hot-toast";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -206,7 +207,7 @@ const getDependantName = (dependantId) => {
               Pregnancy #{index + 1}
               {record.presentPregnancyHistories?.[0]?.EDD && (
                 <span className="text-sm text-base-content/70 ml-2">
-                  (EDD: {new Date(record.presentPregnancyHistories[0].EDD).toLocaleDateString()})
+                  (EDD: {formatNigeriaDate(record.presentPregnancyHistories[0].EDD)})
                 </span>
               )}
             </h4>
@@ -225,7 +226,7 @@ const getDependantName = (dependantId) => {
           </div>
 
           <p className="text-sm text-base-content/70">
-            Created: {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : 'N/A'}
+            Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -262,13 +263,13 @@ const getDependantName = (dependantId) => {
                           <div className="stat bg-base-200/50 rounded-lg p-4">
                             <div className="stat-title text-sm">Expected Date of Delivery</div>
                             <div className="stat-value text-lg">
-                              {selectedRecord.presentPregnancyHistories[0].EDD ? new Date(selectedRecord.presentPregnancyHistories[0].EDD).toLocaleDateString() : '-'}
+                              {selectedRecord.presentPregnancyHistories[0].EDD ? formatNigeriaDate(selectedRecord.presentPregnancyHistories[0].EDD) : '-'}
                             </div>
                           </div>
                           <div className="stat bg-base-200/50 rounded-lg p-4">
                             <div className="stat-title text-sm">Last Menstrual Period</div>
                             <div className="stat-value text-lg">
-                              {selectedRecord.presentPregnancyHistories[0].LMP ? new Date(selectedRecord.presentPregnancyHistories[0].LMP).toLocaleDateString() : '-'}
+                              {selectedRecord.presentPregnancyHistories[0].LMP ? formatNigeriaDate(selectedRecord.presentPregnancyHistories[0].LMP) : '-'}
                             </div>
                           </div>
                           <div className="stat bg-base-200/50 rounded-lg p-4">
@@ -446,7 +447,7 @@ const getDependantName = (dependantId) => {
                             <tbody>
                               {selectedRecord.obstetricHistories.map((item, idx) => (
                                 <tr key={idx}>
-                                  <td>{item.Date ? new Date(item.Date).toLocaleDateString() : '-'}</td>
+                                  <td>{item.Date ? formatNigeriaDate(item.Date) : '-'}</td>
                                   <td>{item.durationOfPregnancy || '-'}</td>
                                   <td>{item.birthWeight || '-'}</td>
                                   <td>{item.complicationInPregnancy || '-'}</td>
@@ -487,7 +488,7 @@ const getDependantName = (dependantId) => {
                             <tbody>
                               {selectedRecord.anteNatalExamination.map((exam, idx) => (
                                 <tr key={idx}>
-                                  <td>{exam.Date ? new Date(exam.Date).toLocaleDateString() : '-'}</td>
+                                  <td>{exam.Date ? formatNigeriaDate(exam.Date) : '-'}</td>
                                   <td>{exam.weight || '-'}</td>
                                   <td>{exam.bloodPressure || '-'}</td>
                                   <td>{exam.heightOfFundus || '-'}</td>
