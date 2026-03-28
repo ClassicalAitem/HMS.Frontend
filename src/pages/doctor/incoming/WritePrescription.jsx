@@ -113,42 +113,41 @@ const isEdit = !!editingPrescription;
 }, [editingPrescription, setValue]); 
  
   useEffect(() => { 
-    const loadData = async () => { 
-      try { 
-        setLoading(true); 
-        const [consultRes, patientRes] = await Promise.all([ 
-          getConsultationById(consultationId), 
-          getPatientById(patientId) 
-        ]); 
- 
-        const consultData = consultRes?.data ?? consultRes; 
-        const patientData = patientRes?.data ?? patientRes; 
-        
-        setConsultation(consultData); 
-        setPatient(patientData); 
-        
-        // Load dependants if available
-        if (patientData?.dependants) {
-          setDependants(Array.isArray(patientData.dependants) ? patientData.dependants : []);
-        }
-        
-        // Set initial target to patient
-const initialTargetFromNav = location?.state?.target;
+  const loadData = async () => { 
+    try { 
+      setLoading(true); 
 
-if (initialTargetFromNav) {
-  setSelectedTarget(initialTargetFromNav);
-} else {
-  setSelectedTarget('patient');
-}
-      } catch (error) { 
-        console.error("Error loading data:", error); 
-        toast.error("Failed to load consultation data"); 
-      } finally { 
-        setLoading(false); 
-      } 
-    }; 
-    loadData(); 
-  }, [patientId, consultationId]); 
+      const [consultRes, patientRes] = await Promise.all([ 
+        getConsultationById(consultationId), 
+        getPatientById(patientId) 
+      ]); 
+
+      const consultData = consultRes?.data ?? consultRes; 
+      const patientData = patientRes?.data ?? patientRes; 
+      
+      setConsultation(consultData); 
+      setPatient(patientData); 
+
+      if (patientData?.dependants) {
+        setDependants(Array.isArray(patientData.dependants) ? patientData.dependants : []);
+      }
+
+      // ✅ Correct target binding
+      if (consultData?.dependantId) {
+        setSelectedTarget(consultData.dependantId);
+      } else {
+        setSelectedTarget('patient');
+      }
+
+    } catch (error) { 
+      console.error(error); 
+    } finally { 
+      setLoading(false); 
+    } 
+  }; 
+
+  loadData(); 
+}, [patientId, consultationId]);
  
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen); 
   const closeSidebar = () => setIsSidebarOpen(false); 
@@ -180,11 +179,16 @@ const onSubmit = async (data) => {
  
   try { 
     // Determine if prescription is for patient or dependant
-    const isForDependant = selectedTarget !== 'patient';
+    const isDependant = !!consultation?.dependantId;
+    const targetId = isDependant
+  ? consultation.dependantId
+  : consultation.patientId;
+
+   
 
 const payload = {
-  ...(isForDependant
-    ? { dependantId: selectedTarget }
+  ...(isDependant
+    ? { dependantId: targetId }
     : { patientId: patientId }),
 
   consultationId,
@@ -346,8 +350,14 @@ useEffect(() => {
               <div> 
                 <h1 className="text-xl font-bold text-base-content">{isEdit ? "Update Prescription" : "Write Prescription"}</h1> 
                 <p className="text-sm text-base-content/70"> 
-                  For: <span className="font-medium text-primary">{selectedTargetName}</span> 
-                </p> 
+                  For: 
+                  <span className="font-medium text-primary ml-1">
+                    {selectedTargetName}
+                  </span>
+                  <span className="ml-2 badge badge-outline badge-sm">
+                    {selectedTarget === 'patient' ? 'Patient' : 'Dependant'}
+                  </span>
+                </p>
               </div> 
             </div> 
             <button 
@@ -363,36 +373,7 @@ useEffect(() => {
             <div className="flex-1 overflow-y-auto p-6"> 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mx-auto"> 
 
-                {/* Target Selection Dropdown */}
-                <div className="card bg-base-100 shadow-sm border border-base-200">
-                  <div className="card-body p-6">
-                    <h3 className="font-semibold text-lg mb-4">Prescription Target</h3>
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">Select who this prescription is for:</span>
-                      </label>
-                      <select
-                        value={selectedTarget}
-                        onChange={(e) => setSelectedTarget(e.target.value)}
-                        className="select select-bordered w-full"
-                      >
-                        <option value="patient">{patientName} (Patient)</option>
-                        {dependants.length > 0 && (
-                          <>
-                            <optgroup label="Dependants">
-                              {dependants.map((dep) => (
-                                <option key={dep.id} value={dep.id}>
-                                  {dep.firstName} {dep.lastName} ({dep.relationship || 'Dependant'})
-                                </option>
-                              ))}
-                            </optgroup>
-                          </>
-                        )}
-                      </select>
-                    </div>
-                  </div>
-                </div>
- 
+               
                 {fields.map((item, index) => { 
                   const medicationType = watch(`medications.${index}.medicationType`); 
  
