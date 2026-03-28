@@ -1,6 +1,6 @@
 // Environment configuration
 export const config = {
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'https://hms-backend-api-84h0.onrender.com/api/v1',
   APP_NAME: import.meta.env.VITE_APP_NAME || 'HMS Frontend',
   APP_VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0',
   NODE_ENV: import.meta.env.VITE_NODE_ENV || 'development',
