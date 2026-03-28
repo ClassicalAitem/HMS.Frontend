@@ -567,20 +567,11 @@ const subjectRelation = isForDependant
                       > 
                         <FaFlask /> Order Labs
                       </button>
-                      <button 
-                        className="btn btn-sm btn-primary gap-2"
-                        onClick={() => {
-                       navigate(
-                        `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
-                        {
-                          state: {
-                            consultationId,
-                            patientId,
-                            target: consultation?.dependant?._id || consultation?.dependant?.id || 'patient'
-                          }
-                        }
-                      );
-                        }}
+                      <button
+                      className="btn btn-sm btn-primary gap-2"
+                        onClick={() => navigate(
+                          `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`
+                        )}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
                       </button>
@@ -779,43 +770,43 @@ const subjectRelation = isForDependant
                   )}
                 </div>
               </div>
-{/* Dependant Info — show only if consultation is for a dependant */}
-{isForDependant && consultation?.dependant && (
-  <div className="card bg-secondary/10 shadow-sm border border-secondary/20">
-    <div className="card-body p-5">
-      <div className="flex items-center gap-2 mb-3 text-secondary">
-        <FaUsers />
-        <h3 className="font-bold uppercase text-sm tracking-wider">Consultation For</h3>
-      </div>
-      <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-base-content/60">Name:</span>
-          <span className="font-medium">
-            {consultation.dependant.firstName} {consultation.dependant.lastName}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-base-content/60">Relation:</span>
-          <span className="badge badge-secondary badge-sm">
-            {consultation.dependant.relationshipType}
-          </span>
-        </div>
-        {consultation.dependant.dob && (
-          <div className="flex justify-between">
-            <span className="text-base-content/60">DOB:</span>
-            <span>{new Date(consultation.dependant.dob).toLocaleDateString()}</span>
-          </div>
-        )}
-        {consultation.dependant.gender && (
-          <div className="flex justify-between">
-            <span className="text-base-content/60">Gender:</span>
-            <span className="capitalize">{consultation.dependant.gender}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-)}
+              {/* Dependant Info — show only if consultation is for a dependant */}
+              {isForDependant && consultation?.dependant && (
+                <div className="card bg-secondary/10 shadow-sm border border-secondary/20">
+                  <div className="card-body p-5">
+                    <div className="flex items-center gap-2 mb-3 text-secondary">
+                      <FaUsers />
+                      <h3 className="font-bold uppercase text-sm tracking-wider">Consultation For</h3>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-base-content/60">Name:</span>
+                        <span className="font-medium">
+                          {consultation.dependant.firstName} {consultation.dependant.lastName}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-base-content/60">Relation:</span>
+                        <span className="badge badge-secondary badge-sm">
+                          {consultation.dependant.relationshipType}
+                        </span>
+                      </div>
+                      {consultation.dependant.dob && (
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">DOB:</span>
+                          <span>{new Date(consultation.dependant.dob).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      {consultation.dependant.gender && (
+                        <div className="flex justify-between">
+                          <span className="text-base-content/60">Gender:</span>
+                          <span className="capitalize">{consultation.dependant.gender}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Surgical History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-5">
