@@ -8,7 +8,7 @@ import MedicalHistoryTable from "@/components/doctor/patient/MedicalHistoryTable
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import LabHistoryTable from "@/components/doctor/patient/LabHistoryTable";
-import LabInvestigationRequestCard from "@/components/doctor/patient/LabInvestigationRequestCard";
+import LabInvestigationRequestTable from "@/components/doctor/patient/LabInvestigationRequestTable";
 import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
@@ -25,6 +25,7 @@ import SendToNurseModal from "./modals/SendToNurseModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { SendToHmoModal } from "@/components/modals";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import toast from "react-hot-toast";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -319,7 +320,7 @@ useEffect(() => {
         }
         if (mounted) setLabInvestigations(list);
       } catch (err) {
-        console.error("Failed to load lab investigations", err);
+        toast .error("Failed to load lab investigations");
       } finally {
         if (mounted) setInvestigationsLoading(false);
       }
@@ -327,6 +328,8 @@ useEffect(() => {
     if (patientId) loadInvestigations();
     return () => { mounted = false; };
   }, [patientId]);
+
+
 
 const isEligibleForAntenatal = useMemo(() => {
   if (!patient) return false;
@@ -434,14 +437,42 @@ const isEligibleForAntenatal = useMemo(() => {
 
   // Filter investigations to last 48 hours and exclude completed ones
   const investigations48h = useMemo(() => 
-    Array.isArray(labInvestigations) ? labInvestigations.filter(inv => {
-      const withinTime = isWithin48Hours(inv?.createdAt);
-      const status = (inv?.status || '').toLowerCase();
-      const isNotCompleted = !status.includes('completed') && !status.includes('done');
-      return withinTime && isNotCompleted;
-    }) : [],
-    [labInvestigations]
-  );
+  Array.isArray(labInvestigations)
+    ? labInvestigations.filter(inv => {
+        const withinTime = isWithin48Hours(inv?.createdAt);
+        const status = (inv?.status || '').toLowerCase();
+
+        const isValid =
+          status === 'requested' ||
+          status === 'in_progress';
+
+        return withinTime && isValid;
+      })
+    : [],
+  [labInvestigations]
+);
+
+    const enrichedInvestigations = investigations48h.map(inv => {
+  const isDependant = !!inv.dependantId;
+
+  const dependant = isDependant
+    ? dependants.find(
+        d => d.id === inv.dependantId || d._id === inv.dependantId
+      )
+    : null;
+
+  const forName = isDependant
+    ? dependant
+      ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+      : 'Dependant'
+    : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+
+  return {
+    ...inv,
+    isForDependant: isDependant,
+    forName
+  };
+});
 
   // Filter lab results to last 48 hours
   const labResults48h = useMemo(() => 
@@ -450,10 +481,21 @@ const isEligibleForAntenatal = useMemo(() => {
   );
 
   // Filter prescriptions to last 48 hours
-  const prescriptions48h = useMemo(() => 
-    Array.isArray(prescriptions) ? prescriptions.filter(p => isWithin48Hours(p?.createdAt)) : [],
-    [prescriptions]
-  );
+const prescriptions48h = useMemo(() => 
+  Array.isArray(prescriptions)
+    ? prescriptions.filter(p => {
+        const withinTime = isWithin48Hours(p?.createdAt);
+        const status = (p?.status || '').toLowerCase();
+
+        const isValid =
+          status === 'pending'; // ✅ ONLY pending
+
+        return withinTime && isValid;
+      })
+    : [],
+  [prescriptions]
+);
+
 
   return (
     <div className="flex h-screen">
@@ -584,56 +626,56 @@ const isEligibleForAntenatal = useMemo(() => {
           )}
 
           <MedicalHistoryTable
-  rows={useMemo(() => (
-    Array.isArray(consultations) ? consultations.map((c) => {
-      const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
-      const now = Date.now();
-      const within24h = now - createdTime < 24 * 60 * 60 * 1000;
+              rows={useMemo(() => (
+                Array.isArray(consultations) ? consultations.map((c) => {
+                  const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
+                  const now = Date.now();
+                  const within24h = now - createdTime < 24 * 60 * 60 * 1000;
 
-      // ✅ Determine if consultation is for a dependant or main patient
-      const isForDependant = !!c?.dependantId && !!c?.dependant;
-      const forName = isForDependant
-        ? `${c.dependant.firstName || ""} ${c.dependant.lastName || ""}`.trim()
-        : patientName;
-      const forRelation = isForDependant
-        ? c.dependant.relationshipType || "Dependant"
-        : "Patient";
+                  const isForDependant = !!c?.dependantId && !!c?.dependant;
+                  const forName = isForDependant
+                    ? `${c.dependant.firstName || ""} ${c.dependant.lastName || ""}`.trim()
+                    : patientName;
+                  const forRelation = isForDependant
+                    ? c.dependant.relationshipType || "Dependant"
+                    : "Patient";
 
-      return {
-        id: c?._id || c?.id,
-        type: "Consultation",
-        diagnosis: c?.diagnosis || "—",
-        time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
-        date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
-        notes: c?.notes || "—",
-        canEdit: within24h,
-        forName,        // ✅ who the consultation is for
-        forRelation,    // ✅ their relation
-        isForDependant, // ✅ flag
-      };
-    }) : []
-  ), [consultations, patientName])}
-  loading={loading}
- onAdd={() => lockAndNavigate(
-  `/dashboard/doctor/medical-history/${patientId}/add`,
-  { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
-)} onViewDetails={(row) => {
-    const cid = row?.id;
-    if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
-  }}
-  onEdit={(row) => {
-  const cid = row?.id;
-  if (cid) lockAndNavigate(
-    `/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`,
-    { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
-  );
-}}
-  onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
-/>
+                  return {
+                    id: c?._id || c?.id,
+                    type: "Consultation",
+                    diagnosis: c?.diagnosis || "—",
+                    time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
+                    date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
+                    notes: c?.notes || "—",
+                    canEdit: within24h,
+                    forName,        
+                    forRelation,    
+                    isForDependant, 
+                  };
+                }) : []
+              ), [consultations, patientName])}
+              loading={loading}
+            onAdd={() => lockAndNavigate(
+              `/dashboard/doctor/medical-history/${patientId}/add`,
+              { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+            )} onViewDetails={(row) => {
+                const cid = row?.id;
+                if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+              }}
+              onEdit={(row) => {
+              const cid = row?.id;
+              if (cid) lockAndNavigate(
+                `/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`,
+                { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+              );
+            }}
+              onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
+            />
 
 
           <PrescriptionHistoryTable 
             loading={prescriptionsLoading}
+            
            rows={useMemo(() => (
             Array.isArray(prescriptions) ? prescriptions.map((p) => {
               const totalPrice = (p?.medications || []).reduce((sum, med) => {
@@ -668,8 +710,8 @@ const isEligibleForAntenatal = useMemo(() => {
           ), [prescriptions, inventoryData, dependants, patientName])}
           />
 
-          <LabInvestigationRequestCard 
-            investigations={investigations48h}
+          <LabInvestigationRequestTable 
+            investigations={enrichedInvestigations}
             loading={investigationsLoading}
           />
           <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
@@ -708,43 +750,45 @@ const isEligibleForAntenatal = useMemo(() => {
             <div>
               <button
                 className="text-primary text-lg font-semibold hover:underline"
-              // Find this onClick and replace it:
-onClick={() => {
-  const prescriptionItems = (prescriptions48h || []).flatMap(p =>
-    (p?.medications || []).map(m => ({
-      serviceChargeId: "",
-      code: "DRUG",
-      description: m?.drugName || "Medication",
-      quantity: 1,
-      price: Number(getDrugPrice(m?.drugName)) || 0
-    }))
-  );
+             
+              onClick={() => {
+                const prescriptionItems = (prescriptions48h || [])
+                .filter(p => (p?.status || '').toLowerCase() === 'pending')
+                .flatMap(p =>
+                  (p?.medications || []).map(m => ({
+                    serviceChargeId: "",
+                    code: "DRUG",
+                    description: m?.drugName || "Medication",
+                    quantity: 1,
+                    price: Number(getDrugPrice(m?.drugName)) || 0
+                  }))
+                );
 
-  const investigationItems = (investigations48h || []).flatMap(inv => {
-    const status = (inv?.status || '').toLowerCase();
-    if (status.includes('completed') || status.includes('done')) return [];
-    const tests = inv.tests || [];
-    if (tests.length === 0) return [];
-    return tests.map((test) => {
-      const testName = typeof test === 'string' ? test : (test?.name || test?.code || 'Lab Test');
-      const price = getLabInvestigationPrice(testName, inv?.type);
-      return {
-        serviceChargeId: inv.id || inv._id || "",
-        code: "LAB",
-        description: `${testName} (${inv.type || 'Lab Investigation'})`,
-        quantity: 1,
-        price: price > 0 ? price : 0,
-        investigationId: inv.id || inv._id
-      };
-    });
-  });
+                const investigationItems = (investigations48h || []).flatMap(inv => {
+                  const status = (inv?.status || '').toLowerCase();
+                  if (status !== 'requested' && status !== 'in_progress') return [];
+                  const tests = inv.tests || [];
+                  if (tests.length === 0) return [];
+                  return tests.map((test) => {
+                    const testName = typeof test === 'string' ? test : (test?.name || test?.code || 'Lab Test');
+                    const price = getLabInvestigationPrice(testName, inv?.type);
+                    return {
+                      serviceChargeId: inv.id || inv._id || "",
+                      code: "LAB",
+                      description: `${testName} (${inv.type || 'Lab Investigation'})`,
+                      quantity: 1,
+                      price: price > 0 ? price : 0,
+                      investigationId: inv.id || inv._id
+                    };
+                  });
+                });
 
-  // ✅ Always open the modal — even if no items, user can add manually
-  const allItems = [...prescriptionItems, ...investigationItems];
-  setBillDefaults(allItems); // will be empty array if nothing in 48h — that's fine
-  setIsBillModalOpen(true);
-}}
-disabled={isNavigating}
+                // ✅ Always open the modal — even if no items, user can add manually
+                const allItems = [...prescriptionItems, ...investigationItems];
+                setBillDefaults(allItems); // will be empty array if nothing in 48h — that's fine
+                setIsBillModalOpen(true);
+              }}
+              disabled={isNavigating}
               >
                 Send to cashier
               </button>
@@ -772,37 +816,33 @@ disabled={isNavigating}
               <button 
                 className="text-primary text-lg font-semibold hover:underline"
                onClick={() => {
-  // if (!consultation) {
-  //   alert('Please wait for consultation data to load');
-  //   return;
-  // }
-  // ✅ Build items same as cashier
-  const prescriptionItems = (prescriptions48h || []).flatMap(p =>
-    (p?.medications || []).map(m => ({
-      serviceChargeId: "",
-      code: "DRUG",
-      description: m?.drugName || "Medication",
-      quantity: 1,
-      price: Number(getDrugPrice(m?.drugName)) || 0
-    }))
-  );
-  const investigationItems = (investigations48h || []).flatMap(inv => {
-    const status = (inv?.status || '').toLowerCase();
-    if (status.includes('completed') || status.includes('done')) return [];
-    return (inv.tests || []).map(test => {
-      const testName = typeof test === 'string' ? test : (test?.name || 'Lab Test');
-      return {
-        serviceChargeId: inv.id || inv._id || "",
-        code: "LAB",
-        description: `${testName} (${inv.type || 'Lab'})`,
-        quantity: 1,
-        price: getLabInvestigationPrice(testName, inv?.type) || 0,
-      };
-    });
-  });
-  setBillDefaults([...prescriptionItems, ...investigationItems]);
-  setIsSendToHmoModalOpen(true);
-}}
+
+                  const prescriptionItems = (prescriptions48h || []).flatMap(p =>
+                    (p?.medications || []).map(m => ({
+                      serviceChargeId: "",
+                      code: "DRUG",
+                      description: m?.drugName || "Medication",
+                      quantity: 1,
+                      price: Number(getDrugPrice(m?.drugName)) || 0
+                    }))
+                  );
+                  const investigationItems = (investigations48h || []).flatMap(inv => {
+                    const status = (inv?.status || '').toLowerCase();
+                    if (status !== 'requested' && status !== 'in_progress') return [];
+                    return (inv.tests || []).map(test => {
+                      const testName = typeof test === 'string' ? test : (test?.name || 'Lab Test');
+                      return {
+                        serviceChargeId: inv.id || inv._id || "",
+                        code: "LAB",
+                        description: `${testName} (${inv.type || 'Lab'})`,
+                        quantity: 1,
+                        price: getLabInvestigationPrice(testName, inv?.type) || 0,
+                      };
+                    });
+                  });
+                  setBillDefaults([...prescriptionItems, ...investigationItems]);
+                  setIsSendToHmoModalOpen(true);
+                }}
               >
                  Send to HMO
               </button>
@@ -844,7 +884,7 @@ disabled={isNavigating}
   consultationDate={consultationDate}
   visitReason={visitReason}
   diagnosis={diagnosis}
-  defaultItems={billDefaults}  // ✅ same items as cashier
+  defaultItems={billDefaults}  
   onSentSuccessfully={() => navigate('/dashboard/hmo/incoming')}
 />
 
