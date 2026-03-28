@@ -13,6 +13,7 @@ import { getInvestigationRequestByPatientId } from "@/services/api/investigation
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
@@ -366,7 +367,7 @@ useEffect(() => {
                     <div className="flex flex-wrap gap-2">
                       {patient.hmos.map((h, i) => (
                         <span key={i} className="badge badge-outline font-normal text-sm">
-                          {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString('en-US') : '—'})`}
+                          {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? formatNigeriaDate(h.expiresAt) : '—'})`}
                         </span>
                       ))}
                     </div>
@@ -821,7 +822,7 @@ useEffect(() => {
                                     </span>
                                   )}
                                 </td>
-                              <td>{v?.createdAt ? new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                              <td>{v?.createdAt ? formatNigeriaTime(v.createdAt) : '—'}</td>
                               <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
                               <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
                               <td>{v?.temperature ?? '—'} <span className="text-sm text-base-content/70">°C</span></td>

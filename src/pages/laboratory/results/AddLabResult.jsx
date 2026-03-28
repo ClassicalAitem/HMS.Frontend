@@ -8,7 +8,8 @@ import { getAllInvestigationRequests } from "@/services/api/investigationRequest
 import { usersAPI } from "@/services/api/usersAPI"; 
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import toast from "react-hot-toast";
-import { useAppSelector } from "@/store/hooks"; 
+import { useAppSelector } from "@/store/hooks";
+import { getNigeriaTodayISO } from "@/utils/formatDateTimeUtils"; 
 
 
 const SectionHeader = ({ title, id, count, expandedSection, toggleSection }) => (
@@ -159,7 +160,7 @@ const AddLabResult = () => {
     sex: "",
     labNo: "", 
     clinicalDiagnosis: "",
-    date: new Date().toISOString().split("T")[0],
+    date: getNigeriaTodayISO(),
     referral: "",
     natureOfSpecimen: "",
     remarks: "",

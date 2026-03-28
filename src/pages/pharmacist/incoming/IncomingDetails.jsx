@@ -8,6 +8,7 @@ import { AddDrugModal } from '@/components/modals'
 import { hasStatus } from '@/utils/statusUtils'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -165,11 +166,7 @@ useEffect(() => {
                 <div>Status: {m.status}</div>
                 <div className="text-xs text-base-content/60">
                   Created: {m.createdAt
-                    ? new Date(m.createdAt).toLocaleString('en-NG', {
-                        timeZone: 'Africa/Lagos',
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })
+                    ? formatNigeriaDateTime(m.createdAt)
                     : '—'}
                 </div>
                 {m.instructions && (
