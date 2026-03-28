@@ -26,6 +26,7 @@ import CreateBillModal from "@/components/modals/CreateBillModal";
 import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
 import { useDispatch } from "react-redux";
+import PatientOrdersPanel from "@/components/common/PatientOrderPanel";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -55,6 +56,7 @@ const PatientVitalsDetails = () => {
   const [dependantsLoading, setDependantsLoading] = useState(true);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isReviewBillOpen, setIsReviewBillOpen] = useState(false);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   // Doctor's consultation data
   const [consultation, setConsultation] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
@@ -150,84 +152,82 @@ useEffect(() => {
   const fetchConsultationData = async () => {
     try {
       setConsultationLoading(true);
-      
-      // Fetch all consultations and filter by patientId
-      const consultationRes = await getConsultations();
-      console.log('PatientVitalsDetails: consultationRes =', consultationRes);
-      const allConsults = Array.isArray(consultationRes?.data) ? consultationRes.data : Array.isArray(consultationRes) ? consultationRes : [];
-      const patientConsult = allConsults.find(c => c.patientId === patientId);
-      
-      if (mounted && patientConsult) {
-        setConsultation(patientConsult);
-      }
 
-      // Fetch prescriptions and investigations in parallel using Promise.allSettled
-      console.log('PatientVitalsDetails: Fetching prescriptions and investigations for patientId=', patientId);
-      
-      const promises = [
+      const consultationRes = await getConsultations();
+
+      const allConsults = Array.isArray(consultationRes?.data)
+        ? consultationRes.data
+        : [];
+
+      const patientConsult = allConsults.find(
+        c => String(c.patientId) === String(patientId)
+      );
+
+      if (mounted) setConsultation(patientConsult || null);
+
+      const [presRes, invRes] = await Promise.allSettled([
         getPrescriptionByPatientId(patientId),
         getInvestigationRequestByPatientId(patientId)
-      ];
-       console.log('PatientVitalsDetails: promises created', promises);
+      ]);
 
-      const results = await Promise.allSettled(promises);
-      console.log('PatientVitalsDetails: results from Promise.allSettled', results);
+      // ================= PRESCRIPTIONS =================
+      let presList = [];
 
-      // 1. Prescriptions
-      if (results[0].status === 'fulfilled') {
-        const presRes = results[0].value;
-        let presList = [];
-        if (Array.isArray(presRes)) {
-          presList = presRes;
-        } else if (presRes?.data && Array.isArray(presRes.data)) {
-          presList = presRes.data;
-        } else if (presRes?.data?.data && Array.isArray(presRes.data.data)) {
-          presList = presRes.data.data;
-        } else if (presRes && typeof presRes === 'object' && Object.keys(presRes).length > 0) {
-          presList = [presRes];
-        }
-        if (mounted) {
-          setPrescriptions(presList);
-          setPrescriptionError(presList.length === 0);
-        }
-      } else {
-        if (mounted) {
-          setPrescriptions([]);
-          setPrescriptionError(true);
-        }
+      if (presRes.status === "fulfilled") {
+        const raw = presRes.value;
+
+        const data =
+          raw?.data?.data ??
+          raw?.data ??
+          raw;
+
+        presList = Array.isArray(data)
+          ? data
+          : data
+          ? [data]
+          : [];
       }
 
-      // 2. Investigations
-      if (results[1].status === 'fulfilled') {
-        const invRes = results[1].value;
-        let invList = [];
-        if (Array.isArray(invRes)) {
-          invList = invRes;
-        } else if (invRes?.data && Array.isArray(invRes.data)) {
-          invList = invRes.data;
-        } else if (invRes?.data?.data && Array.isArray(invRes.data.data)) {
-          invList = invRes.data.data;
-        }
-        if (mounted) {
-          setInvestigations(invList);
-          setInvestigationError(invList.length === 0);
-        }
-      } else {
-        if (mounted) {
-          setInvestigations([]);
-          setInvestigationError(true);
-        }
+      if (mounted) {
+        setPrescriptions(presList);
+        setPrescriptionError(presList.length === 0);
+      }
+
+      // ================= INVESTIGATIONS =================
+      let invList = [];
+
+      if (invRes.status === "fulfilled") {
+        const raw = invRes.value;
+
+        const data =
+          raw?.data?.data ??
+          raw?.data ??
+          raw;
+
+        invList = Array.isArray(data)
+          ? data
+          : data
+          ? [data]
+          : [];
+      }
+
+      if (mounted) {
+        setInvestigations(invList);
+        setInvestigationError(invList.length === 0);
       }
 
     } catch (error) {
-      console.error('PatientVitalsDetails: Error fetching consultation data', error);
+      console.error("consultation fetch error", error);
     } finally {
       if (mounted) setConsultationLoading(false);
     }
   };
 
   fetchConsultationData();
-  return () => { mounted = false; };
+
+  return () => {
+    mounted = false;
+  };
 }, [patientId]);
   // Log state changes for debugging
   useEffect(() => {
@@ -710,110 +710,16 @@ useEffect(() => {
             </div>
           )}
 
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<PatientOrdersPanel
+  role="nurse"
+  prescriptions={prescriptions}
+  investigations={investigations}
+  loading={consultationLoading}
+  patientName={`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}
+/>
 
-  {/* Prescriptions */}
-  {prescriptions && prescriptions.length > 0 ? (
-    <div className="shadow-xl card bg-base-100 mb-4">
-      <div className="p-4 card-body">
-        <h2 className="text-lg font-semibold text-base-content mb-4">
-          Prescriptions ({prescriptions.length})
-        </h2>
-
-        <div className="space-y-3">
-          {prescriptions.map((pres, idx) => (
-            <div key={idx} className="border border-base-200 rounded-lg p-3">
-              {pres.medications && pres.medications.length > 0 ? (
-                pres.medications.map((med, mIdx) => (
-                  <div key={mIdx} className="text-sm">
-                    <span className="font-medium">{med.drugName}</span> -{" "}
-                    {med.dosage}, {med.frequency}, {med.duration}
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-base-content/60 italic">
-                  No medications in this prescription
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className="shadow-xl card bg-base-100 mb-4">
-      <div className="p-4 card-body">
-        <h2 className="text-lg font-semibold text-base-content mb-4">
-          Prescriptions
-        </h2>
-        <p className="text-sm text-base-content/60">
-          No prescriptions found for this patient
-        </p>
-      </div>
-    </div>
-  )}
-
-  {/* Lab Investigations */}
-  {investigations && investigations.length > 0 ? (
-    <div className="shadow-xl card bg-base-100 mb-4">
-      <div className="p-4 card-body">
-        <h2 className="text-lg font-semibold text-base-content mb-4">
-          Lab Investigations ({investigations.length})
-        </h2>
-
-        <div className=" flex flex-wrap space-y-3 ">
-          {investigations.map((inv, idx) => ( 
-            <div key={idx} className="border border-base-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className={`badge ${
-                    inv.status === "completed"
-                      ? "badge-success"
-                      : "badge-info"
-                  }`}
-                >
-                  {inv.status}
-                </span>
-
-                {inv.priority === "urgent" && (
-                  <span className="badge badge-error badge-xs">
-                    Urgent
-                  </span>
-                )}
-              </div>
-
-              {inv.tests && inv.tests.length > 0 ? (
-                inv.tests.map((tests, tIdx) => (
-                  <div key={tIdx} className="text-sm text-base-content/80">
-                    • {tests.name}
-                  </div>
-                ))
-              ) : (
-                <div className="text-sm text-base-content/60 italic">
-                  No tests in this investigation
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className="shadow-xl card bg-base-100 mb-4">
-      <div className="p-4 card-body">
-        <h2 className="text-lg font-semibold text-base-content mb-4">
-          Lab Investigations
-        </h2>
-        <p className="text-sm text-base-content/60">
-          No lab investigations found for this patient
-        </p>
-      </div>
-    </div>
-  )}
-
-</div>
           {/* Dependant History */}
-          <div className="shadow-xl card bg-base-100">
+          {/* <div className="shadow-xl card bg-base-100">
             <div className="p-4 card-body">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-base-content">Dependant History</h2>
@@ -864,7 +770,7 @@ useEffect(() => {
                 </div>
               )}
             </div>
-          </div>
+          </div> */}
 
           {/* Vitals History */}
           <div className="shadow-xl card bg-base-100 mt-4">
