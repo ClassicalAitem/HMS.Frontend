@@ -1,6 +1,8 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
+   const navigate = useNavigate();
   const getPriorityBgColor = (status) => {
     if (status === "Urgent") return "#FFE2E2";
     if (status === "Normal") return "#DBEAFE";
@@ -155,7 +157,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
             Close
           </button>
           <button 
-            onClick={handleAcceptClick}
+            // onClick={() => navigate(`/dashboard/laboratory/results/add/${testCard.id}`)}
             className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer "
           >
             Accept & Process
