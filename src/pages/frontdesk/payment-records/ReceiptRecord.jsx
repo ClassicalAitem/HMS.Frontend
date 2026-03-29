@@ -24,7 +24,7 @@ const FrontDeskPaymentRecords = () => {
       try {
         setIsLoading(true);
         const res = await getAllReceipts();
-        console.log({res})
+
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
 
@@ -40,7 +40,7 @@ const FrontDeskPaymentRecords = () => {
         endOfToday.setHours(23, 59, 59, 999);
 
 
-console.log("All list:", list.map(r => r.paymentDestination));
+
 
        // Optional: filter by frontdeskDestinations if you want
 const frontdeskDestinations = ['form', 'consultation', 'laboratory', 'pharmacy', 'admission'];
@@ -89,7 +89,7 @@ setPaymentRecords(mapped);
   };
 
   const handleViewDetails = (payment) => {
-    console.log({payment})
+
     setSelectedPayment(payment);
     setIsModalOpen(true);
   };
@@ -457,6 +457,7 @@ const handlePrintReceipt = (payment) => {
       )}
     </div>
   );
+
 };
 
 export default FrontDeskPaymentRecords;

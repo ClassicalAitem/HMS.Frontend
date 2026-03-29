@@ -73,7 +73,7 @@ const PrescriptionCard = ({ p, patientName }) => {
   {/* Instructions */}
   {med.instructions && (
     <p className="text-xs text-base-content/50">
-      ℹ {med.instructions}
+      Instruction::   {med.instructions}
     </p>
   )}
 </div>
