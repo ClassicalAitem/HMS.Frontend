@@ -6,9 +6,11 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
-import { LabActionModal, DoctorActionModal, FrontDeskActionModal, NurseActionModal, PharmacyActionModal2, ReceiptModal} from '@/components/modals';
+import { ReceiptModal, NurseActionModal, DoctorActionModal } from '@/components/modals';
 import { mergePatientStatus } from '@/utils/statusUtils';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { updatePatientStatus as updatePatientStatusAPI } from '@/services/api/patientsAPI';
 
 
 const CashierPatientDetails = () => {
@@ -20,17 +22,47 @@ const CashierPatientDetails = () => {
   const [openRow, setOpenRow] = useState(null);
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
-  const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
-  const [isSendToPharmacyOpen, setIsSendToPharmacyOpen] = useState(false);
-  const [isSendToLabOpen, setIsSendToLabOpen] = useState(false);
-  const [isSendToDoctorOpen, setIsSendToDoctorOpen] = useState(false);
-  const [isSendToFrontDeskOpen, setIsSendToFrontDeskOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedPatientId] = useState(patientId || (currentPatient ? currentPatient.id : null));
+  const [sendingStatuses, setSendingStatuses] = useState({
+    Lab: false,
+    Pharmacy: false,
+    FrontDesk: false,
+  });
+  const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
+  const [isSendToDoctorOpen, setIsSendToDoctorOpen] = useState(false);
 
   const toggleRow = (id) => {
     setOpenRow(openRow === id ? null : id);
+  };
+
+  const handleSendToStatus = async (status) => {
+    try {
+      setSendingStatuses(prev => ({ ...prev, [status]: true }));
+      const patId = patient?.id || patientId;
+      if (!patId) {
+        toast.error('Patient ID not found');
+        return;
+      }
+
+      const statusMap = {
+        'Lab': PATIENT_STATUS.AWAITING_LAB,
+        'Pharmacy': PATIENT_STATUS.AWAITING_PHARMACY,
+        'FrontDesk': PATIENT_STATUS.AWAITING_FRONT_DESK,
+      };
+
+      const newStatus = statusMap[status];
+      if (!newStatus) return;
+
+      await updatePatientStatusAPI(patId, newStatus);
+      toast.success(`Patient sent to ${status} successfully`);
+      dispatch(fetchPatientById(patId));
+    } catch (err) {
+      toast.error(err?.response?.data?.message || `Failed to send to ${status}`);
+    } finally {
+      setSendingStatuses(prev => ({ ...prev, [status]: false }));
+    }
   };
 
   console.log('receipts:', receipts);
@@ -427,9 +459,8 @@ const getHmoCoveredAmount = (bill) => {
               </thead>
               <tbody>
                 {receipts.map((payment, index) => {
-                  const createdAt = new Date(payment.createdAt);
-                  const date = createdAt.toLocaleDateString();
-                  const time = createdAt.toLocaleTimeString();
+                  const date = formatNigeriaDate(payment.createdAt);
+                  const time = formatNigeriaTime(payment.createdAt);
 
                   return (
                     <tr key={index} className="text-sm">
@@ -441,7 +472,7 @@ const getHmoCoveredAmount = (bill) => {
                       <td>
   <span className={`badge badge-sm ${
     payment.status === "paid" ? "badge-success" :
-    payment.status === "hmo-covered" ? "badge-info" :
+    payment.status === "pending" ? "badge-info" :
     "badge-neutral"
   }`}>
     {payment.status}
@@ -459,6 +490,14 @@ const getHmoCoveredAmount = (bill) => {
           </div>
         </div>
 
+        {/* Receipt Modal */}
+        <ReceiptModal isOpen={isReceiptModalOpen}
+           onClose={() => setIsReceiptModalOpen(false)}
+                patientId={patient?.id || patientId}
+                selectedBillingId={selectedBillingId}
+                onSubmit={handleReceiptSubmit}
+              />
+
         {/* Post-Payment Actions */}
         {receipts.length > 0 && (
           <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
@@ -466,16 +505,16 @@ const getHmoCoveredAmount = (bill) => {
             <p className="text-sm text-base-content/70 mb-4">Payment received. Send patient to:</p>
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => setIsSendToLabOpen(true)}
+                onClick={() => handleSendToStatus('Lab')}
                 className="btn btn-primary text-white"
               >
-                Send to Lab
+                {sendingStatuses.Lab ? 'Processing...' : 'Send to Lab'}
               </button>
               <button
-                onClick={() => setIsSendToPharmacyOpen(true)}
+                onClick={() => handleSendToStatus('Pharmacy')}
                 className="btn btn-primary text-white"
               >
-                Send to Pharmacy
+                {sendingStatuses.Pharmacy ? 'Processing...' : 'Send to Pharmacy'}
               </button>
               <button
                 onClick={() => setIsSendToNurseOpen(true)}
@@ -490,58 +529,47 @@ const getHmoCoveredAmount = (bill) => {
                 Send to Doctor
               </button>
               <button
-                onClick={() => setIsSendToFrontDeskOpen(true)}
+                onClick={() => handleSendToStatus('FrontDesk')}
                 className="btn btn-primary text-white"
               >
-                Send to Front Desk
+                {sendingStatuses.FrontDesk ? 'Processing...' : 'Send to Front Desk'}
               </button>
             </div>
           </div>
         )}
-        <NurseActionModal isOpen={isSendToNurseOpen}
-                onClose={() => setIsSendToNurseOpen(false)}
-                patientId={patient?.id || patientId}
-               defaultAction={PATIENT_STATUS.AWAITING_VITALS}
-                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-              />
-          <PharmacyActionModal2 isOpen={isSendToPharmacyOpen}
-                onClose={() => setIsSendToPharmacyOpen(false)}
-                patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={PATIENT_STATUS.AWAITING_PHARMACY}
-                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-              />
+        
+        {/* Receipt Modal */}
+        <ReceiptModal
+          isOpen={isReceiptModalOpen}
+          onClose={() => setIsReceiptModalOpen(false)}
+          billingId={selectedBillingId}
+          patientId={selectedPatientId}
+          onSubmit={handleReceiptSubmit}
+        />
 
-          <FrontDeskActionModal isOpen={isSendToFrontDeskOpen}
-                onClose={() => setIsSendToFrontDeskOpen(false)}
-                patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={PATIENT_STATUS.AWAITING_FRONT_DESK}
-                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-              />
-          <DoctorActionModal isOpen={isSendToDoctorOpen}
-                onClose={() => setIsSendToDoctorOpen(false)}
-                patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={PATIENT_STATUS.AWAITING_CONSULTATION}
-                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-              />
-          <LabActionModal isOpen={isSendToLabOpen}
-                onClose={() => setIsSendToLabOpen(false)}
-                patientId={patient?.id || patientId}
-                currentStatus={patient?.status || []}
-                defaultAction={PATIENT_STATUS.AWAITING_LAB}
-                onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-              />
+        {/* Nurse Action Modal */}
+        <NurseActionModal
+          isOpen={isSendToNurseOpen}
+          onClose={() => setIsSendToNurseOpen(false)}
+          patientId={patient?.id || patientId}
+          currentStatus={patient?.status}
+          onUpdated={() => {
+            setIsSendToNurseOpen(false);
+            dispatch(fetchPatientById(patient?.id || patientId));
+          }}
+        />
 
-          {/* Receipt Modal */}
-          <ReceiptModal
-            isOpen={isReceiptModalOpen}
-            onClose={() => setIsReceiptModalOpen(false)}
-            billingId={selectedBillingId}
-            patientId={selectedPatientId}
-            onSubmit={handleReceiptSubmit}
-          />
+        {/* Doctor Action Modal */}
+        <DoctorActionModal
+          isOpen={isSendToDoctorOpen}
+          onClose={() => setIsSendToDoctorOpen(false)}
+          patientId={patient?.id || patientId}
+          currentStatus={patient?.status}
+          onUpdated={() => {
+            setIsSendToDoctorOpen(false);
+            dispatch(fetchPatientById(patient?.id || patientId));
+          }}
+        />
       </div>
     </CashierLayout>
   );

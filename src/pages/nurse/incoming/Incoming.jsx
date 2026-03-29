@@ -7,6 +7,7 @@ import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
 import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const Incoming = () => {
   const navigate = useNavigate();
@@ -80,7 +81,7 @@ const normalizeStatus = (status) => {
           illness: prettyStatus,
           insurance: p?.hmos?.provider || '—',
           registered: p?.createdAt
-            ? new Date(p.createdAt).toLocaleString([], { hour: '2-digit', minute: '2-digit' })
+            ? formatNigeriaTime(p.createdAt)
             : '—',
           alert: prettyStatus,
           status: latestStatus.toLowerCase(), // <-- safe string now

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { FiSearch, FiDownload } from 'react-icons/fi'
 import inventoryAPI from '@/services/api/inventoryAPI'
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
 
 const StatCard = ({ title, value, hint }) => (
@@ -209,7 +210,7 @@ const Transactions = () => {
                     <td>{activeTab==='in' ? (row.form || '-') : ('')}</td>
                     <td>{row.quantity}</td>
                     <td>{activeTab==='in' ? (row.price || '-') : ('')}</td>
-                    <td>{row.datetime ? new Date(row.datetime).toLocaleString() : '-'}</td>
+                    <td>{row.datetime ? formatNigeriaDateTime(row.datetime) : '-'}</td>
                     <td>{activeTab==='in' ? (row.purchaseOrder || '-') : (row.referenceId || '-')}</td>
                     <td>{row.type === 'in' ? <Badge variant="in">In</Badge> : <Badge variant="out">Out</Badge>}</td>
                   </tr>

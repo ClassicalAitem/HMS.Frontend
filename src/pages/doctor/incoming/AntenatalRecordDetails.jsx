@@ -6,6 +6,7 @@ import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import toast from "react-hot-toast";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -175,7 +176,7 @@ const getDependantName = (dependantId) => {
             <div className="flex gap-2">
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/doctor/patient-details/${patientId}`)}
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
               >
                 Back to Patient
               </button>
@@ -196,56 +197,56 @@ const getDependantName = (dependantId) => {
                   <h3 className="card-title text-lg font-semibold text-base-content mb-4">Antenatal Records</h3>
                   <div className="space-y-4">
                     {antenatalRecords.map((record, index) => {
-  const dependantName = getDependantName(record.dependantId);
-  return (
-    <div key={record._id || record.id || index} className="border border-base-300 rounded-lg p-4">
-      <div className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-medium text-base-content">
-              Pregnancy #{index + 1}
-              {record.presentPregnancyHistories?.[0]?.EDD && (
-                <span className="text-sm text-base-content/70 ml-2">
-                  (EDD: {new Date(record.presentPregnancyHistories[0].EDD).toLocaleDateString()})
-                </span>
-              )}
-            </h4>
-          </div>
+                    const dependantName = getDependantName(record.dependantId);
+                    return (
+                      <div key={record._id || record.id || index} className="border border-base-300 rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-base-content">
+                                Pregnancy #{index + 1}
+                                {record.presentPregnancyHistories?.[0]?.EDD && (
+                                  <span className="text-sm text-base-content/70 ml-2">
+                                    (EDD: {formatNigeriaDate(record.presentPregnancyHistories[0].EDD)})
+                                  </span>
+                                )}
+                              </h4>
+                            </div>
 
-          {/* ✅ Show who this record is for */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-base-content/50">Record for:</span>
-            {dependantName ? (
-              <span className="badge badge-secondary badge-sm">{dependantName}</span>
-            ) : (
-              <span className="badge badge-primary badge-sm">
-                {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()} (Patient)
-              </span>
-            )}
-          </div>
+                            {/* ✅ Show who this record is for */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs text-base-content/50">Record for:</span>
+                              {dependantName ? (
+                                <span className="badge badge-secondary badge-sm">{dependantName}</span>
+                              ) : (
+                                <span className="badge badge-primary badge-sm">
+                                  {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()} (Patient)
+                                </span>
+                              )}
+                            </div>
 
-          <p className="text-sm text-base-content/70">
-            Created: {record.createdAt ? new Date(record.createdAt).toLocaleDateString() : 'N/A'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            className="btn btn-sm btn-outline"
-            onClick={() => setSelectedRecord(selectedRecord?._id === record._id ? null : record)}
-          >
-            {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
-          </button>
-          <button
-            className="btn btn-sm btn-primary"
-            onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/edit/${index}`)}
-          >
-            Edit
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-})}
+                            <p className="text-sm text-base-content/70">
+                              Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              className="btn btn-sm btn-outline"
+                              onClick={() => setSelectedRecord(selectedRecord?._id === record._id ? null : record)}
+                            >
+                              {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
+                            </button>
+                            <button
+                              className="btn btn-sm btn-primary"
+                              onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/edit/${index}`)}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                   </div>
                 </div>
               </div>
@@ -262,13 +263,13 @@ const getDependantName = (dependantId) => {
                           <div className="stat bg-base-200/50 rounded-lg p-4">
                             <div className="stat-title text-sm">Expected Date of Delivery</div>
                             <div className="stat-value text-lg">
-                              {selectedRecord.presentPregnancyHistories[0].EDD ? new Date(selectedRecord.presentPregnancyHistories[0].EDD).toLocaleDateString() : '-'}
+                              {selectedRecord.presentPregnancyHistories[0].EDD ? formatNigeriaDate(selectedRecord.presentPregnancyHistories[0].EDD) : '-'}
                             </div>
                           </div>
                           <div className="stat bg-base-200/50 rounded-lg p-4">
                             <div className="stat-title text-sm">Last Menstrual Period</div>
                             <div className="stat-value text-lg">
-                              {selectedRecord.presentPregnancyHistories[0].LMP ? new Date(selectedRecord.presentPregnancyHistories[0].LMP).toLocaleDateString() : '-'}
+                              {selectedRecord.presentPregnancyHistories[0].LMP ? formatNigeriaDate(selectedRecord.presentPregnancyHistories[0].LMP) : '-'}
                             </div>
                           </div>
                           <div className="stat bg-base-200/50 rounded-lg p-4">
@@ -446,7 +447,7 @@ const getDependantName = (dependantId) => {
                             <tbody>
                               {selectedRecord.obstetricHistories.map((item, idx) => (
                                 <tr key={idx}>
-                                  <td>{item.Date ? new Date(item.Date).toLocaleDateString() : '-'}</td>
+                                  <td>{item.Date ? formatNigeriaDate(item.Date) : '-'}</td>
                                   <td>{item.durationOfPregnancy || '-'}</td>
                                   <td>{item.birthWeight || '-'}</td>
                                   <td>{item.complicationInPregnancy || '-'}</td>
@@ -471,33 +472,58 @@ const getDependantName = (dependantId) => {
                     <div className="card bg-base-100 shadow-sm">
                       <div className="card-body p-6">
                         <h3 className="card-title text-lg font-semibold text-base-content mb-4">Antenatal Examinations</h3>
-                        <div className="overflow-x-auto">
-                          <table className="table table-zebra w-full">
-                            <thead>
-                              <tr className="bg-base-200">
-                                <th className="font-semibold">Date</th>
-                                <th className="font-semibold">Weight (kg)</th>
-                                <th className="font-semibold">Blood Pressure</th>
-                                <th className="font-semibold">Fundal Height</th>
-                                <th className="font-semibold">Presentation</th>
-                                <th className="font-semibold">Fetal Heart</th>
-                                <th className="font-semibold">Next Visit</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {selectedRecord.anteNatalExamination.map((exam, idx) => (
-                                <tr key={idx}>
-                                  <td>{exam.Date ? new Date(exam.Date).toLocaleDateString() : '-'}</td>
-                                  <td>{exam.weight || '-'}</td>
-                                  <td>{exam.bloodPressure || '-'}</td>
-                                  <td>{exam.heightOfFundus || '-'}</td>
-                                  <td>{exam.presentationAndLife || '-'}</td>
-                                  <td>{exam.foetalHeart || '-'}</td>
-                                  <td>{exam.nextVisit || '-'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                        <div className="space-y-6">
+                          {selectedRecord.anteNatalExamination.map((exam, idx) => (
+                            <div key={idx} className="border border-base-200 rounded-lg overflow-hidden">
+                              <div className="flex items-center justify-between px-4 py-2 bg-base-200/40 border-b border-base-200">
+                                <span className="text-sm font-semibold text-base-content/70">
+                                  Examination #{idx + 1}
+                                </span>
+                                <span className="text-xs text-base-content/50">
+                                  {exam.Date ? formatNigeriaDate(exam.Date) : 'No date'}
+                                </span>
+                              </div>
+
+                              <div className="overflow-x-auto">
+                                <table className="table table-zebra w-full">
+                                  <thead>
+                                    <tr className="bg-base-200">
+                                      <th className="font-semibold">Weight (kg)</th>
+                                      <th className="font-semibold">Blood Pressure</th>
+                                      <th className="font-semibold">Fundal Height</th>
+                                      <th className="font-semibold">Presentation</th>
+                                      <th className="font-semibold">Fetal Heart</th>
+                                      <th className="font-semibold">Next Visit</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td>{exam.weight || '-'}</td>
+                                      <td>{exam.bloodPressure || '-'}</td>
+                                      <td>{exam.heightOfFundus || '-'}</td>
+                                      <td>{exam.presentationAndLife || '-'}</td>
+                                      <td>{exam.foetalHeart || '-'}</td>
+                                      <td>{exam.nextVisit || '-'}</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              {/* Remark display - full width below the table */}
+                              {(exam.remark) && (
+                                <div className="px-4 pb-4 pt-3 border-t border-base-200">
+                                  <label className="label pb-1">
+                                    <span className="label-text font-medium text-base-content/70 text-sm">Remark</span>
+                                  </label>
+                                  <div className="bg-base-200/30 p-3 rounded-lg">
+                                    <p className="text-sm text-base-content/80 whitespace-pre-wrap">
+                                      {exam.remark}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>

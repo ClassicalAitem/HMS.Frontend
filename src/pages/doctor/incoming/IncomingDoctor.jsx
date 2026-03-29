@@ -4,6 +4,7 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
+import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
 const IncomingDoctor = () => {
   const navigate = useNavigate();
@@ -65,12 +66,7 @@ const IncomingDoctor = () => {
           reason: prettifyStatus(p?.status) || "Consultation",
           insurance: p?.hmos?.provider || "—",
           rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
-          registered: p?.createdAt
-            ? new Date(p.createdAt).toLocaleString([], {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })
-            : "—",
+          registered: p?.createdAt ? formatNigeriaDateTime(p.createdAt) : "—",
           gender: p?.gender || null,
           age:
             p?.dateOfBirth || p?.dob

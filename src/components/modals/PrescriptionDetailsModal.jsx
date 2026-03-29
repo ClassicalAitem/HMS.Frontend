@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getPrescriptionById } from '@/services/api/prescriptionsAPI'
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 
 const PrescriptionDetailsModal = ({ isOpen, onClose, prescriptionId }) => {
   const [loading, setLoading] = useState(false)
@@ -51,11 +52,11 @@ const PrescriptionDetailsModal = ({ isOpen, onClose, prescriptionId }) => {
                 </div>
                 <div>
                   <div className="text-base-content/70">Created At</div>
-                  <div className="font-medium">{prescription?.createdAt ? new Date(prescription.createdAt).toLocaleString() : '—'}</div>
+                  <div className="font-medium">{prescription?.createdAt ? formatNigeriaDateTime(prescription.createdAt) : '—'}</div>
                 </div>
                 <div>
                   <div className="text-base-content/70">Updated At</div>
-                  <div className="font-medium">{prescription?.updatedAt ? new Date(prescription.updatedAt).toLocaleString() : '—'}</div>
+                  <div className="font-medium">{prescription?.updatedAt ? formatNigeriaDateTime(prescription.updatedAt) : '—'}</div>
                 </div>
               </div>
 

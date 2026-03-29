@@ -3,6 +3,7 @@ import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSurgeryById } from '@/services/api/surgeryAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
+import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList, FaUser, FaPhone, FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 
@@ -54,22 +55,12 @@ const SurgeryDetails = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Not specified';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric'
-    });
+    return formatNigeriaDate(dateString);
   };
 
   const formatTime = (dateString) => {
     if (!dateString) return 'Not specified';
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return formatNigeriaTime(dateString);
   };
 
   const getStatusColor = (status) => {

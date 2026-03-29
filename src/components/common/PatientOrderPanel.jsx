@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { FaFlask, FaPills, FaUserInjured, FaTimes, FaListUl } from "react-icons/fa";
+import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
 const isWithin48Hours = (createdAt) => {
   if (!createdAt) return false;
@@ -72,7 +73,7 @@ const PrescriptionCard = ({ p, patientName }) => {
   {/* Instructions */}
   {med.instructions && (
     <p className="text-xs text-base-content/50">
-      ℹ {med.instructions}
+      Instruction::   {med.instructions}
     </p>
   )}
 </div>
@@ -83,11 +84,7 @@ const PrescriptionCard = ({ p, patientName }) => {
       )}
 
       <p className="text-xs text-base-content/40 mt-2">
-        {p?.createdAt
-          ? new Date(p.createdAt).toLocaleString('en-NG', {
-              timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short',
-            })
-          : '—'}
+        {p?.createdAt ? formatNigeriaDateTime(p.createdAt) : '—'}
       </p>
     </div>
   );
@@ -131,11 +128,7 @@ const InvestigationCard = ({ inv, patientName }) => {
       )}
 
       <p className="text-xs text-base-content/40 mt-2">
-        {inv?.createdAt
-          ? new Date(inv.createdAt).toLocaleString('en-NG', {
-              timeZone: 'Africa/Lagos', dateStyle: 'medium', timeStyle: 'short',
-            })
-          : '—'}
+        {inv?.createdAt ? formatNigeriaDateTime(inv.createdAt) : '—'}
       </p>
     </div>
   );
