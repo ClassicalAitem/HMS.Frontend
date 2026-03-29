@@ -360,7 +360,7 @@ useEffect(() => {
               </div>
 
               {/* Insurance / HMO list */}
-              {/* <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
+              <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
                 <div className="space-y-1">
                   <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
                   {Array.isArray(patient?.hmos) && patient.hmos.length > 0 ? (
@@ -380,7 +380,7 @@ useEffect(() => {
                   <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
                 </div>
-              </div> */}
+              </div>
             </div>
           </div>
               )}

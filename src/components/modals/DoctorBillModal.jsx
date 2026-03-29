@@ -50,7 +50,7 @@ const fetchBilling = async () => {
   const handleSendToCashier = async () => {
     try {
       setIsSending(true);
-      const mergedStatus = mergePatientStatus(currentStatus, 'cashier',{ status: PATIENT_STATUS.AWAITING_CASHIER });
+      const mergedStatus = mergePatientStatus(currentStatus, 'cashier', PATIENT_STATUS.AWAITING_CASHIER);
       const promise = updatePatientStatus(patientId, mergedStatus);
       
       toast.promise(promise, {
