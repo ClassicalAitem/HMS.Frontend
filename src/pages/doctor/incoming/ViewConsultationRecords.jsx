@@ -5,6 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const ViewConsultationRecords = () => {
   const { patientId } = useParams();
