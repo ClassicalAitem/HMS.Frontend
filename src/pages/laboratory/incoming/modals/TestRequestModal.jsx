@@ -17,7 +17,13 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
 
   const handleAcceptClick = () => {
     setShowModal2(false);
-    // Call the parent callback to open AcceptTestRequestModal with the correct data
+    const id = data?.id || data?._id;
+    if (id) {
+      navigate(`/dashboard/laboratory/results/add/${id}`);
+      return;
+    }
+
+    // fallback for backward compatibility
     if (onAcceptFromDetails) {
       onAcceptFromDetails(data);
     }
@@ -157,7 +163,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
             Close
           </button>
           <button 
-            // onClick={() => navigate(`/dashboard/laboratory/results/add/${testCard.id}`)}
+            onClick={handleAcceptClick}
             className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer "
           >
             Accept & Process

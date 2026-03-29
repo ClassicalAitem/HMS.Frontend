@@ -8,8 +8,7 @@ import { getAllInvestigationRequests } from "@/services/api/investigationRequest
 import { usersAPI } from "@/services/api/usersAPI"; 
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import toast from "react-hot-toast";
-import { useAppSelector } from "@/store/hooks";
-import { formatNigeriaDate, getNigeriaTodayISO } from "@/utils/formatDateTimeUtils"; 
+import { useAppSelector } from "@/store/hooks"; 
 
 
 const SectionHeader = ({ title, id, count, expandedSection, toggleSection }) => (
@@ -160,7 +159,7 @@ const AddLabResult = () => {
     sex: "",
     labNo: "", 
     clinicalDiagnosis: "",
-    date: formatNigeriaDate(),
+    date: new Date().toISOString().split("T")[0],
     referral: "",
     natureOfSpecimen: "",
     remarks: "",
@@ -373,6 +372,24 @@ const AddLabResult = () => {
         }
       }
 
+      // Helper function to parse dateOfBirth
+      const parseDateOfBirth = (dob) => {
+        if (!dob) return null;
+        // Handle format like "16th April 2025"
+        const match = dob.match(/^(\d+)(?:st|nd|rd|th)\s+(\w+)\s+(\d+)$/);
+        if (match) {
+          const day = parseInt(match[1]);
+          const month = match[2];
+          const year = parseInt(match[3]);
+          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+          const monthIndex = monthNames.findIndex(m => m.toLowerCase() === month.toLowerCase());
+          if (monthIndex !== -1) {
+            return new Date(year, monthIndex, day);
+          }
+        }
+        return new Date(dob); // fallback
+      };
+
       // if we are editing an existing lab result, load it
       if (paramLabResultId) {
         setEditing(true);
@@ -383,7 +400,25 @@ const AddLabResult = () => {
             setFormData((prev) => ({ ...prev, ...data.form }));
             if (data.patientId) {
               const pRes = await getPatientById(data.patientId);
-              setPatient(pRes?.data || pRes);
+              const patientData = pRes?.data || pRes;
+              setPatient(patientData);
+
+              // Ensure patient demographic fields are available in lab form.
+              const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
+              const derivedAge = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
+
+              const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
+              const normalizedSex = genderMap[patientData?.gender] || patientData?.gender || "";
+
+              setFormData((prev) => ({
+                ...prev,
+                patientNames:
+                  patientData?.firstName && patientData?.lastName
+                    ? `${patientData.firstName} ${patientData.lastName}`
+                    : patientData?.name || prev.patientNames,
+                age: derivedAge,
+                sex: normalizedSex,
+              }));
             }
             if (data.investigationId) {
               setInvestigation(data.investigationId);
@@ -423,10 +458,11 @@ const AddLabResult = () => {
                   ? `${patientData.firstName} ${patientData.lastName}`
                   : patientData?.name || "Unknown Patient";
 
-              const age = patientData?.dateOfBirth
-                ? new Date().getFullYear() -
-                  new Date(patientData.dateOfBirth).getFullYear()
-                : "";
+              const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
+              const age = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
+
+              const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
+              const sex = genderMap[patientData?.gender] || patientData?.gender || "";
 
               let referralName = "";
               if (foundInvestigation.doctorId) {
@@ -434,9 +470,9 @@ const AddLabResult = () => {
                   const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
                   const docData = docRes?.data || docRes;
                   referralName =
-                    docData?.firstName && docData?.lastName
+                    docData?.name || (docData?.firstName && docData?.lastName
                       ? `${docData.firstName} ${docData.lastName}`
-                      : docData?.name || "";
+                      : "");
                 } catch (err) {
                   console.warn("Failed to load doctor name", err);
                 }
@@ -446,7 +482,7 @@ const AddLabResult = () => {
                 ...prev,
                 patientNames: patientName,
                 age: age,
-                sex: patientData?.gender || "",
+                sex: sex,
                 clinicalDiagnosis: foundInvestigation?.clinicalDiagnosis || "",
                 referral: referralName,
               }));
@@ -518,7 +554,10 @@ const AddLabResult = () => {
 
       const payload = {
         patientId: patient?._id || patient?.id,
-        form: formData,
+        form: (() => {
+          const { patientNames, age, sex, referral, ...cleanForm } = formData;
+          return cleanForm;
+        })(),
         remarks: formData.remarks,
         attachments: formData.attachments,
       };
@@ -601,6 +640,7 @@ const AddLabResult = () => {
                       value={formData.patientNames}
                       onChange={(val) => handleInputChange("patientNames", null, val)}
                       placeholder="Patient full name"
+                      disabled={true}
                     />
                     <InputField
                       label="Age"
@@ -608,6 +648,7 @@ const AddLabResult = () => {
                       onChange={(val) => handleInputChange("age", null, val)}
                       type="number"
                       placeholder="Age in years"
+                      disabled={true}
                     />
                     <div className="flex flex-col gap-1">
                       <label className="text-sm font-medium text-[#605D66]">Sex</label>
@@ -615,6 +656,7 @@ const AddLabResult = () => {
                         value={formData.sex}
                         onChange={(e) => handleInputChange("sex", null, e.target.value)}
                         className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C]"
+                        disabled={true}
                       >
                         <option value="">Select</option>
                         <option value="M">Male</option>
@@ -640,6 +682,7 @@ const AddLabResult = () => {
                       value={formData.referral}
                       onChange={(val) => handleInputChange("referral", null, val)}
                       placeholder="Dr. Name"
+                      disabled={true}
                     />
                     <InputField
                       label="Clinical Diagnosis"

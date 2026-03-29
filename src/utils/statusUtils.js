@@ -13,12 +13,23 @@
  */
 export const normalizeStatus = (status) => {
   if (Array.isArray(status)) {
-    const list = status.filter((s) => typeof s === 'string' && s.trim());
+    const list = status
+      .map((s) => normalizeStatus(s))
+      .filter((s) => typeof s === 'string' && s.trim());
     return list.length ? list[list.length - 1] : '';
   }
+
+  if (status && typeof status === 'object') {
+    if (typeof status.status === 'string' && status.status.trim()) {
+      return status.status;
+    }
+    return normalizeStatus(status.status);
+  }
+
   if (typeof status === 'string') {
     return status;
   }
+
   return '';
 };
 
