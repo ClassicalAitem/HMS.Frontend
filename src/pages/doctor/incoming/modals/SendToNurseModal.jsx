@@ -3,6 +3,7 @@ import { IoIosCloseCircleOutline } from 'react-icons/io';
 import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaFlask, FaPrescriptionBottleAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const SendToNurseModal = ({
   isOpen,
@@ -21,16 +22,14 @@ const SendToNurseModal = ({
   onSentSuccessfully
 }) => {
   const [isSending, setIsSending] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState(PATIENT_STATUS.AWAITING_VITALS);
 
   if (!isOpen) return null;
 
   const handleSend = async () => {
     try {
       setIsSending(true);
-      
-      // Update patient status to awaiting_nurse
-      console.log('📊 Updating patient status to awaiting_nurse', { patientId });
-      const statusPromise = updatePatientStatus(patientId, ['awaiting_nurse']);
+      const statusPromise = updatePatientStatus(patientId, selectedStatus);
       
       toast.promise(statusPromise, {
         loading: 'Sending patient to nurse...',
@@ -47,8 +46,7 @@ const SendToNurseModal = ({
       
       onClose();
     } catch (error) {
-      console.error('Error sending to nurse:', error);
-      toast.error(error?.message || 'Failed to send to nurse');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to send to nurse');
     } finally {
       setIsSending(false);
     }
@@ -198,6 +196,31 @@ const SendToNurseModal = ({
 
         </div>
 
+        <div className="px-6 pb-4 pt-2">
+          <label className="label">
+            <span className="label-text">Send status</span>
+          </label>
+          <div className="space-y-2">
+            {[
+              PATIENT_STATUS.AWAITING_VITALS,
+              PATIENT_STATUS.AWAITING_SAMPLING,
+              PATIENT_STATUS.AWAITING_INJECTION,
+            ].map((status) => (
+              <label key={status} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="sendToNurseStatus"
+                  value={status}
+                  checked={selectedStatus === status}
+                  onChange={() => setSelectedStatus(status)}
+                  className="radio radio-primary"
+                />
+                <span className="capitalize">{status.replace(/_/g, ' ')}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         {/* Footer Actions */}
         <div className="p-6 border-t border-base-200 bg-base-50 flex justify-end gap-3">
           <button
@@ -215,7 +238,7 @@ const SendToNurseModal = ({
             {isSending ? (
               <span className="loading loading-spinner loading-sm"></span>
             ) : (
-              'Send to Nurse'
+              'Send'
             )}
           </button>
         </div>

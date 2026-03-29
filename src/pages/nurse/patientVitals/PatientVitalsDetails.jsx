@@ -13,6 +13,7 @@ import { getInvestigationRequestByPatientId } from "@/services/api/investigation
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
@@ -359,14 +360,14 @@ useEffect(() => {
               </div>
 
               {/* Insurance / HMO list */}
-              <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
+              {/* <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
                 <div className="space-y-1">
                   <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
                   {Array.isArray(patient?.hmos) && patient.hmos.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {patient.hmos.map((h, i) => (
                         <span key={i} className="badge badge-outline font-normal text-sm">
-                          {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString('en-US') : '—'})`}
+                          {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? formatNigeriaDate(h.expiresAt) : '—'})`}
                         </span>
                       ))}
                     </div>
@@ -378,9 +379,8 @@ useEffect(() => {
                   <button className="btn btn-primary btn-sm" onClick={() => setIsSendDoctorOpen(true)}>Send to Doctor</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
-                  {/* <button className="btn btn-outline btn-sm" onClick={() => setIsCreateBillOpen(true)}>Send to Cashier</button> */}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
               )}
@@ -821,7 +821,7 @@ useEffect(() => {
                                     </span>
                                   )}
                                 </td>
-                              <td>{v?.createdAt ? new Date(v.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                              <td>{v?.createdAt ? formatNigeriaTime(v.createdAt) : '—'}</td>
                               <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
                               <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
                               <td>{v?.temperature ?? '—'} <span className="text-sm text-base-content/70">°C</span></td>

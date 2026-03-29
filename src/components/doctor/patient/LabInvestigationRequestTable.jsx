@@ -5,6 +5,7 @@ import {
   FaClock,
   FaExclamationCircle,
 } from "react-icons/fa";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const LabInvestigationTable = ({ investigations = [], loading = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -158,14 +159,7 @@ const LabInvestigationTable = ({ investigations = [], loading = false }) => {
 
                           {/* DATE */}
                           <td>
-                            {inv.createdAt
-                              ? new Date(inv.createdAt).toLocaleDateString(
-                                  "en-NG",
-                                  {
-                                    dateStyle: "medium",
-                                  }
-                                )
-                              : "—"}
+                            {inv.createdAt ? formatNigeriaDate(inv.createdAt) : "—"}
                           </td>
 
                           {/* TESTS */}

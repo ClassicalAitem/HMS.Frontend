@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { FiSearch } from "react-icons/fi";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const InventoryItems = ({ items = [] }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,12 +78,7 @@ const InventoryItems = ({ items = [] }) => {
 
         <div className="flex items-center gap-4">
           <span className="text-[12px] text-[#605D66]">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {formatNigeriaDate(new Date())}
           </span>
           <select
             value={filterStatus}

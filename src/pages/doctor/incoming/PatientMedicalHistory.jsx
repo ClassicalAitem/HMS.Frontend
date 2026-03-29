@@ -562,18 +562,17 @@ const prescriptions48h = useMemo(() =>
                       <h4 className="font-medium text-base-content text-sm">Summary</h4>
                       <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-base-content/70">Total Pregnancies:</span>
-                          <span className="font-medium">{antenatalRecords.length}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-base-content/70">Latest EDD:</span>
-                          <span className="font-medium">
+                          <span className="text-base-content/70">Latest Remarks:</span>
+                          <span className="font-medium max-w-xs text-right">
                             {(() => {
-                              const latestEDD = antenatalRecords
-                                .map(r => r.presentPregnancyHistories?.[0]?.EDD)
-                                .filter(Boolean)
-                                .sort((a, b) => new Date(b) - new Date(a))[0];
-                              return latestEDD ? formatNigeriaDate(latestEDD) : '-';
+                              const latest = antenatalRecords.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                              const latestExam = latest?.anteNatalExamination?.sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
+                              const remark = latestExam?.remark;
+                               return remark ? (
+                                <div className="text-xs text-base-content/80 bg-base-100/50 p-2 rounded whitespace-pre-wrap max-h-16 overflow-y-auto">
+                                  {remark}
+                                </div>
+                              ) : '-';
                             })()}
                           </span>
                         </div>
