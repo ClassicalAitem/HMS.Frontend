@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const VitalsHistoryTable = ({ sortedVitals, loading }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,7 +46,7 @@ const VitalsHistoryTable = ({ sortedVitals, loading }) => {
                 <tbody>
                   {paginationData.paginatedItems?.length ? paginationData.paginatedItems.map((v, i) => (
                     <tr key={i} className="hover">
-                      <td>{v?.createdAt ? new Date(v.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                      <td>{v?.createdAt ? formatNigeriaTime(v.createdAt) : "—"}</td>
                       <td>{v?.bp ?? "—"} <span className="text-sm text-base-content/70">mnHg</span></td>
                       <td>{v?.pulse ?? "—"} <span className="text-sm text-base-content/70">bpm</span></td>
                       <td>{v?.temperature ?? "—"} <span className="text-sm text-base-content/70">°F</span></td>

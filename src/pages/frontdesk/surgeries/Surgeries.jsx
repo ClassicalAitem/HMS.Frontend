@@ -5,6 +5,7 @@ import { getPatientById } from '@/services/api/patientsAPI';
 import { useNavigate } from 'react-router-dom';
 import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList } from 'react-icons/fa';
+import { formatNigeriaDateShort, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 
 const Surgeries = () => {
   const [surgeries, setSurgeries] = useState([]);
@@ -79,25 +80,16 @@ const Surgeries = () => {
     } else if (date.getTime() === tomorrow.getTime()) {
       return 'Tomorrow';
     } else {
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'short',
-        month: 'short', 
-        day: 'numeric',
-        year: date.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
-      });
+      return formatNigeriaDateShort(dateString);
     }
   };
 
   const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return formatNigeriaTime(dateString);
   };
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+    switch (status) {
       case 'scheduled':
         return 'bg-blue-100 text-blue-800';
       case 'in-progress':

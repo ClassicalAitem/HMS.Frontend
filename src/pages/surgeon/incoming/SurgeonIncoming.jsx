@@ -6,6 +6,7 @@ import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine
 import avatarImg from "@/assets/images/incomingLogo.jpg";
 import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
 const SurgeonIncoming = () => {
   const navigate = useNavigate();
@@ -63,7 +64,7 @@ const SurgeonIncoming = () => {
             patientId,
             type: inv?.type || inv?.title || 'Investigation',
             status: inv?.status || 'Pending',
-            createdAt: inv?.createdAt ? new Date(inv.createdAt).toLocaleString() : '—',
+            createdAt: inv?.createdAt ? formatNigeriaDateTime(inv.createdAt) : '—',
             snapshot: inv,
           };
         }));

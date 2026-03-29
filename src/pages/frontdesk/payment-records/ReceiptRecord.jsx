@@ -4,6 +4,7 @@ import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 const FrontDeskPaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -23,7 +24,7 @@ const FrontDeskPaymentRecords = () => {
       try {
         setIsLoading(true);
         const res = await getAllReceipts();
-        console.log({res})
+
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
 
@@ -39,7 +40,7 @@ const FrontDeskPaymentRecords = () => {
         endOfToday.setHours(23, 59, 59, 999);
 
 
-console.log("All list:", list.map(r => r.paymentDestination));
+
 
        // Optional: filter by frontdeskDestinations if you want
 const frontdeskDestinations = ['form', 'consultation', 'laboratory', 'pharmacy', 'admission'];
@@ -54,7 +55,7 @@ const mapped = filteredList.map((a, idx) => ({
   paidBy: a.paidBy || 'N/A',
   status: a.status || 'pending',
   amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-  dateTime: new Date(a.paidAt || a.updatedAt).toLocaleString(),
+  dateTime: formatNigeriaDateTime(a.paidAt || a.updatedAt),
   cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
 }));
 
@@ -88,7 +89,7 @@ setPaymentRecords(mapped);
   };
 
   const handleViewDetails = (payment) => {
-    console.log({payment})
+
     setSelectedPayment(payment);
     setIsModalOpen(true);
   };
@@ -456,6 +457,7 @@ const handlePrintReceipt = (payment) => {
       )}
     </div>
   );
+
 };
 
 export default FrontDeskPaymentRecords;

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header, DataTable } from '@/components/common';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import Sidebar from '@/components/nurse/dashboard/Sidebar';
 
 const NursePaymentRecords = () => {
@@ -53,7 +54,7 @@ const NursePaymentRecords = () => {
           paidBy: a.paidBy || 'N/A',
           status: a.status || 'pending',
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: new Date(a.paidAt).toLocaleString(),
+          dateTime: formatNigeriaDateTime(a.paidAt),
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
         }));
         setPaymentRecords(mapped);

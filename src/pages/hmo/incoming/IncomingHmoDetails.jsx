@@ -6,11 +6,10 @@ import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI"
 import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
+import { formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 import { getAllHmos } from "@/services/api/hmoAPI";
 import apiClient from "@/services/api/apiClient";
-import { LabActionModal, PharmacyActionModal2 } from "@/components/modals";
-import { fetchPatientById } from "@/store/slices/patientsSlice";
 
 const IncomingHmoDetails = () => {
   const { patientId } = useParams();
@@ -21,10 +20,12 @@ const IncomingHmoDetails = () => {
   const [patient, setPatient] = useState(snapshot || null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [sendingStatuses, setSendingStatuses] = useState({
+    Lab: false,
+    Pharmacy: false,
+  });
   const [billings, setBillings] = useState([]);
   const [hmos, setHmos] = useState([]);
-  const [isSendToLabOpen, setIsSendToLabOpen] = useState(false);
-const [isSendToPharmacyOpen, setIsSendToPharmacyOpen] = useState(false);
   const [itemDecisions, setItemDecisions] = useState({});
 
   useEffect(() => {
@@ -125,7 +126,28 @@ const approvedTotal = useMemo(() => {
     });
   });
   return total;
-}, [billings, itemDecisions]);  
+}, [billings, itemDecisions]);
+
+const handleSendToStatus = async (status) => {
+  try {
+    setSendingStatuses(prev => ({ ...prev, [status]: true }));
+    const statusMap = {
+      'Lab': PATIENT_STATUS.AWAITING_LAB,
+      'Pharmacy': PATIENT_STATUS.AWAITING_PHARMACY,
+    };
+
+    const newStatus = statusMap[status];
+    if (!newStatus) return;
+
+    await updatePatientStatus(patientId, newStatus);
+    toast.success(`Patient sent to ${status} successfully`);
+    navigate(-1);
+  } catch (err) {
+    toast.error(err?.response?.data?.message || `Failed to send to ${status}`);
+  } finally {
+    setSendingStatuses(prev => ({ ...prev, [status]: false }));
+  }
+};
 
 const handleSubmit = async () => {
   setSubmitting(true);
@@ -285,7 +307,7 @@ const handleSubmit = async () => {
                   <td className="font-mono text-sm">{hmo.memberId || '—'}</td>
                   <td className="text-sm">
                     {hmo.expiresAt
-                      ? new Date(hmo.expiresAt).toLocaleDateString()
+                      ? formatNigeriaDateShort(hmo.expiresAt)
                       : '—'}
                   </td>
                   <td>
@@ -544,17 +566,15 @@ const handleSubmit = async () => {
         <div className="flex flex-wrap gap-3">
           <button
             className="btn btn-sm"
-            onClick={() => setIsSendToLabOpen(true)}
-            disabled={submitting}
+            onClick={() => handleSendToStatus('Lab')}
           >
-            Send to Lab
+            {sendingStatuses.Lab ? 'Processing...' : 'Send to Lab'}
           </button>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => setIsSendToPharmacyOpen(true)}
-            disabled={submitting}
+            onClick={() => handleSendToStatus('Pharmacy')}
           >
-            Send to Pharmacy
+            {sendingStatuses.Pharmacy ? 'Processing...' : 'Send to Pharmacy'}
           </button>
           <button
             className="btn btn-outline btn-warning btn-sm"
@@ -578,24 +598,7 @@ const handleSubmit = async () => {
     </div>
   </div>
 )}
-{/* Modals — outside the card */}
-<LabActionModal
-  isOpen={isSendToLabOpen}
-  onClose={() => setIsSendToLabOpen(false)}
-  patientId={patientId}
-  currentStatus={patient?.status || ''}
-  defaultAction={PATIENT_STATUS.AWAITING_LAB}
-  onUpdated={() => {}}
-/>
-
-<PharmacyActionModal2
-  isOpen={isSendToPharmacyOpen}
-  onClose={() => setIsSendToPharmacyOpen(false)}
-  patientId={patientId}
-  currentStatus={patient?.status || ''}
-  defaultAction={PATIENT_STATUS.AWAITING_PHARMACY}
-  onUpdated={() => {}}
-/>
+{/* Modals removed - sending directly */}
 
         </div>
       </div>

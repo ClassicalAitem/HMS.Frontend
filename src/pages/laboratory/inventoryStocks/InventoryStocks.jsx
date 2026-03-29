@@ -4,6 +4,7 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import { FaPlus } from "react-icons/fa6";
 import { FiSettings } from "react-icons/fi";
 import { getInventories, getAllInventoryTransactions } from "@/services/api/inventoryAPI";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import InventoryItems from "./InventoryItems";
 
 const InventoryStocks = () => {
@@ -45,7 +46,7 @@ const InventoryStocks = () => {
             ...item,
             quantity: item.quantity ?? item.stock ?? 0,
             stock: item.stock ?? item.quantity ?? 0,
-            lastRestocked: lastRestocked ? new Date(lastRestocked).toLocaleDateString() : "N/A",
+            lastRestocked: lastRestocked ? formatNigeriaDate(lastRestocked) : "N/A",
           };
         });
 
