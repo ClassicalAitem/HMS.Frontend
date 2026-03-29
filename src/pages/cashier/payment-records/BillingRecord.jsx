@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/cashier/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import cashierData from '@/data/cashierData.json';
 import { getAllBillings } from '@/services/api/billingAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 const PaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -32,7 +33,7 @@ const PaymentRecords = () => {
           totalAmount: `₦ ${Number(a.totalAmount).toLocaleString()}`,
           itemDetails: a.itemDetails,
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: new Date(a.createdAt).toLocaleString(),
+          dateTime: formatNigeriaDateTime(a.createdAt),
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
         }));
         setPaymentRecords(mapped);

@@ -9,6 +9,7 @@ import { fetchPatients, clearPatientsError } from '../../../store/slices/patient
 import toast from 'react-hot-toast';
 import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -93,8 +94,8 @@ const StatusBadge = ({ status }) => {
     nextOfKinRelationship: patient.nextOfKin?.relationship || 'N/A',
     hmoCount: patient.hmos?.length || 0,
     dependantsCount: patient.dependants?.length || 0,
-    createdAtFormatted: new Date(patient.createdAt).toLocaleDateString(),
-    updatedAtFormatted: new Date(patient.updatedAt).toLocaleDateString(),
+    createdAtFormatted: formatNigeriaDate(patient.createdAt),
+    updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
   })), [patients]);
 
   // Define table columns

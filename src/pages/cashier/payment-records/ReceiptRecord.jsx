@@ -4,6 +4,7 @@ import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/cashier/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts, updateReceipt } from '@/services/api/billingAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 
 const PaymentRecords = () => {
@@ -63,7 +64,7 @@ const PaymentRecords = () => {
           paidBy: a.paidBy || 'N/A',
           status: a.status || 'pending',
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: new Date(a.paidAt).toLocaleString(),
+          dateTime: formatNigeriaDateTime(a.paidAt),
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
         }));
         setPaymentRecords(mapped);

@@ -5,6 +5,7 @@ import { useAppSelector } from "@/store/hooks";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 import { getVitalsByNurse } from "@/services/api/vitalsAPI";
+import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const SurgeonDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -66,7 +67,7 @@ const SurgeonDashboard = () => {
           patientName: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
           administeredBy: p?.doctor ? "Doctor" : "front desk",
           time: (p?.updatedAt || p?.createdAt)
-            ? new Date(p?.updatedAt || p?.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            ? formatNigeriaTime(p?.updatedAt || p?.createdAt)
             : "—",
         }));
 

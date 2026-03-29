@@ -3,6 +3,7 @@ import { PharmacistLayout } from '@/layouts/pharmacist'
 import metricsAPI from '@/services/api/metricsAPI'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import inventoryAPI from '@/services/api/inventoryAPI'
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 
@@ -137,7 +138,7 @@ const Reports = () => {
                 {(transactions.length ? transactions : []).slice(0,6).map(tx => (
                   <tr key={tx.id}>
                     <td className="font-medium">{tx.id}</td>
-                    <td>{tx.date ? new Date(tx.date).toLocaleDateString() : '-'}</td>
+                    <td>{tx.date ? formatNigeriaDate(tx.date) : '-'}</td>
                     <td>{tx.medication}</td>
                     <td>{tx.quantity}</td>
                     <td>{tx.amount ? `₦${tx.amount}` : '₦70,890'}</td>

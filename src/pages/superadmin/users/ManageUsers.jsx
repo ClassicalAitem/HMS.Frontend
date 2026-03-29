@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
 import { AddUserModal, EditUserModal, ResetPasswordModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const ManageUsers = () => {
   const dispatch = useAppDispatch();
@@ -130,8 +131,8 @@ const ManageUsers = () => {
     ...user,
     name: `${user.firstName} ${user.lastName}`,
     roleDisplay: formatRole(user.accountType),
-    lastLoginFormatted: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
-    createdAtFormatted: new Date(user.createdAt).toLocaleDateString(),
+    lastLoginFormatted: user.lastLogin ? formatNigeriaDate(user.lastLogin) : 'Never',
+    createdAtFormatted: formatNigeriaDate(user.createdAt),
   }));
 
   const handleDeleteUser = async (userId) => {

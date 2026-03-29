@@ -4,6 +4,7 @@ import { Header, EmptyState, DataTable } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiSearchLine } from 'react-icons/ri';
 import { getPatients } from '@/services/api/patientsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const AllPatients = () => {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ const AllPatients = () => {
           gender: p?.gender || '—',
           phone: p?.phone || p?.phoneNumber || '—',
           status: (p?.status || '').replace(/_/g, ' '),
-          registered: p?.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US') : '—',
+          registered: p?.createdAt ? formatNigeriaDate(p.createdAt) : '—',
         }));
         if (mounted) setItems(mapped);
       } finally {
