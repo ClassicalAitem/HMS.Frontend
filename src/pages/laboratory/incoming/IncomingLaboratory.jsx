@@ -232,15 +232,10 @@ const IncomingLaboratory = () => {
                         </div>
 
                         <div className="w-44 flex flex-col gap-2">
-                          <button
-                            onClick={() => navigate(`/dashboard/laboratory/results/add/${testCard.id}`)}
-                            className="btn btn-sm btn-success w-full"
-                          >
-                            Accept & Process
-                          </button>
+                        
                           <button
                             onClick={() => { setSelectedCard(testCard); setShowModal2(true); }}
-                            className="btn btn-sm btn-ghost w-full"
+                            className="btn btn-sm btn-success w-full"
                           >
                             View Details
                           </button>
