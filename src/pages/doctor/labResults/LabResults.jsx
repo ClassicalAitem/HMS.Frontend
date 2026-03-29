@@ -5,6 +5,7 @@ import { FaDownload } from 'react-icons/fa';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { getPatients } from '@/services/api/patientsAPI';
 import { LabResultDetailsModal } from '@/components/modals';
+import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 
 const LabResults = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -29,8 +30,8 @@ const LabResults = () => {
           labId: r?.form?.labNo || r?._id || r?.id,
           patientId: r?.hospitalId || r?.patientId,
           testType: (Array.isArray(r?.result) && r.result[0]?.code) || (Array.isArray(r?.result) && r.result[0]?.value) || '—',
-          date: r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—',
-          time: r?.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+          date: r?.createdAt ? formatNigeriaDate(r.createdAt) : '—',
+          time: r?.createdAt ? formatNigeriaTime(r.createdAt) : '—',
           doctor: '—',
           status: 'Completed',
         }));

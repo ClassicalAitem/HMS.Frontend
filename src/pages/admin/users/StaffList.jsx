@@ -177,7 +177,7 @@ const StaffList = ({ refreshKey = 0 }) => {
 
                   <div className="flex gap-9">
                     <p>DOB:</p>
-                    <span>{staffInfo.dateOfBirth ? new Date(staffInfo.dateOfBirth).toLocaleDateString() : "—"}</span>
+                    <span>{staffInfo.dateOfBirth ? formatNigeriaDate(staffInfo.dateOfBirth) : "—"}</span>
                   </div>
                 </div>
 

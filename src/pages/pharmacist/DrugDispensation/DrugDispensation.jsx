@@ -4,6 +4,7 @@ import { FiSearch, FiDownload, FiRefreshCw } from 'react-icons/fi'
 import { BiPlus } from 'react-icons/bi'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import toast from 'react-hot-toast'
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 
 const initialRows = [
   { batch: 'DISP-001', name: 'Emily Davis', patientId: 'PT-2457', medication: 'Amoxicillin 500mg', form: 'Tablets', quantity: '30 tabs', price: '₦70,890', datetime: '2025-10-18 09:45 AM', prescriptionId: 'RX-1234', status: 'Dispensed' },
@@ -69,7 +70,7 @@ const DrugDispensation = () => {
                 medication: item.drugName || (d?.prescription?.medications?.[0]?.drugName) || 'Unknown',
                 quantity: item.quantity?.toString() ?? String(item.qty || '0'),
                 price: item.price ? `₦${item.price}` : '—',
-                dispensedAt: d.dispensedAt ? new Date(d.dispensedAt).toLocaleString() : (d.createdAt ? new Date(d.createdAt).toLocaleString() : '-'),
+                dispensedAt: d.dispensedAt ? formatNigeriaDateTime(d.dispensedAt) : (d.createdAt ? formatNigeriaDateTime(d.createdAt) : '-'),
                 status: d.status
               }))
             })

@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/pharmacist/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
@@ -48,7 +49,7 @@ const PharmacistPaymentRecords = () => {
           paidBy: a.paidBy || 'N/A',
           status: a.status || 'pending',
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: new Date(a.paidAt).toLocaleString(),
+          dateTime: formatNigeriaDateTime(a.paidAt),
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
         }));
         setPaymentRecords(mapped);

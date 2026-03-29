@@ -5,6 +5,7 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const LaboratoryDashboard = () => {
   const navigate = useNavigate();
@@ -128,15 +129,15 @@ const LaboratoryDashboard = () => {
                 name: patientName,
                 testType: inv.tests?.map((t) => t.name).join(", ") || "Lab Test",
                 date: inv.completedAt
-                  ? new Date(inv.completedAt).toLocaleTimeString()
-                  : new Date(inv.updatedAt || inv.createdAt).toLocaleTimeString(),
+                  ? formatNigeriaTime(inv.completedAt)
+                  : formatNigeriaTime(inv.updatedAt || inv.createdAt),
               };
             } catch (err) {
               console.error(`Failed to fetch patient ${inv.patientId}:`, err);
               return {
                 name: "Unknown Patient",
                 testType: inv.tests?.map((t) => t.name).join(", ") || "Lab Test",
-                date: new Date(inv.updatedAt || inv.createdAt).toLocaleTimeString(),
+                date: formatNigeriaTime(inv.updatedAt || inv.createdAt),
               };
             }
           })
