@@ -4,6 +4,7 @@ import { IoAddCircleOutline } from 'react-icons/io5';
 import { MdEditNote } from 'react-icons/md';
 import { RiUserAddLine } from 'react-icons/ri';
 import { CiEdit } from 'react-icons/ci';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const HmoDependantsSection = ({
   patient,
@@ -71,7 +72,7 @@ const HmoDependantsSection = ({
                             <span className="font-medium">Member ID:</span> {hmo.memberId || '—'}
                           </div>
                           <div className="text-xs text-base-content/70">
-                            <span className="font-medium">Expires:</span> {hmo.expiresAt ? new Date(hmo.expiresAt).toLocaleDateString('en-US') : '—'}
+                            <span className="font-medium">Expires:</span> {hmo.expiresAt ? formatNigeriaDate(hmo.expiresAt) : '—'}
                           </div>
                         </div>
                       </div>
@@ -103,7 +104,7 @@ const HmoDependantsSection = ({
                     {patient.dependants.map((dep, index) => {
                       const middleInitial = dep.middleName ? ` ${dep.middleName.charAt(0)}.` : '';
                       const fullName = `${dep.lastName || ''}, ${dep.firstName || ''}${middleInitial}`.trim();
-                      const dobFormatted = dep.dob ? new Date(dep.dob).toLocaleDateString('en-US') : '—';
+                      const dobFormatted = dep.dob ? formatNigeriaDate(dep.dob) : '—';
                       const relationship = dep.relationshipType || dep.relationship || '—';
                       const statusText = dep.status || 'Unknown';
                       const statusColor = dep.status === 'Active' ? 'bg-green-500' : dep.status === 'Inactive' ? 'bg-gray-400' : dep.status === 'Pending' ? 'bg-yellow-500' : 'bg-base-300';
@@ -160,7 +161,7 @@ const HmoDependantsSection = ({
                   {isTransitionLoading ? (
                     <div className="skeleton h-4 w-40" />
                   ) : (
-                    <p className="text-sm text-base-content/70">{patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'Not available'}</p>
+                    <p className="text-sm text-base-content/70">{patient.createdAt ? formatNigeriaDate(patient.createdAt) : 'Not available'}</p>
                   )}
                 </div>
               </div>

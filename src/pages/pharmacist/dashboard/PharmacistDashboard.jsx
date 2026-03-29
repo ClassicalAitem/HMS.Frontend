@@ -7,10 +7,11 @@ import { Link } from 'react-router-dom'
 import { getMetrics } from '@/services/api/metricsAPI'
 import { getPrescriptions } from '@/services/api/prescriptionsAPI'
 import PrescriptionDetailsModal from '@/components/modals/PrescriptionDetailsModal'
+import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 
 const PharmacistDashboard = () => {
   const today = new Date()
-  const dateText = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const dateText = formatNigeriaDate(today)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [metrics, setMetrics] = useState(null)
@@ -293,7 +294,7 @@ const PharmacistDashboard = () => {
                         <td className='border-b py-2'>{r.description}</td>
                         <td className='border-b py-2'>{r.drug}</td>
                         <td className='border-b py-2'>{r.qty}</td>
-                        <td className='border-b py-2'>{r.updatedAt ? new Date(r.updatedAt).toLocaleString() : (r.createdAt ? new Date(r.createdAt).toLocaleString() : '—')}</td>
+                        <td className='border-b py-2'>{r.updatedAt ? formatNigeriaDateTime(r.updatedAt) : (r.createdAt ? formatNigeriaDateTime(r.createdAt) : '—')}</td>
                         <td className='border-b py-2'>
                           <span className={`badge ${r.status && r.status.toLowerCase().includes('completed') ? 'badge-success' : r.status && r.status.toLowerCase().includes('pending') ? 'badge-warning' : 'badge-error'}`}>{r.status}</span>
                         </td>

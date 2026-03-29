@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppSelector } from '../../store/hooks';
+import { formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 
 const PatientsDebug = () => {
   const { patients, currentPatient, isLoading, error, lastFetch } = useAppSelector((state) => state.patients);
@@ -14,7 +15,7 @@ const PatientsDebug = () => {
           <div><strong>Error:</strong> {error || 'None'}</div>
           <div><strong>Patients Count:</strong> {patients?.length || 0}</div>
           <div><strong>Current Patient:</strong> {currentPatient ? '✅' : '❌'}</div>
-          <div><strong>Last Fetch:</strong> {lastFetch ? new Date(lastFetch).toLocaleTimeString() : 'Never'}</div>
+          <div><strong>Last Fetch:</strong> {lastFetch ? formatNigeriaTime(lastFetch) : 'Never'}</div>
         </div>
 
         {patients?.length > 0 && (

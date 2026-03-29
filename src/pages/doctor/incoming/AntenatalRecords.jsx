@@ -25,7 +25,8 @@ const emptyForm = (doctorName = "") => ({
     oedema: '', constipation: '', urinarySymptoms: '', jaundice: '',
     otherSymptoms: '', vaginalDischarge: '', takenBy: doctorName
   },
-  antenatalExaminations: []
+  antenatalExaminations: [],
+  
 });
 
 const AntenatalRecords = () => {
@@ -185,9 +186,9 @@ useEffect(() => {
         weight: item.weight || '',
         bp: item.bloodPressure || '',
         nextVisit: item.nextVisit || '',
-        remarks: item.remarks || '',
+        remark:  item.remark || '',
         signature: item.signature || docName
-      }))
+      })),
     };
   };
 
@@ -259,9 +260,10 @@ useEffect(() => {
         ...(i.weight?.trim() && { weight: i.weight.trim() }),
         ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
         ...(i.nextVisit?.trim() && { nextVisit: i.nextVisit.trim() }),
-        ...(i.remarks?.trim() && { remarks: i.remarks.trim() }),
+        ...(i.remark?.trim() && { remark: i.remark.trim() }),
       }));
     if (exams.length > 0) out.anteNatalExamination = exams;
+    if (fd.remark?.trim()) out.remark = fd.remark.trim();
 
     return out;
   };
@@ -291,7 +293,7 @@ useEffect(() => {
   const addObstetric = () => setFormData(p => ({ ...p, previousObstetricHistory: [...p.previousObstetricHistory, { date: '', durationOfPregnancy: '', birthWeight: '', complication: '', aliveOrDead: '', ageOfDeath: '', causeOfDeath: '' }] }));
   const updateObstetric = (idx, field, value) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
   const removeObstetric = (idx) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.filter((_, i) => i !== idx) }));
-  const addExamination = () => setFormData(p => ({ ...p, antenatalExaminations: [...p.antenatalExaminations, { date: '', heightOfFundus: '', ega: '', presentationAndLie: '', relationsOfPpToBirth: '', foetalHeart: '', urine: '', weight: '', bp: '', nextVisit: '', remarks: '', signature: doctorName }] }));
+  const addExamination = () => setFormData(p => ({ ...p, antenatalExaminations: [...p.antenatalExaminations, { date: '', heightOfFundus: '', ega: '', presentationAndLie: '', relationsOfPpToBirth: '', foetalHeart: '', urine: '', weight: '', bp: '', nextVisit: '', remark: '', signature: doctorName }] }));
   const updateExamination = (idx, field, value) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
   const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.filter((_, i) => i !== idx) }));
 
@@ -654,16 +656,16 @@ useEffect(() => {
             </table>
           </div>
 
-          {/* ✅ Remarks — full width below the table row */}
+          {/* ✅ Remark — full width below the table row */}
           <div className="px-4 pb-4 pt-3 border-t border-base-200">
             <label className="label pb-1">
-              <span className="label-text font-medium text-base-content/70 text-sm">Remarks</span>
+              <span className="label-text font-medium text-base-content/70 text-sm">Remark</span>
             </label>
             <textarea
               className="textarea textarea-bordered w-full resize-y min-h-[80px]"
-              placeholder="Enter remarks, observations, or additional notes for this examination..."
-              value={item.remarks}
-              onChange={(e) => updateExamination(idx, 'remarks', e.target.value)}
+              placeholder="Enter remark, observations, or additional notes for this examination..."
+              value={item.remark}
+              onChange={(e) => updateExamination(idx, 'remark', e.target.value)}
             />
           </div>
         </div>
@@ -675,6 +677,8 @@ useEffect(() => {
       >
         + Add Ante-Natal Examination
       </button>
+
+  
     </div>
   </div>
 </div>

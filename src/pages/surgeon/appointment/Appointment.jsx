@@ -7,6 +7,7 @@ import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal
 import { toast } from "react-hot-toast";
 import { getAllAppointments, createAppointment } from "@/services/api/appointmentsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const Appointment = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -140,9 +141,7 @@ const Appointment = () => {
   ], []);
 
   const getCurrentDate = () => {
-    const today = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return today.toLocaleDateString('en-US', options);
+    return formatNigeriaDate(new Date());
   };
   return (
     <>

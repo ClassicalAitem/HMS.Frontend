@@ -3,6 +3,7 @@ import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdInventory } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
 import { getPatients } from '@/services/api/patientsAPI'
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 
 const Incoming = () => {
   const [patients, setPatients] = useState([])
@@ -112,7 +113,7 @@ const filtered = list.filter((p) => {
               </div>
               <div className="flex justify-between items-center border-t pt-3">
                 <button className="text-sm text-primary hover:underline" onClick={() => handleViewDetails(p)}>View Details</button>
-                <div className="text-xs text-base-content/60">Updated: {p.updatedAt ? new Date(p.updatedAt).toLocaleString() : '—'}</div>
+                <div className="text-xs text-base-content/60">Updated: {p.updatedAt ? formatNigeriaDateTime(p.updatedAt) : '—'}</div>
               </div>
             </div>
           ))}

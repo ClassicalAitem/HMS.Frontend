@@ -11,6 +11,7 @@ import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
 import { getPatients } from '@/services/api/patientsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const Appointments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -170,14 +171,7 @@ const Appointments = () => {
 
   // Get current date for display
   const getCurrentDate = () => {
-    const today = new Date();
-    const options = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    };
-    return today.toLocaleDateString('en-US', options);
+    return formatNigeriaDate(new Date());
   };
 
   const handleRowClick = (appointment) => {
