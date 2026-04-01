@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getPrescriptionsByAntenatalId } from "@/services/api/prescriptionsAPI";
+import { deletePrescription } from "@/services/api/prescriptionsAPI";
+import { deleteInvestigation } from "@/services/api/investigationAPI";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import OrderInvestigationModal from "./modals/OrderInvestigationModal";
+import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
 
 const AntenatalRecordDetails = () => {
-  const { patientId } = useParams();
+  const { patientId, antenatalId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -19,6 +25,12 @@ const AntenatalRecordDetails = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [error, setError] = useState(null);
   const [dependants, setDependants] = useState([]);
+  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [labRequests, setLabRequests] = useState([]);
+  const [loadingTreatmentData, setLoadingTreatmentData] = useState(false);
+  const [editingPrescription, setEditingPrescription] = useState(null);
+  const [editingLab, setEditingLab] = useState(null);
 
   useEffect(() => {
     console.log('AntenatalRecordDetails: Component mounted with patientId:', patientId);
@@ -73,6 +85,9 @@ const AntenatalRecordDetails = () => {
         console.log('Processed antenatal records:', records);
         if (mounted) {
           setAntenatalRecords(Array.isArray(records) ? records : []);
+          if (location.state?.selectedRecord) {
+            setSelectedRecord(location.state.selectedRecord);
+          }
         }
       } catch (err) {
         console.error("Failed to load antenatal record:", err);
@@ -94,7 +109,7 @@ const AntenatalRecordDetails = () => {
     }
 
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, location]);
   useEffect(() => {
   let mounted = true;
   const fetchDependants = async () => {
@@ -114,10 +129,107 @@ const AntenatalRecordDetails = () => {
   if (patientId) fetchDependants();
   return () => { mounted = false; };
 }, [patientId]);
+
+// Load prescriptions and investigations for the selected antenatal record
+useEffect(() => {
+  let mounted = true;
+  const loadTreatmentData = async () => {
+    if (!selectedRecord?._id) {
+      setPrescriptions([]);
+      setLabRequests([]);
+      return;
+    }
+    try {
+      setLoadingTreatmentData(true);
+      console.log('Loading prescriptions and investigations for antenatal:', selectedRecord._id);
+      
+      // Fetch prescriptions for antenatal
+      try {
+        const presRes = await getPrescriptionsByAntenatalId(selectedRecord._id);
+        const presList = presRes?.data ?? presRes ?? [];
+        if (mounted) setPrescriptions(Array.isArray(presList) ? presList : []);
+      } catch (err) {
+        console.warn("Failed to load prescriptions:", err);
+        if (mounted) setPrescriptions([]);
+      }
+      
+      // Fetch investigations for antenatal
+      try {
+        const invRes = await getInvestigationsByAntenatalId(selectedRecord._id);
+        const invList = invRes?.data ?? invRes ?? [];
+        if (mounted) setLabRequests(Array.isArray(invList) ? invList : []);
+      } catch (err) {
+        console.warn("Failed to load investigations:", err);
+        if (mounted) setLabRequests([]);
+      }
+    } finally {
+      if (mounted) setLoadingTreatmentData(false);
+    }
+  };
+  
+  loadTreatmentData();
+  return () => { mounted = false; };
+}, [selectedRecord?._id]);
+
 const getDependantName = (dependantId) => {
   if (!dependantId) return null;
   const dep = dependants.find(d => d.id === dependantId);
   return dep ? `${dep.fullName} (${dep.relationshipType || 'Dependant'})` : null;
+};
+
+const handleDeletePrescription = async (prescriptionId) => {
+  if (!window.confirm("Are you sure you want to delete this prescription?")) return;
+  try {
+    setLoadingTreatmentData(true);
+    await deletePrescription(prescriptionId);
+    toast.success("Prescription deleted successfully");
+    setPrescriptions(prev => prev.filter(p => p._id !== prescriptionId));
+  } catch (err) {
+    toast.error(`Failed to delete prescription: ${err.message}`);
+  } finally {
+    setLoadingTreatmentData(false);
+  }
+};
+
+const handleDeleteLab = async (labId) => {
+  if (!window.confirm("Are you sure you want to delete this investigation?")) return;
+  try {
+    setLoadingTreatmentData(true);
+    await deleteInvestigation(labId);
+    toast.success("Investigation deleted successfully");
+    setLabRequests(prev => prev.filter(l => l._id !== labId));
+  } catch (err) {
+    toast.error(`Failed to delete investigation: ${err.message}`);
+  } finally {
+    setLoadingTreatmentData(false);
+  }
+};
+
+const handleEditPrescription = (prescription) => {
+  setEditingPrescription(prescription);
+  navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${antenatalId}/prescription`, {
+    state: { prescription, antenatalId: antenatalId }
+  });
+};
+
+const handleEditLab = (lab) => {
+  setEditingLab(lab);
+  setIsInvestigationModalOpen(true);
+};
+
+const handleOrderCreated = () => {
+  // Reload treatment data after new investigation is created
+  if (selectedRecord?._id) {
+    (async () => {
+      try {
+        const invRes = await getInvestigationsByAntenatalId(selectedRecord._id);
+        const invList = invRes?.data ?? invRes ?? [];
+        setLabRequests(Array.isArray(invList) ? invList : []);
+      } catch (err) {
+        console.warn("Failed to reload investigations:", err);
+      }
+    })();
+  }
 };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -188,6 +300,50 @@ const getDependantName = (dependantId) => {
               </button>
             </div>
           </div>
+
+           {/* Summary cards (doctor pattern) */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                          <div className="card bg-base-100 shadow-sm">
+                            <div className="card-body p-4">
+                              <h3 className="card-title text-lg font-semibold">Summary</h3>
+                              <div className="text-sm mt-2">
+                                <p>Total records: <span className="font-semibold">{antenatalRecords.length}</span></p>
+                                <p>
+                                  Total examinations: <span className="font-semibold">{antenatalRecords.reduce((sum, r) => sum + ((r.antenatalExaminations || r.anteNatalExamination || []).length || 0), 0)}</span>
+                                </p>
+                                <div className="mt-2">
+                                  <span className="text-xs text-base-content/70">Latest remarks:</span>
+                                  <div className="mt-1 text-xs text-base-content/80 bg-base-100/50 p-2 rounded max-h-20 overflow-y-auto">
+                                    {(() => {
+                                      const latest = [...antenatalRecords].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                                      const latestExam = (latest ? (latest.anteNatalExamination || latest.antenatalExaminations || []) : []).sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
+                                      return latestExam?.remark || "No remarks";
+                                    })()}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+          
+                          <div className="card bg-base-100 shadow-sm">
+                            <div className="card-body p-4">
+                              <h3 className="card-title text-lg font-semibold">Latest Pregnancy</h3>
+                              {(() => {
+                                const latest = [...antenatalRecords].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                                const present = latest ? (latest.presentPregnancy || latest.presentPregnancyHistories?.[0] || {}) : {};
+                                return latest ? (
+                                  <div className="mt-2 text-sm">
+                                    <div className="flex justify-between mb-1"><span className="text-base-content/70">EDD:</span><span className="font-medium">{(present.EDD || present.edd) ? formatNigeriaDate(present.EDD || present.edd) : '—'}</span></div>
+                                    <div className="flex justify-between mb-1"><span className="text-base-content/70">LMP:</span><span className="font-medium">{(present.LMP || present.lmp) ? formatNigeriaDate(present.LMP || present.lmp) : '—'}</span></div>
+                                    <div className="flex justify-between"><span className="text-base-content/70">Gestational age:</span><span className="font-medium">{(present.durationOfPregnancyInWeek || present.durationInWeeks) ? `${present.durationOfPregnancyInWeek || present.durationInWeeks} w` : '—'}</span></div>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-base-content/70">No pregnancy summary available</p>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
 
           {antenatalRecords.length > 0 ? (
             <div className="space-y-6">
@@ -528,6 +684,202 @@ const getDependantName = (dependantId) => {
                       </div>
                     </div>
                   )}
+
+                  {/* Treatment Plan Section */}
+                  <div className="card bg-base-100 shadow-sm border border-base-200">
+                    <div className="card-body p-0">
+                      <div className="p-4 border-b border-base-200 bg-base-50/50 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                            <span className="text-white text-xs">✓</span>
+                          </span>
+                          <h3 className="font-bold text-lg text-base-content">Treatment Plan & Orders</h3>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2"
+                            disabled={!selectedRecord}
+                            onClick={() => {
+                              setIsInvestigationModalOpen(true);
+                            }}
+                          >
+                            <span className="text-sm">📋</span> Order Labs
+                          </button>
+                          <button
+                            className="btn btn-sm btn-primary gap-2"
+                            disabled={!selectedRecord}
+                            onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord?._id || selectedRecord?.id}/prescription`, { state: { antenatalId: selectedRecord?._id || selectedRecord?.id } })}
+                          >
+                            <span className="text-sm">💊</span> Prescribe
+                          </button>
+                          <button 
+                            className="btn btn-sm btn-info gap-2"
+                            disabled={!selectedRecord}
+                            onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { selectedRecord } })}
+                          >
+                            <span className="text-sm">👩‍⚕️</span> Send to Nurse
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-6 space-y-8">
+                      
+                        {/* Lab Requests */}
+                        <div>
+                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-info"></span>
+                            Lab Investigations
+                          </h4>
+                          {loadingTreatmentData ? (
+                            <div className="flex justify-center py-6">
+                              <div className="loading loading-spinner loading-sm"></div>
+                            </div>
+                          ) : labRequests.length > 0 ? (
+                            <div className="space-y-3">
+                              {labRequests.map((lab) => (
+                                <div
+                                  key={lab._id}
+                                  className="border border-base-300 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className={`badge ${lab.status === 'completed'
+                                          ? 'badge-success'
+                                          : lab.status === 'pending' || lab.status === 'in_progress'
+                                            ? 'badge-warning'
+                                            : 'badge-info'
+                                          }`}>
+                                          {lab.status || 'pending'}
+                                        </span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {lab.tests?.map((test, idx) => (
+                                          <p key={idx} className="font-medium text-base-content">
+                                            {test.name || 'Lab Test'}
+                                          </p>
+                                        ))}
+                                        {!lab.tests && (
+                                          <p className="font-medium text-base-content">Lab Test</p>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-base-content/70 mt-1">
+                                        Ordered: {lab.createdAt ? formatNigeriaDate(lab.createdAt) : 'N/A'}
+                                      </p>
+                                      {lab.priority && (
+                                        <div className="mt-2">
+                                          <span className={`badge badge-sm ${lab.priority === 'urgent'
+                                            ? 'badge-error'
+                                            : lab.priority === 'high'
+                                              ? 'badge-warning'
+                                              : 'badge-info'
+                                            }`}>
+                                            {lab.priority}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        className="btn btn-xs btn-ghost text-info"
+                                        onClick={() => handleEditLab(lab)}
+                                        disabled={loadingTreatmentData}
+                                      >
+                                        ✏️
+                                      </button>
+                                      <button
+                                        className="btn btn-xs btn-ghost text-error"
+                                        onClick={() => handleDeleteLab(lab._id)}
+                                        disabled={loadingTreatmentData}
+                                      >
+                                        🗑️
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+                              <p className="text-sm text-base-content/50">No lab investigations ordered yet</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="divider my-0"></div>
+
+                        {/* Prescriptions */}
+                        <div>
+                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-success"></span>
+                            Active Prescriptions
+                          </h4>
+                          {loadingTreatmentData ? (
+                            <div className="flex justify-center py-6">
+                              <div className="loading loading-spinner loading-sm"></div>
+                            </div>
+                          ) : prescriptions.length > 0 ? (
+                            <div className="space-y-3">
+                              {prescriptions.map((prescription) => (
+                                <div
+                                  key={prescription._id}
+                                  className="border border-base-300 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                >
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className={`badge ${prescription.status === 'dispensed'
+                                          ? 'badge-success'
+                                          : prescription.status === 'pending'
+                                            ? 'badge-warning'
+                                            : 'badge-info'
+                                          }`}>
+                                          {prescription.status || 'pending'}
+                                        </span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {prescription.medications?.map((med, idx) => (
+                                          <p key={idx} className="font-medium text-base-content">
+                                            {med.drugName || med.medicationName || med.name || 'Medication'} - {med.dosage || 'N/A'}
+                                          </p>
+                                        ))}
+                                        {!prescription.medications && (
+                                          <p className="font-medium text-base-content">Medication</p>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-base-content/70 mt-2">
+                                        Prescribed: {prescription.createdAt ? formatNigeriaDate(prescription.createdAt) : 'N/A'}
+                                      </p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button
+                                        className="btn btn-xs btn-ghost text-info"
+                                        onClick={() => handleEditPrescription(prescription)}
+                                        disabled={loadingTreatmentData}
+                                      >
+                                        ✏️
+                                      </button>
+                                      <button
+                                        className="btn btn-xs btn-ghost text-error"
+                                        onClick={() => handleDeletePrescription(prescription._id)}
+                                        disabled={loadingTreatmentData}
+                                      >
+                                        🗑️
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+                              <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -551,6 +903,20 @@ const getDependantName = (dependantId) => {
           )}
         </div>
       </div>
+
+      <OrderInvestigationModal
+        isOpen={isInvestigationModalOpen}
+        onClose={() => {
+          setIsInvestigationModalOpen(false);
+          setEditingLab(null);
+        }}
+        patientId={patientId}
+        dependantId={selectedRecord?.dependantId || selectedRecord?.dependant?._id || selectedRecord?.dependant?.id}
+        investigation={editingLab}
+        onOrderCreated={handleOrderCreated}
+        sourceId={selectedRecord?._id || selectedRecord?.id}
+        sourceType="antenatal"
+      />
     </div>
   );
 };
