@@ -66,7 +66,7 @@ const IncomingDoctor = () => {
           reason: prettifyStatus(p?.status) || "Consultation",
           insurance: p?.hmos?.provider || "—",
           rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
-          registered: p?.createdAt ? formatNigeriaDateTime(p.createdAt) : "—",
+          updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
           gender: p?.gender || null,
           age:
             p?.dateOfBirth || p?.dob
@@ -198,7 +198,7 @@ const IncomingDoctor = () => {
                 <div className="col-span-3">Patient</div>
                 <div className="col-span-2">Patient ID</div>
                 <div className="col-span-2">Status</div>
-                <div className="col-span-2">Registered</div>
+                <div className="col-span-2">Updated At</div>
                   <div className="col-span-2 text-right">Action</div> 
               </div>
             )}
@@ -284,7 +284,7 @@ const IncomingDoctor = () => {
                     {/* Registered */}
                     <div className="col-span-2">
                       <span className="text-sm text-base-content/60">
-                        {data.registered}
+                        {data.updatedAt}
                       </span>
                     </div>
 

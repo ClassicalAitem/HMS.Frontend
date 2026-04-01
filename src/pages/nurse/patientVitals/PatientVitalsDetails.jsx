@@ -9,8 +9,8 @@ import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
-import { getInvestigationRequestByPatientId } from "@/services/api/investigationRequestAPI";
-import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
+import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
+import SendPatientModal from "@/components/modals/SendPatientModal";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
@@ -28,6 +28,10 @@ import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
 import { useDispatch } from "react-redux";
 import PatientOrdersPanel from "@/components/common/PatientOrderPanel";
+import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
+import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
+import ViewAllVitals from "./ViewAllPatientVitals";
+import { getInvestigationByPatientId } from "@/services/api/investigationAPI";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -51,12 +55,13 @@ const PatientVitalsDetails = () => {
   const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
   const [selectedDependantId, setSelectedDependantId] = useState(null);
   const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
-  const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
-  const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
   const [dependants, setDependants] = useState([]);
   const [dependantsLoading, setDependantsLoading] = useState(true);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isReviewBillOpen, setIsReviewBillOpen] = useState(false);
+  const [antenatalRecords, setAntenatalRecords] = useState([]);
+  const [antenatalLoading, setAntenatalLoading] = useState(true);
+  const [selectedAntenatalRecord, setSelectedAntenatalRecord] = useState(null);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   // Doctor's consultation data
   const [consultation, setConsultation] = useState(null);
@@ -146,6 +151,27 @@ useEffect(() => {
   return () => { mounted = false; };
 }, [patientId]);
 
+// Fetch antenatal records (nurse read-only view)
+useEffect(() => {
+  let mounted = true;
+  const fetchAntenatal = async () => {
+    setAntenatalLoading(true);
+    try {
+      const records = await getAnteNatalRecordByPatientId(patientId);
+      if (mounted) setAntenatalRecords(Array.isArray(records) ? records : []);
+    } catch (error) {
+      console.error('Error fetching antenatal records:', error);
+      if (mounted) setAntenatalRecords([]);
+    } finally {
+      if (mounted) setAntenatalLoading(false);
+    }
+  };
+
+  if (patientId) fetchAntenatal();
+
+  return () => { mounted = false; };
+}, [patientId]);
+
 // Fetch doctor's consultation data
 useEffect(() => {
   let mounted = true;
@@ -168,7 +194,7 @@ useEffect(() => {
 
       const [presRes, invRes] = await Promise.allSettled([
         getPrescriptionByPatientId(patientId),
-        getInvestigationRequestByPatientId(patientId)
+        getInvestigationByPatientId(patientId)
       ]);
 
       // ================= PRESCRIPTIONS =================
@@ -267,6 +293,37 @@ useEffect(() => {
   const subjectHospitalId = currentSubject?.hospitalId || patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
   const subjectName = currentSubject?.fullName || `${currentSubject?.firstName || ''} ${currentSubject?.lastName || ''}`.trim() || 'Unknown';
 
+    const enrichedVitals = useMemo(() =>
+      Array.isArray(sortedVitals)
+        ? sortedVitals.map(vital => {
+            const isDependant = !!vital.dependantId;
+  
+            const dependant = isDependant
+              ? dependants.find(
+                  d => d.id === vital.dependantId || d._id === vital.dependantId
+                )
+              : null;
+  
+            const forName = isDependant
+              ? dependant
+                ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+                : 'Dependant'
+              : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+  
+            return {
+              ...vital,
+              isForDependant: isDependant,
+              forName
+            };
+          })
+        : [],
+      [sortedVitals, dependants, patient]
+    );
+  
+   
+    const enrichedLatest = useMemo(() => enrichedVitals[0] || latest, [enrichedVitals, latest]);
+  
+
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -353,9 +410,9 @@ useEffect(() => {
                         <span className="text-base font-medium text-base-content">{patient?.phone || patient?.phoneNumber || '—'}</span>
                       </div>
                       <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Patient ID</span>
-                        <span className="text-base font-medium text-base-content">{patientUUID || '—'}</span>
-                        <span className="text-xs text-base-content/70">Hospital ID: {patient?.hospitalId || '—'}</span>
+                        {/* <span className="text-sm text-base-content/70">Patient ID</span>
+                        <span className="text-base font-medium text-base-content">{patientUUID || '—'}</span> */}
+                        <span className="text-sm text-base font-medium text-base-content/70">Hospital ID: {patient?.hospitalId || '—'}</span>
                 </div>
               </div>
 
@@ -376,8 +433,13 @@ useEffect(() => {
                   )}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button className="btn btn-primary btn-sm" onClick={() => setIsSendDoctorOpen(true)}>Send to Doctor</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
+                  <SendPatientModal
+                    patientId={patientUUID || patientId}
+                    onUpdated={() => {}}
+                    buttonLabel="Send to Department"
+                    buttonClass="btn btn-outline btn-sm"
+                    allowedRoles={[ 'doctor', 'pharmacist', 'lab-technician', 'cashier', 'hmo']}
+                  />
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
                 </div>
               </div>
@@ -392,22 +454,7 @@ useEffect(() => {
             <div className="p-4 card-body">
               {/* Header matching design */}
               <div className="flex justify-between items-center mb-3">
-                <div>
-                  <h2 className="text-xl font-semibold text-base-content">Current Vitals - {subjectName}</h2>
-                  <div className="flex items-center gap-2 text-sm text-base-content/70">
-                    {currentSubject?.ward || currentSubject?.bed ? (
-                      <span>
-                        {patient?.ward ? `Ward ${patient.ward}` : ''}
-                        {patient?.ward && patient?.bed ? ' - ' : ''}
-                        {patient?.bed ? `Bed ${patient.bed}` : ''}
-                      </span>
-                    ) : (
-                      <span>Ward info unavailable</span>
-                    )}
-                    <span>•</span>
-                    <span>Last updated {formatRelativeTime(latest?.createdAt)}</span>
-                  </div>
-                </div>
+                
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Record Vitals - Primary if AWAITING_VITALS */}
                     <button
@@ -485,117 +532,12 @@ useEffect(() => {
                   </div>
               </div>
 
-              {loading ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="skeleton h-20 w-full" />
-                  ))}
-                </div>
-              ) : latest ? (
-                <>
-                  {/* Tiles */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                    {/* Heart Rate */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <FiHeart className="w-5 h-5" />
-                        <span>Heart Rate</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.heartRate ?? latest?.pulse ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">bpm</span>
-                      </div>
-                    </div>
-
-                    {/* Blood Pressure */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <TbHeartbeat className="w-5 h-5" />
-                        <span>Blood Pressure</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.bloodPressure ?? latest?.bp ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">mnHg</span>
-                      </div>
-                    </div>
-
-                    {/* Oxygen */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <LuDroplet className="w-5 h-5" />
-                        <span>Oxygen</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.oxygenSaturation ?? latest?.oxygen ?? latest?.spo2 ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">%</span>
-                      </div>
-                    </div>
-
-                    {/* Temperature */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <LuThermometer className="w-5 h-5" />
-                        <span>Temperature</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.temperature ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">°C</span>
-                      </div>
-                    </div>
-
-                    {/* Weight */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <GiWeightLiftingUp  className="w-5 h-5" />
-                        <span>Weight</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.weight ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">kg</span>
-                      </div>
-                    </div>
-                    {/* Height */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <GiBodyHeight className="w-5 h-5" />
-                        <span>Height</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.height ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">cm</span>
-                      </div>
-                    </div>
-                    {/* Respiratory Rate */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <LuActivity className="w-5 h-5" />
-                        <span>Respiratory Rate</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? '—'}</span>
-                        <span className="text-sm text-base-content/70">rpm</span>
-                      </div>
-                    </div>
-
-                    {/* Last Updated */}
-                    <div className="rounded-xl border border-base-300 p-3">
-                      <div className="flex items-center gap-2 text-sm text-base-content/80">
-                        <FiClock className="w-5 h-5" />
-                        <span>Last Updated</span>
-                      </div>
-                      <div className="mt-2 flex items-baseline gap-2">
-                        <span className="text-2xl font-semibold">{formatRelativeTime(latest?.createdAt) || '—'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-        
-                </>
-              ) : (
-                <EmptyState title="No vitals available" description="No vitals recorded for this patient yet." />
-              )}
+             
+                    <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
             </div>
           </div>
+
+          
 
           {/* Doctor's Consultation Data */}
           {consultation && (
@@ -689,7 +631,7 @@ useEffect(() => {
                         <h4 className="text-sm font-bold mb-2">Allergic History</h4>
                         <ul className="text-sm space-y-1">
                           {consultation.allergicHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? `${item.relation}: ${item.condition}` : item}</li>
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? (item.allergen || item.reaction || 'Unknown allergy') : item}</li>
                           ))}
                         </ul>
                       </div>
@@ -699,7 +641,7 @@ useEffect(() => {
                         <h4 className="text-sm font-bold mb-2">Social History</h4>
                         <ul className="text-sm space-y-1">
                           {consultation.socialHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? `${item.relation}: ${item.condition}` : item}</li>
+                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? (item.title || item.habit || 'Social history item') : item}</li>
                           ))}
                         </ul>
                       </div>
@@ -718,162 +660,120 @@ useEffect(() => {
   patientName={`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}
 />
 
-          {/* Dependant History */}
-          {/* <div className="shadow-xl card bg-base-100">
+          {/* Antenatal Records (Nurse, Female patients only). Read-only, view all/details */}
+          {patient?.gender?.toLowerCase() === 'female' && (
+          <div className="shadow-xl card bg-base-100 mb-4">
             <div className="p-4 card-body">
               <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-base-content">Dependant History</h2>
-                <div className="text-sm text-base-content/70">Showing {dependants?.length || 0} readings</div>
+                <h2 className="text-lg font-semibold text-base-content">Antenatal Records</h2>
+                <button
+                  className="btn btn-sm btn-outline"
+                  onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`)}
+                  disabled={antenatalLoading || antenatalRecords.length === 0}
+                >
+                  View All ({antenatalRecords.length})
+                </button>
               </div>
-              {loading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="skeleton h-10 w-full" />
-                  ))}
+
+              {antenatalLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="loading loading-spinner loading-md" />
                 </div>
+              ) : antenatalRecords.length === 0 ? (
+                <EmptyState title="No antenatal records" description="No antenatal records available for this patient." />
               ) : (
-                <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                  <table className="table w-full">
+                <div className="overflow-x-auto">
+                  <table className="table table-zebra w-full">
                     <thead>
                       <tr>
-                        <th>First Name</th>
-                        <th>Last Name</th>
-                        <th>Relationship</th>
-                        <th>Gender</th>
-                        <th>Actions</th>
+                        <th>#</th>
+                        <th>Booking date</th>
+                        <th>LMP</th>
+                        <th>EDD</th>
+                        <th>Gestation</th>
+                        <th className="text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedDependants?.length ? sortedDependants.map((v, i) => (
-                        <tr key={i} className="hover">
-                          <td>{v?.firstName ?? '—'}</td>
-                          <td>{v?.lastName ?? '—'}</td>
-                          <td>{v?.relationshipType ?? '—'}</td>
-                          <td>{v?.gender ?? '—'}</td>
-                          <td>
-                          <button
-                            className="px-3 py-1 rounded-full bg-primary text-white"
-                            // onClick={() => v?.id && navigate(`/dashboard/nurse/dependant/${v.id}`, { state: { from: 'vitals', patientSnapshot: patient } })}
-                          >
-                            View Dependant Details
-                          </button></td>
-                        </tr>
-                      )) : (
-                        <tr>
-                          <td colSpan={7}>
-                            <EmptyState title="No Dependant" description="No dependant history found for this patient." />
-                          </td>
-                        </tr>
-                      )}
+                      {antenatalRecords.slice(0, 4).map((record, idx) => {
+                        const presentPregnancy = record?.presentPregnancy || record?.presentPregnancyHistories?.[0] || {};
+                        return (
+                          <tr key={record._id || record.id || idx}>
+                            <td>{idx + 1}</td>
+                            <td>{presentPregnancy?.dateOfBooking ? formatNigeriaDate(presentPregnancy.dateOfBooking) : '—'}</td>
+                            <td>{presentPregnancy?.LMP || presentPregnancy?.lmp ? formatNigeriaDate(presentPregnancy.LMP || presentPregnancy.lmp) : '—'}</td>
+                            <td>{presentPregnancy?.EDD || presentPregnancy?.edd ? formatNigeriaDate(presentPregnancy.EDD || presentPregnancy.edd) : '—'}</td>
+                            <td>{presentPregnancy?.durationOfPregnancyInWeek || presentPregnancy?.durationInWeeks ? `${presentPregnancy.durationOfPregnancyInWeek || presentPregnancy.durationInWeeks} w` : '—'}</td>
+                            <td className="text-right">
+                              <button type="button" className="btn btn-xs btn-primary" onClick={() => setSelectedAntenatalRecord(record)}>
+                                View details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
-            </div>
-          </div> */}
 
-          {/* Vitals History */}
-          <div className="shadow-xl card bg-base-100 mt-4">
-            <div className="p-4 card-body">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-base-content">Vitals History</h2>
-                <div className="text-sm text-base-content/70">Showing {sortedVitals?.length || 0} readings</div>
-              </div>
-             {dependantsLoading ? (
-                <div className="space-y-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="skeleton h-10 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <div>
-                  <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                    <table className="table w-full">
-                      <thead>
-                        <tr>
-                          <th>Record For</th>
-                          <th>Time</th>
-                          <th>Blood Pressure</th>
-                          <th>Heart Rate</th>
-                          <th>Temperature</th>
-                          <th>Weight</th>
-                          <th>Height</th>
-                          <th>O2 Saturation</th>
-                          <th>Respiratory Rate</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(() => {
-                          const start = (vitalsPage - 1) * vitalsPerPage;
-                          const end = start + vitalsPerPage;
-                          const paginatedVitals = sortedVitals?.slice(start, end);
-                          
-                          return paginatedVitals?.length ? paginatedVitals.map((v, i) => (
-                            <tr key={i} className="hover">
-                              <td>
-                                  {v?.dependantId ? (
-                                    <span className="badge badge-info">
-                                      Dependant
-                                    </span>
-                                  ) : (
-                                    <span className="badge badge-primary">
-                                    Patient
-                                    </span>
-                                  )}
-                                </td>
-                              <td>{v?.createdAt ? formatNigeriaTime(v.createdAt) : '—'}</td>
-                              <td>{v?.bp ?? '—'} <span className="text-sm text-base-content/70">mmHg</span></td>
-                              <td>{v?.pulse ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
-                              <td>{v?.temperature ?? '—'} <span className="text-sm text-base-content/70">°C</span></td>
-                              <td>{v?.height ?? '—'} <span className="text-sm text-base-content/70">cm</span></td>
-                              <td>{v?.weight ?? '—'} <span className="text-sm text-base-content/70">kg</span></td>
-                              <td>{v?.spo2 ?? v?.oxygen ?? '—'} <span className="text-sm text-base-content/70">%</span></td>
-                              <td>{v?.respiratoryRate ?? '—'} <span className="text-sm text-base-content/70">bpm</span></td>
-                            </tr>
-                          )) : (
-                            <tr>
-                              <td colSpan={7}>
-                                <EmptyState title="No history" description="No vitals history found for this patient." />
-                              </td>
-                            </tr>
-                          );
-                        })()}
-                      </tbody>
-                    </table>
+              {selectedAntenatalRecord && (() => {
+                const pregnancyData = selectedAntenatalRecord?.presentPregnancy || selectedAntenatalRecord?.presentPregnancyHistories?.[0] || {};
+                return (
+                <div className="mt-4 p-3 border rounded-lg bg-base-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-base font-semibold">Antenatal details</h3>
+                    <button className="btn btn-xs btn-ghost" onClick={() => setSelectedAntenatalRecord(null)}>Close</button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="font-medium">Booking date</p>
+                      <p>{pregnancyData?.dateOfBooking ? formatNigeriaDate(pregnancyData.dateOfBooking) : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">LMP</p>
+                      <p>{pregnancyData?.LMP || pregnancyData?.lmp ? formatNigeriaDate(pregnancyData.LMP || pregnancyData.lmp) : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">EDD</p>
+                      <p>{pregnancyData?.EDD || pregnancyData?.edd ? formatNigeriaDate(pregnancyData.EDD || pregnancyData.edd) : '—'}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Gestational age</p>
+                      <p>{pregnancyData?.durationOfPregnancyInWeek || pregnancyData?.durationInWeeks ? `${pregnancyData.durationOfPregnancyInWeek || pregnancyData.durationInWeeks} w` : '—'}</p>
+                    </div>
                   </div>
 
-                  {/* Pagination Controls */}
-                  {sortedVitals?.length > vitalsPerPage && (
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="text-sm text-base-content/70">
-                        Showing {Math.min((vitalsPage - 1) * vitalsPerPage + 1, sortedVitals.length)}–{Math.min(vitalsPage * vitalsPerPage, sortedVitals.length)} of {sortedVitals.length}
-                      </div>
-                      <div className="join">
-                        <button
-                          className="join-item btn btn-sm"
-                          disabled={vitalsPage <= 1}
-                          onClick={() => setVitalsPage((p) => Math.max(1, p - 1))}
-                        >
-                          Prev
-                        </button>
-                        <span className="join-item btn btn-sm no-animation">
-                          Page {vitalsPage} / {Math.ceil(sortedVitals.length / vitalsPerPage)}
-                        </span>
-                        <button
-                          className="join-item btn btn-sm"
-                          disabled={vitalsPage >= Math.ceil(sortedVitals.length / vitalsPerPage)}
-                          onClick={() => setVitalsPage((p) => Math.min(Math.ceil(sortedVitals.length / vitalsPerPage), p + 1))}
-                        >
-                          Next
-                        </button>
-                      </div>
+                  {((selectedAntenatalRecord?.antenatalExaminations || selectedAntenatalRecord?.anteNatalExamination || []))?.length > 0 ? (
+                    <div className="mt-3">
+                      <h4 className="font-medium">Antenatal Examinations</h4>
+                      <ul className="list-disc list-inside text-sm">
+                        {(selectedAntenatalRecord?.antenatalExaminations || selectedAntenatalRecord?.anteNatalExamination || []).map((exam, idx) => (
+                          <li key={idx}>
+                            {exam?.Date ? `${formatNigeriaDate(exam.Date)} — ` : ''}{exam?.remark || exam?.fetalHeart || exam?.foetalHeart || exam?.bloodPressure || 'No details'}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
+                  ) : (
+                    <p className="text-sm mt-3 text-base-content/70">No examination entries for this record.</p>
                   )}
                 </div>
-              )}
+                );
+              })()}
             </div>
           </div>
+          )}
 
+
+
+ <VitalsHistoryTable 
+            sortedVitals={enrichedVitals} 
+            loading={loading}
+            // patientName={patient.}
+            onViewAll={() => navigate(`/dashboard/nurse/view-vitals/${patientId}`)}
+          />
+       
           {/* Record Vitals Modal */}
           {isRecordOpen && (
             <div className="modal modal-open">
@@ -1043,31 +943,7 @@ useEffect(() => {
             </div>
           )}
 
-          {/* Send to Pharmacy Modal */}
-          {isSendPharmacyOpen && (
-            <PharmacyActionModal
-              isOpen={isSendPharmacyOpen}
-              onClose={() => setIsSendPharmacyOpen(false)}
-              patientId={patientUUID || patientId}
-              currentStatus={patient?.status || ''}
-              defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
-              itemsCount={0}
-              medicationNames={[]}
-              patientLabel={`${subjectName} (${subjectHospitalId || '—'})`}
-              onUpdated={() => setIsSendPharmacyOpen(false)}
-            />
-          )}
 
-          {/* Send to Cashier Modal */}
-
-            <CashierActionModal
-              isOpen={isSendCashierOpen}
-              onClose={() => setIsSendCashierOpen(false)}
-              patientId={patientId}
-              currentStatus={patient?.status || ''}
-              defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
-              onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-            />
 
 
           <CreateBillModal
@@ -1076,9 +952,7 @@ useEffect(() => {
             patientId={patientId}
             prescriptions={prescriptions}
             investigations={investigations}
-            onSuccess={() => {
-              setIsSendCashierOpen(true);
-            }}
+            onSuccess={() => {}}
           />
 
           <DoctorBillModal

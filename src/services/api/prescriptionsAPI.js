@@ -12,10 +12,20 @@ export const getPrescriptions = async () => {
 
 export const getPrescriptionsForConsultation = async (consultationId) => {
   try {
-    const response = await apiClient.get(`/prescription?consultationId=${consultationId}`)
+    const response = await apiClient.get(`/prescription/consultation/${consultationId}`)
     return response.data ?? []
   } catch (err) {
     console.error('prescriptionsAPI: getPrescriptionsForConsultation error', err)
+    throw err
+  }
+}
+
+export const getPrescriptionsByAntenatalId = async (antenatalId) => {
+  try {
+    const response = await apiClient.get(`/prescription/antenatal/${antenatalId}`)
+    return response.data ?? []
+  } catch (err) {
+    console.error('prescriptionsAPI: getPrescriptionsByAntenatalId error', err)
     throw err
   }
 }
@@ -53,9 +63,12 @@ export const updatePrescription = async (id, updateData) => {
   }
 }
 
-export const createPrescription = async (data, consultationId) => {
+export const createPrescription = async (data, contextId, contextType = 'consultation') => {
   try {
-    const response = await apiClient.post(`/prescription/${consultationId}`, data)
+    const endpoint = contextType === 'antenatal' 
+      ? `/prescription/antenatal/${contextId}`
+      : `/prescription/consultation/${contextId}`
+    const response = await apiClient.post(endpoint, data)
     return response.data ?? {}
   } catch (err) {
     console.error('prescriptionsAPI: createPrescription error', err.response?.data || err.message, err)
@@ -76,6 +89,7 @@ export const deletePrescription = async (id) => {
 export default {
   getPrescriptions,
   getPrescriptionsForConsultation,
+  getPrescriptionsByAntenatalId,
   getPrescriptionById,
   getPrescriptionByPatientId,
   updatePrescription,

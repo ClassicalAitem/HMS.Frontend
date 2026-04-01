@@ -4,7 +4,7 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
-import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
@@ -26,7 +26,7 @@ const SurgeonIncoming = () => {
     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const res = await getAllInvestigationRequests();
+        const res = await getInvestigations();
         const investigations = res?.data || [];
         const sorted = investigations.sort((a, b) => {
           const aTime = new Date(a?.createdAt || 0).getTime();

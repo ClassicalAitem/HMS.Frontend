@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { updateInvestigationRequest } from "@/services/api/investigationRequestAPI";
+import { updateInvestigation } from "@/services/api/investigationRequestAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 
 const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
@@ -29,7 +29,7 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
       });
 
       // Update the investigation request status to "processing"
-      const response = await updateInvestigationRequest(data.id, {
+      const response = await updateInvestigation(data.id, {
         status: "processing",
         processingNote: note,
         estimatedCompletionTime: completionTime,
