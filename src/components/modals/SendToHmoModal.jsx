@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -21,6 +21,106 @@ const billItemSchema = yup.object({
 const billingSchema = yup.object({
   items: yup.array().of(billItemSchema).min(1, 'At least one item is required'),
 });
+
+const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect, error }) => {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const [dropdownStyle, setDropdownStyle] = useState({});
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const selectedService = services.find(s => (s._id || s.id) === value);
+  const displayValue = open
+    ? search
+    : selectedService
+      ? `${selectedService.service || selectedService.name} — ₦${Number(selectedService.amount || selectedService.price || 0).toLocaleString()}`
+      : '';
+
+  const filtered = services.filter(s => {
+    if (!search) return true;
+    const name = (s.service || s.name || '').toLowerCase();
+    const cat = (s.category || '').toLowerCase();
+    return name.includes(search.toLowerCase()) || cat.includes(search.toLowerCase());
+  });
+
+  const openDropdown = () => {
+    if (!inputRef.current) return;
+    const rect = inputRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+    setOpen(true);
+    setSearch('');
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div ref={wrapperRef} className="relative w-full">
+      <input
+        ref={inputRef}
+        type="text"
+        className={`input input-bordered input-sm w-full ${error ? 'input-error' : ''}`}
+        placeholder={loadingServices ? 'Loading services...' : 'Search service...'}
+        value={displayValue}
+        onFocus={openDropdown}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          if (!open) openDropdown();
+        }}
+        disabled={loadingServices}
+        autoComplete="off"
+        readOnly={!open}
+      />
+
+      {open && (
+        <div style={dropdownStyle} className="bg-white border border-gray-200 rounded-md shadow-xl max-h-60 overflow-auto">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-2 text-gray-400 text-sm">No matches found</div>
+          ) : (
+            <ul className="py-1">
+              {filtered.map(s => {
+                const id = s._id || s.id;
+                const name = s.service || s.name || 'Unknown';
+                const cat = s.category || 'N/A';
+                const price = Number(s.amount || s.price || 0);
+                return (
+                  <li
+                    key={id}
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700 flex justify-between items-center"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onSelect(id, s);
+                      setOpen(false);
+                      setSearch('');
+                    }}
+                  >
+                    <span className="font-medium">{name}</span>
+                    <span className="text-gray-400 text-xs ml-2">{cat} · ₦{price.toLocaleString()}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const SendToHmoModal = ({
   isOpen,
@@ -77,6 +177,7 @@ const SendToHmoModal = ({
   }, [isOpen]);
 
   // Pre-fill default items when modal opens
+
   useEffect(() => {
     if (!isOpen) return;
     if (defaultItems && defaultItems.length > 0) {
@@ -95,23 +196,20 @@ const SendToHmoModal = ({
         items: [{ serviceChargeId: null, code: '', description: '', quantity: 1, price: 0 }]
       });
     }
-  }, [isOpen]);
+  }, [isOpen, defaultItems, reset]);
 
   const items = watch('items');
   const grandTotal = items?.reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.price) || 0);
   }, 0) || 0;
 
-  const handleServiceChange = (index, e) => {
-    const selectedId = e.target.value;
-    if (!selectedId) return;
-    const service = services.find(s => (s._id || s.id) === selectedId || String(s._id || s.id) === String(selectedId));
-    if (service) {
-      setValue(`items.${index}.code`, service.category || service.code || 'SVC');
-      setValue(`items.${index}.description`, service.service || service.name || '');
-      setValue(`items.${index}.price`, Number(service.amount || service.price || 0));
-      setValue(`items.${index}.quantity`, 1);
-    }
+  const handleServiceSelect = (index, serviceId, service) => {
+    if (!service) return;
+    setValue(`items.${index}.serviceChargeId`, serviceId);
+    setValue(`items.${index}.code`, service.category || service.code || 'SVC');
+    setValue(`items.${index}.description`, service.service || service.name || '');
+    setValue(`items.${index}.price`, Number(service.amount || service.price || 0));
+    setValue(`items.${index}.quantity`, 1);
   };
 
   const onSubmit = async (data) => {
@@ -180,20 +278,6 @@ const SendToHmoModal = ({
           </button>
         </div>
 
-        {/* Consultation Summary */}
-        {/* <div className="px-6 pt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: 'Patient', value: patientName },
-            { label: 'Doctor', value: `Dr. ${doctorName}` },
-            { label: 'Visit Reason', value: visitReason },
-            { label: 'Diagnosis', value: diagnosis },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-base-200/40 rounded-lg p-3">
-              <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">{label}</p>
-              <p className="text-sm font-medium text-base-content truncate">{value || '—'}</p>
-            </div>
-          ))}
-        </div> */}
 
         {/* Form Body */}
         <div className="p-6 overflow-y-auto flex-1">
@@ -222,26 +306,14 @@ const SendToHmoModal = ({
                           {items[index]?.isAuto ? (
                             <div className="text-sm font-medium pt-1">{items[index]?.description}</div>
                           ) : (
-                            <select
-                              className="select select-bordered select-sm w-full"
+                            <ServiceSearchInput
+                              index={index}
+                              services={services}
+                              loadingServices={loadingServices}
                               value={items[index]?.serviceChargeId || ''}
-                              {...register(`items.${index}.serviceChargeId`)}
-                              onChange={(e) => {
-                                register(`items.${index}.serviceChargeId`).onChange(e);
-                                handleServiceChange(index, e);
-                              }}
-                              disabled={loadingServices}
-                            >
-                              <option value="">{loadingServices ? 'Loading...' : 'Select Service...'}</option>
-                              {services.map(s => {
-                                const id = s._id || s.id;
-                                return (
-                                  <option key={id} value={id}>
-                                    {s.service || s.name} ({s.category || 'N/A'}) - ₦{Number(s.amount || 0).toLocaleString()}
-                                  </option>
-                                );
-                              })}
-                            </select>
+                              onSelect={(serviceId, service) => handleServiceSelect(index, serviceId, service)}
+                              error={errors.items?.[index]?.serviceChargeId}
+                            />
                           )}
                         </td>
                         <td><input type="text" readOnly className="input input-bordered input-sm w-full bg-base-200/50" {...register(`items.${index}.code`)} /></td>

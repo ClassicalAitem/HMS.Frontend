@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 
-const PrescriptionHistoryTable = ({ rows, loading = false }) => {
+const PrescriptionHistoryTable = ({ rows, loading = false, onViewAll }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -17,6 +17,12 @@ const PrescriptionHistoryTable = ({ rows, loading = false }) => {
       <div className="p-4 card-body">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold text-base-content">Prescription History</h2>
+            <button 
+            className="btn btn-outline btn-sm"
+            onClick={onViewAll}
+          >
+            View All
+          </button>
         </div>
         {loading ? (
           <div className="space-y-3">

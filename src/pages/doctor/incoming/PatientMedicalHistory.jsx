@@ -21,9 +21,9 @@ import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHistoryTable";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import { FaUserMd } from "react-icons/fa";
-import SendToNurseModal from "./modals/SendToNurseModal";
-import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { SendToHmoModal } from "@/components/modals";
+import SendPatientModal from "@/components/modals/SendPatientModal";
+import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 
@@ -54,7 +54,6 @@ const [latest, setLatest] = useState(null);
   const [labRequests, setLabRequests] = useState([]);
   const [labInvestigations, setLabInvestigations] = useState([]);
   const [investigationsLoading, setInvestigationsLoading] = useState(false);
-  const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
   const [isSendToHmoModalOpen, setIsSendToHmoModalOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [billDefaults, setBillDefaults] = useState([]);
@@ -320,7 +319,7 @@ useEffect(() => {
         }
         if (mounted) setLabInvestigations(list);
       } catch (err) {
-        toast .error("Failed to load lab investigations");
+        // toast .error("Failed to load lab investigations");
       } finally {
         if (mounted) setInvestigationsLoading(false);
       }
@@ -435,18 +434,17 @@ const isEligibleForAntenatal = useMemo(() => {
     return now - itemTime < hours48Ms;
   };
 
-  // Filter investigations to last 48 hours and exclude completed ones
+  // Filter investigations — NO time restriction (investigations need full history)
   const investigations48h = useMemo(() => 
   Array.isArray(labInvestigations)
     ? labInvestigations.filter(inv => {
-        const withinTime = isWithin48Hours(inv?.createdAt);
         const status = (inv?.status || '').toLowerCase();
-
+        // Show all statuses: requested, in_progress, completed
         const isValid =
           status === 'requested' ||
-          status === 'in_progress';
-
-        return withinTime && isValid;
+          status === 'in_progress' ||
+          status === 'completed';
+        return isValid;
       })
     : [],
   [labInvestigations]
@@ -473,6 +471,37 @@ const isEligibleForAntenatal = useMemo(() => {
     forName
   };
 });
+
+ 
+  const enrichedVitals = useMemo(() =>
+    Array.isArray(sortedVitals)
+      ? sortedVitals.map(vital => {
+          const isDependant = !!vital.dependantId;
+
+          const dependant = isDependant
+            ? dependants.find(
+                d => d.id === vital.dependantId || d._id === vital.dependantId
+              )
+            : null;
+
+          const forName = isDependant
+            ? dependant
+              ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+              : 'Dependant'
+            : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+
+          return {
+            ...vital,
+            isForDependant: isDependant,
+            forName
+          };
+        })
+      : [],
+    [sortedVitals, dependants, patient]
+  );
+
+  // Get the enriched latest vital
+  const enrichedLatest = useMemo(() => enrichedVitals[0] || latest, [enrichedVitals, latest]);
 
   // Filter lab results to last 48 hours
   const labResults48h = useMemo(() => 
@@ -525,7 +554,7 @@ const prescriptions48h = useMemo(() =>
 
           <PatientSummaryCard patient={patient} loading={loading} />
 
-          <CurrentVitalsCard patient={patient} latest={latest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+          <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
 
           {/* Antenatal Records Section */}
@@ -707,13 +736,20 @@ const prescriptions48h = useMemo(() =>
               };
             }) : []
           ), [prescriptions, inventoryData, dependants, patientName])}
+            onViewAll={() => navigate(`/dashboard/doctor/view-prescriptions/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
           />
 
           <LabInvestigationRequestTable 
             investigations={enrichedInvestigations}
             loading={investigationsLoading}
+            onViewAll={() => navigate(`/dashboard/doctor/view-investigations/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
           />
-          <VitalsHistoryTable sortedVitals={sortedVitals} loading={loading} />
+          <VitalsHistoryTable 
+            sortedVitals={enrichedVitals} 
+            loading={loading}
+            patientName={patientName}
+            onViewAll={() => navigate(`/dashboard/doctor/view-vitals/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
+          />
 
 
       
@@ -733,13 +769,22 @@ const prescriptions48h = useMemo(() =>
                     <div className="text-sm text-base-content/70">No lab results</div>
                   )}
                 </div>
-                <button
-                  className="btn btn-outline btn-sm"
-                  disabled={!latestLab}
-                  onClick={() => latestLab && navigate(`/dashboard/doctor/labResults/${latestLab?._id || latestLab?.id}`)}
-                >
-                  View Lab Result
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={!latestLab}
+                    onClick={() => latestLab && navigate(`/dashboard/doctor/labResults/${latestLab?._id || latestLab?.id}`)}
+                  >
+                    View Lab Result
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={!labResults || labResults.length === 0}
+                    onClick={() => navigate(`/dashboard/doctor/view-lab-results/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
+                  >
+                    View All
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -795,20 +840,14 @@ const prescriptions48h = useMemo(() =>
             </div>
      
             <div>
-              <button 
-                className="text-primary text-lg font-semibold hover:underline"
-                onClick={() => {
-                  if (!consultation) {
-                    alert('Please wait for consultation data to load or select a consultation');
-                    return;
-                  }
-                  setIsSendToNurseModalOpen(true);
-                }}
-                disabled={isNavigating || !consultation}
-              >
-                 Send to Nurse
-              </button>
-              <div className="text-xs text-base-content/70">(assign nursing tasks)</div>
+              <SendPatientModal
+                patientId={patientId}
+                onUpdated={() => navigate('/dashboard/doctor/incoming')}
+                buttonLabel="Send to "
+                buttonClass="text-primary text-lg font-semibold hover:underline"
+                allowedRoles={['nurse', 'labtechnician', 'pharmacist']}
+              />
+              <div className="text-xs text-base-content/70">(sending to other roles)</div>
             </div>
 
             <div>
@@ -849,30 +888,7 @@ const prescriptions48h = useMemo(() =>
             </div>
           </div>
 
-                 <SendToNurseModal
-        isOpen={isSendToNurseModalOpen}
-        onClose={() => setIsSendToNurseModalOpen(false)}
-        consultation={consultation}
-        patient={patient}
-        prescriptions={prescriptions48h}
-        labRequests={investigations48h}
-        additionalNotes={additionalNotes}
-        patientName={patientName}
-        doctorName={doctorName}
-        consultationDate={consultationDate}
-        complaints={complaints}
-        medicalHistory={medicalHistory}
-        surgicalHistory={surgicalHistory}
-        familyHistory={familyHistory}
-        socialHistory={socialHistory}
-        allergyHistory={allergyHistory}
-        notes={notes}
-        visitReason={visitReason}
-        diagnosis={diagnosis}
-        patientId={patientId}
-        consultationId={consultation?._id || consultation?.id}
-        onSentSuccessfully={() => navigate('/dashboard/doctor/incoming')}
-       />
+
 
      <SendToHmoModal
   isOpen={isSendToHmoModalOpen}
