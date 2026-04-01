@@ -1,89 +1,98 @@
-import apiClient from './apiClient';
+import apiClient from './apiClient'
 
-// Investigation Request API service
-// Backend routes reference: see investigationRequest.controller.js
-
-/**
- * Create a new investigation request for a consultation
- * POST /investigation/:consultationId
- * @param {string} consultationId
- * @param {object} payload
- */
-export const createInvestigationRequest = async (consultationId, payload) => {
-  if (!consultationId) throw new Error('Consultation ID is required');
-  const url = `/investigation/${consultationId}`;
-  const response = await apiClient.post(url, payload);
-  return response.data;
-};
-
-/**
- * Get all investigation requests
- * GET /investigation
- * @param {object} params (optional)
- */
-export const getAllInvestigationRequests = async (params = {}) => {
-  const url = '/investigation';
-  const response = await apiClient.get(url, { params });
-  console.log(response)
-  return response.data;
-};
-
-/**
- * Get investigation request by ID
- * GET /investigation/:id
- * @param {string} id
- */
-export const getInvestigationRequestById = async (id) => {
-  if (!id) throw new Error('Investigation Request ID is required');
-  const url = `/investigation/${id}`;
-  const response = await apiClient.get(url);
-  return response.data;
-};
-
-/**
- * Get investigation requests by patient ID
- * GET /investigation/getInvestigationRequestByPatientId/:id
- * @param {string} patientId
- */
-export const getInvestigationRequestByPatientId = async (patientId) => {
-  if (!patientId) throw new Error('Patient ID is required');
+export const getInvestigations = async () => {
   try {
-    const url = `/investigation/getInvestigationRequestByPatientId/${patientId}`;
-    const response = await apiClient.get(url);
-    return response.data;
-  } catch (error) {
+    const response = await apiClient.get('/investigation')
+    return response.data ?? []
+  } catch (err) {
+    console.error('investigationsAPI: getInvestigations error', err)
+    throw err
+  }
+}
+
+export const getInvestigationsForConsultation = async (consultationId) => {
+  try {
+    const response = await apiClient.get(`/investigation/consultation/${consultationId}`)
+    return response.data ?? []
+  } catch (err) {
+    console.error('investigationsAPI: getInvestigationsForConsultation error', err)
+    throw err
+  }
+}
+
+export const getInvestigationsByAntenatalId = async (antenatalId) => {
+  try {
+    const response = await apiClient.get(`/investigation/antenatal/${antenatalId}`)
+    return response.data ?? []
+  } catch (err) {
+    console.error('investigationsAPI: getInvestigationsByAntenatalId error', err)
+    throw err
+  }
+}
+
+export const getInvestigationById = async (id) => {
+  try {
+    const response = await apiClient.get(`/investigation/${id}`)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('investigationsAPI: getInvestigationById error', err)
+    throw err
+  }
+}
+
+export const getInvestigationByPatientId = async (patientId) => {
+  try {
+    const response = await apiClient.get(`/investigation/getInvestigationByPatientId/${patientId}`)
+    return response.data ?? []
+  } catch (err) {
     // Suppress 404 errors (patient has no investigations)
-    if (error?.response?.status !== 404) {
-      console.error('investigationRequestAPI: getInvestigationRequestByPatientId error', error);
+    if (err?.response?.status !== 404) {
+      console.error('investigationsAPI: getInvestigationByPatientId error', err)
     }
-    throw error;
+    throw err
   }
-};
+}
 
-/**
- * Update an investigation request
- * PATCH /investigation/:id
- * @param {string} id
- * @param {object} payload
- */
-export const updateInvestigationRequest = async (id, payload) => {
-  if (!id) throw new Error('Investigation Request ID is required');
-  const url = `/investigation/${id}`;
-  console.log('Updating investigation request:', { id, url, payload });
+export const updateInvestigation = async (id, updateData) => {
   try {
-    const response = await apiClient.patch(url, payload);
-    console.log('Investigation request updated successfully:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Failed to update investigation request:', error.response?.data || error.message);
-    throw error;
+    const response = await apiClient.patch(`/investigation/${id}`, updateData)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('investigationsAPI: updateInvestigation error', err)
+    throw err
   }
-};
+}
+
+export const createInvestigation = async (data, contextId, contextType = 'consultation') => {
+  try {
+    const endpoint = contextType === 'antenatal' 
+      ? `/investigation/antenatal/${contextId}`
+      : `/investigation/consultation/${contextId}`
+    const response = await apiClient.post(endpoint, data)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('investigationsAPI: createInvestigation error', err.response?.data || err.message, err)
+    throw err
+  }
+}
+
+export const deleteInvestigation = async (id) => {
+  try {
+    const response = await apiClient.delete(`/investigation/${id}`)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('investigationsAPI: deleteInvestigation error', err)
+    throw err
+  }
+}
 
 export default {
-  createInvestigationRequest,
-  getAllInvestigationRequests,
-  getInvestigationRequestById,
-  getInvestigationRequestByPatientId,
-  updateInvestigationRequest,
-};
+  getInvestigations,
+  getInvestigationsForConsultation,
+  getInvestigationsByAntenatalId,
+  getInvestigationById,
+  getInvestigationByPatientId,
+  updateInvestigation,
+  createInvestigation,
+  deleteInvestigation
+}

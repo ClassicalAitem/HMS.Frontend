@@ -21,12 +21,24 @@ const formatRelativeTime = (dateInput) => {
 
 const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidden = false }) => {
   return (
-    <div className="shadow-xl card bg-base-100 mb-4">
+    <div className="shadow-xl card bg-base-100 mb-2">
       <div className="p-4 card-body">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex justify-between items-center mb-1">
           <div>
-            <h2 className="text-xl font-semibold text-base-content">Current Vitals - {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}</h2>
-            <div className="flex items-center gap-2 text-sm text-base-content/70">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-base-content">Current Vitals</h2>
+              <span
+                className={`badge ${
+                  latest?.isForDependant ? 'badge-secondary' : 'badge-primary'
+                }`}
+              >
+                {latest?.isForDependant ? 'Dependant' : 'Patient'}
+              </span>
+            </div>
+            <div>
+              <span className="text-base font-medium text-base-content">{latest?.forName || patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-base-content/70 mt-1">
               {patient?.ward || patient?.bed ? (
                 <span>
                   {patient?.ward ? `Ward ${patient.ward}` : ""}
@@ -44,16 +56,16 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="skeleton h-20 w-full" />
             ))}
           </div>
         ) : latest ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
    {/* Heart Rate / Pulse */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <FiHeart className="w-5 h-5" />
     <span>Heart Rate</span>
@@ -65,7 +77,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Blood Pressure */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <TbHeartbeat className="w-5 h-5" />
     <span>Blood Pressure</span>
@@ -77,7 +89,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Oxygen */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <LuDroplet className="w-5 h-5" />
     <span>Oxygen</span>
@@ -89,7 +101,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Temperature */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <LuThermometer className="w-5 h-5" />
     <span>Temperature</span>
@@ -101,7 +113,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Weight */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <GiWeightLiftingUp className="w-5 h-5" />
     <span>Weight</span>
@@ -113,7 +125,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Height */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <GiBodyHeight className="w-5 h-5" />
     <span>Height</span>
@@ -125,7 +137,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Respiratory Rate */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <LuActivity className="w-5 h-5" />
     <span>Respiratory Rate</span>
@@ -137,7 +149,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
 </div>
 
 {/* Last Updated */}
-<div className="rounded-xl border border-base-300 p-3">
+<div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
     <FiClock className="w-5 h-5" />
     <span>Last Updated</span>

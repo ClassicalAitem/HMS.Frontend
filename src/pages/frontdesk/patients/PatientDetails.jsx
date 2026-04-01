@@ -4,6 +4,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
+import SendToHmoModal from '@/components/modals/SendToHmoModal';
+import PharmacyActionModal from '@/components/modals/PharmacyActionModal';
+import LabActionModal from '@/components/modals/labActionModal';
+import DoctorActionModal from '@/components/modals/doctorActionModal';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -17,6 +21,7 @@ import AdditionalInfoCard from '@/components/frontdesk/patients/AdditionalInfoCa
 import HmoDependantsSection from '@/components/frontdesk/patients/HmoDependantsSection';
 import AdditionalInformationCard from '@/components/frontdesk/patients/AdditionalInformationCard';
 import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
+import SendPatientModal from '@/components/modals/SendPatientModal';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -32,6 +37,10 @@ const PatientDetails = () => {
   const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
   const [isSendToCashierOpen, setIsSendToCashierOpen] = useState(false);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
+  const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false);
+  const [isSendToPharmacyOpen, setIsSendToPharmacyOpen] = useState(false);
+  const [isSendToLabOpen, setIsSendToLabOpen] = useState(false);
+  const [isSendToDoctorOpen, setIsSendToDoctorOpen] = useState(false);
 
   // Fetch patient data from backend
   useEffect(() => {
@@ -166,10 +175,17 @@ const PatientDetails = () => {
             {/* Additional Information */}
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
+          <SendPatientModal
+          patientId={patient?.id || patientId}
+          onUpdated={() => navigate('/dashboard/hmo/incoming')}
+          buttonLabel="Send to Department"
+          buttonClass="btn btn-primary text-white"
+          allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician']}
+        />
           {/* Action Buttons */}
           <ActionButtons
             onSendToCashier={() => setIsCreateBillOpen(true)}
-            onSendToNurse={() => setIsSendToNurseOpen(true)}
+            onSendToHmo={() => setIsSendToHmoOpen(true)}
           />
         </div>
       </div>
@@ -226,15 +242,17 @@ const PatientDetails = () => {
         }}
       />
 
+
+        
       {/* Send to Nurse Modal */}
-      <NurseActionModal
+      {/* <NurseActionModal
         isOpen={isSendToNurseOpen}
         onClose={() => setIsSendToNurseOpen(false)}
         patientId={patient?.id || patientId}
         currentStatus={patient?.status || ''}
         defaultAction={PATIENT_STATUS.AWAITING_VITALS}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-      />
+      /> */}
 
       {/* Send to Cashier Modal (Status Update) - Triggered AFTER Bill Creation */}
       <CashierActionModal
@@ -257,6 +275,56 @@ const PatientDetails = () => {
         }}
         // defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
+
+      {/* Send to HMO Modal */}
+      <SendToHmoModal
+        isOpen={isSendToHmoOpen}
+        onClose={() => setIsSendToHmoOpen(false)}
+        patientId={patient?.id || patientId}
+        patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()}
+        doctorName="Doctor"
+        consultationDate={new Date().toLocaleDateString()}
+        visitReason=""
+        diagnosis=""
+        defaultItems={[]}
+        onSentSuccessfully={() => {
+          setIsSendToHmoOpen(false);
+          patientId && dispatch(fetchPatientById(patientId));
+        }}
+      />
+
+      {/* Send to Pharmacy Modal */}
+      {/* <PharmacyActionModal
+        isOpen={isSendToPharmacyOpen}
+        onClose={() => setIsSendToPharmacyOpen(false)}
+        patientId={patient?.id || patientId}
+        currentStatus={patient?.status || ''}
+        defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
+        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+        itemsCount={0}
+        medicationNames={[]}
+        patientLabel={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()}
+      /> */}
+
+      {/* Send to Lab Modal */}
+      {/* <LabActionModal
+        isOpen={isSendToLabOpen}
+        onClose={() => setIsSendToLabOpen(false)}
+        patientId={patient?.id || patientId}
+        currentStatus={patient?.status || ''}
+        defaultAction={{ status: PATIENT_STATUS.AWAITING_LAB }}
+        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+      /> */}
+
+      {/* Send to Doctor Modal */}
+      {/* <DoctorActionModal
+        isOpen={isSendToDoctorOpen}
+        onClose={() => setIsSendToDoctorOpen(false)}
+        patientId={patient?.id || patientId}
+        currentStatus={patient?.status || ''}
+        defaultAction={PATIENT_STATUS.AWAITING_CONSULTATION}
+        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
+      /> */}
     </div>
   );
 };

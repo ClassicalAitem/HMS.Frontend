@@ -9,6 +9,7 @@ import { hasStatus } from '@/utils/statusUtils'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
+import SendPatientModal from '@/components/modals/SendPatientModal'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -282,9 +283,19 @@ useEffect(() => {
               {patient?.firstName} {patient?.lastName}
             </p>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => navigate(-1)}>
+          <button className="btn btn-primary btn-sm" onClick={() => navigate(-1)}>
             Back
           </button>
+          <div>
+
+           <SendPatientModal
+                patientId={patient?.id || patientId}
+                onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
+                buttonLabel="Send to Department"
+                buttonClass="btn btn-warning text-white"
+                allowedRoles={['nurse', 'doctor', 'cashier', 'labtechnician', 'hmo']}
+                />
+                </div>
         </div>
 
         <div className="p-6 border rounded-xl bg-base-100">
@@ -390,11 +401,13 @@ useEffect(() => {
                   >
                     Complete & Send to Nurse
                   </button>
+
                 </div>
               )}
 
               {/* HISTORY */}
               <h3 className="font-medium mt-6 mb-3">History</h3>
+               
               {renderMedications(prescriptions.history, true)}
             </>
           )}
