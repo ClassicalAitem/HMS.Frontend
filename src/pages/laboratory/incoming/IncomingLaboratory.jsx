@@ -4,7 +4,7 @@ import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
 import TestRequestModal from "./modals/TestRequestModal";
-import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById, getPatients } from "@/services/api/patientsAPI";
 import { hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
@@ -38,7 +38,7 @@ const IncomingLaboratory = () => {
 
       // Step 2: Fetch all investigation requests
       console.log("📥 Fetching investigation requests...");
-      const investigationsResponse = await getAllInvestigationRequests();
+      const investigationsResponse = await getInvestigations();
       const allInvestigations = Array.isArray(investigationsResponse) 
         ? investigationsResponse 
         : (investigationsResponse?.data || []);

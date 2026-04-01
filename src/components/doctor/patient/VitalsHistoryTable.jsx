@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
-const VitalsHistoryTable = ({ sortedVitals, loading }) => {
+const VitalsHistoryTable = ({ sortedVitals, loading, onViewAll, patientName = "Patient" }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -17,9 +17,19 @@ const VitalsHistoryTable = ({ sortedVitals, loading }) => {
   return (
     <div className="shadow-xl card bg-base-100 mb-4">
       <div className="p-4 card-body">
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-semibold text-base-content">Vitals History</h2>
-          <div className="text-sm text-base-content/70">Showing {paginationData.totalItems} readings</div>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-base-content">Vitals History</h2>
+            <p className="text-base-content/70 text-sm mt-1">For: <span className="font-medium text-base-content">{patientName}</span></p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-base-content/70">Showing {paginationData.totalItems} readings</div>
+            {onViewAll && (
+              <button className="btn btn-outline btn-sm" onClick={onViewAll}>
+                View All
+              </button>
+            )}
+          </div>
         </div>
         {loading ? (
           <div className="space-y-2">
@@ -33,31 +43,46 @@ const VitalsHistoryTable = ({ sortedVitals, loading }) => {
               <table className="table w-full">
                 <thead>
                   <tr>
+                    <th>Type</th>
                     <th>Time</th>
-                    <th>Blood Pressure</th>
+                    <th>B.P</th>
                     <th>Heart Rate</th>
                     <th>Temperature</th>
                     <th>Weight</th>
                     <th>Height</th>
-                    <th>O2 Saturation</th>
+                    {/* <th>O2 Saturation</th> */}
                     <th>Respiratory Rate</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginationData.paginatedItems?.length ? paginationData.paginatedItems.map((v, i) => (
                     <tr key={i} className="hover">
+                       <td className="py-3">
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="font-medium text-base-content">
+                                  {v?.forName}
+                                </span>
+                                <span
+                                  className={`badge badge-sm ${
+                                    v?.isForDependant ? 'badge-secondary' : 'badge-primary'
+                                  }`}
+                                >
+                                  {v?.isForDependant ? 'Dependant' : 'Patient'}
+                                </span>
+                              </div>
+                            </td>
                       <td>{v?.createdAt ? formatNigeriaTime(v.createdAt) : "—"}</td>
                       <td>{v?.bp ?? "—"} <span className="text-sm text-base-content/70">mnHg</span></td>
                       <td>{v?.pulse ?? "—"} <span className="text-sm text-base-content/70">bpm</span></td>
                       <td>{v?.temperature ?? "—"} <span className="text-sm text-base-content/70">°F</span></td>
                       <td>{v?.weight ?? "—"} <span className="text-sm text-base-content/70">kg</span></td>
                       <td>{v?.height ?? "—"} <span className="text-sm text-base-content/70">cm</span></td>
-                      <td>{v?.spo2 ?? v?.oxygen ?? "—"} <span className="text-sm text-base-content/70">%</span></td>
+                      {/* <td>{v?.spo2 ?? v?.oxygen ?? "—"} <span className="text-sm text-base-content/70">%</span></td> */}
                       <td>{v?.respiratoryRate ?? "—"} <span className="text-sm text-base-content/70">bpm</span></td>
                     </tr>
                   )) : (
                     <tr>
-                      <td colSpan={8} className="text-center text-base-content/70 py-6">No vitals history found</td>
+                      <td colSpan={9} className="text-center text-base-content/70 py-6">No vitals history found</td>
                     </tr>
                   )}
                 </tbody>

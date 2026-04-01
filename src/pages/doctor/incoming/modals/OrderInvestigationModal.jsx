@@ -23,7 +23,9 @@ const OrderInvestigationModal = ({
   dependantId,
   consultationId,
   investigation, // <-- NEW (edit mode)
-  onOrderCreated
+  onOrderCreated,
+  sourceId, // new prop
+  sourceType // new prop
 }) => {
 
   const isEdit = !!investigation;
@@ -123,9 +125,11 @@ const OrderInvestigationModal = ({
 
     try {
 
+      const finalSourceId = sourceId || consultationId;
+      const finalSourceType = sourceType || (finalSourceId?.length === 24 ? 'antenatal' : 'consultation');
+
       const payload = {
-        patientId,
-        dependantId,
+        ...(dependantId ? { dependantId } : { patientId }),
         type: "lab",
         tests: data.tests,
         priority: data.priority,
@@ -138,11 +142,11 @@ const OrderInvestigationModal = ({
         toast.success("Investigation updated successfully");
 
       } else {
-
-        await createInvestigation(consultationId, payload);
+        await createInvestigation(finalSourceId, payload, finalSourceType);
         toast.success("Investigation order created successfully");
+      }  
+    
 
-      }
 
       reset();
 
