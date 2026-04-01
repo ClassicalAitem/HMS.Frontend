@@ -6,15 +6,15 @@ import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getPrescriptionsByAntenatalId } from "@/services/api/prescriptionsAPI";
-import { deletePrescription } from "@/services/api/prescriptionsAPI";
-import { deleteInvestigation } from "@/services/api/investigationAPI";
+import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
+import { deletePrescription, updatePrescription } from "@/services/api/prescriptionsAPI";
+import { deleteInvestigation, updateInvestigation } from "@/services/api/investigationAPI";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import OrderInvestigationModal from "./modals/OrderInvestigationModal";
-import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
 
 const AntenatalRecordDetails = () => {
-  const { patientId, antenatalId } = useParams();
+  const { patientId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -207,8 +207,8 @@ const handleDeleteLab = async (labId) => {
 
 const handleEditPrescription = (prescription) => {
   setEditingPrescription(prescription);
-  navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${antenatalId}/prescription`, {
-    state: { prescription, antenatalId: antenatalId }
+  navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord._id}/prescription`, {
+    state: { prescription, antenatalId: selectedRecord._id }
   });
 };
 
@@ -300,50 +300,6 @@ const handleOrderCreated = () => {
               </button>
             </div>
           </div>
-
-           {/* Summary cards (doctor pattern) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                          <div className="card bg-base-100 shadow-sm">
-                            <div className="card-body p-4">
-                              <h3 className="card-title text-lg font-semibold">Summary</h3>
-                              <div className="text-sm mt-2">
-                                <p>Total records: <span className="font-semibold">{antenatalRecords.length}</span></p>
-                                <p>
-                                  Total examinations: <span className="font-semibold">{antenatalRecords.reduce((sum, r) => sum + ((r.antenatalExaminations || r.anteNatalExamination || []).length || 0), 0)}</span>
-                                </p>
-                                <div className="mt-2">
-                                  <span className="text-xs text-base-content/70">Latest remarks:</span>
-                                  <div className="mt-1 text-xs text-base-content/80 bg-base-100/50 p-2 rounded max-h-20 overflow-y-auto">
-                                    {(() => {
-                                      const latest = [...antenatalRecords].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-                                      const latestExam = (latest ? (latest.anteNatalExamination || latest.antenatalExaminations || []) : []).sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
-                                      return latestExam?.remark || "No remarks";
-                                    })()}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-          
-                          <div className="card bg-base-100 shadow-sm">
-                            <div className="card-body p-4">
-                              <h3 className="card-title text-lg font-semibold">Latest Pregnancy</h3>
-                              {(() => {
-                                const latest = [...antenatalRecords].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-                                const present = latest ? (latest.presentPregnancy || latest.presentPregnancyHistories?.[0] || {}) : {};
-                                return latest ? (
-                                  <div className="mt-2 text-sm">
-                                    <div className="flex justify-between mb-1"><span className="text-base-content/70">EDD:</span><span className="font-medium">{(present.EDD || present.edd) ? formatNigeriaDate(present.EDD || present.edd) : '—'}</span></div>
-                                    <div className="flex justify-between mb-1"><span className="text-base-content/70">LMP:</span><span className="font-medium">{(present.LMP || present.lmp) ? formatNigeriaDate(present.LMP || present.lmp) : '—'}</span></div>
-                                    <div className="flex justify-between"><span className="text-base-content/70">Gestational age:</span><span className="font-medium">{(present.durationOfPregnancyInWeek || present.durationInWeeks) ? `${present.durationOfPregnancyInWeek || present.durationInWeeks} w` : '—'}</span></div>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-base-content/70">No pregnancy summary available</p>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        </div>
 
           {antenatalRecords.length > 0 ? (
             <div className="space-y-6">
@@ -877,6 +833,22 @@ const handleOrderCreated = () => {
                             </div>
                           )}
                         </div>
+
+                        {/* Additional Notes for Nurse */}
+                        <div>
+                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-warning"></span>
+                            Additional Notes for Nurse
+                          </h4>
+                          <textarea
+                            className="textarea textarea-bordered w-full"
+                            placeholder="Enter any additional instructions or notes for the nurse..."
+                            rows={3}
+                            value=""
+                            onChange={() => {}}
+                          />
+                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -911,11 +883,10 @@ const handleOrderCreated = () => {
           setEditingLab(null);
         }}
         patientId={patientId}
+        consultationId={selectedRecord?._id || selectedRecord?.id}
         dependantId={selectedRecord?.dependantId || selectedRecord?.dependant?._id || selectedRecord?.dependant?.id}
         investigation={editingLab}
         onOrderCreated={handleOrderCreated}
-        sourceId={selectedRecord?._id || selectedRecord?.id}
-        sourceType="antenatal"
       />
     </div>
   );
