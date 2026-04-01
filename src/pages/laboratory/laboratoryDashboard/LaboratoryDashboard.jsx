@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { getLabResults } from "@/services/api/labResultsAPI";
-import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
@@ -21,7 +21,7 @@ const LaboratoryDashboard = () => {
         setLoading(true);
         const [labResults, investigations] = await Promise.all([
           getLabResults(),
-          getAllInvestigationRequests(),
+          getInvestigations(),
         ]);
 
         // Ensure data is array

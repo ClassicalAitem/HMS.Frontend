@@ -7,7 +7,7 @@ import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
 import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const Incoming = () => {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ const normalizeStatus = (status) => {
         });
 
        const prettifyStatus = (s) => {
-          const status = normalizeStatus(s); // <-- ensure it's a string
+          const status = normalizeStatus(s); 
           switch ((status || '').toLowerCase()) {
             case 'awaiting_vitals': return 'Awaiting Vitals';
             case 'awaiting_sampling': return 'Awaiting Sampling';
@@ -80,9 +80,7 @@ const normalizeStatus = (status) => {
           patientId: p?.hospitalId || p?.id || '—',
           illness: prettyStatus,
           insurance: p?.hmos?.provider || '—',
-          registered: p?.createdAt
-            ? formatNigeriaTime(p.createdAt)
-            : '—',
+          updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
           alert: prettyStatus,
           status: latestStatus.toLowerCase(), // <-- safe string now
         };
@@ -144,8 +142,8 @@ const normalizeStatus = (status) => {
               </div>
             </div>
             {/* Minimal search */}
-            <div className="mt-4 flex items-center gap-2">
-              <div className="relative w-full max-w-xs">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="relative w-full max-w-sm">
                 <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
                 <input
                   value={query}
@@ -157,35 +155,54 @@ const normalizeStatus = (status) => {
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="btn btn-ghost btn-xs"
+                  className="btn btn-ghost btn-sm"
                 >
                   Clear
                 </button>
               )}
+              <button onClick={onRefresh} className="btn btn-outline btn-sm ml-auto">
+                Refresh
+              </button>
             </div>
-            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 rounded-md">
+            <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+              
+              {/* Column Headers */}
+              {!loading && items.length > 0 && (
+                <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
+                  <div className="col-span-3">Patient</div>
+                  <div className="col-span-2">Patient ID</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Updated</div>
+                  <div className="col-span-1 text-right">Action</div>
+                </div>
+              )}
+                
+              {/* Rows */}
+              <div className="divide-y divide-base-200">
               {loading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <div key={idx} className="h-[216px] card bg-base-100 border border-base-300 shadow-sm">
-                    <div className="flex gap-6 items-center p-5">
-                      <div className="w-[52px] h-[52px] rounded-full bg-base-300 animate-pulse" />
-                      <div className="flex-1 grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="animate-pulse h-3 w-40 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="animate-pulse h-3 w-36 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                        </div>
-                      </div>
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-12 gap-2 px-5 py-4 items-center"
+                  >
+                    <div className="col-span-3 space-y-2">
+                      <div className="skeleton h-4 w-36 rounded" />
+                      <div className="skeleton h-3 w-20 rounded" />
                     </div>
-                    <div className="flex justify-between px-7 pb-5">
-                      <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                      <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                      <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
+                    <div className="col-span-2">
+                      <div className="skeleton h-4 w-24 rounded" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="skeleton h-5 w-28 rounded-full" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="skeleton h-4 w-20 rounded" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="skeleton h-4 w-28 rounded" />
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <div className="skeleton h-8 w-16 rounded" />
                     </div>
                   </div>
                 ))
@@ -198,8 +215,6 @@ const normalizeStatus = (status) => {
                           d?.name,
                           d?.patientId,
                           d?.illness,
-                          d?.insurance,
-                          d?.alert,
                         ]
                           .filter(Boolean)
                           .join(" ")
@@ -210,10 +225,14 @@ const normalizeStatus = (status) => {
 
                   if (filtered.length === 0) {
                     return (
-                      <div className="col-span-full">
+                      <div className="py-16">
                         <EmptyState
-                          title="No matches found"
-                          description="Try a different search or clear the filter."
+                          title="No patients found"
+                          description={
+                            query
+                              ? "No matches for your search."
+                              : "No incoming patients right now."
+                          }
                           actionLabel={query ? "Clear search" : "Refresh"}
                           onAction={query ? () => setQuery("") : onRefresh}
                         />
@@ -227,46 +246,57 @@ const normalizeStatus = (status) => {
                   const visible = filtered.slice(start, end);
 
                   return visible.map((data, index) => {
-                    const primary =
-                      hasStatus(data.status, PATIENT_STATUS.AWAITING_VITALS) ? 'vitals' :
-                      hasStatus(data.status, PATIENT_STATUS.AWAITING_NURSE) ? 'nurse' :
-                      hasStatus(data.status, PATIENT_STATUS.AWAITING_SAMPLING) ? 'sampling' :
-                      hasStatus(data.status, PATIENT_STATUS.AWAITING_INJECTION) ? 'injection' : '';
+                    const statusBadgeClass = (status) => {
+                      const s = status?.toLowerCase() || '';
+                      if (s.includes('vitals')) return 'badge-info';
+                      if (s.includes('sampling')) return 'badge-warning';
+                      if (s.includes('injection')) return 'badge-error';
+                      if (s.includes('nurse')) return 'badge-warning';
+                      return 'badge-neutral';
+                    };
+
                     return (
                       <div
                         key={index}
-                        className="card bg-base-100 border border-base-300 shadow-sm"
+                        className="grid grid-cols-12 gap-2 px-5 py-4 items-center hover:bg-base-200/40 transition-colors"
                       >
-                        <div className="flex gap-6 items-center p-8">
-                          <img
-                            src={womanLogo}
-                            alt=""
-                            className="w-[52px] h-[52px] object-cover rounded-full"
-                          />
-
-                          <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
-                            <div className="space-y-1 xl:space-y-3">
-                              <span className="block">Name: {data.name}</span>
-                              <span className="block">Patient ID: {data.patientId}</span>
-                              <span className="block">Reason: {data.illness}</span>
-                            </div>
-                            <div className="space-y-1">
-                              <span className="block">Insurance: {data.insurance}</span>
-                              <span className="block">Registered: {data.registered}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="block">Alert: {data.alert}</span>
-                                
-                              </div>
-                            </div>
-                          </div>
+                        {/* Patient Name */}
+                        <div className="col-span-3 min-w-0">
+                          <p className="font-bold text-base-content truncate">
+                            {data.name}
+                          </p>
                         </div>
 
-                        <div className="flex justify-end px-7 pb-5">
+                        {/* Patient ID */}
+                        <div className="col-span-2">
+                          <span className="text-sm font-mono text-base-content/70">
+                            {data.patientId}
+                          </span>
+                        </div>
+
+                        {/* Status */}
+                        <div className="col-span-2">
+                          <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
+                            {data.illness}
+                          </span>
+                        </div>
+
+                        {/* Registered */}
+                        <div className="col-span-2">
+                          <span className="text-sm text-base-content/60">
+                            {data.updatedAt}
+                          </span>
+                        </div>
+
+                     
+
+                        {/* Action */}
+                        <div className="col-span-1 flex justify-end">
                           <button
-                            className="px-3 py-1 rounded-full bg-primary text-white"
+                            className="btn btn-sm btn-primary"
                             onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
                           >
-                            View Patient Details
+                            View
                           </button>
                         </div>
                       </div>
@@ -280,7 +310,7 @@ const normalizeStatus = (status) => {
               const q = query.trim().toLowerCase();
               const filtered = q
                 ? items.filter((d) => {
-                    const hay = [d?.name, d?.patientId, d?.illness, d?.insurance, d?.alert]
+                    const hay = [d?.name, d?.patientId, d?.illness, d?.insurance]
                       .filter(Boolean)
                       .join(" ")
                       .toLowerCase();
@@ -322,11 +352,13 @@ const normalizeStatus = (status) => {
               }
               return null;
             })()}
+            </div>
           </section>
         </div>
       </div>
     </div>
   );
 };
+
 
 export default Incoming;

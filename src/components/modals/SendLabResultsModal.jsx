@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { updateInvestigationRequest } from "@/services/api/investigationRequestAPI";
+import { updateInvestigation } from "@/services/api/investigationRequestAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import ConfirmationModal from "./ConfirmationModal";
-
-import { mergePatientStatus } from '@/utils/statusUtils';
 
 const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationRequestId, patientId, patientName, currentStatus = [], onSuccess }) => {
   const [sending, setSending] = useState(false);
@@ -22,7 +20,7 @@ const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationReques
       setError(null);
 
       // Mark the investigation as completed so lab records are finalized.
-      await updateInvestigationRequest(investigationRequestId, {
+      await updateInvestigation(investigationRequestId, {
         status: "completed",
         labResultId: labResultId,
       });
