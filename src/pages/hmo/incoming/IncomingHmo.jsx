@@ -6,6 +6,7 @@ import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { normalizeStatus, getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
 import toast from "react-hot-toast";
+import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
 const IncomingHmo = () => {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ const IncomingHmo = () => {
         patientId: p?.hospitalId || p?.id || "—",
         status: normalizeStatus(p?.status),
         insurance: p?.hmos?.provider || "—",
-        updatedAt: p?.updatedAt || p?.createdAt,
+        updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
         snapshot: p,
       }));
       setPatients(mapped);
@@ -87,8 +88,8 @@ const IncomingHmo = () => {
             <div className="grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
               <div className="col-span-3">Patient</div>
               <div className="col-span-2">Patient ID</div>
-              {/* <div className="col-span-2">Insurance</div> */}
               <div className="col-span-2">Status</div>
+              <div className="col-span-2">Updated At</div>
               <div className="col-span-3 text-right">Action</div>
             </div>
             <div className="divide-y divide-base-200">
@@ -137,7 +138,10 @@ const IncomingHmo = () => {
                       <div className="col-span-2">
                         <span className={`badge badge-sm ${badgeClass}`}>{displayStatus}</span>
                       </div>
-                      <div className="col-span-2 flex justify-end gap-2">
+                      <div className="col-span-2">
+                        <span className="text-sm text-base-content/70">{item.updatedAt}</span>
+                      </div>
+                      <div className="col-span-3 flex justify-end gap-2">
                         <button
                           className="btn btn-xs btn-primary"
                           onClick={(e) => {

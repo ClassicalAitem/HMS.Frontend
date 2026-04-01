@@ -10,6 +10,8 @@ import ProtectedRoute from "@/components/common/ProtectedRoute";
 import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
 import Task from "@/pages/nurse/assignedTask/AssignedTask";
+import ViewAllPatientVitals from "@/pages/nurse/patientVitals/ViewAllPatientVitals";
+import NurseAntenatalRecords from "@/pages/nurse/patientVitals/NurseAntenatalRecords";
 
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
 
@@ -20,6 +22,10 @@ import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
 import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
 
 import ViewConsultationRecords from "@/pages/doctor/incoming/ViewConsultationRecords";
+import ViewAllPrescriptions from "@/pages/doctor/incoming/ViewAllPrescriptions";
+import ViewAllInvestigations from "@/pages/doctor/incoming/ViewAllInvestigations";
+import ViewAllLabResults from "@/pages/doctor/incoming/ViewAllLabResults";
+import ViewAllVitals from "@/pages/doctor/incoming/ViewAllVitals";
 import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
 import LabResults from "@/pages/doctor/labResults/LabResults";
 import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
@@ -57,6 +63,8 @@ import SurgeryDetails from "@/pages/frontdesk/surgeries/SurgeryDetails";
 
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
 import Registration from "@/pages/frontdesk/registration/Registration";
+import ObdPatients from "@/pages/frontdesk/obd-patients/ObdPatients";
+import AddObdPatient from "@/pages/frontdesk/obd-patients/AddObdPatient";
 
 
 // SUper Admin
@@ -169,6 +177,21 @@ const AppRoutes = () => {
           <Registration />
         </ProtectedRoute>
       } />
+      <Route path="/frontdesk/obd-patients" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <ObdPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/obd-patients/new" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <AddObdPatient />
+        </ProtectedRoute>
+      } />
+      <Route path="/frontdesk/obd-patients/:id/edit" element={
+        <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
+          <AddObdPatient />
+        </ProtectedRoute>
+      } />
       <Route path="/frontdesk/surgeries" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
           <Surgeries />
@@ -209,6 +232,16 @@ const AppRoutes = () => {
       <Route path="/dashboard/nurse/patient/:patientId" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <PatientVitalsDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/view-vitals/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <ViewAllPatientVitals />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/patient/:patientId/antenatal-records" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <NurseAntenatalRecords />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/nurse/dependant/:dependantId" element={
@@ -264,6 +297,26 @@ const AppRoutes = () => {
       <ViewConsultationRecords />
     </ProtectedRoute>
   } />
+  <Route path="/dashboard/doctor/view-prescriptions/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ViewAllPrescriptions />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/view-investigations/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ViewAllInvestigations />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/view-lab-results/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ViewAllLabResults />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/view-vitals/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ViewAllVitals />
+    </ProtectedRoute>
+  } />
   <Route path="/dashboard/doctor/antenatal-records/:patientId/:recordId?" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <AntenatalRecords />
@@ -291,6 +344,11 @@ const AppRoutes = () => {
     </ProtectedRoute>
   } />
   <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/prescription" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <WritePrescription />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/medical-history/:patientId/antenatal/:antenatalId/prescription" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <WritePrescription />
     </ProtectedRoute>
