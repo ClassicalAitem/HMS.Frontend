@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
@@ -26,31 +27,8 @@ const emptyForm = (doctorName = "") => ({
     otherSymptoms: '', vaginalDischarge: '', takenBy: doctorName
   },
   antenatalExaminations: [],
+  
 });
-
-const durationOptions = (() => {
-  const options = [];
-
-  // Days (1–7)
-  for (let d = 1; d <= 7; d++) {
-    options.push(`${d} day${d > 1 ? 's' : ''}`);
-  }
-
-  // Weeks + days (1w0d → 42w6d)
-  for (let w = 1; w <= 45; w++) {
-    for (let d = 0; d <= 6; d++) {
-      if (d === 0) {
-        options.push(`${w} week${w > 1 ? 's' : ''}`);
-      } else {
-        options.push(`${w} week${w > 1 ? 's' : ''} ${d} day${d > 1 ? 's' : ''}`);
-      }
-    }
-  }
-
-  return options;
-})();
-
-console.log(durationOptions)
 
 const AntenatalRecords = () => {
   const { patientId, recordIndex } = useParams();
@@ -65,8 +43,6 @@ const AntenatalRecords = () => {
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState(null);
   const [formData, setFormData] = useState(emptyForm(doctorName));
-  const [durationDropdownOpen, setDurationDropdownOpen] = useState(false);
-  const durationRef = useRef(null);
 
   const [dependants, setDependants] = useState([]);
 const [selectedDependantId, setSelectedDependantId] = useState("");
@@ -154,17 +130,6 @@ useEffect(() => {
       }));
     }
   }, [doctorName, isEditing]);
-
-  useEffect(() => {
-    if (!durationDropdownOpen) return;
-    const handleClickOutside = (event) => {
-      if (durationRef.current && !durationRef.current.contains(event.target)) {
-        setDurationDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [durationDropdownOpen]);
 
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
@@ -519,7 +484,7 @@ useEffect(() => {
                   { field: 'lmp', label: 'LMP', type: 'date' },
                   { field: 'edd', label: 'EDD', type: 'date' },
                   { field: 'bleeding', label: 'Bleeding', type: 'text', placeholder: 'Yes/No/Details' },
-                  { field: 'durationInWeeks', label: 'Duration of Pregnancy in Weeks', type: 'select', options: durationOptions },
+                  { field: 'durationInWeeks', label: 'Duration of Pregnancy in Weeks', type: 'number' },
                   { field: 'fmf', label: 'FMF', type: 'text', placeholder: 'Fetal Movement Felt' },
                   { field: 'headache', label: 'Headache', type: 'text', placeholder: 'Yes/No/Details' },
                   { field: 'vomiting', label: 'Vomiting', type: 'text', placeholder: 'Yes/No/Details' },
@@ -529,64 +494,16 @@ useEffect(() => {
                   { field: 'jaundice', label: 'Jaundice', type: 'text', placeholder: 'Yes/No/Details' },
                   { field: 'otherSymptoms', label: 'Other Symptoms', type: 'text', placeholder: 'Details' },
                   { field: 'vaginalDischarge', label: 'Vaginal Discharge', type: 'text', placeholder: 'Details' },
-                ].map(({ field, label, type, placeholder, options }) => (
+                ].map(({ field, label, type, placeholder }) => (
                   <div key={field}>
                     <label className="label"><span className="label-text">{label}</span></label>
-                    {field === 'durationInWeeks' ? (
-                      <div className="relative" ref={durationRef}>
-                        <input
-                          type="text"
-                          className="input input-bordered w-full h-10"
-                          placeholder="Select or type duration"
-                          value={formData.presentPregnancy[field]}
-                          onChange={(e) => {
-                            updatePregnancy(field, e.target.value);
-                            setDurationDropdownOpen(true);
-                          }}
-                          onFocus={() => setDurationDropdownOpen(true)}
-                          autoComplete="off"
-                        />
-                        {durationDropdownOpen && (
-                          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                            {durationOptions
-                              .filter(opt => opt.toLowerCase().includes((formData.presentPregnancy[field] || "").toLowerCase()))
-                              .slice(0, 400)
-                              .map(opt => (
-                                <div
-                                  key={opt}
-                                  className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
-                                  onClick={() => {
-                                    updatePregnancy(field, opt);
-                                    setDurationDropdownOpen(false);
-                                  }}
-                                >
-                                  {opt}
-                                </div>
-                              ))}
-                            {!durationOptions.some(opt => opt.toLowerCase().includes((formData.presentPregnancy[field] || "").toLowerCase())) && (
-                              <div className="px-3 py-2 text-sm text-gray-400">No matches found</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : type === 'select' ? (
-                      <select
-                        className="select select-bordered w-full h-10"
-                        value={formData.presentPregnancy[field]}
-                        onChange={(e) => updatePregnancy(field, e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
-                    ) : (
-                      <input
-                        type={type}
-                        className="input input-bordered w-full h-10"
-                        placeholder={placeholder}
-                        value={formData.presentPregnancy[field]}
-                        onChange={(e) => updatePregnancy(field, e.target.value)}
-                      />
-                    )}
+                    <input
+                      type={type}
+                      className="input input-bordered w-full"
+                      placeholder={placeholder}
+                      value={formData.presentPregnancy[field]}
+                      onChange={(e) => updatePregnancy(field, e.target.value)}
+                    />
                   </div>
                 ))}
                 <div>
