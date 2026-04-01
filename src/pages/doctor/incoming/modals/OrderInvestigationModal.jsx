@@ -138,8 +138,8 @@ const OrderInvestigationModal = ({
         toast.success("Investigation updated successfully");
 
       } else {
-
-        await createInvestigation(consultationId, payload);
+        const sourceType = consultationId?.length === 24 ? 'antenatal' : 'consultation';
+        await createInvestigation(consultationId, payload, sourceType);
         toast.success("Investigation order created successfully");
 
       }

@@ -3,7 +3,7 @@ import { CashierLayout } from '@/layouts/cashier';
 import { FaUsers, FaFileInvoiceDollar } from 'react-icons/fa';
 import { GoCreditCard } from "react-icons/go";
 import { LuUser } from "react-icons/lu";
-import cashierData from '@/data/cashierData.json';
+// import cashierData from '/cashierData.json';
 import StatCard from '@/components/cashier/dashboard/StatCard';
 import RecentActivity from '@/components/cashier/dashboard/RecentActivity';
 import { Link } from 'react-router-dom';

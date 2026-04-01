@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
-import { getConsultationById, getConsultationFile } from "@/services/api/consultationAPI";
+import { getConsultationById, getConsultationFile, updateConsultation } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage } from "react-icons/fa";
+import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage, FaStickyNote } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
 import OrderInvestigationModal from "./modals/OrderInvestigationModal";
 import SendToNurseModal from "./modals/SendToNurseModal";
@@ -30,7 +30,7 @@ const ViewConsultation = () => {
   const saved = localStorage.getItem('currentPrescriptions');
   return saved ? JSON.parse(saved) : [];
 });
-  const [labRequests, setLabRequests] = useState([]); // Placeholder for future lab data
+  const [labRequests, setLabRequests] = useState([]); 
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
   const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
@@ -50,8 +50,6 @@ const [editingLab, setEditingLab] = useState(null);
       
       const pid = patientId || data?.patientId;
       if (pid) {
-        // Parallel fetching for patient data, prescriptions, and lab requests
-        // We use Promise.allSettled to ensure one failure doesn't block others
         const promises = [
            getPatientById(pid),
            getPrescriptionsForConsultation(consultationId),
@@ -211,6 +209,49 @@ const handleEditPrescription = async (pres, e) => {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
+
+  const handleSaveAdditionalNotes = async () => {
+    try {
+      await updateConsultation(consultationId, { additionalNotes });
+      await loadData(); 
+      setIsSendToNurseModalOpen(false);
+     
+    } catch (error) {
+      console.error("Error saving additional notes:", error);
+    }
+  };
+
+  const handleEditAdditionalNote = async (noteId, currentNote) => {
+    const newNote = window.prompt("Edit additional note:", currentNote);
+    if (newNote === null) return; 
+    try {
+      let updatedNotes;
+      if (Array.isArray(consultation.additionalNotes)) {
+        updatedNotes = consultation.additionalNotes.map(n => n.id === noteId ? { ...n, note: newNote } : n);
+      } else {
+        updatedNotes = newNote; // If it's a string, update to new string
+      }
+      await updateConsultation(consultationId, { additionalNotes: updatedNotes });
+      await loadData(); // Reload page data
+      setAdditionalNotes("");
+       
+    } catch (error) {
+      console.error("Error editing additional note:", error);
+    }
+  };
+
+  const handleDeleteAdditionalNote = async (noteId) => {
+    if (!window.confirm("Delete this additional note?")) return;
+    try {
+      const updatedNotes = consultation.additionalNotes.filter(n => n.id !== noteId);
+      await updateConsultation(consultationId, { additionalNotes: updatedNotes });
+      // await loadData(); 
+      setAdditionalNotes("");
+      
+    } catch (error) {
+      console.error("Error deleting additional note:", error);
+    }
+  };
 
   // Mapped Data
   const complaints = consultation?.complaint || [];
@@ -625,15 +666,15 @@ const subjectRelation = isForDependant
                           <div className="flex gap-2">
 
                     <button
-  type="button"
-  className="btn btn-xs btn-ghost text-warning"
-  onClick={() => {
-    setEditingLab(lab);
-    setIsInvestigationModalOpen(true);
-  }}
->
-  <FaEdit />
-</button>
+                      type="button"
+                      className="btn btn-xs btn-ghost text-warning"
+                      onClick={() => {
+                        setEditingLab(lab);
+                        setIsInvestigationModalOpen(true);
+                      }}
+                    >
+                      <FaEdit />
+                    </button>
 
                   <button
                     type="button"
@@ -727,17 +768,79 @@ const subjectRelation = isForDependant
 
                     {/* Additional Notes for Nurse */}
                     <div>
+                      <div className="flex items-center justify-between mb-3">
+
                       <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-warning"></span>
-                        Additional Notes for Nurse
+                        Additional Note for Nurse
                       </h4>
+                       <button type="submit" className="btn btn-sm btn-primary"
+                       onClick={handleSaveAdditionalNotes}>
+                        Save Note
+                        </button>
+                      </div>
                       <textarea
                         className="textarea textarea-bordered w-full"
+                        required
                         placeholder="Enter any additional instructions or notes for the nurse..."
                         rows={3}
                         value={additionalNotes}
                         onChange={(e) => setAdditionalNotes(e.target.value)}
                       />
+                    </div>
+                    <div>
+                      <h4>Additional Note History</h4>
+                      {(() => {
+                        const rawNotes = consultation?.additionalNotes;
+                        const notes = Array.isArray(rawNotes) 
+                          ? rawNotes 
+                          : rawNotes 
+                            ? [{ 
+                                note: rawNotes, 
+                                date: consultation?.updatedAt || consultation?.createdAt, 
+                                doctorName: consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : 'Unknown Doctor' 
+                              }] 
+                            : [];
+                        
+                        return notes.length > 0 ? (
+                          <ul className="space-y-2 mt-2">
+                            {notes.map((note, idx) => (
+                              <li key={idx} className="p-3 bg-base-200/50 rounded-lg border border-base-200">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <FaStickyNote className="w-4 h-4 text-warning" />
+                                  <span className="text-xs text-base-content/50">
+                                    {formatNigeriaDate(note.date)} by Dr. {note.doctorName || "Unknown"}
+                                  </span>
+                                </div>
+                                <div className="flex gap-2">
+                                <p className="text-sm text-base-content flex">{note.note}  </p>
+
+                                <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-warning"
+                                onClick={() => handleEditAdditionalNote(note.id, note.note  )}
+                              >
+                                <FaEdit />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-error"
+                                onClick={() => handleDeleteAdditionalNote(note.id) }
+                                
+                              >
+                                <FaTrash />
+                              </button>
+
+                                </div>
+
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-base-content/50 italic mt-2">No previous notes history.</p>
+                        );
+                      })()}
                     </div>
 
                   </div>
@@ -771,43 +874,7 @@ const subjectRelation = isForDependant
                   )}
                 </div>
               </div>
-              {/* Dependant Info — show only if consultation is for a dependant */}
-              {isForDependant && consultation?.dependant && (
-                <div className="card bg-secondary/10 shadow-sm border border-secondary/20">
-                  <div className="card-body p-5">
-                    <div className="flex items-center gap-2 mb-3 text-secondary">
-                      <FaUsers />
-                      <h3 className="font-bold uppercase text-sm tracking-wider">Consultation For</h3>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-base-content/60">Name:</span>
-                        <span className="font-medium">
-                          {consultation.dependant.firstName} {consultation.dependant.lastName}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-base-content/60">Relation:</span>
-                        <span className="badge badge-secondary badge-sm">
-                          {consultation.dependant.relationshipType}
-                        </span>
-                      </div>
-                      {consultation.dependant.dob && (
-                        <div className="flex justify-between">
-                          <span className="text-base-content/60">DOB:</span>
-                          <span>{formatNigeriaDate(consultation.dependant.dob)}</span>
-                        </div>
-                      )}
-                      {consultation.dependant.gender && (
-                        <div className="flex justify-between">
-                          <span className="text-base-content/60">Gender:</span>
-                          <span className="capitalize">{consultation.dependant.gender}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+            
               {/* Surgical History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-5">

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/common";
@@ -45,6 +46,7 @@ const AntenatalRecords = () => {
 
   const [dependants, setDependants] = useState([]);
 const [selectedDependantId, setSelectedDependantId] = useState("");
+  const [savedRecord, setSavedRecord] = useState(null);
 
 const selectedDependant = useMemo(() => {
   if (!selectedDependantId) return null;
@@ -277,8 +279,12 @@ useEffect(() => {
         : createAnteNatalRecord(backendData),
       {
         loading: isEditing ? 'Updating record...' : 'Saving record...',
-        success: () => {
-          navigate(`/dashboard/doctor/medical-history/${patientId}`);
+        success: (data) => {
+          if (!isEditing) {
+            setSavedRecord(data);
+          } else {
+            navigate(`/dashboard/doctor/medical-history/${patientId}`);
+          }
           return isEditing ? 'Record updated successfully!' : 'Record created successfully!';
         },
         error: (err) => err?.message || 'Failed to save record',
@@ -691,6 +697,16 @@ useEffect(() => {
             >
               {saving ? (isEditing ? "Updating..." : "Saving...") : (isEditing ? "Update" : "Save Now")}
             </button>
+            {savedRecord && (
+              <button
+                className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
+                onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
+                  state: { selectedRecord: savedRecord }
+                })}
+              >
+                Next
+              </button>
+            )}
             <button
               className="btn btn-outline px-12 h-12 text-lg font-normal normal-case rounded-md"
               onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}

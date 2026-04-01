@@ -4,7 +4,7 @@ import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getAllInvestigationRequests } from "@/services/api/investigationRequestAPI";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { usersAPI } from "@/services/api/usersAPI"; 
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import toast from "react-hot-toast";
@@ -433,7 +433,7 @@ const AddLabResult = () => {
         setLoading(true);
 
         if (investigationId) {
-          const investigationsResponse = await getAllInvestigationRequests();
+          const investigationsResponse = await getInvestigations();
           const investigationsArray = Array.isArray(investigationsResponse)
             ? investigationsResponse
             : investigationsResponse?.data || [];

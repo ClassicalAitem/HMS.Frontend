@@ -7,7 +7,7 @@ import {
 } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
-const LabInvestigationTable = ({ investigations = [], loading = false }) => {
+const LabInvestigationTable = ({ investigations = [], loading = false, onViewAll }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -55,14 +55,20 @@ const LabInvestigationTable = ({ investigations = [], loading = false }) => {
     <div className="shadow-xl card bg-base-100 mb-4">
       <div className="p-4 card-body">
         {/* HEADER */}
-        <div className="flex justify-between items-center mb-3">
+           <div className="flex justify-between items-center mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <FaFlask className="text-info" />
             Lab Investigations
           </h2>
-          <span className="badge badge-primary badge-sm">
-            {paginationData.totalItems}
-          </span>
+          <div className="flex gap-2">
+      
+            <button 
+              className="btn btn-outline btn-sm"
+              onClick={onViewAll}
+            >
+              View All
+            </button>
+          </div>
         </div>
 
         {/* LOADING */}

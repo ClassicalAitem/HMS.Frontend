@@ -42,7 +42,7 @@ const DoctorActionModal = ({ isOpen, onClose, patientId, currentStatus = '', def
           </div>
           <p className="mb-3 text-sm text-base-content/70">Select the action for this patient:</p>
           <div className="space-y-2">
-            {[PATIENT_STATUS.AWAITING_CONSULTATION, PATIENT_STATUS.AWAITING_SURGERY, PATIENT_STATUS.AWAITING_RADIOLOGY].map(action => (
+            {[PATIENT_STATUS.AWAITING_CONSULTATION, PATIENT_STATUS.AWAITING_SURGERY, PATIENT_STATUS.AWAITING_DOCTOR].map(action => (
               <label key={action} className="flex items-center gap-3">
                 <input
                   type="radio"

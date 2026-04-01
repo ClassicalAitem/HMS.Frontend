@@ -10,6 +10,7 @@ import { formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 import { getAllHmos } from "@/services/api/hmoAPI";
 import apiClient from "@/services/api/apiClient";
+import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const IncomingHmoDetails = () => {
   const { patientId } = useParams();
@@ -563,37 +564,14 @@ const handleSubmit = async () => {
           })()}
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            className="btn btn-sm"
-            onClick={() => handleSendToStatus('Lab')}
-          >
-            {sendingStatuses.Lab ? 'Processing...' : 'Send to Lab'}
-          </button>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => handleSendToStatus('Pharmacy')}
-          >
-            {sendingStatuses.Pharmacy ? 'Processing...' : 'Send to Pharmacy'}
-          </button>
-          <button
-            className="btn btn-outline btn-warning btn-sm"
-            onClick={handleSendBackToDoctor}
-            disabled={submitting}
-          >
-            Send Back to Doctor
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
-            {submitting
-              ? <span className="loading loading-spinner loading-sm" />
-              : 'Submit & Send to Cashier'
-            }
-          </button>
-        </div>
+              <SendPatientModal
+                patientId={patient?.id || patientId}
+                onUpdated={() => navigate('/dashboard/hmo/incoming')}
+                buttonLabel="Send to Department"
+                buttonClass="btn btn-primary text-white"
+                allowedRoles={['nurse', 'doctor', 'pharmacist','cashier', 'labtechnician']}
+              />
+  
       </div>
     </div>
   </div>
