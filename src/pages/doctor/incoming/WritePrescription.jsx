@@ -7,6 +7,7 @@ import { Header } from '@/components/common';
 import Sidebar from '@/components/doctor/dashboard/Sidebar'; 
 import { getConsultationById } from '@/services/api/consultationAPI'; 
 import { getPatientById } from '@/services/api/patientsAPI'; 
+import { getAnteNatalRecordByPatientId } from '@/services/api/anteNatalAPI'; 
 import { createPrescription, getPrescriptionsForConsultation, updatePrescription } from '@/services/api/prescriptionsAPI'; 
 import { IoIosCloseCircleOutline, IoMdAdd, IoMdTrash } from 'react-icons/io'; 
 import { FaPrescriptionBottleAlt, FaSyringe, FaPills, FaNotesMedical, FaFileMedicalAlt } from 'react-icons/fa'; 
@@ -39,10 +40,12 @@ const schema = yup.object().shape({
 }); 
  
 const WritePrescription = () => { 
-  const { patientId, consultationId } = useParams(); 
+  const { patientId, consultationId, antenatalId } = useParams(); 
   const navigate = useNavigate(); 
   const location = useLocation(); 
   const fromIncoming = location?.state?.from === "incoming"; 
+  const sourceId = antenatalId || consultationId;
+  const isAntenatal = !!antenatalId; 
  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
   const [loading, setLoading] = useState(true); 
@@ -50,7 +53,7 @@ const WritePrescription = () => {
   const [patient, setPatient] = useState(null); 
   const [saving, setSaving] = useState(false); 
   const [dependants, setDependants] = useState([]); 
-  const [selectedTarget, setSelectedTarget] = useState('patient'); // 'patient' or dependant ID
+  const [selectedTarget, setSelectedTarget] = useState('patient'); 
   const [drugList, setDrugList] = useState([]); 
   const [drugDropdownIndex, setDrugDropdownIndex] = useState(null); 
   const [drugSearch, setDrugSearch] = useState(""); 
@@ -60,15 +63,17 @@ const WritePrescription = () => {
 useEffect(() => { 
   const loadPrescriptions = async () => { 
     try { 
-      const res = await getPrescriptionsForConsultation(consultationId); 
+      const res = await getPrescriptionsForConsultation(sourceId); 
       const rawData = res?.data ?? res; 
       setPrescriptions(Array.isArray(rawData) ? rawData : [rawData]); 
     } catch (err) { 
       console.error(err); 
     } 
   }; 
-  loadPrescriptions(); 
-}, [consultationId]); 
+  if (sourceId) {
+    loadPrescriptions(); 
+  }
+}, [sourceId]); 
  
 const editingPrescription = location?.state?.prescription; 
 const isEdit = !!editingPrescription; 
@@ -117,37 +122,47 @@ const isEdit = !!editingPrescription;
     try { 
       setLoading(true); 
 
-      const [consultRes, patientRes] = await Promise.all([ 
-        getConsultationById(consultationId), 
-        getPatientById(patientId) 
-      ]); 
-
-      const consultData = consultRes?.data ?? consultRes; 
-      const patientData = patientRes?.data ?? patientRes; 
-      
-      setConsultation(consultData); 
-      setPatient(patientData); 
+      const patientRes = await getPatientById(patientId);
+      const patientData = patientRes?.data ?? patientRes;
+      setPatient(patientData);
 
       if (patientData?.dependants) {
         setDependants(Array.isArray(patientData.dependants) ? patientData.dependants : []);
       }
 
-      // ✅ Correct target binding
-      if (consultData?.dependantId) {
-        setSelectedTarget(consultData.dependantId);
-      } else {
+      if (isAntenatal) {
+        // Load antenatal record instead of consultation
+        const allRecords = await getAnteNatalRecordByPatientId(patientId);
+        const records = allRecords?.data ?? allRecords ?? [];
+        const selectedAntenatal = Array.isArray(records) ? records.find(r => r._id === antenatalId) : null;
+        setConsultation(selectedAntenatal || { _id: antenatalId });
         setSelectedTarget('patient');
+      } else {
+        // Load consultation as normal
+        const consultRes = await getConsultationById(consultationId);
+        const consultData = consultRes?.data ?? consultRes;
+        setConsultation(consultData);
+        if (consultData?.dependantId) {
+          setSelectedTarget(consultData.dependantId);
+        } else {
+          setSelectedTarget('patient');
+        }
       }
 
     } catch (error) { 
       console.error(error); 
+      toast.error('Failed to load data');
     } finally { 
       setLoading(false); 
     } 
   }; 
 
-  loadData(); 
-}, [patientId, consultationId]);
+  if (patientId && sourceId) {
+    loadData(); 
+  }
+}, [patientId, sourceId, isAntenatal, antenatalId, consultationId]);
+
+
  
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen); 
   const closeSidebar = () => setIsSidebarOpen(false); 
@@ -191,7 +206,7 @@ const payload = {
     ? { dependantId: targetId }
     : { patientId: patientId }),
 
-  consultationId,
+  ...(isAntenatal ? { antenatalId: sourceId } : { consultationId: sourceId }),
   medications: data.medications.map((med) => {
     const { _selectedDrug, ...medData } = med;
 
@@ -218,16 +233,21 @@ const payload = {
       toast.success("Prescription updated successfully"); 
  
     } else { 
- 
-      await createPrescription(payload, consultationId); 
- 
+      const sourceType = isAntenatal ? 'antenatal' : 'consultation';
+      await createPrescription(payload, sourceId, sourceType); 
       toast.success("Prescription created successfully"); 
- 
     } 
+
+    if (isAntenatal) {
+      navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, { 
+        state: { from: "antenatal" } 
+      }); 
+    } else {
+      navigate(`/dashboard/doctor/medical-history/${patientId}`, { 
+        state: { from: fromIncoming ? "incoming" : "patients" } 
+      }); 
+    }
  
-    navigate(`/dashboard/doctor/medical-history/${patientId}`, { 
-      state: { from: fromIncoming ? "incoming" : "patients" } 
-    }); 
  
   } catch (error) { 
  
@@ -422,101 +442,101 @@ useEffect(() => {
                           </div> 
  
                           {/* Common Fields */} 
-             <div className="form-control relative" ref={drugWrapperRef}> 
-  <label className="label"> 
-    <span className="label-text">Drug Name</span> 
-  </label> 
- 
-  <input 
-    type="text" 
-    placeholder="Search drug..." 
-    className={`input input-bordered w-full ${ 
-      errors.medications?.[index]?.drugName ? "input-error" : "" 
-    }`} 
-    value={ 
-      drugDropdownIndex === index 
-        ? drugSearch 
-        : watch(`medications.${index}.drugName`) || "" 
-    } 
-    onFocus={() => { 
-      setDrugDropdownIndex(index); 
-      setDrugSearch(""); 
-    }} 
-    onChange={(e) => { 
-      setDrugSearch(e.target.value); 
-      setDrugDropdownIndex(index); 
-    }} 
-    autoComplete="off" 
-  /> 
- 
-  {drugDropdownIndex === index && ( 
-    <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto"> 
-      <ul className="py-1"> 
-        {drugList 
-          .filter((drug) => 
-            drugSearch 
-              ? drug.name 
-                  ?.toLowerCase() 
-                  .includes(drugSearch.toLowerCase()) 
-              : true 
-          ) 
-          .map((drug) => ( 
-            <li 
-              key={drug.id} 
-              onClick={() => { 
-                setValue( 
-                  `medications.${index}.drugName`, 
-                  drug.name 
-                ); 
-                // Store selected drug data for display 
-                setValue(`medications.${index}._selectedDrug`, drug); 
-                setDrugDropdownIndex(null); 
-                setDrugSearch(""); 
-              }} 
-              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm" 
-            > 
-              <div className="flex items-center justify-between"> 
-                <span className="font-medium">{drug.name}</span> 
-                {(drug.form || drug.strength) && ( 
-                  <span className="text-gray-500 text-xs ml-2"> 
-                    {[drug.form, drug.strength].filter(Boolean).join(' - ')} 
-                  </span> 
-                )} 
-              </div> 
-            </li> 
-          ))} 
- 
-        {drugList.filter((drug) => 
-          drugSearch 
-            ? drug.name 
-                ?.toLowerCase() 
-                .includes(drugSearch.toLowerCase()) 
-            : true 
-        ).length === 0 && ( 
-          <li className="px-4 py-2 text-gray-400 text-sm"> 
-            No matches found 
-          </li> 
-        )} 
-      </ul> 
-    </div> 
-  )} 
- 
-  {/* Display selected drug form/strength info */} 
-  {watch(`medications.${index}.drugName`) && watch(`medications.${index}._selectedDrug`) && ( 
-    <div className="mt-2 p-3 bg-info/10 border border-info/30 rounded text-sm text-info-content"> 
-      <p className="font-medium">Available: {watch(`medications.${index}._selectedDrug`)?.form || 'N/A'} {watch(`medications.${index}._selectedDrug`)?.strength ? `- ${watch(`medications.${index}._selectedDrug`)?.strength}` : ''}</p> 
-      {watch(`medications.${index}._selectedDrug`)?.quantity && ( 
-        <p className="text-xs mt-1">Stock: {watch(`medications.${index}._selectedDrug`)?.quantity} units available</p> 
-      )} 
-    </div> 
-  )} 
- 
-  {errors.medications?.[index]?.drugName && ( 
-    <span className="text-error text-xs mt-1"> 
-      {errors.medications[index].drugName.message} 
-    </span> 
-  )} 
-</div> 
+                         <div className="form-control relative" ref={drugWrapperRef}> 
+                            <label className="label"> 
+                              <span className="label-text">Drug Name</span> 
+                            </label> 
+                          
+                            <input 
+                              type="text" 
+                              placeholder="Search drug..." 
+                              className={`input input-bordered w-full ${ 
+                                errors.medications?.[index]?.drugName ? "input-error" : "" 
+                              }`} 
+                              value={ 
+                                drugDropdownIndex === index 
+                                  ? drugSearch 
+                                  : watch(`medications.${index}.drugName`) || "" 
+                              } 
+                              onFocus={() => { 
+                                setDrugDropdownIndex(index); 
+                                setDrugSearch(""); 
+                              }} 
+                              onChange={(e) => { 
+                                setDrugSearch(e.target.value); 
+                                setDrugDropdownIndex(index); 
+                              }} 
+                              autoComplete="off" 
+                            /> 
+                          
+                            {drugDropdownIndex === index && ( 
+                              <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto"> 
+                                <ul className="py-1"> 
+                                  {drugList 
+                                    .filter((drug) => 
+                                      drugSearch 
+                                        ? drug.name 
+                                            ?.toLowerCase() 
+                                            .includes(drugSearch.toLowerCase()) 
+                                        : true 
+                                    ) 
+                                    .map((drug) => ( 
+                                      <li 
+                                        key={drug.id} 
+                                        onClick={() => { 
+                                          setValue( 
+                                            `medications.${index}.drugName`, 
+                                            drug.name 
+                                          ); 
+                                          // Store selected drug data for display 
+                                          setValue(`medications.${index}._selectedDrug`, drug); 
+                                          setDrugDropdownIndex(null); 
+                                          setDrugSearch(""); 
+                                        }} 
+                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm" 
+                                      > 
+                                        <div className="flex items-center justify-between"> 
+                                          <span className="font-medium">{drug.name}</span> 
+                                          {(drug.form || drug.strength) && ( 
+                                            <span className="text-gray-500 text-xs ml-2"> 
+                                              {[drug.form, drug.strength].filter(Boolean).join(' - ')} 
+                                            </span> 
+                                          )} 
+                                        </div> 
+                                      </li> 
+                                    ))} 
+                          
+                                  {drugList.filter((drug) => 
+                                    drugSearch 
+                                      ? drug.name 
+                                          ?.toLowerCase() 
+                                          .includes(drugSearch.toLowerCase()) 
+                                      : true 
+                                  ).length === 0 && ( 
+                                    <li className="px-4 py-2 text-gray-400 text-sm"> 
+                                      No matches found 
+                                    </li> 
+                                  )} 
+                                </ul> 
+                              </div> 
+                            )} 
+                          
+                            {/* Display selected drug form/strength info */} 
+                            {watch(`medications.${index}.drugName`) && watch(`medications.${index}._selectedDrug`) && ( 
+                              <div className="mt-2 p-3 bg-info/10 border border-info/30 rounded text-sm text-info-content"> 
+                                <p className="font-medium">Available: {watch(`medications.${index}._selectedDrug`)?.form || 'N/A'} {watch(`medications.${index}._selectedDrug`)?.strength ? `- ${watch(`medications.${index}._selectedDrug`)?.strength}` : ''}</p> 
+                                {watch(`medications.${index}._selectedDrug`)?.quantity && ( 
+                                  <p className="text-xs mt-1">Stock: {watch(`medications.${index}._selectedDrug`)?.quantity} units available</p> 
+                                )} 
+                              </div> 
+                            )} 
+                          
+                            {errors.medications?.[index]?.drugName && ( 
+                              <span className="text-error text-xs mt-1"> 
+                                {errors.medications[index].drugName.message} 
+                              </span> 
+                            )} 
+                          </div> 
  
                           <div className="form-control"> 
                             <label className="label"> 
@@ -636,7 +656,17 @@ useEffect(() => {
                   <button 
                     type="button" 
                     className="btn btn-ghost" 
-                    onClick={() => navigate(-1)} 
+                    onClick={() => {
+                      if (isAntenatal) {
+                        navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal-details/${patientId}`, { 
+                          state: { from: "antenatal" } 
+                        });
+                      } else {
+                        navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}`, { 
+                          state: { from: fromIncoming ? "incoming" : "patients" } 
+                        });
+                      }
+                    }} 
                   > 
                     Cancel 
                   </button> 
@@ -652,7 +682,7 @@ useEffect(() => {
             </div> 
  
             {/* Right Sidebar - Consultation Details */} 
-            <div className="w-80 bg-base-100 border-l border-base-200 overflow-y-auto hidden xl:block mr-7 my-7 shadow-md"> 
+            {/* <div className="w-80 bg-base-100 border-l border-base-200 overflow-y-auto hidden xl:block mr-7 my-7 shadow-md"> 
               <div className="p-6 space-y-6"> 
                 <div className="flex items-center gap-2 text-base-content/70 pb-4 border-b border-base-200"> 
                   <FaFileMedicalAlt /> 
@@ -668,7 +698,7 @@ useEffect(() => {
                   </div> 
                 </div> 
               </div> 
-            </div> 
+            </div>  */}
           </div> 
         </div> 
       </div> 

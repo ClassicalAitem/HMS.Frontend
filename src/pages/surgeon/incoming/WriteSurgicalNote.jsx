@@ -5,7 +5,7 @@ import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { createSurgery } from "@/services/api/surgeryAPI";
-import { getInvestigationRequestById } from "@/services/api/investigationRequestAPI";
+import { getInvestigationById } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
 
@@ -48,7 +48,7 @@ const WriteSurgicalNote = () => {
   useEffect(() => {
     if (!paramInvestigationRequestId) return;
     setInvestigationsLoading(true);
-    getInvestigationRequestById(paramInvestigationRequestId)
+    getInvestigationById(paramInvestigationRequestId)
       .then(async (data) => {
         // If the API returns a single object, wrap in array for selector compatibility
         const list = Array.isArray(data) ? data : (data?.data ? [data.data] : [data]);
