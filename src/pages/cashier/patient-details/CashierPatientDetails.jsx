@@ -468,9 +468,7 @@ const getHmoCoveredAmount = (bill) => {
             <div className="flex flex-wrap gap-3">
               <SendPatientModal
                 patientId={patient?.id || patientId}
-                onUpdated={() => navigate('/cashier/incoming')}
-                buttonLabel="Send to Department"
-                buttonClass="btn btn-primary text-white"
+                onUpdated={() => navigate('/cashier/dashboard')}
                 allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician', 'hmo']}
               />
             </div>
