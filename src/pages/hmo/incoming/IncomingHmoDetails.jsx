@@ -566,9 +566,7 @@ const handleSubmit = async () => {
 
               <SendPatientModal
                 patientId={patient?.id || patientId}
-                onUpdated={() => navigate('/dashboard/hmo/incoming')}
-                buttonLabel="Send to Department"
-                buttonClass="btn btn-primary text-white"
+                onUpdated={() => navigate('/dashboard/hmo')}
                 allowedRoles={['nurse', 'doctor', 'pharmacist','cashier', 'labtechnician']}
               />
   
