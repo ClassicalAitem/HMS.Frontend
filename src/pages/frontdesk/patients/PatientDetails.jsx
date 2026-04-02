@@ -175,18 +175,18 @@ const PatientDetails = () => {
             {/* Additional Information */}
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
-          <SendPatientModal
-          patientId={patient?.id || patientId}
-          onUpdated={() => navigate('/dashboard/hmo/incoming')}
-          buttonLabel="Send to Department"
-          buttonClass="btn btn-primary text-white"
-          allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician']}
-        />
-          {/* Action Buttons */}
-          <ActionButtons
-            onSendToCashier={() => setIsCreateBillOpen(true)}
-            onSendToHmo={() => setIsSendToHmoOpen(true)}
-          />
+          <div className="flex gap-4 items-center mt-3">
+            <SendPatientModal
+              patientId={patient?.id || patientId}
+              onUpdated={() => navigate('/frontdesk/dashboard')}
+              allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician']}
+            />
+            {/* Action Buttons */}
+            <ActionButtons
+              onSendToCashier={() => setIsCreateBillOpen(true)}
+              onSendToHmo={() => setIsSendToHmoOpen(true)}
+            />
+          </div>
         </div>
       </div>
 
