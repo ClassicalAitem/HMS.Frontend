@@ -417,7 +417,7 @@ useEffect(() => {
               </div>
 
               {/* Insurance / HMO list */}
-              <div className="flex justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
+              <div className=" justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
                 <div className="space-y-1">
                   <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
                   {Array.isArray(patient?.hmos) && patient.hmos.length > 0 ? (
@@ -432,13 +432,13 @@ useEffect(() => {
                     <span className="text-sm text-base-content/70">None</span>
                   )}
                 </div>
+                
                 <div className="flex flex-wrap gap-2">
                   <SendPatientModal
                     patientId={patientUUID || patientId}
-                    onUpdated={() => {}}
-                    buttonLabel="Send to Department"
-                    buttonClass="btn btn-outline btn-sm"
-                    allowedRoles={[ 'doctor', 'pharmacist', 'lab-technician', 'cashier', 'hmo']}
+                    onUpdated={() => navigate('/dashboard/nurse')}
+                    allowedRoles={['doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+                    containerClass="flex flex-wrap gap-2"
                   />
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
                 </div>

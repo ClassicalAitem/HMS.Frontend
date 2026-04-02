@@ -290,9 +290,7 @@ useEffect(() => {
 
            <SendPatientModal
                 patientId={patient?.id || patientId}
-                onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
-                buttonLabel="Send to Department"
-                buttonClass="btn btn-warning text-white"
+                onUpdated={() => navigate('/dashboard/pharmacist')}
                 allowedRoles={['nurse', 'doctor', 'cashier', 'labtechnician', 'hmo']}
                 />
                 </div>
