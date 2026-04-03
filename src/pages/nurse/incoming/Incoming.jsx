@@ -2,38 +2,18 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
-import {
-  RiArrowLeftRightFill,
-  RiSearchLine,
-  RiArrowLeftSLine,
-  RiArrowRightSLine,
-} from "react-icons/ri";
+import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import womanLogo from "../../../assets/images/incomingLogo.jpg";
 import { getPatients } from "@/services/api/patientsAPI";
-import SamplingModals from "./modals/SamplingModals";
-import InjectionModals from "./modals/InjectionModals";
+import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const Incoming = () => {
   const navigate = useNavigate();
-  const [selectedInvestigationId, setSelectedInvestigationId] = useState(null);
-  const [selectedInjectionId, setSelectedInjectionId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
-  const [patient, setPatient] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showModal2, setShowModal2] = useState(false);
-  const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [recordLoading, setRecordLoading] = useState(false);
-  const [recordError, setRecordError] = useState("");
-  const [recordForm, setRecordForm] = useState({
-    bp: "",
-    pulse: "",
-    temperature: "",
-    weight: "",
-    spo2: "",
-    notes: "",
-  });
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -46,6 +26,14 @@ const Incoming = () => {
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+const normalizeStatus = (status) => {
+  if (!status) return "";
+  // Handle arrays
+  if (Array.isArray(status)) status = status[status.length - 1];
+
+  // Replace spaces with underscores and lowercase
+  return status.replace(/\s+/g, "_").toLowerCase();
+};
   useEffect(() => {
     let mounted = true;
     const fetchIncoming = async () => {
@@ -53,65 +41,61 @@ const Incoming = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
-        const statuses = new Set([
-          "awaiting_injection",
-          "awaiting_sampling",
-          "awaiting_vitals",
-        ]);
+        const nurseStatuses = [
+          PATIENT_STATUS.AWAITING_INJECTION,
+          PATIENT_STATUS.AWAITING_SAMPLING,
+          PATIENT_STATUS.AWAITING_VITALS,
+          PATIENT_STATUS.AWAITING_NURSE,
+        ];
+
         const filtered = patients.filter((p) =>
-          statuses.has((p?.status || "").toLowerCase())
-        );
+          hasAnyStatus(p?.status, nurseStatuses)
+          );  
         const sorted = filtered.sort((a, b) => {
           const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
           return bTime - aTime;
         });
 
-        const prettifyStatus = (s) => {
-          switch ((s || "").toLowerCase()) {
-            case "awaiting_vitals":
-              return "Awaiting Vitals";
-            case "awaiting_sampling":
-              return "Awaiting Sampling";
-            case "awaiting_injection":
-              return "Awaiting Injection";
-            default:
-              return s || "—";
-          }
-        };
+       const prettifyStatus = (s) => {
+          const status = normalizeStatus(s); 
+          switch ((status || '').toLowerCase()) {
+            case 'awaiting_vitals': return 'Awaiting Vitals';
+            case 'awaiting_sampling': return 'Awaiting Sampling';
+            case 'awaiting_injection': return 'Awaiting Injection';
+            case 'awaiting_nurse': return 'Awaiting Nurse';
+            default: return status || '—';
+            }
+          };
 
-        const mapped = sorted.map((p) => ({
+       const mapped = sorted.map((p) => {
+        const latestStatus = normalizeStatus(p?.status); // <-- ensures string
+        const prettyStatus = prettifyStatus(latestStatus);
+
+        return {
           id: p?.id,
-          prescriptionId: p?.prescriptionId || p?.prescription?._id,
           hospitalId: p?.hospitalId,
           snapshot: p,
-          name:
-            `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
-          patientId: p?.hospitalId || p?.id || "—",
-          illness: prettifyStatus(p?.status),
-          insurance: p?.hmos?.provider || "—",
-          registered: p?.createdAt
-            ? new Date(p.createdAt).toLocaleString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : "—",
-          alert: prettifyStatus(p?.status),
-          status: (p?.status || "").toLowerCase(),
-        }));
+          name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+          patientId: p?.hospitalId || p?.id || '—',
+          illness: prettyStatus,
+          insurance: p?.hmos?.provider || '—',
+          updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
+          alert: prettyStatus,
+          status: latestStatus.toLowerCase(), // <-- safe string now
+        };
+      });
 
         if (mounted) setItems(mapped);
       } catch (err) {
-        console.error("Incoming page: patients fetch error", err);
+        console.error('Incoming page: patients fetch error', err);
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
     fetchIncoming();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [refreshKey]);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
@@ -158,8 +142,8 @@ const Incoming = () => {
               </div>
             </div>
             {/* Minimal search */}
-            <div className="mt-4 flex items-center gap-2">
-              <div className="relative w-full max-w-xs">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="relative w-full max-w-sm">
                 <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
                 <input
                   value={query}
@@ -171,128 +155,148 @@ const Incoming = () => {
               {query && (
                 <button
                   onClick={() => setQuery("")}
-                  className="btn btn-ghost btn-xs"
+                  className="btn btn-ghost btn-sm"
                 >
                   Clear
                 </button>
               )}
+              <button onClick={onRefresh} className="btn btn-outline btn-sm ml-auto">
+                Refresh
+              </button>
             </div>
-            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 rounded-md">
-              {loading
-                ? Array.from({ length: 4 }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="h-[216px] card bg-base-100 border border-base-300 shadow-sm"
-                    >
-                      <div className="flex gap-6 items-center p-5">
-                        <div className="w-[52px] h-[52px] rounded-full bg-base-300 animate-pulse" />
-                        <div className="flex-1 grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <div className="animate-pulse h-3 w-40 rounded bg-base-300" />
-                            <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                            <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                          </div>
-                          <div className="space-y-2">
-                            <div className="animate-pulse h-3 w-36 rounded bg-base-300" />
-                            <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                            <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between px-7 pb-5">
-                        <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                        <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                        <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                      </div>
+            <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+              
+              {/* Column Headers */}
+              {!loading && items.length > 0 && (
+                <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
+                  <div className="col-span-3">Patient</div>
+                  <div className="col-span-2">Patient ID</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Updated</div>
+                  <div className="col-span-1 text-right">Action</div>
+                </div>
+              )}
+                
+              {/* Rows */}
+              <div className="divide-y divide-base-200">
+              {loading ? (
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-12 gap-2 px-5 py-4 items-center"
+                  >
+                    <div className="col-span-3 space-y-2">
+                      <div className="skeleton h-4 w-36 rounded" />
+                      <div className="skeleton h-3 w-20 rounded" />
                     </div>
-                  ))
-                : (() => {
-                    const q = query.trim().toLowerCase();
-                    const filtered = q
-                      ? items.filter((d) => {
-                          const hay = [
-                            d?.name,
-                            d?.patientId,
-                            d?.illness,
-                            d?.insurance,
-                            d?.alert,
-                          ]
-                            .filter(Boolean)
-                            .join(" ")
-                            .toLowerCase();
-                          return hay.includes(q);
-                        })
-                      : items;
+                    <div className="col-span-2">
+                      <div className="skeleton h-4 w-24 rounded" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="skeleton h-5 w-28 rounded-full" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="skeleton h-4 w-20 rounded" />
+                    </div>
+                    <div className="col-span-2">
+                      <div className="skeleton h-4 w-28 rounded" />
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <div className="skeleton h-8 w-16 rounded" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                (() => {
+                  const q = query.trim().toLowerCase();
+                  const filtered = q
+                    ? items.filter((d) => {
+                        const hay = [
+                          d?.name,
+                          d?.patientId,
+                          d?.illness,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")
+                          .toLowerCase();
+                        return hay.includes(q);
+                      })
+                    : items;
 
-                    if (filtered.length === 0) {
-                      return (
-                        <div className="col-span-full">
-                          <EmptyState
-                            title="No matches found"
-                            description="Try a different search or clear the filter."
-                            actionLabel={query ? "Clear search" : "Refresh"}
-                            onAction={query ? () => setQuery("") : onRefresh}
-                          />
-                        </div>
-                      );
-                    }
-
-                    const totalPages = Math.max(
-                      1,
-                      Math.ceil(filtered.length / pageSize)
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-16">
+                        <EmptyState
+                          title="No patients found"
+                          description={
+                            query
+                              ? "No matches for your search."
+                              : "No incoming patients right now."
+                          }
+                          actionLabel={query ? "Clear search" : "Refresh"}
+                          onAction={query ? () => setQuery("") : onRefresh}
+                        />
+                      </div>
                     );
-                    const start = page * pageSize;
-                    const end = start + pageSize;
-                    const visible = filtered.slice(start, end);
+                  }
+
+                  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+                  const start = page * pageSize;
+                  const end = start + pageSize;
+                  const visible = filtered.slice(start, end);
 
                   return visible.map((data, index) => {
-                    const primary =
-                      data.status === 'awaiting_vitals' ? 'vitals' :
-                      data.status === 'awaiting_sampling' ? 'sampling' :
-                      data.status === 'awaiting_injection' ? 'injection' : '';
+                    const statusBadgeClass = (status) => {
+                      const s = status?.toLowerCase() || '';
+                      if (s.includes('vitals')) return 'badge-info';
+                      if (s.includes('sampling')) return 'badge-warning';
+                      if (s.includes('injection')) return 'badge-error';
+                      if (s.includes('nurse')) return 'badge-warning';
+                      return 'badge-neutral';
+                    };
+
                     return (
                       <div
                         key={index}
-                        className="card bg-base-100 border border-base-300 shadow-sm"
+                        className="grid grid-cols-12 gap-2 px-5 py-4 items-center hover:bg-base-200/40 transition-colors"
                       >
-                        <div className="flex gap-6 items-center p-8">
-                          <img
-                            src={womanLogo}
-                            alt=""
-                            className="w-[52px] h-[52px] object-cover rounded-full"
-                          />
-
-                            <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
-                              <div className="space-y-1 xl:space-y-3">
-                                <span className="block">Name: {data.name}</span>
-                                <span className="block">
-                                  Patient ID: {data.patientId}
-                                </span>
-                                <span className="block">
-                                  Reason: {data.illness}
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <span className="block">
-                                  Insurance: {data.insurance}
-                                </span>
-                                <span className="block">
-                                  Registered: {data.registered}
-                                </span>
-                                <span className="block">
-                                  Alert: {data.alert}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
+                        {/* Patient Name */}
+                        <div className="col-span-3 min-w-0">
+                          <p className="font-bold text-base-content truncate">
+                            {data.name}
+                          </p>
                         </div>
 
-                        <div className="flex justify-end px-7 pb-5">
+                        {/* Patient ID */}
+                        <div className="col-span-2">
+                          <span className="text-sm font-mono text-base-content/70">
+                            {data.patientId}
+                          </span>
+                        </div>
+
+                        {/* Status */}
+                        <div className="col-span-2">
+                          <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
+                            {data.illness}
+                          </span>
+                        </div>
+
+                        {/* Registered */}
+                        <div className="col-span-2">
+                          <span className="text-sm text-base-content/60">
+                            {data.updatedAt}
+                          </span>
+                        </div>
+
+                     
+
+                        {/* Action */}
+                        <div className="col-span-1 flex justify-end">
                           <button
-                            className="px-3 py-1 rounded-full bg-primary text-white"
+                            className="btn btn-sm btn-primary"
                             onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
                           >
-                            View Patient Details
+                            View
                           </button>
                         </div>
                       </div>
@@ -301,46 +305,19 @@ const Incoming = () => {
                 })()
               )}
             </div>
-
-            {/* Modals rendered OUTSIDE the grid */}
-            {showModal && (
-              <SamplingModals
-                setShowModal={setShowModal}
-                patientId={selectedInvestigationId}
-                patientData={patient}
-              />
-            )}
-
-            {showModal2 && (
-              <InjectionModals
-                setShowModal2={setShowModal2}
-                patientId={selectedInjectionId}
-                patientData={patient}
-              />
-            )}
-
             {/* Carousel-style pagination dots and controls */}
             {(() => {
               const q = query.trim().toLowerCase();
               const filtered = q
                 ? items.filter((d) => {
-                    const hay = [
-                      d?.name,
-                      d?.patientId,
-                      d?.illness,
-                      d?.insurance,
-                      d?.alert,
-                    ]
+                    const hay = [d?.name, d?.patientId, d?.illness, d?.insurance]
                       .filter(Boolean)
                       .join(" ")
                       .toLowerCase();
                     return hay.includes(q);
                   })
                 : items;
-              const totalPages = Math.max(
-                1,
-                Math.ceil(filtered.length / pageSize)
-              );
+              const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
               if (!loading && filtered.length > pageSize) {
                 return (
                   <div className="mt-6 flex items-center justify-center gap-3">
@@ -358,9 +335,7 @@ const Incoming = () => {
                           onClick={() => setPage(i)}
                           aria-label={`Go to page ${i + 1}`}
                           className={`w-3 h-3 rounded-full ${
-                            i === page
-                              ? "bg-success"
-                              : "border border-base-300 bg-transparent"
+                            i === page ? 'bg-success' : 'border border-base-300 bg-transparent'
                           }`}
                         />
                       ))}
@@ -368,9 +343,7 @@ const Incoming = () => {
                     <button
                       className="btn btn-ghost btn-xs"
                       aria-label="Next"
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages - 1, p + 1))
-                      }
+                      onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                     >
                       <RiArrowRightSLine />
                     </button>
@@ -379,187 +352,13 @@ const Incoming = () => {
               }
               return null;
             })()}
-          </section>
-
-          {isRecordOpen && (
-            <div className="modal modal-open">
-              <div className="modal-box">
-                <h3 className="font-bold text-lg">
-                  Record New Vitals -{" "}
-                  {patient?.fullName ||
-                    `${patient?.firstName || ""} ${
-                      patient?.lastName || ""
-                    }`.trim() ||
-                    "Patient"}
-                </h3>
-                <p className="py-1 text-sm">
-                  Enter the latest vital signs for this patient.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">
-                      Blood Pressure
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="120/80"
-                      className="input input-bordered w-full"
-                      value={recordForm.bp}
-                      onChange={(e) =>
-                        setRecordForm((f) => ({ ...f, bp: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">
-                      Pulse
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="78"
-                      className="input input-bordered w-full"
-                      value={recordForm.pulse}
-                      onChange={(e) =>
-                        setRecordForm((f) => ({ ...f, pulse: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">
-                      Weight
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="62"
-                      className="input input-bordered w-full"
-                      value={recordForm.weight}
-                      onChange={(e) =>
-                        setRecordForm((f) => ({ ...f, weight: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">
-                      Temperature (°F)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="98.6"
-                      className="input input-bordered w-full"
-                      value={recordForm.temperature}
-                      onChange={(e) =>
-                        setRecordForm((f) => ({
-                          ...f,
-                          temperature: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm text-base-content/70">
-                      SpO2
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="98"
-                      className="input input-bordered w-full"
-                      value={recordForm.spo2}
-                      onChange={(e) =>
-                        setRecordForm((f) => ({ ...f, spo2: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block mb-1 text-sm text-base-content/70">
-                      Notes
-                    </label>
-                    <textarea
-                      placeholder="Optional notes"
-                      className="textarea textarea-bordered w-full"
-                      value={recordForm.notes}
-                      onChange={(e) =>
-                        setRecordForm((f) => ({ ...f, notes: e.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-
-                {recordError && (
-                  <p className="mt-2 text-sm text-error">{recordError}</p>
-                )}
-
-                <div className="modal-action">
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => {
-                      setIsRecordOpen(false);
-                      setRecordError("");
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className={`btn btn-primary ${
-                      recordLoading ? "loading" : ""
-                    }`}
-                    onClick={async () => {
-                      try {
-                        setRecordLoading(true);
-                        setRecordError("");
-                        const payload = {
-                          patientId: patientUUID || patientId,
-                          bp: recordForm.bp,
-                          temperature: recordForm.temperature
-                            ? Number(recordForm.temperature)
-                            : undefined,
-                          weight: recordForm.weight
-                            ? Number(recordForm.weight)
-                            : undefined,
-                          pulse: recordForm.pulse
-                            ? Number(recordForm.pulse)
-                            : undefined,
-                          spo2: recordForm.spo2
-                            ? Number(recordForm.spo2)
-                            : undefined,
-                          notes: recordForm.notes || undefined,
-                        };
-                        const res = await createVital(payload);
-                        const created = res?.data ?? res;
-                        // Prepend new vital to history and update latest
-                        setVitals((prev) => [
-                          created,
-                          ...(Array.isArray(prev) ? prev : []),
-                        ]);
-                        setIsRecordOpen(false);
-                        setRecordForm({
-                          bp: "",
-                          pulse: "",
-                          temperature: "",
-                          weight: "",
-                          spo2: "",
-                          notes: "",
-                        });
-                      } catch (e) {
-                        const msg =
-                          e?.response?.data?.message ||
-                          "Failed to record vitals";
-                        setRecordError(msg);
-                      } finally {
-                        setRecordLoading(false);
-                      }
-                    }}
-                  >
-                    Record Vitals
-                  </button>
-                </div>
-              </div>
             </div>
-          )}
+          </section>
         </div>
       </div>
     </div>
   );
 };
+
 
 export default Incoming;

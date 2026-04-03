@@ -4,6 +4,7 @@ import { Header, EmptyState, DataTable } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiSearchLine } from 'react-icons/ri';
 import { getPatients } from '@/services/api/patientsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const AllPatients = () => {
   const navigate = useNavigate();
@@ -24,7 +25,10 @@ const AllPatients = () => {
         setLoading(true);
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
-        const filtered = patients.filter((p) => (p?.status || '').toLowerCase() === 'awaiting_consultation');
+        const filtered = patients.filter((p) => {
+          const status = (p?.status || '').toLowerCase();
+          return status === 'awaiting_consultation' || status === 'lab_completed';
+        });
         const sorted = filtered.sort((a, b) => {
           const at = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bt = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
@@ -40,7 +44,7 @@ const AllPatients = () => {
           gender: p?.gender || '—',
           phone: p?.phone || p?.phoneNumber || '—',
           status: (p?.status || '').replace(/_/g, ' '),
-          registered: p?.createdAt ? new Date(p.createdAt).toLocaleDateString('en-US') : '—',
+          registered: p?.createdAt ? formatNigeriaDate(p.createdAt) : '—',
         }));
         if (mounted) setItems(mapped);
       } finally {
@@ -55,8 +59,8 @@ const AllPatients = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = items; // already filtered to awaiting_consultation
-    if (!q) return base;
+    const base = items;    
+     if (!q) return base;
     return base.filter((d) => [d.name, d.patientId, d.insurance, d.gender, d.phone, d.status].filter(Boolean).join(' ').toLowerCase().includes(q));
   }, [items, query]);
 

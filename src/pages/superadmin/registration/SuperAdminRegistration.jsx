@@ -15,32 +15,40 @@ const registrationSchema = yup.object({
     .required('First name is required')
     .min(2, 'First name must be at least 2 characters')
     .max(50, 'First name must not exceed 50 characters'),
+
   lastName: yup
     .string()
     .required('Last name is required')
     .min(2, 'Last name must be at least 2 characters')
     .max(50, 'Last name must not exceed 50 characters'),
+
   email: yup
     .string()
     .required('Email is required')
     .email('Please enter a valid email address'),
+
   phone: yup
     .string()
-    .required('Phone number is required')
-    .matches(/^[+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number'),
+    .required('Phone number is required'),
+
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['superAdmin', 'admin', 'doctor', 'nurse', 'frontdesk', 'cashier'], 'Please select a valid role'),
+    .oneOf(
+      ['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'lab-technician', 'surgeon', 'pharmacist', 'hmo'],
+      'Please select a valid role'
+    ),
+
   password: yup
     .string()
     .required('Password is required')
     .min(6, 'Password must be at least 6 characters')
     .max(50, 'Password must not exceed 50 characters'),
+
   confirmPassword: yup
     .string()
     .required('Please confirm your password')
-    .oneOf([yup.ref('password')], 'Passwords do not match'),
+    .oneOf([yup.ref('password'), null], 'Passwords do not match'),
 });
 
 const SuperAdminRegistration = () => {
@@ -78,50 +86,40 @@ const SuperAdminRegistration = () => {
     setIsSidebarOpen(false);
   };
 
-  const onSubmit = async (data) => {
-    console.log('📝 SuperAdminRegistration: Form submitted with data:', data);
-    setIsLoading(true);
+const onSubmit = async (data) => {
+  setIsLoading(true);
 
-    try {
-      // Prepare the data for the API (excluding department as requested)
-      const userData = {
-        firstName: data.firstName.trim(),
-        lastName: data.lastName.trim(),
-        email: data.email.trim().toLowerCase(),
-        phone: data.phone.trim(),
-        role: data.role,
-        password: data.password,
-      };
+  try {
+    const userData = {
+      firstName: data.firstName.trim(),
+      lastName: data.lastName.trim(),
+      email: data.email.trim().toLowerCase(),
+      phone: data.phone.trim(),
+      role: data.role,
+      password: data.password,
+    };
 
-      console.log('📤 SuperAdminRegistration: Sending user data:', userData);
+    let response;
 
-      // Call the appropriate API based on role
-      let response;
-      if (data.role === 'admin') {
-        response = await usersAPI.createAdmin(userData);
-      } else {
-        // For other roles, use the general createUser endpoint
-        response = await usersAPI.createUser(userData);
-      }
-
-      console.log('✅ SuperAdminRegistration: User created successfully:', response.data);
-
-      // Show success message
-      toast.success(`${data.role.charAt(0).toUpperCase() + data.role.slice(1)} registered successfully!`);
-
-      // Reset form
-      reset();
-    } catch (error) {
-      console.error('❌ SuperAdminRegistration: Error creating user:', error);
-      
-      // Show error message
-      const errorMessage = error.response?.data?.message || 'Failed to register user. Please try again.';
-      toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
+    if (data.role === 'admin') {
+      response = await usersAPI.createAdmin(userData);
+    } else {
+      response = await usersAPI.createUser(userData);
     }
-  };
 
+    toast.success(`${data.role} registered successfully`);
+    reset();
+
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      'Failed to register user';
+
+    toast.error(message);
+  } finally {
+    setIsLoading(false);
+  }
+};
   const handleReset = () => {
     reset();
     toast.info('Form reset successfully');
@@ -131,12 +129,12 @@ const SuperAdminRegistration = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
@@ -144,12 +142,12 @@ const SuperAdminRegistration = () => {
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -241,12 +239,15 @@ const SuperAdminRegistration = () => {
                     disabled={isLoading}
                   >
                     <option value="">Select a role</option>
-                    <option value="superAdmin">Super Admin</option>
                     <option value="admin">Admin</option>
                     <option value="doctor">Doctor</option>
                     <option value="nurse">Nurse</option>
-                    <option value="frontdesk">Front Desk</option>
+                    <option value="front-desk">Front Desk</option>
                     <option value="cashier">Cashier</option>
+                    <option value="lab-technician">Lab Technician</option>
+                    <option value="surgeon">Surgeon</option>
+                    <option value="pharmacist">Pharmacist</option>
+                    <option value="hmo">HMO</option>
                   </select>
                   {errors.role && (
                     <p className="mt-1 text-xs text-error">{errors.role.message}</p>

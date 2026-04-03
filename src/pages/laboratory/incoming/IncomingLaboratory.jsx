@@ -1,13 +1,141 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
-import { incomingTestResult } from "../../../../data";
-import { patientTestResults } from "../../../../data";
 import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
 import TestRequestModal from "./modals/TestRequestModal";
-import { useState } from "react";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getPatientById, getPatients } from "@/services/api/patientsAPI";
+import { hasStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 
 const IncomingLaboratory = () => {
+  const navigate = useNavigate();
+  const [incomingStats, setIncomingStats] = useState([]);
+  const [testRequests, setTestRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showModal2, setShowModal2] = useState(false);
+  const [selectedCard, setSelectedCard] = useState(null);
+
+  const fetchTestRequests = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Step 1: Fetch all patients and filter those with awaiting_lab status
+      console.log("📥 Fetching all patients...");
+      const patientsResponse = await getPatients();
+      const allPatients = Array.isArray(patientsResponse) 
+        ? patientsResponse 
+        : (patientsResponse?.data || []);
+      
+      const awaitingLabPatients = allPatients.filter((p) => 
+        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB)
+      );
+      console.log("Patients with awaiting_lab status:", awaitingLabPatients.length);
+
+      // Step 2: Fetch all investigation requests
+      console.log("📥 Fetching investigation requests...");
+      const investigationsResponse = await getInvestigations();
+      const allInvestigations = Array.isArray(investigationsResponse) 
+        ? investigationsResponse 
+        : (investigationsResponse?.data || []);
+      
+      console.log("Total investigation requests:", allInvestigations.length);
+
+      // Step 3: Match investigation requests with awaiting_lab patients
+      const relevantInvestigations = allInvestigations.filter((inv) => {
+        return awaitingLabPatients.some((patient) => 
+          (patient._id || patient.id) === (inv.patientId || inv.patient?._id || inv.patient?.id)
+        );
+      });
+
+      console.log("Investigation requests for awaiting_lab patients:", relevantInvestigations.length);
+
+      // Calculate stats
+      const newRequests = relevantInvestigations.length;
+      const urgentCount = relevantInvestigations.filter((inv) => inv.priority === "urgent").length;
+      const highPriorityCount = relevantInvestigations.filter((inv) => inv.priority === "high").length;
+
+      setIncomingStats([
+        {
+          header: "New Request",
+          value: newRequests,
+        },
+        {
+          header: "Urgent Priority",
+          value: urgentCount,
+        },
+        {
+          header: "High Priority",
+          value: highPriorityCount,
+        },
+        {
+          header: "Avg. Wait time",
+          value: "20 mm",
+        },
+      ]);
+
+      // Step 4: Format investigation requests with patient data
+      const formattedRequests = relevantInvestigations.map((inv) => {
+        // Find matching patient from our fetched patients array
+        const patient = awaitingLabPatients.find((p) => 
+          (p._id || p.id) === (inv.patientId || inv.patient?._id || inv.patient?.id)
+        );
+
+        const patientName = patient
+          ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || patient.name || "Unknown"
+          : "Unknown Patient";
+
+        // Extract notes from tests array
+        const testNotes = inv.tests
+          ?.map((test) => test.notes)
+          .filter((note) => note)
+          .join(", ") || "No notes provided";
+
+        return {
+          id: inv._id || inv.id,
+          name: patientName,
+          userId: patient?.hospitalId || inv.patientId || "N/A",
+          status: inv.priority === "urgent" ? "Urgent" : "Normal",
+          test: inv.tests?.map((t) => t.name).join(", ") || inv.investigationType || "Lab Test",
+          date: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "N/A",
+          requestedBy: inv.doctorName || "Doctor",
+          time: inv.createdAt ? new Date(inv.createdAt).toLocaleTimeString() : "N/A",
+          symptoms: testNotes,
+        };
+      });
+
+      console.log("Formatted requests:", formattedRequests);
+      setTestRequests(formattedRequests);
+    } catch (err) {
+      console.error("Error fetching incoming lab requests:", err);
+      setError("Failed to load incoming test requests");
+      setIncomingStats([
+        {
+          header: "New Request",
+          value: "0",
+        },
+        {
+          header: "Urgent Priority",
+          value: "0",
+        },
+        {
+          header: "High Priority",
+          value: "0",
+        },
+        {
+          header: "Avg. Wait time",
+          value: "N/A",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const bgChange = (status) => {
     if (status === "Urgent") {
       return "#FFE2E2";
@@ -16,9 +144,29 @@ const IncomingLaboratory = () => {
       return "#DBEAFE";
     }
   };
-  const [showModal, setShowModal] = useState(false);
-  const [showModal2, setShowModal2] = useState(false);
-  const [selectedCard, setSelectedCard] = useState(null); //multiple patients are listed, every patient card can open a with a selectedCard 
+
+  useEffect(() => {
+    fetchTestRequests();
+  }, []);
+
+  const handleAcceptFromDetails = (cardData) => {
+    setSelectedCard(cardData);
+    setShowModal(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-base-200">
+        <LaboratorySidebar />
+        <div className="flex overflow-hidden flex-col flex-1">
+          <Header />
+          <div className="flex items-center justify-center flex-1">
+            <p className="text-lg text-gray-600">Loading test requests...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex h-screen bg-base-200">
       <LaboratorySidebar />
@@ -27,7 +175,12 @@ const IncomingLaboratory = () => {
         <Header />
 
         <div className="overflow-y-auto flex-1 ">
-          <section className="p-7">
+          <section className="p-4">
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+                {error}
+              </div>
+            )}
             <h4 className="text-[32px] text-[#00943C]">
               Incoming Test Results
             </h4>
@@ -35,19 +188,14 @@ const IncomingLaboratory = () => {
               Review and process new test requests from doctors
             </p>
 
-            <div className="flex gap-10 justify-between mt-10">
-              {incomingTestResult.map((test, index) => {
+            <div className="flex gap-4 justify-between mt-6 flex-wrap">
+              {incomingStats.map((test, index) => {
                 return (
                   <div
                     key={index}
-                    className={`w-[300px] h-[150px] bg-[#FFFFFF] shadow p-5 text-[12px] rounded-[8px] ${
-                      index === 1 ? "text-[#DC362E] " : ""
-                    }`}
-                  >
-                    <h1 className="text-[16px] text-[#605D66]">
-                      {test.header}
-                    </h1>
-                    <p className="py-2 text-[30px] mt-5">{test.value}</p>
+                    className={`w-[220px] h-[110px] bg-white shadow p-3 text-sm rounded-md ${index === 1 ? "text-[#DC362E]" : ""}`}>
+                    <h1 className="text-sm text-[#605D66]">{test.header}</h1>
+                    <p className="mt-2 text-2xl font-semibold">{test.value}</p>
                   </div>
                 );
               })}
@@ -60,105 +208,55 @@ const IncomingLaboratory = () => {
               </button>
             </div>
 
-            <div className="flex flex-col gap-5 mt-5">
-              {patientTestResults.map((testCard, index) => {
-                return (
-                  <div
-                    key={index}
-                    className="w-full h-[280px] border border-[#605D66] rounded-[6px]"
-                  >
-                    <div className="flex flex-col gap-8 p-5">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="flex gap-5 items-center">
-                            <p className="font-semibold">{testCard.name}</p>
-                            <p className="text-[12px]">{testCard.userId}</p>
-                            <p
-                              style={{
-                                backgroundColor: bgChange(testCard.status),
-                              }}
-                              className={`w-[62px] h-[32px] flex justify-center items-center text ${
-                                testCard.status === "Urgent"
-                                  ? "text-[#E7000B]"
-                                  : "text-[#4680FC]"
-                              }`}
+            <div className="flex flex-col gap-3 mt-4">
+              {testRequests.length > 0 ? (
+                testRequests.map((testCard, index) => {
+                  return (
+                    <div key={index} className="w-full h-[160px] border rounded-md p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <p className="font-semibold text-sm">{testCard.name}</p>
+                            <p className="text-xs text-muted">{testCard.userId}</p>
+                            <div
+                              style={{ backgroundColor: bgChange(testCard.status) }}
+                              className={`px-2 py-0.5 rounded text-xs font-medium ${testCard.status === "Urgent" ? "text-[#E7000B]" : "text-[#4680FC]"}`}
                             >
                               {testCard.status}
-                            </p>
+                            </div>
                           </div>
-
-                          <div>
-                            <p className="text-[12px] text-[#605D66]">
-                              Test: {testCard.test}
-                            </p>
-                            <p className="text-[12px] text-[#605D66]">
-                              Date: {testCard.date}
-                            </p>
+                          <div className="mt-1 text-xs text-[#605D66]">
+                            <div>Test: {testCard.test}</div>
+                            <div>Date: {testCard.date}</div>
                           </div>
                         </div>
 
-                        <div>
-                          <p className="font-semibold">
-                            Requested by: {testCard.requestedBy}
-                          </p>
-                          <p className="text-[12px] text-[#605D66]">
-                            Date: {testCard.date}
-                          </p>
-                          <p className="text-[12px] text-[#605D66]">
-                            Time: {testCard.time}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 flex-col">
-
-
+                        <div className="w-44 flex flex-col gap-2">
+                        
                           <button
-                            onClick={() => {
-                              setSelectedCard(testCard), setShowModal(true);
-                            }}
-                            className="w-[258px] h-[56px] bg-[#00943C] text-[#FFFFFF]"
-                          >
-                            Accept & Process
-                          </button>
-
-
-
-
-
-                          {showModal && (
-                            <AcceptTestRequestModal
-                              data={selectedCard}
-                              setShowModal={setShowModal}
-                            />
-                          )}
-
-                          <button
-                            onClick={() => {
-                              setSelectedCard(testCard), setShowModal2(true);
-                            }}
-                            className="w-[258px] h-[56px] border border-[#AEAAAE]"
+                            onClick={() => { setSelectedCard(testCard); setShowModal2(true); }}
+                            className="btn btn-sm btn-success w-full"
                           >
                             View Details
                           </button>
-
-                          {showModal2 && (
-                            <TestRequestModal
-                              data={selectedCard}
-                              setShowModal2={setShowModal2}
-                            />
-                          )}
                         </div>
                       </div>
 
-                      <div className="w-full h-[76px] bg-[#EFEFEF] p-4">
-                        <p className="text-[16px] text-[#605D66]">
-                          Symptoms/Notes:
-                        </p>
-                        <p className="font-semibold">{testCard.symptoms}</p>
+                      <div className="mt-3 bg-[#EFEFEF] p-2 rounded text-sm">
+                        <strong>Symptoms/Notes:</strong> <span className="ml-2">{testCard.symptoms}</span>
                       </div>
+                      {showModal && (
+                        <AcceptTestRequestModal data={selectedCard} setShowModal={setShowModal} onAcceptSuccess={fetchTestRequests} />
+                      )}
+                      {showModal2 && (
+                        <TestRequestModal data={selectedCard} setShowModal2={setShowModal2} onAcceptFromDetails={handleAcceptFromDetails} />
+                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="text-center py-6 text-gray-500">No test requests at the moment</div>
+              )}
             </div>
           </section>
         </div>

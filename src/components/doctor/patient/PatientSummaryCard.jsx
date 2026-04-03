@@ -52,8 +52,8 @@ const PatientSummaryCard = ({ patient, loading }) => {
                 </div>
                 <div className="flex flex-col space-y-1">
                   <span className="text-sm text-base-content/70">Patient ID</span>
-                  <span className="text-base font-medium text-base-content">{patientUUID || "—"}</span>
-                  <span className="text-xs text-base-content/70">Hospital ID: {patientHospitalId || "—"}</span>
+                  <span className="text-base font-medium text-base-content">{patientHospitalId || "—"}</span>
+                  {/* <span className="text-xs text-base-content/70">Hospital ID: {patientHospitalId || "—"}</span> */}
                 </div>
               </div>
 
@@ -64,7 +64,7 @@ const PatientSummaryCard = ({ patient, loading }) => {
                     <div className="flex flex-wrap gap-2">
                       {patient.hmos.map((h, i) => (
                         <span key={i} className="badge badge-outline font-normal text-sm">
-                          {`${h?.provider || "—"} - ${h?.plan || "—"} (${h?.expiresAt ? new Date(h.expiresAt).toLocaleDateString("en-US") : "—"})`}
+                           {`${h?.memberId || "—"} - ${h?.provider || "—"} - ${h?.plan || "—"} `}
                         </span>
                       ))}
                     </div>

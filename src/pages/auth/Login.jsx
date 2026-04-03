@@ -113,9 +113,11 @@ const Login = () => {
           'admin': '/dashboard/admin',
           'super-admin': '/dashboard/superadmin',
           'cashier': '/cashier/dashboard',
+          'pharmacist': '/dashboard/pharmacist',
+          'hmo': '/dashboard/hmo',
         };
-        
-        redirectPath = roleRoutes[user.role] || '/frontdesk/dashboard';
+        const roleOrType = user.role || user.accountType;
+        redirectPath = roleRoutes[roleOrType] || '/frontdesk/dashboard';
       }
       
       console.log('🔄 Login: Redirecting to:', redirectPath);
@@ -156,7 +158,7 @@ const Login = () => {
         console.log('🏠 Login: Redirecting to dashboard');
         // Navigate to role-specific dashboard after delay
         setTimeout(() => {
-          const dashboardPath = getDashboardPath(result.payload.user.role);
+          const dashboardPath = getDashboardPath(result.payload.user.role || result.payload.user.accountType);
           console.log('🏠 Login: Dashboard path:', dashboardPath);
           navigate(dashboardPath);
         }, 2000);
@@ -199,6 +201,10 @@ const Login = () => {
         return '/dashboard/superadmin';
       case 'cashier':
         return '/cashier/dashboard';
+      case 'pharmacist':
+        return '/dashboard/pharmacist';
+      case 'hmo':
+        return '/dashboard/hmo';
       default:
         return '/frontdesk/dashboard';
     }
@@ -283,6 +289,7 @@ const Login = () => {
         <AuthInput
           type="text"
           name="email"
+          autoComplete="off"
           // value={formData.username}
           // onChange={handleInputChange}
           placeholder="Enter Your Email"
@@ -300,6 +307,7 @@ const Login = () => {
         <AuthInput
           type={showPassword ? "text" : "password"}
           name="password"
+          autoComplete="off"
           // value={formData.password}
           // onChange={handleInputChange}
           placeholder="Enter Your Password"

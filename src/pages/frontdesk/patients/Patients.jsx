@@ -7,8 +7,9 @@ import { DataTable } from '@/components/common';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
-import PatientsDebug from '../../../components/common/PatientsDebug';
+import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -39,26 +40,34 @@ const Patients = () => {
   };
 
 
-  const StatusBadge = ({ status }) => {
-    const getBadgeClass = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'registered':
-          return 'badge badge-success';
-        case 'active':
-          return 'badge badge-success';
-        case 'inactive':
-          return 'badge badge-neutral';
-        default:
-          return 'badge badge-neutral';
-      }
-    };
+const StatusBadge = ({ status }) => {
+  const currentStatus = Array.isArray(status)
+    ? status[status.length - 1]
+    : status;
 
-    return (
-      <span className={getBadgeClass(status)}>
-        {status || 'Unknown'}
-      </span>
-    );
+  const getBadgeClass = (statusValue) => {
+    switch (statusValue?.toLowerCase()) {
+      case 'registered':
+        return 'badge badge-success';
+      case 'active':
+        return 'badge badge-success';
+      case 'inactive':
+        return 'badge badge-neutral';
+      case 'awaiting_cashier':
+        return 'badge badge-warning';
+      case 'awaiting_vitals':
+        return 'badge badge-info';
+      default:
+        return 'badge badge-neutral';
+    }
   };
+
+  return (
+    <span className={getBadgeClass(currentStatus)}>
+      {currentStatus || 'Unknown'}
+    </span>
+  );
+};
 
   // Calculate age from date of birth
   const calculateAge = (dob) => {
@@ -85,8 +94,8 @@ const Patients = () => {
     nextOfKinRelationship: patient.nextOfKin?.relationship || 'N/A',
     hmoCount: patient.hmos?.length || 0,
     dependantsCount: patient.dependants?.length || 0,
-    createdAtFormatted: new Date(patient.createdAt).toLocaleDateString(),
-    updatedAtFormatted: new Date(patient.updatedAt).toLocaleDateString(),
+    createdAtFormatted: formatNigeriaDate(patient.createdAt),
+    updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
   })), [patients]);
 
   // Define table columns

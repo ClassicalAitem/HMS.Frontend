@@ -65,12 +65,17 @@ const NurseDashboard = () => {
         // Update patients map for name resolution across the dashboard
         const map = buildPatientsMap(patients);
         if (mounted) setPatientsById(map);
-        const statuses = new Set([
+        const nurseStatuses = new Set([
           "awaiting_injection",
           "awaiting_sampling",
           "awaiting_vitals",
+          "awaiting_nurse",
         ]);
-        const filtered = patients.filter((p) => statuses.has((p?.status || "").toLowerCase()));
+        const filtered = patients.filter((p) => {
+          if (!p?.status) return false;
+          const list = Array.isArray(p.status) ? p.status : [p.status];
+          return list.some(s => nurseStatuses.has(String(s).toLowerCase()));
+        });
 
         // Sort by updatedAt or createdAt desc if available
         const sorted = filtered.sort((a, b) => {
@@ -166,10 +171,10 @@ const NurseDashboard = () => {
     <div className="flex h-screen bg-base-200">
       <Sidebar />
 
-      <div className="flex overflow-hidden flex-col flex-1 ">
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header />
 
-        <div className="overflow-y-auto flex flex-col gap-1 p-2  h-full">
+        <div className="overflow-y-auto flex flex-col gap-4 sm:gap-6 2xl:gap-8 p-4 sm:p-6 2xl:p-8 h-full">
           <TaskAssigned
             tasksCount={tasksCount}
             incoming={incomingItems}

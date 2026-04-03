@@ -4,6 +4,7 @@ import { FaTimes, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useAppDispatch } from '../../store/hooks';
 import { editPatient } from '../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
   const dispatch = useAppDispatch();
@@ -18,6 +19,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     email: '',
     phone: '',
     address: '',
+    stateOfOrigin: '',
+    town: '',
+    LGA: '',
     dob: '',
     gender: '',
     
@@ -33,6 +37,8 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     hmo: []
   });
 
+  console.log('State of origin:  ', patient?.stateOfOrigin);
+
   // Pre-populate form when patient data is available
   useEffect(() => {
     if (patient) {
@@ -43,6 +49,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         email: patient.email || '',
         phone: patient.phone || '',
         address: patient.address || '',
+        stateOfOrigin: patient.stateOfOrigin || '',
+        town: patient.town || '',
+        LGA: patient.LGA || '',
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
         gender: patient.gender || '',
         
@@ -96,7 +105,6 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         dob: formData.dob, // already in YYYY-MM-DD
         gender: formData.gender,
         phone: formData.phone,
-        email: formData.email,
         address: formData.address,
         nextOfKin: {
           name: formData.nextOfKin.name,
@@ -104,6 +112,11 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
           relationship: formData.nextOfKin.relationship,
         },
         status: patient.status || 'registered',
+        // Only include optional fields if they have values
+        ...(formData.email && { email: formData.email }),
+        ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
+        ...(formData.town && { town: formData.town }),
+        ...(formData.LGA && { LGA: formData.LGA }),
       };
 
       console.log('📦 EditPatientModal: PATCH payload:', updatePayload);
@@ -279,15 +292,50 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                 <div>
                   <h4 className="mb-3 text-base font-medium text-base-content">State Of Origin</h4>
                   <label className="block mb-1 text-sm text-base-content/70">SOO</label>
-                  <select
-                    name="stateOfOrigin"
-                    value={formData.stateOfOrigin}
-                    onChange={handleInputChange}
-                    className="w-full select select-bordered"
-                  >
-                    <option value="Ogun State">Ogun State</option>
+                       <select
+                        name="stateOfOrigin"
+                        value={formData.stateOfOrigin}
+                        onChange={handleInputChange}
+                        className="w-full select select-bordered"
+                      >
+                    <option >{patient?.stateOfOrigin}</option>
+                    <option value="Abia">Abia</option>
+                    <option value="Abuja">Abuja</option>
+                    <option value="Adamawa">Adamawa</option>
+                    <option value="Akwa Ibom">Akwa Ibom</option>
+                    <option value="Anambra">Anambra</option>
+                    <option value="Bauchi">Bauchi</option>
+                    <option value="Bayelsa">Bayelsa</option>
+                    <option value="Benue">Benue</option>
+                    <option value="Borno">Borno</option>
+                    <option value="Cross River">Cross River</option>
+                    <option value="Delta">Delta</option>
+                    <option value="Ebonyi">Ebonyi</option>
+                    <option value="Edo">Edo</option>
+                    <option value="Ekiti">Ekiti</option>
+                    <option value="Enugu">Enugu</option>
+                    <option value="Gombe">Gombe</option>
+                    <option value="Imo">Imo</option>
+                    <option value="Jigawa">Jigawa</option>
+                    <option value="Kaduna">Kaduna</option>
+                    <option value="Kano">Kano</option>
+                    <option value="Katsina">Katsina</option>
+                    <option value="Kebbi">Kebbi</option>
+                    <option value="Kogi">Kogi</option>
+                    <option value="Kwara">Kwara</option>
                     <option value="Lagos">Lagos</option>
+                    <option value="Nasarawa">Nasarawa</option>
+                    <option value="Niger">Niger</option>
+                    <option value="Ogun">Ogun</option>
+                    <option value="Ondo">Ondo</option>
+                    <option value="Osun">Osun</option>
                     <option value="Oyo">Oyo</option>
+                    <option value="Plateau">Plateau</option>
+                    <option value="Rivers">Rivers</option>
+                    <option value="Sokoto">Sokoto</option>
+                    <option value="Taraba">Taraba</option>
+                    <option value="Yobe">Yobe</option>
+                    <option value="Zamfara">Zamfara</option>
                   </select>
                 </div>
                 <div>
@@ -306,8 +354,8 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                   <label className="block mb-1 text-sm text-base-content/70">Local Gov Area</label>
                   <input
                     type="text"
-                    name="lga"
-                    value={formData.lga}
+                    name="LGA"
+                    value={formData.LGA}
                     onChange={handleInputChange}
                     className="w-full input input-bordered"
                   />
@@ -396,7 +444,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                         <div>
                           <label className="block mb-1 text-sm text-base-content/70">Expires</label>
                           <p className="text-base-content font-medium">
-                            {hmo.expiresAt ? new Date(hmo.expiresAt).toLocaleDateString() : 'N/A'}
+                            {hmo.expiresAt ? formatNigeriaDate(hmo.expiresAt) : 'N/A'}
                           </p>
                         </div>
                       </div>

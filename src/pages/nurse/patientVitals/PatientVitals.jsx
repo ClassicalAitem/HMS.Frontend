@@ -7,13 +7,14 @@ import { getPatients } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
+import { mergePatientStatus, hasStatus } from "@/utils/statusUtils";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 
 const PatientVitals = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
-  // Search, filters, and pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -35,16 +36,19 @@ const PatientVitals = () => {
     const ageDate = new Date(diff);
     return Math.abs(ageDate.getUTCFullYear() - 1970);
   };
+  const normalizeStatus = (status) => {
+  if (Array.isArray(status)) return status[status.length - 1] || "";
+  return status || "";
+};
 
-  const statusBadgeClass = (status) => {
-    const s = (status || "").toLowerCase();
-    if (s.includes("active")) return "badge badge-success";
-    if (s.includes("pass") || s.includes("deceased"))
-      return "badge badge-neutral";
-    if (s.includes("pending") || s.includes("wait"))
-      return "badge badge-warning";
-    return "badge badge-ghost";
-  };
+const statusBadgeClass = (status) => {
+  const s = normalizeStatus(status).toLowerCase();
+
+  if (s.includes("active")) return "badge badge-success";
+  if (s.includes("pass") || s.includes("deceased")) return "badge badge-neutral";
+  if (s.includes("pending") || s.includes("wait")) return "badge badge-warning";
+  return "badge badge-ghost";
+};
 
   useEffect(() => {
     let mounted = true;
@@ -54,13 +58,12 @@ const PatientVitals = () => {
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
         const allow = new Set(["awaiting_injection", "awaiting_sampling", "awaiting_vitals"]);
-        const filtered = patients.filter((p) => allow.has(String(p?.status || "").toLowerCase()));
+       const filtered = patients.filter((p) =>
+  allow.has(normalizeStatus(p?.status).toLowerCase())
+);
         const mapped = filtered.map((p, idx) => ({
           sn: idx + 1,
-          name:
-            `${p?.firstName || ""} ${p?.lastName || ""}`.trim() ||
-            p?.fullName ||
-            "Unknown",
+          name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.fullName || "Unknown",
           gender: p?.gender || "—",
           age: calculateAge(p?.dob),
           blood: p?.bloodGroup || p?.blood || "—",
@@ -72,19 +75,7 @@ const PatientVitals = () => {
           firstName: p?.firstName,
           lastName: p?.lastName,
         }));
-        // if (mounted) setItems(mapped);
-
-        const allowedStatuses = [
-          "awaiting_vitals",
-          "awaiting_sampling",
-          "awaiting_injection",
-        ];
-
-        const filtered = mapped.filter((p) =>
-          allowedStatuses.includes((p.status || "").toLowerCase())
-        );
-
-        if (mounted) setItems(filtered);
+        if (mounted) setItems(mapped);
       } catch (err) {
         console.error("PatientVitals: patients fetch error", err);
         if (mounted) setItems([]);
@@ -97,28 +88,25 @@ const PatientVitals = () => {
       mounted = false;
     };
   }, [refreshKey]);
-
+  
   // Derived filtering & pagination
   const filteredItems = useMemo(() => {
     let data = items;
     const q = searchQuery.trim().toLowerCase();
     if (q) {
-      data = data.filter(
-        (p) =>
-          (p.name || "").toLowerCase().includes(q) ||
-          String(p.sn).includes(q) ||
-          (p.blood || "").toLowerCase().includes(q)
+      data = data.filter((p) =>
+        (p.name || "").toLowerCase().includes(q) ||
+        String(p.sn).includes(q) ||
+        (p.blood || "").toLowerCase().includes(q)
       );
     }
     if (genderFilter !== "all") {
-      data = data.filter(
-        (p) => (p.gender || "").toLowerCase() === genderFilter
-      );
+      data = data.filter((p) => (p.gender || "").toLowerCase() === genderFilter);
     }
     if (statusFilter !== "all") {
-      data = data.filter((p) =>
-        (p.status || "").toLowerCase().includes(statusFilter)
-      );
+      data = data.filter((p) => Array.isArray(p.status)
+  ? p.status.some((s) => s.toLowerCase().includes(statusFilter))
+  : (p.status || "").toLowerCase().includes(statusFilter));
     }
     return data;
   }, [items, searchQuery, genderFilter, statusFilter]);
@@ -169,14 +157,10 @@ const PatientVitals = () => {
             <div>
               <div>
                 <div className="flex items-center gap-5 ">
-                  <h1 className="text-[32px] text-base-content">
-                    All Patients
-                  </h1>
+                  <h1 className="text-[32px] text-base-content">All Patients</h1>
                   <PiUsersThree size={25} className="text-base-content/80" />
                 </div>
-                <p className="text-[12px] text-base-content/70">
-                  View the list of all Patients.
-                </p>
+                <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
               </div>
             </div>
             {/* Search & Filters */}
@@ -304,7 +288,9 @@ const PatientVitals = () => {
                         <td className="text-center">{p.age}</td>
                         <td className="text-center">{p.blood}</td>
                         <td className="text-center">
-                          <span className={statusBadgeClass(p.status)}>{p.status}</span>
+                          <span className={statusBadgeClass(p.status)}>
+  {Array.isArray(p.status) ? p.status.join(", ") : p.status}
+</span>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2 justify-center">
@@ -352,12 +338,7 @@ const PatientVitals = () => {
             {!loading && items.length > 0 && (
               <div className="flex items-center justify-between mt-4">
                 <div className="text-sm text-base-content/70">
-                  Showing{" "}
-                  {filteredItems.length
-                    ? Math.min((page - 1) * perPage + 1, filteredItems.length)
-                    : 0}
-                  –{Math.min(page * perPage, filteredItems.length)} of{" "}
-                  {filteredItems.length}
+                  Showing {filteredItems.length ? (Math.min((page - 1) * perPage + 1, filteredItems.length)) : 0}–{Math.min(page * perPage, filteredItems.length)} of {filteredItems.length}
                 </div>
                 <div className="join">
                   <button
@@ -401,7 +382,8 @@ const PatientVitals = () => {
                         onClick={async () => {
                           try {
                             const pid = selectedPatient?.id || selectedPatient?.hospitalId;
-                            const promise = updatePatientStatus(pid, 'awaiting_consultation');
+                            const newStatus = PATIENT_STATUS.AWAITING_CONSULTATION;
+                            const promise = updatePatientStatus(pid, newStatus);
                             toast.promise(promise, {
                               loading: 'Sending to doctor...',
                               success: 'Patient sent to doctor successfully',
@@ -428,7 +410,8 @@ const PatientVitals = () => {
                 isOpen={isSendPharmacyOpen}
                 onClose={() => setIsSendPharmacyOpen(false)}
                 patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                defaultStatus={"awaiting_pharmacy"}
+                currentStatus={selectedPatient?.status || ''}
+                defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
                 itemsCount={0}
                 medicationNames={[]}
                 patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
@@ -442,14 +425,15 @@ const PatientVitals = () => {
                 isOpen={isSendCashierOpen}
                 onClose={() => setIsSendCashierOpen(false)}
                 patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                defaultStatus={"awaiting_cashier"}
+                currentStatus={selectedPatient?.status || ''}
+                defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
                 mode={"confirm"}
                 patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
                 onUpdated={() => setIsSendCashierOpen(false)}
               />
             )}
 
-
+          
           </section>
         </div>
       </div>

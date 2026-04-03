@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit } from 'react-icons/fa';
-import { AddServiceChargeModal } from '@/components/modals';
+import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import { AddServiceChargeModal, EditServiceChargeModal } from '@/components/modals';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
+import { deleteServiceCharge, fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
 import toast from 'react-hot-toast';
 
-const ServiceChargesTab = () => {
+const ServiceChargesTab = ({ categoryFilter = null }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedServiceCharge, setSelectedServiceCharge] = useState(null);
   const dispatch = useAppDispatch();
   const { serviceCharges, isLoading, error } = useAppSelector(
     (state) => state.serviceCharges
@@ -30,7 +32,8 @@ const ServiceChargesTab = () => {
 
   const handleEditServiceCharge = (serviceCharge) => {
     console.log('Edit service charge:', serviceCharge);
-    toast.success('Edit functionality coming soon!');
+    setSelectedServiceCharge(serviceCharge);
+    setIsEditModalOpen(true);
   };
 
   const formatCurrency = (amount) => {
@@ -53,6 +56,33 @@ const ServiceChargesTab = () => {
       ))}
     </div>
   );
+    const handleDeleteServiceCharge = async (serviceChargeId) => {
+    if (window.confirm('Are you sure you want to delete this service charge?')) {
+      console.log('🗑️ ServiceChargesTab: Deleting service charge:', serviceChargeId);
+      const result = await dispatch(deleteServiceCharge(serviceChargeId));
+
+      if (deleteServiceCharge.fulfilled.match(result)) {
+        toast.success('Service charge deleted successfully');
+        // Refresh the list to reflect changes
+        dispatch(fetchServiceCharges());
+      } else {
+        toast.error(result.payload || 'Failed to delete service charge');
+      }
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'active':
+        return 'badge-success';
+      case 'Full':
+        return 'badge-warning';
+      case 'Maintenance':
+        return 'badge-error';
+      default:
+        return 'badge-neutral';
+    }
+  };
 
   return (
     <div className="bg-base-100 rounded-lg shadow-lg p-6">
@@ -85,13 +115,16 @@ const ServiceChargesTab = () => {
                 <th className="text-base-content/70">Service Name</th>
                 <th className="text-base-content/70">Category</th>
                 <th className="text-base-content/70">Amount</th>
-                <th className="text-base-content/70">Description</th>
+                <th className="text-base-content/70">Status</th>
                 <th className="text-base-content/70">Actions</th>
               </tr>
             </thead>
             <tbody>
               {serviceCharges && serviceCharges.length > 0 ? (
-                serviceCharges.map((serviceCharge) => (
+                (categoryFilter
+                  ? serviceCharges.filter((sc) => (sc?.category || '').toLowerCase() === String(categoryFilter || '').toLowerCase())
+                  : serviceCharges
+                ).map((serviceCharge) => (
                   <tr key={serviceCharge.id}>
                     <td>
                       <div className="font-medium text-base-content">
@@ -109,9 +142,9 @@ const ServiceChargesTab = () => {
                       </div>
                     </td>
                     <td>
-                      <div className="text-base-content/70 max-w-xs truncate">
-                        {serviceCharge.description || 'No description'}
-                      </div>
+                      <span className={`badge ${getStatusBadgeClass(serviceCharge.status)}`}>
+                    {serviceCharge.status}
+                  </span>
                     </td>
                     <td>
                       <div className="flex space-x-2">
@@ -122,6 +155,13 @@ const ServiceChargesTab = () => {
                         >
                           <FaEdit className="w-4 h-4" />
                         </button>
+                           <button
+                                    onClick={() => handleDeleteServiceCharge(serviceCharge.id)}
+                                    className="btn btn-ghost btn-xs text-error"
+                                    title="Delete Service Charge"
+                                  >
+                                    <FaTrash className="w-3 h-3" />
+                                  </button>
                       </div>
                     </td>
                   </tr>
@@ -147,6 +187,13 @@ const ServiceChargesTab = () => {
           // Refresh service charges list
           dispatch(fetchServiceCharges());
         }}
+      />
+
+      {/* Edit Service Charge Modal */}
+      <EditServiceChargeModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onServiceChargeUpdated={selectedServiceCharge}
       />
     </div>
   );

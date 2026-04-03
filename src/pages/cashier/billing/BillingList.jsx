@@ -6,6 +6,7 @@ import { FaEye } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { getAllBillings } from '@/services/api/billingAPI';
 import toast from 'react-hot-toast';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 const BillingList = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -47,7 +48,7 @@ const BillingList = () => {
     { key: 'patientId', title: 'Patient ID', sortable: true, className: 'text-base-content/70' },
     { key: 'totalAmount', title: 'Total', sortable: true, className: 'text-base-content/70', render: (v) => `₦${Number(v||0).toLocaleString()}` },
     { key: 'status', title: 'Status', sortable: true, className: 'text-base-content/70' },
-    { key: 'createdAt', title: 'Created At', sortable: true, className: 'text-base-content/70', render: (v) => new Date(v).toLocaleString() },
+    { key: 'createdAt', title: 'Created At', sortable: true, className: 'text-base-content/70', render: (v) => formatNigeriaDateTime(v) },
     { key: 'actions', title: 'Actions', className: 'text-base-content/70', render: (value, row) => (
       <button onClick={() => handleView(row)} className="btn btn-ghost btn-xs" title="View">
         <FaEye className="w-3 h-3" />

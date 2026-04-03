@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
@@ -6,11 +6,17 @@ import { FaArrowLeft, FaCreditCard, FaExchangeAlt, FaFileAlt } from 'react-icons
 import ServiceChargesTab from '@/components/superadmin/settings/ServiceChargesTab';
 import TransactionsTab from '@/components/superadmin/settings/TransactionsTab';
 import FinancialReportsTab from '@/components/superadmin/settings/FinancialReportsTab';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
 
 const BillingFinance = () => {
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('service-charges');
+  const [activeCategory, setActiveCategory] = useState('all');
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { serviceCharges } = useAppSelector((s) => s.serviceCharges);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -29,7 +35,7 @@ const BillingFinance = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'service-charges':
-        return <ServiceChargesTab />;
+        return <ServiceChargesTab categoryFilter={activeCategory === 'all' ? null : activeCategory} />;
       case 'transactions':
         return <TransactionsTab />;
       case 'financial-reports':
@@ -38,6 +44,24 @@ const BillingFinance = () => {
         return <ServiceChargesTab />;
     }
   };
+
+  useEffect(() => {
+    dispatch(fetchServiceCharges());
+  }, [dispatch]);
+
+  const categories = [
+    'all',
+   "form",
+"pharmacy",
+ "laboratory",
+ "radiology",
+  "consultation",
+ "surgery",
+  "lab_test",
+  "vaccination",
+  "admission",
+  "nursing",
+  ];
 
   return (
     <div className="flex h-screen bg-base-300/20">
@@ -99,6 +123,27 @@ const BillingFinance = () => {
               })}
             </div>
           </div>
+
+          {/* Category Sub-Tabs*/}
+          {activeTab === 'service-charges' && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      String(activeCategory) === String(cat)
+                        ? 'bg-secondary text-secondary-content'
+                        : 'text-base-content/70 hover:bg-base-100'
+                    }`}
+                  >
+                    {cat === 'all' ? 'All' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tab Content */}
           <div className="flex-1">

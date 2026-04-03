@@ -11,7 +11,7 @@ export const loginSchema = yup.object().shape({
   password: yup
     .string()
     .required("Password is required")
-    .min(8, "Password must be at least 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 });
 
 // * Form Validation For Update New User's Password
@@ -20,7 +20,7 @@ export const updateYourPasswordSchema = yup.object().shape({
   newPassword: yup
     .string()
     .required("Please enter your new password")
-    .min(8, "Password must be at lease 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 
   confirmPassword: yup
     .string()
@@ -37,7 +37,7 @@ export const changePasswordSchema = yup.object().shape({
   newPassword: yup
     .string()
     .required("Please enter your new password")
-    .min(8, "Password must be at least 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 
   confirmPassword: yup
     .string()
@@ -63,4 +63,20 @@ export const registrationSchema = yup.object().shape({
     .date()
     .typeError("Date of Birth must be a valid date")
     .required("Date of Birth is required"),
+});
+
+// Minimal schema for staff creation
+export const staffRegistrationSchema = yup.object().shape({
+  firstName: yup.string().required("First Name is required"),
+  lastName: yup.string().required("Last Name is required"),
+  email: yup
+    .string()
+    .email("Email must be a valid email address")
+    .required("Email is required")
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Email is invalid"),
+  role: yup.string().required("Role is required"),
+  password: yup
+    .string()
+    .required("Password is required")
+    .min(6, "Password must be at least 6 characters"),
 });
