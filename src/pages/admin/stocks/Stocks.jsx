@@ -1,6 +1,6 @@
 import React from "react";
 import { Header } from "@/components/common";
-import SideBar from "../../../components/admin/dashboard/SideBar";
+import SideBar from "../../../components/admin/dashboard/Sidebar2";
 import { TbChartDots2 } from "react-icons/tb";
 import TabbedTable from "./TabbedTable";
 

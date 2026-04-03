@@ -1,39 +1,42 @@
-POST: Create Billing
+POST: 
+Create Billing
 
 curl --location '/billing/create/884debf2-3506-4e94-b08c-39f6e64299a7' \
 --data '{
-"itemDetail": [{
-"code": "consult",
-"description": "this is for consultation",
-"quantity": "1",
-"price": "10000",
-"total": "10000"
-}]
+    "itemDetail": [{
+        "code": "registered",
+        "description": "form registration",
+        "quantity": 1,
+        "price": 5000,
+        "total": 5000,
+        "serviceChargeId": "17d11c1d-329e-48c5-81c5-944deecead90" 
+    }]
 
 }'
 
+example response
 {
-"success": true,
-"code": 201,
-"message": "Billing record created successfully",
-"data": {
-"itemDetails": [
-{
-"code": "consult",
-"description": "this is for consultation",
-"quantity": "1",
-"price": "10000",
-"total": "10000"
-}
-],
-"totalAmount": 10000,
-"patientId": "884debf2-3506-4e94-b08c-39f6e64299a7",
-"cashierId": "4acab93a-46f3-4f11-8e19-a4b6655628df",
-"id": "6cbf0473-9d85-4dd8-b7de-1c1985772cc0",
-"outstandingBill": 0,
-"createdAt": "2025-10-22T06:20:55.000Z",
-"updatedAt": "2025-10-22T06:20:55.000Z"
-}
+  "success": true,
+  "code": 201,
+  "message": "Billing record created successfully",
+  "data": {
+    "itemDetails": [
+      {
+        "code": "consult",
+        "description": "this is for consultation",
+        "quantity": "1",
+        "price": "10000",
+        "total": "10000"
+      }
+    ],
+    "totalAmount": 10000,
+    "patientId": "884debf2-3506-4e94-b08c-39f6e64299a7",
+    "cashierId": "4acab93a-46f3-4f11-8e19-a4b6655628df",
+    "id": "6cbf0473-9d85-4dd8-b7de-1c1985772cc0",
+    "outstandingBill": 0,
+    "createdAt": "2025-10-22T06:20:55.000Z",
+    "updatedAt": "2025-10-22T06:20:55.000Z"
+  }
 }
 
 =========================================================================================================================

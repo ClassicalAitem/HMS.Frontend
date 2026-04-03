@@ -60,6 +60,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/superadmin/users'
     },
     {
+      icon: MdSupervisorAccount,
+      label: 'Patients',
+      path: '/superadmin/patients/patients',
+      active: location.pathname === '/superadmin/patients/patients'
+    },
+    {
       icon: MdSecurity,
       label: 'Registration',
       path: '/superadmin/registration',

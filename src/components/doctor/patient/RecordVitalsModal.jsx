@@ -44,13 +44,21 @@ const RecordVitalsModal = ({ isOpen, patientName, recordForm, setRecordForm, rec
               onChange={(e) => setRecordForm((f) => ({ ...f, weight: e.target.value }))}
             />
           </div>
-          <div className="sm:col-span-2">
-            <label className="block mb-1 text-sm text-base-content/70">Notes</label>
-            <textarea className="textarea textarea-bordered w-full" rows={3}
-              value={recordForm.notes}
-              onChange={(e) => setRecordForm((f) => ({ ...f, notes: e.target.value }))}
+          <div>
+            <label className="block mb-1 text-sm text-base-content/70">Height</label>
+            <input type="text" placeholder="70" className="input input-bordered w-full"
+              value={recordForm.height}
+              onChange={(e) => setRecordForm((f) => ({ ...f, height: e.target.value }))}
             />
           </div>
+          <div>
+            <label className="block mb-1 text-sm text-base-content/70">Respiratory Rate</label>
+            <input type="text" placeholder="70" className="input input-bordered w-full"
+              value={recordForm.respiratoryRate}
+              onChange={(e) => setRecordForm((f) => ({ ...f, respiratoryRate: e.target.value }))}
+            />
+          </div>
+
         </div>
 
         {recordError && (

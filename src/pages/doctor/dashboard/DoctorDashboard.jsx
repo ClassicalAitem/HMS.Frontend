@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/common";
-import Sidebar from "../../../components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import UpcomingAppointments from "./UpcomingAppointments";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { useAppSelector } from "@/store/hooks";

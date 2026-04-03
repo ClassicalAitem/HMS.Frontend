@@ -86,6 +86,24 @@ const SuperAdminSettings = () => {
       title: 'System Preferences',
       description: 'Configure system-wide settings and preferences',
       onClick: () => navigate('/superadmin/settings/security-preferences')
+    },
+    {
+      icon: FaCog,
+      title: 'Medical Data',
+      description: 'Setup medical prescriptions, allergy, etc.',
+      onClick: () => navigate('/superadmin/settings/medical-data')
+    },
+    {
+      icon: FaCog,
+      title: 'Pharmacy Inventory',
+      description: 'Setup  pharmacy inventory data, etc.',
+      onClick: () => navigate('/superadmin/settings/pharmacy-inventory')
+    },
+    {
+      icon: FaCog,
+      title: 'Laboratory Inventory',
+      description: 'Setup  laboratory inventory data, etc.',
+      onClick: () => navigate('/superadmin/settings/laboratory-inventory')
     }
   ];
 

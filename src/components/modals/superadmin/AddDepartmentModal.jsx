@@ -4,6 +4,8 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaBuilding } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { create } from 'zustand';
+import { createDepartment } from '@/services/api/departmentAPI';
 
 const addDepartmentSchema = yup.object({
   name: yup
@@ -11,20 +13,6 @@ const addDepartmentSchema = yup.object({
     .required('Department name is required')
     .min(2, 'Department name must be at least 2 characters')
     .max(50, 'Department name must not exceed 50 characters'),
-  head: yup
-    .string()
-    .required('Department head is required')
-    .min(2, 'Department head name must be at least 2 characters'),
-  beds: yup
-    .number()
-    .required('Number of beds is required')
-    .min(1, 'Number of beds must be at least 1')
-    .max(1000, 'Number of beds must not exceed 1000'),
-  description: yup
-    .string()
-    .required('Description is required')
-    .min(10, 'Description must be at least 10 characters')
-    .max(500, 'Description must not exceed 500 characters')
 });
 
 const AddDepartmentModal = ({ isOpen, onClose, onDepartmentAdded }) => {
@@ -44,6 +32,7 @@ const AddDepartmentModal = ({ isOpen, onClose, onDepartmentAdded }) => {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
+      await createDepartment(data);
       console.log('Department added:', data);
       toast.success('Department added successfully!');
       reset();
@@ -100,59 +89,6 @@ const AddDepartmentModal = ({ isOpen, onClose, onDepartmentAdded }) => {
               />
               {errors.name && (
                 <p className="mt-1 text-xs text-error">{errors.name.message}</p>
-              )}
-            </div>
-
-            {/* Department Head */}
-            <div>
-              <label className="block mb-2 text-sm font-medium text-base-content/70">
-                Department Head
-              </label>
-              <input
-                type="text"
-                {...register('head')}
-                className={`input input-bordered w-full ${errors.head ? 'input-error' : ''}`}
-                placeholder="Enter department head name"
-                disabled={isLoading}
-              />
-              {errors.head && (
-                <p className="mt-1 text-xs text-error">{errors.head.message}</p>
-              )}
-            </div>
-
-            {/* Number of Beds */}
-            <div>
-              <label className="block mb-2 text-sm font-medium text-base-content/70">
-                Number of Beds
-              </label>
-              <input
-                type="number"
-                {...register('beds', { valueAsNumber: true })}
-                className={`input input-bordered w-full ${errors.beds ? 'input-error' : ''}`}
-                placeholder="Enter number of beds"
-                min="1"
-                max="1000"
-                disabled={isLoading}
-              />
-              {errors.beds && (
-                <p className="mt-1 text-xs text-error">{errors.beds.message}</p>
-              )}
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block mb-2 text-sm font-medium text-base-content/70">
-                Description
-              </label>
-              <textarea
-                {...register('description')}
-                rows={3}
-                className={`textarea textarea-bordered w-full ${errors.description ? 'textarea-error' : ''}`}
-                placeholder="Enter department description"
-                disabled={isLoading}
-              />
-              {errors.description && (
-                <p className="mt-1 text-xs text-error">{errors.description.message}</p>
               )}
             </div>
           </div>
