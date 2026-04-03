@@ -6,6 +6,9 @@ import { FaUsers } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
+import { hasAnyStatus } from '@/utils/statusUtils';
+import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const CashierPatients = () => {
   const navigate = useNavigate();
@@ -21,6 +24,7 @@ const CashierPatients = () => {
     dispatch(fetchPatients());
   }, [dispatch]);
 
+
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
@@ -30,23 +34,18 @@ const CashierPatients = () => {
   }, [error, dispatch]);
 
   const StatusBadge = ({ status }) => {
-    const getBadgeClass = (status) => {
-      switch (status?.toLowerCase()) {
-        case 'registered':
-          return 'badge badge-success';
-        case 'active':
-          return 'badge badge-success';
-        case 'inactive':
-          return 'badge badge-neutral';
-        default:
-          return 'badge badge-neutral';
-      }
-    };
-
     return (
-      <span className={getBadgeClass(status)}>
-        {status || 'Unknown'}
-      </span>
+      <div className="flex flex-wrap gap-1">
+        {Array.isArray(status) && status.length > 0 ? (
+          status.map((s) => (
+            <span key={s} className="badge badge-primary badge-sm">
+              {s?.replace(/_/g, ' ').toUpperCase()}
+            </span>
+          ))
+        ) : (
+          <span className="badge badge-neutral">Unknown</span>
+        )}
+      </div>
     );
   };
 
@@ -95,7 +94,7 @@ const CashierPatients = () => {
       className: 'text-center',
       render: (value, row) => (
         <button
-          onClick={() => navigate(`/cashier/patient-details/${row.patientId}`)}
+          onClick={() => navigate(`/cashier/patient-details/${row.id}`)}
           className="text-primary hover:text-primary/80 hover:underline text-sm font-medium"
         >
           View Details
@@ -103,6 +102,11 @@ const CashierPatients = () => {
       )
     }
   ], [navigate]);
+
+  const filteredPatient = patients.filter((p) =>
+    hasAnyStatus(p.status, [PATIENT_STATUS.AWAITING_CASHIER, PATIENT_STATUS.AWAITING_PAYMENT])
+  );
+
 
   return (
     <CashierLayout>
@@ -120,8 +124,13 @@ const CashierPatients = () => {
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
                 {isLoading ? (
-                  <div className="flex justify-center items-center h-64">
-                    <div className="loading loading-spinner loading-lg text-primary"></div>
+                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+                    <div className="overflow-auto max-h-96 p-4 space-y-3">
+                      <div className="skeleton h-6 w-40" />
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="skeleton h-8 w-full" />
+                      ))}
+                    </div>
                   </div>
                 ) : error ? (
                   <div className="flex flex-col justify-center items-center h-64 text-center">
@@ -136,7 +145,7 @@ const CashierPatients = () => {
                   </div>
                 ) : (
                   <DataTable
-                    data={patients}
+                    data={filteredPatient}
                     columns={columns}
                     searchable={true}
                     sortable={true}

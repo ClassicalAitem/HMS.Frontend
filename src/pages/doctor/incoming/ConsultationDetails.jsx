@@ -32,6 +32,7 @@ const ConsultationDetails = () => {
         if (mounted) setLoading(false);
       }
     };
+    
     load();
     return () => { mounted = false; };
   }, [patientId, consultationId]);
@@ -39,11 +40,11 @@ const ConsultationDetails = () => {
   const info = useMemo(() => ({
     type: consultation?.type || consultation?.consultationType || "Consultation",
     diagnosis: consultation?.diagnosis || "—",
-    date: consultation?.createdAt ? new Date(consultation.createdAt).toLocaleDateString("en-US") : "—",
-    time: consultation?.createdAt ? new Date(consultation.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
+    date: consultation?.createdAt ? formatNigeriaDate(consultation.createdAt) : "—",
+    time: consultation?.createdAt ? formatNigeriaTime(consultation.createdAt) : "—",
     admission: consultation?.admission || "—",
     allergies: consultation?.allergies || "—",
-    notes: consultation?.notes || "",
+    notes: consultation?.notes,
   }), [consultation]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);

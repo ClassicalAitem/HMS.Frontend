@@ -175,7 +175,7 @@ const Appointment = () => {
                 <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
                 <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
               </div>
-               <button
+               <button 
                  className="btn btn-primary btn-sm 2xl:btn-md"
                  onClick={() => setIsBookModalOpen(true)}
                >
@@ -188,7 +188,7 @@ const Appointment = () => {
 
             <div className="flex gap-4 justify-between items-center mb-6">
               <div className="flex gap-3 items-center">
-                <button
+                <button 
                   className="flex gap-2 items-center btn btn-sm"
                   onClick={() => setFilterOpen(!filterOpen)}
                 >
@@ -196,7 +196,7 @@ const Appointment = () => {
                   <span className="text-xs">Filter</span>
                 </button>
               </div>
-
+              
               <div className="flex gap-3 items-center">
                 <div className="dropdown dropdown-end">
                   <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm">

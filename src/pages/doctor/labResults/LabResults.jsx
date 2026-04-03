@@ -5,6 +5,7 @@ import { FaDownload } from 'react-icons/fa';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { getPatients } from '@/services/api/patientsAPI';
 import { LabResultDetailsModal } from '@/components/modals';
+import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 
 const LabResults = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,6 +13,8 @@ const LabResults = () => {
   const [labResults, setLabResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [patientsById, setPatientsById] = useState({});
+ const [hospitalIdsById, setHospitalIdsById] = useState({});
+  const [patientsStatusById, setPatientsStatusById] = useState({});
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedLabId, setSelectedLabId] = useState(null);
 
@@ -24,11 +27,11 @@ const LabResults = () => {
         const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
         const mapped = list.map((r) => ({
           id: r?._id || r?.id,
-          labId: r?._id || r?.id,
-          patientId: r?.patientId,
+          labId: r?.form?.labNo || r?._id || r?.id,
+          patientId: r?.hospitalId || r?.patientId,
           testType: (Array.isArray(r?.result) && r.result[0]?.code) || (Array.isArray(r?.result) && r.result[0]?.value) || '—',
-          date: r?.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—',
-          time: r?.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—',
+          date: r?.createdAt ? formatNigeriaDate(r.createdAt) : '—',
+          time: r?.createdAt ? formatNigeriaTime(r.createdAt) : '—',
           doctor: '—',
           status: 'Completed',
         }));
@@ -46,13 +49,23 @@ const LabResults = () => {
         const res = await getPatients();
         const raw = res?.data ?? res ?? [];
         const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-        const map = {};
+        const nameMap = {};
+        const hospMap = {};
+        const statusMap = {};
         list.forEach((p) => {
           const name = `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || p?.fullName || 'Unknown';
           const idKeys = [p?.id, p?.patientId, p?.hospitalId, p?._id].filter(Boolean);
-          idKeys.forEach((k) => { map[k] = name; });
+          idKeys.forEach((k) => {
+            nameMap[k] = name;
+           if (p?.hospitalId) {
+              hospMap[k] = p.hospitalId;
+            }
+            statusMap[k] = p?.status || p?.patientStatus || '';
+          });
         });
-        setPatientsById(map);
+        setPatientsById(nameMap);
+        setHospitalIdsById(hospMap);
+        setPatientsStatusById(statusMap);
       } catch {
         setPatientsById({});
       }
@@ -64,9 +77,9 @@ const LabResults = () => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   const columns = useMemo(() => [
-    { key: 'labId', title: 'Lab ID', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'labId', title: 'Technician', sortable: true, className: 'text-base-content font-medium' },
     { key: 'patientName', title: 'Patient Name', sortable: true, className: 'text-base-content font-medium' },
-    { key: 'patientId', title: 'Patient ID', sortable: true, className: 'text-base-content/70' },
+    { key: 'patientId', title: 'Hospital ID', sortable: true, className: 'text-base-content/70' },
     { key: 'testType', title: 'Test Type', sortable: true, className: 'text-base-content/70' },
     { key: 'date', title: 'Date', sortable: true, className: 'text-base-content/70' },
     { key: 'time', title: 'Time', sortable: true, className: 'text-base-content/70' },
@@ -77,11 +90,20 @@ const LabResults = () => {
   const resolvedData = useMemo(() => labResults.map(r => ({
     ...r,
     patientName: patientsById[r.patientId] || r.patientName || 'Unknown',
-  })), [labResults, patientsById]);
+    patientId: hospitalIdsById[r.patientId] || r.patientId,
+  })), [labResults, patientsById, hospitalIdsById]);
+
+  const filteredData = useMemo(() => {
+    const excluded = new Set(['awaiting_cashier', 'awaiting_pharmacy']);
+    return resolvedData.filter(r => {
+      const status = patientsStatusById[r.patientId] || '';
+      return !excluded.has(status);
+    });
+  }, [resolvedData, patientsStatusById]);
 
   const handleExport = () => {
-    const header = ['Lab ID','Patient Name','Patient ID','Test Type','Date','Time','Doctor','Status'];
-    const rows = labResults.map(r => [r.labId, r.patientName, r.patientId, r.testType, r.date, r.time, r.doctor, r.status]);
+    const header = ['Technician','Patient Name','Hospital ID','Test Type','Date','Time','Doctor','Status'];
+    const rows = filteredData.map(r => [r.labId, r.patientName, r.patientId, r.testType, r.date, r.time, r.doctor, r.status]);
     const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -153,7 +175,7 @@ const LabResults = () => {
                   </div>
                 ) : (
                   <DataTable
-                    data={resolvedData.filter(r => !r.__hidden)}
+                    data={filteredData.filter(r => !r.__hidden)}
                     columns={columns}
                     searchable={false}
                     sortable={true}

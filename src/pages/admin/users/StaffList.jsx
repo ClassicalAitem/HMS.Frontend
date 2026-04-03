@@ -5,6 +5,7 @@ import { SlCalender } from "react-icons/sl";
 import icon from "../../../assets/images/doctorIcon.png";
 import { usersAPI } from "../../../services/api/usersAPI";
 import toast from "react-hot-toast";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const StaffList = ({ refreshKey = 0 }) => {
   const [users, setUsers] = useState([]);
@@ -137,7 +138,7 @@ const StaffList = ({ refreshKey = 0 }) => {
 
         <div className="flex gap-2 justify-center text-base-content/70  items-center w-[157px] h-[32px] bg-base-200">
           <SlCalender />
-          <p>{new Date().toLocaleDateString()}</p>
+          <p>{formatNigeriaDate()}</p>
         </div>
       </div>
 
@@ -176,7 +177,7 @@ const StaffList = ({ refreshKey = 0 }) => {
 
                   <div className="flex gap-9">
                     <p>DOB:</p>
-                    <span>{staffInfo.dateOfBirth ? new Date(staffInfo.dateOfBirth).toLocaleDateString() : "—"}</span>
+                    <span>{staffInfo.dateOfBirth ? formatNigeriaDate(staffInfo.dateOfBirth) : "—"}</span>
                   </div>
                 </div>
 

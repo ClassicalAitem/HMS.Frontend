@@ -7,7 +7,9 @@ import toast from "react-hot-toast";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { createBilling } from "@/services/api/billingAPI";
 import { SelectServiceChargeModal } from "@/components/modals";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useAppSelector } from "@/store/hooks";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const SendToCashier = () => {
   const { patientId } = useParams();
@@ -21,6 +23,7 @@ const SendToCashier = () => {
   const { user } = useAppSelector((state) => state.auth);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [billingCreated, setBillingCreated] = useState(false);
+  const [loadingPatient, setLoadingPatient] = useState(false);
 
   const [items, setItems] = useState([]);
   const [diagnosis, setDiagnosis] = useState("");
@@ -39,7 +42,9 @@ const SendToCashier = () => {
         const res = await getPatientById(patientId);
         const data = res?.data ?? res;
         if (mounted) setPatient(data);
-      } finally {
+      } catch (e) {
+        toast.error(e?.response?.data?.message || "Failed to load patient data");
+        if (mounted) setPatient(null);
       }
     };
     load();
@@ -97,7 +102,7 @@ const SendToCashier = () => {
         });
         setBillingCreated(true);
       }
-      const statusPromise = updatePatientStatus(patientId, 'awaiting_cashier');
+      const statusPromise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER });
       await toast.promise(statusPromise, {
         loading: 'Updating status...',
         success: 'Patient sent to cashier',
@@ -136,6 +141,7 @@ const SendToCashier = () => {
             <div className="flex gap-4 items-center">
               <button className="btn btn-success btn-sm">Send to Cashier</button>
               <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-pharmacy/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Pharmacy</button>
+              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })}>Send to Nurse</button>
             </div>
 
             <div className="hidden">
@@ -203,8 +209,8 @@ const SendToCashier = () => {
                 <div className="p-4 card-body">
                   <h3 className="mb-3 text-lg font-medium text-base-content">Visit Information</h3>
                   <div className="space-y-2 text-sm text-base-content/70">
-                    <div className="flex justify-between"><span>Visit Date</span><span>{new Date().toLocaleDateString()}</span></div>
-                    <div className="flex justify-between"><span>Visit Time</span><span>{new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>
+                    <div className="flex justify-between"><span>Visit Date</span><span>{formatNigeriaDate()}</span></div>
+                    <div className="flex justify-between"><span>Visit Time</span><span>{formatNigeriaTime()}</span></div>
                     <div className="flex justify-between"><span>Doctor</span><span>Dr. {user ? `${user.firstName} ${user.lastName}` : "—"}</span></div>
                   </div>
                 </div>

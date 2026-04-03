@@ -2,22 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar, FilterUsers } from '@/components/superadmin';
 import { DataTable } from '@/components/common';
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff, FaKey } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
-import { AddUserModal, EditUserModal } from '../../../components/modals';
+import { AddUserModal, EditUserModal, ResetPasswordModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
-import UsersDebug from '../../../components/common/UsersDebug';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const ManageUsers = () => {
   const dispatch = useAppDispatch();
   const { users, isLoading, error } = useAppSelector((state) => state.users);
-  
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
@@ -65,16 +66,16 @@ const ManageUsers = () => {
 
   // Filter users based on search term, role, and status
   const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = selectedRole === 'all' || user.accountType === selectedRole;
-    const matchesStatus = selectedStatus === 'all' || 
+    const matchesStatus = selectedStatus === 'all' ||
       (selectedStatus === 'active' && user.isActive) ||
       (selectedStatus === 'inactive' && !user.isActive);
-    
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -103,16 +104,23 @@ const ManageUsers = () => {
         return 'badge badge-info';
       case 'nurse':
         return 'badge badge-success';
-      case 'frontdesk':
+      case 'front-desk':
         return 'badge badge-primary';
       case 'cashier':
         return 'badge badge-secondary';
+      case 'lab-technician':
+        return 'badge badge-outline badge-accent';
+      case 'surgeon':
+        return 'badge badge-outline badge-ghost';
+      case 'pharmacist':
+        return 'badge badge-outline badge-primary';
       default:
         return 'badge badge-neutral';
     }
   };
 
   const formatRole = (accountType) => {
+    if (!accountType) return 'Unknown';
     return accountType
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -123,33 +131,36 @@ const ManageUsers = () => {
     ...user,
     name: `${user.firstName} ${user.lastName}`,
     roleDisplay: formatRole(user.accountType),
-    lastLoginFormatted: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
-    createdAtFormatted: new Date(user.createdAt).toLocaleDateString(),
+    lastLoginFormatted: user.lastLogin ? formatNigeriaDate(user.lastLogin) : 'Never',
+    createdAtFormatted: formatNigeriaDate(user.createdAt),
   }));
 
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       console.log('🗑️ ManageUsers: Deleting user:', userId);
       const result = await dispatch(deleteUser(userId));
-      
+
       if (deleteUser.fulfilled.match(result)) {
         toast.success('User deleted successfully');
+        // Refresh the list to reflect changes
+        dispatch(fetchUsers());
       } else {
-        toast.error('Failed to delete user');
+        toast.error(result.payload || 'Failed to delete user');
       }
     }
   };
 
-  const handleToggleUserStatus = async (userId, currentStatus) => {
-    console.log('🔄 ManageUsers: Toggling user status:', userId, 'to', !currentStatus);
-    const result = await dispatch(toggleUserStatus({ userId, isActive: !currentStatus }));
-    
-    if (toggleUserStatus.fulfilled.match(result)) {
-      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
-    } else {
-      toast.error('Failed to update user status');
-    }
-  };
+const handleToggleUserStatus = async (userId, currentIsDisabled) => {
+  const result = await dispatch(toggleUserStatus({ userId, isDisabled: !currentIsDisabled }));
+
+  if (toggleUserStatus.fulfilled.match(result)) {
+    toast.success(`User ${!currentIsDisabled ? 'disabled' : 'enabled'} successfully`);
+    dispatch(fetchUsers());
+  } else {
+    const errorMessage = result.payload || 'Failed to update user status';
+    toast.error(typeof errorMessage === 'string' ? errorMessage : 'Failed to update user status');
+  }
+};
 
   const handleUserAdded = () => {
     console.log('🔄 ManageUsers: User added, refreshing users list');
@@ -196,7 +207,7 @@ const ManageUsers = () => {
       render: (value) => (
         <div className="flex items-center space-x-2">
           <span className={`badge ${value ? 'badge-success' : 'badge-error'}`}>
-            {value ? 'Active' : 'Inactive'}
+            {value ? 'Active' : 'Disabled'}
           </span>
         </div>
       )
@@ -231,12 +242,12 @@ const ManageUsers = () => {
       render: (value, row) => (
         <div className="flex space-x-2">
           <button
-            onClick={() => handleToggleUserStatus(row.id, row.isActive)}
-            className={`btn btn-ghost btn-xs ${row.isActive ? 'text-warning' : 'text-success'}`}
-            title={row.isActive ? 'Deactivate User' : 'Activate User'}
-          >
-            {row.isActive ? <FaToggleOff className="w-3 h-3" /> : <FaToggleOn className="w-3 h-3" />}
-          </button>
+  onClick={() => handleToggleUserStatus(row.id, row.isDisabled)}
+  className={`btn btn-ghost btn-xs ${row.isDisabled ? 'text-success' : 'text-warning'}`}
+  title={row.isDisabled ? 'Enable User' : 'Disable User'}
+>
+  {row.isDisabled ? <FaToggleOn className="w-3 h-3" /> : <FaToggleOff className="w-3 h-3" />}
+</button>
           <button
             onClick={() => {
               setSelectedUser(row);
@@ -247,6 +258,17 @@ const ManageUsers = () => {
           >
             <FaEdit className="w-3 h-3" />
           </button>
+
+          <button
+              onClick={() => {
+                setSelectedUser(row);
+                setIsResetPasswordModalOpen(true);
+              }}
+              className="btn btn-ghost btn-xs"
+              title="Change Password"
+            >
+              <FaKey className="w-3 h-3" />
+            </button>
           <button
             onClick={() => handleDeleteUser(row.id)}
             className="btn btn-ghost btn-xs text-error"
@@ -263,12 +285,12 @@ const ManageUsers = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
@@ -276,12 +298,12 @@ const ManageUsers = () => {
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -355,6 +377,13 @@ const ManageUsers = () => {
         user={selectedUser}
         onUserUpdated={handleUserUpdated}
       />
+
+      {/* Change Password Modal */}
+        <ResetPasswordModal
+          isOpen={isResetPasswordModalOpen}
+          onClose={() => setIsResetPasswordModalOpen(false)}
+          user={selectedUser}
+        />
 
       {/* Debug Component - Remove in production */}
       {/* <div className="hidden fixed right-4 bottom-4 z-50">
