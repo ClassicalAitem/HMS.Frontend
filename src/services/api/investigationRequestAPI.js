@@ -42,7 +42,7 @@ export const getInvestigationById = async (id) => {
 
 export const getInvestigationByPatientId = async (patientId) => {
   try {
-    const response = await apiClient.get(`/investigation/getInvestigationByPatientId/${patientId}`)
+    const response = await apiClient.get(`/investigation/getInvestigationRequestByPatientId/${patientId}`)
     return response.data ?? []
   } catch (err) {
     // Suppress 404 errors (patient has no investigations)

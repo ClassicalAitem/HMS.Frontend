@@ -25,13 +25,14 @@ const IncomingLaboratory = () => {
       setLoading(true);
       setError(null);
 
-      // Step 1: Fetch all patients and filter those with awaiting_lab status
+      // Step 1: Fetch all patients (don't filter by status yet - we need patient data for matching)
       console.log("📥 Fetching all patients...");
       const patientsResponse = await getPatients();
       const allPatients = Array.isArray(patientsResponse) 
         ? patientsResponse 
         : (patientsResponse?.data || []);
       
+      // Filter for those with awaiting_lab status
       const awaitingLabPatients = allPatients.filter((p) => 
         hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB)
       );
@@ -59,20 +60,28 @@ const IncomingLaboratory = () => {
       console.log("Total investigation requests:", allInvestigations.length);
 
       // Step 3: Match investigation requests with awaiting_lab patients or OpD patients
+      // Also filter out investigations older than 48 hours
+      const now = new Date();
+      const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+      
       const relevantInvestigations = allInvestigations.filter((inv) => {
         const invPatientId = inv.patientId || inv.patient?._id || inv.patient?.id;
         
         // Check if it matches an awaiting_lab patient
         const matchesRegularPatient = awaitingLabPatients.some((patient) => 
-          (patient._id || patient.id) === invPatientId
+          String(patient._id || patient.id) === String(invPatientId)
         );
         
         // Check if it matches an awaiting_lab OpD patient
         const matchesOpdPatient = awaitingLabOpdPatients.some((patient) => 
-          patient.id === invPatientId
+          String(patient.id) === String(invPatientId)
         );
         
-        return matchesRegularPatient || matchesOpdPatient;
+        // Filter out investigations older than 48 hours
+        const createdAt = inv.createdAt ? new Date(inv.createdAt) : null;
+        const isWithin48Hours = createdAt && createdAt >= fortyEightHoursAgo;
+        
+        return (matchesRegularPatient || matchesOpdPatient) && isWithin48Hours;
       });
 
       console.log("Investigation requests for awaiting_lab and OpD patients:", relevantInvestigations.length);
@@ -81,28 +90,36 @@ const IncomingLaboratory = () => {
       const regularPatientCards = relevantInvestigations.map((inv) => {
         const invPatientId = inv.patientId || inv.patient?._id || inv.patient?.id;
         
-        // Find matching patient from regular patients array
-        let patient = awaitingLabPatients.find((p) => 
-          (p._id || p.id) === invPatientId
+        // Find matching patient from all patients (not just awaiting_lab filtered)
+        let patient = allPatients.find((p) => 
+          String(p._id || p.id) === String(invPatientId)
         );
         
         let patientType = 'regular';
         let patientName = "Unknown Patient";
         let userId = invPatientId || "N/A";
         
-        if (patient) {
-          patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || patient.name || "Unknown";
-          userId = patient?.hospitalId || invPatientId || "N/A";
-        } else {
-          // Check if it's an OpD patient
-          const opdPatient = awaitingLabOpdPatients.find((p) => p.id === invPatientId);
-          if (opdPatient) {
-            patient = opdPatient;
-            patientType = 'opd';
-            patientName = opdPatient.fullName;
-            userId = opdPatient.id;
-          }
-        }
+      if (patient) {
+  patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() 
+    || patient.name 
+    || "Unknown";
+} else if (inv.patient) {
+  // ✅ fallback from investigation itself
+  patientName = `${inv.patient.firstName || ''} ${inv.patient.lastName || ''}`.trim() 
+    || inv.patient.name 
+    || "Unknown";
+} else {
+  const opdPatient = awaitingLabOpdPatients.find((p) => 
+    String(p.id) === String(invPatientId)
+  );
+
+  if (opdPatient) {
+    patient = opdPatient;
+    patientType = 'opd';
+    patientName = opdPatient.fullName;
+    userId = opdPatient.id;
+  }
+}
 
         // Extract notes from tests array
         const testNotes = inv.tests
