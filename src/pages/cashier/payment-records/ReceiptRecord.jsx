@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/cashier/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
-import { getAllReceipts, updateReceipt } from '@/services/api/billingAPI';
+import { getAllReceipts, updateReceipt, getReceiptsByOpdPatientId } from '@/services/api/billingAPI';
+import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 
@@ -52,13 +53,21 @@ const PaymentRecords = () => {
     const fetchReceipt = async () => {
       try {
         setIsLoading(true);
-        const res = await getAllReceipts();
-        const raw = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
+        const [regularRes, opdPatientsRes] = await Promise.all([getAllReceipts(), getAllOpdPatients()]);
+        const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
+        const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
+        
+        // Fetch receipts for each OPD patient
+        const opdReceiptsPromises = opdPatients.map(patient => getReceiptsByOpdPatientId(patient.id).catch(() => null));
+        const opdReceiptsResults = await Promise.all(opdReceiptsPromises);
+        const opdReceipts = opdReceiptsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
+        
+        const allReceipts = [...regularList, ...opdReceipts];
+        const list = Array.isArray(allReceipts) ? allReceipts : [];
         const mapped = list.map((a, idx) => ({
           receiptId: a.id,
           transactionId: a.reference || `Kolak-${idx + 1}`,
-          name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
+          name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : (a.billing.opdPatient ? `${a.billing.opdPatient.firstName} ${a.billing.opdPatient.lastName}` : 'N/A'),
           paymentMethod: a.paymentMethod,
           paymentDestination: a.paymentDestination || 'N/A',
           paidBy: a.paidBy || 'N/A',
