@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
-import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getPatientById } from "@/services/api/patientsAPI";
+import { getOpdPatientById } from "@/services/api/opdPatientAPI";
+import { getInvestigations, getInvestigationRequestByOpdPatientId } from "@/services/api/investigationRequestAPI";
 import { usersAPI } from "@/services/api/usersAPI"; 
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import toast from "react-hot-toast";
@@ -138,6 +139,7 @@ const SectionContent = ({ children }) => (
 const AddLabResult = () => {
   const { investigationId, labResultId: paramLabResultId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
 
   const [patient, setPatient] = useState(null);
@@ -152,6 +154,39 @@ const AddLabResult = () => {
 
   const currentUser = useAppSelector((state) => state.auth.user);
 
+  const getPatientName = (patientData) => {
+    if (!patientData) return "Unknown Patient";
+    if (patientData.firstName || patientData.lastName) {
+      return `${patientData.firstName || ""} ${patientData.lastName || ""}`.trim();
+    }
+    return patientData.fullName || patientData.name || patientData.patientName || "Unknown Patient";
+  };
+
+  const loadPatientData = async (patientId) => {
+    if (!patientId) return null;
+
+    let patientData = null;
+
+    try {
+      const res = await getPatientById(patientId);
+      patientData = res?.data || res;
+    } catch (err) {
+      if (err?.response?.status !== 404) {
+        console.warn("Failed to load regular patient:", err);
+      }
+    }
+
+    if (!patientData || Object.keys(patientData).length === 0) {
+      try {
+        const res = await getOpdPatientById(patientId);
+        patientData = res?.data || res;
+      } catch (err) {
+        console.warn("Failed to load OpD patient:", err);
+      }
+    }
+
+    return patientData;
+  };
   
   const [formData, setFormData] = useState({
     patientNames: "",
@@ -163,7 +198,6 @@ const AddLabResult = () => {
     referral: "",
     natureOfSpecimen: "",
     remarks: "",
-    attachments: [], // File objects selected by technician
 
     haematology: {
       HB: "",
@@ -372,6 +406,9 @@ const AddLabResult = () => {
         }
       }
 
+      const searchParams = new URLSearchParams(location.search);
+    const opdPatientId = searchParams.get('opdPatientId');
+
       // Helper function to parse dateOfBirth
       const parseDateOfBirth = (dob) => {
         if (!dob) return null;
@@ -398,27 +435,24 @@ const AddLabResult = () => {
           const data = res?.data || res;
           if (data) {
             setFormData((prev) => ({ ...prev, ...data.form }));
-            if (data.patientId) {
-              const pRes = await getPatientById(data.patientId);
-              const patientData = pRes?.data || pRes;
-              setPatient(patientData);
+    if (data.patientId || data.opdPatientId) {
+              const patientData = await loadPatientData(data.patientId || data.opdPatientId);
+              if (patientData) {
+                setPatient(patientData);
 
-              // Ensure patient demographic fields are available in lab form.
-              const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
-              const derivedAge = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
+                const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
+                const derivedAge = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
 
-              const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
-              const normalizedSex = genderMap[patientData?.gender] || patientData?.gender || "";
+                const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
+                const normalizedSex = genderMap[patientData?.gender] || patientData?.gender || "";
 
-              setFormData((prev) => ({
-                ...prev,
-                patientNames:
-                  patientData?.firstName && patientData?.lastName
-                    ? `${patientData.firstName} ${patientData.lastName}`
-                    : patientData?.name || prev.patientNames,
-                age: derivedAge,
-                sex: normalizedSex,
-              }));
+                setFormData((prev) => ({
+                  ...prev,
+                  patientNames: getPatientName(patientData),
+                  age: derivedAge,
+                  sex: normalizedSex,
+                }));
+              }
             }
             if (data.investigationId) {
               setInvestigation(data.investigationId);
@@ -433,34 +467,60 @@ const AddLabResult = () => {
         setLoading(true);
 
         if (investigationId) {
-          const investigationsResponse = await getInvestigations();
-          const investigationsArray = Array.isArray(investigationsResponse)
-            ? investigationsResponse
-            : investigationsResponse?.data || [];
+          let foundInvestigation = null;
 
-          const foundInvestigation = investigationsArray.find(
-            (inv) => inv._id === investigationId || inv.id === investigationId
-          );
+          try {
+            const investigationsResponse = await getInvestigations();
+            const investigationsArray = Array.isArray(investigationsResponse)
+              ? investigationsResponse
+              : investigationsResponse?.data || [];
+
+            foundInvestigation = investigationsArray.find(
+              (inv) => inv._id === investigationId || inv.id === investigationId
+            );
+          } catch (err) {
+            console.warn("Failed to fetch investigations:", err);
+          }
+
+          // If not found as investigation id, try as OpD patient id
+          if (!foundInvestigation) {
+            try {
+              const opdInvestigationResponse = await getInvestigationRequestByOpdPatientId(investigationId);
+              foundInvestigation = opdInvestigationResponse?.data || opdInvestigationResponse;
+            } catch (err) {
+              console.warn("Failed to load OpD investigation:", err);
+            }
+          }
 
           if (foundInvestigation) {
             setInvestigation(foundInvestigation);
 
-            if (foundInvestigation.patientId) {
-              const patientResponse = await getPatientById(
-                foundInvestigation.patientId
-              );
-              const patientData = patientResponse?.data || patientResponse;
+            const invPatientId =
+              foundInvestigation.patientId ||
+              foundInvestigation.opdPatientId ||
+              foundInvestigation?.patient?._id ||
+              foundInvestigation?.patient?.id ||
+              foundInvestigation?.opdPatient?._id ||
+              foundInvestigation?.opdPatient?.id;
+
+            let patientData = null;
+            if (invPatientId) {
+              patientData = await loadPatientData(invPatientId);
+            }
+
+            if (!patientData && foundInvestigation.patient) {
+              patientData = foundInvestigation.patient;
+            }
+            if (!patientData && foundInvestigation.opdPatient) {
+              patientData = foundInvestigation.opdPatient;
+            }
+
+            if (patientData) {
               setPatient(patientData);
 
-              
-              const patientName =
-                patientData?.firstName && patientData?.lastName
-                  ? `${patientData.firstName} ${patientData.lastName}`
-                  : patientData?.name || "Unknown Patient";
-
+              const patientName = getPatientName(patientData);
               const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
               const age = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
-
               const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
               const sex = genderMap[patientData?.gender] || patientData?.gender || "";
 
@@ -481,14 +541,34 @@ const AddLabResult = () => {
               setFormData((prev) => ({
                 ...prev,
                 patientNames: patientName,
-                age: age,
-                sex: sex,
+                age,
+                sex,
                 clinicalDiagnosis: foundInvestigation?.clinicalDiagnosis || "",
                 referral: referralName,
               }));
             }
           } else {
             setError("Investigation not found");
+          }
+        } else if (opdPatientId) {
+          // ✅ OpD patient direct — no investigation, load patient directly
+          const patientData = await loadPatientData(opdPatientId);
+          if (patientData) {
+            setPatient(patientData);
+            const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
+            const age = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
+            const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
+            const sex = genderMap[patientData?.gender] || patientData?.gender || "";
+
+            setFormData((prev) => ({
+              ...prev,
+              patientNames: getPatientName(patientData),
+              age,
+              sex,
+              referral: 'Front Desk (OpD)',
+            }));
+          } else {
+            setError("Patient not found");
           }
         }
 
@@ -499,10 +579,11 @@ const AddLabResult = () => {
       } finally {
         setLoading(false);
       }
+
     };
 
     load();
-  }, [investigationId, paramLabResultId, currentUser]);
+  }, [investigationId, paramLabResultId, currentUser, location.search]);
 
   const handleInputChange = (section, field, value) => {
     if (typeof section === "string" && !field) {
@@ -519,14 +600,6 @@ const AddLabResult = () => {
         },
       }));
     }
-  };
-
-  const handleAttachmentsChange = (e) => {
-    const newFiles = Array.from(e.target.files || []);
-    setFormData((prev) => ({
-      ...prev,
-      attachments: [...(prev.attachments || []), ...newFiles],
-    }));
   };
 
   const handleNestedInputChange = (section, subsection, field, value) => {
@@ -546,48 +619,109 @@ const AddLabResult = () => {
     setIsConfirmOpen(true);
   };
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      setError(null);
-      setIsConfirmOpen(false);
+const handleSave = async () => {
+  try {
+    setSaving(true);
+    setError(null);
+    setIsConfirmOpen(false);
 
-      const payload = {
-        patientId: patient?._id || patient?.id,
-        form: (() => {
-          const { patientNames, age, sex, referral, ...cleanForm } = formData;
-          return cleanForm;
-        })(),
-        remarks: formData.remarks,
-        attachments: formData.attachments,
-      };
+    const searchParams = new URLSearchParams(location.search);
+    const opdPatientId = searchParams.get('opdPatientId');
 
-      let resultId = paramLabResultId;
-      if (editing && resultId) {
-        await updateLabResult(resultId, payload);
-      } else {
-        const response = await createLabResult(investigationId, payload);
+    const payload = {
+      form: (() => {
+        const { patientNames, age, sex, referral, ...cleanForm } = formData;
+        return cleanForm;
+      })(),
+      remarks: formData.remarks,
+    };
+
+    // ✅ Set the right patient ID type
+    if (opdPatientId && !investigationId) {
+      payload.opdPatientId = opdPatientId;
+    } else {
+      payload.patientId = patient?._id || patient?.id;
+    }
+
+    if (investigation?.opdPatientId) {
+      payload.opdPatientId = patient?._id || patient?.id;
+    }
+
+    let resultId = paramLabResultId;
+    if (editing && resultId) {
+      await updateLabResult(resultId, payload);
+    } else {
+      if (investigation) {
+        // Use the investigation's ObjectId
+        const response = await createLabResult(investigation.id, payload);
         const labResultData = response?.data || response;
         resultId = labResultData?._id || labResultData?.id;
+      } else if (opdPatientId) {
+        // For direct OpD patients without investigation, use null to trigger /opd endpoint
+        const response = await createLabResult(null, payload);
+        const labResultData = response?.data || response;
+        resultId = labResultData?._id || labResultData?.id;
+      } else {
+        setError("Unable to determine lab result type");
+        setSaving(false);
+        return;
       }
-
-      navigate(`/dashboard/laboratory/results/${resultId}`, {
-        state: { from: editing ? "edit" : "add", patientSnapshot: patient, investigationId: investigation || investigationId },
-      });
-    } catch (err) {
-      console.error("Error saving lab result:", err);
-      setError(
-        err.response?.data?.message ||
-          "Failed to save lab result. Please try again."
-      );
-      setSaving(false);
-      setIsConfirmOpen(true);
     }
-  };
+
+    navigate(`/dashboard/laboratory/results/${resultId}`, {
+      state: { from: editing ? "edit" : "add", patientSnapshot: patient },
+    });
+  } catch (err) {
+    setError(err.response?.data?.message || "Failed to save lab result.");
+    setSaving(false);
+  }
+};
+
+const handleComplete = async () => {
+  try {
+    setSaving(true);
+    setError(null);
+
+    const payload = {
+      form: (() => {
+        const { patientNames, age, sex, referral, ...cleanForm } = formData;
+        return cleanForm;
+      })(),
+      remarks: formData.remarks,
+    };
+
+    // Set the right patient ID type
+    if (investigation?.opdPatientId || location.search.includes('opdPatientId')) {
+      const searchParams = new URLSearchParams(location.search);
+      const opdPatientId = searchParams.get('opdPatientId');
+      payload.opdPatientId = opdPatientId || patient?._id || patient?.id;
+    } else {
+      payload.patientId = patient?._id || patient?.id;
+    }
+
+    // Update the lab result
+    await updateLabResult(paramLabResultId, payload);
+
+    // If there's an investigation, update its status to completed
+    if (investigation) {
+      // Assuming there's an API to update investigation status
+      // For now, we'll just log it
+      console.log("Completing investigation:", investigation.id);
+      // TODO: Call API to update investigation status to completed
+    }
+
+    toast.success("Lab result completed successfully!");
+    navigate("/dashboard/laboratory");
+  } catch (err) {
+    setError(err.response?.data?.message || "Failed to complete lab result.");
+    setSaving(false);
+  }
+};
 
   const toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
+
 
   if (loading) {
     return (
@@ -1076,59 +1210,7 @@ const AddLabResult = () => {
                 )}
               </div>
 
-              {/* REMARKS SECTION */}
-              <div className="bg-white rounded-lg shadow">
-                <div className="p-4 flex flex-col gap-3">
-                  <label className="text-lg font-semibold text-[#00943C]">
-                    Attachments <span className="text-sm font-normal text-[#605D66]">(optional)</span>
-                  </label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf"
-                    onChange={handleAttachmentsChange}
-                    className="px-3 py-2 border border-[#AEAAAE] rounded-lg focus:outline-none focus:border-[#00943C]"
-                  />
-                  {formData.attachments.length > 0 && (
-                    <div className="mt-3 space-y-3">
-                      <p className="text-sm font-medium text-[#00943C]">Attached Files ({formData.attachments.length}):</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {formData.attachments.map((file, i) => {
-                          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
-                          const isPdf = /\.pdf$/i.test(file.name);
-                          const fileUrl = isImage ? URL.createObjectURL(file) : null;
 
-                          return (
-                            <div
-                              key={i}
-                              className="relative flex flex-col items-center p-2 bg-[#00943C]/5 border border-[#00943C]/20 rounded-lg hover:border-[#00943C]/50 transition-all group"
-                            >
-                              {isImage && fileUrl ? (
-                                <img
-                                  src={fileUrl}
-                                  alt={file.name}
-                                  className="w-full h-20 object-cover rounded mb-1"
-                                />
-                              ) : isPdf ? (
-                                <div className="w-full h-20 flex items-center justify-center bg-red-50 rounded mb-1">
-                                  <span className="text-xl font-bold text-red-600">PDF</span>
-                                </div>
-                              ) : (
-                                <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded mb-1">
-                                  <span className="text-xs text-gray-600 text-center">File</span>
-                                </div>
-                              )}
-                              <p className="text-xs text-[#605D66] text-center truncate w-full px-1 group-hover:text-[#00943C]">
-                                {file.name}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
 
               <div className="bg-white rounded-lg shadow">
                 <div className="p-4 flex flex-col gap-3">
@@ -1154,6 +1236,15 @@ const AddLabResult = () => {
             >
               {editing ? "Update" : "Save Draft"}
             </button>
+                {editing && (
+                  <button
+                    className="btn btn-success text-white px-12 h-12 text-lg font-normal normal-case rounded-md"
+                    onClick={handleComplete}
+                    disabled={saving}
+                  >
+                    Complete
+                  </button>
+                )}
                 <button
                   onClick={() => navigate(-1)}
                   disabled={saving}

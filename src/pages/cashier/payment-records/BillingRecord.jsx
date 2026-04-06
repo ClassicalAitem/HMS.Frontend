@@ -4,7 +4,8 @@ import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/cashier/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import cashierData from '@/data/cashierData.json';
-import { getAllBillings } from '@/services/api/billingAPI';
+import { getAllBillings, getBillingsByOpdPatientId } from '@/services/api/billingAPI';
+import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
 const PaymentRecords = () => {
@@ -23,12 +24,20 @@ const PaymentRecords = () => {
     const fetchBilling = async() => {
       try {
         setIsLoading(true);
-        const res = await getAllBillings();
-        const raw = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
+        const [regularRes, opdPatientsRes] = await Promise.all([getAllBillings(), getAllOpdPatients()]);
+        const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
+        const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
+        
+        // Fetch billings for each OpD patient
+        const opdBillingsPromises = opdPatients.map(patient => getBillingsByOpdPatientId(patient.id).catch(() => null));
+        const opdBillingsResults = await Promise.all(opdBillingsPromises);
+        const opdBillings = opdBillingsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
+        
+        const allBillings = [...regularList, ...opdBillings];
+        const list = Array.isArray(allBillings) ? allBillings : [];
         const mapped = list.map((a, idx) => ({
           billingId: a.id,
-          name: a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : 'N/A',
+          name: a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'),
           outstandingBill: `₦ ${Number(a.outstandingBill).toLocaleString()}`,
           totalAmount: `₦ ${Number(a.totalAmount).toLocaleString()}`,
           itemDetails: a.itemDetails,

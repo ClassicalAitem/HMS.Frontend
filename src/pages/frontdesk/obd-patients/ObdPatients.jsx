@@ -4,28 +4,28 @@ import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { DataTable } from '@/components/common';
 import toast from 'react-hot-toast';
-import { getAllObdPatients, deleteObdPatient } from '@/services/api/obdPatientAPI';
+import { getAllOpdPatients, deleteOpdPatient } from '@/services/api/opdPatientAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 
-const ObdPatients = () => {
+const OpdPatients = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [obdPatients, setObdPatients] = useState([]);
+  const [opdPatients, setOpdPatients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [serviceCharges, setServiceCharges] = useState([]);
 
-  // Fetch OBD patients and service charges
+  // Fetch OPD patients and service charges
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         
-        // Fetch OBD patients
-        const patientsResponse = await getAllObdPatients();
+        // Fetch OPD patients
+        const patientsResponse = await getAllOpdPatients();
         const patientsData = Array.isArray(patientsResponse) ? patientsResponse : patientsResponse?.data ?? [];
-        setObdPatients(patientsData);
+        setOpdPatients(patientsData);
 
         // Fetch service charges
         try {
@@ -39,9 +39,8 @@ const ObdPatients = () => {
           console.error('Failed to load service charges:', error);
         }
       } catch (error) {
-        console.error('Failed to fetch OBD patients:', error);
-        toast.error('Failed to load OBD patients');
-        setObdPatients([]);
+        console.error('Failed to fetch OPD patients:', error);
+        setOpdPatients([]);
       } finally {
         setIsLoading(false);
       }
@@ -59,21 +58,21 @@ const ObdPatients = () => {
   };
 
   const handleDelete = useCallback(async (id) => {
-    if (window.confirm('Are you sure you want to delete this OBD patient?')) {
+    if (window.confirm('Are you sure you want to delete this OPD patient?')) {
       try {
         await deleteObdPatient(id);
-        toast.success('OBD patient deleted successfully');
-        setObdPatients(obdPatients.filter(p => p.id !== id));
+        toast.success('OPD patient deleted successfully');
+        setOpdPatients(opdPatients.filter(p => p.id !== id));
       } catch (error) {
-        console.error('Failed to delete OBD patient:', error);
-        toast.error('Failed to delete OBD patient');
+        console.error('Failed to delete OPD patient:', error);
+        toast.error('Failed to delete OPD patient');
       }
     }
-  }, [obdPatients]);
+  }, [opdPatients]);
 
-  // Process OBD patients data
+  // Process OPD patients data
   const processedPatients = useMemo(() => {
-    return obdPatients.map((patient, index) => {
+    return opdPatients.map((patient, index) => {
       const serviceCharge = serviceCharges.find(s => s.id === patient.serviceChargeId);
       return {
         ...patient,
@@ -85,7 +84,7 @@ const ObdPatients = () => {
         actions: patient.id
       };
     });
-  }, [obdPatients, serviceCharges]);
+  }, [opdPatients, serviceCharges]);
 
   // Define table columns
   const columns = useMemo(() => [
@@ -140,7 +139,7 @@ const ObdPatients = () => {
       render: (patientId) => (
         <div className="flex items-center justify-center gap-2">
           <button
-            onClick={() => navigate(`/frontdesk/obd-patients/${patientId}/edit`)}
+            onClick={() => navigate(`/frontdesk/opd-patients/${patientId}/edit`)}
             className="btn btn-ghost btn-xs text-info"
             title="Edit"
           >
@@ -190,7 +189,7 @@ const ObdPatients = () => {
               <p className="text-sm text-base-content/60 2xl:text-base">Patients without hospital cards needing attention</p>
             </div>
             <button 
-              onClick={() => navigate('/frontdesk/obd-patients/new')}
+              onClick={() => navigate('/frontdesk/opd-patients/new')}
               className="btn btn-primary btn-sm 2xl:btn-md"
             >
               <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +199,7 @@ const ObdPatients = () => {
             </button>
           </div>
 
-          {/* OBD Patients Table */}
+          {/* OPD Patients Table */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
@@ -208,7 +207,7 @@ const ObdPatients = () => {
                   <div className="flex justify-center items-center h-64">
                     <div className="loading loading-spinner loading-lg"></div>
                   </div>
-                ) : obdPatients.length > 0 ? (
+                ) : opdPatients.length > 0 ? (
                   <DataTable
                     data={processedPatients}
                     columns={columns}
@@ -218,13 +217,13 @@ const ObdPatients = () => {
                     initialEntriesPerPage={10}
                     maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
                     showEntries={true}
-                    searchPlaceholder="Search OBD patients..."
+                    searchPlaceholder="Search OPD patients..."
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center h-64">
                     <p className="text-base-content/60 mb-4">No OPD patients found</p>
                     <button
-                      onClick={() => navigate('/frontdesk/obd-patients/new')}
+                      onClick={() => navigate('/frontdesk/opd-patients/new')}
                       className="btn btn-primary btn-sm"
                     >
                       Add First OPD Patient
@@ -240,4 +239,4 @@ const ObdPatients = () => {
   );
 };
 
-export default ObdPatients;
+export default OpdPatients;

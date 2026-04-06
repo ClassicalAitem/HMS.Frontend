@@ -88,13 +88,19 @@ const getHmoCoveredAmount = (bill) => {
 };
   useEffect(() => {
     const fetchBillings = async () => {
-      setIsReceiptModalOpen(false);
-      const res = await getAllBillings({ patientId });
+      try {
+        setIsReceiptModalOpen(false);
+        const res = await getAllBillings({ patientId });
 
-      console.log('Fetched Billings', res.data.data);
+        console.log('Fetched Billings', res.data.data);
 
-      setBillings(res.data.data);
-
+        // Handle different response structures
+        const billingsData = res?.data?.data || res?.data || [];
+        setBillings(Array.isArray(billingsData) ? billingsData : []);
+      } catch (error) {
+        console.error('Error fetching billings:', error);
+        setBillings([]);
+      }
     }
 
     fetchBillings();
@@ -102,11 +108,18 @@ const getHmoCoveredAmount = (bill) => {
 
   useEffect(() => {
     const fetchReceipts = async () => {
-      const res = await getAllReceiptByPatientId(patientId);
+      try {
+        const res = await getAllReceiptByPatientId(patientId);
 
-      console.log('Fetched Receipts', res.data);
+        console.log('Fetched Receipts', res.data);
 
-      setReceipts(res.data.data);
+        // Handle different response structures
+        const receiptsData = res?.data?.data || res?.data || [];
+        setReceipts(Array.isArray(receiptsData) ? receiptsData : []);
+      } catch (error) {
+        console.error('Error fetching receipts:', error);
+        setReceipts([]);
+      }
     }
 
     fetchReceipts();
@@ -127,11 +140,17 @@ const getHmoCoveredAmount = (bill) => {
 
       setIsReceiptModalOpen(false);
       // Refresh receipts and billings after successful submission
-      const receiptsRes = await getAllReceiptByPatientId(patientId);
-      setReceipts(receiptsRes.data.data);
+      try {
+        const receiptsRes = await getAllReceiptByPatientId(patientId);
+        const receiptsData = receiptsRes?.data?.data || receiptsRes?.data || [];
+        setReceipts(Array.isArray(receiptsData) ? receiptsData : []);
 
-      const billingsRes = await getAllBillings({ patientId });
-      setBillings(billingsRes.data.data);
+        const billingsRes = await getAllBillings({ patientId });
+        const billingsData = billingsRes?.data?.data || billingsRes?.data || [];
+        setBillings(Array.isArray(billingsData) ? billingsData : []);
+      } catch (refreshError) {
+        console.error('Error refreshing data:', refreshError);
+      }
 
 
     } catch (error) {
