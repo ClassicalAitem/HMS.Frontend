@@ -843,7 +843,7 @@ const prescriptions48h = useMemo(() =>
               <SendPatientModal
                 patientId={patientId}
                 onUpdated={() => navigate('/dashboard/doctor')}
-                allowedRoles={['nurse', 'labtechnician', 'pharmacist']}
+                allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier']}
               />
               <div className="text-xs text-base-content/70">(sending to other roles)</div>
             </div>
