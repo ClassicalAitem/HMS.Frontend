@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaPlus, FaFlask, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { createInvestigation, updateInvestigation } from '@/services/api/investigationAPI';
+import { createInvestigationRequestByConsultation, updateInvestigation } from '@/services/api/investigationRequestAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
 const testSchema = yup.object({
@@ -138,8 +138,7 @@ const OrderInvestigationModal = ({
         toast.success("Investigation updated successfully");
 
       } else {
-        const sourceType = consultationId?.length === 24 ? 'antenatal' : 'consultation';
-        await createInvestigation(consultationId, payload, sourceType);
+        await createInvestigationRequestByConsultation(consultationId, payload);
         toast.success("Investigation order created successfully");
 
       }

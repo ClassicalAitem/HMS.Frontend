@@ -42,7 +42,7 @@ export const getInvestigationById = async (id) => {
 
 export const getInvestigationByPatientId = async (patientId) => {
   try {
-    const response = await apiClient.get(`/investigation/getInvestigationByPatientId/${patientId}`)
+    const response = await apiClient.get(`/investigation/getInvestigationRequestByPatientId/${patientId}`)
     return response.data ?? []
   } catch (err) {
     // Suppress 404 errors (patient has no investigations)
@@ -76,6 +76,36 @@ export const createInvestigation = async (data, contextId, contextType = 'consul
   }
 }
 
+export const createInvestigationRequestByConsultation = async (consultationId, data) => {
+  return createInvestigation(data, consultationId, 'consultation')
+}
+
+export const createInvestigationRequestByAntenatal = async (antenatalId, data) => {
+  return createInvestigation(data, antenatalId, 'antenatal')
+}
+
+export const createInvestigationRequestForCashier = async (data) => {
+  try {
+    const response = await apiClient.post('/investigation/cashier', data)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('investigationsAPI: createInvestigationRequestForCashier error', err.response?.data || err.message, err)
+    throw err
+  }
+}
+
+export const getInvestigationRequestByOpdPatientId = async (opdPatientId) => {
+  try {
+    const response = await apiClient.get(`/investigation/getInvestigationRequestByOpdPatientId/${opdPatientId}`)
+    return response.data ?? []
+  } catch (err) {
+    if (err?.response?.status !== 404) {
+      console.error('investigationsAPI: getInvestigationRequestByOpdPatientId error', err)
+    }
+    throw err
+  }
+}
+
 export const deleteInvestigation = async (id) => {
   try {
     const response = await apiClient.delete(`/investigation/${id}`)
@@ -94,5 +124,9 @@ export default {
   getInvestigationByPatientId,
   updateInvestigation,
   createInvestigation,
+  createInvestigationRequestByConsultation,
+  createInvestigationRequestByAntenatal,
+  createInvestigationRequestForCashier,
+  getInvestigationRequestByOpdPatientId,
   deleteInvestigation
 }

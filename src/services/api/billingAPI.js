@@ -44,6 +44,30 @@ export const createBill = async (patientId, billData) => {
   return response;
 };
 
+export const createBillForOpd = async (opdPatientId, billData) => {
+  if (!opdPatientId) throw new Error('OpD Patient ID is required');
+  if (!billData || typeof billData !== 'object') throw new Error('billData must be an object');
+
+  const { itemDetail = [], totalAmount } = billData;
+  if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
+
+  const sanitized = itemDetail.map(({ code, description, quantity, price, total }) => ({
+    code,
+    description,
+    quantity: Number(quantity) || 1,
+    price: Number(price) || 0,
+    total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
+  }));
+
+  const body = { itemDetail: sanitized };
+  if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
+
+  const url = `${API_ENDPOINTS.CREATE_BILL_OPD}/${opdPatientId}`;
+  console.log('🧾 BillingAPI: Creating OpD billing', { opdPatientId, body, url });
+  const response = await apiClient.post(url, body);
+  return response;
+};
+
 /**
  * Get billing details by ID
  * GET /billing/{billingId}
@@ -158,6 +182,14 @@ export const getBillingbypatientId = async (patientId) => {
   }
 };
 
+export const getBillingsByOpdPatientId = async (opdPatientId) => {
+  if (!opdPatientId) throw new Error('OpD Patient ID is required');
+  const url = `/billing/opd-patient/${opdPatientId}`;
+  console.log('🧾 BillingAPI: Fetching billings by OpD patient ID', { opdPatientId, url });
+  const response = await apiClient.get(url);
+  return response;
+};
+
 export const createBilling = async (patientId, payload) => {
   if (!patientId) throw new Error('Patient ID is required');
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
@@ -190,8 +222,33 @@ export const getAllReceiptByPatientId = async (patientId) => {
 
   const url = `/receipt/patient/${patientId}`;
   console.log('🧾 ReceiptAPI: Fetching receipt by patient ID', { patientId, url });
-  const response = await apiClient.get(url);
-  return response;
+  try {
+    const response = await apiClient.get(url);
+    return response;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.log('🧾 ReceiptAPI: No receipts found for patient', { patientId });
+      return { data: [] };
+    }
+    throw error;
+  }
+};
+
+export const getReceiptsByOpdPatientId = async (opdPatientId) => {
+  if (!opdPatientId) throw new Error('OPD Patient ID is required');
+
+  const url = `/receipt/opd-patient/${opdPatientId}`;
+  console.log('🧾 ReceiptAPI: Fetching receipts by OPD patient ID', { opdPatientId, url });
+  try {
+    const response = await apiClient.get(url);
+    return response;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      console.log('🧾 ReceiptAPI: No receipts found for OPD patient', { opdPatientId });
+      return { data: [] };
+    }
+    throw error;
+  }
 };
 
 export const createReceipt = async (billingId, receiptData) => {
@@ -255,9 +312,11 @@ export default {
   createBilling,
   getBillingById,
   getBillingbypatientId,
+  getBillingsByOpdPatientId,
   getAllBillings,
   getAllReceipts,
   getAllReceiptByPatientId,
+  getReceiptsByOpdPatientId,
   createReceipt,
   updateReceipt,
   deleteBilling,

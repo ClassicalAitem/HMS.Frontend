@@ -6,17 +6,17 @@ import * as yup from 'yup';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import toast from 'react-hot-toast';
-import { createObdPatient, getObdPatientById, updateObdPatient } from '@/services/api/obdPatientAPI';
+import { createOpdPatient, getOpdPatientById, updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
-const obdPatientSchema = yup.object().shape({
+const opdPatientSchema = yup.object().shape({
   fullName: yup.string().required('Full name is required').min(2, 'Full name must be at least 2 characters'),
   phone: yup.string().required('Phone number is required').matches(/^[0-9+\-() ]+$/, 'Invalid phone number'),
   address: yup.string().optional(),
   serviceChargeId: yup.string().required('Please select a lab test')
 });
 
-const AddObdPatient = () => {
+const AddOpdPatient = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
@@ -36,7 +36,7 @@ const AddObdPatient = () => {
     watch,
     formState: { errors }
   } = useForm({
-    resolver: yupResolver(obdPatientSchema),
+    resolver: yupResolver(opdPatientSchema),
     defaultValues: {
       fullName: '',
       phone: '',
@@ -78,7 +78,7 @@ const AddObdPatient = () => {
     if (isEditing) {
       const fetchPatient = async () => {
         try {
-          const response = await getObdPatientById(id);
+          const response = await getOpdPatientById(id);
           const patient = response?.data ?? response;
           reset({
             fullName: patient.fullName || '',
@@ -88,8 +88,7 @@ const AddObdPatient = () => {
           });
         } catch (error) {
           console.error('Failed to fetch OBD patient:', error);
-          toast.error('Failed to load OBD patient');
-          navigate('/frontdesk/obd-patients');
+          navigate('/frontdesk/opd-patients');
         } finally {
           setIsFetching(false);
         }
@@ -109,14 +108,20 @@ const AddObdPatient = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
+      // Ensure address has a value for backend validation
+      const submitData = {
+        ...data,
+        address: data.address?.trim() || 'Not provided'
+      };
+
       if (isEditing) {
-        await updateObdPatient(id, data);
-        toast.success('OBD patient updated successfully');
+        await updateOpdPatient(id, submitData);
+        toast.success('OPD patient updated successfully');
       } else {
-        await createObdPatient(data);
-        toast.success('OBD patient added successfully');
+        await createObdPatient(submitData);
+        toast.success('OPD patient added successfully');
       }
-      navigate('/frontdesk/obd-patients');
+      navigate('/frontdesk/opd-patients');
     } catch (error) {
       console.error('Failed to save OBD patient:', error);
       toast.error(error?.response?.data?.message || 'Failed to save OBD patient');
@@ -286,7 +291,7 @@ const AddObdPatient = () => {
                   <div className="flex gap-3 justify-end pt-4">
                     <button
                       type="button"
-                      onClick={() => navigate('/frontdesk/obd-patients')}
+                      onClick={() => navigate('/frontdesk/opd-patients')}
                       className="btn btn-ghost"
                       disabled={isLoading}
                     >
@@ -310,4 +315,4 @@ const AddObdPatient = () => {
   );
 };
 
-export default AddObdPatient;
+export default AddOpdPatient;
