@@ -16,18 +16,14 @@ const OpdPatients = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [serviceCharges, setServiceCharges] = useState([]);
 
-  // Fetch OPD patients and service charges
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch OPD patients
         const patientsResponse = await getAllOpdPatients();
         const patientsData = Array.isArray(patientsResponse) ? patientsResponse : patientsResponse?.data ?? [];
         setOpdPatients(patientsData);
 
-        // Fetch service charges
         try {
           const chargesResponse = await getServiceCharges();
           const chargesData = chargesResponse?.data ?? chargesResponse ?? [];
@@ -60,9 +56,9 @@ const OpdPatients = () => {
   const handleDelete = useCallback(async (id) => {
     if (window.confirm('Are you sure you want to delete this OPD patient?')) {
       try {
-        await deleteObdPatient(id);
+        await deleteOpdPatient(id);
         toast.success('OPD patient deleted successfully');
-        setOpdPatients(opdPatients.filter(p => p.id !== id));
+        setOpdPatients(opdPatients.filter((p) => p.id !== id));
       } catch (error) {
         console.error('Failed to delete OPD patient:', error);
         toast.error('Failed to delete OPD patient');
@@ -70,10 +66,9 @@ const OpdPatients = () => {
     }
   }, [opdPatients]);
 
-  // Process OPD patients data
   const processedPatients = useMemo(() => {
     return opdPatients.map((patient, index) => {
-      const serviceCharge = serviceCharges.find(s => s.id === patient.serviceChargeId);
+      const serviceCharge = serviceCharges.find((s) => s.id === patient.serviceChargeId);
       return {
         ...patient,
         serialNumber: index + 1,
@@ -86,7 +81,6 @@ const OpdPatients = () => {
     });
   }, [opdPatients, serviceCharges]);
 
-  // Define table columns
   const columns = useMemo(() => [
     {
       key: 'serialNumber',
@@ -159,30 +153,23 @@ const OpdPatients = () => {
 
   return (
     <div className="flex h-screen">
-      {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
-      {/* Sidebar */}
+
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
-      {/* Main Content */}
+
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">OPD Patients</h1>
@@ -199,7 +186,6 @@ const OpdPatients = () => {
             </button>
           </div>
 
-          {/* OPD Patients Table */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">

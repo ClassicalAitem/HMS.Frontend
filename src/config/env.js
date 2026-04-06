@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
   
   // Billing
   CREATE_BILL: '/billing/create',
+  CREATE_BILL_OPD: '/billing/create-opd',
   GET_BILLINGS: '/billing',
   GET_BILL_DETAILS: '/billing/:id',
   DELETE_BILLING: '/billing',
