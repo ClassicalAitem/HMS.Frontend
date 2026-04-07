@@ -12,10 +12,16 @@ export const getLabResultById = async (id) => {
 };
 
 export const createLabResult = async (investigationRequestId, data) => {
+  // For OpD patients without investigation, use /opd endpoint
+  const endpoint = investigationRequestId ? `/labResult/${investigationRequestId}` : '/labResult/opd';
+  
   // if attachments are present we need multipart/form-data
   if (data?.form?.attachments && data.form.attachments.length > 0) {
     const formData = new FormData();
     formData.append('patientId', data.patientId || '');
+    if (data.opdPatientId) {
+      formData.append('opdPatientId', data.opdPatientId);
+    }
     formData.append('form', JSON.stringify(data.form));
     formData.append('remarks', data.remarks || '');
     data.form.attachments.forEach((file) => {
@@ -23,7 +29,7 @@ export const createLabResult = async (investigationRequestId, data) => {
       formData.append('attachments', file);
     });
 
-    const response = await apiClient.post(`/labResult/${investigationRequestId}`, formData, {
+    const response = await apiClient.post(endpoint, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
@@ -34,8 +40,12 @@ export const createLabResult = async (investigationRequestId, data) => {
     form: data?.form,
     remarks: data?.remarks,
   };
+
+  if (data.opdPatientId) {
+    payload.opdPatientId = data.opdPatientId;
+  }
   
-  const response = await apiClient.post(`/labResult/${investigationRequestId}`, payload);
+  const response = await apiClient.post(endpoint, payload);
   return response.data;
 };
 
