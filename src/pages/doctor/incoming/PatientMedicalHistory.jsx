@@ -553,6 +553,14 @@ const prescriptions48h = useMemo(() =>
           />
 
           <PatientSummaryCard patient={patient} loading={loading} />
+          <div>
+              <SendPatientModal
+                patientId={patientId}
+                onUpdated={() => navigate('/dashboard/doctor')}
+                allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
+              />
+             
+            </div>
 
           <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
@@ -839,14 +847,7 @@ const prescriptions48h = useMemo(() =>
               <div className="text-xs text-base-content/70">(send to cashier for payments)</div>
             </div>
      
-            <div>
-              <SendPatientModal
-                patientId={patientId}
-                onUpdated={() => navigate('/dashboard/doctor')}
-                allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier']}
-              />
-              <div className="text-xs text-base-content/70">(sending to other roles)</div>
-            </div>
+            
 
             <div>
               <button 
