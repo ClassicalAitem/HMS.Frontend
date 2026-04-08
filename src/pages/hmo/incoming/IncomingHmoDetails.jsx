@@ -4,15 +4,16 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
-import { PATIENT_STATUS } from "@/constants/patientStatus";
+
 import { getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
 import { formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
-import { getAllHmos } from "@/services/api/hmoAPI";
 import apiClient from "@/services/api/apiClient";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const IncomingHmoDetails = () => {
+  const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
+
   const { patientId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -86,7 +87,6 @@ setBillings(unreviewedBills);
     return () => { mounted = false; };
   }, [patientId]);
 
-// ✅ One function handles both single and bulk
 const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
   setItemDecisions(prev => ({
     ...prev,
@@ -95,9 +95,12 @@ const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
       [itemIdx]: { status, hmoCovered: Number(hmoCovered) || 0 }
     }
   }));
+  setHasSavedDecisions(false);
 };
 
 const setAllDecisions = (status) => {
+  setHasSavedDecisions(false);
+
   setItemDecisions(() => {
     const next = {};
     billings.forEach(bill => {
@@ -129,107 +132,66 @@ const approvedTotal = useMemo(() => {
   return total;
 }, [billings, itemDecisions]);
 
-const handleSendToStatus = async (status) => {
-  try {
-    setSendingStatuses(prev => ({ ...prev, [status]: true }));
-    const statusMap = {
-      'Lab': PATIENT_STATUS.AWAITING_LAB,
-      'Pharmacy': PATIENT_STATUS.AWAITING_PHARMACY,
-    };
 
-    const newStatus = statusMap[status];
-    if (!newStatus) return;
+const saveDecisions = async () => {
+  await Promise.all(
+    billings.map(async (bill) => {
+      const updatedItems = (bill.itemDetails || []).map((item, idx) => {
+        const decision = itemDecisions[bill.id]?.[idx] || { status: 'pending', hmoCovered: 0 };
+        const itemTotal = Number(item.total || 0);
 
-    await updatePatientStatus(patientId, newStatus);
-    toast.success(`Patient sent to ${status} successfully`);
-    navigate(-1);
-  } catch (err) {
-    toast.error(err?.response?.data?.message || `Failed to send to ${status}`);
-  } finally {
-    setSendingStatuses(prev => ({ ...prev, [status]: false }));
-  }
+        let hmoCovered = 0;
+        if (decision.status === 'approved') hmoCovered = itemTotal;
+        else if (decision.status === 'partial') hmoCovered = Number(decision.hmoCovered || 0);
+        else hmoCovered = 0;
+
+        const patientPays = itemTotal - hmoCovered;
+
+        return {
+          ...item,
+          hmoStatus: decision.status,
+          hmoCovered,
+          patientOwes: patientPays,
+        };
+      });
+
+      const outstandingBill = updatedItems.reduce(
+        (sum, item) => sum + Number(item.patientOwes || 0),
+        0
+      );
+
+      const hmoCoveredAmount = updatedItems.reduce(
+        (sum, item) => sum + Number(item.hmoCovered || 0),
+        0
+      );
+
+      await updateBilling(bill.id, {
+        itemDetails: updatedItems,
+        outstandingBill,
+        hmoCoveredAmount,
+      });
+    })
+  );
 };
 
-const handleSubmit = async () => {
+const handleSave = async () => {
   setSubmitting(true);
   try {
-    await Promise.all(
-      billings.map(async (bill) => {
-        const updatedItems = (bill.itemDetails || []).map((item, idx) => {
-          const decision = itemDecisions[bill.id]?.[idx] || { status: 'pending', hmoCovered: 0 };
-          const itemTotal = Number(item.total || 0);
-
-          let hmoCovered = 0;
-          if (decision.status === 'approved') hmoCovered = itemTotal;
-          else if (decision.status === 'partial') hmoCovered = Number(decision.hmoCovered || 0);
-          else hmoCovered = 0;
-
-          const patientPays = itemTotal - hmoCovered;
-
-          return {
-            ...item,
-            hmoStatus: decision.status,
-            hmoCovered,          // ✅ how much HMO covers for this item
-            patientOwes: patientPays, // ✅ how much patient pays for this item
-          };
-        });
-
-        // ✅ Outstanding = sum of what patient owes per item
-        const outstandingBill = updatedItems.reduce(
-          (sum, item) => sum + Number(item.patientOwes || 0), 0
-        );
-
-        // ✅ HMO covered = sum of what HMO covers per item
-        const hmoCoveredAmount = updatedItems.reduce(
-          (sum, item) => sum + Number(item.hmoCovered || 0), 0
-        );
-
-        await updateBilling(bill.id, {
-          itemDetails: updatedItems,
-          outstandingBill,
-          hmoCoveredAmount,
-        });
-      })
-    );
-
-    await toast.promise(
-      updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER }),
-      {
-        loading: 'Sending to cashier...',
-        success: 'Patient sent to cashier',
-        error: (err) => err?.response?.data?.message || 'Failed to update status',
-      }
-    );
-
-    navigate('/dashboard/hmo/incoming');
+    await saveDecisions();
+    setHasSavedDecisions(true);
+    toast.success('HMO items saved');
+    setTimeout(() => {
+      window.location.reload();
+    }, 700);
   } catch (err) {
-    console.error('HMO submit error', err);
-    toast.error('Failed to submit HMO decisions');
+    console.error('Save items error', err);
+    toast.error(err?.response?.data?.message || 'Failed to save items');
   } finally {
     setSubmitting(false);
   }
 };
 
-  const handleSendBackToDoctor = async () => {
-    setSubmitting(true);
-    try {
-      await toast.promise(
-        updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_DOCTOR }),
-        {
-          loading: 'Sending back to doctor...',
-          success: 'Patient sent back to doctor',
-          error: (err) => err?.response?.data?.message || 'Failed',
-        }
-      );
-      navigate('/dashboard/hmo/incoming');
-    } catch {
-        toast.error('Failed to send back to doctor');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
-  
 
   const fullName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
   const displayStatus = getStatusDisplayText(patient?.status);
@@ -275,7 +237,14 @@ const handleSubmit = async () => {
               </div>
             </div>
           </div>
+<div className="flex items-center gap-2 mb-4">
 
+    <SendPatientModal
+            patientId={patient?.id || patientId}
+            onUpdated={() => navigate('/dashboard/hmo')}
+            allowedRoles={['nurse', 'doctor', 'pharmacist', 'cashier', 'labtechnician']}
+          />
+</div>
           {hmos.length > 0 && (
   <div className="card bg-base-100 border border-base-200 mb-6">
     <div className="card-body p-0">
@@ -564,13 +533,18 @@ const handleSubmit = async () => {
           })()}
         </div>
 
-              <SendPatientModal
-                patientId={patient?.id || patientId}
-                onUpdated={() => navigate('/dashboard/hmo')}
-                allowedRoles={['nurse', 'doctor', 'pharmacist','cashier', 'labtechnician']}
-              />
-  
+        <div className="flex flex-wrap gap-3">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleSave}
+            disabled={submitting || billings.length === 0}
+          >
+            {submitting ? <span className="loading loading-spinner loading-sm" /> : 'Save items'}
+          </button>
+       
       </div>
+      
+        </div>
     </div>
   </div>
 )}

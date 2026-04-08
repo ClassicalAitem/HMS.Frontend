@@ -114,7 +114,7 @@ const IncomingDoctor = () => {
     if (r.includes("completed")) return "badge-success";
     if (r.includes("in consultation")) return "badge-info";
     if (r.includes("awaiting")) return "badge-warning";
-    if (r.includes("surgery")) return "badge-error";
+    if (r.includes("surgery")) return "badge-secondary";
     return "badge-neutral";
   };
 
