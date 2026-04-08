@@ -4,7 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaPlus, FaFlask, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { createInvestigationRequestByConsultation, updateInvestigation } from '@/services/api/investigationRequestAPI';
+import { createInvestigationRequestByAntenatal, updateInvestigation } from '@/services/api/investigationRequestAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
 const testSchema = yup.object({
@@ -16,12 +16,12 @@ const investigationSchema = yup.object({
   priority: yup.string().oneOf(['normal', 'urgent', 'emergency']).required(),
 });
 
-const OrderInvestigationModal = ({
+const OrderInvestigationModalAntenatal = ({
   isOpen,
   onClose,
   patientId,
   dependantId,
-  consultationId,
+  antenatalId,
   investigation, // <-- NEW (edit mode)
   onOrderCreated
 }) => {
@@ -138,7 +138,7 @@ const OrderInvestigationModal = ({
         toast.success("Investigation updated successfully");
 
       } else {
-        await createInvestigationRequestByConsultation(consultationId, payload);
+        await createInvestigationRequestByAntenatal(antenatalId, payload);
         toast.success("Investigation order created successfully");
 
       }
@@ -364,4 +364,4 @@ const OrderInvestigationModal = ({
   );
 };
 
-export default OrderInvestigationModal;
+export default OrderInvestigationModalAntenatal;

@@ -16,18 +16,20 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
   };
 
   const handleAcceptClick = () => {
-    setShowModal2(false);
-    const id = data?.id || data?._id;
-    if (id) {
-      navigate(`/dashboard/laboratory/results/add/${id}`);
-      return;
-    }
+  setShowModal2(false);
+  const investigationId = data?.id;
+  const opdPatientId = data?.opdPatientId;
 
-    // fallback for backward compatibility
-    if (onAcceptFromDetails) {
-      onAcceptFromDetails(data);
-    }
-  };
+  if (investigationId) {
+    // ✅ Has a real investigation ID — works for both regular and OpD with investigation
+    navigate(`/dashboard/laboratory/results/add/${investigationId}`);
+  } else if (opdPatientId) {
+    // ✅ OpD patient with no investigation yet — pass opdPatientId as query param
+    navigate(`/dashboard/laboratory/results/add-opd?opdPatientId=${opdPatientId}&patientName=${encodeURIComponent(data?.name || '')}`);
+  } else if (onAcceptFromDetails) {
+    onAcceptFromDetails(data);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-start overflow-y-auto min-h-screen">

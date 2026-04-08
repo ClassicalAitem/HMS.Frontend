@@ -63,8 +63,8 @@ import SurgeryDetails from "@/pages/frontdesk/surgeries/SurgeryDetails";
 
 import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
 import Registration from "@/pages/frontdesk/registration/Registration";
-import ObdPatients from "@/pages/frontdesk/obd-patients/ObdPatients";
-import AddObdPatient from "@/pages/frontdesk/obd-patients/AddObdPatient";
+import OpdPatients from '@/pages/frontdesk/opd-patients/OpdPatients';
+import AddOpdPatient from '@/pages/frontdesk/opd-patients/AddOpdPatient';
 
 
 // SUper Admin
@@ -93,6 +93,9 @@ import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
 // import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
 import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
+import CashierOpdPatients from '@/pages/cashier/opd-patients/CashierOpdPatients';
+import CashierOpdPatientDetails from '@/pages/cashier/opd-patients/CashierOpdPatientDetails';
+import CreateOpdPatient from '@/pages/cashier/opd-patients/CreateOpdPatient';
 
 // Modals
 import { BookAppointmentModal } from "@/components/modals";
@@ -113,12 +116,14 @@ import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions
 //Laboratory Dashboard Routes
 import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
 import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
+import IncomingScan from "@/pages/laboratory/incoming/IncomingScan";
 import AddLabResult from "@/pages/laboratory/results/AddLabResult";
 import ViewLabResult from "@/pages/laboratory/results/ViewLabResult";
 // import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import InventoryAndStocks from "@/pages/laboratory/Inventory&stocks/Inventory&stocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
+import CompletedTests from "@/pages/laboratory/completed/CompletedTests";
 import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
 import FrontDeskPaymentRecords from "@/pages/frontdesk/payment-records/ReceiptRecord";
 import NursePaymentRecords from "@/pages/nurse/payment-records/ReceiptRecord";
@@ -177,19 +182,19 @@ const AppRoutes = () => {
           <Registration />
         </ProtectedRoute>
       } />
-      <Route path="/frontdesk/obd-patients" element={
+      <Route path="/frontdesk/opd-patients" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
-          <ObdPatients />
+          <OpdPatients />
         </ProtectedRoute>
       } />
-      <Route path="/frontdesk/obd-patients/new" element={
+      <Route path="/frontdesk/opd-patients/new" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
-          <AddObdPatient />
+          <AddOpdPatient />
         </ProtectedRoute>
       } />
-      <Route path="/frontdesk/obd-patients/:id/edit" element={
+      <Route path="/frontdesk/opd-patients/:id/edit" element={
         <ProtectedRoute allowedRoles={['frontdesk', 'front-desk']}>
-          <AddObdPatient />
+          <AddOpdPatient />
         </ProtectedRoute>
       } />
       <Route path="/frontdesk/surgeries" element={
@@ -593,6 +598,22 @@ const AppRoutes = () => {
           <GenerateBill />
         </ProtectedRoute>
       } />
+      <Route path="/cashier/opd-patients" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierOpdPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/opd-patients/new" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CreateOpdPatient />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/opd-patient-details/:patientId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierOpdPatientDetails />
+        </ProtectedRoute>
+      } />
+     
 
       {/*==============================================================================================================
 
@@ -701,7 +722,15 @@ const AppRoutes = () => {
         element={<IncomingLaboratory />}
       />
       <Route
+        path="/dashboard/laboratory/incoming-scan"
+        element={<IncomingScan />}
+      />
+      <Route
         path="/dashboard/laboratory/results/add/:investigationId"
+        element={<AddLabResult />}
+      />
+      <Route
+        path="/dashboard/laboratory/results/add-opd"
         element={<AddLabResult />}
       />
       <Route
@@ -727,6 +756,10 @@ const AppRoutes = () => {
       <Route
         path="/dashboard/laboratory/modal"
         element={<TestRequestModal />}
+      />
+      <Route
+        path="/dashboard/laboratory/completed"
+        element={<CompletedTests />}
       />
 
       {/* Catch all route - redirect to login */}
