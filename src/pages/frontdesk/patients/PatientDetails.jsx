@@ -151,6 +151,14 @@ const PatientDetails = () => {
             <div className="space-y-6 lg:col-span-2">
               {/* Patient Identification */}
               <PatientIdentificationCard patient={patient} isTransitionLoading={isTransitionLoading} />
+                  <div className="flex gap-4 items-center mt-3">
+            <SendPatientModal
+              patientId={patient?.id || patientId}
+              onUpdated={() => navigate('/frontdesk/dashboard')}
+              allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+            />
+           
+          </div>
 
               {/* General Info */}
               <GeneralInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
@@ -176,11 +184,7 @@ const PatientDetails = () => {
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
           <div className="flex gap-4 items-center mt-3">
-            <SendPatientModal
-              patientId={patient?.id || patientId}
-              onUpdated={() => navigate('/frontdesk/dashboard')}
-              allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician']}
-            />
+            
             {/* Action Buttons */}
             <ActionButtons
               onSendToCashier={() => setIsCreateBillOpen(true)}

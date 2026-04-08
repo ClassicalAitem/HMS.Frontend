@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
 import { DataTable } from '@/components/common';
 import toast from 'react-hot-toast';
-import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
+import { deleteOpdPatient, getAllOpdPatients } from '@/services/api/opdPatientAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
-import { FaEye } from 'react-icons/fa';
+import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
 
 const CashierOpdPatients = () => {
   const navigate = useNavigate();
@@ -49,8 +49,23 @@ const CashierOpdPatients = () => {
       ...patient,
       serialNumber: index + 1,
       createdAtFormatted: formatNigeriaDate(patient.createdAt),
+      actions: patient.id
     }));
   }, [opdPatients]);
+
+  
+    const handleDelete = useCallback(async (id) => {
+      if (window.confirm('Are you sure you want to delete this OPD patient?')) {
+        try {
+          await deleteOpdPatient(id);
+          toast.success('OPD patient deleted successfully');
+          setOpdPatients(opdPatients.filter((p) => p.id !== id));
+        } catch (error) {
+          console.error('Failed to delete OPD patient:', error);
+          toast.error('Failed to delete OPD patient');
+        }
+      }
+    }, [opdPatients]);
 
   const columns = useMemo(() => [
     {
@@ -85,7 +100,31 @@ const CashierOpdPatients = () => {
       sortable: true,
       className: 'text-base-content/70'
     },
-  ], [navigate]);
+    {
+      key: 'actions',
+      title: 'Action',
+      className: 'text-center',
+      render: (patientId) => (
+        <div className="flex items-center justify-center gap-2">
+          {/* <button
+            onClick={() => navigate(`/frontdesk/opd-patients/${patientId}/edit`)}
+            className="btn btn-ghost btn-xs text-info"
+            title="Edit"
+          >
+            <FaEdit />
+          </button> */}
+          <button
+            onClick={() => handleDelete(patientId)}
+            className="btn btn-ghost btn-xs text-error"
+            title="Delete"
+          >
+            <FaTrash />
+          </button>
+           
+        </div>
+      )
+    }
+  ], [navigate, handleDelete]);
 
   return (
     <CashierLayout>
