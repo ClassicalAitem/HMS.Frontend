@@ -11,7 +11,7 @@ import { deletePrescription, updatePrescription } from "@/services/api/prescript
 import { deleteInvestigation, updateInvestigation } from "@/services/api/investigationAPI";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
-import OrderInvestigationModal from "./modals/OrderInvestigationModal";
+import OrderInvestigationModalAntenatal from "./modals/OrderInvestigationModalAntenatal";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -876,14 +876,14 @@ const handleOrderCreated = () => {
         </div>
       </div>
 
-      <OrderInvestigationModal
+      <OrderInvestigationModalAntenatal
         isOpen={isInvestigationModalOpen}
         onClose={() => {
           setIsInvestigationModalOpen(false);
           setEditingLab(null);
         }}
         patientId={patientId}
-        consultationId={selectedRecord?._id || selectedRecord?.id}
+        antenatalId={selectedRecord?._id || selectedRecord?.id}
         dependantId={selectedRecord?.dependantId || selectedRecord?.dependant?._id || selectedRecord?.dependant?.id}
         investigation={editingLab}
         onOrderCreated={handleOrderCreated}
