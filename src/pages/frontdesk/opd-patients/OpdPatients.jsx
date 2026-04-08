@@ -8,6 +8,7 @@ import { getAllOpdPatients, deleteOpdPatient } from '@/services/api/opdPatientAP
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaTrash } from 'react-icons/fa';
+import SendPatientModal from '@/components/modals/SendPatientModal';
 
 const OpdPatients = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const OpdPatients = () => {
   const [opdPatients, setOpdPatients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [serviceCharges, setServiceCharges] = useState([]);
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,14 +70,11 @@ const OpdPatients = () => {
 
   const processedPatients = useMemo(() => {
     return opdPatients.map((patient, index) => {
-      const serviceCharge = serviceCharges.find((s) => s.id === patient.serviceChargeId);
       return {
         ...patient,
         serialNumber: index + 1,
         createdAtFormatted: formatNigeriaDate(patient.createdAt),
         updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
-        labTestName: serviceCharge?.service || '-',
-        labTestAmount: serviceCharge?.amount || '-',
         actions: patient.id
       };
     });
@@ -100,26 +99,7 @@ const OpdPatients = () => {
       sortable: true,
       className: 'text-base-content/70'
     },
-    {
-      key: 'address',
-      title: 'Address',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => value || '-'
-    },
-    {
-      key: 'labTestName',
-      title: 'Lab Test',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'labTestAmount',
-      title: 'Amount',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => value !== '-' ? `₦${Number(value).toLocaleString()}` : '-'
-    },
+ 
     {
       key: 'createdAtFormatted',
       title: 'Date Added',
@@ -132,7 +112,7 @@ const OpdPatients = () => {
       className: 'text-center',
       render: (patientId) => (
         <div className="flex items-center justify-center gap-2">
-          <button
+          {/* <button
             onClick={() => navigate(`/frontdesk/opd-patients/${patientId}/edit`)}
             className="btn btn-ghost btn-xs text-info"
             title="Edit"
@@ -145,11 +125,17 @@ const OpdPatients = () => {
             title="Delete"
           >
             <FaTrash />
-          </button>
+          </button> */}
+            <SendPatientModal
+            patientId={patientId}
+            onUpdated={() => navigate('/frontdesk/opd-patients')}
+            allowedRoles={['cashier']}
+            isOpdPatient={true}
+          />
         </div>
       )
     }
-  ], [handleDelete, navigate]);
+  ], [ navigate, handleDelete]);
 
   return (
     <div className="flex h-screen">

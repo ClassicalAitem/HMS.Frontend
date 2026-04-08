@@ -12,7 +12,6 @@ import { PATIENT_STATUS } from "@/constants/patientStatus";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
-import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ViewLabResult = () => {
   const { labResultId } = useParams();
