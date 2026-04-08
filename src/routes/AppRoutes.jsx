@@ -613,6 +613,11 @@ const AppRoutes = () => {
           <CashierOpdPatientDetails />
         </ProtectedRoute>
       } />
+       <Route path="/cashier/opd-patients/:id/edit" element={
+        <ProtectedRoute allowedRoles={['cashier', 'cashier']}>
+          <CreateOpdPatient />
+        </ProtectedRoute>
+      } />
      
 
       {/*==============================================================================================================
