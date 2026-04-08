@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
+import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const SendPatientModal = ({ 
@@ -9,11 +10,21 @@ const SendPatientModal = ({
   onUpdated,
   allowedRoles = ['nurse', 'doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
+  isOpdPatient = false,
 }) => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [showStatusSelector, setShowStatusSelector] = useState(false);
   const [isSending, setIsSending] = useState(false);
+
+  // Helper to update patient status based on type
+  const updateStatus = async (id, statusData) => {
+    if (isOpdPatient) {
+      return updateOpdPatient(id, statusData);
+    } else {
+      return updatePatientStatus(id, statusData);
+    }
+  };
 
   // Role configuration with display name and default status
   const roleConfig = {
@@ -70,7 +81,7 @@ const SendPatientModal = ({
       const config = roleConfig[role];
       const statusToSend = Array.isArray(config.status) ? config.status[0] : config.status;
 
-      const promise = updatePatientStatus(patientId, { status: statusToSend });
+      const promise = updateStatus(patientId, { status: statusToSend });
 
       toast.promise(promise, {
         loading: `Sending to ${config.label}...`,
@@ -106,7 +117,7 @@ const SendPatientModal = ({
       setIsSending(true);
       const config = roleConfig[selectedRole];
 
-      const promise = updatePatientStatus(patientId, { status: selectedStatus });
+      const promise = updateStatus(patientId, { status: selectedStatus });
 
       toast.promise(promise, {
         loading: `Sending to ${config.label}...`,
