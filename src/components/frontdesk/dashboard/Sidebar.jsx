@@ -61,8 +61,8 @@ const Sidebar = ({ onCloseSidebar }) => {
     {
       icon: GoPerson,
       label: 'OPD Patients',
-      path: '/frontdesk/obd-patients',
-      active: location.pathname.startsWith('/frontdesk/obd-patients')
+      path: '/frontdesk/opd-patients',
+      active: location.pathname.startsWith('/frontdesk/opd-patients')
     },
     {
       icon: MdFormatListBulletedAdd,
