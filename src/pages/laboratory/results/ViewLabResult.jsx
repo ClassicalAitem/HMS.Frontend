@@ -4,9 +4,15 @@ import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { getLabResultById, getLabResultFile } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
-import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
+import { getOpdPatientById, updateOpdPatient } from '@/services/api/opdPatientAPI';
+import { getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, updateInvestigation } from "@/services/api/investigationRequestAPI";
+import { updatePatient } from "@/services/api/patientsAPI";
+import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
+import toast from "react-hot-toast";
+import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ViewLabResult = () => {
   const { labResultId } = useParams();
@@ -18,13 +24,42 @@ const ViewLabResult = () => {
   const [investigationIdState, setInvestigationIdState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendingToDoctor, setSendingToDoctor] = useState(false);
   const [isAttachmentViewerOpen, setIsAttachmentViewerOpen] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [patientId, setPatientId] = useState(null);
+  const [investigation, setInvestigation] = useState(null);
 
-  const effectiveInvestigationId =  labResult?.investigationRequestId;
+const effectiveInvestigationId = 
+  labResult?.investigationRequestId || 
+  investigation?._id || 
+  investigation?.id ||
+  investigationIdState;
+
+
+  const loadPatientRecord = async (patientId) => {
+    if (!patientId) return null;
+
+    try {
+      const patientRes = await getPatientById(patientId);
+      return patientRes?.data || patientRes;
+    } catch (err) {
+      if (err?.response?.status !== 404) {
+        console.warn("Failed to load regular patient:", err);
+      }
+    }
+
+    try {
+      const opdRes = await getOpdPatientById(patientId);
+      return opdRes?.data || opdRes;
+    } catch (err) {
+      console.warn("Failed to load OPD patient:", err);
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     if (location?.state?.investigationId) {
@@ -33,39 +68,75 @@ const ViewLabResult = () => {
   }, [location]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
-      
-        const labRes = await getLabResultById(labResultId);
-        const labData = labRes?.data || labRes;
-        setLabResult(labData);
+      const labRes = await getLabResultById(labResultId);
+      const labData = labRes?.data || labRes;
+      setLabResult(labData);
 
-         if (!investigationIdState && labData?.investigationId) {
-          setInvestigationIdState(labData.investigationId);
-        }
+      const patientIdToUse = labData?.opdPatientId || labData?.patientId;
+      setPatientId(patientIdToUse);
 
-      if (labData?.patientId) {
-          const patientRes = await getPatientById(labData.patientId);
-          const patientData = patientRes?.data || patientRes;
-          setPatient(patientData);
-        }
-
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching lab result:", err);
-        setError("Failed to load lab result details");
-      } finally {
-        setLoading(false);
+      // ✅ Load patient
+      if (patientIdToUse) {
+        const patientData = await loadPatientRecord(patientIdToUse);
+        if (patientData) setPatient(patientData);
       }
-    };
 
-    if (labResultId) {
-      fetchData();
+      // ✅ Load investigation — try all strategies
+      let foundInvestigation = null;
+
+      // Strategy 1: lab result already has investigationRequestId
+      if (labData?.investigationRequestId) {
+        try {
+          const res = await getInvestigationRequestByOpdPatientId(labData.investigationRequestId);
+          foundInvestigation = res?.data || res;
+        } catch { /* silent */ }
+      }
+
+      // Strategy 2: OpD patient — fetch by opdPatientId
+      if (!foundInvestigation && labData?.opdPatientId) {
+        try {
+          const res = await getInvestigationRequestByOpdPatientId(labData.opdPatientId);
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          foundInvestigation = list[0] || null;
+        } catch { /* silent */ }
+      }
+
+      // ✅ Strategy 3: Regular patient — fetch by patientId
+      if (!foundInvestigation && labData?.patientId) {
+        try {
+          const res = await getInvestigationByPatientId(labData.patientId);
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          // Pick the most recent non-completed one
+          foundInvestigation = list
+            .filter(inv => inv.status !== 'completed')
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+            || list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+            || null;
+        } catch { /* silent */ }
+      }
+
+      if (foundInvestigation) {
+        setInvestigation(foundInvestigation);
+        // ✅ Also set investigationIdState so effectiveInvestigationId resolves
+        const invId = foundInvestigation._id || foundInvestigation.id;
+        if (invId) setInvestigationIdState(invId);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching lab result:", err);
+      setError("Failed to load lab result details");
+    } finally {
+      setLoading(false);
     }
-  }, [labResultId, investigationIdState]);
+  };
 
+  if (labResultId) fetchData();
+}, [labResultId]);
   const handleOpenAttachmentViewer = async (fileIndex = 0) => {
     const atts = labResult?.attachedFiles || labResult?.form?.attachments;
     if (!atts || atts.length === 0) {
@@ -284,7 +355,11 @@ const ViewLabResult = () => {
   const patientName =
     patient?.firstName && patient?.lastName
       ? `${patient.firstName} ${patient.lastName}`
-      : patient?.name || "Unknown Patient";
+      : patient?.name || patient?.fullName || patientId || "Unknown Patient";
+
+  const isOpdLabResult = Boolean(labResult?.opdPatientId);
+  const canSendToDoctor = Boolean(patientId && !isOpdLabResult);
+  const canComplete = Boolean(isOpdLabResult);
 
   const handlePrint = () => {
     document.body.classList.add('printable-lab');
@@ -294,14 +369,68 @@ const ViewLabResult = () => {
     }, 250);
   };
 
+  const handleComplete = async () => {
+    try {
+      const investigationId = labResult?.investigationRequestId || investigation?._id;
+
+      if (labResult?.opdPatientId) {
+        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_cashier" });
+      } else if (patientId && patient) {
+        await updatePatient(patientId, { status: "awaiting_cashier" });
+      }
+
+      if (isOpdLabResult && investigationId) {
+        await updateInvestigation(investigationId, {
+          status: "completed",
+          labResultId: labResultId,
+        });
+      }
+
+      toast.success("Lab result completed successfully!");
+      navigate("/dashboard/laboratory");
+    } catch (err) {
+      console.error("Failed to complete lab result:", err);
+      toast.error("Failed to complete lab result");
+    }
+  };
+
+  const handleSendToDoctor = async () => {
+    try {
+      setSendingToDoctor(true);
+
+      // Update investigation if available
+      if (effectiveInvestigationId) {
+        await updateInvestigation(effectiveInvestigationId, {
+          status: "completed",
+          labResultId: labResultId,
+        });
+      }
+
+      // Always update patient status for regular patients
+      if (patientId) {
+        await updatePatientStatus(patientId, PATIENT_STATUS.AWAITING_DOCTOR);
+      }
+
+      toast.success("Lab results sent to doctor successfully!");
+      navigate("/dashboard/laboratory");
+    } catch (err) {
+      console.error("Error sending lab results:", err);
+      toast.error("Failed to send lab results to doctor");
+    } finally {
+      setSendingToDoctor(false);
+    }
+  };
+
   return (
     <div className="lab-container flex h-screen bg-base-200">
-      <div className="lab-sidebar">
+      <div className="lab-sidebar no-print">
         <LaboratorySidebar />
       </div>
 
       <div className="lab-main flex overflow-hidden flex-col flex-1">
-        <Header />
+        <div className="no-print">
+          <Header />
+        </div>
 
         <div className="overflow-y-auto flex-1">
           <section className="p-7">
@@ -444,13 +573,26 @@ const ViewLabResult = () => {
 
               {/* Action Buttons */}
               <div className="flex gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
-                <button
-                  onClick={() => setShowSendModal(true)}
-                  disabled={!effectiveInvestigationId}
-                  className={`flex-1 px-6 py-3 ${effectiveInvestigationId ? "bg-[#00943C] text-white hover:bg-[#007a31]" : "bg-gray-200 text-gray-500 cursor-not-allowed"} font-semibold rounded-lg transition-all`}
-                >
-                  Send to Doctor
-                </button>
+               
+                {canSendToDoctor && (
+                  <button
+                    onClick={handleSendToDoctor}
+                    disabled={sendingToDoctor}
+                    className={`flex-1 px-6 py-3 ${!sendingToDoctor ? "bg-[#00943C] text-white hover:bg-[#007a31]" : "bg-gray-200 text-gray-500 cursor-not-allowed"} font-semibold rounded-lg transition-all`}
+                  >
+                    {sendingToDoctor ? "Sending..." : "Send to Doctor"}
+                  </button>
+                )}
+                
+                {canComplete && (
+                  <button
+                    onClick={handleComplete}
+                    className="flex-1 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all"
+                  >
+                    Complete
+                  </button>
+                )}
+              
                 <button
                   onClick={handlePrint}
                   className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
@@ -480,18 +622,6 @@ const ViewLabResult = () => {
           </section>
         </div>
       </div>
-
-      <SendLabResultsModal
-        isOpen={showSendModal}
-        onClose={() => setShowSendModal(false)}
-        labResultId={labResultId}
-        investigationRequestId={effectiveInvestigationId}
-        patientId={labResult?.patientId}
-        currentStatus={patient?.status || ''}
-        patientName={patientName}
-        onSuccess={() => navigate("/dashboard/laboratory")}
-      />
-
       <AttachmentViewerModal
         isOpen={isAttachmentViewerOpen}
         onClose={() => setIsAttachmentViewerOpen(false)}

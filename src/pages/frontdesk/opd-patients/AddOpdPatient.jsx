@@ -24,7 +24,7 @@ const AddOpdPatient = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(isEditing);
   const [serviceCharges, setServiceCharges] = useState([]);
-  const [testSearch, setTestSearch] = useState("");
+  const [testSearch, setTestSearch] = useState('');
   const [testDropdownOpen, setTestDropdownOpen] = useState(false);
   const testWrapperRef = useRef(null);
 
@@ -45,7 +45,6 @@ const AddOpdPatient = () => {
     }
   });
 
-  // Load service charges
   useEffect(() => {
     const loadCharges = async () => {
       try {
@@ -62,7 +61,6 @@ const AddOpdPatient = () => {
     loadCharges();
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e) => {
       if (testWrapperRef.current && !testWrapperRef.current.contains(e.target)) {
@@ -73,7 +71,6 @@ const AddOpdPatient = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  // Fetch patient data if editing
   useEffect(() => {
     if (isEditing) {
       const fetchPatient = async () => {
@@ -87,7 +84,7 @@ const AddOpdPatient = () => {
             serviceChargeId: patient.serviceChargeId || ''
           });
         } catch (error) {
-          console.error('Failed to fetch OBD patient:', error);
+          console.error('Failed to fetch OPD patient:', error);
           navigate('/frontdesk/opd-patients');
         } finally {
           setIsFetching(false);
@@ -108,7 +105,6 @@ const AddOpdPatient = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Ensure address has a value for backend validation
       const submitData = {
         ...data,
         address: data.address?.trim() || 'Not provided'
@@ -118,13 +114,13 @@ const AddOpdPatient = () => {
         await updateOpdPatient(id, submitData);
         toast.success('OPD patient updated successfully');
       } else {
-        await createObdPatient(submitData);
+        await createOpdPatient(submitData);
         toast.success('OPD patient added successfully');
       }
       navigate('/frontdesk/opd-patients');
     } catch (error) {
-      console.error('Failed to save OBD patient:', error);
-      toast.error(error?.response?.data?.message || 'Failed to save OBD patient');
+      console.error('Failed to save OPD patient:', error);
+      toast.error(error?.response?.data?.message || 'Failed to save OPD patient');
     } finally {
       setIsLoading(false);
     }
@@ -142,30 +138,22 @@ const AddOpdPatient = () => {
 
   return (
     <div className="flex h-screen">
-      {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
-      {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
-      {/* Main Content */}
+
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">
               {isEditing ? 'Edit OPD Patient' : 'Add New OPD Patient'}
@@ -175,12 +163,10 @@ const AddOpdPatient = () => {
             </p>
           </div>
 
-          {/* Form */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full max-w-2xl shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  {/* Full Name */}
                   <div className="form-control">
                     <label className="label">
                       <span className="label-text font-medium">Full Name *</span>
@@ -196,7 +182,6 @@ const AddOpdPatient = () => {
                     )}
                   </div>
 
-                  {/* Phone Number */}
                   <div className="form-control">
                     <label className="label">
                       <span className="label-text font-medium">Phone Number *</span>
@@ -212,7 +197,6 @@ const AddOpdPatient = () => {
                     )}
                   </div>
 
-                  {/* Address */}
                   <div className="form-control">
                     <label className="label">
                       <span className="label-text font-medium">Address</span>
@@ -228,7 +212,6 @@ const AddOpdPatient = () => {
                     )}
                   </div>
 
-                  {/* Lab Test Selection */}
                   <div className="form-control relative" ref={testWrapperRef}>
                     <label className="label">
                       <span className="label-text font-medium">Lab Test *</span>
@@ -237,7 +220,7 @@ const AddOpdPatient = () => {
                       type="text"
                       placeholder="Search and select lab test..."
                       className={`input input-bordered w-full ${errors.serviceChargeId ? 'input-error' : ''}`}
-                      value={testSearch || (watch('serviceChargeId') ? serviceCharges.find(t => t.id === watch('serviceChargeId'))?.service || '' : '')}
+                      value={testSearch || (watch('serviceChargeId') ? serviceCharges.find((t) => t.id === watch('serviceChargeId'))?.service || '' : '')}
                       onChange={(e) => {
                         setTestSearch(e.target.value);
                         setTestDropdownOpen(true);
@@ -258,7 +241,8 @@ const AddOpdPatient = () => {
                             <div
                               key={test.id}
                               className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between text-sm"
-                              onClick={() => {
+                              onMouseDown={(e) => {
+                                e.preventDefault();
                                 setValue('serviceChargeId', test.id);
                                 setTestSearch('');
                                 setTestDropdownOpen(false);
@@ -287,7 +271,6 @@ const AddOpdPatient = () => {
                     )}
                   </div>
 
-                  {/* Form Actions */}
                   <div className="flex gap-3 justify-end pt-4">
                     <button
                       type="button"

@@ -1,12 +1,13 @@
 import React from "react";
 import { TbCalendarPlus } from "react-icons/tb";
 import { TiDocumentText } from "react-icons/ti";
-import { MdOutlineInventory2 } from "react-icons/md";
+import { MdOutlineInventory2, MdOutlineDashboard, MdLockOutline, MdStorage } from "react-icons/md";
 import { FaThLarge, FaSignOutAlt } from "react-icons/fa";
 import { FiUser } from "react-icons/fi";
 import { Link, useLocation } from "react-router-dom";
 import { LogoutModal } from "@/components/modals";
 import HospitalFavicon from "@/assets/images/favicon.svg";
+import missFolake from "@/assets/images/missFolake.jpg";
 
 const SideBar = () => {
   const location = useLocation();
@@ -27,7 +28,7 @@ const SideBar = () => {
       active: location.pathname.startsWith("/dashboard/admin/schedule"),
     },
     {
-      icon: HiOutlineArchiveBox,
+      icon: MdStorage,
       label: "Stocks",
       path: "/dashboard/admin/stocks",
       active: location.pathname.startsWith("/dashboard/admin/stocks"),

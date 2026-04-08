@@ -51,10 +51,10 @@ const CashierDashboard = () => {
 
         console.log({filteredPatient, patients});
         const countPatient = filteredPatient.length || 0;
-        if (mount) setTotalPatients(countPatient)
+        if (mounted) setTotalPatients(countPatient);
       } catch (e) {
         if (mounted) setTotalPatients(0);
-        if (mounted) setTotalPatients(0)
+        if (mounted) setTotalPatients(0);
       } finally {
         if (mounted) setMetricsLoading(false);
       }
@@ -95,9 +95,15 @@ const CashierDashboard = () => {
               hour12: true
             });
 
+            const patientName = receipt.billing.patient
+              ? `${receipt.billing.patient.firstName} ${receipt.billing.patient.lastName}`.trim()
+              : receipt.billing.opdPatient
+                ? receipt.billing.opdPatient.fullName || `${receipt.billing.opdPatient.firstName || ''} ${receipt.billing.opdPatient.lastName || ''}`.trim()
+                : 'N/A';
+
             return {
               id: receipt.id || index,
-              patientName: receipt.billing.patient ? `${receipt.billing.patient.firstName} ${receipt.billing.patient.lastName}` : 'N/A',
+              patientName: patientName || 'N/A',
               service: serviceDescription,
               status: receipt.status,
               paidBy: receipt.paidBy,
