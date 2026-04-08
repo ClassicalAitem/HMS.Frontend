@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { MdOutlineDashboard } from "react-icons/md";
 import { GoArrowDownLeft, GoPerson, GoCreditCard } from "react-icons/go";
 import { IoReceiptOutline } from "react-icons/io5";
+import { FaUserInjured } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -60,6 +61,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Patients',
       path: '/cashier/patients',
       active: location.pathname === '/cashier/patients'
+    },
+    {
+      icon: FaUserInjured,
+      label: 'OPD Patients',
+      path: '/cashier/opd-patients',
+      active: location.pathname === '/cashier/opd-patients' || location.pathname.startsWith('/cashier/opd-patient')
     },
     {
       icon: GoCreditCard,
