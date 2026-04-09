@@ -21,6 +21,7 @@ const IncomingLaboratory = () => {
   const [selectedCard, setSelectedCard] = useState(null);
 
   const fetchTestRequests = async () => {
+    console.log("fetchTestRequests called");
     try {
       setLoading(true);
       setError(null);
@@ -58,15 +59,23 @@ const IncomingLaboratory = () => {
         : (investigationsResponse?.data || []);
       
       console.log("Total investigation requests:", allInvestigations.length);
+      console.log("Awaiting lab patients:", awaitingLabPatients.length);
+      console.log("Awaiting lab OPD patients:", awaitingLabOpdPatients.length);
 
       // Step 3: Match investigation requests with awaiting_lab patients or OpD patients
-      // Also filter out investigations older than 48 hours
+      // Also filter out investigations older than 48 hours (temporarily disabled for debugging)
       const now = new Date();
       const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
       
       const relevantInvestigations = allInvestigations.filter((inv) => {
-        const invPatientId = inv.patientId || inv.patient?._id || inv.patient?.id;
-        
+        const invPatientId = inv.patientId || inv.opdPatientId || inv.patient?._id || inv.patient?.id || inv.opdPatient?._id || inv.opdPatient?.id;
+        const invStatus = String(inv.status || "").toLowerCase();
+        const isCompletedInvestigation = invStatus.includes("completed");
+
+        if (isCompletedInvestigation) {
+          return false;
+        }
+
         // Check if it matches an awaiting_lab patient
         const matchesRegularPatient = awaitingLabPatients.some((patient) => 
           String(patient._id || patient.id) === String(invPatientId)
@@ -81,7 +90,7 @@ const IncomingLaboratory = () => {
         const createdAt = inv.createdAt ? new Date(inv.createdAt) : null;
         const isWithin48Hours = createdAt && createdAt >= fortyEightHoursAgo;
         
-        return (matchesRegularPatient || matchesOpdPatient) && isWithin48Hours;
+        return (matchesRegularPatient || matchesOpdPatient); //&& isWithin48Hours; // Temporarily disabled
       });
 
       console.log("Investigation requests for awaiting_lab and OpD patients:", relevantInvestigations.length);

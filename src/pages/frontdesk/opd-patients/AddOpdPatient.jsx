@@ -1,300 +1,106 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
-import toast from 'react-hot-toast';
-import { createOpdPatient, getOpdPatientById, updateOpdPatient } from '@/services/api/opdPatientAPI';
-import { getServiceCharges } from '@/services/api/serviceChargesAPI';
+import { createOpdPatient } from '@/services/api/opdPatientAPI';
+import { showErrorToast, showSuccessToast } from '@/utils/errorHandler';
+import { FaArrowLeft } from 'react-icons/fa';
+import { FrontdeskLayout } from '@/layouts';
 
 const opdPatientSchema = yup.object().shape({
-  fullName: yup.string().required('Full name is required').min(2, 'Full name must be at least 2 characters'),
+  fullName: yup.string().required('Full name is required').min(2),
   phone: yup.string().required('Phone number is required').matches(/^[0-9+\-() ]+$/, 'Invalid phone number'),
   address: yup.string().optional(),
-  serviceChargeId: yup.string().required('Please select a lab test')
 });
 
 const AddOpdPatient = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const isEditing = !!id;
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(isEditing);
-  const [serviceCharges, setServiceCharges] = useState([]);
-  const [testSearch, setTestSearch] = useState('');
-  const [testDropdownOpen, setTestDropdownOpen] = useState(false);
-  const testWrapperRef = useRef(null);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors }
-  } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(opdPatientSchema),
-    defaultValues: {
-      fullName: '',
-      phone: '',
-      address: '',
-      serviceChargeId: ''
-    }
+    defaultValues: { fullName: '', phone: '', address: '' }
   });
 
-  useEffect(() => {
-    const loadCharges = async () => {
-      try {
-        const res = await getServiceCharges();
-        const data = res?.data ?? res ?? [];
-        const labCharges = data.filter(
-          (item) => (item.category || '').toLowerCase() === 'laboratory'
-        );
-        setServiceCharges(labCharges);
-      } catch (err) {
-        console.error('Failed to load service charges', err);
-      }
-    };
-    loadCharges();
-  }, []);
 
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (testWrapperRef.current && !testWrapperRef.current.contains(e.target)) {
-        setTestDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
 
-  useEffect(() => {
-    if (isEditing) {
-      const fetchPatient = async () => {
-        try {
-          const response = await getOpdPatientById(id);
-          const patient = response?.data ?? response;
-          reset({
-            fullName: patient.fullName || '',
-            phone: patient.phone || '',
-            address: patient.address || '',
-            serviceChargeId: patient.serviceChargeId || ''
-          });
-        } catch (error) {
-          console.error('Failed to fetch OPD patient:', error);
-          navigate('/frontdesk/opd-patients');
-        } finally {
-          setIsFetching(false);
-        }
-      };
-      fetchPatient();
-    }
-  }, [id, isEditing, reset, navigate]);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const submitData = {
+      const patientRes = await createOpdPatient({
         ...data,
-        address: data.address?.trim() || 'Not provided'
-      };
+        address: data.address?.trim() || '.',
 
-      if (isEditing) {
-        await updateOpdPatient(id, submitData);
-        toast.success('OPD patient updated successfully');
-      } else {
-        await createOpdPatient(submitData);
-        toast.success('OPD patient added successfully');
-      }
-      navigate('/frontdesk/opd-patients');
+      });
+      const newPatient = patientRes?.data?.data ?? patientRes?.data ?? patientRes;
+      const newPatientId = newPatient?.id;
+
+      if (!newPatientId) throw new Error('Failed to get patient ID');
+
+      showSuccessToast('Patient registered successfully');
+      navigate(`/frontdesk/opd-patients`);
     } catch (error) {
-      console.error('Failed to save OPD patient:', error);
-      toast.error(error?.response?.data?.message || 'Failed to save OPD patient');
+      showErrorToast(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isFetching) {
-    return (
-      <div className="flex h-screen bg-base-200/50">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="loading loading-spinner loading-lg"></div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
+    <FrontdeskLayout>
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate('/frontdesk/opd-patients')} className="btn btn-ghost btn-sm">
+          <FaArrowLeft />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-base-content">Register OPD Patient</h1>
+            </div>
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">
-              {isEditing ? 'Edit OPD Patient' : 'Add New OPD Patient'}
-            </h1>
-            <p className="text-sm text-base-content/60 2xl:text-base mt-1">
-              {isEditing ? 'Update patient information' : 'Register a new patient without hospital card'}
-            </p>
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
+        <div className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <h2 className="card-title text-lg">Patient Information</h2>
+            <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Full Name *</span></label>
+              <input type="text" placeholder="Enter full name"
+                className={`input input-bordered w-full ${errors.fullName ? 'input-error' : ''}`}
+                {...register('fullName')} />
+              {errors.fullName && <span className="text-error text-sm mt-1">{errors.fullName.message}</span>}
+            </div>
 
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full max-w-2xl shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">Full Name *</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter patient's full name"
-                      className={`input input-bordered w-full ${errors.fullName ? 'input-error' : ''}`}
-                      {...register('fullName')}
-                    />
-                    {errors.fullName && (
-                      <span className="text-error text-sm mt-1">{errors.fullName.message}</span>
-                    )}
-                  </div>
+            <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Phone Number *</span></label>
+              <input type="tel" placeholder="Enter phone number"
+                className={`input input-bordered w-full ${errors.phone ? 'input-error' : ''}`}
+                {...register('phone')} />
+              {errors.phone && <span className="text-error text-sm mt-1">{errors.phone.message}</span>}
+            </div>
 
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">Phone Number *</span>
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="Enter phone number"
-                      className={`input input-bordered w-full ${errors.phone ? 'input-error' : ''}`}
-                      {...register('phone')}
-                    />
-                    {errors.phone && (
-                      <span className="text-error text-sm mt-1">{errors.phone.message}</span>
-                    )}
-                  </div>
-
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">Address</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter patient's address"
-                      className={`input input-bordered w-full ${errors.address ? 'input-error' : ''}`}
-                      {...register('address')}
-                    />
-                    {errors.address && (
-                      <span className="text-error text-sm mt-1">{errors.address.message}</span>
-                    )}
-                  </div>
-
-                  <div className="form-control relative" ref={testWrapperRef}>
-                    <label className="label">
-                      <span className="label-text font-medium">Lab Test *</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Search and select lab test..."
-                      className={`input input-bordered w-full ${errors.serviceChargeId ? 'input-error' : ''}`}
-                      value={testSearch || (watch('serviceChargeId') ? serviceCharges.find((t) => t.id === watch('serviceChargeId'))?.service || '' : '')}
-                      onChange={(e) => {
-                        setTestSearch(e.target.value);
-                        setTestDropdownOpen(true);
-                      }}
-                      onFocus={() => setTestDropdownOpen(true)}
-                      autoComplete="off"
-                    />
-
-                    {testDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto z-50">
-                        {serviceCharges
-                          .filter(
-                            (test) =>
-                              !testSearch ||
-                              test.service?.toLowerCase().includes(testSearch.toLowerCase())
-                          )
-                          .map((test) => (
-                            <div
-                              key={test.id}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between text-sm"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                setValue('serviceChargeId', test.id);
-                                setTestSearch('');
-                                setTestDropdownOpen(false);
-                              }}
-                            >
-                              <span>{test.service}</span>
-                              <span className="text-xs text-gray-500">
-                                ₦{Number(test.amount).toLocaleString()}
-                              </span>
-                            </div>
-                          ))}
-                        {serviceCharges.filter(
-                          (test) =>
-                            !testSearch ||
-                            test.service?.toLowerCase().includes(testSearch.toLowerCase())
-                        ).length === 0 && (
-                          <div className="px-4 py-2 text-sm text-gray-400">
-                            No lab tests found
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {errors.serviceChargeId && (
-                      <span className="text-error text-sm mt-1">{errors.serviceChargeId.message}</span>
-                    )}
-                  </div>
-
-                  <div className="flex gap-3 justify-end pt-4">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/frontdesk/opd-patients')}
-                      className="btn btn-ghost"
-                      disabled={isLoading}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className={`btn btn-primary ${isLoading ? 'loading' : ''}`}
-                      disabled={isLoading}
-                    >
-                      {isEditing ? 'Update Patient' : 'Add Patient'}
-                    </button>
-                  </div>
-                </form>
-              </div>
+            <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Address (optional)</span></label>
+              <input type="text" placeholder="Enter address"
+                className="input input-bordered w-full"
+                {...register('address')} />
             </div>
           </div>
         </div>
-      </div>
-    </div>
+
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => navigate('/cashier/opd-patients')} className="btn btn-ghost" disabled={isLoading}>
+            Cancel
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={isLoading}>
+            {isLoading
+              ? <><span className="loading loading-spinner loading-sm"></span> Creating...</>
+              : 'Register Patient'
+            }
+          </button>
+        </div>
+      </form>
+    </FrontdeskLayout>
   );
 };
 
