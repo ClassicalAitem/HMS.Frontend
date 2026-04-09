@@ -73,7 +73,11 @@ const ranges = {
   AFB: '',
   'TB(Serum)': '',
   'H. PYLORI': '',
-  FSH: '4.46-12.43 mIU/ml (f)',
+  'Pregnancy Test (Urine)': '',
+  'Pregnancy Test (Blood)': '',
+  'Malaria Parasite': '',
+  COMMENTS: '',
+  'PT Test': 'secs (10-13)',
   Testosterone: '30-100 ng/dl',
   LH: '2.95-3.65 mIU/ml (f)',
   Prolactin: '4.6-25.0 (f)',
@@ -239,6 +243,13 @@ const AddLabResult = () => {
       AFB: "",
       "TB(Serum)": "",
       "H. PYLORI": "",
+      
+    },
+
+     ptTest: {
+      "Pregnancy Test (Urine)": "",
+      "Pregnancy Test (Blood)": "",
+      "Malaria Parasite": ""
     },
 
     bloodCrossmaching: {
@@ -888,7 +899,23 @@ const handleComplete = async () => {
                 )}
               </div>
 
-              {/* BLOOD CROSS-MATCHING SECTION */}
+              {/* PT TEST SECTION */}
+              <div className="bg-white rounded-lg shadow">
+                <SectionHeader title="PT Test" id="ptTest" count={4} expandedSection={expandedSection} toggleSection={toggleSection} />
+                {expandedSection === "ptTest" && (
+                  <SectionContent>
+                    {Object.entries(formData.ptTest).map(([key, value]) => (
+                      <InputField
+                        key={key}
+                        label={key}
+                        value={value}
+                        onChange={(val) => handleInputChange("ptTest", key, val)}
+                        placeholder="Enter value"
+                      />
+                    ))}
+                  </SectionContent>
+                )}
+              </div>
               <div className="bg-white rounded-lg shadow">
                 <SectionHeader title="Blood Cross-Matching" id="bloodCrossmaching" count={6} expandedSection={expandedSection} toggleSection={toggleSection} />
                 {expandedSection === "bloodCrossmaching" && (

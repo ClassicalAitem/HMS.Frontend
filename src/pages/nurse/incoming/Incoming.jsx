@@ -250,7 +250,7 @@ const normalizeStatus = (status) => {
                       const s = status?.toLowerCase() || '';
                       if (s.includes('vitals')) return 'badge-info';
                       if (s.includes('sampling')) return 'badge-warning';
-                      if (s.includes('injection')) return 'badge-error';
+                      if (s.includes('injection')) return 'badge-success';
                       if (s.includes('nurse')) return 'badge-warning';
                       return 'badge-neutral';
                     };

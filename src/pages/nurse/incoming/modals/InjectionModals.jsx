@@ -217,6 +217,11 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
       const updated = res?.data?.data ?? prescription;
       setPrescription(updated);
       setIsFullyAdministered(checkAllCompleted(updated.medications));
+
+      // Reload page after successful update to get fresh data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (err) {
       console.error("Update failed:", err);
     } finally {

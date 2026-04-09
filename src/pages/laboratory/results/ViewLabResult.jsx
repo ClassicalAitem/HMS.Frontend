@@ -12,7 +12,6 @@ import { PATIENT_STATUS } from "@/constants/patientStatus";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
-import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ViewLabResult = () => {
   const { labResultId } = useParams();
@@ -434,7 +433,7 @@ const effectiveInvestigationId =
 
         <div className="overflow-y-auto flex-1">
           <section className="p-7">
-            <div className="mb-6 flex justify-between items-center">
+            <div className="mb-6 flex justify-between items-center no-print">
               <div>
                 <h1 className="text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
                 <p className="text-[12px] text-[#605D66]">
@@ -491,6 +490,7 @@ const effectiveInvestigationId =
               {displaySection("Haematology", labResult?.form?.haematology)}
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
+              {displaySection("PT Test", labResult?.form?.ptTest)}
               {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
@@ -616,6 +616,14 @@ const effectiveInvestigationId =
                   .no-print { display: none !important; }
                   .rounded-lg { border-radius: 0 !important; }
                   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                  
+                  /* Ensure sections don't break awkwardly */
+                  .mb-6 { page-break-inside: avoid; }
+                  h3 { page-break-after: avoid; }
+                  table { page-break-inside: avoid; }
+                  
+                  /* Force page breaks for long content */
+                  .overflow-y-auto { overflow: visible !important; height: auto !important; }
                 }
               `}</style>
             </div>
