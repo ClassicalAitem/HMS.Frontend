@@ -45,6 +45,10 @@ jobs:
             git reset --hard
             git pull origin main
 
+            rm -rf .env
+
+            cp ../.env .env
+
             npm install
             npm run build
 
