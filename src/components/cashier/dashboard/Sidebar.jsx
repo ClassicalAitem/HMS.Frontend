@@ -66,7 +66,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: FaUserInjured,
       label: 'OPD Patients',
       path: '/cashier/opd-patients',
-      active: location.pathname === '/cashier/opd-patients' || location.pathname.startsWith('/cashier/opd-patient') || location.pathname.startsWith('/cashier/process-opd-payment')
+      active: location.pathname === '/cashier/opd-patients' || location.pathname.startsWith('/cashier/opd-patient')
     },
     {
       icon: GoCreditCard,

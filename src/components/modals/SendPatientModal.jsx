@@ -62,7 +62,7 @@ const SendPatientModal = ({
       label: 'Send to HMO',
       status: PATIENT_STATUS.AWAITING_HMO,
       icon: '🏢',
-      color: 'btn-secondary',
+      color: 'btn-primary',
     },
   };
 
