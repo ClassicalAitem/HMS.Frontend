@@ -16,6 +16,7 @@ import AddFamilyHistoryModal from "./modals/AddFamilyHistoryModal";
 import AddHistoryModal from "./modals/AddHistoryModal";
 import { ConfirmationModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";
+import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 
 const AddDiagnosis = () => {
   const { patientId } = useParams();
@@ -52,6 +53,10 @@ const AddDiagnosis = () => {
   const [cid, setCid] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [activeModal, setActiveModal] = useState(null);
+    const [isRecordOpen, setIsRecordOpen] = useState(false);
+  const [sortedVitals, setSortedVitals] = useState([]);
+  const [latest, setLatest] = useState(null);
+    const [loading, setLoading] = useState(true);
   const [medicalRecords, setMedicalRecords] = useState({
     symptoms: [],
     surgical: [],
@@ -61,6 +66,36 @@ const AddDiagnosis = () => {
     diagnosis: [],
   });
 
+    const enrichedVitals = useMemo(() =>
+      Array.isArray(sortedVitals)
+        ? sortedVitals.map(vital => {
+            const isDependant = !!vital.dependantId;
+  
+            const dependant = isDependant
+              ? dependants.find(
+                  d => d.id === vital.dependantId || d._id === vital.dependantId
+                )
+              : null;
+  
+            const forName = isDependant
+              ? dependant
+                ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+                : 'Dependant'
+              : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+  
+            return {
+              ...vital,
+              isForDependant: isDependant,
+              forName
+            };
+          })
+        : [],
+      [sortedVitals, dependants, patient]
+    );
+  
+    // Get the enriched latest vital
+    const enrichedLatest = useMemo(() => enrichedVitals[0] || latest, [enrichedVitals, latest]);
+  
   // ✅ Fix 1 — fetch dependants in its own separate useEffect (was nested before)
   useEffect(() => {
     let mounted = true;
@@ -307,6 +342,8 @@ const handleConfirmSave = async () => {
               )}
             </div>
           </div>
+
+   <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
           {/* Visit Reason */}
           <div className="card bg-base-100 shadow-sm">
