@@ -57,6 +57,12 @@ const NurseAntenatalRecords = () => {
 
   const getPresentPregnancy = (record) => record?.presentPregnancy || record?.presentPregnancyHistories?.[0] || {};
   const getExams = (record) => record?.antenatalExaminations || record?.anteNatalExamination || [];
+  const getRoutineTestField = (record, field) => {
+    if (!record) return '—';
+    const routine = Array.isArray(record.routineTest) ? record.routineTest[0] : record.routineTest;
+    if (!routine) return '—';
+    return routine[field] || routine[field.toLowerCase?.()] || routine[field.toUpperCase?.()] || '—';
+  };
 
   return (
     <div className="flex h-screen">
@@ -271,6 +277,26 @@ const NurseAntenatalRecords = () => {
                       <div className="flex justify-between p-2 bg-base-200/50 rounded"><span>Vaginal Discharge</span><span>{getPresentPregnancy(selectedRecord).vaginalDischarge || '—'}</span></div>
                     </div>
                   </div>
+
+                  {selectedRecord.routineTest && (Array.isArray(selectedRecord.routineTest) ? selectedRecord.routineTest.length > 0 : true) && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-base-content mb-2">Routine Tests</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">PCV</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'PCV')}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">HIV</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'HIV')}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">HBV</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'HBV')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <h4 className="font-medium">Antenatal Examinations</h4>
                   {getExams(selectedRecord).length > 0 ? (
