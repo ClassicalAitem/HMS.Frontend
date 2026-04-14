@@ -347,7 +347,12 @@ const isEligibleForAntenatal = useMemo(() => {
         const res = await getAnteNatalRecordByPatientId(patientId);
         const records = res?.data ?? res ?? [];
         if (mounted) {
-          setAntenatalRecords(Array.isArray(records) ? records : []);
+          const sortedRecords = Array.isArray(records)
+          ? [...records].sort(
+              (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            )
+          : [];
+        setAntenatalRecords(sortedRecords);
         }
       } catch (err) {
         console.error("Failed to load antenatal records", err);
@@ -434,23 +439,23 @@ const isEligibleForAntenatal = useMemo(() => {
     return now - itemTime < hours48Ms;
   };
 
-  // Filter investigations — NO time restriction (investigations need full history)
-  const investigations48h = useMemo(() => 
-  Array.isArray(labInvestigations)
-    ? labInvestigations.filter(inv => {
-        const status = (inv?.status || '').toLowerCase();
-        // Show all statuses: requested, in_progress, completed
-        const isValid =
-          status === 'requested' ||
-          status === 'in_progress' ||
-          status === 'completed';
-        return isValid;
-      })
-    : [],
-  [labInvestigations]
-);
+  // Filter investigations — no time restriction (investigations need full history)
+  const investigations = useMemo(() => 
+    Array.isArray(labInvestigations)
+      ? labInvestigations.filter(inv => {
+          const status = (inv?.status || '').toLowerCase();
+          // Show all statuses: requested, in_progress, completed
+          const isValid =
+            status === 'requested' ||
+            status === 'in_progress' ||
+            status === 'completed';
+          return isValid;
+        })
+      : [],
+    [labInvestigations]
+  );
 
-    const enrichedInvestigations = investigations48h.map(inv => {
+  const enrichedInvestigations = investigations.map(inv => {
   const isDependant = !!inv.dependantId;
 
   const dependant = isDependant
@@ -602,8 +607,8 @@ const prescriptions48h = useMemo(() =>
                           <span className="text-base-content/70">Latest Remarks:</span>
                           <span className="font-medium max-w-xs text-right">
                             {(() => {
-                              const latest = antenatalRecords.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-                              const latestExam = latest?.anteNatalExamination?.sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
+                              const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                              const latestExam = latest?.anteNatalExamination?.slice().sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
                               const remark = latestExam?.remark;
                                return remark ? (
                                 <div className="text-xs text-base-content/80 bg-base-100/50 p-2 rounded whitespace-pre-wrap max-h-16 overflow-y-auto">
@@ -627,7 +632,7 @@ const prescriptions48h = useMemo(() =>
                       <h4 className="font-medium text-base-content text-sm">Latest Pregnancy</h4>
                       <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
                         {(() => {
-                          const latest = antenatalRecords.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                          const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
                           const pregnancy = latest?.presentPregnancyHistories?.[0];
                           return pregnancy ? (
                             <>
@@ -816,28 +821,10 @@ const prescriptions48h = useMemo(() =>
                   }))
                 );
 
-                const investigationItems = (investigations48h || []).flatMap(inv => {
-                  const status = (inv?.status || '').toLowerCase();
-                  if (status !== 'requested' && status !== 'in_progress') return [];
-                  const tests = inv.tests || [];
-                  if (tests.length === 0) return [];
-                  return tests.map((test) => {
-                    const testName = typeof test === 'string' ? test : (test?.name || test?.code || 'Lab Test');
-                    const price = getLabInvestigationPrice(testName, inv?.type);
-                    return {
-                      serviceChargeId: inv.id || inv._id || "",
-                      code: "LAB",
-                      description: `${testName} (${inv.type || 'Lab Investigation'})`,
-                      quantity: 1,
-                      price: price > 0 ? price : 0,
-                      investigationId: inv.id || inv._id
-                    };
-                  });
-                });
-
-                // ✅ Always open the modal — even if no items, user can add manually
-                const allItems = [...prescriptionItems, ...investigationItems];
-                setBillDefaults(allItems); // will be empty array if nothing in 48h — that's fine
+                  // Do not include lab investigations as service charge default items;
+                // lab requests are not the same as cashier order items.
+                const allItems = prescriptionItems;
+                setBillDefaults(allItems);
                 setIsBillModalOpen(true);
               }}
               disabled={isNavigating}
@@ -863,21 +850,7 @@ const prescriptions48h = useMemo(() =>
                       price: Number(getDrugPrice(m?.drugName)) || 0
                     }))
                   );
-                  const investigationItems = (investigations48h || []).flatMap(inv => {
-                    const status = (inv?.status || '').toLowerCase();
-                    if (status !== 'requested' && status !== 'in_progress') return [];
-                    return (inv.tests || []).map(test => {
-                      const testName = typeof test === 'string' ? test : (test?.name || 'Lab Test');
-                      return {
-                        serviceChargeId: inv.id || inv._id || "",
-                        code: "LAB",
-                        description: `${testName} (${inv.type || 'Lab'})`,
-                        quantity: 1,
-                        price: getLabInvestigationPrice(testName, inv?.type) || 0,
-                      };
-                    });
-                  });
-                  setBillDefaults([...prescriptionItems, ...investigationItems]);
+                  setBillDefaults(prescriptionItems);
                   setIsSendToHmoModalOpen(true);
                 }}
               >
