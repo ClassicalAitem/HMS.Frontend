@@ -72,6 +72,22 @@ const AntenatalRecordDetails = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  const normalizeAntenatalRecordFromState = (record) => {
+    if (!record) return null;
+    if (Array.isArray(record.anteNatalRecords)) {
+      return record.anteNatalRecords[0] || null;
+    }
+    return record;
+  };
+
+  const getRecordsArray = (payload) => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.anteNatalRecords)) return payload.anteNatalRecords;
+    if (Array.isArray(payload.data)) return payload.data;
+    return [];
+  };
+
   useEffect(() => {
     let mounted = true;
     const loadAntenatalRecord = async () => {
@@ -81,18 +97,29 @@ const AntenatalRecordDetails = () => {
         console.log('Loading antenatal records for patient ID:', patientId);
         const res = await getAnteNatalRecordByPatientId(patientId);
         console.log('Antenatal records response:', res);
-        const records = res?.data ?? res ?? [];
+        const records = getRecordsArray(res?.data ?? res);
         console.log('Processed antenatal records:', records);
         if (mounted) {
-          setAntenatalRecords(Array.isArray(records) ? records : []);
-          if (location.state?.selectedRecord) {
-            setSelectedRecord(location.state.selectedRecord);
+          const recordsWithOriginalIndex = records.map((record, originalIndex) => ({
+            ...record,
+            __originalIndex: originalIndex,
+          }));
+
+          const sortedRecords = [...recordsWithOriginalIndex].sort(
+            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+          setAntenatalRecords(sortedRecords);
+
+          const selectedFromState = normalizeAntenatalRecordFromState(location.state?.selectedRecord);
+          if (selectedFromState) {
+            setSelectedRecord(selectedFromState);
+          } else if (sortedRecords.length > 0) {
+            setSelectedRecord(sortedRecords[0]);
           }
         }
       } catch (err) {
         console.error("Failed to load antenatal record:", err);
         if (mounted) {
-        
           if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
             setError('Request timed out. Please check your connection and try again.');
           } else if (err.response?.status !== 404) {
@@ -175,6 +202,13 @@ const getDependantName = (dependantId) => {
   if (!dependantId) return null;
   const dep = dependants.find(d => d.id === dependantId);
   return dep ? `${dep.fullName} (${dep.relationshipType || 'Dependant'})` : null;
+};
+
+const getRoutineTestField = (record, field) => {
+  if (!record) return '-';
+  const routine = Array.isArray(record.routineTest) ? record.routineTest[0] : record.routineTest;
+  if (!routine) return '-';
+  return routine[field] || routine[field.toUpperCase?.()] || routine[field.toLowerCase?.()] || '-';
 };
 
 const handleDeletePrescription = async (prescriptionId) => {
@@ -350,7 +384,7 @@ const handleOrderCreated = () => {
                             </button>
                             <button
                               className="btn btn-sm btn-primary"
-                              onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/edit/${index}`)}
+                              onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/edit/${record.__originalIndex ?? index}`)}
                             >
                               Edit
                             </button>
@@ -452,6 +486,35 @@ const handleOrderCreated = () => {
                             </p>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Routine Tests */}
+                  {selectedRecord.routineTest && (Array.isArray(selectedRecord.routineTest) ? selectedRecord.routineTest.length > 0 : true) && (
+                    <div className="card bg-base-100 shadow-sm">
+                      <div className="card-body p-6">
+                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Routine Tests</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">PCV</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'PCV')}
+                            </div>
+                          </div>
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">HIV</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'HIV')}
+                            </div>
+                          </div>
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">HBV</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'HBV')}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -668,13 +731,7 @@ const handleOrderCreated = () => {
                           >
                             <span className="text-sm">💊</span> Prescribe
                           </button>
-                          <button 
-                            className="btn btn-sm btn-info gap-2"
-                            disabled={!selectedRecord}
-                            onClick={() => navigate(`/dashboard/doctor/send-to-nurse/${patientId}`, { state: { selectedRecord } })}
-                          >
-                            <span className="text-sm">👩‍⚕️</span> Send to Nurse
-                          </button>
+                          
                         </div>
                       </div>
 
@@ -832,21 +889,6 @@ const handleOrderCreated = () => {
                               <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>
                             </div>
                           )}
-                        </div>
-
-                        {/* Additional Notes for Nurse */}
-                        <div>
-                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-warning"></span>
-                            Additional Notes for Nurse
-                          </h4>
-                          <textarea
-                            className="textarea textarea-bordered w-full"
-                            placeholder="Enter any additional instructions or notes for the nurse..."
-                            rows={3}
-                            value=""
-                            onChange={() => {}}
-                          />
                         </div>
 
                       </div>

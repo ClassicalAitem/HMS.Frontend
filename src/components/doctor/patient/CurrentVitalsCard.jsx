@@ -4,6 +4,7 @@ import { TbHeartbeat } from "react-icons/tb";
 import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
 import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
 
+
 const formatRelativeTime = (dateInput) => {
   if (!dateInput) return "";
   const now = new Date();
@@ -20,13 +21,16 @@ const formatRelativeTime = (dateInput) => {
 };
 
 const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidden = false }) => {
+  const isStale = latest?.updatedAt && (Date.now() - new Date(latest.updatedAt).getTime() > 24 * 60 * 60 * 1000);
+
   return (
-    <div className="shadow-xl card bg-base-100 mb-2">
+    <div className={`shadow-xl card bg-base-100 mb-2 ${isStale ? 'border-warning' : ''}`}>
       <div className="p-4 card-body">
         <div className="flex justify-between items-center mb-1">
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-base-content">Current Vitals</h2>
+              {/* {isStale && <span className="badge badge-warning">Stale</span>} */}
               <span
                 className={`badge ${
                   latest?.isForDependant ? 'badge-secondary' : 'badge-primary'
@@ -49,12 +53,12 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
                 <span>Ward info unavailable</span>
               )}
               <span>•</span>
-              <span>Last updated {formatRelativeTime(latest?.createdAt)}</span>
+              <span>Last updated {formatRelativeTime(latest?.updatedAt)}</span>
             </div>
           </div>
           <button className={`btn btn-outline ${buttonHidden ? "hidden" : ""} btn-sm`} onClick={onRecordOpen}> Record Vitals</button>
         </div>
-
+        
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -71,7 +75,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Heart Rate</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.pulse ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.pulse ?? "—")}</span>
     <span className="text-sm text-base-content/70">bpm</span>
   </div>
 </div>
@@ -83,7 +87,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Blood Pressure</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.bp ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.bp ?? "—")}</span>
     <span className="text-sm text-base-content/70">mmHg</span>
   </div>
 </div>
@@ -95,7 +99,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Oxygen</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.spo2 ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.spo2 ?? "—")}</span>
     <span className="text-sm text-base-content/70">%</span>
   </div>
 </div>
@@ -107,7 +111,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Temperature</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.temperature ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.temperature ?? "—")}</span>
     <span className="text-sm text-base-content/70">°C</span>
   </div>
 </div>
@@ -119,7 +123,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Weight</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.weight ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.weight ?? "—")}</span>
     <span className="text-sm text-base-content/70">kg</span>
   </div>
 </div>
@@ -131,7 +135,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Height</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.height ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.height ?? "—")}</span>
     <span className="text-sm text-base-content/70">cm</span>
   </div>
 </div>
@@ -143,7 +147,7 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
     <span>Respiratory Rate</span>
   </div>
   <div className="mt-2 flex items-baseline gap-2">
-    <span className="text-2xl font-semibold">{latest?.respiratoryRate ?? "—"}</span>
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.respiratoryRate ?? "—")}</span>
     <span className="text-sm text-base-content/70">bpm</span>
   </div>
 </div>
