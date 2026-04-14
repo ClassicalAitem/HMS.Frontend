@@ -283,16 +283,28 @@ const NurseAntenatalRecords = () => {
                       <h4 className="font-medium text-base-content mb-2">Routine Tests</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                         <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">RVS</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'RVS')}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">VDRL</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'VDRL')}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
                           <span className="text-base-content/70">PCV</span>
                           <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'PCV')}</span>
                         </div>
                         <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
-                          <span className="text-base-content/70">HIV</span>
-                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'HIV')}</span>
-                        </div>
-                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
                           <span className="text-base-content/70">HBV</span>
                           <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'HBV')}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">ABO</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'ABO')}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 p-3 bg-base-200/50 rounded">
+                          <span className="text-base-content/70">GENOTYPE</span>
+                          <span className="font-medium text-base-content">{getRoutineTestField(selectedRecord, 'GENOTYPE')}</span>
                         </div>
                       </div>
                     </div>
