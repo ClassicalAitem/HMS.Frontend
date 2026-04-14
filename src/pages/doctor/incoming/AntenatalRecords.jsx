@@ -11,7 +11,8 @@ import {
   getAnteNatalRecord,
   updateAnteNatalRecord
 } from "@/services/api/anteNatalAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI"; 
+import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI"; 
 
 const emptyForm = (doctorName = "") => ({
   previousMedicalHistory: {
@@ -26,16 +27,19 @@ const emptyForm = (doctorName = "") => ({
     oedema: '', constipation: '', urinarySymptoms: '', jaundice: '',
     otherSymptoms: '', vaginalDischarge: '', takenBy: doctorName
   },
+  routineTest: {
+    pcv: '', hiv: '', hbv: ''
+  },
   antenatalExaminations: [],
-  
+
 });
 
 const AntenatalRecords = () => {
   const { patientId, recordIndex } = useParams();
-  const isEditing = recordIndex !== undefined;
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
-  const doctorName = useMemo(() => user ? `${user.firstName} ${user.lastName}` : "", [user]);
+  const doctorName = user?.fullName || user?.name || "";
+  const isEditing = Boolean(recordIndex);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(true);
@@ -45,7 +49,8 @@ const AntenatalRecords = () => {
   const [formData, setFormData] = useState(emptyForm(doctorName));
 
   const [dependants, setDependants] = useState([]);
-const [selectedDependantId, setSelectedDependantId] = useState("");
+  const [selectedDependantId, setSelectedDependantId] = useState("");
+  const [latestVital, setLatestVital] = useState(null);
   const [savedRecord, setSavedRecord] = useState(null);
 
 const selectedDependant = useMemo(() => {
@@ -75,25 +80,45 @@ useEffect(() => {
       console.error("Failed to fetch dependants", err);
     }
   };
-  if (patientId) fetchDependants();
-  return () => { mounted = false; };
-}, [patientId]);
 
-  // Load patient
+    const fetchLatestVital = async () => {
+      try {
+        const res = await getVitalsByPatient(patientId);
+        const list = normalizeVitalsResponse(res);
+        const latest = getLatestVital(list);
+        if (mounted) setLatestVital(latest);
+      } catch (err) {
+        console.error("Failed to fetch latest vital", err);
+      }
+    };
+
+    if (patientId) {
+      fetchDependants();
+      fetchLatestVital();
+    }
+
+    return () => { mounted = false; };
+  }, [patientId]);
+
   useEffect(() => {
     let mounted = true;
-    const load = async () => {
+    const loadPatient = async () => {
       try {
         setLoadingPatient(true);
         const res = await getPatientById(patientId);
-        if (mounted) setPatient(res?.data ?? res);
-      } catch {
-        toast.error("Failed to load patient data");
+        const patientData = res?.data ?? res;
+        if (mounted) setPatient(patientData);
+      } catch (err) {
+        console.error("Failed to fetch patient", err);
       } finally {
         if (mounted) setLoadingPatient(false);
       }
     };
-    if (patientId) load();
+
+    if (patientId) {
+      loadPatient();
+    }
+
     return () => { mounted = false; };
   }, [patientId]);
 
@@ -106,12 +131,15 @@ useEffect(() => {
       try {
         setLoadingData(true);
         const record = await getAnteNatalRecord(patientId, recordIndex);
-        if (mounted && record) {
-          setFormData(transformBackendToFrontend(record, doctorName));
+        const sourceRecord = (record && Array.isArray(record.anteNatalRecords))
+          ? record.anteNatalRecords[Number(recordIndex)] || record.anteNatalRecords[0] || record
+          : record;
+        if (mounted && sourceRecord) {
+          setFormData(transformBackendToFrontend(sourceRecord, doctorName));
         }
-          if (record.dependantId) {
-        setSelectedDependantId(record.dependantId);
-      }
+        if (sourceRecord?.dependantId) {
+          setSelectedDependantId(sourceRecord.dependantId);
+        }
       } catch (err) {
         toast.error("Failed to load record data");
       } finally {
@@ -137,6 +165,13 @@ useEffect(() => {
 
   const transformBackendToFrontend = (backendData, docName = "") => {
     if (!backendData) return emptyForm(docName);
+
+    const routineSource = (() => {
+      const raw = backendData.routineTest || backendData.routineTests || backendData.presentPregnancyHistories?.[0]?.routineTest || {};
+      if (Array.isArray(raw)) return raw[0] || {};
+      return raw || {};
+    })();
+
     return {
       previousMedicalHistory: {
         heartDisease: backendData.medicalHistories?.[0]?.heartDisease || '',
@@ -176,6 +211,11 @@ useEffect(() => {
         otherSymptoms: backendData.presentPregnancyHistories?.[0]?.otherSymptoms || '',
         vaginalDischarge: backendData.presentPregnancyHistories?.[0]?.vaginalDischarge || '',
         takenBy: backendData.presentPregnancyHistories?.[0]?.takenBy || docName
+      },
+      routineTest: {
+        pcv: routineSource.PCV || routineSource.pcv || '',
+        hiv: routineSource.HIV || routineSource.hiv || '',
+        hbv: routineSource.HBV || routineSource.hbv || ''
       },
       antenatalExaminations: (backendData.anteNatalExamination || []).map(item => ({
         date: item.Date ? new Date(item.Date).toISOString().split('T')[0] : '',
@@ -249,8 +289,14 @@ useEffect(() => {
     if (fd.presentPregnancy.vaginalDischarge?.trim()) preg.vaginalDischarge = fd.presentPregnancy.vaginalDischarge.trim();
     if (Object.keys(preg).length > 0) out.presentPregnancyHistories = [preg];
 
+    const routine = {};
+    if (fd.routineTest.pcv?.trim()) routine.PCV = fd.routineTest.pcv.trim();
+    if (fd.routineTest.hiv?.trim()) routine.HIV = fd.routineTest.hiv.trim();
+    if (fd.routineTest.hbv?.trim()) routine.HBV = fd.routineTest.hbv.trim();
+    if (Object.keys(routine).length > 0) out.routineTest = [routine];
+
     const exams = fd.antenatalExaminations
-      .filter(i => i.date?.trim() || i.heightOfFundus?.trim() || i.bp?.trim() || i.weight?.trim())
+      .filter(i => i.date?.trim() || i.heightOfFundus?.trim() || i.bp?.trim() || (i.weight != null && String(i.weight).trim()) || (i.nextVisit != null && String(i.nextVisit).trim()))
       .map(i => ({
         ...(i.date?.trim() && { Date: new Date(i.date) }),
         ...(i.heightOfFundus?.trim() && { heightOfFundus: i.heightOfFundus.trim() }),
@@ -259,9 +305,9 @@ useEffect(() => {
         ...(i.relationsOfPpToBirth?.trim() && { relationOfPPToBrim: i.relationsOfPpToBirth.trim() }),
         ...(i.foetalHeart?.trim() && { foetalHeart: i.foetalHeart.trim() }),
         ...(i.urine?.trim() && { urine: i.urine.trim() }),
-        ...(i.weight?.trim() && { weight: i.weight.trim() }),
+        ...(i.weight != null && String(i.weight).trim() && { weight: String(i.weight).trim() }),
         ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
-        ...(i.nextVisit?.trim() && { nextVisit: i.nextVisit.trim() }),
+        ...(i.nextVisit != null && String(i.nextVisit).trim() && { nextVisit: String(i.nextVisit).trim() }),
         ...(i.remark?.trim() && { remark: i.remark.trim() }),
       }));
     if (exams.length > 0) out.anteNatalExamination = exams;
@@ -296,10 +342,24 @@ useEffect(() => {
   const updateMedical = (field, value) => setFormData(p => ({ ...p, previousMedicalHistory: { ...p.previousMedicalHistory, [field]: value } }));
   const updateFamily = (field, value) => setFormData(p => ({ ...p, familyHistory: { ...p.familyHistory, [field]: value } }));
   const updatePregnancy = (field, value) => { if (field === 'takenBy') return; setFormData(p => ({ ...p, presentPregnancy: { ...p.presentPregnancy, [field]: value } })); };
+  const updateRoutineTest = (field, value) => setFormData(p => ({ ...p, routineTest: { ...p.routineTest, [field]: value } }));
   const addObstetric = () => setFormData(p => ({ ...p, previousObstetricHistory: [...p.previousObstetricHistory, { date: '', durationOfPregnancy: '', birthWeight: '', complication: '', aliveOrDead: '', ageOfDeath: '', causeOfDeath: '' }] }));
   const updateObstetric = (idx, field, value) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
   const removeObstetric = (idx) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.filter((_, i) => i !== idx) }));
-  const addExamination = () => setFormData(p => ({ ...p, antenatalExaminations: [...p.antenatalExaminations, { date: '', heightOfFundus: '', ega: '', presentationAndLie: '', relationsOfPpToBirth: '', foetalHeart: '', urine: '', weight: '', bp: '', nextVisit: '', remark: '', signature: doctorName }] }));
+  const addExamination = () => setFormData(p => ({ ...p, antenatalExaminations: [...p.antenatalExaminations, {
+    date: new Date().toISOString().split('T')[0],
+    heightOfFundus: '',
+    ega: '',
+    presentationAndLie: '',
+    relationsOfPpToBirth: '',
+    foetalHeart: '',
+    urine: '',
+    weight: latestVital?.weight || '',
+    bp: latestVital?.bp || latestVital?.bloodPressure || '',
+    nextVisit: '',
+    remark: '',
+    signature: doctorName
+  }] }));
   const updateExamination = (idx, field, value) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
   const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.filter((_, i) => i !== idx) }));
 
@@ -484,7 +544,7 @@ useEffect(() => {
                   { field: 'lmp', label: 'LMP', type: 'date' },
                   { field: 'edd', label: 'EDD', type: 'date' },
                   { field: 'bleeding', label: 'Bleeding', type: 'text', placeholder: 'Yes/No/Details' },
-                  { field: 'durationInWeeks', label: 'Duration of Pregnancy in Weeks', type: 'number' },
+                  { field: 'durationInWeeks', label: 'EGA', type: 'text', placeholder: 'e.g. 28 weeks' },
                   { field: 'fmf', label: 'FMF', type: 'text', placeholder: 'Fetal Movement Felt' },
                   { field: 'headache', label: 'Headache', type: 'text', placeholder: 'Yes/No/Details' },
                   { field: 'vomiting', label: 'Vomiting', type: 'text', placeholder: 'Yes/No/Details' },
@@ -510,6 +570,31 @@ useEffect(() => {
                   <label className="label"><span className="label-text">Taken By</span></label>
                   <input type="text" className="input input-bordered w-full" value={formData.presentPregnancy.takenBy || doctorName} disabled />
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Routine Tests Section */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-4">
+              <h3 className="card-title text-lg font-semibold mb-4">ROUTINE TESTS</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { field: 'pcv', label: 'PCV', type: 'text', placeholder: 'e.g. 40%' },
+                  { field: 'hiv', label: 'HIV', type: 'text', placeholder: 'Negative/Positive' },
+                  { field: 'hbv', label: 'HBV', type: 'text', placeholder: 'Negative/Positive' },
+                ].map(({ field, label, type, placeholder }) => (
+                  <div key={field}>
+                    <label className="label"><span className="label-text">{label}</span></label>
+                    <input
+                      type={type}
+                      className="input input-bordered w-full"
+                      placeholder={placeholder}
+                      value={formData.routineTest[field]}
+                      onChange={(e) => updateRoutineTest(field, e.target.value)}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
