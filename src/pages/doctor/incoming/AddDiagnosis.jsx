@@ -6,6 +6,7 @@ import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI"
 import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
 import toast from "react-hot-toast";
 import { IoCloseCircleOutline } from "react-icons/io5";
 import { IoIosCloseCircleOutline } from "react-icons/io";
@@ -183,6 +184,37 @@ const AddDiagnosis = () => {
     load();
     return () => { mounted = false; };
   }, [patientId, snapshot]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadVitals = async () => {
+      if (!patientId) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const res = await getVitalsByPatient(patientId);
+        const list = normalizeVitalsResponse(res);
+        if (!mounted) return;
+
+        const sorted = Array.isArray(list)
+          ? [...list].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+          : [];
+
+        setSortedVitals(sorted);
+        setLatest(getLatestVital(sorted));
+      } catch (err) {
+        console.error("Failed to load vitals:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadVitals();
+    return () => { mounted = false; };
+  }, [patientId]);
 
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
