@@ -350,7 +350,7 @@ const handleOrderCreated = () => {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-medium text-base-content">
-                                Pregnancy #{index + 1}
+                                Pregnancy #{antenatalRecords.length - index}
                                 {record.presentPregnancyHistories?.[0]?.EDD && (
                                   <span className="text-sm text-base-content/70 ml-2">
                                     (EDD: {formatNigeriaDate(record.presentPregnancyHistories[0].EDD)})
@@ -497,21 +497,39 @@ const handleOrderCreated = () => {
                         <h3 className="card-title text-lg font-semibold text-base-content mb-4">Routine Tests</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">RVS</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'RVS')}
+                            </div>
+                          </div>
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">VDRL</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'VDRL')}
+                            </div>
+                          </div>
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
                             <div className="stat-title text-sm">PCV</div>
                             <div className="stat-value text-lg">
                               {getRoutineTestField(selectedRecord, 'PCV')}
                             </div>
                           </div>
                           <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">HIV</div>
-                            <div className="stat-value text-lg">
-                              {getRoutineTestField(selectedRecord, 'HIV')}
-                            </div>
-                          </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
                             <div className="stat-title text-sm">HBV</div>
                             <div className="stat-value text-lg">
                               {getRoutineTestField(selectedRecord, 'HBV')}
+                            </div>
+                          </div>
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">ABO</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'ABO')}
+                            </div>
+                          </div>
+                          <div className="stat bg-base-200/50 rounded-lg p-4">
+                            <div className="stat-title text-sm">GENOTYPE</div>
+                            <div className="stat-value text-lg">
+                              {getRoutineTestField(selectedRecord, 'GENOTYPE')}
                             </div>
                           </div>
                         </div>
