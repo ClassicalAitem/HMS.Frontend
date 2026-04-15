@@ -73,6 +73,8 @@ const OpdPatients = () => {
       return {
         ...patient,
         serialNumber: index + 1,
+        gender: patient.gender || 'Not specified',
+        dobFormatted: patient.dob ? formatNigeriaDate(patient.dob) : 'Not specified',
         createdAtFormatted: formatNigeriaDate(patient.createdAt),
         updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
         actions: patient.id
@@ -99,7 +101,18 @@ const OpdPatients = () => {
       sortable: true,
       className: 'text-base-content/70'
     },
- 
+    {
+      key: 'gender',
+      title: 'Gender',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'dobFormatted',
+      title: 'Date of Birth',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
     {
       key: 'createdAtFormatted',
       title: 'Date Added',
@@ -112,7 +125,7 @@ const OpdPatients = () => {
       className: 'text-center',
       render: (patientId) => (
         <div className="flex items-center justify-center gap-2">
-          {/* <button
+          <button
             onClick={() => navigate(`/frontdesk/opd-patients/${patientId}/edit`)}
             className="btn btn-ghost btn-xs text-info"
             title="Edit"
@@ -125,13 +138,7 @@ const OpdPatients = () => {
             title="Delete"
           >
             <FaTrash />
-          </button> */}
-            <SendPatientModal
-            patientId={patientId}
-            onUpdated={() => navigate('/frontdesk/opd-patients')}
-            allowedRoles={['cashier']}
-            isOpdPatient={true}
-          />
+          </button>
         </div>
       )
     }
