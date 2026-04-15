@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { CashierLayout } from '@/layouts/cashier';
 import toast from 'react-hot-toast';
-import { createOpdPatient } from '@/services/api/opdPatientAPI';
+import { createOpdPatient, getOpdPatientById, updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { createBillForOpd } from '@/services/api/billingAPI';
 import { FaArrowLeft, FaTrash } from 'react-icons/fa';
@@ -14,6 +14,8 @@ import { createInvestigationRequestForCashier } from '@/services/api/investigati
 const opdPatientSchema = yup.object().shape({
   fullName: yup.string().required('Full name is required').min(2),
   phone: yup.string().required('Phone number is required').matches(/^[0-9+\-() ]+$/, 'Invalid phone number'),
+  dob: yup.date().optional().nullable(),
+  gender: yup.string().optional().oneOf(['Male', 'Female', 'Other', 'Prefer_not_to_say'], 'Invalid gender value'),
   address: yup.string().optional(),
 });
 
@@ -89,14 +91,16 @@ const TestSearchInput = ({ serviceCharges, onSelect, placeholder = 'Search lab t
 
 const CreateOpdPatient = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
   const [isLoading, setIsLoading] = useState(false);
   const [serviceCharges, setServiceCharges] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
   const [priority, setPriority] = useState('normal');
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm({
     resolver: yupResolver(opdPatientSchema),
-    defaultValues: { fullName: '', phone: '', address: '' }
+    defaultValues: { fullName: '', phone: '', dob: '', gender: '', address: '' }
   });
 
   useEffect(() => {
@@ -112,6 +116,26 @@ const CreateOpdPatient = () => {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (isEdit && id) {
+      const loadPatient = async () => {
+        try {
+          const patient = await getOpdPatientById(id);
+          const patientData = patient?.data ?? patient;
+          setValue('fullName', patientData.fullName || '');
+          setValue('phone', patientData.phone || '');
+          setValue('dob', patientData.dob ? new Date(patientData.dob).toISOString().split('T')[0] : '');
+          setValue('gender', patientData.gender || '');
+          setValue('address', patientData.address || '');
+        } catch (error) {
+          toast.error('Failed to load patient data');
+          navigate('/cashier/opd-patients');
+        }
+      };
+      loadPatient();
+    }
+  }, [isEdit, id, setValue, navigate]);
 
   const handleAddTest = (charge) => {
     if (selectedTests.find((t) => (t.charge.id || t.charge._id) === (charge.id || charge._id))) {
@@ -132,53 +156,63 @@ const CreateOpdPatient = () => {
   const grandTotal = selectedTests.reduce((sum, t) => sum + Number(t.charge.amount || 0) * t.qty, 0);
 
   const onSubmit = async (data) => {
-    if (selectedTests.length === 0) {
+    if (!isEdit && selectedTests.length === 0) {
       toast.error('Please add at least one lab test');
       return;
     }
 
     setIsLoading(true);
     try {
-      const patientRes = await createOpdPatient({
+      // Format dob to YYYY-MM-DD if it's a Date object
+      const formattedData = {
         ...data,
-        address: data.address?.trim() || 'Not provided',
-      });
-      const newPatient = patientRes?.data?.data ?? patientRes?.data ?? patientRes;
-      const newPatientId = newPatient?.id;
-
-      if (!newPatientId) throw new Error('Failed to get patient ID');
-
-      const itemDetail = selectedTests.map((t) => ({
-        code: t.charge.category || 'LAB',
-        description: t.charge.service,
-        quantity: t.qty,
-        price: Number(t.charge.amount || 0),
-        total: Number(t.charge.amount || 0) * t.qty,
-        serviceChargeId: t.charge.id || t.charge._id,
-      }));
-
-      await createBillForOpd(newPatientId, { itemDetail });
-
-      const investigationData = {
-        opdPatientId: newPatientId,
-        type: 'lab',
-        priority,
-        tests: selectedTests.map((t) => ({ name: t.charge.service })),
+        dob: data.dob ? (data.dob instanceof Date ? data.dob.toISOString().split('T')[0] : data.dob) : null,
+        address: data.address?.trim() || (isEdit ? data.address : 'Not provided'),
       };
 
-      await toast.promise(
-        createInvestigationRequestForCashier(investigationData),
-        {
-          loading: 'Creating investigation request...',
-          success: 'Investigation request created successfully!',
-          error: (e) => e?.response?.data?.message || 'Failed to create investigation request',
-        }
-      );
+      if (isEdit) {
+        await updateOpdPatient(id, formattedData);
+        toast.success('Patient updated successfully');
+        navigate('/cashier/opd-patients');
+      } else {
+        const patientRes = await createOpdPatient(formattedData);
+        const newPatient = patientRes?.data?.data ?? patientRes?.data ?? patientRes;
+        const newPatientId = newPatient?.id;
 
-      toast.success('Patient registered, bill created, and investigation requested!');
-      navigate(`/cashier/opd-patient-details/${newPatientId}`);
+        if (!newPatientId) throw new Error('Failed to get patient ID');
+
+        const itemDetail = selectedTests.map((t) => ({
+          code: t.charge.category || 'LAB',
+          description: t.charge.service,
+          quantity: t.qty,
+          price: Number(t.charge.amount || 0),
+          total: Number(t.charge.amount || 0) * t.qty,
+          serviceChargeId: t.charge.id || t.charge._id,
+        }));
+
+        await createBillForOpd(newPatientId, { itemDetail });
+
+        const investigationData = {
+          opdPatientId: newPatientId,
+          type: 'lab',
+          priority,
+          tests: selectedTests.map((t) => ({ name: t.charge.service })),
+        };
+
+        await toast.promise(
+          createInvestigationRequestForCashier(investigationData),
+          {
+            loading: 'Creating investigation request...',
+            success: 'Investigation request created successfully!',
+            error: (e) => e?.response?.data?.message || 'Failed to create investigation request',
+          }
+        );
+
+        toast.success('Patient registered, bill created, and investigation requested!');
+        navigate(`/cashier/opd-patient-details/${newPatientId}`);
+      }
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'Failed to create patient');
+      toast.error(error?.response?.data?.message || `Failed to ${isEdit ? 'update' : 'create'} patient`);
     } finally {
       setIsLoading(false);
     }
@@ -191,8 +225,8 @@ const CreateOpdPatient = () => {
           <FaArrowLeft />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-base-content">Register OPD Patient</h1>
-          <p className="text-sm text-base-content/70">Direct lab referral — no doctor consultation needed</p>
+          <h1 className="text-2xl font-bold text-base-content">{isEdit ? 'Edit OPD Patient' : 'Register OPD Patient'}</h1>
+          <p className="text-sm text-base-content/70">{isEdit ? 'Update patient information' : 'Direct lab referral — no doctor consultation needed'}</p>
         </div>
       </div>
 
@@ -217,6 +251,29 @@ const CreateOpdPatient = () => {
             </div>
 
             <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Date of Birth (optional)</span></label>
+              <input type="date" placeholder="Enter date of birth"
+                className={`input input-bordered w-full ${errors.dob ? 'input-error' : ''}`}
+                {...register('dob')} />
+              {errors.dob && <span className="text-error text-sm mt-1">{errors.dob.message}</span>}
+            </div>
+
+            <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Gender (optional)</span></label>
+              <select
+                className={`select select-bordered w-full ${errors.gender ? 'select-error' : ''}`}
+                {...register('gender')}
+              >
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer_not_to_say">Prefer not to say</option>
+              </select>
+              {errors.gender && <span className="text-error text-sm mt-1">{errors.gender.message}</span>}
+            </div>
+
+            <div className="form-control">
               <label className="label"><span className="label-text font-medium">Address (optional)</span></label>
               <input type="text" placeholder="Enter address"
                 className="input input-bordered w-full"
@@ -225,6 +282,7 @@ const CreateOpdPatient = () => {
           </div>
         </div>
 
+        {!isEdit && (
         <div className="card bg-base-100 shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div className="form-control w-full">
@@ -289,6 +347,7 @@ const CreateOpdPatient = () => {
             )}
           </div>
         </div>
+        )}
 
         <div className="flex justify-end gap-3">
           <button type="button" onClick={() => navigate('/cashier/opd-patients')} className="btn btn-ghost" disabled={isLoading}>
@@ -296,8 +355,8 @@ const CreateOpdPatient = () => {
           </button>
           <button type="submit" className="btn btn-primary" disabled={isLoading}>
             {isLoading
-              ? <><span className="loading loading-spinner loading-sm"></span> Creating...</>
-              : 'Register & Create Bill'
+              ? <><span className="loading loading-spinner loading-sm"></span> {isEdit ? 'Updating...' : 'Creating...'}</>
+              : isEdit ? 'Update Patient' : 'Register & Create Bill'
             }
           </button>
         </div>
