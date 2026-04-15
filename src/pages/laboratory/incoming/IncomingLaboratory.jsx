@@ -112,11 +112,18 @@ const IncomingLaboratory = () => {
   patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() 
     || patient.name 
     || "Unknown";
-} else if (inv.patient) {
+} 
+else if (inv.patient) {
   // ✅ fallback from investigation itself
   patientName = `${inv.patient.firstName || ''} ${inv.patient.lastName || ''}`.trim() 
     || inv.patient.name 
     || "Unknown";
+} else if (inv.opdPatient) {
+  // ✅ fallback from investigation opdPatient
+  patient = inv.opdPatient;
+  patientType = 'opd';
+  patientName = inv.opdPatient.fullName || "Unknown";
+  userId = inv.opdPatient.id;
 } else {
   const opdPatient = awaitingLabOpdPatients.find((p) => 
     String(p.id) === String(invPatientId)
@@ -155,7 +162,7 @@ const IncomingLaboratory = () => {
 // In opdPatientCards mapping — add opdPatientId separately:
 const opdPatientCards = awaitingLabOpdPatients
   .filter((opdPatient) => !relevantInvestigations.some((inv) => {
-    const invPatientId = inv.patientId || inv.patient?._id || inv.patient?.id;
+    const invPatientId = inv.patientId || inv.opdPatientId || inv.patient?._id || inv.patient?.id || inv.opdPatient?._id || inv.opdPatient?.id;
     return invPatientId && String(invPatientId) === String(opdPatient.id);
   }))
   .map((opdPatient) => ({
@@ -177,6 +184,19 @@ const opdPatientCards = awaitingLabOpdPatients
       const newRequests = formattedRequests.length;
       const urgentCount = formattedRequests.filter((card) => card.status === "Urgent").length;
       const highPriorityCount = formattedRequests.filter((card) => card.status === "High").length;
+
+      const uniqueRequests = formattedRequests.filter(
+  (item, index, self) =>
+    index ===
+    self.findIndex(
+      (t) =>
+        t.userId === item.userId &&
+        t.test === item.test &&
+        t.date === item.date
+    )
+);
+
+setTestRequests(uniqueRequests);
 
       setIncomingStats([
         {
