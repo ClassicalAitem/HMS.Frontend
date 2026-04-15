@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { createOpdPatient } from '@/services/api/opdPatientAPI';
+import { createOpdPatient, getOpdPatientById, updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { showErrorToast, showSuccessToast } from '@/utils/errorHandler';
 import { FaArrowLeft } from 'react-icons/fa';
 import { FrontdeskLayout } from '@/layouts';
@@ -11,36 +11,66 @@ import { FrontdeskLayout } from '@/layouts';
 const opdPatientSchema = yup.object().shape({
   fullName: yup.string().required('Full name is required').min(2),
   phone: yup.string().required('Phone number is required').matches(/^[0-9+\-() ]+$/, 'Invalid phone number'),
+  dob: yup.date().optional().nullable(),
+  gender: yup.string().optional().oneOf(['Male', 'Female', 'Other', 'Prefer_not_to_say'], 'Invalid gender value'),
   address: yup.string().optional(),
 });
 
 const AddOpdPatient = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
   const [isLoading, setIsLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue } = useForm({
     resolver: yupResolver(opdPatientSchema),
-    defaultValues: { fullName: '', phone: '', address: '' }
+    defaultValues: { fullName: '', phone: '', dob: '', gender: '', address: '' }
   });
 
-
-
+  useEffect(() => {
+    if (isEdit && id) {
+      const loadPatient = async () => {
+        try {
+          const patient = await getOpdPatientById(id);
+          const patientData = patient?.data ?? patient;
+          setValue('fullName', patientData.fullName || '');
+          setValue('phone', patientData.phone || '');
+          setValue('dob', patientData.dob ? new Date(patientData.dob).toISOString().split('T')[0] : '');
+          setValue('gender', patientData.gender || '');
+          setValue('address', patientData.address || '');
+        } catch (error) {
+          showErrorToast('Failed to load patient data');
+          navigate('/frontdesk/opd-patients');
+        }
+      };
+      loadPatient();
+    }
+  }, [isEdit, id, setValue, navigate]);
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      const patientRes = await createOpdPatient({
+      // Format dob to YYYY-MM-DD if it's a Date object
+      const formattedData = {
         ...data,
+        dob: data.dob ? (data.dob instanceof Date ? data.dob.toISOString().split('T')[0] : data.dob) : null,
         address: data.address?.trim() || '.',
+      };
 
-      });
-      const newPatient = patientRes?.data?.data ?? patientRes?.data ?? patientRes;
-      const newPatientId = newPatient?.id;
+      if (isEdit) {
+        await updateOpdPatient(id, formattedData);
+        showSuccessToast('Patient updated successfully');
+        navigate('/frontdesk/opd-patients');
+      } else {
+        const patientRes = await createOpdPatient(formattedData);
+        const newPatient = patientRes?.data?.data ?? patientRes?.data ?? patientRes;
+        const newPatientId = newPatient?.id;
 
-      if (!newPatientId) throw new Error('Failed to get patient ID');
+        if (!newPatientId) throw new Error('Failed to get patient ID');
 
-      showSuccessToast('Patient registered successfully');
-      navigate(`/frontdesk/opd-patients`);
+        showSuccessToast('Patient registered successfully');
+        navigate(`/frontdesk/opd-patients`);
+      }
     } catch (error) {
       showErrorToast(error);
     } finally {
@@ -55,7 +85,7 @@ const AddOpdPatient = () => {
           <FaArrowLeft />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-base-content">Register OPD Patient</h1>
+          <h1 className="text-2xl font-bold text-base-content">{isEdit ? 'Edit OPD Patient' : 'Register OPD Patient'}</h1>
             </div>
       </div>
 
@@ -78,6 +108,29 @@ const AddOpdPatient = () => {
                 {...register('phone')} />
               {errors.phone && <span className="text-error text-sm mt-1">{errors.phone.message}</span>}
             </div>
+          
+            <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Date of Birth *</span></label>
+              <input type="date" placeholder="Enter date of birth"
+                className={`input input-bordered w-full ${errors.dob ? 'input-error' : ''}`}
+                {...register('dob')} />
+              {errors.dob && <span className="text-error text-sm mt-1">{errors.dob.message}</span>}
+            </div>
+
+            <div className="form-control">
+              <label className="label"><span className="label-text font-medium">Gender *</span></label>
+              <select
+                className={`select select-bordered w-full ${errors.gender ? 'select-error' : ''}`}
+                {...register('gender')}
+              >
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer_not_to_say">Prefer not to say</option>
+              </select>
+              {errors.gender && <span className="text-error text-sm mt-1">{errors.gender.message}</span>}
+            </div>
 
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Address (optional)</span></label>
@@ -89,13 +142,13 @@ const AddOpdPatient = () => {
         </div>
 
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={() => navigate('/cashier/opd-patients')} className="btn btn-ghost" disabled={isLoading}>
+          <button type="button" onClick={() => navigate('/frontdesk/opd-patients')} className="btn btn-ghost" disabled={isLoading}>
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={isLoading}>
             {isLoading
-              ? <><span className="loading loading-spinner loading-sm"></span> Creating...</>
-              : 'Register Patient'
+              ? <><span className="loading loading-spinner loading-sm"></span> {isEdit ? 'Updating...' : 'Creating...'}</>
+              : isEdit ? 'Update Patient' : 'Register Patient'
             }
           </button>
         </div>
