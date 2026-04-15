@@ -28,7 +28,7 @@ const emptyForm = (doctorName = "") => ({
     otherSymptoms: '', vaginalDischarge: '', takenBy: doctorName
   },
   routineTest: {
-    pcv: '', hiv: '', hbv: ''
+     rvs: '', vdrl: '', pcv: '', hbv: '', abo: '', genotype: ''
   },
   antenatalExaminations: [],
 
@@ -213,9 +213,13 @@ useEffect(() => {
         takenBy: backendData.presentPregnancyHistories?.[0]?.takenBy || docName
       },
       routineTest: {
+         
+        rvs: routineSource.RVS || routineSource.rvs || '',
+        vdrl: routineSource.VDRL || routineSource.vdrl || '',
         pcv: routineSource.PCV || routineSource.pcv || '',
-        hiv: routineSource.HIV || routineSource.hiv || '',
-        hbv: routineSource.HBV || routineSource.hbv || ''
+        hbv: routineSource.HBV || routineSource.hbv || '',
+        abo: routineSource.ABO || routineSource.abo || '',
+        genotype: routineSource.GENOTYPE || routineSource.genotype || ''
       },
       antenatalExaminations: (backendData.anteNatalExamination || []).map(item => ({
         date: item.Date ? new Date(item.Date).toISOString().split('T')[0] : '',
@@ -290,9 +294,12 @@ useEffect(() => {
     if (Object.keys(preg).length > 0) out.presentPregnancyHistories = [preg];
 
     const routine = {};
+    if (fd.routineTest.rvs?.trim()) routine.RVS = fd.routineTest.rvs.trim();
+    if (fd.routineTest.vdrl?.trim()) routine.VDRL = fd.routineTest.vdrl.trim();
     if (fd.routineTest.pcv?.trim()) routine.PCV = fd.routineTest.pcv.trim();
-    if (fd.routineTest.hiv?.trim()) routine.HIV = fd.routineTest.hiv.trim();
     if (fd.routineTest.hbv?.trim()) routine.HBV = fd.routineTest.hbv.trim();
+    if (fd.routineTest.abo?.trim()) routine.ABO = fd.routineTest.abo.trim();
+    if (fd.routineTest.genotype?.trim()) routine.GENOTYPE = fd.routineTest.genotype.trim();
     if (Object.keys(routine).length > 0) out.routineTest = [routine];
 
     const exams = fd.antenatalExaminations
@@ -580,10 +587,13 @@ useEffect(() => {
               <h3 className="card-title text-lg font-semibold mb-4">ROUTINE TESTS</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
+                  { field: 'rvs', label: 'RVS', type: 'text', placeholder: 'Negative/Positive' },
+                  { field: 'vdrl', label: 'VDRL', type: 'text', placeholder: 'Negative/Positive' },
                   { field: 'pcv', label: 'PCV', type: 'text', placeholder: 'e.g. 40%' },
-                  { field: 'hiv', label: 'HIV', type: 'text', placeholder: 'Negative/Positive' },
                   { field: 'hbv', label: 'HBV', type: 'text', placeholder: 'Negative/Positive' },
-                ].map(({ field, label, type, placeholder }) => (
+                  { field: 'abo', label: 'ABO', type: 'text', placeholder: 'Blood Group' },
+                  { field: 'genotype', label: 'Genotype', type: 'text', placeholder: 'e.g. AA, AS, SS' },
+                  ].map(({ field, label, type, placeholder }) => (
                   <div key={field}>
                     <label className="label"><span className="label-text">{label}</span></label>
                     <input

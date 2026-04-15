@@ -48,6 +48,8 @@ const CashierOpdPatients = () => {
     return opdPatients.map((patient, index) => ({
       ...patient,
       serialNumber: index + 1,
+      gender: patient.gender || 'Not specified',
+      dobFormatted: patient.dob ? formatNigeriaDate(patient.dob) : 'Not specified',
       createdAtFormatted: formatNigeriaDate(patient.createdAt),
       actions: patient.id
     }));
@@ -95,6 +97,18 @@ const CashierOpdPatients = () => {
       className: 'text-base-content/70'
     },
     {
+      key: 'gender',
+      title: 'Gender',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'dobFormatted',
+      title: 'Date of Birth',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
       key: 'createdAtFormatted',
       title: 'Date Added',
       sortable: true,
@@ -106,13 +120,13 @@ const CashierOpdPatients = () => {
       className: 'text-center',
       render: (patientId) => (
         <div className="flex items-center justify-center gap-2">
-          {/* <button
-            onClick={() => navigate(`/frontdesk/opd-patients/${patientId}/edit`)}
+          <button
+            onClick={() => navigate(`/cashier/opd-patients/${patientId}/edit`)}
             className="btn btn-ghost btn-xs text-info"
             title="Edit"
           >
             <FaEdit />
-          </button> */}
+          </button>
           <button
             onClick={() => handleDelete(patientId)}
             className="btn btn-ghost btn-xs text-error"
