@@ -12,6 +12,7 @@ const IncomingScan = () => {
   const patientId = searchParams.get("patientId");
   const patientName = searchParams.get("patientName");
   const investigationId = searchParams.get("investigationId");
+  const dependantId = searchParams.get("dependantId");
   
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -35,6 +36,7 @@ const IncomingScan = () => {
     try {
       const payload = {
         patientId: patientId,
+        dependantId,
         form: {
           attachments: files,
         },
@@ -89,6 +91,12 @@ const IncomingScan = () => {
                     <p className="text-base font-semibold text-[#00943C]">{patientId}</p>
                   </div>
                 </div>
+                {dependantId && (
+                  <div className="mt-3">
+                    <p className="text-xs text-[#605D66] uppercase">Type</p>
+                    <p className="text-base font-semibold text-[#00943C]">Dependant</p>
+                  </div>
+                )}
               </div>
             )}
 

@@ -5,10 +5,14 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
 import TestRequestModal from "./modals/TestRequestModal";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
-import { getPatientById, getPatients } from "@/services/api/patientsAPI";
+import { getPatientById, getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
+import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getOpdPatientById } from "@/services/api/opdPatientAPI";
+import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getAllOpdPatients } from "@/services/api/opdPatientAPI";
+import toast from "react-hot-toast";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
@@ -19,6 +23,8 @@ const IncomingLaboratory = () => {
   const [showModal, setShowModal] = useState(false);
   const [showModal2, setShowModal2] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [existingLabResults, setExistingLabResults] = useState({});
+  const [sendingToSonographer, setSendingToSonographer] = useState(null);
 
   const fetchTestRequests = async () => {
     console.log("fetchTestRequests called");
@@ -62,141 +68,257 @@ const IncomingLaboratory = () => {
       console.log("Awaiting lab patients:", awaitingLabPatients.length);
       console.log("Awaiting lab OPD patients:", awaitingLabOpdPatients.length);
 
-      // Step 3: Match investigation requests with awaiting_lab patients or OpD patients
-      // Also filter out investigations older than 48 hours (temporarily disabled for debugging)
-      const now = new Date();
-      const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-      
-      const relevantInvestigations = allInvestigations.filter((inv) => {
-        const invPatientId = inv.patientId || inv.opdPatientId || inv.patient?._id || inv.patient?.id || inv.opdPatient?._id || inv.opdPatient?.id;
-        const invStatus = String(inv.status || "").toLowerCase();
-        const isCompletedInvestigation = invStatus.includes("completed");
+      // Step 3: Match investigation requests with awaiting_lab patients, OpD patients, or dependant requests
+      const dependantCache = {};
 
-        if (isCompletedInvestigation) {
-          return false;
+      const loadDependantsForPatient = async (patientId) => {
+        if (!patientId) return [];
+        if (dependantCache[patientId]) return dependantCache[patientId];
+
+        try {
+          const res = await getAllDependantsForPatient(patientId);
+          const rawDependants =
+            res?.data?.data?.dependants ??
+            res?.data?.dependants ??
+            res?.data ??
+            [];
+          const dependantList = Array.isArray(rawDependants) ? rawDependants : [];
+          dependantCache[patientId] = dependantList;
+          return dependantList;
+        } catch (err) {
+          console.error(`Failed to load dependants for patient ${patientId}`, err);
+          dependantCache[patientId] = [];
+          return [];
         }
+      };
 
-        // Check if it matches an awaiting_lab patient
-        const matchesRegularPatient = awaitingLabPatients.some((patient) => 
-          String(patient._id || patient.id) === String(invPatientId)
-        );
-        
-        // Check if it matches an awaiting_lab OpD patient
-        const matchesOpdPatient = awaitingLabOpdPatients.some((patient) => 
-          String(patient.id) === String(invPatientId)
-        );
-        
-        // Filter out investigations older than 48 hours
-        const createdAt = inv.createdAt ? new Date(inv.createdAt) : null;
-        const isWithin48Hours = createdAt && createdAt >= fortyEightHoursAgo;
-        
-        return (matchesRegularPatient || matchesOpdPatient); //&& isWithin48Hours; // Temporarily disabled
-      });
+      const relevantInvestigations = (
+        await Promise.all(
+          allInvestigations.map(async (inv) => {
+            const invPatientId =
+              inv.patientId ||
+              inv.opdPatientId ||
+              inv.patient?._id ||
+              inv.patient?.id ||
+              inv.opdPatient?._id ||
+              inv.opdPatient?.id;
+            const invStatus = String(inv.status || "").toLowerCase();
+            const isCompletedInvestigation = invStatus === "completed";
+            const isSonographyCompleted = invStatus === "sonography_completed";
 
-      console.log("Investigation requests for awaiting_lab and OpD patients:", relevantInvestigations.length);
+            if (isCompletedInvestigation && !isSonographyCompleted) {
+              return null;
+            }
 
-      // Step 4: Format investigation requests with patient data
-      const regularPatientCards = relevantInvestigations.map((inv) => {
-        const invPatientId = inv.patientId || inv.patient?._id || inv.patient?.id;
-        
-        // Find matching patient from all patients (not just awaiting_lab filtered)
-        let patient = allPatients.find((p) => 
-          String(p._id || p.id) === String(invPatientId)
-        );
-        
-        let patientType = 'regular';
-        let patientName = "Unknown Patient";
-        let userId = invPatientId || "N/A";
-        
-      if (patient) {
-  patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() 
-    || patient.name 
-    || "Unknown";
-} 
-else if (inv.patient) {
-  // ✅ fallback from investigation itself
-  patientName = `${inv.patient.firstName || ''} ${inv.patient.lastName || ''}`.trim() 
-    || inv.patient.name 
-    || "Unknown";
-} else if (inv.opdPatient) {
-  // ✅ fallback from investigation opdPatient
-  patient = inv.opdPatient;
-  patientType = 'opd';
-  patientName = inv.opdPatient.fullName || "Unknown";
-  userId = inv.opdPatient.id;
-} else {
-  const opdPatient = awaitingLabOpdPatients.find((p) => 
-    String(p.id) === String(invPatientId)
-  );
+            const matchesRegularPatient = awaitingLabPatients.some((patient) =>
+              String(patient._id || patient.id) === String(invPatientId)
+            );
 
-  if (opdPatient) {
-    patient = opdPatient;
-    patientType = 'opd';
-    patientName = opdPatient.fullName;
-    userId = opdPatient.id;
-  }
-}
+            const matchesOpdPatient = awaitingLabOpdPatients.some((patient) =>
+              String(patient.id) === String(invPatientId)
+            );
 
-        // Extract notes from tests array
-        const testNotes = inv.tests
-          ?.map((test) => test.notes)
-          .filter((note) => note)
-          .join(", ") || "No notes provided";
+            let matchesDependant = false;
+            if (inv.dependantId && inv.patientId) {
+              const dependants = await loadDependantsForPatient(inv.patientId);
+              matchesDependant = dependants.some(
+                (d) => String(d.id || d._id) === String(inv.dependantId)
+              );
+            } else if (inv.dependantId && Array.isArray(inv.patient?.dependants)) {
+              matchesDependant = inv.patient.dependants.some(
+                (d) => String(d.id || d._id) === String(inv.dependantId)
+              );
+            }
 
-        return {
-          id: inv._id || inv.id,
-          name: patientName,
-          userId: userId,
-          status: inv.priority === "urgent" ? "Urgent" : "Normal",
-          test: inv.tests?.map((t) => t.name).join(", ") || inv.investigationType || "Lab Test",
-          date: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "N/A",
-          requestedBy: patientType === 'opd' ? "Front Desk" : (inv.doctorName || "Doctor"),
-          time: inv.createdAt ? new Date(inv.createdAt).toLocaleTimeString() : "N/A",
-          symptoms: testNotes,
-          patientType: patientType
-        };
-      });
+            const shouldInclude = (matchesRegularPatient || matchesOpdPatient || matchesDependant) || isSonographyCompleted;
 
-      // Add OpD patients that do not already have an investigation request
-      // In regularPatientCards mapping — already correct, investigation ID is used
-// In opdPatientCards mapping — add opdPatientId separately:
-const opdPatientCards = awaitingLabOpdPatients
-  .filter((opdPatient) => !relevantInvestigations.some((inv) => {
-    const invPatientId = inv.patientId || inv.opdPatientId || inv.patient?._id || inv.patient?.id || inv.opdPatient?._id || inv.opdPatient?.id;
-    return invPatientId && String(invPatientId) === String(opdPatient.id);
-  }))
-  .map((opdPatient) => ({
-    id: null,                    // ✅ no investigation ID — don't pass a fake one
-    opdPatientId: opdPatient.id, // ✅ store separately
-    name: opdPatient.fullName || 'Unknown OpD Patient',
-    userId: opdPatient.id,
-    status: 'Normal',
-    test: 'OpD Laboratory Request',
-    date: opdPatient.createdAt ? new Date(opdPatient.createdAt).toLocaleDateString() : 'N/A',
-    requestedBy: 'Front Desk',
-    time: opdPatient.createdAt ? new Date(opdPatient.createdAt).toLocaleTimeString() : 'N/A',
-    symptoms: 'Direct lab request',
-    patientType: 'opd',
-  }));
-      const formattedRequests = [...regularPatientCards, ...opdPatientCards];
+            return shouldInclude ? inv : null;
+          })
+        )
+      ).filter(Boolean);
 
-      // Calculate stats
+      console.log(
+        "Investigation requests for awaiting_lab, OpD, or dependant patients:",
+        relevantInvestigations.length
+      );
+
+      const investigationCards = await Promise.all(
+        relevantInvestigations.map(async (inv) => {
+          const invPatientId =
+            inv.patientId ||
+            inv.patient?._id ||
+            inv.patient?.id ||
+            inv.opdPatient?.id ||
+            inv.opdPatient?._id;
+
+          let patient = allPatients.find((p) =>
+            String(p._id || p.id) === String(invPatientId)
+          );
+
+          let patientType = "regular";
+          let patientName = "Unknown Patient";
+          let displayId = invPatientId || "N/A";
+          let requestedBy = inv.doctorName || "Doctor";
+
+          const getDependantName = (dep) =>
+            dep
+              ?
+                `${dep.firstName || ""} ${dep.lastName || ""}`.trim() ||
+                dep.fullName ||
+                dep.name ||
+                null
+              : null;
+
+          const findDependant = async () => {
+            if (inv.dependant) return inv.dependant;
+            if (inv.patientId) {
+              const dependants = await loadDependantsForPatient(inv.patientId);
+              const found = dependants.find(
+                (d) => String(d.id || d._id) === String(inv.dependantId)
+              );
+              if (found) return found;
+            }
+            if (Array.isArray(inv.patient?.dependants)) {
+              return inv.patient.dependants.find(
+                (d) => String(d.id || d._id) === String(inv.dependantId)
+              );
+            }
+            return null;
+          };
+
+          const dependant = inv.dependantId ? await findDependant() : null;
+
+          // Load OPD patient if not embedded
+          if (!inv.opdPatient && inv.opdPatientId) {
+            try {
+              const opdRes = await getOpdPatientById(inv.opdPatientId);
+              inv.opdPatient = opdRes?.data || opdRes;
+            } catch (err) {
+              console.warn("Failed to load OPD patient for investigation:", err);
+            }
+          }
+
+          if (dependant) {
+            patientType = "dependant";
+            patientName = getDependantName(dependant) || "Unknown Dependant";
+            displayId = dependant.id || dependant._id || inv.dependantId || displayId;
+            requestedBy = "Dependant";
+          } else if (patient) {
+            patientName =
+              `${patient.firstName || ""} ${patient.lastName || ""}`.trim() ||
+              patient.name ||
+              "Unknown";
+          } else if (inv.patient) {
+            patientName =
+              `${inv.patient.firstName || ""} ${inv.patient.lastName || ""}`.trim() ||
+              inv.patient.name ||
+              "Unknown";
+          } else if (inv.opdPatient) {
+            patient = inv.opdPatient;
+            patientType = "opd";
+            patientName =
+              inv.opdPatient.fullName ||
+              `${inv.opdPatient.firstName || ""} ${inv.opdPatient.lastName || ""}`.trim() ||
+              "Unknown";
+            displayId = inv.opdPatient.id || displayId;
+            requestedBy = "Front Desk";
+          } else {
+            const opdPatient = awaitingLabOpdPatients.find(
+              (p) => String(p.id) === String(invPatientId)
+            );
+            if (opdPatient) {
+              patient = opdPatient;
+              patientType = "opd";
+              patientName = opdPatient.fullName || "Unknown OpD Patient";
+              displayId = opdPatient.id;
+              requestedBy = "Front Desk";
+            }
+          }
+
+          const testNotes =
+            inv.tests
+              ?.map((test) => test.notes)
+              .filter((note) => note)
+              .join(", ") ||
+            "No notes provided";
+
+          return {
+            id: inv._id || inv.id,
+            patientId: inv.patientId || invPatientId,
+            dependantId: inv.dependantId,
+            opdPatientId: inv.opdPatientId,
+            name: patientName,
+            userId: displayId,
+            status: inv.priority === "urgent" ? "Urgent" : "Normal",
+            test:
+              inv.tests?.map((t) => t.name).join(", ") ||
+              inv.investigationType ||
+              "Lab Test",
+            date: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "N/A",
+            requestedBy,
+            time: inv.createdAt ? new Date(inv.createdAt).toLocaleTimeString() : "N/A",
+            symptoms: testNotes,
+            patientType,
+            investigationStatus: inv.status, // Add investigation status
+          };
+        })
+      );
+
+      const opdPatientCards = awaitingLabOpdPatients
+        .filter((opdPatient) =>
+          !relevantInvestigations.some((inv) => {
+            const invPatientId =
+              inv.patientId ||
+              inv.opdPatientId ||
+              inv.patient?._id ||
+              inv.patient?.id ||
+              inv.opdPatient?._id ||
+              inv.opdPatient?.id;
+            return invPatientId && String(invPatientId) === String(opdPatient.id);
+          })
+        )
+        .map((opdPatient) => ({
+          id: null,
+          opdPatientId: opdPatient.id,
+          name: opdPatient.fullName || "Unknown OpD Patient",
+          userId: opdPatient.id,
+          status: "Normal",
+          test: "OpD Laboratory Request",
+          date: opdPatient.createdAt
+            ? new Date(opdPatient.createdAt).toLocaleDateString()
+            : "N/A",
+          requestedBy: "Front Desk",
+          time: opdPatient.createdAt
+            ? new Date(opdPatient.createdAt).toLocaleTimeString()
+            : "N/A",
+          symptoms: "Direct lab request",
+          patientType: "opd",
+        }));
+
+      const formattedRequests = [...investigationCards, ...opdPatientCards];
+
       const newRequests = formattedRequests.length;
       const urgentCount = formattedRequests.filter((card) => card.status === "Urgent").length;
       const highPriorityCount = formattedRequests.filter((card) => card.status === "High").length;
 
       const uniqueRequests = formattedRequests.filter(
-  (item, index, self) =>
-    index ===
-    self.findIndex(
-      (t) =>
-        t.userId === item.userId &&
-        t.test === item.test &&
-        t.date === item.date
-    )
-);
+        (item, index, self) =>
+          index ===
+          self.findIndex(
+            (t) =>
+              t.userId === item.userId &&
+              t.test === item.test &&
+              t.date === item.date
+          )
+      );
 
-setTestRequests(uniqueRequests);
+      setTestRequests(uniqueRequests);
+
+
+      // After setTestRequests(uniqueRequests) — fetch existing lab results
+          
+       
+
 
       setIncomingStats([
         {
@@ -218,7 +340,6 @@ setTestRequests(uniqueRequests);
       ]);
 
       console.log("Formatted requests:", formattedRequests);
-      setTestRequests(formattedRequests);
     } catch (err) {
       console.error("Error fetching incoming lab requests:", err);
       setError("Failed to load incoming test requests");
@@ -257,10 +378,59 @@ setTestRequests(uniqueRequests);
   useEffect(() => {
     fetchTestRequests();
   }, []);
-
+  
+  
+  const fetchExistingLabResults = async () => {
+    
+    try {
+           const { getLabResults } = await import('@/services/api/labResultsAPI');
+           const labRes = await getLabResults();
+           const labList = Array.isArray(labRes?.data) ? labRes.data
+             : Array.isArray(labRes) ? labRes : [];
+  
+           // Map investigationRequestId → lab result _id
+           const labMap = {};
+           labList.forEach(lr => {
+             const invId = lr.investigationRequestId || lr.investigationId;
+             if (invId) labMap[invId] = lr._id || lr.id;
+           });
+           setExistingLabResults(labMap);
+         } catch { /* silent */ }
+  }
+  
+  useEffect(() => {
+    fetchExistingLabResults();
+  }, []);
+  
   const handleAcceptFromDetails = (cardData) => {
     setSelectedCard(cardData);
     setShowModal(true);
+  };
+
+  const handleSendToSonographer = async (testCard) => {
+    try {
+      setSendingToSonographer(testCard.id);
+      
+      if (testCard.patientType === 'opd' && testCard.opdPatientId) {
+        // Update OPD patient status
+        await updateOpdPatient(testCard.opdPatientId, { status: "awaiting_sonographer" });
+      } else if (testCard.patientType === 'dependant' && testCard.patientId) {
+        // Update main patient status for dependant
+        await updatePatientStatus(testCard.patientId, "awaiting_sonographer");
+      } else if (testCard.patientId) {
+        // Update regular patient status
+        await updatePatientStatus(testCard.patientId, "awaiting_sonographer");
+      }
+
+      // Refresh the test requests
+      await fetchTestRequests();
+      toast.success("Patient sent to sonographer successfully!");
+    } catch (err) {
+      console.error("Error sending to sonographer:", err);
+      toast.error("Failed to send patient to sonographer");
+    } finally {
+      setSendingToSonographer(null);
+    }
   };
 
   if (loading) {
@@ -334,6 +504,12 @@ setTestRequests(uniqueRequests);
                         <div className="flex-1">
                           <div className="flex items-center gap-3">
                             <p className="font-semibold text-sm">{testCard.name}</p>
+                            {testCard.patientType === 'dependant' && (
+                              <span className="badge badge-secondary badge-xs">Dependant</span>
+                            )}
+                            {testCard.patientType === 'opd' && (
+                              <span className="badge badge-info badge-xs">OPD</span>
+                            )}
                             <p className="text-xs text-muted">{testCard.userId}</p>
                             <div
                               style={{ backgroundColor: bgChange(testCard.status) }}
@@ -355,19 +531,21 @@ setTestRequests(uniqueRequests);
                           >
                             View Details
                           </button>
+                          {/* ✅ Edit button — only shows if lab result already exists */}
+                            {testCard.id && existingLabResults[testCard.id] && (
+                              <button
+                                onClick={() => navigate(`/dashboard/laboratory/results/edit/${existingLabResults[testCard.id]}`)}
+                                className="btn btn-sm btn-warning w-full"
+                              >
+                                Edit Lab Result
+                              </button>
+                            )}
                           <button
-                            onClick={() => {
-                              if (testCard.patientType === 'opd') {
-                                // For OpD patients, we don't have investigation ID, so navigate with patient info only
-                                navigate(`/dashboard/laboratory/incoming-scan?patientId=${testCard.userId}&patientName=${encodeURIComponent(testCard.name)}`);
-                              } else {
-                                // For regular patients, use investigation ID
-                                navigate(`/dashboard/laboratory/incoming-scan?patientId=${testCard.userId}&patientName=${encodeURIComponent(testCard.name)}&investigationId=${testCard.id}`);
-                              }
-                            }}
+                            onClick={() => handleSendToSonographer(testCard)}
+                            disabled={sendingToSonographer === testCard.id}
                             className="btn btn-sm btn-outline w-full"
                           >
-                            Send to Scanner
+                            {sendingToSonographer === testCard.id ? "Sending..." : "Send to Scanner"}
                           </button>
                         </div>
                       </div>
@@ -379,7 +557,7 @@ setTestRequests(uniqueRequests);
                         <AcceptTestRequestModal data={selectedCard} setShowModal={setShowModal} onAcceptSuccess={fetchTestRequests} />
                       )}
                       {showModal2 && (
-                        <TestRequestModal data={selectedCard} setShowModal2={setShowModal2} onAcceptFromDetails={handleAcceptFromDetails} />
+                        <TestRequestModal data={selectedCard} setShowModal2={setShowModal2} onAcceptFromDetails={handleAcceptFromDetails}  existingLabResultId={selectedCard?.id ? existingLabResults[selectedCard.id] : null} />
                       )}
                     </div>
                   );

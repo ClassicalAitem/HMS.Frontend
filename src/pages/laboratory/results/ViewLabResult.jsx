@@ -9,9 +9,11 @@ import { getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, upd
 import { updatePatient } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { getAllDependantsForPatient, getDependantById } from '@/services/api/dependantAPI';
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
+import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ViewLabResult = () => {
   const { labResultId } = useParams();
@@ -20,10 +22,12 @@ const ViewLabResult = () => {
 
   const [labResult, setLabResult] = useState(null);
   const [patient, setPatient] = useState(null);
+  const [patientInfo, setPatientInfo] = useState(null);
   const [investigationIdState, setInvestigationIdState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sendingToDoctor, setSendingToDoctor] = useState(false);
+  const [sendingToSonographer, setSendingToSonographer] = useState(false);
   const [isAttachmentViewerOpen, setIsAttachmentViewerOpen] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
@@ -60,6 +64,42 @@ const effectiveInvestigationId =
     return null;
   };
 
+const loadDependantDetails = async (dependantId) => {
+  try {
+    const res = await getDependantById(dependantId);
+
+    const dependant =
+      res?.data?.data?.dependant ||
+      res?.data?.dependant ||
+      res?.dependant;
+
+    if (!dependant) return null;
+
+    const fullName =
+      `${dependant.firstName || ""} ${dependant.middleName || ""} ${dependant.lastName || ""}`.trim();
+
+    let age = "";
+    if (dependant.dob) {
+      const dob = new Date(dependant.dob);
+      if (!isNaN(dob)) {
+        age = new Date().getFullYear() - dob.getFullYear();
+      }
+    }
+
+    const gender = dependant.gender?.toLowerCase().trim();
+    const sexMap = { male: "M", female: "F" };
+
+    return {
+      name: fullName,
+      age,
+      sex: sexMap[gender] || "",
+    };
+  } catch (err) {
+    console.error("Failed to load dependant:", err);
+    return null;
+  }
+};
+
   useEffect(() => {
     if (location?.state?.investigationId) {
       setInvestigationIdState(location.state.investigationId);
@@ -83,6 +123,20 @@ const effectiveInvestigationId =
         const patientData = await loadPatientRecord(patientIdToUse);
         if (patientData) setPatient(patientData);
       }
+
+          // ✅ Load dependant if dependantId exists
+          if (labData?.dependantId) {
+      const dep = await loadDependantDetails(labData.dependantId);
+
+      if (dep) {
+        setPatientInfo({
+          name: dep.name,
+          age: dep.age,
+          sex: dep.sex,
+        });
+      }
+
+    }
 
       // ✅ Load investigation — try all strategies
       let foundInvestigation = null;
@@ -351,14 +405,23 @@ const effectiveInvestigationId =
     );
   }
 
-  const patientName =
-    patient?.firstName && patient?.lastName
-      ? `${patient.firstName} ${patient.lastName}`
-      : patient?.name || patient?.fullName || patientId || "Unknown Patient";
+const patientName =
+  patientInfo?.name || // ✅ PRIORITY for dependant
+  (patient?.firstName && patient?.lastName
+    ? `${patient.firstName} ${patient.lastName}`
+    : patient?.name || patient?.fullName) ||
+  "Unknown Patient";
 
+  const isDependant = Boolean(labResult?.dependantId);
   const isOpdLabResult = Boolean(labResult?.opdPatientId);
-  const canSendToDoctor = Boolean(patientId && !isOpdLabResult);
+  const canSendToDoctor = Boolean(patientId && !isOpdLabResult) || isDependant;
   const canComplete = Boolean(isOpdLabResult);
+
+  // Check if this is a scan test (ultrasound or similar)
+  const isScanTest = investigation?.testName?.toLowerCase().includes('ultrasound') || 
+                     investigation?.type?.toLowerCase().includes('scan') ||
+                     labResult?.form?.natureOfSpecimen?.toLowerCase().includes('scan');
+  const canSendToSonographer = canSendToDoctor && isScanTest;
 
   const handlePrint = () => {
     document.body.classList.add('printable-lab');
@@ -397,17 +460,22 @@ const effectiveInvestigationId =
     try {
       setSendingToDoctor(true);
 
-      // Update investigation if available
+      // Update investigation status to awaiting_doctor
       if (effectiveInvestigationId) {
         await updateInvestigation(effectiveInvestigationId, {
-          status: "completed",
+          status: "awaiting_doctor",
           labResultId: labResultId,
         });
       }
 
-      // Always update patient status for regular patients
-      if (patientId) {
+      // Update patient status for regular patients
+      if (patientId && !isDependant && !isOpdLabResult) {
         await updatePatientStatus(patientId, PATIENT_STATUS.AWAITING_DOCTOR);
+      }
+
+      // Update OPD patient status
+      if (isOpdLabResult && labResult?.opdPatientId) {
+        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_doctor" });
       }
 
       toast.success("Lab results sent to doctor successfully!");
@@ -417,6 +485,38 @@ const effectiveInvestigationId =
       toast.error("Failed to send lab results to doctor");
     } finally {
       setSendingToDoctor(false);
+    }
+  };
+
+  const handleSendToSonographer = async () => {
+    try {
+      setSendingToSonographer(true);
+
+      // Update investigation status to awaiting_sonographer
+      if (effectiveInvestigationId) {
+        await updateInvestigation(effectiveInvestigationId, {
+          status: "awaiting_sonographer",
+          labResultId: labResultId,
+        });
+      }
+
+      // Update patient status for regular patients
+      if (patientId && !isDependant && !isOpdLabResult) {
+        await updatePatientStatus(patientId, "awaiting_sonographer");
+      }
+
+      // Update OPD patient status
+      if (isOpdLabResult && labResult?.opdPatientId) {
+        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_sonographer" });
+      }
+
+      toast.success("Lab results sent to sonographer successfully!");
+      navigate("/dashboard/laboratory");
+    } catch (err) {
+      console.error("Error sending lab results:", err);
+      toast.error("Failed to send lab results to sonographer");
+    } finally {
+      setSendingToSonographer(false);
     }
   };
 
@@ -440,6 +540,7 @@ const effectiveInvestigationId =
                   Complete laboratory test results for {patientName}
                 </p>
               </div>
+              
               <div className="flex gap-2 no-print">
                 <button
                   onClick={() => navigate(-1)}
@@ -479,8 +580,8 @@ const effectiveInvestigationId =
 
               {/* Test Information */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-4">
-                {displayField("Age", labResult?.form?.age)}
-                {displayField("Sex", labResult?.form?.sex)}
+                {displayField("Age", patientInfo?.age || labResult?.form?.age)}
+                {displayField("Sex", patientInfo?.sex || labResult?.form?.sex)}
                 {displayField("Clinical Diagnosis", labResult?.form?.clinicalDiagnosis)}
                 {displayField("Nature of Specimen", labResult?.form?.natureOfSpecimen)}
               </div>
@@ -578,9 +679,19 @@ const effectiveInvestigationId =
                   <button
                     onClick={handleSendToDoctor}
                     disabled={sendingToDoctor}
-                    className={`flex-1 px-6 py-3 ${!sendingToDoctor ? "bg-[#00943C] text-white hover:bg-[#007a31]" : "bg-gray-200 text-gray-500 cursor-not-allowed"} font-semibold rounded-lg transition-all`}
+                    className="flex-1 px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
                   >
-                    {sendingToDoctor ? "Sending..." : "Send to Doctor"}
+                    {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
+                  </button>
+                )}
+
+                {canSendToSonographer && (
+                  <button
+                    onClick={handleSendToSonographer}
+                    disabled={sendingToSonographer}
+                    className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                  >
+                    {sendingToSonographer ? "Sending to Sonographer..." : "Send to Sonographer"}
                   </button>
                 )}
                 
@@ -592,6 +703,8 @@ const effectiveInvestigationId =
                     Complete
                   </button>
                 )}
+
+              
               
                 <button
                   onClick={handlePrint}
