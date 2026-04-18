@@ -2,10 +2,7 @@ import React, { useMemo, useState } from "react";
 import { FaFlask, FaPills, FaUserInjured, FaTimes, FaListUl } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
-const isWithin72Hours = (createdAt) => {
-  if (!createdAt) return false;
-  return Date.now() - new Date(createdAt).getTime() < 72 * 60 * 60 * 1000;
-};
+
 
 const PREVIEW_LIMIT = 2; // cards shown before "View All"
 
@@ -175,12 +172,12 @@ const PatientOrdersPanel = ({
   const [showAllInvestigations, setShowAllInvestigations] = useState(false);
 
   const recentPrescriptions = useMemo(() =>
-    prescriptions.filter(p => isWithin72Hours(p?.createdAt)),
+    prescriptions,
     [prescriptions]
   );
 
   const recentInvestigations = useMemo(() =>
-    investigations.filter(inv => isWithin72Hours(inv?.createdAt)),
+    investigations,
     [investigations]
   );
 
@@ -204,7 +201,7 @@ const PatientOrdersPanel = ({
     return (
       <div className="card bg-base-100 shadow-sm border border-base-200 mb-4">
         <div className="card-body p-4 text-center text-base-content/50 text-sm py-8">
-          No active orders — consultation data clears after 72 hours.
+          No active orders.
         </div>
       </div>
     );
@@ -223,7 +220,6 @@ const PatientOrdersPanel = ({
                 Prescriptions
                 <span className="badge badge-primary badge-sm ml-2">{recentPrescriptions.length}</span>
               </h2>
-              <span className="text-xs text-base-content/50 ml-auto">Last 72 hrs</span>
             </div>
 
             {/* Preview — first N cards */}
@@ -257,7 +253,6 @@ const PatientOrdersPanel = ({
                 Lab Investigations
                 <span className="badge badge-info badge-sm ml-2">{recentInvestigations.length}</span>
               </h2>
-              <span className="text-xs text-base-content/50 ml-auto">Last 48 hrs</span>
             </div>
 
             <div className="space-y-3">
