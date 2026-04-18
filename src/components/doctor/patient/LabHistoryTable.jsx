@@ -135,34 +135,52 @@ const LabHistoryTable = ({ rows = [], loading = false, onViewResult }) => {
             </div>
 
             {paginationData.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-base-200">
-                <span className="text-sm text-base-content/70">
-                  Page {currentPage} of {paginationData.totalPages}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <span className="text-sm opacity-70">
+                  Page {currentPage} of {paginationData.totalPages} (
+                  {paginationData.totalItems} items)
                 </span>
+
                 <div className="flex gap-2">
                   <button
                     className="btn btn-sm btn-outline"
                     disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.max(1, p - 1))
+                    }
                   >
                     Previous
                   </button>
-                  {Array.from({ length: Math.min(paginationData.totalPages, 5) }).map((_, i) => {
-                    const pageNum = i + 1;
+
+                  {Array.from({
+                    length: Math.min(paginationData.totalPages, 5),
+                  }).map((_, i) => {
+                    const page = i + 1;
                     return (
                       <button
-                        key={pageNum}
-                        className={`btn btn-sm ${currentPage === pageNum ? 'btn-active' : 'btn-outline'}`}
-                        onClick={() => setCurrentPage(pageNum)}
+                        key={page}
+                        className={`btn btn-sm ${
+                          currentPage === page
+                            ? "btn-active"
+                            : "btn-outline"
+                        }`}
+                        onClick={() => setCurrentPage(page)}
                       >
-                        {pageNum}
+                        {page}
                       </button>
                     );
                   })}
+
                   <button
                     className="btn btn-sm btn-outline"
-                    disabled={currentPage === paginationData.totalPages}
-                    onClick={() => setCurrentPage(p => Math.min(paginationData.totalPages, p + 1))}
+                    disabled={
+                      currentPage === paginationData.totalPages
+                    }
+                    onClick={() =>
+                      setCurrentPage((p) =>
+                        Math.min(paginationData.totalPages, p + 1)
+                      )
+                    }
                   >
                     Next
                   </button>

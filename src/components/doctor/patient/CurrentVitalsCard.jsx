@@ -23,6 +23,8 @@ const formatRelativeTime = (dateInput) => {
 const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidden = false }) => {
   const isStale = latest?.updatedAt && (Date.now() - new Date(latest.updatedAt).getTime() > 24 * 60 * 60 * 1000);
 
+  const bmi = latest?.weight && latest?.height ? (latest.weight / Math.pow(latest.height / 100, 2)).toFixed(1) : null;
+
   return (
     <div className={`shadow-xl card bg-base-100 mb-2 ${isStale ? 'border-warning' : ''}`}>
       <div className="p-4 card-body">
@@ -60,14 +62,14 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
         </div>
         
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-1">
+            {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="skeleton h-20 w-full" />
             ))}
           </div>
         ) : latest ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-1">
    {/* Heart Rate / Pulse */}
 <div className="rounded-xl border border-base-300 p-2">
   <div className="flex items-center gap-2 text-sm text-base-content/80">
@@ -137,6 +139,18 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
   <div className="mt-2 flex items-baseline gap-2">
     <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.height ?? "—")}</span>
     <span className="text-sm text-base-content/70">cm</span>
+  </div>
+</div>
+
+{/* BMI */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <GiWeightLiftingUp className="w-5 h-5" />
+    <span>BMI</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (bmi ?? "—")}</span>
+    <span className="text-sm text-base-content/70">kg/m²</span>
   </div>
 </div>
 

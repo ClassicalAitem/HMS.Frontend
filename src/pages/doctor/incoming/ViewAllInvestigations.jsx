@@ -254,15 +254,15 @@ const ViewAllInvestigations = () => {
             <div className="card bg-base-100 shadow-sm">
               <div className="card-body p-6">
                 <div className="overflow-x-auto">
-                  <table className="table w-full text-center">
+                  <table className="table w-full text-center text-sm">
                     <thead>
                       <tr>
-                        <th>Patient Type</th>
-                        <th>Investigation Type</th>
-                        <th>Status</th>
-                        <th>Priority</th>
-                        <th>Tests</th>
-                        <th>Created At</th>
+                        <th className="font-bold text-base">Patient Type</th>
+                        <th className="font-bold text-base">Investigation Type</th>
+                        <th className="font-bold text-base">Status</th>
+                        <th className="font-bold text-base">Priority</th>
+                        <th className="font-bold text-base">Tests</th>
+                        <th className="font-bold text-base">Created At</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -271,7 +271,7 @@ const ViewAllInvestigations = () => {
                           <tr key={idx} className="hover">
                             <td className="py-3">
                               <div className="flex flex-col items-center gap-1">
-                                <span className="font-medium text-base-content">
+                                <span className="font-bold text-sm text-base-content">
                                   {row.forName}
                                 </span>
                                 <span
@@ -284,7 +284,7 @@ const ViewAllInvestigations = () => {
                               </div>
                             </td>
                             <td>
-                              <span className="font-medium text-base-content">
+                              <span className="font-bold text-sm text-base-content">
                                 {row.type}
                               </span>
                             </td>
@@ -303,19 +303,19 @@ const ViewAllInvestigations = () => {
                               )}
                             </td>
                             <td className="text-left">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-xs text-base-content/70">
+                              <div className="flex flex-col gap-2">
+                                <span className="font-semibold text-sm text-base-content">
                                   {row.testsCount} test{row.testsCount !== 1 ? 's' : ''}
                                 </span>
-                                <ul className="list-disc list-inside text-xs">
+                                <ul className="list-disc list-inside text-sm font-medium">
                                   {row.testsSummary.map((test, i) => (
-                                    <li key={i}>{test}</li>
+                                    <li key={i} className="text-base-content">{test}</li>
                                   ))}
-                                  {row.testsCount > 2 && <li>...</li>}
+                                  {row.testsCount > 2 && <li className="text-base-content/60">...</li>}
                                 </ul>
                               </div>
                             </td>
-                            <td>{row.date}</td>
+                            <td className="font-semibold text-sm">{row.date}</td>
                           </tr>
                         ))
                       ) : (
