@@ -5,8 +5,9 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
-import { getInvestigations, getInvestigationRequestByOpdPatientId } from "@/services/api/investigationRequestAPI";
+import { getInvestigations, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId } from "@/services/api/investigationRequestAPI";
 import { usersAPI } from "@/services/api/usersAPI"; 
+import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
 import toast from "react-hot-toast";
 import { useAppSelector } from "@/store/hooks"; 
@@ -154,7 +155,8 @@ const AddLabResult = () => {
   const [error, setError] = useState(null);
   const [expandedSection, setExpandedSection] = useState("patientInfo");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const [cid, setCid] = useState(null);
+  const [isDependant, setIsDependant] = useState(false);
+    const [mainPatientId, setMainPatientId] = useState(null);
 
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -165,6 +167,55 @@ const AddLabResult = () => {
     }
     return patientData.fullName || patientData.name || patientData.patientName || "Unknown Patient";
   };
+
+const loadDependant = async (dependantId) => {
+  try {
+    const res = await getDependantById(dependantId);
+    
+    // Handle multiple possible response structures
+    const dependant = res?.data?.dependant || res?.dependant || res?.data || res;
+
+    // Validate dependant data has required fields
+    if (!dependant || typeof dependant !== 'object' || (!dependant.firstName && !dependant.lastName && !dependant.fullName)) {
+      console.warn("Dependant data incomplete:", dependant);
+      return;
+    }
+
+    setPatient(dependant);
+    setIsDependant(true);
+
+    // Get name: firstName + lastName, or fallback to fullName
+    const fullName = dependant.fullName ||
+      `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() ||
+      "Unknown Patient";
+
+      console.log("Loaded dependant data:", dependant, "Computed full name:", fullName);
+    // Calculate age from DOB
+    let age = dependant.age || '';
+    if (dependant.dob) {
+      const dob = new Date(dependant.dob);
+      if (!isNaN(dob.getTime())) {
+        age = (new Date().getFullYear() - dob.getFullYear()).toString();
+      }
+    }
+
+    console.log("Computed age:", age);
+
+    // Map gender to M/F
+    const genderMap = { male: 'M', female: 'F', Male: 'M', Female: 'F', M: 'M', F: 'F' };
+    const sex = genderMap[dependant.gender] || dependant.gender || '';
+
+    console.log(genderMap)
+    setFormData(prev => ({
+      ...prev,
+      patientNames: fullName,
+      age: age.toString(),
+      sex,
+    }));
+  } catch (err) {
+    console.warn("Failed to load dependant:", err);
+  }
+};
 
   const loadPatientData = async (patientId) => {
     if (!patientId) return null;
@@ -408,194 +459,252 @@ const AddLabResult = () => {
     },
   });
 
-  useEffect(() => {
-    const load = async () => {
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const searchParams = new URLSearchParams(location.search);
+      const opdPatientId = searchParams.get("opdPatientId");
+
+      // ✅ 1. Set Lab Technician
       if (currentUser) {
         const name = `${currentUser.firstName || ""} ${currentUser.lastName || ""}`.trim();
         if (name) {
-          setFormData((prev) => ({ ...prev, labNo: name }));
+          setFormData(prev => ({ ...prev, labNo: name }));
         }
       }
 
-      const searchParams = new URLSearchParams(location.search);
-    const opdPatientId = searchParams.get('opdPatientId');
+      // ✅ Helper: normalize patient/dependant into form
+  const mapToForm = (data) => {
+  if (!data || typeof data !== "object") {
+    console.warn("Invalid data passed to mapToForm:", data);
+    return;
+  }
 
-      // Helper function to parse dateOfBirth
-      const parseDateOfBirth = (dob) => {
-        if (!dob) return null;
-        // Handle format like "16th April 2025"
-        const match = dob.match(/^(\d+)(?:st|nd|rd|th)\s+(\w+)\s+(\d+)$/);
-        if (match) {
-          const day = parseInt(match[1]);
-          const month = match[2];
-          const year = parseInt(match[3]);
-          const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-          const monthIndex = monthNames.findIndex(m => m.toLowerCase() === month.toLowerCase());
-          if (monthIndex !== -1) {
-            return new Date(year, monthIndex, day);
-          }
-        }
-        return new Date(dob); // fallback
-      };
+  console.log("MAPPING DATA:", data);
 
-      // if we are editing an existing lab result, load it
+  const fullName =
+    data.fullName ||
+    `${data.firstName || ""} ${data.lastName || ""}`.trim() ||
+    data.name ||
+    "Unknown Patient";
+
+  let age = data.age || "";
+  if (data.dob || data.dateOfBirth) {
+    const dob = new Date(data.dob || data.dateOfBirth);
+    if (!isNaN(dob)) {
+      const today = new Date();
+      age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+    }
+  }
+
+  const gender = data.gender?.toString().toLowerCase().trim();
+  const sexMap = { male: "M", female: "F" };
+
+  const sex = sexMap[gender] || "";
+
+  console.log({ fullName, age, sex });
+
+  setFormData(prev => ({
+    ...prev,
+    patientNames: fullName,
+    age: age?.toString() || "",
+    sex,
+  }));
+};
+
+      // =====================================================
+      // ✅ 2. EDIT MODE (highest priority)
+      // =====================================================
       if (paramLabResultId) {
         setEditing(true);
-        try {
-          const res = await getLabResultById(paramLabResultId);
-          const data = res?.data || res;
-          if (data) {
-            setFormData((prev) => ({ ...prev, ...data.form }));
-    if (data.patientId || data.opdPatientId) {
-              const patientData = await loadPatientData(data.patientId || data.opdPatientId);
-              if (patientData) {
-                setPatient(patientData);
 
-                const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
-                const derivedAge = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
+        const res = await getLabResultById(paramLabResultId);
+        const data = res?.data || res;
 
-                const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
-                const normalizedSex = genderMap[patientData?.gender] || patientData?.gender || "";
+        if (!data) return;
 
-                setFormData((prev) => ({
-                  ...prev,
-                  patientNames: getPatientName(patientData),
-                  age: derivedAge,
-                  sex: normalizedSex,
-                }));
-              }
-            }
-            if (data.investigationId) {
-              setInvestigation(data.investigationId);
+        // load saved form
+        setFormData(prev => ({ ...prev, ...data.form }));
+
+        // Load investigation if exists
+        let loadedInvestigation = null;
+        if (data.investigationId) {
+          try {
+            const invRes = await getInvestigationRequestByOpdPatientId(data.investigationId);
+            loadedInvestigation = invRes?.data || invRes;
+          } catch {
+            console.log("Failed to load investigation by OPD patient ID")
+          }
+          if (!loadedInvestigation && data.patientId) {
+            try {
+              const invRes = await getInvestigationByPatientId(data.patientId);
+              const list = Array.isArray(invRes) ? invRes : invRes?.data || [];
+              loadedInvestigation = list.find(i => i._id === data.investigationId || i.id === data.investigationId);
+            } catch {
+              console.warn("Failed to load investigation by patient ID");
             }
           }
-        } catch (e) {
-          console.error('Failed to load lab result for editing', e);
+          if (loadedInvestigation) {
+            setInvestigation(loadedInvestigation);
+          }
         }
+
+        // dependant takes priority
+        if (data.dependantId) {
+          const depRes = await getDependantById(data.dependantId);
+          const dependant = depRes?.data?.data?.dependant || depRes?.data || depRes?.dependant || depRes;
+
+          setPatient(dependant);
+          setIsDependant(true);
+          setMainPatientId(data.patientId);
+          mapToForm(dependant);
+        } else if (loadedInvestigation?.dependantId) {
+          // If labResult doesn't have dependantId but investigation does
+          const depRes = await getDependantById(loadedInvestigation.dependantId);
+          const dependant = depRes?.data?.data?.dependant|| depRes?.data?.dependant || depRes?.data || depRes?.dependant || depRes;
+
+          setPatient(dependant);
+          setIsDependant(true);
+          setMainPatientId(loadedInvestigation.patientId);
+          mapToForm(dependant);
+        } else if (data.patientId || data.opdPatientId) {
+          const patientData = await loadPatientData(data.patientId || data.opdPatientId);
+          setPatient(patientData);
+          mapToForm(patientData);
+        }
+
+        if (data.investigationId) {
+          setInvestigation(data.investigationId);
+        }
+
+        return; // ✅ stop further execution
       }
 
-      try {
-        setLoading(true);
+      // =====================================================
+      // ✅ 3. INVESTIGATION FLOW
+      // =====================================================
+      if (investigationId) {
+        let foundInvestigation = null;
 
-        if (investigationId) {
-          let foundInvestigation = null;
+        try {
+          const res = await getInvestigations();
+          const list = Array.isArray(res) ? res : res?.data || [];
 
+          foundInvestigation = list.find(
+            (inv) => inv._id === investigationId || inv.id === investigationId
+          );
+        } catch {
+          console.warn("Failed to load investigations list");
+        }
+
+        // fallback to OPD investigation
+        if (!foundInvestigation) {
           try {
-            const investigationsResponse = await getInvestigations();
-            const investigationsArray = Array.isArray(investigationsResponse)
-              ? investigationsResponse
-              : investigationsResponse?.data || [];
+            const res = await getInvestigationRequestByOpdPatientId(investigationId);
+            foundInvestigation = res?.data || res;
+          } catch {
+            console.warn("Failed to load OPD investigation by patient ID");
+          }
+        }
 
-            foundInvestigation = investigationsArray.find(
-              (inv) => inv._id === investigationId || inv.id === investigationId
+        if (!foundInvestigation) {
+          setError("Investigation not found");
+          return;
+        }
+
+        setInvestigation(foundInvestigation);
+
+        // doctor name
+        let referralName = "";
+        if (foundInvestigation.doctorId) {
+          try {
+            const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
+            const doc = docRes?.data || docRes;
+            referralName =
+              doc?.name ||
+              `${doc?.firstName || ""} ${doc?.lastName || ""}`.trim();
+          } catch {
+            console.warn("Failed to load doctor data for referral name");
+          }
+        }
+
+        // ✅ dependant first (DO NOT override later)
+        if (foundInvestigation.dependantId) {
+          const depRes = await getDependantById(foundInvestigation.dependantId);
+          const dependant =  depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.data || depRes;
+
+          setPatient(dependant);
+          setIsDependant(true);
+          setMainPatientId(foundInvestigation.patientId);
+          mapToForm(dependant);
+
+          return
+        } else {
+          let patientData = null;
+
+          if (foundInvestigation.patientId) {
+            patientData = await loadPatientData(foundInvestigation.patientId);
+          } else if (foundInvestigation.opdPatientId || foundInvestigation.obdPatientId) {
+            patientData = await loadPatientData(
+              foundInvestigation.opdPatientId || foundInvestigation.obdPatientId
             );
-          } catch (err) {
-            console.warn("Failed to fetch investigations:", err);
           }
 
-          // If not found as investigation id, try as OpD patient id
-          if (!foundInvestigation) {
-            try {
-              const opdInvestigationResponse = await getInvestigationRequestByOpdPatientId(investigationId);
-              foundInvestigation = opdInvestigationResponse?.data || opdInvestigationResponse;
-            } catch (err) {
-              console.warn("Failed to load OpD investigation:", err);
-            }
-          }
-
-          if (foundInvestigation) {
-            setInvestigation(foundInvestigation);
-
-            const invPatientId =
-              foundInvestigation.patientId ||
-              foundInvestigation.opdPatientId ||
-              foundInvestigation?.patient?._id ||
-              foundInvestigation?.patient?.id ||
-              foundInvestigation?.opdPatient?._id ||
-              foundInvestigation?.opdPatient?.id;
-
-            let patientData = null;
-            if (invPatientId) {
-              patientData = await loadPatientData(invPatientId);
-            }
-
-            if (!patientData && foundInvestigation.patient) {
-              patientData = foundInvestigation.patient;
-            }
-            if (!patientData && foundInvestigation.opdPatient) {
-              patientData = foundInvestigation.opdPatient;
-            }
-
-            if (patientData) {
-              setPatient(patientData);
-
-              const patientName = getPatientName(patientData);
-              const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
-              const age = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
-              const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
-              const sex = genderMap[patientData?.gender] || patientData?.gender || "";
-
-              let referralName = "";
-              if (foundInvestigation.doctorId) {
-                try {
-                  const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
-                  const docData = docRes?.data || docRes;
-                  referralName =
-                    docData?.name || (docData?.firstName && docData?.lastName
-                      ? `${docData.firstName} ${docData.lastName}`
-                      : "");
-                } catch (err) {
-                  console.warn("Failed to load doctor name", err);
-                }
-              }
-
-              setFormData((prev) => ({
-                ...prev,
-                patientNames: patientName,
-                age,
-                sex,
-                clinicalDiagnosis: foundInvestigation?.clinicalDiagnosis || "",
-                referral: referralName,
-              }));
-            }
-          } else {
-            setError("Investigation not found");
-          }
-        } else if (opdPatientId) {
-          // ✅ OpD patient direct — no investigation, load patient directly
-          const patientData = await loadPatientData(opdPatientId);
           if (patientData) {
             setPatient(patientData);
-            const dob = parseDateOfBirth(patientData?.dob || patientData?.dateOfBirth);
-            const age = dob ? new Date().getFullYear() - dob.getFullYear() : patientData?.age || "";
-            const genderMap = { male: "M", female: "F", Male: "M", Female: "F", "M": "M", "F": "F" };
-            const sex = genderMap[patientData?.gender] || patientData?.gender || "";
-
-            setFormData((prev) => ({
-              ...prev,
-              patientNames: getPatientName(patientData),
-              age,
-              sex,
-              referral: 'Front Desk (OpD)',
-            }));
-          } else {
-            setError("Patient not found");
+            mapToForm(patientData);
           }
         }
 
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError("Failed to load investigation details");
-      } finally {
-        setLoading(false);
+        // shared fields
+        setFormData(prev => ({
+          ...prev,
+          clinicalDiagnosis: foundInvestigation?.clinicalDiagnosis || "",
+          referral: referralName,
+        }));
+
+        return;
       }
 
-    };
+      // =====================================================
+      // ✅ 4. OPD DIRECT FLOW
+      // =====================================================
+      if (opdPatientId) {
+        const patientData = await loadPatientData(opdPatientId);
 
-    load();
-  }, [investigationId, paramLabResultId, currentUser, location.search]);
+        if (!patientData) {
+          setError("Patient not found");
+          return;
+        }
 
+        setPatient(patientData);
+        mapToForm(patientData);
+
+        setFormData(prev => ({
+          ...prev,
+          referral: "Front Desk (OpD)",
+        }));
+
+        return;
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadData();
+}, [investigationId, paramLabResultId, currentUser, location.search]);
   const handleInputChange = (section, field, value) => {
     if (typeof section === "string" && !field) {
       setFormData((prev) => ({
@@ -651,11 +760,15 @@ const handleSave = async () => {
     if (opdPatientId && !investigationId) {
       payload.opdPatientId = opdPatientId;
     } else {
-      payload.patientId = patient?._id || patient?.id;
+      payload.patientId = isDependant ? mainPatientId : patient?._id || patient?.id;
     }
 
     if (investigation?.opdPatientId) {
-      payload.opdPatientId = patient?._id || patient?.id;
+      payload.opdPatientId = isDependant ? mainPatientId : patient?._id || patient?.id;
+    }
+
+    if (isDependant) {
+      payload.dependantId = patient?.id;
     }
 
     let resultId = paramLabResultId;
@@ -705,9 +818,13 @@ const handleComplete = async () => {
     if (investigation?.opdPatientId || location.search.includes('opdPatientId')) {
       const searchParams = new URLSearchParams(location.search);
       const opdPatientId = searchParams.get('opdPatientId');
-      payload.opdPatientId = opdPatientId || patient?._id || patient?.id;
+      payload.opdPatientId = isDependant ? mainPatientId : opdPatientId || patient?._id || patient?.id;
     } else {
-      payload.patientId = patient?._id || patient?.id;
+      payload.patientId = isDependant ? mainPatientId : patient?._id || patient?.id;
+    }
+
+    if (isDependant) {
+      payload.dependantId = patient?.id;
     }
 
     // Update the lab result
@@ -901,7 +1018,7 @@ const handleComplete = async () => {
 
               {/* PT TEST SECTION */}
               <div className="bg-white rounded-lg shadow">
-                <SectionHeader title="PT Test" id="ptTest" count={4} expandedSection={expandedSection} toggleSection={toggleSection} />
+                <SectionHeader title="PT Test" id="ptTest" count={3} expandedSection={expandedSection} toggleSection={toggleSection} />
                 {expandedSection === "ptTest" && (
                   <SectionContent>
                     {Object.entries(formData.ptTest).map(([key, value]) => (

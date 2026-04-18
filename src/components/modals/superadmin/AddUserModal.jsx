@@ -25,7 +25,7 @@ const addUserSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'lab-technician', 'hmo', 'surgeon'], 'Please select a valid role'),
+    .oneOf(['admin', 'doctor', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'lab-technician', 'hmo', 'surgeon', 'sonographer'], 'Please select a valid role'),
   password: yup
     .string()
     .required('Password is required')
@@ -228,6 +228,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 <option value="lab-technician">Lab Technician</option>
                 <option value="hmo">HMO</option>
                 <option value="surgeon">Surgeon</option>
+                <option value="sonographer">Sonographer</option>
               </select>
               {errors.role && (
                 <label className="label">

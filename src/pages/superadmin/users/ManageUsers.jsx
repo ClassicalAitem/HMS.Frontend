@@ -114,6 +114,8 @@ const ManageUsers = () => {
         return 'badge badge-outline badge-ghost';
       case 'pharmacist':
         return 'badge badge-outline badge-primary';
+      case 'sonographer':
+        return 'badge badge-outline badge-info';
       default:
         return 'badge badge-neutral';
     }

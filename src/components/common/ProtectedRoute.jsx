@@ -64,6 +64,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'pharmacist': '/dashboard/pharmacist',
       'surgeon': '/dashboard/surgeon',
       'lab-technician': '/dashboard/laboratory',
+      'sonographer': '/dashboard/sonographer',
     };
     
     const roleOrType = user?.role || user?.accountType;

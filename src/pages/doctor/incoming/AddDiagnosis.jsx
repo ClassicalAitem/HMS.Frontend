@@ -46,7 +46,7 @@ const AddDiagnosis = () => {
   const [surgicalHistory, setSurgicalHistory] = useState([]);
   const [familyHistory, setFamilyHistory] = useState([]);
   const [socialHistory, setSocialHistory] = useState([]);
-  const [allergyHistory, setAllergyHistory] = useState([]);
+  const [allergicHistory, setAllergicHistory] = useState([]);
   const [notes, setNotes] = useState("");
   const [visitReason, setVisitReason] = useState("");
   const [historyOfPresentingComplaint, setHistoryOfPresentingComplaint] = useState("");
@@ -229,14 +229,14 @@ const AddDiagnosis = () => {
   const handleAddSurgical = (item) => setSurgicalHistory(prev => [...prev, item]);
   const handleAddFamily = (item) => setFamilyHistory(prev => [...prev, item]);
   const handleAddSocial = (item) => setSocialHistory(prev => [...prev, item]);
-  const handleAddAllergy = (item) => setAllergyHistory(prev => [...prev, item]);
+  const handleAddAllergic = (item) => setAllergicHistory(prev => [...prev, item]);
 
   const removeComplaint = (idx) => setComplaints(prev => prev.filter((_, i) => i !== idx));
   const removeMedical = (idx) => setMedicalHistory(prev => prev.filter((_, i) => i !== idx));
   const removeSurgical = (idx) => setSurgicalHistory(prev => prev.filter((_, i) => i !== idx));
   const removeFamily = (idx) => setFamilyHistory(prev => prev.filter((_, i) => i !== idx));
   const removeSocial = (idx) => setSocialHistory(prev => prev.filter((_, i) => i !== idx));
-  const removeAllergy = (idx) => setAllergyHistory(prev => prev.filter((_, i) => i !== idx));
+  const removeAllergic = (idx) => setAllergicHistory(prev => prev.filter((_, i) => i !== idx));
 
   const handleAttachmentsChange = (e) => {
     const newFiles = Array.from(e.target.files || []);
@@ -284,7 +284,7 @@ const handleConfirmSave = async () => {
         title: m,
         value: "1",
       })),
-      allergicHistory: allergyHistory.map(a => ({ allergen: a })),
+      allergicHistory: allergicHistory.map(a => ({ allergen: a })),
       socialHistory: socialHistory.map(s => ({
         habit: s,
         frequencyPerDay: "1",
@@ -572,28 +572,28 @@ const handleConfirmSave = async () => {
             </div>
           </div>
 
-          {/* Allergy History */}
+          {/* Allergic History */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-0">
               <div className="p-4 flex justify-between items-center mb-2">
                 <h3 className="card-title text-lg font-semibold text-base-content">Past Allergy History</h3>
                 <button
                   className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
-                  onClick={() => setActiveModal("allergy")}
+                  onClick={() => setActiveModal("allergic")}
                 >
                   <span className="text-lg">+</span> Add Allergy History
                 </button>
               </div>
               <div className="px-6 pb-6 flex flex-wrap gap-3">
-                {allergyHistory.map((item, idx) => (
+                {allergicHistory.map((item, idx) => (
                   <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm shadow-sm">
                     <span className="font-medium">{item}</span>
-                    <button onClick={() => removeAllergy(idx)} className="text-error ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                    <button onClick={() => removeAllergic(idx)} className="text-error ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
                       <IoCloseCircleOutline className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
-                {allergyHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No allergy history recorded</span>}
+                {allergicHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No allergic history recorded</span>}
               </div>
             </div>
           </div>
@@ -668,10 +668,10 @@ const handleConfirmSave = async () => {
       {/* Modals */}
       <AddComplaintModal isOpen={activeModal === "complaint"} onClose={() => setActiveModal(null)} onAdd={handleAddComplaint} data={medicalRecords.symptoms} />
       <AddFamilyHistoryModal isOpen={activeModal === "family"} onClose={() => setActiveModal(null)} onAdd={handleAddFamily} data={medicalRecords.family} />
-      <AddHistoryModal isOpen={activeModal === "medical"} onClose={() => setActiveModal(null)} onAdd={handleAddMedical} type="Medical" data={medicalRecords.symptoms} />
+      <AddHistoryModal isOpen={activeModal === "medical"} onClose={() => setActiveModal(null)} onAdd={handleAddMedical} type="Medical_History" data={medicalRecords.symptoms} />
       <AddHistoryModal isOpen={activeModal === "surgical"} onClose={() => setActiveModal(null)} onAdd={handleAddSurgical} type="Surgical" data={medicalRecords.surgical} />
       <AddHistoryModal isOpen={activeModal === "social"} onClose={() => setActiveModal(null)} onAdd={handleAddSocial} type="Social" data={medicalRecords.social} />
-      <AddHistoryModal isOpen={activeModal === "allergy"} onClose={() => setActiveModal(null)} onAdd={handleAddAllergy} type="Allergy" data={medicalRecords.allergic} />
+      <AddHistoryModal isOpen={activeModal === "allergic"} onClose={() => setActiveModal(null)} onAdd={handleAddAllergic} type="Allergic" data={medicalRecords.allergic} />
 
       <ConfirmationModal
         isOpen={isConfirmOpen}
