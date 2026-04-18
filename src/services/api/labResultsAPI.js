@@ -22,6 +22,9 @@ export const createLabResult = async (investigationRequestId, data) => {
     if (data.opdPatientId) {
       formData.append('opdPatientId', data.opdPatientId);
     }
+    if (data.dependantId) {
+      formData.append('dependantId', data.dependantId);
+    }
     formData.append('form', JSON.stringify(data.form));
     formData.append('remarks', data.remarks || '');
     data.form.attachments.forEach((file) => {
@@ -37,6 +40,7 @@ export const createLabResult = async (investigationRequestId, data) => {
 
   const payload = {
     patientId: data?.patientId,
+    dependantId: data?.dependantId,
     form: data?.form,
     remarks: data?.remarks,
   };

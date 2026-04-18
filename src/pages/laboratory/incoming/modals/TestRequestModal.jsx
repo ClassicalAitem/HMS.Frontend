@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
+const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLabResultId  }) => {
    const navigate = useNavigate();
   const getPriorityBgColor = (status) => {
     if (status === "Urgent") return "#FFE2E2";
@@ -15,9 +15,31 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
     return "#111215";
   };
 
+  // Helper to get test names from investigation object
+  const getTestNames = () => {
+    if (!data) return "N/A";
+    if (data?.test) return data.test; // fallback for old format
+    if (Array.isArray(data?.tests)) {
+      return data.tests.map(t => t.name || t.code || t).join(", ");
+    }
+    return "N/A";
+  };
+
+  // Helper to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  // Helper to format time
+  const formatTime = (dateString) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleTimeString();
+  };
+
   const handleAcceptClick = () => {
   setShowModal2(false);
-  const investigationId = data?.id;
+  const investigationId = data?.id || data?._id;
   const opdPatientId = data?.opdPatientId;
 
   if (investigationId) {
@@ -77,7 +99,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
                       Test Type
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      {data?.test || "N/A"}
+                      {getTestNames()}
                     </p>
                   </div>
                   <div className="w-[106px] flex flex-col gap-[8px]">
@@ -99,7 +121,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
                       Request Date
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      {data?.date || "N/A"}
+                      {formatDate(data?.createdAt || data?.date)}
                     </p>
                   </div>
                   <div className="w-[106px] flex flex-col gap-[8px]">
@@ -107,7 +129,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
                       Request Time
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      {data?.time || "N/A"}
+                      {formatTime(data?.createdAt || data?.time)}
                     </p>
                   </div>
                 </div>
@@ -164,6 +186,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails }) => {
           >
             Close
           </button>
+          
           <button 
             onClick={handleAcceptClick}
             className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer "
