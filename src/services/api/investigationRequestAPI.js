@@ -1,8 +1,8 @@
 import apiClient from './apiClient'
 
-export const getInvestigations = async () => {
+export const getInvestigations = async (params = {}) => {
   try {
-    const response = await apiClient.get('/investigation')
+    const response = await apiClient.get('/investigation', { params })
     return response.data ?? []
   } catch (err) {
     console.error('investigationsAPI: getInvestigations error', err)
