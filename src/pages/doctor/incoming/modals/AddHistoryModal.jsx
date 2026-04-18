@@ -1,15 +1,36 @@
 import React, { useState, useRef, useEffect } from "react";
+import { MdAdd } from "react-icons/md";
+import { createMedicalRecord } from "@/services/api/medicalRecordAPI";
+import toast from "react-hot-toast";
+
+
 
 const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
   const [value, setValue] = useState("");
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef(null);
+  const [localData, setLocalData] = useState(data);
+
+  // Map display type to API category enum
+  const getCategoryFromType = (typeStr) => {
+    const categoryMap = {
+      "Symptoms": "symptoms",
+      "Surgical": "surgical",
+      "Family": "family",
+      "Social": "social",
+      "Allergic": "allergic",
+      "Medical History": "medical_history",
+      "Diagnosis": "diagnosis",
+    };
+    return categoryMap[typeStr] || typeStr.toLowerCase().replace(/\s+/g, "_");
+  };
 
   useEffect(() => {
     setSearch("");
     setValue("");
-  }, [isOpen]);
+    setLocalData(data);
+  }, [isOpen, data]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -56,34 +77,71 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
                 />
                 {dropdownOpen && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                    <ul className="py-1">
-                      {Array.isArray(data) && data.filter(item =>
+                    {(() => {
+                      const filteredItems = Array.isArray(localData) ? (localData.filter(item =>
                         (search || value)
                           ? item.name.toLowerCase().includes((search || value).toLowerCase())
                           : true
-                      ).map(item => (
-                        <li
-                          key={item.id || item._id}
-                          onClick={() => {
-                            setValue(item.name);
-                            setSearch(item.name);
-                            setDropdownOpen(false);
-                          }}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
-                        >
-                          {item.name}
-                        </li>
-                      ))}
-                      {Array.isArray(data) && data.filter(item =>
-                        (search || value)
-                          ? item.name.toLowerCase().includes((search || value).toLowerCase())
-                          : true
-                      ).length === 0 && (
-                        <li className="px-4 py-2 text-gray-400 text-sm">No matches found</li>
-                      )}
-                    </ul>
+                      )) : [];
+
+                      if (filteredItems.length > 0) {
+                        return (
+                          <ul className="py-1">
+                            {filteredItems.map(item => (
+                              <li
+                                key={item.id || item._id}
+                                onClick={() => {
+                                  setValue(item.name);
+                                  setSearch(item.name);
+                                  setDropdownOpen(false);
+                                }}
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+                              >
+                                {item.name}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      } else if (search && search.trim()) {
+                        return (
+                          <div className="py-2 px-4">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await createMedicalRecord({
+                                    category: getCategoryFromType(type),
+                                    name: search.trim()
+                                  });
+                                  const newItem = { name: search.trim() };
+                                  setLocalData(prev => [...prev, newItem]);
+                                  onAdd(search.trim());
+                                  setValue(search.trim());
+                                  setSearch("");
+                                  setDropdownOpen(false);
+                                  toast.success(`Added "${search.trim()}" to ${type}`);
+                                } catch (error) {
+                                  console.error("Error adding new item:", error);
+                                  toast.error("Failed to add new item");
+                                }
+                              }}
+                              className="flex items-center gap-2 w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-gray-50 px-2 py-1 rounded"
+                            >
+                              <MdAdd className="text-lg" />
+                              Add "{search.trim()}" as new {type.toLowerCase()}
+                            </button>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="py-2 px-4 text-gray-400 text-sm">
+                            No matches found
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 )}
+
               </div>
             </div>
           </div>

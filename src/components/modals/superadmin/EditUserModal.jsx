@@ -23,7 +23,7 @@ const editUserSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['admin', 'doctor', 'nurse', 'frontdesk', 'cashier', 'pharmacist', 'lab-technician'], 'Please select a valid role'),
+    .oneOf(['admin', 'doctor', 'nurse', 'frontdesk', 'cashier', 'pharmacist', 'lab-technician', 'sonographer'], 'Please select a valid role'),
   departmentId: yup
     .string()
     .notRequired(),
@@ -240,8 +240,9 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
                 <option value="nurse">Nurse</option>
                 <option value="frontdesk">Front Desk</option>
                 <option value="cashier">Cashier</option>
-                <option value="pharmacist">Pharmacist</option>
                 <option value="lab-technician">Lab Technician</option>
+                <option value="pharmacist">Pharmacist</option>
+                <option value="sonographer">Sonographer</option>
               </select>
               {errors.role && (
                 <label className="label">

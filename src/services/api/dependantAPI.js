@@ -48,6 +48,11 @@ export const getAllDependantsForPatient = async (patientId) => {
   return apiClient.get(`/dependant?patientId=${patientId}`);
 };
 
+export const getDependantById = async (dependantId) => {
+  if (!dependantId) throw new Error('Dependant ID is required');
+  return apiClient.get(`/dependant/${dependantId}`);
+};
+
 export default {
   addDependantForPatient,
   updateDependant,

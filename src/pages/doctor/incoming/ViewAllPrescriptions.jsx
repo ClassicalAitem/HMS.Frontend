@@ -195,14 +195,14 @@ const ViewAllPrescriptions = () => {
             <div className="card bg-base-100 shadow-sm">
               <div className="card-body p-6">
                 <div className="overflow-x-auto">
-                  <table className="table w-full text-center">
+                  <table className="table w-full text-center text-sm">
                     <thead>
                       <tr>
-                        <th>Patient Type</th>
-                        <th>Status</th>
-                        <th>Medications Count</th>
-                        <th>Created At</th>
-                        <th>Medications</th>
+                        <th className="font-bold text-base">Patient Type</th>
+                        <th className="font-bold text-base">Status</th>
+                        <th className="font-bold text-base">Medications Count</th>
+                        <th className="font-bold text-base">Created At</th>
+                        <th className="font-bold text-base">Medications</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -211,7 +211,7 @@ const ViewAllPrescriptions = () => {
                           <tr key={idx} className="hover">
                             <td className="py-3">
                               <div className="flex flex-col items-center gap-1">
-                                <span className="font-medium text-base-content">
+                                <span className="font-bold text-sm text-base-content">
                                   {row.forName}
                                 </span>
                                 <span
@@ -225,7 +225,7 @@ const ViewAllPrescriptions = () => {
                             </td>
                             <td>
                               <span
-                                className={`badge ${
+                                className={`badge font-semibold ${
                                   row.status === 'Pending'
                                     ? 'badge-warning'
                                     : row.status === 'Dispensed'
@@ -236,14 +236,14 @@ const ViewAllPrescriptions = () => {
                                 {row.status}
                               </span>
                             </td>
-                            <td>{row.medicationsCount}</td>
-                            <td>{row.date}</td>
+                            <td className="font-bold text-sm">{row.medicationsCount}</td>
+                            <td className="font-semibold text-sm">{row.date}</td>
                             <td className="text-left">
-                              <ul className="list-disc list-inside text-xs">
+                              <ul className="list-disc list-inside text-sm font-medium">
                                 {row.medicationsSummary.map((med, i) => (
-                                  <li key={i}>{med}</li>
+                                  <li key={i} className="text-base-content">{med}</li>
                                 ))}
-                                {row.medicationsCount > 2 && <li>...</li>}
+                                {row.medicationsCount > 2 && <li className="text-base-content/60">...</li>}
                               </ul>
                             </td>
                           </tr>

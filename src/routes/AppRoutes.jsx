@@ -116,9 +116,11 @@ import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions
 //Laboratory Dashboard Routes
 import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
 import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
+import OrderedLab from "@/pages/laboratory/OrderedLab";
 import IncomingScan from "@/pages/laboratory/incoming/IncomingScan";
 import AddLabResult from "@/pages/laboratory/results/AddLabResult";
 import ViewLabResult from "@/pages/laboratory/results/ViewLabResult";
+import LabResultsHistory from "@/pages/laboratory/results/LabResultsHistory";
 // import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
 import InventoryAndStocks from "@/pages/laboratory/Inventory&stocks/Inventory&stocks";
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
@@ -128,6 +130,12 @@ import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
 import FrontDeskPaymentRecords from "@/pages/frontdesk/payment-records/ReceiptRecord";
 import NursePaymentRecords from "@/pages/nurse/payment-records/ReceiptRecord";
 import PharmacistPaymentRecords from "@/pages/pharmacist/payment-records/ReceiptRecord";
+
+// Sonographer Dashboard Routes
+import SonographerDashboard from "@/pages/sonographer/dashboard/SonographerDashboard";
+import SonographerIncoming from "@/pages/sonographer/incoming/Incoming";
+import SonographerIncomingDetails from "@/pages/sonographer/incoming/IncomingDetails";
+import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory";
 
 
 const AppRoutes = () => {
@@ -727,6 +735,10 @@ const AppRoutes = () => {
         element={<IncomingLaboratory />}
       />
       <Route
+        path="/dashboard/laboratory/ordered"
+        element={<OrderedLab />}
+      />
+      <Route
         path="/dashboard/laboratory/incoming-scan"
         element={<IncomingScan />}
       />
@@ -745,6 +757,10 @@ const AppRoutes = () => {
       <Route
         path="/dashboard/laboratory/results/:labResultId"
         element={<ViewLabResult />}
+      />
+      <Route
+        path="/dashboard/laboratory/results/history"
+        element={<LabResultsHistory />}
       />
       {/* <Route
         path="/dashboard/laboratory/inventoryStocks"
@@ -766,6 +782,31 @@ const AppRoutes = () => {
         path="/dashboard/laboratory/completed"
         element={<CompletedTests />}
       />
+
+      {/*==============================================================================================================
+
+      ====================================  Sonographer DashBoard Route ================================================
+      ===============================================================================================================*/}
+      <Route path="/dashboard/sonographer" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/sonographer/incoming" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/sonographer/incoming/:patientId" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerIncomingDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/sonographer/scan-history" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerScanHistory />
+        </ProtectedRoute>
+      } />
 
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
