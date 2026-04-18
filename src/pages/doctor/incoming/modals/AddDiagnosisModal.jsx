@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes, FaPlus } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { updateConsultation } from '@/services/api/consultationAPI';
-
-import { getAllComplaint } from '@/services/api/medicalRecordAPI';
+import { getAllComplaint, createMedicalRecord } from '@/services/api/medicalRecordAPI';
 
 
 
@@ -15,15 +14,19 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
   const wrapperRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [diagnosisOptions, setDiagnosisOptions] = useState([]);
+  const [localDiagnosisOptions, setLocalDiagnosisOptions] = useState([]);
 
   useEffect(() => {
     if (!isOpen) return;
     const fetchDiagnosis = async () => {
       try {
         const allRecords = await getAllComplaint();
-        setDiagnosisOptions(Array.isArray(allRecords) ? allRecords.filter(item => item.category === 'diagnosis') : []);
+        const diagnosisList = Array.isArray(allRecords) ? allRecords.filter(item => item.category === 'diagnosis') : [];
+        setDiagnosisOptions(diagnosisList);
+        setLocalDiagnosisOptions(diagnosisList);
       } catch (err) {
         setDiagnosisOptions([]);
+        setLocalDiagnosisOptions([]);
         toast.error('Failed to load diagnosis options');
       }
     };
@@ -31,6 +34,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
     setSearch('');
     setDiagnosisInput('');
     setDiagnoses([]);
+    setLocalDiagnosisOptions([]);
   }, [isOpen]);
 
   // Close dropdown on outside click
@@ -48,13 +52,35 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
 
   if (!isOpen) return null;
 
-  const handleAddDiagnosis = (name) => {
+  const handleAddDiagnosis = async (name, createIfMissing = false) => {
     if (!name) return;
-    if (diagnoses.includes(name)) {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    const alreadyAdded = diagnoses.some(d => d.toLowerCase() === trimmedName.toLowerCase());
+    if (alreadyAdded) {
       toast.error('Diagnosis already added');
       return;
     }
-    setDiagnoses(prev => [...prev, name]);
+
+    const existsInOptions = localDiagnosisOptions.some(item => item.name.toLowerCase() === trimmedName.toLowerCase());
+
+    if (!existsInOptions && createIfMissing) {
+      try {
+        await createMedicalRecord({
+          category: 'diagnosis',
+          name: trimmedName,
+        });
+        setLocalDiagnosisOptions(prev => [...prev, { name: trimmedName }]);
+        toast.success(`Added "${trimmedName}" to Diagnosis`);
+      } catch (error) {
+        console.error('Error adding new diagnosis:', error);
+        toast.error('Failed to add new diagnosis');
+        return;
+      }
+    }
+
+    setDiagnoses(prev => [...prev, trimmedName]);
     setDiagnosisInput('');
     setSearch('');
     setDropdownOpen(false);
@@ -121,7 +147,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
                   <button
                     type="button"
                     className="text-gray-400 hover:text-primary"
-                    onClick={() => handleAddDiagnosis(search || diagnosisInput)}
+                    onClick={() => handleAddDiagnosis(search || diagnosisInput, true)}
                     tabIndex={-1}
                     disabled={isLoading || !(search || diagnosisInput)}
                   >
@@ -130,28 +156,50 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
                 </div>
                 {dropdownOpen && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                    <ul className="py-1">
-                      {diagnosisOptions.filter(item =>
+                    {(() => {
+                      const filteredItems = localDiagnosisOptions.filter(item =>
                         (search || diagnosisInput)
                           ? item.name.toLowerCase().includes((search || diagnosisInput).toLowerCase())
                           : true
-                      ).map(item => (
-                        <li
-                          key={item.id || item._id}
-                          onClick={() => handleAddDiagnosis(item.name)}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
-                        >
-                          {item.name}
-                        </li>
-                      ))}
-                      {diagnosisOptions.filter(item =>
-                        (search || diagnosisInput)
-                          ? item.name.toLowerCase().includes((search || diagnosisInput).toLowerCase())
-                          : true
-                      ).length === 0 && (
-                        <li className="px-4 py-2 text-gray-400 text-sm">No matches found</li>
-                      )}
-                    </ul>
+                      );
+
+                      if (filteredItems.length > 0) {
+                        return (
+                          <ul className="py-1">
+                            {filteredItems.map(item => (
+                              <li
+                                key={item.id || item._id}
+                                onClick={() => handleAddDiagnosis(item.name)}
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+                              >
+                                {item.name}
+                              </li>
+                            ))}
+                          </ul>
+                        );
+                      }
+
+                      if (search && search.trim()) {
+                        return (
+                          <div className="py-2 px-4">
+                            <button
+                              type="button"
+                              onClick={() => handleAddDiagnosis(search || diagnosisInput, true)}
+                              className="flex items-center gap-2 w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-gray-50 px-2 py-1 rounded"
+                            >
+                              <FaPlus className="w-4 h-4" />
+                              Add "{search.trim() || diagnosisInput.trim()}" as new diagnosis
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="py-2 px-4 text-gray-400 text-sm">
+                          No matches found
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

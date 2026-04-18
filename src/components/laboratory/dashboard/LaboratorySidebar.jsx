@@ -63,6 +63,12 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
       active: location.pathname === "/dashboard/laboratory/incoming",
     },
     {
+      icon: LuListChecks,
+      label: "Ordered Lab",
+      path: "/dashboard/laboratory/ordered",
+      active: location.pathname === "/dashboard/laboratory/ordered",
+    },
+    {
       icon: RiCalendarScheduleLine,
       label: "Incoming scan",
       path: "/dashboard/laboratory/incoming-scan",
@@ -76,9 +82,9 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
     },
     {
       icon: LuListChecks,
-      label: "Reports",
-      path: "/dashboard/laboratory/Reports",
-      active: location.pathname === "/dashboard/laboratory/Reports",
+      label: "Lab Results History",
+      path: "/dashboard/laboratory/results/history",
+      active: location.pathname === "/dashboard/laboratory/results/history",
     },
   ];
 
