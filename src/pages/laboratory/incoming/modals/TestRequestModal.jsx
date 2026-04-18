@@ -186,18 +186,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
           >
             Close
           </button>
-           {/* ✅ Edit existing lab result if one exists */}  
-      {existingLabResultId && (
-        <button
-          onClick={() => {
-            setShowModal2(false);
-            navigate(`/dashboard/laboratory/results/view/${existingLabResultId}`);
-          }}
-          className={`${data?.investigationStatus === 'sonography_completed' ? 'bg-blue-500' : 'bg-yellow-500'} w-[140px] h-[52px] px-[16px] py-[16px] rounded-[6px] text-white text-[16px] font-[600] flex justify-center items-center cursor-pointer`}
-        >
-          {data?.investigationStatus === 'sonography_completed' ? 'View Result' : 'Edit Result'}
-        </button>
-      )}
+          
           <button 
             onClick={handleAcceptClick}
             className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer "
