@@ -5,7 +5,7 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
-import { getInvestigations, getInvestigationRequestByOpdPatientId } from "@/services/api/investigationRequestAPI";
+import { getInvestigations, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId } from "@/services/api/investigationRequestAPI";
 import { usersAPI } from "@/services/api/usersAPI"; 
 import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -155,8 +155,8 @@ const AddLabResult = () => {
   const [error, setError] = useState(null);
   const [expandedSection, setExpandedSection] = useState("patientInfo");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const [cid, setCid] = useState(null);
   const [isDependant, setIsDependant] = useState(false);
+    const [mainPatientId, setMainPatientId] = useState(null);
 
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -477,7 +477,7 @@ useEffect(() => {
       }
 
       // ✅ Helper: normalize patient/dependant into form
-   const mapToForm = (data) => {
+  const mapToForm = (data) => {
   if (!data || typeof data !== "object") {
     console.warn("Invalid data passed to mapToForm:", data);
     return;
@@ -487,7 +487,7 @@ useEffect(() => {
 
   const fullName =
     data.fullName ||
-    `${data.firstName || ""} ${data.middleName || ""} ${data.lastName || ""}`.trim() ||
+    `${data.firstName || ""} ${data.lastName || ""}`.trim() ||
     data.name ||
     "Unknown Patient";
 
@@ -495,7 +495,12 @@ useEffect(() => {
   if (data.dob || data.dateOfBirth) {
     const dob = new Date(data.dob || data.dateOfBirth);
     if (!isNaN(dob)) {
-      age = new Date().getFullYear() - dob.getFullYear();
+      const today = new Date();
+      age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
     }
   }
 
@@ -528,13 +533,46 @@ useEffect(() => {
         // load saved form
         setFormData(prev => ({ ...prev, ...data.form }));
 
+        // Load investigation if exists
+        let loadedInvestigation = null;
+        if (data.investigationId) {
+          try {
+            const invRes = await getInvestigationRequestByOpdPatientId(data.investigationId);
+            loadedInvestigation = invRes?.data || invRes;
+          } catch {
+            console.log("Failed to load investigation by OPD patient ID")
+          }
+          if (!loadedInvestigation && data.patientId) {
+            try {
+              const invRes = await getInvestigationByPatientId(data.patientId);
+              const list = Array.isArray(invRes) ? invRes : invRes?.data || [];
+              loadedInvestigation = list.find(i => i._id === data.investigationId || i.id === data.investigationId);
+            } catch {
+              console.warn("Failed to load investigation by patient ID");
+            }
+          }
+          if (loadedInvestigation) {
+            setInvestigation(loadedInvestigation);
+          }
+        }
+
         // dependant takes priority
         if (data.dependantId) {
           const depRes = await getDependantById(data.dependantId);
-          const dependant = depRes?.data?.dependant || depRes?.data || depRes;
+          const dependant = depRes?.data?.data?.dependant || depRes?.data || depRes?.dependant || depRes;
 
           setPatient(dependant);
           setIsDependant(true);
+          setMainPatientId(data.patientId);
+          mapToForm(dependant);
+        } else if (loadedInvestigation?.dependantId) {
+          // If labResult doesn't have dependantId but investigation does
+          const depRes = await getDependantById(loadedInvestigation.dependantId);
+          const dependant = depRes?.data?.data?.dependant|| depRes?.data?.dependant || depRes?.data || depRes?.dependant || depRes;
+
+          setPatient(dependant);
+          setIsDependant(true);
+          setMainPatientId(loadedInvestigation.patientId);
           mapToForm(dependant);
         } else if (data.patientId || data.opdPatientId) {
           const patientData = await loadPatientData(data.patientId || data.opdPatientId);
@@ -604,6 +642,7 @@ useEffect(() => {
 
           setPatient(dependant);
           setIsDependant(true);
+          setMainPatientId(foundInvestigation.patientId);
           mapToForm(dependant);
 
           return
@@ -721,11 +760,11 @@ const handleSave = async () => {
     if (opdPatientId && !investigationId) {
       payload.opdPatientId = opdPatientId;
     } else {
-      payload.patientId = patient?._id || patient?.id;
+      payload.patientId = isDependant ? mainPatientId : patient?._id || patient?.id;
     }
 
     if (investigation?.opdPatientId) {
-      payload.opdPatientId = patient?._id || patient?.id;
+      payload.opdPatientId = isDependant ? mainPatientId : patient?._id || patient?.id;
     }
 
     if (isDependant) {
@@ -779,9 +818,9 @@ const handleComplete = async () => {
     if (investigation?.opdPatientId || location.search.includes('opdPatientId')) {
       const searchParams = new URLSearchParams(location.search);
       const opdPatientId = searchParams.get('opdPatientId');
-      payload.opdPatientId = opdPatientId || patient?._id || patient?.id;
+      payload.opdPatientId = isDependant ? mainPatientId : opdPatientId || patient?._id || patient?.id;
     } else {
-      payload.patientId = patient?._id || patient?.id;
+      payload.patientId = isDependant ? mainPatientId : patient?._id || patient?.id;
     }
 
     if (isDependant) {
