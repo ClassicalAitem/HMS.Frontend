@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdAdd, MdInventory2 } from 'react-icons/md'
+import { FaTrash, FaFileUpload } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions, deleteInventory } from '@/services/api/inventoryAPI'
 import { SuperAdminLayout } from '@/layouts/superadmin'
-import { FaTrash } from 'react-icons/fa'
 
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
@@ -12,6 +12,7 @@ const InventoryStocks = () => {
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [showCsvUpload, setShowCsvUpload] = useState(false)
   const [editing, setEditing] = useState(null)
   const [restockingFor, setRestockingFor] = useState(null)
   const [deleting, setDeleting] = useState(null)
@@ -174,6 +175,7 @@ const InventoryStocks = () => {
           </div>
           <div className="flex items-center gap-3">
             <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
+            <button className="btn btn-outline btn-sm flex items-center gap-2" onClick={() => setShowCsvUpload(true)}><FaFileUpload /> Import CSV</button>
             <button className="btn btn-primary btn-sm flex items-center gap-2" onClick={() => setShowAdd(true)}><MdAdd/> Add new item</button>
           </div>
         </div>
@@ -323,6 +325,17 @@ const InventoryStocks = () => {
           <InventoryFormModal onClose={() => setShowAdd(false)} onSubmit={handleAdd} />
         )}
 
+        {showCsvUpload && (
+          <InventoryCsvUploadModal
+            items={items}
+            onClose={() => setShowCsvUpload(false)}
+            onUploadSuccess={() => {
+              fetch()
+              setShowCsvUpload(false)
+            }}
+          />
+        )}
+
         {editing && (
           <InventoryFormModal item={editing} onClose={() => setEditing(null)} onSubmit={(payload) => handleEdit(editing._id, payload)} />
         )}
@@ -352,11 +365,42 @@ function InventoryFormModal({ item, onClose, onSubmit }){
   const handle = async () => {
     // basic validation
     if (!form.name) return toast.error('Name required')
-    if(!form.batchNumber) return toast.error('Batch number required')
+
+    const payload = {
+      name: String(form.name).trim(),
+    }
+
+    const safeString = (value) => String(value || '').trim()
+    const safeNumber = (value) => {
+      const str = String(value ?? '').trim()
+      return str === '' ? undefined : Number(str)
+    }
+
+    const formValue = safeString(form.form)
+    const strengthValue = safeString(form.strength)
+    const stockValue = safeNumber(form.stock)
+    const costPriceValue = safeNumber(form.costPrice)
+    const sellingPriceValue = safeNumber(form.sellingPrice)
+    const reorderLevelValue = safeNumber(form.reorderLevel)
+    const supplierValue = safeString(form.supplier)
+    const batchNumberValue = safeString(form.batchNumber)
+    const expiryDateValue = safeString(form.expiryDate)
+    const descriptionValue = safeString(form.description)
+
+    if (formValue) payload.form = formValue
+    if (strengthValue) payload.strength = strengthValue
+    if (stockValue !== undefined) payload.stock = stockValue
+    if (costPriceValue !== undefined) payload.costPrice = costPriceValue
+    if (sellingPriceValue !== undefined) payload.sellingPrice = sellingPriceValue
+    if (reorderLevelValue !== undefined) payload.reorderLevel = reorderLevelValue
+    if (supplierValue) payload.supplier = supplierValue
+    if (batchNumberValue) payload.batchNumber = batchNumberValue
+    if (expiryDateValue) payload.expiryDate = expiryDateValue
+    if (descriptionValue) payload.description = descriptionValue
 
     setSubmitting(true)
     try{
-      await onSubmit(form)
+      await onSubmit(payload)
     }finally{ setSubmitting(false) }
   }
 
@@ -370,7 +414,7 @@ function InventoryFormModal({ item, onClose, onSubmit }){
         </div>
         <div className="space-y-2">
           <div className="flex gap-2">
-          <input className="input input-bordered flex-1" placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
+          <input className="input input-bordered flex-1" placeholder="Name" value={form.name}  onChange={(e)=>setForm({...form,name:e.target.value})} />
           <input className="input input-bordered flex-1" placeholder="Stock" value={form.stock} onChange={(e)=>setForm({...form,stock:e.target.value})} />
           </div>
           <div className="flex gap-2">
@@ -437,6 +481,286 @@ function RestockModal({ item, onClose, onSubmit }){
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting? 'Restocking...' : 'Restock'}</button>
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
+  const [csvText, setCsvText] = useState('')
+  const [previewRows, setPreviewRows] = useState([])
+  const [fileName, setFileName] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+
+  const parseCsvLine = (line) => {
+    const values = []
+    let current = ''
+    let inQuotes = false
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i]
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"'
+          i += 1
+        } else {
+          inQuotes = !inQuotes
+        }
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    values.push(current.trim())
+    return values
+  }
+
+  const handleFileChange = (event) => {
+    const selectedFile = event.target.files?.[0]
+    if (!selectedFile) return
+
+    if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
+      toast.error('Please select a valid CSV file')
+      return
+    }
+
+    setFileName(selectedFile.name)
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = e.target.result
+      setCsvText(text)
+      const rows = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+      setPreviewRows(rows.slice(0, 5))
+    }
+    reader.readAsText(selectedFile)
+  }
+
+  const downloadTemplate = () => {
+    const template = [
+      'name,form,strength,stock,costPrice,sellingPrice,reorderLevel,supplier,batchNumber,expiryDate,description',
+      'Paracetamol,Tablet,500mg,100,50,70,20,Acme Pharma,BATCH001,2025-12-31,Pain reliever',
+      'Amoxicillin,Capsule,250mg,200,100,150,30,HealthCo,BATCH002,2025-09-15,Antibiotic'
+    ].join('\n')
+
+    const element = document.createElement('a')
+    element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(template))
+    element.setAttribute('download', 'inventory_import_template.csv')
+    element.style.display = 'none'
+    document.body.appendChild(element)
+    element.click()
+    document.body.removeChild(element)
+  }
+
+  const handleUpload = async () => {
+    if (!csvText) {
+      toast.error('Please select a CSV file to upload')
+      return
+    }
+
+    setIsLoading(true)
+    const rows = csvText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+
+    if (rows.length < 2) {
+      toast.error('CSV must include a header row and at least one data row')
+      setIsLoading(false)
+      return
+    }
+
+    const headers = parseCsvLine(rows[0]).map((header) => header.toLowerCase())
+    const parsedRows = rows.slice(1).map((row, rowIndex) => {
+      const values = parseCsvLine(row)
+      const entry = { __rowIndex: rowIndex + 2 }
+      headers.forEach((header, index) => {
+        entry[header] = values[index] ?? ''
+      })
+      return entry
+    })
+
+    const makeDuplicateKey = (name, batch) => {
+      const trimmedName = String(name || '').trim().toLowerCase()
+      return trimmedName
+    }
+
+    const existingKeys = new Set(
+      items.map((item) => {
+        const name = item.name || ''
+        return makeDuplicateKey(name, '')
+      })
+    )
+    const seenKeys = new Set()
+    const uploadPayloads = []
+    const skippedDuplicateRows = []
+    const skippedInvalidRows = []
+
+    parsedRows.forEach((item) => {
+      const name = String(item.name || item.drug || item.item || '').trim()
+      if (!name) {
+        skippedInvalidRows.push(item.__rowIndex)
+        return
+      }
+      const batch = String(item.batchNumber || item.batch_number || item.batch || '').trim()
+      const key = makeDuplicateKey(name, batch)
+      if (seenKeys.has(key) || existingKeys.has(key)) {
+        skippedDuplicateRows.push(item.__rowIndex)
+        return
+      }
+      seenKeys.add(key)
+      const payload = { name }
+      const form = String(item.form || '').trim()
+      const strength = String(item.strength || '').trim()
+      const stockValue = String(item.stock ?? item.qty ?? item.quantity ?? '').trim()
+      const costPriceValue = String(item.costprice ?? item.cost_price ?? item.cost ?? '').trim()
+      const sellingPriceValue = String(item.sellingprice ?? item.selling_price ?? item.price ?? '').trim()
+      const reorderLevelValue = String(item.reorderlevel ?? item.reorder_level ?? item.reorder ?? '').trim()
+      const supplier = String(item.supplier || '').trim()
+      const batchNumber = batch
+      const expiry = String(item.expirydate || item.expiry_date || item.expiry || '').trim()
+      const description = String(item.description || item.notes || '').trim()
+
+      if (form) payload.form = form
+      if (strength) payload.strength = strength
+      if (stockValue !== '') payload.stock = Number(stockValue)
+      if (costPriceValue !== '') payload.costPrice = Number(costPriceValue)
+      if (sellingPriceValue !== '') payload.sellingPrice = Number(sellingPriceValue)
+      if (reorderLevelValue !== '') payload.reorderLevel = Number(reorderLevelValue)
+      if (supplier) payload.supplier = supplier
+      if (batchNumber) payload.batchNumber = batchNumber
+      if (expiry) payload.expiryDate = expiry
+      if (description) payload.description = description
+
+      uploadPayloads.push(payload)
+    })
+
+    if (uploadPayloads.length === 0) {
+      const components = []
+      if (skippedDuplicateRows.length) components.push(`${skippedDuplicateRows.length} duplicate row(s) skipped`)
+      if (skippedInvalidRows.length) components.push(`${skippedInvalidRows.length} invalid row(s) skipped`)
+      toast.error(`No new items to upload. ${components.join(' and ')}`)
+      setIsLoading(false)
+      return
+    }
+
+    const uploadInBatches = async (payloads, batchSize = 50) => {
+      const allResults = []
+      let additionalSkipped = 0
+      for (let i = 0; i < payloads.length; i += batchSize) {
+        const batch = payloads.slice(i, i + batchSize)
+        const batchResults = await Promise.allSettled(batch.map((payload) => createInventory(payload)))
+        batchResults.forEach((result) => {
+          if (result.status === 'rejected') {
+            const errorMessage = result.reason?.response?.data?.message || result.reason?.message || ''
+            if (
+              errorMessage.includes('duplicate key error') ||
+              errorMessage.includes('E11000') ||
+              errorMessage.toLowerCase().includes('already exists') ||
+              errorMessage.toLowerCase().includes('use restock')
+            ) {
+              additionalSkipped += 1
+            } else {
+              allResults.push(result)
+            }
+          } else {
+            allResults.push(result)
+          }
+        })
+      }
+      return { results: allResults, additionalSkipped }
+    }
+
+    const { results, additionalSkipped } = await uploadInBatches(uploadPayloads, 50)
+    const successCount = results.filter((result) => result.status === 'fulfilled').length
+    const failureResults = results.filter((result) => result.status === 'rejected')
+
+    const duplicateCount = skippedDuplicateRows.length + additionalSkipped
+    const messages = []
+    if (failureResults.length) messages.push(`${failureResults.length} item(s) failed to upload`)
+    if (duplicateCount) messages.push(`${duplicateCount} item(s) already exist; use restock instead`)
+    if (skippedInvalidRows.length) messages.push(`${skippedInvalidRows.length} invalid row(s) skipped`)
+
+    if (successCount > 0) {
+      const successMessage = duplicateCount
+        ? `Imported ${successCount} item(s); ${duplicateCount} already exist. Use restock instead.`
+        : `Imported ${successCount} item(s)`
+      toast.success(successMessage)
+      onUploadSuccess()
+    } else if (duplicateCount && !failureResults.length) {
+      toast.success(`${duplicateCount} item(s) already exist; use restock instead.`)
+    }
+
+    if (messages.length && (failureResults.length || !successCount)) {
+      toast(message => (
+        <div>
+          <div>{messages.join(' and ')}</div>
+          {failureResults.length > 0 && <div className="text-xs text-error">Check console for failed rows.</div>}
+        </div>
+      ))
+    }
+
+    if (failureResults.length > 0) {
+      failureResults.forEach((result, index) => {
+        console.error(`Import error ${index + 1}:`, result.reason)
+      })
+    }
+
+    setIsLoading(false)
+    if (successCount > 0 && failureResults.length === 0) {
+      onClose()
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div className="z-10 w-full max-w-lg card bg-base-100 p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-medium">Import Inventory from CSV</h3>
+            <p className="text-sm text-base-content/70">Upload a CSV file to add many inventory items at once.</p>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={isLoading}>Close</button>
+        </div>
+
+        <div className="mb-4 p-3 bg-base-200 rounded-lg">
+          <button className="btn btn-sm btn-ghost w-full" onClick={downloadTemplate}>Download CSV Template</button>
+          <p className="text-xs text-base-content/70 mt-2">
+            Only <strong>name</strong> is required. Other columns are optional. Duplicates are automatically skipped.
+          </p>
+        </div>
+
+        <div className="form-control mb-4">
+          <label className="label">
+            <span className="font-medium label-text">Select CSV File</span>
+          </label>
+          <input type="file" accept=".csv" onChange={handleFileChange} disabled={isLoading} className="file-input file-input-bordered w-full" />
+          {fileName && <span className="text-xs text-base-content/70 mt-2">Selected: {fileName}</span>}
+        </div>
+
+        {previewRows.length > 0 && (
+          <div className="mb-4 p-3 bg-base-200 rounded-lg max-h-40 overflow-y-auto">
+            <p className="text-sm font-medium text-base-content mb-2">Preview</p>
+            <div className="text-xs font-mono text-base-content/70 space-y-1">
+              {previewRows.map((line, index) => (
+                <div key={index}>{line}</div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button className="btn btn-ghost" onClick={onClose} disabled={isLoading}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleUpload} disabled={isLoading || !csvText}>
+            {isLoading ? 'Uploading...' : 'Upload CSV'}
+          </button>
         </div>
       </div>
     </div>
