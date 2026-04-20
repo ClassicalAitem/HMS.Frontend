@@ -15,6 +15,84 @@ import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 
+const ranges = {
+  HB: 'g/dl (11-16)',
+  PCV: '% (37-54)',
+  Platelets: '/mm (100-300)',
+  WBCTotal: '/mm (4.0-10.0)',
+  Neut: '% (50-70)',
+  Lymp: '% (20-70)',
+  Mono: '% (0-10)',
+  Eosin: '% (1-6)',
+  Baso: '% (0-3)',
+  ESR: 'mm/h (0-9)',
+  RBC: '(3.9-6)',
+  Retics: '',
+  MCV: 'fl (80-100)',
+  ClottingTime: 'mins (2-7)',
+  ProthrombinTime: 'secs (10-13)',
+  APTT: 'secs (30-40)',
+  'PT/INR': '(0.8-1.11)',
+  LeCells: '%',
+  Microfilaria: '',
+  Genotype: '',
+  BloodGroup: '',
+  RhD: '',
+  SicklingTest: '%',
+  OccultBlood: '',
+  'HIV Screening': '',
+  'Hepatitis A': '',
+  'Hepatitis B': '',
+  'Hepatitis C': '',
+  VDRL: '',
+  'MANTOUX/HEAF': '',
+  AFB: '',
+  'TB(Serum)': '',
+  'H. PYLORI': '',
+  'Pregnancy Test (Urine)': '',
+  'Pregnancy Test (Blood)': '',
+  'Malaria Parasite': '',
+  COMMENTS: '',
+  'PT Test': 'secs (10-13)',
+  Testosterone: '30-100 ng/dl',
+  LH: '2.95-3.65 mIU/ml (f)',
+  Prolactin: '4.6-25.0 (f)',
+  Progesterone: '1.8-29.2 ng/ml',
+  T3: '1.4-3 nmol/L',
+  T4: '70-185 nmol/L',
+  TSH: '0.3-4.2 mU/L',
+  E1: '10-200 Pg/ml',
+  E2: '35-310 Pg/ml',
+  E3: '<2.0 ng/ml',
+  Sodium: '130-150 mEq/L',
+  Potassium: '3-5 mEq/L',
+  Bicarbonate: '21-30 mEq/L',
+  Chloride: '98-111 mEq/L',
+  Urea: '1.5-55 mg/dl',
+  Creatinine: '0.5-1.5 mg/dl',
+  AST: '0.35 U/L',
+  ALT: '0.49 U/L',
+  'ALK Phos': '64-306 U/L',
+  'T. Bilirubin': '0.2-1.2 mg/dl',
+  'D. Bilirubin': '0.2-1.2 mg/dl',
+  'Total Protein': '6-8 g/dl',
+  Albumin: '3.2-5.2 g/dl',
+  'Fasting Blood Sugar': '70-100 mg/dl',
+  'Random Blood Sugar': '80-180 mg/dl',
+  Cholesterol: '<200 mg/dl',
+  Triglyceride: '150-199 mg/dl',
+  HDL: '30-40 mg/dl',
+  LDL: '<150 mg/dl',
+  VLDL: '30-40 mg/dl',
+  Calcium: '9-11 mg/dl',
+  Phosphorus: '2.25 mg/dl',
+  'Uric Acid': '2.5 mg/dl',
+  'Serum Iron': '60-170 mg/dl',
+  PSA: '0-4 ng/ml',
+  HBA1C: '<6.5%',
+  CA125: '0-35 ku/L',
+};
+
 const ViewLabResult = () => {
   const { labResultId } = useParams();
   const navigate = useNavigate();
@@ -246,10 +324,11 @@ const loadDependantDetails = async (dependantId) => {
 
   const displayField = (label, value) => {
     if (!value) return null;
+    const rangeText = ranges[label] ? ` ${ranges[label]}` : '';
     return (
       <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200">
         <div className="font-semibold text-[#00943C]">{label}</div>
-        <div className="col-span-2 text-gray-700 whitespace-normal break-words">{value}</div>
+        <div className="col-span-2 text-gray-700 whitespace-normal break-words">{value}   {rangeText}</div>
       </div>
     );
   };
@@ -266,12 +345,13 @@ const loadDependantDetails = async (dependantId) => {
           {Object.entries(data).map(([key, value]) => {
             if (!value) return null;
             if (typeof value === "object") return null;
+            const rangeText = ranges[key] ? ` ${ranges[key]}` : ' ';
             return (
               <div key={key} className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200 last:border-b-0">
                 <div className="font-semibold text-gray-700">{key}</div>
                 <div className="col-span-2 text-gray-600">
                   {typeof value === "string" || typeof value === "number"
-                    ? value
+                    ? `${value}${rangeText}`
                     : JSON.stringify(value)}
                 </div>
               </div>
@@ -458,6 +538,9 @@ const patientName =
 
   const handleSendToDoctor = async () => {
     try {
+
+      const investigationId = labResult?.investigationRequestId || investigation?._id;
+
       setSendingToDoctor(true);
 
       // Update investigation status to awaiting_doctor
@@ -476,6 +559,21 @@ const patientName =
       // Update OPD patient status
       if (isOpdLabResult && labResult?.opdPatientId) {
         await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_doctor" });
+      }
+      // Update investigation status for regular patients
+      
+
+       if (patientId || !!isDependant  && investigationId) {
+        await updateInvestigation(investigationId, {
+          status: "completed",
+          labResultId: labResultId,
+        });
+      }
+       if (isOpdLabResult && investigationId) {
+        await updateInvestigation(investigationId, {
+          status: "completed",
+          labResultId: labResultId,
+        });
       }
 
       toast.success("Lab results sent to doctor successfully!");
