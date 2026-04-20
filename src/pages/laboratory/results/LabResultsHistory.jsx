@@ -13,25 +13,10 @@ const LabResultsHistory = () => {
   const [allLabResults, setAllLabResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchInputValue, setSearchInputValue] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const resultsPerPage = 10;
   const [patientCache, setPatientCache] = useState({});
-
-
-
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchInputValue !== searchTerm) {
-        setSearchTerm(searchInputValue);
-        setCurrentPage(1);
-      }
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(timer);
-  }, [searchInputValue, searchTerm]);
 
   const fetchLabResults = useCallback(async () => {
     try {
@@ -55,38 +40,42 @@ const LabResultsHistory = () => {
     fetchLabResults();
   }, [fetchLabResults]);
 
-  const filteredLabResults = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    const baseList = Array.isArray(allLabResults) ? allLabResults : [];
+const filteredLabResults = useMemo(() => {
+  const query = search.trim().toLowerCase();
+  const baseList = Array.isArray(allLabResults) ? allLabResults : [];
 
-    return !query
-      ? baseList
-      : baseList.filter((result) => {
-          const searchText = [
-            result._id,
-            result.id,
-            result.patientId,
-            result.opdPatientId,
-            result.dependantId,
-            result.status,
-            result.form?.clinicalDiagnosis,
-            result.form?.testName,
-            result.form?.description,
-            Array.isArray(result.tests) ? result.tests.map((t) => t.name || t.code || t).join(" ") : "",
-            result.patient?.firstName,
-            result.patient?.lastName,
-            result.patient?.fullName,
-            result.patient?.name,
-            result.opdPatient?.fullName,
-            result.opdPatient?.name,
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
+  return !query
+    ? baseList
+    : baseList.filter((inv) => {
+        const cacheKey =
+          inv.dependantId ||
+          inv.opdPatientId ||
+          inv.patientId ||
+          inv._id ||
+          inv.id;
 
-          return searchText.includes(query);
-        });
-  }, [allLabResults, searchTerm]);
+        const cached = patientCache[cacheKey];
+
+const patientName =
+  (typeof cached === "string" ? cached.toLowerCase() : "") ||
+  `${inv.patient?.firstName || ""} ${inv.patient?.lastName || ""}`.toLowerCase();
+
+        return patientName.includes(query);
+      });
+}, [allLabResults, search, patientCache]);
+
+
+useEffect(() => {
+  const preloadNames = async () => {
+    if (!allLabResults.length) return;
+
+    await Promise.all(
+      allLabResults.map((result) => getPatientName(result))
+    );
+  };
+
+  preloadNames();
+}, [allLabResults]);
 
   const totalResults = filteredLabResults.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / resultsPerPage));
@@ -144,10 +133,6 @@ const LabResultsHistory = () => {
       console.error("Error fetching patient name:", err);
       return "Unknown";
     }
-  };
-
-  const handleSearchInput = (value) => {
-    setSearchInputValue(value);
   };
 
   const handlePageChange = (page) => {
@@ -208,13 +193,15 @@ const LabResultsHistory = () => {
             <div className="mb-6">
               <input
                 type="text"
-                placeholder="Search by patient name, ID, or test type..."
-                value={searchInputValue}
-                onChange={(e) => handleSearchInput(e.target.value)}
+                placeholder="Search by patient name, ID, test type, or status..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
                 disabled={loading}
                 className="input input-bordered w-full"
               />
-              {searchInputValue && <p className="text-xs text-gray-500 mt-1">Searching for: {searchInputValue}</p>}
             </div>
 
             {/* Results Table */}

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { getOpdPatientById } from '@/services/api/opdPatientAPI';
 import { getBillingsByOpdPatientId, getReceiptsByOpdPatientId, createReceipt, createBillForOpd } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
-import { createInvestigationRequestForCashier } from '@/services/api/investigationRequestAPI';
+import { createInvestigationRequestForCashier, getInvestigationRequestByOpdPatientId } from '@/services/api/investigationRequestAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import { FaArrowLeft, FaPlus, FaTrash } from 'react-icons/fa';
 import ReceiptModal from '@/components/modals/ReceiptModal';
@@ -88,6 +88,7 @@ const CashierOpdPatientDetails = () => {
   const [patient, setPatient] = useState(null);
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [investigationRequests, setInvestigationRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
@@ -99,10 +100,11 @@ const CashierOpdPatientDetails = () => {
   const loadAll = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [patientRes, billingsRes, receiptsRes] = await Promise.allSettled([
+      const [patientRes, billingsRes, receiptsRes, investigationsRes] = await Promise.allSettled([
         getOpdPatientById(patientId),
         getBillingsByOpdPatientId(patientId),
         getReceiptsByOpdPatientId(patientId),
+        getInvestigationRequestByOpdPatientId(patientId),
       ]);
 
       if (patientRes.status === 'fulfilled') {
@@ -113,6 +115,9 @@ const CashierOpdPatientDetails = () => {
       }
       if (receiptsRes.status === 'fulfilled') {
         setReceipts(receiptsRes.value?.data?.data ?? []);
+      }
+      if (investigationsRes.status === 'fulfilled') {
+        setInvestigationRequests(investigationsRes.value?.data ?? investigationsRes.value ?? []);
       }
     } catch (err) {
       toast.error('Failed to load patient details');
@@ -284,6 +289,44 @@ const CashierOpdPatientDetails = () => {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card bg-base-100 shadow-xl mb-6">
+        <div className="card-body">
+          <h2 className="card-title">Investigation History</h2>
+          <p className="text-sm text-base-content/60 mb-4">View previous investigation requests for this OPD patient.</p>
+
+          {investigationRequests.length === 0 ? (
+            <div className="text-sm text-base-content/60 py-8 text-center border border-dashed border-base-300 rounded-lg">
+              No previous investigation requests found.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="table w-full">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Tests</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {investigationRequests.map((request) => (
+                    <tr key={request._id || request.id}>
+                      <td>{request.createdAt ? new Date(request.createdAt).toISOString().split('T')[0] : '—'}</td>
+                      <td>{(request.priority || 'normal').replace(/\b\w/g, (c) => c.toUpperCase())}</td>
+                      <td>{request.status || 'pending'}</td>
+                      <td className="max-w-2xl">
+                        {Array.isArray(request.tests) ? request.tests.map((t) => t.name || t.service || t.testName || '').filter(Boolean).join(', ') : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
