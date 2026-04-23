@@ -495,7 +495,7 @@ const patientName =
   const isDependant = Boolean(labResult?.dependantId);
   const isOpdLabResult = Boolean(labResult?.opdPatientId);
   const canSendToDoctor = Boolean(patientId && !isOpdLabResult) || isDependant;
-  const canComplete = Boolean(isOpdLabResult);
+  const canComplete = Boolean(isOpdLabResult) || (patientId && !isDependant) || isDependant;
 
   // Check if this is a scan test (ultrasound or similar)
   const isScanTest = investigation?.testName?.toLowerCase().includes('ultrasound') || 
@@ -515,20 +515,15 @@ const patientName =
     try {
       const investigationId = labResult?.investigationRequestId || investigation?._id;
 
-      if (labResult?.opdPatientId) {
-        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_cashier" });
-      } else if (patientId && patient) {
-        await updatePatient(patientId, { status: "awaiting_cashier" });
-      }
-
-      if (isOpdLabResult && investigationId) {
+      // Set investigation status to completed
+      if (investigationId) {
         await updateInvestigation(investigationId, {
           status: "completed",
           labResultId: labResultId,
         });
       }
 
-      toast.success("Lab result completed successfully!");
+      toast.success("Lab result marked as completed!");
       navigate("/dashboard/laboratory");
     } catch (err) {
       console.error("Failed to complete lab result:", err);
@@ -546,24 +541,22 @@ const patientName =
       // Update investigation status to awaiting_doctor
       if (effectiveInvestigationId) {
         await updateInvestigation(effectiveInvestigationId, {
-          status: "awaiting_doctor",
+          status: "completed",
           labResultId: labResultId,
         });
       }
 
-      // Update patient status for regular patients
-      if (patientId && !isDependant && !isOpdLabResult) {
-        await updatePatientStatus(patientId, PATIENT_STATUS.AWAITING_DOCTOR);
+      // Update patient status for regular patients and dependants
+      if (patientId && labResult) {
+        await updatePatientStatus(patientId, PATIENT_STATUS.LAB_COMPLETED);
       }
 
       // Update OPD patient status
       if (isOpdLabResult && labResult?.opdPatientId) {
-        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_doctor" });
+        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_cashier" });
       }
-      // Update investigation status for regular patients
-      
-
-       if (patientId || !!isDependant  && investigationId) {
+      // Update investigation status for regular patients and dependants
+      if ((patientId || isDependant) && investigationId) {
         await updateInvestigation(investigationId, {
           status: "completed",
           labResultId: labResultId,

@@ -6,6 +6,7 @@ import { getLabResults } from "@/services/api/labResultsAPI";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
+import { getDependantById } from "@/services/api/dependantAPI";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const LaboratoryDashboard = () => {
@@ -20,6 +21,27 @@ const LaboratoryDashboard = () => {
   const [pendingPage, setPendingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
   const itemsPerPage = 4;
+  const getPersonType = (investigation) => {
+    if (investigation?.opdPatientId) return 'OPD';
+    if (investigation?.dependantId) return 'Dependant';
+    if (investigation?.patientId) return 'Patient';
+    return 'Unknown';
+  };
+
+  const loadDependantDetails = async (dependantId) => {
+    try {
+      const res = await getDependantById(dependantId);
+      const dependant = res?.data?.data?.dependant || res?.data?.dependant || res?.dependant;
+      
+      if (!dependant) return null;
+
+      const fullName = `${dependant.firstName || ""}  ${dependant.lastName || ""}`.trim();
+      return fullName || null;
+    } catch (err) {
+      console.error(`Failed to load dependant ${dependantId}:`, err);
+      return null;
+    }
+  };
 
   const loadPatientRecord = async (patientId, opdPatientId) => {
     if (patientId) {
@@ -101,26 +123,39 @@ const LaboratoryDashboard = () => {
         const allPendingWithPatients = await Promise.all(
           allPendingTests.map(async (inv) => {
             try {
-              const patientData = await loadPatientRecord(inv.patientId, inv.opdPatientId);
+              let patientName = "Unknown Patient";
 
-              const patientName =
-                patientData?.firstName && patientData?.lastName
-                  ? `${patientData.firstName} ${patientData.lastName}`
-                  : patientData?.name ||
-                    patientData?.fullName ||
-                    patientData?.firstName ||
-                    "Unknown Patient";
+              if (inv.dependantId) {
+                const dependantName = await loadDependantDetails(inv.dependantId);
+                patientName = dependantName || "Unknown Dependant";
+              } else {
+                const patientData = await loadPatientRecord(inv.patientId, inv.opdPatientId);
+                patientName =
+                  patientData?.firstName && patientData?.lastName
+                    ? `${patientData.firstName} ${patientData.lastName}`
+                    : patientData?.name ||
+                      patientData?.fullName ||
+                      patientData?.firstName ||
+                      "Unknown Patient";
+              }
+
+              const personType = getPersonType(inv);
+              const testName = inv.tests?.[0]?.name || "Lab Test";
 
               return {
                 name: patientName,
-                issuedBy: "Doctor",
+                testName: testName,
+                personType: personType,
                 status: "Pending",
               };
             } catch (err) {
               console.error(`Failed to fetch patient ${inv.patientId || inv.opdPatientId}:`, err);
+              const personType = getPersonType(inv);
+              const testName = inv.tests?.[0]?.name || "Lab Test";
               return {
                 name: "Unknown Patient",
-                issuedBy: "Doctor",
+                testName: testName,
+                personType: personType,
                 status: "Pending",
               };
             }
@@ -140,29 +175,43 @@ const LaboratoryDashboard = () => {
         const completedInvestigationItems = await Promise.all(
           completedInvestigations.map(async (inv) => {
             try {
-              const patientData = await loadPatientRecord(inv.patientId, inv.opdPatientId);
-              const patientName =
-                patientData?.firstName && patientData?.lastName
-                  ? `${patientData.firstName} ${patientData.lastName}`
-                  : patientData?.name ||
-                    patientData?.fullName ||
-                    patientData?.firstName ||
-                    "Unknown Patient";
+              let patientName = "Unknown Patient";
+
+              if (inv.dependantId) {
+                const dependantName = await loadDependantDetails(inv.dependantId);
+                patientName = dependantName || "Unknown Dependant";
+              } else {
+                const patientData = await loadPatientRecord(inv.patientId, inv.opdPatientId);
+                patientName =
+                  patientData?.firstName && patientData?.lastName
+                    ? `${patientData.firstName} ${patientData.lastName}`
+                    : patientData?.name ||
+                      patientData?.fullName ||
+                      patientData?.firstName ||
+                      "Unknown Patient";
+              }
+
+              const personType = getPersonType(inv);
+              const testName = inv.tests?.map((t) => t.name).join(", ") || "Lab Test";
 
               return {
                 key: `investigation-${inv._id || inv.id}`,
                 name: patientName,
-                testType: inv.tests?.map((t) => t.name).join(", ") || "Lab Test",
+                testType: testName,
+                personType: personType,
                 date: inv.completedAt
                   ? formatNigeriaTime(inv.completedAt)
                   : formatNigeriaTime(inv.updatedAt || inv.createdAt),
               };
             } catch (err) {
               console.error(`Failed to fetch patient ${inv.patientId || inv.opdPatientId}:`, err);
+              const personType = getPersonType(inv);
+              const testName = inv.tests?.map((t) => t.name).join(", ") || "Lab Test";
               return {
                 key: `investigation-${inv._id || inv.id}`,
                 name: "Unknown Patient",
-                testType: inv.tests?.map((t) => t.name).join(", ") || "Lab Test",
+                testType: testName,
+                personType: personType,
                 date: formatNigeriaTime(inv.updatedAt || inv.createdAt),
               };
             }
@@ -172,16 +221,23 @@ const LaboratoryDashboard = () => {
         const completedLabResultItems = await Promise.all(
           completedLabResults.map(async (result) => {
             try {
-              const patientData = await loadPatientRecord(result.patientId, result.opdPatientId);
-              const patientName =
-                patientData?.firstName && patientData?.lastName
-                  ? `${patientData.firstName} ${patientData.lastName}`
-                  : patientData?.name ||
-                    patientData?.fullName ||
-                    patientData?.firstName ||
-                    result.patientId ||
-                    result.opdPatientId ||
-                    "Unknown Patient";
+              let patientName = "Unknown Patient";
+
+              if (result.dependantId) {
+                const dependantName = await loadDependantDetails(result.dependantId);
+                patientName = dependantName || "Unknown Dependant";
+              } else {
+                const patientData = await loadPatientRecord(result.patientId, result.opdPatientId);
+                patientName =
+                  patientData?.firstName && patientData?.lastName
+                    ? `${patientData.firstName} ${patientData.lastName}`
+                    : patientData?.name ||
+                      patientData?.fullName ||
+                      patientData?.firstName ||
+                      result.patientId ||
+                      result.opdPatientId ||
+                      "Unknown Patient";
+              }
 
               const testType =
                 (Array.isArray(result.result) && (result.result[0]?.code || result.result[0]?.value)) ||
@@ -189,10 +245,16 @@ const LaboratoryDashboard = () => {
                 result.form?.clinicalDiagnosis ||
                 "Lab Test";
 
+              // Determine person type for lab results
+              let personType = 'Patient';
+              if (result.opdPatientId) personType = 'OPD';
+              if (result.dependantId) personType = 'Dependant';
+
               return {
                 key: `labresult-${result._id || result.id}`,
                 name: patientName,
                 testType,
+                personType,
                 date: result.completedAt
                   ? formatNigeriaTime(result.completedAt)
                   : formatNigeriaTime(result.updatedAt || result.createdAt),
@@ -205,10 +267,15 @@ const LaboratoryDashboard = () => {
                 result.form?.clinicalDiagnosis ||
                 "Lab Test";
 
+              let personType = 'Patient';
+              if (result.opdPatientId) personType = 'OPD';
+              if (result.dependantId) personType = 'Dependant';
+
               return {
                 key: `labresult-${result._id || result.id}`,
                 name: result.patientId || result.opdPatientId || "Unknown Patient",
                 testType,
+                personType,
                 date: formatNigeriaTime(result.updatedAt || result.createdAt),
               };
             }
@@ -355,19 +422,22 @@ const LaboratoryDashboard = () => {
                       pendingRequests.map((result, index) => (
                         <div
                           key={index}
-                          className="w-full h-[60px] border border-[#AEAAAE] rounded-[6px]"
+                          className="w-full h-[70px] border border-[#AEAAAE] rounded-[6px]"
                         >
                           <div className="flex justify-between items-center px-3 mt-2">
-                            <div className="flex gap-3 items-center">
+                            <div className="flex gap-3 items-center flex-1">
                               <span className="w-[10px] h-[10px] rounded-full bg-[#3498DB] inline-block"></span>
-                              <div>
+                              <div className="flex-1">
                                 <p className="text-[16px] font-[500]">
                                   {result.name}
                                 </p>
-                                <p className="text-[12px]">{result.issuedBy}</p>
+                                <p className="text-[12px] text-gray-600">
+                                  <span className="badge badge-xs badge-outline mr-2">{result.personType}</span>
+                                  {result.testName}
+                                </p>
                               </div>
                             </div>
-                            <div className="bg-[#3498DB] w-[78px] h-[32px] flex items-center justify-center rounded-[6px]">
+                            <div className="bg-[#3498DB] px-3 h-[32px] flex items-center justify-center rounded-[6px] text-white text-sm">
                               {result.status}
                             </div>
                           </div>
@@ -427,19 +497,22 @@ const LaboratoryDashboard = () => {
                       completedTests.map((result, index) => (
                         <div
                           key={index}
-                          className="w-full h-[60px] border border-[#AEAAAE] rounded-[6px]"
+                          className="w-full h-[70px] border border-[#AEAAAE] rounded-[6px]"
                         >
                           <div className="flex justify-between items-center px-3 mt-2">
-                            <div className="flex gap-3 items-center">
+                            <div className="flex gap-3 items-center flex-1">
                               <span className="w-[10px] h-[10px] rounded-full bg-[#71B908] inline-block"></span>
-                              <div>
+                              <div className="flex-1">
                                 <p className="text-[16px] font-[500]">
                                   {result.name}
                                 </p>
-                                <p className="text-[12px]">{result.testType}</p>
+                                <p className="text-[12px] text-gray-600">
+                                  <span className="badge badge-xs badge-outline mr-2">{result.personType}</span>
+                                  {result.testType}
+                                </p>
                               </div>
                             </div>
-                            <div className=" flex items-center justify-center rounded-[6px]">
+                            <div className="flex items-center justify-center text-sm text-gray-600">
                               {result.date}
                             </div>
                           </div>
