@@ -12,6 +12,7 @@ import LabInvestigationRequestTable from "@/components/doctor/patient/LabInvesti
 import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
+import { getDependantById } from "@/services/api/dependantAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
@@ -59,7 +60,7 @@ const [latest, setLatest] = useState(null);
   const [billDefaults, setBillDefaults] = useState([]);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [antenatalLoading, setAntenatalLoading] = useState(false);
-const [dependants, setDependants] = useState([]);
+const [dependantCache, setDependantCache] = useState({});
 
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -250,9 +251,6 @@ useEffect(() => {
       if (mounted) {
         setPrescriptions(list);
         setPatient(patientData);
-
-        
-        setDependants(patientData?.dependants || []);
       }
 
     } catch (err) {
@@ -328,6 +326,45 @@ useEffect(() => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  // Fetch dependants on-demand as we encounter them in various data
+  useEffect(() => {
+    const dependantIdsNeeded = new Set();
+
+    // Collect all dependant IDs from various sources
+    [consultations, prescriptions, sortedVitals, labResults]?.forEach(arr => {
+      if (Array.isArray(arr)) {
+        arr.forEach(item => {
+          if (item?.dependantId && !dependantCache[item.dependantId]) {
+            dependantIdsNeeded.add(item.dependantId);
+          }
+        });
+      }
+    });
+
+    if (dependantIdsNeeded.size === 0) return;
+
+    const fetchMissingDependants = async () => {
+      for (const dependantId of dependantIdsNeeded) {
+        try {
+          const res = await getDependantById(dependantId);
+          const dependantData = res?.data ?? res;
+          setDependantCache(prev => ({
+            ...prev,
+            [dependantId]: dependantData
+          }));
+        } catch (err) {
+          console.error(`Failed to load dependant ${dependantId}:`, err);
+          // Cache as null to avoid retrying
+          setDependantCache(prev => ({
+            ...prev,
+            [dependantId]: null
+          }));
+        }
+      }
+    };
+
+    fetchMissingDependants();
+  }, [consultations, prescriptions, sortedVitals, labResults, dependantCache]);
 
 
 const isEligibleForAntenatal = useMemo(() => {
@@ -366,10 +403,37 @@ const isEligibleForAntenatal = useMemo(() => {
     return () => { mounted = false; };
   }, [patientId, isEligibleForAntenatal]);
 
-  const latestLab = useMemo(() => {
-    if (!Array.isArray(labResults) || labResults.length === 0) return null;
-    return labResults.slice().sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())[0];
-  }, [labResults]);
+const latestLab = useMemo(() => { 
+  if (!Array.isArray(labResults) || labResults.length === 0) return null;
+
+  const latest = labResults
+    .slice()
+    .sort((a, b) =>
+      new Date(b?.createdAt || 0).getTime() -
+      new Date(a?.createdAt || 0).getTime()
+    )[0];
+
+  const isDependant = !!latest?.dependantId;
+
+  const dependant = isDependant
+    ? patient?.dependants?.find(d => d.id === latest?.dependantId)
+    : "Unknown dependant";
+
+  const forName = isDependant
+    ? dependant
+      ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+      : 'Dependant'
+    : patientName;
+
+  const forType = isDependant ? 'Dependant' : 'Patient';
+
+  return {
+    ...latest,
+    isForDependant: isDependant,
+    forName,
+    forType
+  };
+}, [labResults, patient, patientName]);
 
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -387,48 +451,7 @@ const isEligibleForAntenatal = useMemo(() => {
     return inventoryDrug?.sellingPrice || null;
   };
 
-  // Helper function to find lab investigation price from service charges
-  const getLabInvestigationPrice = (testName, investigationType) => {
-    if (!testName) return 0;
-    
-    const testNameLower = testName.toLowerCase().trim();
-    const investTypeLower = (investigationType || '').toLowerCase().trim();
-    
-    // First try exact match or close match on test name
-    const exactMatch = serviceCharges.find(charge => {
-      const chargeService = (charge?.service || '').toLowerCase().trim();
-      const chargeName = (charge?.name || '').toLowerCase().trim();
-      
-      // Exact or very close match
-      return chargeService === testNameLower || 
-             chargeName === testNameLower ||
-             chargeService.includes(testNameLower) ||
-             chargeName.includes(testNameLower);
-    });
-    
-    if (exactMatch) {
-      return Number(exactMatch?.amount || exactMatch?.price || 0);
-    }
-    
-    // If no exact match and we have investigation type, try matching by type
-    if (investTypeLower) {
-      const typeMatch = serviceCharges.find(charge => {
-        const chargeService = (charge?.service || '').toLowerCase().trim();
-        const chargeName = (charge?.name || '').toLowerCase().trim();
-        const chargeCategory = (charge?.category || '').toLowerCase().trim();
-        
-        return chargeCategory.includes(investTypeLower) ||
-               chargeService.includes(investTypeLower) ||
-               chargeName.includes(investTypeLower);
-      });
-      
-      if (typeMatch) {
-        return Number(typeMatch?.amount || typeMatch?.price || 0);
-      }
-    }
-    
-    return 0;
-  };
+
 
   // Helper function to check if item is within last 48 hours
   const isWithin48Hours = (createdAt) => {
@@ -458,11 +481,7 @@ const isEligibleForAntenatal = useMemo(() => {
   const enrichedInvestigations = investigations.map(inv => {
   const isDependant = !!inv.dependantId;
 
-  const dependant = isDependant
-    ? dependants.find(
-        d => d.id === inv.dependantId || d._id === inv.dependantId
-      )
-    : null;
+  const dependant = isDependant ? dependantCache[inv.dependantId] : null;
 
   const forName = isDependant
     ? dependant
@@ -483,11 +502,7 @@ const isEligibleForAntenatal = useMemo(() => {
       ? sortedVitals.map(vital => {
           const isDependant = !!vital.dependantId;
 
-          const dependant = isDependant
-            ? dependants.find(
-                d => d.id === vital.dependantId || d._id === vital.dependantId
-              )
-            : null;
+          const dependant = isDependant ? dependantCache[vital.dependantId] : null;
 
           const forName = isDependant
             ? dependant
@@ -502,7 +517,7 @@ const isEligibleForAntenatal = useMemo(() => {
           };
         })
       : [],
-    [sortedVitals, dependants, patient]
+    [sortedVitals, dependantCache, patient]
   );
 
   // Get the enriched latest vital
@@ -694,6 +709,7 @@ const prescriptions48h = useMemo(() =>
                     isForDependant, 
                   };
                 }) : []
+              // eslint-disable-next-line react-hooks/exhaustive-deps
               ), [consultations, patientName])}
               loading={loading}
             onAdd={() => lockAndNavigate(
@@ -727,9 +743,7 @@ const prescriptions48h = useMemo(() =>
               //  Determine who it's for
               const isForDependant = !!p?.dependantId;
 
-              const dependant = isForDependant
-                ? dependants.find(d => d.id === p.dependantId || d._id === p.dependantId)
-                : null;
+              const dependant = isForDependant ? dependantCache[p.dependantId] : null;
 
               const forName = isForDependant
                 ? dependant
@@ -748,7 +762,8 @@ const prescriptions48h = useMemo(() =>
                 forName,
               };
             }) : []
-          ), [prescriptions, inventoryData, dependants, patientName])}
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          ), [prescriptions, inventoryData, dependantCache, patientName])}
             onViewAll={() => navigate(`/dashboard/doctor/view-prescriptions/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
           />
 
@@ -775,8 +790,16 @@ const prescriptions48h = useMemo(() =>
                   {labLoading ? (
                     <div className="skeleton h-4 w-48 mt-2" />
                   ) : latestLab ? (
-                    <div className="text-sm text-base-content/70">
-                      {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
+                    <div className="text-sm text-base-content/70 space-y-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="badge badge-sm badge-outline">
+                          {latestLab?.forType}
+                        </span>
+                        <span className="font-semibold text-base-content">{latestLab?.forName}</span>
+                      </div>
+                      <div>
+                        {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
+                      </div>
                     </div>
                   ) : (
                     <div className="text-sm text-base-content/70">No lab results</div>
