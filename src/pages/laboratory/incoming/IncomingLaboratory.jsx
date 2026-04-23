@@ -12,6 +12,7 @@ import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getAllOpdPatients } from "@/services/api/opdPatientAPI";
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 
 const IncomingLaboratory = () => {
@@ -39,13 +40,13 @@ const IncomingLaboratory = () => {
         ? patientsResponse 
         : (patientsResponse?.data || []);
       
-      // Filter for those with awaiting_lab status
+      // Filter for those with awaiting_lab or sonography_completed status
       const awaitingLabPatients = allPatients.filter((p) => 
-        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB)
+        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
       );
-      console.log("Patients with awaiting_lab status:", awaitingLabPatients.length);
+      console.log("Patients with awaiting_lab or sonography_completed status:", awaitingLabPatients.length);
 
-      // Step 1.5: Fetch OpD patients with awaiting_lab status
+      // Step 1.5: Fetch OpD patients with awaiting_lab or sonography_completed status
       console.log("📥 Fetching OPD patients...");
       const opdPatientsResponse = await getAllOpdPatients();
       const allOpdPatients = Array.isArray(opdPatientsResponse)
@@ -53,9 +54,9 @@ const IncomingLaboratory = () => {
         : (opdPatientsResponse?.data || []);
       
       const awaitingLabOpdPatients = allOpdPatients.filter((p) => 
-        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB)
+        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
       );
-      console.log("OpD patients with awaiting_lab status:", awaitingLabOpdPatients.length);
+      console.log("OpD patients with awaiting_lab or sonography_completed status:", awaitingLabOpdPatients.length);
 
       // Step 2: Fetch all investigation requests
       console.log("📥 Fetching investigation requests...");
@@ -102,14 +103,11 @@ const IncomingLaboratory = () => {
               inv.patient?.id ||
               inv.opdPatient?._id ||
               inv.opdPatient?.id;
-            const invStatus = String(inv.status || "").toLowerCase();
-            const isCompletedInvestigation = invStatus === "completed";
-            const isSonographyCompleted = invStatus === "sonography_completed";
+          const invStatus = String(inv.status || "").toLowerCase();
+          
+          if (invStatus === "awaiting_sonographer") return null;
 
-            if (isCompletedInvestigation && !isSonographyCompleted) {
-              return null;
-            }
-
+          
             const matchesRegularPatient = awaitingLabPatients.some((patient) =>
               String(patient._id || patient.id) === String(invPatientId)
             );
@@ -120,19 +118,30 @@ const IncomingLaboratory = () => {
 
             let matchesDependant = false;
             if (inv.dependantId && inv.patientId) {
-              const dependants = await loadDependantsForPatient(inv.patientId);
-              matchesDependant = dependants.some(
-                (d) => String(d.id || d._id) === String(inv.dependantId)
+              // Check if parent patient is still in awaitingLabPatients
+              const parentIsAwaitingLab = awaitingLabPatients.some((patient) =>
+                String(patient._id || patient.id) === String(inv.patientId)
               );
+              if (parentIsAwaitingLab) {
+                const dependants = await loadDependantsForPatient(inv.patientId);
+                matchesDependant = dependants.some(
+                  (d) => String(d.id || d._id) === String(inv.dependantId)
+                );
+              }
             } else if (inv.dependantId && Array.isArray(inv.patient?.dependants)) {
-              matchesDependant = inv.patient.dependants.some(
-                (d) => String(d.id || d._id) === String(inv.dependantId)
+              // Check if parent patient is still in awaitingLabPatients
+              const parentIsAwaitingLab = awaitingLabPatients.some((patient) =>
+                String(patient._id || patient.id) === String(inv.patient._id || inv.patient.id)
               );
+              if (parentIsAwaitingLab) {
+                matchesDependant = inv.patient.dependants.some(
+                  (d) => String(d.id || d._id) === String(inv.dependantId)
+                );
+              }
             }
 
-            const shouldInclude = (matchesRegularPatient || matchesOpdPatient || matchesDependant) || isSonographyCompleted;
-
-            return shouldInclude ? inv : null;
+            const shouldInclude = matchesRegularPatient || matchesOpdPatient || matchesDependant;
+         return shouldInclude ? inv : null;
           })
         )
       ).filter(Boolean);
@@ -242,6 +251,14 @@ const IncomingLaboratory = () => {
               .join(", ") ||
             "No notes provided";
 
+          // Get patient status
+          let patientStatus = "unknown";
+          if (dependant && patient) {
+            patientStatus = patient.status || "unknown";
+          } else if (patient) {
+            patientStatus = patient.status || "unknown";
+          }
+
           return {
             id: inv._id || inv.id,
             patientId: inv.patientId || invPatientId,
@@ -254,12 +271,14 @@ const IncomingLaboratory = () => {
               inv.tests?.map((t) => t.name).join(", ") ||
               inv.investigationType ||
               "Lab Test",
-            date: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "N/A",
+            date: inv.createdAt ? formatNigeriaDate(inv.createdAt) : "N/A",
             requestedBy,
-            time: inv.createdAt ? new Date(inv.createdAt).toLocaleTimeString() : "N/A",
-            symptoms: testNotes,
+            time: inv.createdAt ? formatNigeriaTime(inv.createdAt) : "N/A",
+            createdAt: inv.createdAt,
+            // symptoms: testNotes,
             patientType,
             investigationStatus: inv.status, // Add investigation status
+            patientStatus, // Add patient status
           };
         })
       );
@@ -285,14 +304,16 @@ const IncomingLaboratory = () => {
           status: "Normal",
           test: "OpD Laboratory Request",
           date: opdPatient.createdAt
-            ? new Date(opdPatient.createdAt).toLocaleDateString()
+            ? formatNigeriaDate(opdPatient.createdAt)
             : "N/A",
-          requestedBy: "Front Desk",
+          requestedBy: "Cashier",
           time: opdPatient.createdAt
-            ? new Date(opdPatient.createdAt).toLocaleTimeString()
+            ? formatNigeriaTime(opdPatient.createdAt)
             : "N/A",
-          symptoms: "Direct lab request",
+          createdAt: opdPatient.createdAt,
+          // symptoms: "Direct lab request",
           patientType: "opd",
+          patientStatus: opdPatient.status || "unknown",
         }));
 
       const formattedRequests = [...investigationCards, ...opdPatientCards];
@@ -495,11 +516,11 @@ const IncomingLaboratory = () => {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 mt-4">
+            <div className="flex flex-col gap-2 mt-4">
               {testRequests.length > 0 ? (
                 testRequests.map((testCard, index) => {
                   return (
-                    <div key={index} className="w-full h-[160px] border rounded-md p-3">
+                    <div key={index} className="w-full h-[130px] border rounded-md p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-3">
@@ -510,7 +531,18 @@ const IncomingLaboratory = () => {
                             {testCard.patientType === 'opd' && (
                               <span className="badge badge-info badge-xs">OPD</span>
                             )}
-                            <p className="text-xs text-muted">{testCard.userId}</p>
+                            {testCard.patientStatus && (
+                              <span className={`badge badge-xs ${
+                                testCard.patientStatus === 'awaiting_lab' 
+                                  ? 'badge-primary' 
+                                  : testCard.patientStatus === 'sonography_completed'
+                                  ? 'badge-warning'
+                                  : 'badge-neutral'
+                              }`}>
+                                {testCard.patientStatus}
+                              </span>
+                            )}
+                           
                             <div
                               style={{ backgroundColor: bgChange(testCard.status) }}
                               className={`px-2 py-0.5 rounded text-xs font-medium ${testCard.status === "Urgent" ? "text-[#E7000B]" : "text-[#4680FC]"}`}
@@ -520,7 +552,8 @@ const IncomingLaboratory = () => {
                           </div>
                           <div className="mt-1 text-xs text-[#605D66]">
                             <div>Test: {testCard.test}</div>
-                            <div>Date: {testCard.date}</div>
+                            <div>Date: {testCard.date} | Time: {testCard.time} </div>
+                            <div>Investigation Status: {testCard.investigationStatus}</div>
                           </div>
                         </div>
 
@@ -550,9 +583,9 @@ const IncomingLaboratory = () => {
                         </div>
                       </div>
 
-                      <div className="mt-3 bg-[#EFEFEF] p-2 rounded text-sm">
-                        <strong>Symptoms/Notes:</strong> <span className="ml-2">{testCard.symptoms}</span>
-                      </div>
+                      {/* <div className="mt-3 bg-[#EFEFEF] p-2 rounded text-sm">
+                        // // <strong>Symptoms/Notes:</strong> <span className="ml-2">{testCard.symptoms}</span>
+                      </div> */}
                       {showModal && (
                         <AcceptTestRequestModal data={selectedCard} setShowModal={setShowModal} onAcceptSuccess={fetchTestRequests} />
                       )}

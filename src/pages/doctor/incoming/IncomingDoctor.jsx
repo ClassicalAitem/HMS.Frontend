@@ -149,10 +149,10 @@ const IncomingDoctor = () => {
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-100">
+      <div className="flex flex-col flex-1 bg-base-100">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 h-full">
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6">
 
           {/* Page Header */}
           <div className="mb-6">

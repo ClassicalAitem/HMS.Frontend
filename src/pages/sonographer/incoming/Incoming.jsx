@@ -5,7 +5,7 @@ import Sidebar from "@/components/sonographer/dashboard/Sidebar";
 import { getPatients } from "@/services/api/patientsAPI";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
-import { getOpdPatientById } from "@/services/api/opdPatientAPI";
+import { getOpdPatientById, getAllOpdPatients } from "@/services/api/opdPatientAPI";
 import toast from "react-hot-toast";
 import { FaSearch } from "react-icons/fa";
 import { GiUltrasound } from "react-icons/gi";
@@ -28,11 +28,26 @@ const SonographerIncoming = () => {
         const res = await getPatients();
         const allPatients = Array.isArray(res?.data) ? res.data : [];
 
+        // Fetch OPD patients
+        const opdRes = await getAllOpdPatients();
+        const allOpdPatients = Array.isArray(opdRes?.data) ? opdRes.data : (Array.isArray(opdRes) ? opdRes : []);
+
         // Fetch investigations to map patient types
         const investigationsRes = await getInvestigations();
         const allInvestigations = Array.isArray(investigationsRes) ? investigationsRes : (investigationsRes?.data || []);
 
+        // Filter regular patients with awaiting_sonographer status
         const incomingPatients = allPatients.filter((patient) => {
+          if (!patient?.status) return false;
+          const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
+          return statusList.some((status) => {
+            const normalized = String(status || "").toLowerCase();
+            return normalized === "awaiting_sonographer";
+          });
+        });
+
+        // Filter OPD patients with awaiting_sonographer status
+        const incomingOpdPatients = allOpdPatients.filter((patient) => {
           if (!patient?.status) return false;
           const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
           return statusList.some((status) => {
@@ -93,11 +108,37 @@ const SonographerIncoming = () => {
               opdPatientId: investigation?.opdPatientId,
               opdPatientInfo,
               investigationId: investigation?.id || investigation?._id,
+              investigation: investigation,
             };
           })
         );
 
-        if (mounted) setPatients(enrichedPatients);
+        // Enrich OPD patients
+        const enrichedOpdPatients = incomingOpdPatients.map((patient) => {
+          const patientId = patient?.id;
+          const investigation = allInvestigations.find(
+            (inv) => String(inv.opdPatientId) === String(patientId)
+          );
+
+          return {
+            ...patient,
+            patientType: "opd",
+            dependantId: null,
+            dependantInfo: null,
+            opdPatientId: patientId,
+            opdPatientInfo: {
+              id: patient.id || patient._id,
+              name: patient.fullName || `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+            },
+            investigationId: investigation?.id || investigation?._id,
+            investigation: investigation,
+          };
+        });
+
+        // Combine regular and OPD patients
+        const allIncomingPatients = [...enrichedPatients, ...enrichedOpdPatients];
+
+        if (mounted) setPatients(allIncomingPatients);
       } catch (err) {
         console.error("SonographerIncoming: fetch error", err);
         if (mounted) {
@@ -119,8 +160,27 @@ const SonographerIncoming = () => {
     const query = searchValue.trim().toLowerCase();
     return patients.filter((patient) => {
       if (!query) return true;
-      const patientName = `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim().toLowerCase();
-      const patientId = String(patient?.hospitalId || patient?.patientId || patient?.id || patient?._id || "").toLowerCase();
+      
+      // Get display name based on patient type
+      let patientName = "";
+      if (patient.patientType === "dependant" && patient.dependantInfo) {
+        patientName = patient.dependantInfo.name.toLowerCase();
+      } else if (patient.patientType === "opd" && patient.opdPatientInfo) {
+        patientName = patient.opdPatientInfo.name.toLowerCase();
+      } else {
+        patientName = `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim().toLowerCase();
+      }
+      
+      // Get display ID
+      let patientId = "";
+      if (patient.patientType === "dependant") {
+        patientId = String(patient?.hospitalId || patient?.patientId || patient?.id || patient?._id || "").toLowerCase();
+      } else if (patient.patientType === "opd") {
+        patientId = String(patient.opdPatientInfo?.id || patient?.id || patient?._id || "").toLowerCase();
+      } else {
+        patientId = String(patient?.hospitalId || patient?.patientId || patient?.id || patient?._id || "").toLowerCase();
+      }
+      
       return patientName.includes(query) || patientId.includes(query);
     });
   }, [patients, searchValue]);
@@ -204,7 +264,8 @@ const SonographerIncoming = () => {
 
                     if (patient.patientType === "dependant" && patient.dependantInfo) {
                       displayName = patient.dependantInfo.name;
-                      displayId = patient.dependantInfo.id;
+                      // For dependants, use parent patient's hospitalId
+                      displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
                     } else if (patient.patientType === "opd" && patient.opdPatientInfo) {
                       displayName = patient.opdPatientInfo.name;
                       displayId = patient.opdPatientInfo.id || patientIdValue;
@@ -219,7 +280,15 @@ const SonographerIncoming = () => {
                       <button
                         key={patientIdValue}
                         type="button"
-                        onClick={() => navigate(`/dashboard/sonographer/incoming/${patientIdValue}`)}
+                        onClick={() => {
+                          if (patient.patientType === "opd") {
+                            navigate(`/dashboard/sonographer/incoming/${patient.opdPatientInfo?.id || patientIdValue}`);
+                          } else if (patient.patientType === "dependant") {
+                            navigate(`/dashboard/sonographer/incoming/${patientIdValue}`);
+                          } else {
+                            navigate(`/dashboard/sonographer/incoming/${patientIdValue}`);
+                          }
+                        }}
                         className="w-full rounded-3xl border border-base-200 bg-base-100 p-5 text-left transition hover:border-primary hover:bg-base-200"
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -241,6 +310,24 @@ const SonographerIncoming = () => {
                           <p>Status: {statusText}</p>
                           <p>Updated: {patient?.updatedAt ? new Date(patient.updatedAt).toLocaleString() : "—"}</p>
                         </div>
+                        {patient.investigationId && patient.investigation && (
+                          <div className="mt-4 p-3 bg-base-200 rounded-lg">
+                            <p className="text-xs uppercase text-base-content/50 mb-2">Ordered Lab Tests</p>
+                            {patient.investigation?.tests && patient.investigation.tests.length > 0 ? (
+                              <div className="space-y-1">
+                                {patient.investigation.tests.map((test, idx) => (
+                                  <p key={idx} className="font-medium text-base-content">
+                                    • {test.name || test}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="font-medium text-base-content">
+                                {patient.investigation?.testName || patient.investigation?.investigationType || 'Sonography'}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
