@@ -9,6 +9,7 @@ import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { Sidebar } from "@/components/doctor/dashboard";
 import { FaFileImage } from "react-icons/fa";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const LabResultDetails = () => {
   const { labResultId } = useParams();
@@ -245,34 +246,42 @@ const displayAttachments = () => {
             const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name || file.filename);
 
             // Get URL for display
-            const getImageUrl = () => {
-              if (!file.data) return '';
-              if (typeof file.data === 'string') {
-                return file.data.startsWith('data:') || file.data.startsWith('http') 
-                  ? file.data 
-                  : `data:${file.mimetype};base64,${file.data}`;
-              }
-              if (file.data instanceof Uint8Array) {
-                const blob = new Blob([file.data], { type: file.mimetype });
-                return URL.createObjectURL(blob);
-              }
-              return '';
-            };
+            const getImageUrl = (file) => {
+  if (!file?.data) return '';
+
+  // Already a data URL or http URL
+  if (typeof file.data === 'string') {
+    return file.data.startsWith('data:') || file.data.startsWith('http')
+      ? file.data
+      : `data:${file.mimetype};base64,${file.data}`;
+  }
+
+  // Uint8Array
+  if (file.data instanceof Uint8Array) {
+    const binary = Array.from(file.data).map(b => String.fromCharCode(b)).join('');
+    return `data:${file.mimetype};base64,${btoa(binary)}`;
+  }
+
+  // ✅ Backend Buffer object: { type: 'Buffer', data: [...] }
+  if (file.data?.type === 'Buffer' && Array.isArray(file.data.data)) {
+    const binary = file.data.data.map(b => String.fromCharCode(b)).join('');
+    return `data:${file.mimetype};base64,${btoa(binary)}`;
+  }
+
+  return '';
+};
 
             // Download handler
-            const handleDownload = () => {
-              if (!file.data) return;
-              const blob = file.data instanceof Uint8Array ? new Blob([file.data], { type: file.mimetype }) : null;
-              if (!blob) return;
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement('a');
-              link.href = url;
-              link.download = file.name || `file-${idx + 1}`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-            };
+        const handleDownload = (file) => {
+  const url = getImageUrl(file);
+  if (!url) return;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name || file.filename || 'file';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
 
             return (
               <div
@@ -422,7 +431,7 @@ const displayAttachments = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Date</p>
-                  <p className="text-lg font-bold">{labResult?.form?.date || "N/A"}</p>
+                  <p className="text-lg font-bold">{formatNigeriaDate(labResult?.form?.createdAt || labResult?.updatedAt || "__")}</p>
                 </div>
               </div>
 
