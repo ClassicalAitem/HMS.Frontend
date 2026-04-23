@@ -13,6 +13,7 @@ import { getAllDependantsForPatient, getDependantById } from '@/services/api/dep
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ranges = {
@@ -193,28 +194,90 @@ const loadDependantDetails = async (dependantId) => {
       const labData = labRes?.data || labRes;
       setLabResult(labData);
 
-      const patientIdToUse = labData?.opdPatientId || labData?.patientId;
+      const patientIdToUse =
+        labData?.opdPatientId ||
+        labData?.patientId ||
+        labData?.patient?._id ||
+        labData?.patient?.id ||
+        labData?.opdPatient?.id ||
+        labData?.opdPatient?._id;
       setPatientId(patientIdToUse);
 
-      // ✅ Load patient
-      if (patientIdToUse) {
-        const patientData = await loadPatientRecord(patientIdToUse);
-        if (patientData) setPatient(patientData);
-      }
-
-          // ✅ Load dependant if dependantId exists
-          if (labData?.dependantId) {
-      const dep = await loadDependantDetails(labData.dependantId);
-
-      if (dep) {
+      // Load nested patient data first if available
+      if (labData?.opdPatient) {
+        setPatient(labData.opdPatient);
+        // Also extract patientInfo for OPD patients
+        const opdName = `${labData.opdPatient.firstName || ""} ${labData.opdPatient.lastName || ""}`.trim();
+        const opdAge = labData.opdPatient.age || "";
+        const opdSex = labData.opdPatient.gender?.charAt(0).toUpperCase() || "";
         setPatientInfo({
-          name: dep.name,
-          age: dep.age,
-          sex: dep.sex,
+          name: opdName,
+          age: opdAge,
+          sex: opdSex,
+        });
+      } else if (labData?.patient) {
+        setPatient(labData.patient);
+        // Also extract patientInfo for regular patients
+        const patientName = `${labData.patient.firstName || ""} ${labData.patient.lastName || ""}`.trim();
+        const patientAge = labData.patient.age || "";
+        const patientSex = labData.patient.gender?.charAt(0).toUpperCase() || "";
+        setPatientInfo({
+          name: patientName,
+          age: patientAge,
+          sex: patientSex,
         });
       }
 
-    }
+      // If no nested patient object, fetch by ID
+      if (!labData?.opdPatient && !labData?.patient && patientIdToUse) {
+        // Explicitly check if it's an OPD patient ID
+        if (labData?.opdPatientId) {
+          try {
+            const opdRes = await getOpdPatientById(labData.opdPatientId);
+            const opdPatient = opdRes?.data || opdRes;
+            if (opdPatient) {
+              setPatient(opdPatient);
+              const opdName = `${opdPatient.firstName || ""} ${opdPatient.lastName || ""}`.trim();
+              const opdAge = opdPatient.age || "";
+              const opdSex = opdPatient.gender?.charAt(0).toUpperCase() || "";
+              setPatientInfo({
+                name: opdName,
+                age: opdAge,
+                sex: opdSex,
+              });
+            }
+          } catch (err) {
+            console.warn("Failed to load OPD patient:", err);
+          }
+        } else {
+          // Regular patient
+          const patientData = await loadPatientRecord(patientIdToUse);
+          if (patientData) {
+            setPatient(patientData);
+            const name = `${patientData.firstName || ""} ${patientData.lastName || ""}`.trim() || patientData.fullName || patientData.name;
+            const age = patientData.age || "";
+            const sex = patientData.gender?.charAt(0).toUpperCase() || "";
+            setPatientInfo({
+              name,
+              age,
+              sex,
+            });
+          }
+        }
+      }
+
+      // ✅ Load dependant if dependantId exists
+      if (labData?.dependantId) {
+        const dep = await loadDependantDetails(labData.dependantId);
+
+        if (dep) {
+          setPatientInfo({
+            name: dep.name,
+            age: dep.age,
+            sex: dep.sex,
+          });
+        }
+      }
 
       // ✅ Load investigation — try all strategies
       let foundInvestigation = null;
@@ -657,15 +720,15 @@ const patientName =
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Hospital ID</p>
-                  <p className="text-lg font-bold">{patient?.hospitalId || "N/A"}</p>
+                  <p className="text-lg font-bold">{patient?.hospitalId || "__"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
-                  <p className="text-lg font-bold">{labResult?.form?.labNo || "N/A"}</p>
+                  <p className="text-lg font-bold">{labResult?.form?.labNo || "__"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Date</p>
-                  <p className="text-lg font-bold">{labResult?.form?.date || "N/A"}</p>
+                  <p className="text-lg font-bold">{formatNigeriaDate(labResult?.form?.createdAt || labResult?.updatedAt || "__")}</p>
                 </div>
               </div>
 
