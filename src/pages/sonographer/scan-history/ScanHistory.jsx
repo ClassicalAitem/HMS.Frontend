@@ -2,9 +2,49 @@ import React, { useEffect, useState } from "react";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
 import { getLabResults } from "@/services/api/labResultsAPI";
+import { getPatientById } from "@/services/api/patientsAPI";
+import { getDependantById } from "@/services/api/dependantAPI";
+import { getOpdPatientById } from "@/services/api/opdPatientAPI";
 import toast from "react-hot-toast";
-import { FaSearch, FaEye, FaDownload } from "react-icons/fa";
+import { FaSearch, FaEye, FaDownload, FaTimes } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+
+// ✅ Convert any file.data format → base64 data URL (safe for img src + print)
+const toDataUrl = (file) => {
+  if (!file?.data) return null;
+
+  if (typeof file.data === "string") {
+    return file.data.startsWith("data:") || file.data.startsWith("http")
+      ? file.data
+      : `data:${file.mimetype};base64,${file.data}`;
+  }
+
+  if (file.data instanceof Uint8Array || file.data instanceof ArrayBuffer) {
+    const arr = file.data instanceof ArrayBuffer ? new Uint8Array(file.data) : file.data;
+    const binary = Array.from(arr).map((b) => String.fromCharCode(b)).join("");
+    return `data:${file.mimetype};base64,${btoa(binary)}`;
+  }
+
+  // ✅ Backend Buffer object: { type: 'Buffer', data: [...] }
+  if (file.data?.type === "Buffer" && Array.isArray(file.data.data)) {
+    const binary = file.data.data.map((b) => String.fromCharCode(b)).join("");
+    return `data:${file.mimetype};base64,${btoa(binary)}`;
+  }
+
+  return null;
+};
+
+// ✅ Trigger browser download from a data URL
+const downloadFile = (file, index) => {
+  const url = toDataUrl(file);
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name || file.filename || `scan-${index + 1}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
 
 const SonographerScanHistory = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -12,6 +52,10 @@ const SonographerScanHistory = () => {
   const [scanResults, setScanResults] = useState([]);
   const [error, setError] = useState(null);
   const [searchValue, setSearchValue] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  // previewFiles = array of file objects (with .data, .mimetype, .name)
+  const [previewFiles, setPreviewFiles] = useState([]);
+  const [previewIndex, setPreviewIndex] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -23,12 +67,111 @@ const SonographerScanHistory = () => {
         const res = await getLabResults();
         const allResults = Array.isArray(res?.data) ? res.data : [];
 
-        // Filter for results with attachments (scans uploaded by sonographers)
-        const scanResults = allResults.filter(result => 
-          result.attachedFiles && result.attachedFiles.length > 0
+        // Only results with real file objects (not empty attachments)
+        const scanOnly = allResults.filter(
+          (r) => r.attachedFiles && r.attachedFiles.some((f) => f?.data || f?.name)
         );
 
-        if (mounted) setScanResults(scanResults);
+        const enriched = await Promise.all(
+          scanOnly.map(async (result) => {
+            let patientData = null;
+            let patientType = "regular";
+            let displayId = null;
+            let hospitalId = null;
+
+            try {
+              if (result.dependantId) {
+                patientType = "dependant";
+                displayId = result.dependantId;
+
+                try {
+                  const depRes = await getDependantById(result.dependantId);
+                  const dep =
+                    depRes?.data?.data?.dependant ||
+                    depRes?.data?.dependant ||
+                    depRes?.dependant;
+
+                  if (dep) {
+                    const fullName =
+                      `${dep.firstName || ""} ${dep.lastName || ""}`.trim() ||
+                      dep.fullName ||
+                      dep.name;
+
+                    // ✅ For dependants, fetch parent patient to get hospitalId
+                    const parentPatientId = dep.patientId || result.patientId;
+                    if (parentPatientId) {
+                      try {
+                        const parentRes = await getPatientById(parentPatientId);
+                        const parent = parentRes?.data || parentRes;
+                        hospitalId = parent?.hospitalId || null;
+                      } catch { /* silent */ }
+                    }
+
+                    patientData = { fullName, id: dep.id || dep._id, hospitalId };
+                  }
+                } catch (err) {
+                  console.warn("Failed to load dependant:", err);
+                }
+              } else if (result.opdPatientId) {
+                patientType = "opd";
+                displayId = result.opdPatientId;
+
+                try {
+                  const opdRes = await getOpdPatientById(result.opdPatientId);
+                  const opd = opdRes?.data || opdRes;
+                  if (opd) {
+                    patientData = {
+                      fullName:
+                        opd.fullName ||
+                        `${opd.firstName || ""} ${opd.lastName || ""}`.trim(),
+                      id: opd.id || opd._id,
+                      hospitalId: null, // OPD patients have no hospitalId
+                    };
+                  }
+                } catch (err) {
+                  console.warn("Failed to load OPD patient:", err);
+                }
+              } else if (result.patientId) {
+                patientType = "regular";
+                displayId = result.patientId;
+
+                try {
+                  const patRes = await getPatientById(result.patientId);
+                  const pat = Array.isArray(patRes) ? patRes[0] : patRes?.data || patRes;
+                  if (pat) {
+                    hospitalId = pat.hospitalId || null;
+                    patientData = {
+                      fullName:
+                        pat.fullName ||
+                        `${pat.firstName || ""} ${pat.lastName || ""}`.trim(),
+                      id: pat.id || pat._id,
+                      hospitalId,
+                    };
+                  }
+                } catch (err) {
+                  console.warn("Failed to load patient:", err);
+                }
+              }
+
+              return {
+                ...result,
+                patientData: patientData || { fullName: "Unknown Patient", id: displayId, hospitalId: null },
+                patientType,
+                displayId: displayId || "—",
+              };
+            } catch (err) {
+              console.warn("Error enriching scan result:", err);
+              return {
+                ...result,
+                patientData: { fullName: "Unknown Patient", id: displayId, hospitalId: null },
+                patientType: "unknown",
+                displayId: displayId || "—",
+              };
+            }
+          })
+        );
+
+        if (mounted) setScanResults(enriched);
       } catch (err) {
         console.error("SonographerScanHistory: fetch error", err);
         if (mounted) {
@@ -41,38 +184,41 @@ const SonographerScanHistory = () => {
     };
 
     fetchScanHistory();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
-  const filteredResults = scanResults.filter(result => {
+  const filteredResults = scanResults.filter((result) => {
     const query = searchValue.trim().toLowerCase();
     if (!query) return true;
-    const patientName = result.patientName || result.patient?.fullName || 
-                       `${result.patient?.firstName || ""} ${result.patient?.lastName || ""}`.trim().toLowerCase();
-    const id = String(result.patientId || result.patient?._id || "").toLowerCase();
-    return patientName.includes(query) || id.includes(query);
+    const name = result.patientData?.fullName?.toLowerCase() || "";
+    const id = String(result.displayId || "").toLowerCase();
+    const hid = String(result.patientData?.hospitalId || "").toLowerCase();
+    return name.includes(query) || id.includes(query) || hid.includes(query);
   });
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
   const handleViewScan = (result) => {
-    // Navigate to view lab result or attachment viewer
-    console.log("View scan for result:", result);
-    // For now, just log; can implement navigation to ViewLabResult
+    const files = (result.attachedFiles || []).filter((f) => f?.data || f?.name);
+    setPreviewFiles(files);
+    setPreviewIndex(0);
+    setShowPreview(true);
   };
 
-  const handleDownloadScan = (fileId) => {
-    // Download the file
-    window.open(`/api/v1/labResult/file/${fileId}`, '_blank');
+  const closePreview = () => {
+    setShowPreview(false);
+    setPreviewFiles([]);
+    setPreviewIndex(0);
   };
 
   return (
     <div className="flex h-screen">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div
+          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          onClick={closeSidebar}
+        />
       )}
 
       <div
@@ -139,21 +285,43 @@ const SonographerScanHistory = () => {
               ) : (
                 <div className="space-y-3">
                   {filteredResults.map((result) => {
-                    const patientName = result.patientName || result.patient?.fullName || 
-                                       `${result.patient?.firstName || ""} ${result.patient?.lastName || ""}`.trim() || "Unknown Patient";
-                    const patientId = result.patientId || result.patient?._id || "—";
-                    const uploadDate = result.createdAt ? formatNigeriaDateTime(result.createdAt) : "—";
-                    const fileCount = result.attachedFiles?.length || 0;
+                    const patientName = result.patientData?.fullName || "Unknown Patient";
+                    // ✅ Show hospitalId for regular/dependant, raw id for OPD
+                    const displayPatientId =
+                      result.patientType === "opd"
+                        ? result.displayId
+                        : result.patientData?.hospitalId || result.displayId || "—";
+                    const uploadDate = result.createdAt
+                      ? formatNigeriaDateTime(result.createdAt)
+                      : "—";
+                    const files = (result.attachedFiles || []).filter(
+                      (f) => f?.data || f?.name
+                    );
+                    const fileCount = files.length;
 
                     return (
-                      <div key={result._id} className="rounded-3xl border border-base-200 bg-base-100 p-5">
+                      <div
+                        key={result._id}
+                        className="rounded-3xl border border-base-200 bg-base-100 p-5"
+                      >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0">
-                            <p className="font-semibold text-base-content truncate">{patientName}</p>
-                            <p className="text-sm text-base-content/70">{patientId}</p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-semibold text-base-content truncate">
+                                {patientName}
+                              </p>
+                              {result.patientType === "dependant" && (
+                                <span className="badge badge-secondary badge-xs">Dependant</span>
+                              )}
+                              {result.patientType === "opd" && (
+                                <span className="badge badge-info badge-xs">OPD</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-base-content/70">{displayPatientId}</p>
                             <p className="text-sm text-base-content/70">Uploaded: {uploadDate}</p>
                             <p className="text-sm text-base-content/70">{fileCount} file(s)</p>
                           </div>
+
                           <div className="flex gap-2">
                             <button
                               type="button"
@@ -163,17 +331,35 @@ const SonographerScanHistory = () => {
                               <FaEye className="w-4 h-4" />
                               View
                             </button>
-                            {result.attachedFiles?.map((fileId, idx) => (
+
+                            {fileCount === 1 && (
                               <button
-                                key={idx}
                                 type="button"
-                                onClick={() => handleDownloadScan(fileId)}
+                                onClick={() => downloadFile(files[0], 0)}
                                 className="btn btn-primary btn-sm gap-2"
                               >
                                 <FaDownload className="w-4 h-4" />
                                 Download
                               </button>
-                            ))}
+                            )}
+
+                            {fileCount > 1 && (
+                              <div className="dropdown dropdown-end">
+                                <button className="btn btn-primary btn-sm gap-2">
+                                  <FaDownload className="w-4 h-4" />
+                                  Download ({fileCount})
+                                </button>
+                                <ul className="dropdown-content menu bg-base-100 rounded-box w-52 p-2 shadow border border-base-200">
+                                  {files.map((file, idx) => (
+                                    <li key={idx}>
+                                      <a onClick={() => downloadFile(file, idx)}>
+                                        {file.name || file.filename || `File ${idx + 1}`}
+                                      </a>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -185,6 +371,94 @@ const SonographerScanHistory = () => {
           </div>
         </div>
       </div>
+
+      {/* ✅ Image Preview Modal — uses base64 data URLs, no API calls */}
+      {showPreview && previewFiles.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
+          <div className="bg-base-100 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="p-4 border-b border-base-200 flex items-center justify-between sticky top-0 bg-base-100">
+              <h3 className="text-lg font-semibold">
+                {previewFiles[previewIndex]?.name ||
+                  previewFiles[previewIndex]?.filename ||
+                  `File ${previewIndex + 1}`}{" "}
+                <span className="text-sm font-normal text-base-content/60">
+                  ({previewIndex + 1} of {previewFiles.length})
+                </span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => downloadFile(previewFiles[previewIndex], previewIndex)}
+                  className="btn btn-ghost btn-sm gap-1"
+                  title="Download current file"
+                >
+                  <FaDownload className="w-4 h-4" />
+                </button>
+                <button onClick={closePreview} className="btn btn-ghost btn-sm btn-circle">
+                  <FaTimes className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 flex justify-center items-center min-h-[300px]">
+              {(() => {
+                const file = previewFiles[previewIndex];
+                const isImage =
+                  /^image\//i.test(file?.mimetype || "") ||
+                  /\.(jpg|jpeg|png|gif|webp)$/i.test(file?.name || file?.filename || "");
+                const url = toDataUrl(file);
+
+                if (isImage && url) {
+                  return (
+                    <img
+                      src={url}
+                      alt={file.name || `Scan ${previewIndex + 1}`}
+                      className="max-w-full h-auto rounded"
+                    />
+                  );
+                }
+
+                // Non-image file fallback
+                return (
+                  <div className="flex flex-col items-center gap-4 text-base-content/60">
+                    <FaDownload className="w-12 h-12" />
+                    <p className="text-lg font-medium">
+                      {file?.name || file?.filename || "File"}
+                    </p>
+                    <p className="text-sm">{file?.mimetype || "Unknown type"}</p>
+                    <button
+                      onClick={() => downloadFile(file, previewIndex)}
+                      className="btn btn-primary btn-sm gap-2"
+                    >
+                      <FaDownload className="w-4 h-4" /> Download to view
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {previewFiles.length > 1 && (
+              <div className="p-4 border-t border-base-200 flex gap-2 justify-center">
+                <button
+                  onClick={() => setPreviewIndex((i) => Math.max(0, i - 1))}
+                  disabled={previewIndex === 0}
+                  className="btn btn-sm btn-outline"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() =>
+                    setPreviewIndex((i) => Math.min(previewFiles.length - 1, i + 1))
+                  }
+                  disabled={previewIndex === previewFiles.length - 1}
+                  className="btn btn-sm btn-outline"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
