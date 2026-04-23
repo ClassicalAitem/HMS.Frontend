@@ -277,6 +277,7 @@ const PatientDetails = () => {
           // After bill is created, proceed to status update modal
           setIsSendToCashierOpen(true);
         }}
+        defaultItems={[]}
         // defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
 
