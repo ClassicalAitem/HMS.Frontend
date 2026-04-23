@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
 import Sidebar from '@/components/doctor/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
+import { getDependantById } from '@/services/api/dependantAPI';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
@@ -18,6 +19,7 @@ const ViewAllLabResults = () => {
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState(null);
   const [labResults, setLabResults] = useState([]);
+  const [dependantCache, setDependantCache] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -63,6 +65,44 @@ const ViewAllLabResults = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  // Fetch dependants on-demand as we encounter them in lab results
+useEffect(() => {
+  if (!labResults.length) return;
+
+  const dependantIdsNeeded = [
+    ...new Set(
+      labResults
+        .map(r => r?.dependantId)
+        .filter(Boolean)
+    )
+  ];
+
+  const fetchDependants = async () => {
+    try {
+      const results = await Promise.all(
+        dependantIdsNeeded.map(id => getDependantById(id))
+      );
+
+      const newCache = {};
+
+      results.forEach((res, index) => {
+        const id = dependantIdsNeeded[index];
+        const data = res?.data?.dependant ?? res?.dependant ?? res;
+        newCache[id] = data;
+      });
+
+      setDependantCache(prev => ({
+        ...prev,
+        ...newCache
+      }));
+    } catch (err) {
+      console.error("Dependant fetch error:", err);
+    }
+  };
+
+  fetchDependants();
+}, [labResults]);
+
   // Format lab result rows
   const resultRows = useMemo(() => (
     Array.isArray(labResults)
@@ -86,6 +126,20 @@ const ViewAllLabResults = () => {
             .filter(cat => cat.data && Object.values(cat.data).some(v => v !== ''))
             .map(cat => cat.name);
 
+          // Check if this result is for a dependant
+          const isDependant = !!result?.dependantId;
+          const dependant = patient?.dependants?.find(
+            d => d.id === result.dependantId
+          );
+
+         const forName = isDependant
+          ? dependant
+            ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+            : 'Loading...'
+          : patientName;
+
+          const forType = isDependant ? 'Dependant' : 'Patient';
+
           return {
             _id: result._id || result.id,
             labNo: form.labNo || '—',
@@ -94,10 +148,13 @@ const ViewAllLabResults = () => {
             remarks: result.remarks || '—',
             completedTests,
             completedTestsCount: completedTests.length,
+            isForDependant: isDependant,
+            forName,
+            forType,
           };
         })
       : []
-  ), [labResults]);
+  ), [labResults, dependantCache, patientName]);
 
   // Pagination
   const paginationData = useMemo(() => {
@@ -163,11 +220,10 @@ const ViewAllLabResults = () => {
                   <table className="table w-full text-center">
                     <thead>
                       <tr>
-                        <th>Lab No</th>
-                        <th>Specimen Type</th>
-                        <th>Test Categories</th>
+                        <th>For</th>
+                        {/* <th>Specimen Type</th> */}
+                        {/* <th>Test Categories</th> */}
                         <th>Date</th>
-                        <th>Remarks</th>
                         <th>Action</th>
                       </tr>
                     </thead>
@@ -175,11 +231,17 @@ const ViewAllLabResults = () => {
                       {paginationData.paginatedItems.length > 0 ? (
                         paginationData.paginatedItems.map((row, idx) => (
                           <tr key={idx} className="hover">
-                            <td className="py-3 font-medium text-base-content">
-                              {row.labNo}
+                          
+                            <td>
+                              <div className="flex items-center justify-center gap-2 flex-wrap">
+                                <span className="badge badge-sm badge-outline">
+                                  {row.forType}
+                                </span>
+                                <span className="text-sm font-semibold text-base-content">{row.forName}</span>
+                              </div>
                             </td>
-                            <td className="capitalize">{row.specimen}</td>
-                            <td className="text-left">
+                            {/* <td className="capitalize">{row.specimen}</td> */}
+                            {/* <td className="text-left">
                               {row.completedTestsCount > 0 ? (
                                 <div className="flex flex-col gap-1">
                                   <span className="text-xs badge badge-sm">{row.completedTestsCount} test{row.completedTestsCount !== 1 ? 's' : ''}</span>
@@ -193,13 +255,9 @@ const ViewAllLabResults = () => {
                               ) : (
                                 <span className="text-xs text-base-content/50">No tests completed</span>
                               )}
-                            </td>
+                            </td> */}
                             <td>{row.date}</td>
-                            <td>
-                              <div className="text-xs max-w-xs whitespace-normal">
-                                {row.remarks}
-                              </div>
-                            </td>
+                           
                             <td>
                               <button
                                 className="btn btn-sm btn-ghost"
@@ -212,7 +270,7 @@ const ViewAllLabResults = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="py-6 text-base-content/70">
+                          <td colSpan={7} className="py-6 text-base-content/70">
                             No lab results found
                           </td>
                         </tr>

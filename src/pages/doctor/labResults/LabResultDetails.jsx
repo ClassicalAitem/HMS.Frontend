@@ -4,6 +4,7 @@ import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { getLabResultById, getLabResultFile } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getDependantById } from "@/services/api/dependantAPI";
 import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { Sidebar } from "@/components/doctor/dashboard";
@@ -16,6 +17,7 @@ const LabResultDetails = () => {
 
   const [labResult, setLabResult] = useState(null);
   const [patient, setPatient] = useState(null);
+  const [dependant, setDependant] = useState(null);
   const [investigationIdState, setInvestigationIdState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,19 +40,30 @@ const LabResultDetails = () => {
       try {
         setLoading(true);
 
-      
         const labRes = await getLabResultById(labResultId);
         const labData = labRes?.data || labRes;
         setLabResult(labData);
 
-         if (!investigationIdState && labData?.investigationId) {
+        if (!investigationIdState && labData?.investigationId) {
           setInvestigationIdState(labData.investigationId);
         }
 
-      if (labData?.patientId) {
+        if (labData?.patientId) {
           const patientRes = await getPatientById(labData.patientId);
           const patientData = patientRes?.data || patientRes;
           setPatient(patientData);
+        }
+
+        // Fetch dependant if this lab result is for a dependant
+        if (labData?.dependantId) {
+          try {
+            const depRes = await getDependantById(labData.dependantId);
+            const depData = depRes?.data?.data?.dependant ?? depRes?.dependant ?? depRes;
+            setDependant(depData);
+          } catch (err) {
+            console.error("Error fetching dependant:", err);
+            setDependant(null);
+          }
         }
 
         setError(null);
@@ -339,10 +352,13 @@ const displayAttachments = () => {
     );
   }
 
-  const patientName =
-    patient?.firstName && patient?.lastName
+  const isDependant = !!labResult?.dependantId && !!dependant;
+  const displayName = isDependant
+    ? `${dependant?.firstName || ''} ${dependant?.lastName || ''}`.trim() || 'Unknown Dependant'
+    : patient?.firstName && patient?.lastName
       ? `${patient.firstName} ${patient.lastName}`
       : patient?.name || "Unknown Patient";
+  const personType = isDependant ? 'Dependant' : 'Patient';
 
   const handlePrint = () => {
     document.body.classList.add('printable-lab');
@@ -367,7 +383,8 @@ const displayAttachments = () => {
               <div>
                 <h1 className="text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
                 <p className="text-[12px] text-[#605D66]">
-                  Complete laboratory test results for {patientName}
+                  Complete laboratory test results for <span className="font-semibold">{displayName}</span> 
+                  <span className="badge badge-sm badge-outline ml-2">{personType}</span>
                 </p>
               </div>
               <div className="flex gap-2 no-print">
@@ -390,8 +407,10 @@ const displayAttachments = () => {
               {/* Patient Information Header */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 pb-8 border-b-2 border-gray-200">
                 <div>
-                  <p className="text-xs text-gray-600 uppercase font-semibold">Patient Name</p>
-                  <p className="text-lg font-bold text-[#00943C]">{patientName}</p>
+                  <p className="text-xs text-gray-600 uppercase font-semibold">{personType} Name</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-lg font-bold text-[#00943C]">{displayName}</p>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Hospital ID</p>
@@ -576,7 +595,7 @@ const displayAttachments = () => {
         labResultId={labResultId}
         investigationRequestId={effectiveInvestigationId}
         patientId={labResult?.patientId}
-        patientName={patientName}
+        patientName={displayName}
         onSuccess={() => navigate("/dashboard/laboratory")}
       />
 
