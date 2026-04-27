@@ -12,6 +12,9 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
     hmoId: '',
     paidBy: 'Select payer',
     paymentDestination: 'Select Destination',
+    bankName: '',
+    senderName: '',
+    sessionId: '',
   });
 
   // Patient search state
@@ -137,6 +140,9 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
         hmoId: '',
         paidBy: 'Select payer',
         paymentDestination: 'Select Destination',
+        bankName: '',
+        senderName: '',
+        sessionId: '',
       });
       setQuery('');
       setFilteredResults([]);
@@ -151,6 +157,9 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
       hmoId: '',
       paidBy: 'Select payer',
       paymentDestination: 'Select Destination',
+      bankName: '',
+      senderName: '',
+      sessionId: '',
     });
     setQuery('');
     setFilteredResults([]);
@@ -166,8 +175,8 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCancel} />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-lg mx-4 shadow-xl card bg-base-100">
-        <div className="p-6 card-body">
+      <div className="relative z-10 w-full max-w-lg mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col">
+        <div className="p-6 card-body overflow-y-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-primary">Generate Receipt</h2>
@@ -281,7 +290,6 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
                   value={formData.paymentDestination}
                   onChange={handleInputChange}
                   className="w-full select select-bordered"
-                  required
                 >
                   <option value="">Select Destination</option>
                   <option value="form">Form Registration</option>
@@ -298,6 +306,58 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
               </div>
             </div>
 
+            {/* Conditional Bank Transfer Fields */}
+            {formData.paymentMethod === 'transfer' && (
+              <div className="space-y-1 p-3 bg-base-200 rounded-lg border-l-4 border-primary">
+                <p className="text-sm font-medium text-base-content mb-3">Bank Transfer Details</p>
+                
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-base-content">
+                    Bank Name <span className="text-error">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="bankName"
+                    value={formData.bankName}
+                    onChange={handleInputChange}
+                    placeholder="Enter bank name"
+                    className="w-full input input-bordered"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-base-content">
+                    Sender's Name <span className="text-error">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="senderName"
+                    value={formData.senderName}
+                    onChange={handleInputChange}
+                    placeholder="Enter sender's full name"
+                    className="w-full input input-bordered"
+                    required
+                  />
+                </div>
+
+                
+                <div>
+                  <label className="block mb-2 text-sm font-medium text-base-content">
+                    Session ID <span className="text-base-content/50">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="sessionId"
+                    value={formData.sessionId}
+                    onChange={handleInputChange}
+                    placeholder="Enter session ID (optional)"
+                    className="w-full input input-bordered"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-3 justify-end pt-4">
               <button
@@ -310,7 +370,12 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={!formData.amountPaid || !formData.paymentMethod || !formData.paidBy || !formData.paymentDestination}
+                disabled={
+                  !formData.amountPaid || 
+                  !formData.paymentMethod || 
+                  !formData.paidBy ||
+                  (formData.paymentMethod === 'transfer' && (!formData.bankName || !formData.senderName))
+                }
               >
                 Send Receipt
               </button>
