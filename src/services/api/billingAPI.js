@@ -255,7 +255,7 @@ export const createReceipt = async (billingId, receiptData) => {
   if (!billingId) throw new Error('Billing ID is required');
   if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
 
-  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination } = receiptData;
+  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId } = receiptData;
   if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');
   if (!paymentMethod) throw new Error('Payment method is required');
   if (!paidBy) throw new Error('Payer information is required');
@@ -265,9 +265,17 @@ export const createReceipt = async (billingId, receiptData) => {
     amountPaid: Number(amountPaid),
     paymentMethod,
     paidBy,
-    hmoId: hmoId,
+    hmoId: hmoId || null,
     paymentDestination,
+    bankName: bankName || '',
+    senderName: senderName || '',
+    cashierName: cashierName || '',
   };
+  
+   if (sessionId && sessionId.trim()) {
+    payload.sessionId = sessionId;
+  }
+  
   const url = `/receipt/create/${billingId}`;
   console.log('🧾 ReceiptAPI: Creating receipt', { billingId, payload, url });
   const response = await apiClient.post(url, payload);

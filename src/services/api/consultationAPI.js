@@ -18,23 +18,50 @@ export const getConsultationByPatientId = async (patientId) => {
 };
 
 export const createConsultation = async (payload) => {
+  const cleanedPayload = {};
+  const optionalFields = [
+    'visitReason',
+    'allergicHistory',
+    'familyHistory',
+    'medicalHistory',
+    'socialHistory',
+    'surgicalHistory',
+    'complaint',
+    'complaintHistory',
+    'notes',
+    'additionalNotes',
+    'attachments',
+  ];
+
+  Object.keys(payload).forEach((key) => {
+    const value = payload[key];
+    
+    if (optionalFields.includes(key)) {
+      if (value === '' || value === null || (Array.isArray(value) && value.length === 0)) {
+        return; 
+      }
+    }
+    
+    cleanedPayload[key] = value;
+  });
+
   // if attachments are present we need multipart/form-data
-  if (payload?.attachments && payload.attachments.length > 0) {
+  if (cleanedPayload?.attachments && cleanedPayload.attachments.length > 0) {
     const formData = new FormData();
     
     // Add all fields except attachments
-    Object.keys(payload).forEach((key) => {
+    Object.keys(cleanedPayload).forEach((key) => {
       if (key !== 'attachments') {
-        if (typeof payload[key] === 'object') {
-          formData.append(key, JSON.stringify(payload[key]));
+        if (typeof cleanedPayload[key] === 'object') {
+          formData.append(key, JSON.stringify(cleanedPayload[key]));
         } else {
-          formData.append(key, payload[key] || '');
+          formData.append(key, cleanedPayload[key]);
         }
       }
     });
 
     // Add files
-    payload.attachments.forEach((file) => {
+    cleanedPayload.attachments.forEach((file) => {
       formData.append('attachments', file);
     });
 
@@ -44,30 +71,56 @@ export const createConsultation = async (payload) => {
     return response.data;
   }
 
-  const response = await apiClient.post('/consultation', payload);
+  const response = await apiClient.post('/consultation', cleanedPayload);
   return response.data;
 };
 
 export const updateConsultation = async (id, payload) => {
   if (!id) throw new Error('Consultation ID is required');
   
+ const cleanedPayload = {};
+  const optionalFields = [
+    'visitReason',
+    'allergicHistory',
+    'familyHistory',
+    'medicalHistory',
+    'socialHistory',
+    'surgicalHistory',
+    'complaint',
+    'complaintHistory',
+    'notes',
+    'additionalNotes',
+    'attachments',
+  ];
+
+  Object.keys(payload).forEach((key) => {
+    const value = payload[key];
+     if (optionalFields.includes(key)) {
+      if (value === '' || value === null || (Array.isArray(value) && value.length === 0)) {
+        return;
+      }
+    }
+    
+    cleanedPayload[key] = value;
+  });
+  
   // if attachments included with update convert to FormData
-  if (payload?.attachments && payload.attachments.length > 0) {
+  if (cleanedPayload?.attachments && cleanedPayload.attachments.length > 0) {
     const formData = new FormData();
     
     // Add all fields except attachments
-    Object.keys(payload).forEach((key) => {
+    Object.keys(cleanedPayload).forEach((key) => {
       if (key !== 'attachments') {
-        if (typeof payload[key] === 'object') {
-          formData.append(key, JSON.stringify(payload[key]));
+        if (typeof cleanedPayload[key] === 'object') {
+          formData.append(key, JSON.stringify(cleanedPayload[key]));
         } else {
-          formData.append(key, payload[key] || '');
+          formData.append(key, cleanedPayload[key]);
         }
       }
     });
 
     // Add files
-    payload.attachments.forEach((file) => {
+    cleanedPayload.attachments.forEach((file) => {
       formData.append('attachments', file);
     });
 
@@ -77,7 +130,7 @@ export const updateConsultation = async (id, payload) => {
     return response.data;
   }
 
-  const response = await apiClient.patch(`/consultation/${id}`, payload);
+  const response = await apiClient.patch(`/consultation/${id}`, cleanedPayload);
   return response.data;
 };
 
