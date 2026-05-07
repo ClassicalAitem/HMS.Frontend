@@ -4,6 +4,7 @@ import { MdInventory } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
 import { getPatients } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 
 const Incoming = () => {
   const [patients, setPatients] = useState([])
@@ -38,6 +39,9 @@ const filtered = list.filter((p) => {
   ? p.status.find(s => s.toLowerCase().includes('pharmacy')) || p.status[0]
   : p?.status || '—',
           updatedAt: p?.updatedAt || p?.createdAt,
+          cardType: p?.cardType || 'personal',
+          familyName: p?.familyName || '',
+          companyName: p?.companyName || '',
         }))
         if (mounted) setPatients(mapped)
       } catch (err) {
@@ -111,6 +115,11 @@ const filtered = list.filter((p) => {
                   <div className="text-xs text-base-content/60">Patient ID: {p.patientId}</div>
                 </div>
               </div>
+              <PatientCardTypeInfo
+                cardType={p.cardType}
+                familyName={p.familyName}
+                companyName={p.companyName}
+              />
               <div className="flex justify-between items-center border-t pt-3">
                 <button className="text-sm text-primary hover:underline" onClick={() => handleViewDetails(p)}>View Details</button>
                 <div className="text-xs text-base-content/60">Updated: {p.updatedAt ? formatNigeriaDateTime(p.updatedAt) : '—'}</div>

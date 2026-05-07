@@ -45,10 +45,12 @@ export const getPrescriptionByPatientId = async (patientId) => {
     const response = await apiClient.get(`/prescription/getPrescriptionByPatientId/${patientId}`)
     return response.data ?? []
   } catch (err) {
-    // Suppress 404 errors (patient has no prescriptions)
-    if (err?.response?.status !== 404) {
-      console.error('prescriptionsAPI: getPrescriptionByPatientId error', err)
+    // Suppress 404 errors (patient has no prescriptions) - return empty array
+    if (err?.response?.status === 404) {
+      console.log('prescriptionsAPI: No prescriptions found for patient, returning empty array')
+      return []
     }
+    console.error('prescriptionsAPI: getPrescriptionByPatientId error', err)
     throw err
   }
 }
