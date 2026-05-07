@@ -10,6 +10,7 @@ import { getOpdPatientById, updateOpdPatient } from "@/services/api/opdPatientAP
 import toast from "react-hot-toast";
 import { FaUpload, FaCheckCircle, FaArrowLeft, FaTimes, FaPrint, FaEye } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 
 const SonographerIncomingDetails = () => {
   const { patientId } = useParams();
@@ -365,6 +366,11 @@ const SonographerIncomingDetails = () => {
                           <p className="text-base-content">{formatNigeriaDateTime(patient.updatedAt)}</p>
                         </div>
                       )}
+                      <PatientCardTypeInfo
+                        cardType={patient?.cardType}
+                        familyName={patient?.familyName}
+                        companyName={patient?.companyName}
+                      />
                       {investigation && (
                         <>
                           <div className="p-4 bg-base-200 rounded-lg">

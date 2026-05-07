@@ -5,6 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
 const IncomingDoctor = () => {
   const navigate = useNavigate();
@@ -65,6 +66,9 @@ const IncomingDoctor = () => {
           patientId: p?.hospitalId || p?.id || "—",
           reason: prettifyStatus(p?.status) || "Consultation",
           insurance: p?.hmos?.provider || "—",
+          cardType: p?.cardType || 'personal',
+          familyName: p?.familyName || '',
+          companyName: p?.companyName || '',
           rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
           updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
           gender: p?.gender || null,
@@ -256,6 +260,13 @@ const IncomingDoctor = () => {
                       <p className="font-bold text-base-content truncate">
                         {data.name}
                       </p>
+                      {/* <div className="mt-2">
+                        <PatientCardTypeInfo
+                          cardType={data.cardType}
+                          familyName={data.familyName}
+                          companyName={data.companyName}
+                        />
+                      </div> */}
                       {(data.age !== null || data.gender) && (
                         <p className="text-xs text-base-content/50 mt-0.5">
                           {[data.age !== null ? `Age:  ${data.age}y` : null, `Gender: ${data.gender}`]

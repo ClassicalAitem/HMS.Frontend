@@ -11,6 +11,8 @@ import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
+  investigationId: yup.string().nullable().optional(),
+  prescriptionId: yup.string().nullable().optional(),
   code: yup.string().required('Item code is required'),
   description: yup.string().required('Description is required'),
   quantity: yup.number().typeError('Must be a number').min(1, 'Min 1').required(),
@@ -31,12 +33,14 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
 
   // ✅ Resolve display label from selected value
   const selectedService = services.find(s => (s._id || s.id) === value);
+  const availabilityText = selectedService ? (selectedService.isBillable !== false ? 'Available' : 'Unavailable') : '';
   const displayValue = open
     ? search
     : selectedService
-      ? `${selectedService.service || selectedService.name} — ₦${Number(selectedService.amount || 0).toLocaleString()}`
+      ? `${selectedService.service || selectedService.name}`
       : '';
 
+  // Filter services: show all but filter search for billable items
   const filtered = services.filter(s => {
     if (!search) return true;
     const name = (s.service || s.name || '').toLowerCase();
@@ -101,18 +105,25 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
                 const name = s.service || s.name || 'Unknown';
                 const cat = s.category || 'N/A';
                 const price = Number(s.amount || s.price || 0);
+                const isBillable = s.isBillable !== false;
+                const availabilityBadge = isBillable ? 'Available' : 'Unavailable';
                 return (
                   <li
                     key={id}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700 flex justify-between items-center"
+                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm flex justify-between items-center"
                     onMouseDown={(e) => {
-                      e.preventDefault(); // prevent blur before click
+                      e.preventDefault();
                       onSelect(id, s);
                       setOpen(false);
                       setSearch('');
                     }}
                   >
-                    <span className="font-medium">{name}</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{name}</span>
+                      <span className={`text-xs ${ isBillable ? 'text-green-600' : 'text-error' }`}>
+                        {availabilityBadge}
+                      </span>
+                    </div>
                     <span className="text-gray-400 text-xs ml-2">{cat} · ₦{price.toLocaleString()}</span>
                   </li>
                 );
@@ -145,6 +156,8 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
       items: [{ serviceChargeId: null, code: '', description: '', quantity: 1, price: 0 }]
     }
   });
+
+  
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
@@ -179,6 +192,8 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
       reset({
         items: defaultItems.map(d => ({
           serviceChargeId: d.serviceChargeId || null,
+          investigationId: d.investigationId || null,
+          prescriptionId: d.prescriptionId || null,
           code: d.code || '',
           description: d.description || '',
           quantity: d.quantity || 1,
@@ -187,11 +202,13 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
         }))
       });
     } else {
-      reset({ items: [{ serviceChargeId: null, code: '', description: '', quantity: 1, price: 0 }] });
+      reset({ items: [{ serviceChargeId: null,investigationId: null, prescriptionId: null, code: '', description: '', quantity: 1, price: 0 }] });
     }
   }, [isOpen, defaultItems, reset]);
 
   const items = watch("items");
+
+  
   const grandTotal = items?.reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.price) || 0);
   }, 0) || 0;
@@ -216,9 +233,13 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
           quantity: Number(item.quantity),
           price: Number(item.price),
           total: Number(item.quantity) * Number(item.price),
-          serviceChargeId: item.serviceChargeId
+          serviceChargeId: item.serviceChargeId,
+          investigationId: item.investigationId,
+          prescriptionId: item.prescriptionId,
         }))
       };
+
+      console.log('payload being sent:', JSON.stringify(payload, null, 2));
       await createBilling(patientId, payload);
       toast.success('Bill created successfully!');
       try {
