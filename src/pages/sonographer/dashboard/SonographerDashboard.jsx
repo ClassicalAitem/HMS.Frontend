@@ -166,11 +166,16 @@ const SonographerDashboard = () => {
             <div className="card-body p-6">
               <h2 className="text-lg font-bold text-base-content mb-4">Quick Actions</h2>
               <div className="flex gap-3 flex-wrap">
-                <button className="btn btn-primary btn-sm gap-2">
+                <button className="btn btn-primary btn-sm gap-2"
+                  onClick={() => window.location.href = '/dashboard/sonographer/incoming'}
+                >
                   <GiUltrasound className="w-4 h-4" />
+                 
                   View Incoming
                 </button>
-                <button className="btn btn-outline btn-sm gap-2">
+                <button className="btn btn-outline btn-sm gap-2"
+                onClick={() => window.location.href = '/dashboard/sonographer/scan-history'}
+                >
                   View Scan History
                 </button>
               </div>

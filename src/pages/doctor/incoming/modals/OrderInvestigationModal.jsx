@@ -277,27 +277,33 @@ const OrderInvestigationModal = ({
 
                       <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow max-h-60 overflow-auto">
 
-                        {filteredTests.map((test) => (
+                        {filteredTests.map((test) => {
+                          const isBillable = test.isBillable !== false;
+                          const availabilityBadge = isBillable ? 'Available' : 'Unavailable';
+                          return (
+                            <div
+                              key={test.id}
+                              className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
+                              onClick={() => {
+                                setValue(`tests.${index}.name`, test.service);
+                                setTestDropdownIndex(null);
+                                setTestSearch('');
+                              }}
+                            >
+                              <div className="flex flex-col">
+                                <span>{test.service}</span>
+                                <span className={`text-xs ${ isBillable ? 'text-green-600' : 'text-error' }`}>
+                                  {availabilityBadge}
+                                </span>
+                              </div>
 
-                          <div
-                            key={test.id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between"
-                            onClick={() => {
-                              setValue(`tests.${index}.name`, test.service);
-                              setTestDropdownIndex(null);
-                              setTestSearch("");
-                            }}
-                          >
+                              <span className="text-xs text-gray-500">
+                                ₦{Number(test.amount).toLocaleString()}
+                              </span>
 
-                            <span>{test.service}</span>
-
-                            <span className="text-xs text-gray-500">
-                              ₦{Number(test.amount).toLocaleString()}
-                            </span>
-
-                          </div>
-
-                        ))}
+                            </div>
+                          );
+                        })}
 
                       </div>
 

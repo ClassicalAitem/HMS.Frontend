@@ -132,3 +132,42 @@ export const deletePatient = async (patientId) => {
     throw error;
   }
 };
+
+
+// Get unique family names
+export const getUniqueFamilyNames = async () => {
+  try {
+    const response = await getPatients();
+    const patients = Array.isArray(response?.data) ? response.data : [];
+    
+    const familyNames = patients
+      .filter(p => p.cardType === 'family' && p.familyName)
+      .map(p => p.familyName)
+      .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
+      .sort();
+    
+    return familyNames;
+  } catch (error) {
+    console.error('Error fetching family names:', error);
+    return [];
+  }
+};
+
+// Get unique company names
+export const getUniqueCompanyNames = async () => {
+  try {
+    const response = await getPatients();
+    const patients = Array.isArray(response?.data) ? response.data : [];
+    
+    const companyNames = patients
+      .filter(p => p.cardType === 'company' && p.companyName)
+      .map(p => p.companyName)
+      .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
+      .sort();
+    
+    return companyNames;
+  } catch (error) {
+    console.error('Error fetching company names:', error);
+    return [];
+  }
+};

@@ -24,6 +24,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     LGA: '',
     dob: '',
     gender: '',
+    cardType: 'personal',
+    familyName: '',
+    companyName: '',
     
     // Next of Kin
     nextOfKin: {
@@ -54,6 +57,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         LGA: patient.LGA || '',
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
         gender: patient.gender || '',
+        cardType: patient.cardType || 'personal',
+        familyName: patient.familyName || '',
+        companyName: patient.companyName || '',
         
         nextOfKin: {
           name: patient.nextOfKin?.name || '',
@@ -112,6 +118,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
           relationship: formData.nextOfKin.relationship,
         },
         status: patient.status || 'registered',
+        cardType: formData.cardType || 'personal',
+        ...(formData.cardType === 'family' && formData.familyName && { familyName: formData.familyName }),
+        ...(formData.cardType === 'company' && formData.companyName && { companyName: formData.companyName }),
         // Only include optional fields if they have values
         ...(formData.email && { email: formData.email }),
         ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
@@ -218,6 +227,51 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                       className="w-full input input-bordered"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Card Type */}
+              <div className="mb-6">
+                <h4 className="mb-3 text-base font-medium text-base-content">Card Type</h4>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="block mb-1 text-sm text-base-content/70">Card Type</label>
+                    <select
+                      name="cardType"
+                      value={formData.cardType}
+                      onChange={handleInputChange}
+                      className="w-full select select-bordered"
+                    >
+                      <option value="personal">Personal Card</option>
+                      <option value="family">Family Card</option>
+                      <option value="company">Company Card</option>
+                      <option value="emergency">Emergency Card</option>
+                    </select>
+                  </div>
+                  {formData.cardType === 'family' && (
+                    <div>
+                      <label className="block mb-1 text-sm text-base-content/70">Family Name</label>
+                      <input
+                        type="text"
+                        name="familyName"
+                        value={formData.familyName}
+                        onChange={handleInputChange}
+                        className="w-full input input-bordered"
+                      />
+                    </div>
+                  )}
+                  {formData.cardType === 'company' && (
+                    <div>
+                      <label className="block mb-1 text-sm text-base-content/70">Company Name</label>
+                      <input
+                        type="text"
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={handleInputChange}
+                        className="w-full input input-bordered"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

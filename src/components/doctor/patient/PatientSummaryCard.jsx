@@ -1,4 +1,5 @@
 import React from "react";
+import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 
 const getInitials = (firstName, lastName) => {
   const f = (firstName || "").trim();
@@ -72,6 +73,14 @@ const PatientSummaryCard = ({ patient, loading }) => {
                     <span className="text-sm text-base-content/70">None</span>
                   )}
                 </div>
+              </div>
+
+              <div className="px-1 pt-4">
+                <PatientCardTypeInfo
+                  cardType={patient?.cardType}
+                  familyName={patient?.familyName}
+                  companyName={patient?.companyName}
+                />
               </div>
             </div>
           </div>
