@@ -525,8 +525,10 @@ useEffect(() => {
                             {watch(`medications.${index}.drugName`) && watch(`medications.${index}._selectedDrug`) && ( 
                               <div className="mt-2 p-3 bg-info/10 border border-info/30 rounded text-sm text-info-content"> 
                                 <p className="font-medium">Available: {watch(`medications.${index}._selectedDrug`)?.form || 'N/A'} {watch(`medications.${index}._selectedDrug`)?.strength ? `- ${watch(`medications.${index}._selectedDrug`)?.strength}` : ''}</p> 
-                                {watch(`medications.${index}._selectedDrug`)?.quantity && ( 
-                                  <p className="text-xs mt-1">Stock: {watch(`medications.${index}._selectedDrug`)?.quantity} units available</p> 
+                                {watch(`medications.${index}._selectedDrug`)?.stock !== undefined && ( 
+                                  <p className="text-xs mt-1">
+                                    Stock: <span className={watch(`medications.${index}._selectedDrug`)?.stock > 0 ? 'text-success font-semibold' : 'text-warning font-semibold'}>{watch(`medications.${index}._selectedDrug`)?.stock}</span> units available
+                                  </p> 
                                 )} 
                               </div> 
                             )} 
