@@ -6,6 +6,7 @@ import { getPatientById } from '@/services/api/patientsAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList, FaUser, FaPhone, FaEnvelope, FaArrowLeft } from 'react-icons/fa';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
 const SurgeryDetails = () => {
   const { surgeryId } = useParams();
@@ -325,6 +326,14 @@ const SurgeryDetails = () => {
                       </div>
                     </div>
                   )}
+                </div>
+                
+                <div className="mt-4">
+                  <PatientCardTypeInfo
+                    cardType={patient?.cardType}
+                    familyName={patient?.familyName}
+                    companyName={patient?.companyName}
+                  />
                 </div>
               </div>
             </div>

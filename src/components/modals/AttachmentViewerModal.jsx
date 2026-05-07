@@ -14,9 +14,12 @@ const AttachmentViewerModal = ({ isOpen, onClose, attachments = [], initialIndex
   if (!isOpen || !attachments || attachments.length === 0) return null;
 
   const currentAttachment = attachments[currentIndex];
-  const isImage = currentAttachment && /\.(jpg|jpeg|png|gif|webp)$/i.test(currentAttachment.name || currentAttachment.filename);
-  const isPdf = currentAttachment && /\.pdf$/i.test(currentAttachment.name || currentAttachment.filename);
+ const isImage = currentAttachment && ( /\.(jpg|jpeg|png|gif|webp)$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
+  /^image\//i.test(currentAttachment.mimetype || '')); 
+const isPdf = currentAttachment && (/\.pdf$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
+  currentAttachment.mimetype === 'application/pdf');
 
+  
   const handlePrevious = () => {
     setCurrentIndex((prev) => (prev === 0 ? attachments.length - 1 : prev - 1));
   };
@@ -95,21 +98,29 @@ const dataURLtoBlob = (dataURL) => {
     return <FaFile className="w-16 h-16 text-gray-500" />;
   };
 
-  const getDataUrl = () => {
-    if (!currentAttachment?.data) return null;
-    if (typeof currentAttachment.data === 'string') {
-      // If it's already a data URL or base64, use it directly
-      return currentAttachment.data.startsWith('data:') || currentAttachment.data.startsWith('http') 
-        ? currentAttachment.data 
-        : `data:${currentAttachment.mimetype};base64,${currentAttachment.data}`;
-    }
-    // If it's a Uint8Array or Buffer, convert to blob URL
-    if (currentAttachment.data instanceof Uint8Array || currentAttachment.data instanceof ArrayBuffer) {
-      const blob = new Blob([currentAttachment.data], { type: currentAttachment.mimetype });
-      return URL.createObjectURL(blob);
-    }
-    return null;
-  };
+const getDataUrl = () => {
+  if (!currentAttachment?.data) return null;
+
+  if (typeof currentAttachment.data === 'string') {
+    return currentAttachment.data.startsWith('data:') || currentAttachment.data.startsWith('http')
+      ? currentAttachment.data
+      : `data:${currentAttachment.mimetype};base64,${currentAttachment.data}`;
+  }
+
+  if (currentAttachment.data instanceof Uint8Array || currentAttachment.data instanceof ArrayBuffer) {
+    const binary = Array.from(new Uint8Array(currentAttachment.data instanceof ArrayBuffer ? currentAttachment.data : currentAttachment.data))
+      .map(b => String.fromCharCode(b)).join('');
+    return `data:${currentAttachment.mimetype};base64,${btoa(binary)}`;
+  }
+
+  // ✅ Backend Buffer: { type: 'Buffer', data: [...] }
+  if (currentAttachment.data?.type === 'Buffer' && Array.isArray(currentAttachment.data.data)) {
+    const binary = currentAttachment.data.data.map(b => String.fromCharCode(b)).join('');
+    return `data:${currentAttachment.mimetype};base64,${btoa(binary)}`;
+  }
+
+  return null;
+};
 
   return (
     <>

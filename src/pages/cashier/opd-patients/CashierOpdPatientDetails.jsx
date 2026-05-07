@@ -10,6 +10,7 @@ import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtil
 import { FaArrowLeft, FaPlus, FaTrash } from 'react-icons/fa';
 import ReceiptModal from '@/components/modals/ReceiptModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
 const TestSearchInput = ({ serviceCharges, onSelect, placeholder = 'Search lab test...' }) => {
   const [search, setSearch] = useState('');
@@ -288,6 +289,13 @@ const CashierOpdPatientDetails = () => {
                 {patient?.status || 'registered'}
               </span>
             </div>
+          </div>
+          <div className="mt-4">
+            <PatientCardTypeInfo
+              cardType={patient?.cardType}
+              familyName={patient?.familyName}
+              companyName={patient?.companyName}
+            />
           </div>
         </div>
       </div>
