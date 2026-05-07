@@ -34,13 +34,9 @@ const PatientDetails = () => {
   const [isEditHmoOpen, setIsEditHmoOpen] = useState(false);
   const [isAddDependantOpen, setIsAddDependantOpen] = useState(false);
   const [isEditDependantOpen, setIsEditDependantOpen] = useState(false);
-  const [isSendToNurseOpen, setIsSendToNurseOpen] = useState(false);
   const [isSendToCashierOpen, setIsSendToCashierOpen] = useState(false);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false);
-  const [isSendToPharmacyOpen, setIsSendToPharmacyOpen] = useState(false);
-  const [isSendToLabOpen, setIsSendToLabOpen] = useState(false);
-  const [isSendToDoctorOpen, setIsSendToDoctorOpen] = useState(false);
 
   // Fetch patient data from backend
   useEffect(() => {

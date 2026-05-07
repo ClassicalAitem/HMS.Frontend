@@ -18,6 +18,7 @@ import { LuDroplet, LuThermometer, LuActivity } from "react-icons/lu";
 import { GiWeightLiftingUp } from "react-icons/gi";
 import InjectionModals from "../incoming/modals/InjectionModals";
 import SamplingModals from "../incoming/modals/SamplingModals";
+import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -225,6 +226,15 @@ const PatientVitalsDetails = () => {
                   <button className="btn btn-outline btn-sm" onClick={() => setIsSendPharmacyOpen(true)}>Send to Pharmacy</button>
                   <button className="btn btn-outline btn-sm" onClick={() => setIsSendCashierOpen(true)}>Send to Cashier</button>
                 </div>
+              </div>
+
+              {/* Card Type Info */}
+              <div className="px-1 pt-4">
+                <PatientCardTypeInfo
+                  cardType={patient?.cardType}
+                  familyName={patient?.familyName}
+                  companyName={patient?.companyName}
+                />
               </div>
             </div>
           </div>

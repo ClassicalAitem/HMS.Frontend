@@ -75,6 +75,8 @@ const PaymentRecords = () => {
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
           dateTime: formatNigeriaDateTime(a.paidAt),
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
+          bankName: a.bankName || 'N/A',
+          senderName: a.senderName || 'N/A',
         }));
         setPaymentRecords(mapped);
       } finally {
@@ -184,8 +186,9 @@ h2{
 <div class="row"><span class="label">Txn:</span> <span>${payment.transactionId}</span></div>
 <div class="row"><span class="label">Patient:</span> <span>${payment.name}</span></div>
 <div class="row"><span class="label">Amount:</span> <span>${payment.amount}</span></div>
-<div class="row"><span class="label">Method:</span> <span>${payment.paymentMethod}</span></div>
-<div class="row"><span class="label">Dept:</span> <span>${payment.paymentDestination}</span></div>
+<div class="row"><span class="label">Payment Method:</span> <span>${payment.paymentMethod}</span></div>
+<div class="row"><span class="label">Bank Name:</span> <span>${payment.bankName}</span></div>
+<div class="row"><span class="label">Sender:</span> <span>${payment.senderName}</span></div>
 <div class="row"><span class="label">Paid By:</span> <span>${payment.paidBy}</span></div>
 <div class="row"><span class="label">Cashier:</span> <span>${payment.cashierName}</span></div>
 <div class="row"><span class="label">Date:</span> <span>${payment.dateTime}</span></div>
@@ -263,6 +266,18 @@ const handlePrintReceipt = (payment) => {
     {
       key: 'dateTime',
       title: 'Date & Time',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'bankName',
+      title: 'Bank Name',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'senderName',
+      title: "Sender's Name",
       sortable: true,
       className: 'text-base-content/70'
     },
@@ -432,6 +447,14 @@ const handlePrintReceipt = (payment) => {
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Payment Method</label>
                   <p className="text-base-content">{selectedPayment.paymentMethod}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-base-content/70">Bank Name</label>
+                  <p className="text-base-content">{selectedPayment.bankName}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-base-content/70">Sender's Name</label>
+                  <p className="text-base-content">{selectedPayment.senderName}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Status</label>

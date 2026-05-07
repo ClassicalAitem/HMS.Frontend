@@ -5,7 +5,7 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
-import { getInvestigations, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId } from "@/services/api/investigationRequestAPI";
+import { getInvestigations, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, getInvestigationById } from "@/services/api/investigationRequestAPI";
 import { usersAPI } from "@/services/api/usersAPI"; 
 import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
 import ConfirmationModal from "@/components/modals/ConfirmationModal";
@@ -575,9 +575,24 @@ useEffect(() => {
           setMainPatientId(loadedInvestigation.patientId);
           mapToForm(dependant);
         } else if (data.patientId || data.opdPatientId) {
-          const patientData = await loadPatientData(data.patientId || data.opdPatientId);
-          setPatient(patientData);
-          mapToForm(patientData);
+          let patientData = null;
+          
+          // ✅ If it's an OPD patient, call OPD API explicitly
+          if (data.opdPatientId) {
+            try {
+              const res = await getOpdPatientById(data.opdPatientId);
+              patientData = res?.data || res;
+            } catch (err) {
+              console.warn("Failed to load OPD patient:", err);
+            }
+          } else {
+            patientData = await loadPatientData(data.patientId);
+          }
+          
+          if (patientData) {
+            setPatient(patientData);
+            mapToForm(patientData);
+          }
         }
 
         if (data.investigationId) {
@@ -593,6 +608,7 @@ useEffect(() => {
       if (investigationId) {
         let foundInvestigation = null;
 
+        // Try regular investigations first
         try {
           const res = await getInvestigations();
           const list = Array.isArray(res) ? res : res?.data || [];
@@ -604,13 +620,16 @@ useEffect(() => {
           console.warn("Failed to load investigations list");
         }
 
-        // fallback to OPD investigation
+        // If not found, try to fetch directly by investigation ID (might work for OPD too)
         if (!foundInvestigation) {
           try {
-            const res = await getInvestigationRequestByOpdPatientId(investigationId);
-            foundInvestigation = res?.data || res;
+            // Try to get investigation by ID directly
+            const res = await getInvestigationById(investigationId);
+            if (res?.data || res) {
+              foundInvestigation = res?.data || res;
+            }
           } catch {
-            console.warn("Failed to load OPD investigation by patient ID");
+            console.warn("Failed to load investigation by ID");
           }
         }
 
@@ -649,12 +668,16 @@ useEffect(() => {
         } else {
           let patientData = null;
 
-          if (foundInvestigation.patientId) {
+          // ✅ If investigation has opdPatientId, call OPD API explicitly
+          if (foundInvestigation.opdPatientId) {
+            try {
+              const res = await getOpdPatientById(foundInvestigation.opdPatientId);
+              patientData = res?.data || res;
+            } catch (err) {
+              console.warn("Failed to load OPD patient:", err);
+            }
+          } else if (foundInvestigation.patientId) {
             patientData = await loadPatientData(foundInvestigation.patientId);
-          } else if (foundInvestigation.opdPatientId || foundInvestigation.obdPatientId) {
-            patientData = await loadPatientData(
-              foundInvestigation.opdPatientId || foundInvestigation.obdPatientId
-            );
           }
 
           if (patientData) {
@@ -677,7 +700,15 @@ useEffect(() => {
       // ✅ 4. OPD DIRECT FLOW
       // =====================================================
       if (opdPatientId) {
-        const patientData = await loadPatientData(opdPatientId);
+        let patientData = null;
+        
+        // ✅ Call OPD API explicitly for OPD patient ID
+        try {
+          const res = await getOpdPatientById(opdPatientId);
+          patientData = res?.data || res;
+        } catch (err) {
+          console.warn("Failed to load OPD patient from direct flow:", err);
+        }
 
         if (!patientData) {
           setError("Patient not found");
@@ -1380,15 +1411,7 @@ const handleComplete = async () => {
             >
               {editing ? "Update" : "Save Draft"}
             </button>
-                {editing && (
-                  <button
-                    className="btn btn-success text-white px-12 h-12 text-lg font-normal normal-case rounded-md"
-                    onClick={handleComplete}
-                    disabled={saving}
-                  >
-                    Complete
-                  </button>
-                )}
+               
                 <button
                   onClick={() => navigate(-1)}
                   disabled={saving}

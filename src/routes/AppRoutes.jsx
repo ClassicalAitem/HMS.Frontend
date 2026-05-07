@@ -92,6 +92,8 @@ import BillingRecords from "@/pages/cashier/payment-records/BillingRecord";
 import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
 // import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
 import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
+import ReceiptDetails from "@/pages/cashier/receipt-details/ReceiptDetails";
+import PaymentReceiptHistory from "@/pages/cashier/payment-receipt-history/PaymentReceiptHistory";
 import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 import CashierOpdPatients from '@/pages/cashier/opd-patients/CashierOpdPatients';
 import CashierOpdPatientDetails from '@/pages/cashier/opd-patients/CashierOpdPatientDetails';
@@ -599,6 +601,16 @@ const AppRoutes = () => {
       <Route path="/cashier/patient-details/:patientId" element={
         <ProtectedRoute allowedRoles={['cashier']}>
           <CashierPatientDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/receipt-details/:receiptId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <ReceiptDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/payment-receipt-history/:patientId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <PaymentReceiptHistory />
         </ProtectedRoute>
       } />
       <Route path="/cashier/generate-bill" element={

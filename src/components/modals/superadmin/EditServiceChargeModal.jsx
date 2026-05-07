@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaCreditCard } from 'react-icons/fa';
@@ -21,6 +21,9 @@ const updateServiceChargeSchema = yup.object({
     .max(10000000, 'Amount must not exceed ₦10,000,000'),
   status: yup
     .string(),
+  isBillable: yup
+    .boolean()
+    .default(true),
 });
 
 const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => {
@@ -45,14 +48,19 @@ const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => 
     formState: { errors },
     reset,
     setValue,
+    control,
+    watch: formWatch,
   } = useForm({
     resolver: yupResolver(updateServiceChargeSchema), defaultValues: {
       service: '',
       category: '',
       amount: '',
       status: 'active',
+      isBillable: true,
     }
   });
+
+  const isBillable = formWatch('isBillable');
 
   useEffect(() => {
     if (onServiceChargeUpdated && isOpen) {
@@ -61,6 +69,7 @@ const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => 
       setValue('category', onServiceChargeUpdated.category || '');
       setValue('amount', parseFloat(onServiceChargeUpdated.amount) || '');
       setValue('status', onServiceChargeUpdated.status || 'active');
+      setValue('isBillable', onServiceChargeUpdated.isBillable !== false); // default true if undefined
     }
   }, [onServiceChargeUpdated, isOpen, setValue]);
 
@@ -68,15 +77,27 @@ const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => 
     setIsLoading(true);
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Data to be sent for creation:', data);
-      await updateServiceCharge(onServiceChargeUpdated.id, data);
-      console.log('Service charge updated:', data);
+      
+      // If not billable, set amount to 0
+      const finalAmount = !data.isBillable ? '0' : data.amount.toString();
+      
+      const updateData = {
+        service: data.service,
+        category: data.category,
+        amount: finalAmount,
+        status: data.status,
+        isBillable: data.isBillable
+      };
+      
+      console.log('Data to be sent for update:', updateData);
+      await updateServiceCharge(onServiceChargeUpdated.id, updateData);
+      console.log('Service charge updated:', updateData);
       toast.success('Service charge updated successfully!');
       reset();
       onClose();
     } catch (error) {
-      console.error('❌ Error adding service charge:', error);
-      toast.error('Failed to add service charge');
+      console.error('❌ Error updating service charge:', error);
+      toast.error('Failed to update service charge');
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +172,32 @@ const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => 
               )}
             </div>
 
+            {/* Billable Checkbox */}
+            <div className="flex items-center space-x-3">
+              <Controller
+                name="isBillable"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    type="checkbox"
+                    {...field}
+                    checked={field.value}
+                    onChange={(e) => {
+                      field.onChange(e.target.checked);
+                      if (!e.target.checked) {
+                        setValue('amount', 0);
+                      }
+                    }}
+                    className="checkbox checkbox-primary"
+                    disabled={isLoading}
+                  />
+                )}
+              />
+              <label className="text-sm font-medium text-base-content/70">
+                Billable Service
+              </label>
+            </div>
+
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-base-content/70 mb-2">
@@ -163,8 +210,11 @@ const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => 
                 placeholder="Enter amount"
                 min="1"
                 max="10000000"
-                disabled={isLoading}
+                disabled={isLoading || !isBillable}
               />
+              {!isBillable && (
+                <p className="text-warning text-xs mt-1">Non-billable services have no charge</p>
+              )}
               {errors.amount && (
                 <p className="text-error text-xs mt-1">{errors.amount.message}</p>
               )}

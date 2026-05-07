@@ -1,11 +1,13 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaUpload, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useAppDispatch } from '../../../store/hooks';
 import { addPatient } from '../../../store/slices/patientsSlice';
+import { getUniqueFamilyNames, getUniqueCompanyNames } from '@/services/api/patientsAPI';
+import SearchableNameDropdown from '@/components/common/SearchableNameDropdown';
 import toast from 'react-hot-toast';
 
 const Registration = () => {
@@ -15,6 +17,9 @@ const Registration = () => {
   const [hmoExpanded, setHmoExpanded] = useState(false);
   const [dependentExpanded, setDependentExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [familyNames, setFamilyNames] = useState([]);
+  const [companyNames, setCompanyNames] = useState([]);
+  const [loadingNames, setLoadingNames] = useState(true);
   const [formData, setFormData] = useState({
     // Patient Basic Info (matching backend API)
     firstName: '',
@@ -28,6 +33,9 @@ const Registration = () => {
     LGA: '',
     dob: '',
     gender: '',
+    cardType: 'personal',
+    familyName: '',
+    companyName: '',
     
     // Next of Kin (matching backend API structure)
     nextOfKin: {
@@ -59,6 +67,39 @@ const Registration = () => {
       phone: ''
     }
   });
+
+  function formatCardName(value) {
+    if (!value) return '';
+    return value
+      .toString()
+      .trim()
+      .split(/\s+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
+  // Fetch family and company names on component mount
+  useEffect(() => {
+    const fetchNames = async () => {
+      try {
+        setLoadingNames(true);
+        const [families, companies] = await Promise.all([
+          getUniqueFamilyNames(),
+          getUniqueCompanyNames()
+        ]);
+        const formattedFamilies = [...new Set(families.map(formatCardName))].filter(Boolean).sort();
+        const formattedCompanies = [...new Set(companies.map(formatCardName))].filter(Boolean).sort();
+        setFamilyNames(formattedFamilies);
+        setCompanyNames(formattedCompanies);
+      } catch (error) {
+        console.error('Error fetching family/company names:', error);
+        toast.error('Could not load existing names');
+      } finally {
+        setLoadingNames(false);
+      }
+    };
+    fetchNames();
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -132,6 +173,9 @@ const Registration = () => {
         dob: formData.dob,
         gender: formData.gender,
         nextOfKin: formData.nextOfKin,
+        cardType: formData.cardType || 'personal',
+        ...(formData.cardType === 'family' && formData.familyName && { familyName: formatCardName(formData.familyName) }),
+        ...(formData.cardType === 'company' && formData.companyName && { companyName: formatCardName(formData.companyName) }),
         // Only include optional fields if they have values
         ...(formData.email && { email: formData.email }),
         ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
@@ -178,6 +222,9 @@ const Registration = () => {
           LGA: '',
           dob: '',
           gender: '',
+          cardType: 'personal',
+          familyName: '',
+          companyName: '',
           nextOfKin: {
             name: '',
             phone: '',
@@ -292,6 +339,54 @@ const Registration = () => {
                         className="w-full input input-bordered"
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Card Type */}
+                <div className="mb-6">
+                  <h3 className="mb-3 text-base font-medium text-base-content">Patient Card Type</h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="block mb-1 text-sm text-base-content/70">Card Type *</label>
+                      <select
+                        name="cardType"
+                        value={formData.cardType}
+                        onChange={handleInputChange}
+                        className="w-full select select-bordered"
+                        required
+                      >
+                        <option value="personal">Personal Card</option>
+                        <option value="family">Family Card</option>
+                        <option value="company">Company Card</option>
+                        <option value="emergency">Emergency Card</option>
+                      </select>
+                    </div>
+                    {formData.cardType === 'family' && (
+                      <div>
+                        <SearchableNameDropdown
+                          items={familyNames}
+                          value={formData.familyName}
+                          onChange={(value) => setFormData(prev => ({ ...prev, familyName: formatCardName(value) }))}
+                          placeholder="Search or add family name"
+                          label="Family Name"
+                          loading={loadingNames}
+                          allowNew={true}
+                        />
+                      </div>
+                    )}
+                    {formData.cardType === 'company' && (
+                      <div>
+                        <SearchableNameDropdown
+                          items={companyNames}
+                          value={formData.companyName}
+                          onChange={(value) => setFormData(prev => ({ ...prev, companyName: formatCardName(value) }))}
+                          placeholder="Search or add company name"
+                          label="Company Name"
+                          loading={loadingNames}
+                          allowNew={true}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
