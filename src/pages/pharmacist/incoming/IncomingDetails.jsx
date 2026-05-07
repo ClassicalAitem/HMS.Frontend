@@ -9,6 +9,7 @@ import { hasStatus } from '@/utils/statusUtils'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import SendPatientModal from '@/components/modals/SendPatientModal'
 
 const IncomingDetails = () => {
@@ -282,6 +283,15 @@ useEffect(() => {
             <p className="text-sm">
               {patient?.firstName} {patient?.lastName}
             </p>
+            {patient && (
+              <div className="mt-3">
+                <PatientCardTypeInfo
+                  cardType={patient?.cardType}
+                  familyName={patient?.familyName}
+                  companyName={patient?.companyName}
+                />
+              </div>
+            )}
           </div>
           <button className="btn btn-primary btn-sm" onClick={() => navigate(-1)}>
             Back

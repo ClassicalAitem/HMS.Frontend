@@ -3,6 +3,7 @@ import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical,
 import { getAppointmentById, updateAppointment } from '@/services/api/appointmentsAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
 const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) => {
   const [appointment, setAppointment] = useState(null);
@@ -187,6 +188,15 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
                     </p>
                   </div>
                 </div>
+                {patient && (
+                  <div className="mt-4">
+                    <PatientCardTypeInfo
+                      cardType={patient?.cardType}
+                      familyName={patient?.familyName}
+                      companyName={patient?.companyName}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Appointment Schedule */}
