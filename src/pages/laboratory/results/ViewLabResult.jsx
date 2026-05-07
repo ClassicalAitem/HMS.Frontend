@@ -9,7 +9,7 @@ import { getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, upd
 import { updatePatient } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import { getAllDependantsForPatient, getDependantById } from '@/services/api/dependantAPI';
+import {  getDependantById } from '@/services/api/dependantAPI';
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";

@@ -28,6 +28,7 @@ import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
 import { useDispatch } from "react-redux";
 import PatientOrdersPanel from "@/components/common/PatientOrderPanel";
+import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import ViewAllVitals from "./ViewAllPatientVitals";
@@ -442,6 +443,15 @@ useEffect(() => {
                   />
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
                 </div>
+              </div>
+
+              {/* Card Type Info */}
+              <div className="px-1 pt-4">
+                <PatientCardTypeInfo
+                  cardType={patient?.cardType}
+                  familyName={patient?.familyName}
+                  companyName={patient?.companyName}
+                />
               </div>
             </div>
           </div>

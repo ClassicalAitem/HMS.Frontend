@@ -109,6 +109,9 @@ const SonographerIncoming = () => {
               opdPatientInfo,
               investigationId: investigation?.id || investigation?._id,
               investigation: investigation,
+              cardType: patient?.cardType || 'personal',
+              familyName: patient?.familyName || '',
+              companyName: patient?.companyName || '',
             };
           })
         );
@@ -132,6 +135,9 @@ const SonographerIncoming = () => {
             },
             investigationId: investigation?.id || investigation?._id,
             investigation: investigation,
+            cardType: patient?.cardType || 'personal',
+            familyName: patient?.familyName || '',
+            companyName: patient?.companyName || '',
           };
         });
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { IoSearch, IoClose } from "react-icons/io5";
 import { DataTable } from '@/components/common';
 import { getPatients } from '@/services/api/patientsAPI';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
 const RecentlyAddedPatients = () => {
   const navigate = useNavigate();
@@ -49,6 +50,10 @@ const RecentlyAddedPatients = () => {
     phone: p?.phone || p?.phoneNumber || '—',
     address: p?.address || '—',
     status: p?.status || '—',
+    cardType: p?.cardType || 'personal',
+    familyName: p?.familyName || '',
+    companyName: p?.companyName || '',
+    rawPatient: p // Keep raw patient data for card type info
   })), [patients]);
 
   // Filter patients based on search term
@@ -148,6 +153,18 @@ const RecentlyAddedPatients = () => {
       title: 'Status',
       className: 'text-base-content/70',
       render: (value, row) => <StatusBadge status={value} color={row.statusColor} />
+    },
+    {
+      key: 'cardType',
+      title: 'Card Type',
+      className: 'text-base-content/70',
+      render: (value, row) => (
+        <PatientCardTypeInfo
+          cardType={row.cardType}
+          familyName={row.familyName}
+          companyName={row.companyName}
+        />
+      )
     }
   ], []);
 
