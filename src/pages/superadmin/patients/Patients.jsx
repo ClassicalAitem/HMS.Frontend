@@ -10,6 +10,7 @@ import { fetchPatients, clearPatientsError } from '../../../store/slices/patient
 import toast from 'react-hot-toast';
 import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -96,6 +97,9 @@ const StatusBadge = ({ status }) => {
     dependantsCount: patient.dependants?.length || 0,
     createdAtFormatted: formatNigeriaDate(patient.createdAt),
     updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
+    cardType: patient.cardType || 'personal',
+    familyName: patient.familyName || '',
+    companyName: patient.companyName || '',
   })), [patients]);
 
   // Define table columns
@@ -158,6 +162,18 @@ const StatusBadge = ({ status }) => {
       sortable: true,
       className: 'text-base-content/70',
       truncate: true
+    },
+    {
+      key: 'cardType',
+      title: 'Card Type',
+      className: 'text-base-content/70',
+      render: (value, row) => (
+        <PatientCardTypeInfo
+          cardType={row.cardType}
+          familyName={row.familyName}
+          companyName={row.companyName}
+        />
+      )
     },
     {
       key: 'status',

@@ -96,6 +96,7 @@ const StatusBadge = ({ status }) => {
     dependantsCount: patient.dependants?.length || 0,
     createdAtFormatted: formatNigeriaDate(patient.createdAt),
     updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
+    cardType: patient.cardType || 'N/A',
   })), [patients]);
 
   // Define table columns
@@ -164,6 +165,15 @@ const StatusBadge = ({ status }) => {
       title: 'Status',
       className: 'text-base-content/70',
       render: (value, row) => <StatusBadge status={value} />
+    },
+    {
+      key: 'cardType',
+      title: 'Card Type',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (
+        <span className="capitalize">{value || 'N/A'}</span>
+      )
     }
   ], [navigate]);
 
