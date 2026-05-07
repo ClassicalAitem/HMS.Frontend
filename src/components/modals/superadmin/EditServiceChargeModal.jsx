@@ -17,7 +17,6 @@ const updateServiceChargeSchema = yup.object({
     .string(),
   amount: yup
     .number()
-    .min(1, 'Amount must be at least ₦1')
     .max(10000000, 'Amount must not exceed ₦10,000,000'),
   status: yup
     .string(),
