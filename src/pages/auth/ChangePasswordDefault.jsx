@@ -6,6 +6,7 @@ import { changePasswordSchema } from '../../../utils/formValidator';
 import { AuthLayout, AuthLogo, CarouselComponent } from '@/components/auth';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { loginUser } from '@/store/slices/authSlice';
+import { config } from '@/config/env';
 import toast from 'react-hot-toast';
 import { FaEye, FaEyeSlash, FaLock, FaArrowLeft } from 'react-icons/fa';
 
@@ -85,7 +86,7 @@ const ChangePasswordDefault = () => {
       console.log('📤 ChangePasswordDefault: API data:', passwordData);
       
       // Make API call to change password
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/user/changePassword/${userId}`, {
+      const response = await fetch(`${config.API_BASE_URL}/user/changePassword/${userId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -135,6 +136,7 @@ const ChangePasswordDefault = () => {
       case 'nurse':
         return '/dashboard/nurse';
       case 'doctor':
+      case 'medical-director':
         return '/dashboard/doctor';
       case 'admin':
         return '/dashboard/admin';

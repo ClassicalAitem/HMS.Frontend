@@ -530,7 +530,7 @@ const getHmoCoveredAmount = (bill) => {
               <SendPatientModal
                 patientId={patient?.id || patientId}
                 onUpdated={() => navigate('/cashier/dashboard')}
-                allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician', 'hmo']}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo']}
               />
             </div>
           </div>
