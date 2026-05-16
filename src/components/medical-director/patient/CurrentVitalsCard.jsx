@@ -1,0 +1,200 @@
+import React from "react";
+import { FiHeart, FiClock } from "react-icons/fi";
+import { TbHeartbeat } from "react-icons/tb";
+import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
+import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
+
+
+const formatRelativeTime = (dateInput) => {
+  if (!dateInput) return "";
+  const now = new Date();
+  const then = new Date(dateInput);
+  const diffMs = now.getTime() - then.getTime();
+  if (Number.isNaN(diffMs)) return "";
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin} mins ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? "s" : ""} ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  return `${diffDay} day${diffDay > 1 ? "s" : ""} ago`;
+};
+
+const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidden = false }) => {
+  const isStale = latest?.updatedAt && (Date.now() - new Date(latest.updatedAt).getTime() > 24 * 60 * 60 * 1000);
+
+  const bmi = latest?.weight && latest?.height ? (latest.weight / Math.pow(latest.height / 100, 2)).toFixed(1) : null;
+
+  return (
+    <div className={`shadow-xl card bg-base-100 mb-2 ${isStale ? 'border-warning' : ''}`}>
+      <div className="p-4 card-body">
+        <div className="flex justify-between items-center mb-1">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-base-content">Current Vitals</h2>
+              {/* {isStale && <span className="badge badge-warning">Stale</span>} */}
+              <span
+                className={`badge ${
+                  latest?.isForDependant ? 'badge-secondary' : 'badge-primary'
+                }`}
+              >
+                {latest?.isForDependant ? 'Dependant' : 'Patient'}
+              </span>
+            </div>
+            <div>
+              <span className="text-base font-medium text-base-content">{latest?.forName || patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-base-content/70 mt-1">
+              {patient?.ward || patient?.bed ? (
+                <span>
+                  {patient?.ward ? `Ward ${patient.ward}` : ""}
+                  {patient?.ward && patient?.bed ? " - " : ""}
+                  {patient?.bed ? `Bed ${patient.bed}` : ""}
+                </span>
+              ) : (
+                <span>Ward info unavailable</span>
+              )}
+              <span>•</span>
+              <span>Last updated {formatRelativeTime(latest?.updatedAt)}</span>
+            </div>
+          </div>
+          <button className={`btn btn-outline ${buttonHidden ? "hidden" : ""} btn-sm`} onClick={onRecordOpen}> Record Vitals</button>
+        </div>
+        
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-1">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="skeleton h-20 w-full" />
+            ))}
+          </div>
+        ) : latest ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-1">
+   {/* Heart Rate / Pulse */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <FiHeart className="w-5 h-5" />
+    <span>Heart Rate</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.pulse ?? "—")}</span>
+    <span className="text-sm text-base-content/70">bpm</span>
+  </div>
+</div>
+
+{/* Blood Pressure */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <TbHeartbeat className="w-5 h-5" />
+    <span>Blood Pressure</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.bp ?? "—")}</span>
+    <span className="text-sm text-base-content/70">mmHg</span>
+  </div>
+</div>
+
+{/* Oxygen */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <LuDroplet className="w-5 h-5" />
+    <span>Oxygen</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.spo2 ?? "—")}</span>
+    <span className="text-sm text-base-content/70">%</span>
+  </div>
+</div>
+
+{/* Temperature */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <LuThermometer className="w-5 h-5" />
+    <span>Temperature</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.temperature ?? "—")}</span>
+    <span className="text-sm text-base-content/70">°C</span>
+  </div>
+</div>
+
+{/* Weight */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <GiWeightLiftingUp className="w-5 h-5" />
+    <span>Weight</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.weight ?? "—")}</span>
+    <span className="text-sm text-base-content/70">kg</span>
+  </div>
+</div>
+
+{/* Height */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <GiBodyHeight className="w-5 h-5" />
+    <span>Height</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.height ?? "—")}</span>
+    <span className="text-sm text-base-content/70">cm</span>
+  </div>
+</div>
+
+{/* BMI */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <GiWeightLiftingUp className="w-5 h-5" />
+    <span>BMI</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (bmi ?? "—")}</span>
+    <span className="text-sm text-base-content/70">kg/m²</span>
+  </div>
+</div>
+
+{/* Respiratory Rate */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <LuActivity className="w-5 h-5" />
+    <span>Respiratory Rate</span>
+  </div>
+  <div className="mt-2 flex items-baseline gap-2">
+    <span className="text-2xl font-semibold">{isStale ? "—" : (latest?.respiratoryRate ?? "—")}</span>
+    <span className="text-sm text-base-content/70">bpm</span>
+  </div>
+</div>
+
+{/* Last Updated */}
+<div className="rounded-xl border border-base-300 p-2">
+  <div className="flex items-center gap-2 text-sm text-base-content/80">
+    <FiClock className="w-5 h-5" />
+    <span>Last Updated</span>
+  </div>
+  <div className="mt-2">
+    <span className="text-sm font-semibold">{formatRelativeTime(latest?.createdAt) || "—"}</span>
+  </div>
+</div>
+            </div>
+
+            {/* <div className="mt-4">
+              <div className="rounded-xl border border-base-300 p-4">
+                <div className="text-base font-medium text-base-content">Additional Notes</div>
+                <div className="mt-2 text-sm text-base-content/80 min-h-24 whitespace-pre-wrap">
+                  {latest?.notes ? latest.notes : "—"}
+                </div>
+              </div>
+            </div> */}
+          </>
+        ) : (
+          <div>
+            <div className="text-sm text-base-content/70">No vitals available</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default CurrentVitalsCard;

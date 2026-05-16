@@ -27,6 +27,7 @@ const Sidebar = () => {
       case 'super-admin': return 'Super Admin';
       case 'admin': return 'Admin';
       case 'doctor': return 'Doctor';
+      case 'medical-director': return 'Medical Director';
       case 'nurse': return 'Nurse';
       case 'frontdesk':
       case 'front-desk': return 'Front Desk';
