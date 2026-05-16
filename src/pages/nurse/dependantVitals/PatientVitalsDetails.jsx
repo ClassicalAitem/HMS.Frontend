@@ -130,7 +130,7 @@ const PatientVitalsDetails = () => {
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        {role === 'doctor' ? (
+        {role === 'doctor' || role === 'medical-director' ? (
           <DoctorSidebar />
         ) : (
           <NurseSidebar onCloseSidebar={closeSidebar} />
@@ -150,8 +150,8 @@ const PatientVitalsDetails = () => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => {
-                const base = role === 'doctor' ? '/dashboard/doctor' : '/dashboard/nurse';
-                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' ? `${base}/patientVitals` : `${base}/patient`;
+                const base = role === 'doctor' || role === 'medical-director' ? '/dashboard/doctor' : '/dashboard/nurse';
+                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' || role === 'medical-director' ? `${base}/patientVitals` : `${base}/patient`;
                 navigate(backPath);
               }}
             >

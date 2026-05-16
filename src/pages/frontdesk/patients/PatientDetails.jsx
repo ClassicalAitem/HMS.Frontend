@@ -151,7 +151,7 @@ const PatientDetails = () => {
             <SendPatientModal
               patientId={patient?.id || patientId}
               onUpdated={() => navigate('/frontdesk/dashboard')}
-              allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+              allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
             />
            
           </div>

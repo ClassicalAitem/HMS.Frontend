@@ -8,7 +8,7 @@ const SendPatientModal = ({
   patientId, 
   currentStatus = '',
   onUpdated,
-  allowedRoles = ['nurse', 'doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo'],
+  allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
   isOpdPatient = false,
 }) => {
@@ -37,6 +37,12 @@ const SendPatientModal = ({
     doctor: {
       label: 'Send to Doctor',
       status: [PATIENT_STATUS.AWAITING_CONSULTATION, PATIENT_STATUS.AWAITING_SURGERY, PATIENT_STATUS.AWAITING_DOCTOR],
+      icon: '👨‍⚕️',
+      color: 'btn-primary',
+    },
+    'medical-director': {
+      label: 'Send to Medical Director',
+      status: PATIENT_STATUS.AWAITING_MD,
       icon: '👨‍⚕️',
       color: 'btn-primary',
     },

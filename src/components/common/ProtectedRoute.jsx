@@ -58,6 +58,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'front-desk': '/frontdesk/dashboard', // Handle backend role format
       'nurse': '/dashboard/nurse',
       'doctor': '/dashboard/doctor',
+      'medical-director': '/dashboard/medical-director', // Medical director uses doctor dashboard
       'admin': '/dashboard/admin',
       'super-admin': '/dashboard/superadmin',
       'cashier': '/cashier/dashboard',
