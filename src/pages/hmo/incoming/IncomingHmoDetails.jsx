@@ -249,7 +249,7 @@ const handleSave = async () => {
     <SendPatientModal
             patientId={patient?.id || patientId}
             onUpdated={() => navigate('/dashboard/hmo')}
-            allowedRoles={['nurse', 'doctor', 'pharmacist', 'cashier', 'labtechnician']}
+            allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'cashier', 'labtechnician']}
           />
 </div>
           {hmos.length > 0 && (

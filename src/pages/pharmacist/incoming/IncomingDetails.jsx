@@ -301,7 +301,7 @@ useEffect(() => {
            <SendPatientModal
                 patientId={patient?.id || patientId}
                 onUpdated={() => navigate('/dashboard/pharmacist')}
-                allowedRoles={['nurse', 'doctor', 'cashier', 'labtechnician', 'hmo']}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'cashier', 'labtechnician', 'hmo']}
                 />
                 </div>
         </div>

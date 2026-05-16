@@ -72,6 +72,7 @@ const ChangePassword = () => {
             case 'nurse':
               return '/dashboard/nurse';
             case 'doctor':
+            case 'medical-director':
               return '/dashboard/doctor';
             case 'admin':
               return '/dashboard/admin';

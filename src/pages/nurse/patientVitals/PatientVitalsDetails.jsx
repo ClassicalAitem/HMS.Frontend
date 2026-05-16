@@ -342,7 +342,7 @@ useEffect(() => {
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        {role === 'doctor' ? (
+        {role === 'doctor' || role === 'medical-director' ? (
           <DoctorSidebar />
         ) : (
           <NurseSidebar onCloseSidebar={closeSidebar} />
@@ -362,8 +362,8 @@ useEffect(() => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => {
-                const base = role === 'doctor' ? '/dashboard/doctor' : '/dashboard/nurse';
-                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' ? `${base}/patientVitals` : `${base}/patient`;
+                const base = role === 'doctor' || role === 'medical-director' ? '/dashboard/doctor' : '/dashboard/nurse';
+                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' || role === 'medical-director' ? `${base}/patientVitals` : `${base}/patient`;
                 navigate(backPath);
               }}
             >
@@ -438,7 +438,7 @@ useEffect(() => {
                   <SendPatientModal
                     patientId={patientUUID || patientId}
                     onUpdated={() => navigate('/dashboard/nurse')}
-                    allowedRoles={['doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+                    allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
                     containerClass="flex flex-wrap gap-2"
                   />
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>

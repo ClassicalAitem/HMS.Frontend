@@ -48,6 +48,31 @@ import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import DoctorPaymentRecords from "@/pages/doctor/payment-records/ReceiptRecord";
 
+// Medical Director Pages
+import MDDashboard from "@/pages/medical-director/dashboard/MDDashboard";
+import MDPatientMedicalHistory from "@/pages/medical-director/incoming/PatientMedicalHistory";
+import MDViewConsultationRecords from "@/pages/medical-director/incoming/ViewConsultationRecords";
+import MDViewAllPrescriptions from "@/pages/medical-director/incoming/ViewAllPrescriptions";
+import MDViewAllInvestigations from "@/pages/medical-director/incoming/ViewAllInvestigations";
+import MDViewAllLabResults from "@/pages/medical-director/incoming/ViewAllLabResults";
+import MDViewAllVitals from "@/pages/medical-director/incoming/ViewAllVitals";
+import MDLabResults from "@/pages/medical-director/labResults/LabResults";
+import MDLabResultDetails from "@/pages/medical-director/labResults/LabResultDetails";
+import IncomingMD from "@/pages/medical-director/incoming/IncomingMD";
+import MDAntenatalRecords from "@/pages/medical-director/incoming/AntenatalRecords";
+import MDAntenatalRecordDetails from "@/pages/medical-director/incoming/AntenatalRecordDetails";
+import MDAddDiagnosis from "@/pages/medical-director/incoming/AddDiagnosis";
+import MDEditConsultation from "@/pages/medical-director/incoming/EditConsultation";
+import MDSendToCashier from "@/pages/medical-director/incoming/SendToCashier";
+import MDSendToPharmacy from "@/pages/medical-director/incoming/SendToPharmacy";
+import MDSendToNurse from "@/pages/medical-director/incoming/SendToNurse";
+import MDViewConsultation from "@/pages/medical-director/incoming/ViewConsultation";
+import MDWritePrescription from "@/pages/medical-director/incoming/WritePrescription";
+import MDAllPatients from "@/pages/medical-director/allPatients/AllPatients";
+import MDAppointment from "@/pages/medical-director/appiontments/Appointment";
+import MDPaymentRecords from "@/pages/medical-director/payment-records/ReceiptRecord";
+import MDTask from "@/pages/medical-director/assignTask/Task";
+
 // Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
 import Schedule from "@/pages/admin/schedule/Schedule";
@@ -354,7 +379,7 @@ const AppRoutes = () => {
       <ViewConsultation />
     </ProtectedRoute>
   } />  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/edit" element={
-    <ProtectedRoute allowedRoles={["doctor"]}>
+    <ProtectedRoute allowedRoles={["doctor", "medical-director"]}>
       <EditConsultation />
     </ProtectedRoute>
   } />
@@ -416,6 +441,138 @@ const AppRoutes = () => {
       <Route path="/dashboard/doctor/payment-records" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <DoctorPaymentRecords />
+        </ProtectedRoute>
+      } />
+
+      {/*==============================================================================================================
+
+      ====================================  Medical Director DashBoard Route =====================================================
+
+      ================================================================================================================*/}
+      <Route path="/dashboard/medical-director" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDDashboard />
+        </ProtectedRoute>
+      } />
+  <Route path="/dashboard/medical-director/patientVitals" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <PatientVitals />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/medical-history/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDPatientMedicalHistory />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/view-consultation-records/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDViewConsultationRecords />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/view-prescriptions/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDViewAllPrescriptions />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/view-investigations/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDViewAllInvestigations />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/view-lab-results/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDViewAllLabResults />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/view-vitals/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDViewAllVitals />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/antenatal-records/:patientId/:recordId?" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDAntenatalRecords />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/antenatal-records/:patientId/view" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDAntenatalRecordDetails />
+    </ProtectedRoute>
+  } />
+<Route path="/dashboard/medical-director/antenatal-records/:patientId" element={<MDAntenatalRecords />} />
+<Route path="/dashboard/medical-director/antenatal-records/:patientId/edit/:recordIndex" element={<MDAntenatalRecords />} />
+  <Route path="/dashboard/medical-director/medical-history/:patientId/add" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDAddDiagnosis />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/medical-history/:patientId/consultation/:consultationId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDViewConsultation />
+    </ProtectedRoute>
+  } />  <Route path="/dashboard/medical-director/medical-history/:patientId/consultation/:consultationId/edit" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDEditConsultation />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/medical-history/:patientId/consultation/:consultationId/prescription" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDWritePrescription />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/medical-history/:patientId/antenatal/:antenatalId/prescription" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDWritePrescription />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/send-to-cashier/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDSendToCashier />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/send-to-pharmacy/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDSendToPharmacy />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/send-to-nurse/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDSendToNurse />
+    </ProtectedRoute>
+  } />
+      <Route path="/dashboard/medical-director/labResults" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDLabResults />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/labResults/:labResultId" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDLabResultDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/appointments" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAppointment />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/incoming" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <IncomingMD />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/allPatients" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAllPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/assign-task" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDTask />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/payment-records" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDPaymentRecords />
         </ProtectedRoute>
       } />
 
