@@ -194,7 +194,8 @@ const Login = () => {
       case 'nurse':
         return '/dashboard/nurse';
       case 'doctor':
-        return '/dashboard/doctor';
+      case 'medical-director':
+        return '/dashboard/medical-director'; // Medical director uses doctor dashboard
       case 'admin':
         return '/dashboard/admin';
       case 'super-admin':
