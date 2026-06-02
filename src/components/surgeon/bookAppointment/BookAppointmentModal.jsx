@@ -54,6 +54,7 @@ const BookAppointmentModal = ({ setShowModal }) => {
                 >
                   <option value="">Departments</option>
                   <option value="doctor">Doctor</option>
+                  <option value="medical-director">Medical Director</option>
                   <option value="lab">Lab</option>
                   <option value="nurse">Nurse</option>
                 </select>
