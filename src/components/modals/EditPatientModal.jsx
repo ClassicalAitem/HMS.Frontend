@@ -246,6 +246,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                       <option value="family">Family Card</option>
                       <option value="company">Company Card</option>
                       <option value="emergency">Emergency Card</option>
+                      <option value="antenatal">Antenatal Card</option>
                     </select>
                   </div>
                   {formData.cardType === 'family' && (
@@ -454,12 +455,12 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                     className="w-full select select-bordered"
                   >
                     <option value="">Select Relationship</option>
-                    <option value="spouse">Spouse</option>
-                    <option value="parent">Parent</option>
-                    <option value="child">Child</option>
-                    <option value="sibling">Sibling</option>
-                    <option value="friend">Friend</option>
-                    <option value="other">Other</option>
+                     <option value="father">Father</option>
+                        <option value="mother">Mother</option>
+                        <option value="child">Child</option>
+                        <option value="others">Others</option>
+                        <option value="spouse">Spouse</option>
+                        <option value="sibling">Sibling</option>
                   </select>
                 </div>
                 <div>
