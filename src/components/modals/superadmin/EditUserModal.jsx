@@ -237,6 +237,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
                 <option value="">Select a role</option>
                 <option value="admin">Admin</option>
                 <option value="doctor">Doctor</option>
+                <option value="medical-director">Medical Director</option>
                 <option value="nurse">Nurse</option>
                 <option value="frontdesk">Front Desk</option>
                 <option value="cashier">Cashier</option>

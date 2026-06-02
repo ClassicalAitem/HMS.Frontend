@@ -166,6 +166,8 @@ const AddDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
                         <option value="mother">Mother</option>
                         <option value="child">Child</option>
                         <option value="others">Others</option>
+                        <option value="spouse">Spouse</option>
+                        <option value="sibling">Sibling</option>
                       </select>
                     </div>
                   </div>

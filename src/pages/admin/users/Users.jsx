@@ -325,10 +325,12 @@ const Users = () => {
                                 {...register("role", { required: true })}
                               >
                                 <option value="doctor">Doctor</option>
+                                <option value="medical-director">Medical Director</option>
                                 <option value="nurse">Nurse</option>
                                 <option value="front-desk">Frontdesk</option>
                                 <option value="cashier">Cashier</option>
                                 <option value="pharmacist">Pharmacist</option>
+                                
                               </select>
                             </div>
                           </div>

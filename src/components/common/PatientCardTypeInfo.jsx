@@ -1,18 +1,5 @@
 import React from 'react';
-
-const CARD_TYPE_LABELS = {
-  personal: 'Personal',
-  family: 'Family',
-  company: 'Company',
-  emergency: 'Emergency'
-};
-
-const CARD_TYPE_STYLES = {
-  personal: 'badge badge-info',
-  family: 'badge badge-primary',
-  company: 'badge badge-success',
-  emergency: 'badge badge-error'
-};
+import { CARD_TYPE_LABELS, CARD_TYPE_STYLES } from '@/constants/cardTypes';
 
 const PatientCardTypeInfo = ({ cardType = 'personal', familyName, companyName }) => {
   const normalizedCardType = String(cardType || 'personal').toLowerCase();
