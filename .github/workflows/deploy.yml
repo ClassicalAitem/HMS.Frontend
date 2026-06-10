@@ -43,8 +43,7 @@ jobs:
             cd /root/HMS.Frontend
 
             git reset --hard
-            git pull origin main
-
+            git pull https://$GH_TOKEN@github.com/ClassicalAitem/HMS.Frontend.git main
             rm -rf .env
 
             cp ../.env .env
