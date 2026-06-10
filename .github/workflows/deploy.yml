@@ -39,16 +39,24 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             echo "🚀 Starting frontend deployment..."
+
             cd /root/HMS.Frontend
-            git fetch https://$GH_TOKEN@github.com/ClassicalAitem/HMS.Frontend.git main
+
+            git fetch https://${{ secrets.GH_TOKEN }}@github.com/ClassicalAitem/HMS.Frontend.git main
             git reset --hard FETCH_HEAD
+
             rm -rf .env
             cp ../.env .env
+
             npm install
             npm run build
+
             rm -rf /var/www/hms-frontend/*
             cp -r dist/* /var/www/hms-frontend/
+
             chown -R www-data:www-data /var/www/hms-frontend
             chmod -R 755 /var/www/hms-frontend
+
             systemctl reload nginx
+
             echo "✅ Frontend deployed successfully"
