@@ -1,4 +1,6 @@
 import React from 'react';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+
 // Using DaisyUI/Tailwind skeleton classes to mirror nurse pages
 
 const getInitials = (firstName, lastName) => {
@@ -71,6 +73,18 @@ const PatientIdentificationCard = ({ patient, isTransitionLoading }) => (
             )}
           </div>
         </div>
+      </div>
+
+      <div className="px-4 pt-6">
+        {isTransitionLoading ? (
+          <div className="skeleton h-12 w-full rounded-box" />
+        ) : (
+          <PatientCardTypeInfo
+            cardType={patient.cardType}
+            familyName={patient.familyName}
+            companyName={patient.companyName}
+          />
+        )}
       </div>
 
       <div className="flex justify-between items-center px-4 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">

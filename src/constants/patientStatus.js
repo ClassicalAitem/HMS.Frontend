@@ -10,6 +10,7 @@ export const PATIENT_STATUS = {
   VITALS_COMPLETED: "vitals_completed",
   AWAITING_CONSULTATION: "awaiting_consultation",
   AWAITING_DOCTOR: "awaiting_doctor",
+  AWAITING_MD: "awaiting_md",
   IN_CONSULTATION: "in_consultation",
   CONSULTATION_COMPLETED: "consultation_completed",
   AWAITING_SAMPLING: "awaiting_sampling",

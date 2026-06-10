@@ -1,3 +1,4 @@
+import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -25,16 +26,16 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
     return "N/A";
   };
 
-  // Helper to format date
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString();
+  const getDisplayDate = () => {
+    if (data?.createdAt) return formatNigeriaDate(data.createdAt);
+    if (data?.date) return data.date;
+    return "N/A";
   };
 
-  // Helper to format time
-  const formatTime = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleTimeString();
+  const getDisplayTime = () => {
+    if (data?.createdAt) return formatNigeriaTime(data.createdAt);
+    if (data?.time) return data.time;
+    return "N/A";
   };
 
   const handleAcceptClick = () => {
@@ -55,7 +56,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
 
   return (
     <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-start overflow-y-auto min-h-screen">
-      <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[413px] h-[917px]  w-full">
+      <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[413px] h-[550px]  w-full">
         <div className="w-[349px] h-[785px] mx-auto">
           <div className="w-full h-[70px] flex flex-col gap-3 font-[400]">
             <h5 className="text-[#00943C] text-[24px] font-[400] ">
@@ -66,7 +67,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
             </p>
           </div>
 
-          <div className="w-full h-[684px] mt-[16px]">
+          <div className="w-full h-[4px] mt-[16px]">
             {/* // Patient Information */}
             <div className="w-full">
               <h6 className="text-[20px] text-[#111215] font-[400]">
@@ -79,12 +80,12 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
                     {data?.name || "Unknown Patient"}
                   </p>
                 </div>
-                <div className="h-[48px]">
+                {/* <div className="h-[48px]">
                   <p className="text-[#aeaaae] text-[12px]">Patient ID</p>
                   <p className="text-[16px] text-[#111215] font-[400]">
                     {data?.userId || "N/A"}
                   </p>
-                </div>
+                </div> */}
               </div>
             </div>
             {/* // Test Information */}
@@ -121,7 +122,7 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
                       Request Date
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      {formatDate(data?.createdAt || data?.date)}
+                      {getDisplayDate()}
                     </p>
                   </div>
                   <div className="w-[106px] flex flex-col gap-[8px]">
@@ -129,14 +130,14 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
                       Request Time
                     </p>
                     <p className="text-[#111215] text-[16px] font-[400]">
-                      {formatTime(data?.createdAt || data?.time)}
+                      {getDisplayTime()}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
             {/* Requesting Doctor */}
-            <div className="w-full mt-3">
+            {/* <div className="w-full mt-3">
               <h6 className="text-[#111215] text-[20px] font-[400]">
                 Requesting Doctor
               </h6>
@@ -150,9 +151,9 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
                   </p>
                 </div>
               </div>
-            </div>
+            </div> */}
             {/* Clinical Information */}
-            <div className="w-full mt-3">
+            {/* <div className="w-full mt-3">
               <h6 className="text-[#111215] text-[20px] font-[400]">
                 Clinical Information
               </h6>
@@ -164,9 +165,9 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
                   {data?.symptoms || "No notes provided"}
                 </p>
               </div>
-            </div>
+            </div> */}
             {/* Request Status */}
-            <div className="w-full mt-3">
+            {/* <div className="w-full mt-3">
               <h6 className="text-[#111215] text-[20px] font-[400]">
                 Request Status
               </h6>
@@ -175,11 +176,9 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
                   NEW
                 </p>
               </div>
-            </div>
-          </div>
-        </div>
+            </div> */}
         {/* Buttons */}
-        <div className="w-[349px] mx-auto justify-center items-center flex gap-[16px] mt-3">
+        <div className="w-[349px] mx-auto justify-center items-center flex gap-[16px] mt-5">
           <button
             onClick={() => setShowModal2(false)}
             className="w-[100px] h-[52px] rounded-[6px] border-[1px] border-[#AEAAAE] px-[24px] py-[16px] text-[#111215] text-[18px] font-[600] flex justify-center items-center cursor-pointer"
@@ -193,6 +192,8 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
           >
             Accept & Process
           </button>
+        </div>
+          </div>
         </div>
       </div>
     </div>
