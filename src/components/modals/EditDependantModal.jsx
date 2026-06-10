@@ -51,7 +51,8 @@ const EditDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
     });
   };
 
-  const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+const handleChange = (field, value) =>
+  setForm(prev => ({ ...prev, [field]: value }));
 
   const validate = () => {
     if (!selectedDependantId) return 'Please select a dependant to update';
@@ -203,16 +204,21 @@ const EditDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
                 </select>
               </div>
               <div>
-                <label className="block mb-1 text-sm text-base-content/70">Relationship Type</label>
-                <input
-                  type="text"
-                  className="w-full input input-bordered"
-                  value={form.relationshipType}
-                  onChange={(e) => handleChange('relationshipType', e.target.value)}
-                  placeholder="e.g., child, spouse"
-                  required
-                />
-              </div>
+                      <label className="block mb-1 text-sm text-base-content/70">Relationship Type</label>
+                      <select
+                        className="w-full select select-bordered"
+                        value={form.relationshipType}
+                        onChange={(e) => handleChange( 'relationshipType', e.target.value)}
+                      >
+                        <option value="">Select relationship type</option>
+                        <option value="father">Father</option>
+                        <option value="mother">Mother</option>
+                        <option value="child">Child</option>
+                        <option value="others">Others</option>
+                        <option value="spouse">Spouse</option>
+                        <option value="sibling">Sibling</option>
+                      </select>
+                    </div>
             </div>
 
             <div className="flex justify-end space-x-2">
