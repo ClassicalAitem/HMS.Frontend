@@ -27,6 +27,7 @@ const Sidebar = () => {
       case 'super-admin': return 'Super Admin';
       case 'admin': return 'Admin';
       case 'doctor': return 'Doctor';
+      case 'medical-director': return 'Medical Director';
       case 'nurse': return 'Nurse';
       case 'frontdesk':
       case 'front-desk': return 'Front Desk';
@@ -39,7 +40,7 @@ const Sidebar = () => {
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor" },
     { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
-    { icon: GoChecklist, label: "Lab Results", path: "/dashboard/doctor/labResults" },
+    // { icon: GoChecklist, label: "Lab Results", path: "/dashboard/doctor/labResults" },
     { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/doctor/payment-records" },
   ];

@@ -28,6 +28,7 @@ import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
 import { useDispatch } from "react-redux";
 import PatientOrdersPanel from "@/components/common/PatientOrderPanel";
+import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import ViewAllVitals from "./ViewAllPatientVitals";
@@ -341,7 +342,7 @@ useEffect(() => {
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
       >
-        {role === 'doctor' ? (
+        {role === 'doctor' || role === 'medical-director' ? (
           <DoctorSidebar />
         ) : (
           <NurseSidebar onCloseSidebar={closeSidebar} />
@@ -361,8 +362,8 @@ useEffect(() => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => {
-                const base = role === 'doctor' ? '/dashboard/doctor' : '/dashboard/nurse';
-                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' ? `${base}/patientVitals` : `${base}/patient`;
+                const base = role === 'doctor' || role === 'medical-director' ? '/dashboard/doctor' : '/dashboard/nurse';
+                const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' || role === 'medical-director' ? `${base}/patientVitals` : `${base}/patient`;
                 navigate(backPath);
               }}
             >
@@ -437,11 +438,20 @@ useEffect(() => {
                   <SendPatientModal
                     patientId={patientUUID || patientId}
                     onUpdated={() => navigate('/dashboard/nurse')}
-                    allowedRoles={['doctor', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+                    allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
                     containerClass="flex flex-wrap gap-2"
                   />
                   <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
                 </div>
+              </div>
+
+              {/* Card Type Info */}
+              <div className="px-1 pt-4">
+                <PatientCardTypeInfo
+                  cardType={patient?.cardType}
+                  familyName={patient?.familyName}
+                  companyName={patient?.companyName}
+                />
               </div>
             </div>
           </div>

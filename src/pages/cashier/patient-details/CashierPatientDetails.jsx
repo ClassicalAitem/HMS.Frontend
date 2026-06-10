@@ -10,6 +10,7 @@ import { ReceiptModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { PatientCardTypeInfo } from '@/components/common';
 
 
 const CashierPatientDetails = () => {
@@ -21,6 +22,7 @@ const CashierPatientDetails = () => {
   const [openRow, setOpenRow] = useState(null);
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedPatientId] = useState(patientId || (currentPatient ? currentPatient.id : null));
@@ -159,7 +161,13 @@ const getHmoCoveredAmount = (bill) => {
   };
 
   const totalOutstanding = billings.reduce((sum, bill) => {
-    return sum + parseInt(bill.outstandingBill || 0);
+    // Sum all unpaid amounts - for cleared bills check outstandingBill, for uncleared sum full totalAmount
+    if (bill.isCleared) {
+      return sum + parseInt(bill.outstandingBill || 0);
+    } else {
+      // Uncleared bills: count the full total amount as outstanding
+      return sum + parseInt(bill.totalAmount || 0);
+    }
   }, 0);
 
   // Show loading state only if no snapshot is available
@@ -271,6 +279,14 @@ const getHmoCoveredAmount = (bill) => {
             </div>
             {/* <button className=" hidden text-sm text-primary font-semibold hover:underline">Make Payments Now</button> */}
           </div>
+                        <div className="flex flex-col gap-2">
+              <p className="text-sm text-base-content/70">• Insurance: <span className="font-medium text-base-content">{insuranceProvider}</span></p>
+              <PatientCardTypeInfo
+                cardType={patient?.cardType}
+                familyName={patient?.familyName}
+                companyName={patient?.companyName}
+              />
+            </div>
         </div>
 
         {/* Outstanding Bills */}
@@ -435,19 +451,23 @@ const getHmoCoveredAmount = (bill) => {
                   <th>Status</th>
                   <th>Paid By</th>
                   <th>Time</th>
-                  {/* {receipts.some(r => r.paidBy === "hmo") && <th>Provider</th>}
-                  {receipts.some(r => r.paidBy === "hmo") && <th>Plan</th>} */}
-
                 </tr>
               </thead>
               <tbody>
-                {receipts.map((payment, index) => {
+                {(showAllReceipts ? receipts : receipts.slice(0, 3)).map((payment, index) => {
                   const date = formatNigeriaDate(payment.createdAt);
                   const time = formatNigeriaTime(payment.createdAt);
 
                   return (
                     <tr key={index} className="text-sm">
-                      <td className="font-medium">{payment.reference}</td>
+                      <td className="font-medium">
+                        <button
+                          onClick={() => navigate(`/cashier/receipt-details/${payment.id}`, { state: { receiptData: payment } })}
+                          className="text-primary hover:underline cursor-pointer"
+                        >
+                          {payment.reference}
+                        </button>
+                      </td>
                       <td>{date}</td>
                       <td>₦ {Number(payment.amountPaid).toLocaleString()}</td>
                       <td>{payment.paymentMethod}</td>
@@ -469,6 +489,28 @@ const getHmoCoveredAmount = (bill) => {
               </tbody>
             </table>
           </div>
+
+          {receipts.length > 2 && !showAllReceipts && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => navigate(`/cashier/payment-receipt-history/${patientId}`)}
+                className="btn btn-outline btn-primary btn-sm"
+              >
+                View All ({receipts.length} receipts)
+              </button>
+            </div>
+          )}
+
+          {showAllReceipts && receipts.length > 3 && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => setShowAllReceipts(false)}
+                className="btn btn-outline btn-sm"
+              >
+                Show Less
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Receipt Modal */}
@@ -488,7 +530,7 @@ const getHmoCoveredAmount = (bill) => {
               <SendPatientModal
                 patientId={patient?.id || patientId}
                 onUpdated={() => navigate('/cashier/dashboard')}
-                allowedRoles={['nurse', 'doctor', 'pharmacist', 'labtechnician', 'hmo']}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo']}
               />
             </div>
           </div>
