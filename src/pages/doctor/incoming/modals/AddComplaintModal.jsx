@@ -9,7 +9,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef(null);
   const [duration, setDuration] = useState("");
-  const [durationUnit, setDurationUnit] = useState("Day(s)");
+  const [durationUnit, setDurationUnit] = useState("Hour(s)");
   const [localData, setLocalData] = useState(data);
 
   // Map display type to API category enum
@@ -30,7 +30,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
     setSearch("");
     setSymptom("");
     setDuration("");
-    setDurationUnit("Day(s)");
+    setDurationUnit("Hour(s)");
     setLocalData(data);
   }, [isOpen, data]);
 
@@ -59,7 +59,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
       });
       setSymptom("");
       setDuration("");
-      setDurationUnit("Day(s)");
+      setDurationUnit("Hour(s)");
       onClose();
     }
   };
@@ -177,6 +177,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                   value={durationUnit}
                   onChange={(e) => setDurationUnit(e.target.value)}
                 >
+                  <option value="Hour(s)">Hour(s)</option>
                   <option value="Day(s)">Day(s)</option>
                   <option value="Week(s)">Week(s)</option>
                   <option value="Month(s)">Month(s)</option>
