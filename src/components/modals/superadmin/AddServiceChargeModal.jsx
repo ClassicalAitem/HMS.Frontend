@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaCreditCard } from 'react-icons/fa';
@@ -19,8 +19,10 @@ const addServiceChargeSchema = yup.object({
   amount: yup
     .number()
     .required('Amount is required')
-    .min(1, 'Amount must be at least ₦1')
-    .max(10000000, 'Amount must not exceed ₦10,000,000')
+    .max(10000000, 'Amount must not exceed ₦10,000,000'),
+  isBillable: yup
+    .boolean()
+    .default(true)
 });
 
 const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
@@ -43,19 +45,34 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
     register,
     handleSubmit,
     formState: { errors },
-    reset
+    reset,
+    control,
+    watch: formWatch,
+    setValue
   } = useForm({
-    resolver: yupResolver(addServiceChargeSchema)
+    resolver: yupResolver(addServiceChargeSchema),
+    defaultValues: {
+      service: '',
+      category: '',
+      amount: '',
+      isBillable: true
+    }
   });
+
+  const isBillable = formWatch('isBillable');
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
+      // If not billable, set amount to 0
+      const finalAmount = !data.isBillable ? '0' : data.amount.toString();
+      
       // Convert amount to string as required by API
       const payload = {
         service: data.service,
         category: data.category,
-        amount: data.amount.toString()
+        amount: finalAmount,
+        isBillable: data.isBillable
       };
       
       console.log('💰 Creating service charge with payload:', payload);
@@ -141,6 +158,32 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
               )}
             </div>
 
+            {/* Billable Checkbox */}
+            <div className="flex items-center space-x-3">
+              <Controller
+                name="isBillable"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    type="checkbox"
+                    {...field}
+                    checked={field.value}
+                    onChange={(e) => {
+                      field.onChange(e.target.checked);
+                      if (!e.target.checked) {
+                        setValue('amount', 0);
+                      }
+                    }}
+                    className="checkbox checkbox-primary"
+                    disabled={isLoading}
+                  />
+                )}
+              />
+              <label className="text-sm font-medium text-base-content/70">
+                Billable Service
+              </label>
+            </div>
+
             {/* Amount */}
             <div>
               <label className="block text-sm font-medium text-base-content/70 mb-2">
@@ -153,8 +196,11 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
                 placeholder="Enter amount"
                 min="1"
                 max="10000000"
-                disabled={isLoading}
+                disabled={isLoading || !isBillable}
               />
+              {!isBillable && (
+                <p className="text-warning text-xs mt-1">Non-billable services have no charge</p>
+              )}
               {errors.amount && (
                 <p className="text-error text-xs mt-1">{errors.amount.message}</p>
               )}

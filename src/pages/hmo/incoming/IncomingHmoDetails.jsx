@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
+import { Header, PatientCardTypeInfo } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
@@ -236,13 +236,20 @@ const handleSave = async () => {
                 <span className={`badge ${badgeClass}`}>{displayStatus}</span>
               </div>
             </div>
+          <div className="mt-3">
+                          <PatientCardTypeInfo
+                            cardType={patient?.cardType}
+                            familyName={patient?.familyName}
+                            companyName={patient?.companyName}
+                          />
+                        </div>
           </div>
 <div className="flex items-center gap-2 mb-4">
 
     <SendPatientModal
             patientId={patient?.id || patientId}
             onUpdated={() => navigate('/dashboard/hmo')}
-            allowedRoles={['nurse', 'doctor', 'pharmacist', 'cashier', 'labtechnician']}
+            allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'cashier', 'labtechnician']}
           />
 </div>
           {hmos.length > 0 && (

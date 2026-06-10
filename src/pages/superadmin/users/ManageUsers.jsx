@@ -102,6 +102,8 @@ const ManageUsers = () => {
         return 'badge badge-warning';
       case 'doctor':
         return 'badge badge-info';
+      case 'medical-director':
+        return 'badge badge-primary';
       case 'nurse':
         return 'badge badge-success';
       case 'front-desk':
