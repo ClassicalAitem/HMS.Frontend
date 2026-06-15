@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getPrescriptionsByAntenatalId } from "@/services/api/prescriptionsAPI";
 import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
@@ -23,6 +24,7 @@ const AntenatalRecordDetails = () => {
   const [patient, setPatient] = useState(null);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [doctorNameById, setDoctorNameById] = useState({});
   const [error, setError] = useState(null);
   const [dependants, setDependants] = useState([]);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
@@ -87,6 +89,85 @@ const AntenatalRecordDetails = () => {
     if (Array.isArray(payload.data)) return payload.data;
     return [];
   };
+
+  const getDoctorDisplayName = (doctor) => {
+    if (!doctor) return null;
+    if (typeof doctor === "string") return doctor;
+    if (doctor.name) return doctor.name;
+    const fullName = `${doctor.firstName || ""} ${doctor.lastName || ""}`.trim();
+    return fullName || null;
+  };
+
+  const normalizeUserResponse = (response) => {
+    if (!response) return null;
+    if (response.data?.data) return response.data.data;
+    if (response.data) return response.data;
+    return response;
+  };
+
+  const getDoctorId = (record) => {
+    if (!record) return null;
+    if (typeof record.doctorId === "string") return record.doctorId;
+    if (typeof record.doctorId === "object") return record.doctorId.id || record.doctorId._id || null;
+    if (typeof record.doctor === "object") return record.doctor.id || record.doctor._id || null;
+    if (typeof record.createdBy === "object") return record.createdBy.id || record.createdBy._id || null;
+    return null;
+  };
+
+  const getRecordDoctorName = (record) => {
+    if (!record) return "Unknown Doctor";
+    if (record.doctorName) return record.doctorName;
+    const resolvedName = getDoctorDisplayName(record.doctor || record.createdBy);
+    if (resolvedName) return resolvedName;
+    const doctorId = getDoctorId(record);
+    if (doctorId) return doctorNameById[doctorId] || "Unknown Doctor";
+    return "Unknown Doctor";
+  };
+
+  const loadDoctorNames = useCallback(async (doctorIds = []) => {
+    const idsToFetch = [...new Set(doctorIds.filter(Boolean).filter((id) => !doctorNameById[id]))];
+    if (!idsToFetch.length) return;
+
+    try {
+      const results = await Promise.allSettled(idsToFetch.map((id) => usersAPI.getUserById(id)));
+      const nameMap = {};
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          const user = normalizeUserResponse(result.value);
+          const displayName = getDoctorDisplayName(user);
+          if (displayName) {
+            nameMap[idsToFetch[index]] = displayName;
+          }
+        }
+      });
+
+      if (Object.keys(nameMap).length) {
+        setDoctorNameById((prev) => ({ ...prev, ...nameMap }));
+      }
+    } catch (err) {
+      console.warn("Failed to load doctor names for antenatal records:", err);
+    }
+  }, [doctorNameById]);
+
+  useEffect(() => {
+    const doctorIds = [];
+    antenatalRecords.forEach((record) => {
+      const doctorId = getDoctorId(record);
+      if (doctorId && !record?.doctorName && !record?.doctor && !doctorNameById[doctorId]) {
+        doctorIds.push(doctorId);
+      }
+    });
+
+    const selectedDoctorId = getDoctorId(selectedRecord);
+    if (selectedDoctorId && !selectedRecord?.doctorName && !selectedRecord?.doctor && !doctorNameById[selectedDoctorId]) {
+      doctorIds.push(selectedDoctorId);
+    }
+
+    if (doctorIds.length) {
+      loadDoctorNames(doctorIds);
+    }
+  }, [antenatalRecords, selectedRecord, doctorNameById, loadDoctorNames]);
 
   useEffect(() => {
     let mounted = true;
@@ -374,6 +455,9 @@ const handleOrderCreated = () => {
                             <p className="text-sm text-base-content/70">
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
                             </p>
+                            <p className="text-sm text-base-content/70">
+                              Created by: Dr {getRecordDoctorName(record)}
+                            </p>
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -400,6 +484,9 @@ const handleOrderCreated = () => {
               {/* Selected Record Details */}
               {selectedRecord && (
                 <div className="space-y-6">
+                  <div className="px-6">
+                    <p className="text-sm text-base-content/70">Created by: Dr  {getRecordDoctorName(selectedRecord)}</p>
+                  </div>
                   {/* Present Pregnancy */}
                   {selectedRecord.presentPregnancyHistories && selectedRecord.presentPregnancyHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
