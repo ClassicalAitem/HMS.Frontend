@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useAppSelector } from '@/store/hooks'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
@@ -28,6 +29,10 @@ const IncomingDetails = () => {
   const [inventory, setInventory] = useState([])
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
   const [dependants, setDependants] = useState([])
+  const currentUser = useAppSelector((state) => state.auth.user)
+
+  const pharmacistId = currentUser?.id || currentUser?._id
+  const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
 
 useEffect(() => {
   let mounted = true;
@@ -114,8 +119,7 @@ useEffect(() => {
               ...m,
               form: inv?.form,
               strength: inv?.strength,
-              status: p.status,
-              _id: p._id,
+              status: p.status,              pharmacistName: p.pharmacistName,              _id: p._id,
               createdAt: p.createdAt,
               updatedAt: p.updatedAt,
               
@@ -166,6 +170,11 @@ useEffect(() => {
               </div>
               <div className="text-sm text-right space-y-1">
                 <div>Status: {m.status}</div>
+                {m.pharmacistName && (
+                  <div className="text-xs text-base-content/70">
+                    Pharmacist: {m.pharmacistName}
+                  </div>
+                )}
                 <div className="text-xs text-base-content/60">
                   Created: {m.createdAt
                     ? formatNigeriaDateTime(m.createdAt)
@@ -208,9 +217,13 @@ useEffect(() => {
 
     const pid = patient?.id || patient?._id || patient?.patientId
 
-    const promise = Promise.all([
-      ...activePrescriptions.map(p =>
-        updatePrescription(p._id, { status: 'completed' })
+const promise = Promise.all([
+        ...activePrescriptions.map(p =>
+          updatePrescription(p._id, {
+            status: 'completed',
+            pharmacistId,
+          pharmacistName
+        })
       ),
 
       updatePatientStatus(pid, {
@@ -249,8 +262,9 @@ useEffect(() => {
       );
 
       setPrescriptions(prev => {
+        const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
         const updatedHistory = [
-          ...activePrescriptions.map(p => ({ ...p, status: 'completed' })),
+          ...activePrescriptions.map(p => ({ ...p, status: 'completed', pharmacistId: currentUser?.id, pharmacistName })),
           ...prev.history
         ];
 
@@ -342,25 +356,27 @@ useEffect(() => {
                       const promise = Promise.all([
                         //  complete ALL prescriptions
                         ...activePrescriptions.map(p =>
-                          updatePrescription(p._id, { status: 'completed' })
+                          updatePrescription(p._id, {
+                            status: 'completed',
+                            pharmacistId,
+                            pharmacistName
+                          })
                         ),
 
-                        // move patient to nurse
-                        updatePatientStatus(pid, {
-                          status: PATIENT_STATUS.AWAITING_INJECTION
-                        }),
+                            updatePatientStatus(pid, {
+                              status: PATIENT_STATUS.AWAITING_INJECTION
+                            }),
 
-                        //  deduct stock for ALL prescriptions
-                        ...activePrescriptions.map(p =>
-                          reduceInventoryStock(p.medications)
-                        )
-                      ]);
+                            ...activePrescriptions.map(p =>
+                              reduceInventoryStock(p.medications)
+                            )
+                          ])
 
-                      toast.promise(promise, {
-                        loading: 'Completing & sending to nurse...',
-                        success: 'Sent to nurse',
-                        error: 'Failed'
-                      });
+                          toast.promise(promise, {
+                            loading: 'Completing & sending to nurse...',
+                            success: 'Sent to nurse',
+                            error: 'Failed'
+                          });
 
                       try {
                         await promise;
@@ -385,8 +401,9 @@ useEffect(() => {
 
                         //  move ALL to history
                         setPrescriptions(prev => {
+                          const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
                           const updatedHistory = [
-                            ...activePrescriptions.map(p => ({ ...p, status: 'completed' })),
+                            ...activePrescriptions.map(p => ({ ...p, status: 'completed', pharmacistId: currentUser?.id, pharmacistName })),
                             ...prev.history
                           ];
 

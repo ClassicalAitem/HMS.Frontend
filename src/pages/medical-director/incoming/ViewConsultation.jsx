@@ -4,6 +4,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getConsultationById, getConsultationFile, updateConsultation } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage, FaStickyNote } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
@@ -26,6 +27,7 @@ const ViewConsultation = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState(null);
+  const [consultationDoctorName, setConsultationDoctorName] = useState("");
   const [patient, setPatient] = useState(null);const [prescriptions, setPrescriptions] = useState(() => {
   const saved = localStorage.getItem('currentPrescriptions');
   return saved ? JSON.parse(saved) : [];
@@ -47,6 +49,20 @@ const [editingLab, setEditingLab] = useState(null);
       const res = await getConsultationById(consultationId);
       const data = res?.data ?? res;
       setConsultation(data);
+      if (data?.doctorId && !data?.doctorName && !data?.doctor) {
+        try {
+          const userRes = await usersAPI.getUserById(data.doctorId);
+          const user = userRes?.data ?? userRes;
+          const resolvedName = user?.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim();
+          if (resolvedName) {
+            setConsultationDoctorName(resolvedName);
+          }
+        } catch (err) {
+          console.warn("Failed to resolve consultation doctor name:", err);
+        }
+      } else {
+        setConsultationDoctorName("");
+      }
       
       const pid = patientId || data?.patientId;
       if (pid) {
@@ -263,7 +279,10 @@ const handleEditPrescription = async (pres, e) => {
   const notes = consultation?.notes || "";
   const visitReason = consultation?.visitReason || "Not specified";
   const diagnosis = consultation?.diagnosis || "Pending diagnosis";
-  const doctorName = consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : "Unknown Doctor";
+  const doctorName = consultation?.doctorName
+    || (consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : null)
+    || consultationDoctorName
+    || (consultation?.doctorId ? `Dr. ${consultation.doctorId}` : "Unknown Doctor");
   const consultationDate = consultation?.createdAt ? formatNigeriaDate(consultation.createdAt) : "";
   const recentPrescriptions = prescriptions.slice(0, 3);
 
@@ -798,7 +817,7 @@ const subjectRelation = isForDependant
                             ? [{ 
                                 note: rawNotes, 
                                 date: consultation?.updatedAt || consultation?.createdAt, 
-                                doctorName: consultation?.doctor ? `${consultation.doctor.firstName} ${consultation.doctor.lastName}` : 'Unknown Doctor' 
+                                doctorName: doctorName 
                               }] 
                             : [];
                         

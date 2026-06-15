@@ -5,6 +5,7 @@ import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getDependantById } from "@/services/api/dependantAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import toast from "react-hot-toast";
 import { FaSearch, FaEye, FaDownload, FaTimes } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
@@ -56,6 +57,48 @@ const SonographerScanHistory = () => {
   // previewFiles = array of file objects (with .data, .mimetype, .name)
   const [previewFiles, setPreviewFiles] = useState([]);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [sonographerNameById, setSonographerNameById] = useState({});
+
+  // Helper: Normalize API response
+  const normalizeUserResponse = (response) => {
+    if (response?.data?.data) return response.data.data;
+    if (response?.data) return response.data;
+    return response;
+  };
+
+  // Helper: Get sonographer display name
+  const getSonographerDisplayName = (sonographer) => {
+    if (!sonographer) return '';
+    if (typeof sonographer === 'string') return sonographer;
+    if (sonographer.fullName) return sonographer.fullName;
+    if (sonographer.firstName || sonographer.lastName) {
+      return `${sonographer.firstName || ''} ${sonographer.lastName || ''}`.trim();
+    }
+    return '';
+  };
+
+  // Helper: Get sonographer ID from result
+  const getSonographerId = (result) => {
+    if (!result) return null;
+    if (result.sonographerId) return result.sonographerId;
+    if (result.sonographer?.id) return result.sonographer.id;
+    if (result.sonographer?._id) return result.sonographer._id;
+    return null;
+  };
+
+  // Helper: Get sonographer name from result
+  const getSonographerName = (result) => {
+    if (!result) return 'Unknown Sonographer';
+    if (result.sonographerName) return result.sonographerName;
+    if (result.sonographer && typeof result.sonographer === 'object') {
+      return getSonographerDisplayName(result.sonographer) || 'Unknown Sonographer';
+    }
+    const sonoId = getSonographerId(result);
+    if (sonoId && sonographerNameById[sonoId]) {
+      return sonographerNameById[sonoId];
+    }
+    return 'Unknown Sonographer';
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -196,6 +239,46 @@ const SonographerScanHistory = () => {
     return name.includes(query) || id.includes(query) || hid.includes(query);
   });
 
+  // Load sonographer names when scan results change
+  useEffect(() => {
+    const loadSonographerNames = async () => {
+      if (!Array.isArray(scanResults) || scanResults.length === 0) return;
+
+      const sonoIds = new Set();
+      scanResults.forEach((result) => {
+        const sonoId = getSonographerId(result);
+        if (sonoId && !sonographerNameById[sonoId]) {
+          sonoIds.add(sonoId);
+        }
+      });
+
+      if (sonoIds.size === 0) return;
+
+      try {
+        const responses = await Promise.allSettled(
+          Array.from(sonoIds).map((id) => usersAPI.getUserById(id))
+        );
+
+        const newSonoNames = {};
+        responses.forEach((result, index) => {
+          const sonoId = Array.from(sonoIds)[index];
+          if (result.status === 'fulfilled') {
+            const userData = normalizeUserResponse(result.value);
+            newSonoNames[sonoId] = getSonographerDisplayName(userData) || 'Unknown Sonographer';
+          } else {
+            newSonoNames[sonoId] = 'Unknown Sonographer';
+          }
+        });
+
+        setSonographerNameById((prev) => ({ ...prev, ...newSonoNames }));
+      } catch (e) {
+        console.error('Error loading sonographer names:', e);
+      }
+    };
+
+    loadSonographerNames();
+  }, [scanResults, sonographerNameById]);
+
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -319,6 +402,7 @@ const SonographerScanHistory = () => {
                             </div>
                             <p className="text-sm text-base-content/70">{displayPatientId}</p>
                             <p className="text-sm text-base-content/70">Uploaded: {uploadDate}</p>
+                            <p className="text-sm text-base-content/70">Sonographer: {getSonographerName(result)}</p>
                             <p className="text-sm text-base-content/70">{fileCount} file(s)</p>
                           </div>
 

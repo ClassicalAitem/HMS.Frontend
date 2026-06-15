@@ -11,10 +11,12 @@ import toast from "react-hot-toast";
 import { FaUpload, FaCheckCircle, FaArrowLeft, FaTimes, FaPrint, FaEye } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
+import { useAppSelector } from "@/store/hooks";
 
 const SonographerIncomingDetails = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAppSelector((state) => state.auth);
   const [patient, setPatient] = useState(null);
   const [investigation, setInvestigation] = useState(null);
   const [files, setFiles] = useState([]);
@@ -178,6 +180,7 @@ const SonographerIncomingDetails = () => {
           form: {
             attachments: files,
           },
+          sonographerId: user?.id,
         };
 
         // Add patient identification based on type

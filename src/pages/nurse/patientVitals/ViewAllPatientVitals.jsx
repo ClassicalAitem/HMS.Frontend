@@ -4,6 +4,7 @@ import { Header } from '@/components/common';
 import Sidebar from '@/components/doctor/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getVitalsByPatient } from '@/services/api/vitalsAPI';
+import { usersAPI } from '@/services/api/usersAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
@@ -20,6 +21,7 @@ const ViewAllPatientVitals = () => {
   const [patient, setPatient] = useState(null);
   const [vitals, setVitals] = useState([]);
   const [dependants, setDependants] = useState([]);
+  const [nurseNameById, setNurseNameById] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -107,10 +109,12 @@ const ViewAllPatientVitals = () => {
               : 'Dependant'
             : patientName;
 
+          const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
           return {
             _id: vital._id || vital.id,
             forName,
             isForDependant: isDependant,
+            nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
             bp: vital.bp || '—',
             pulse: vital.pulse || '—',
             temperature: vital.temperature || '—',
@@ -124,7 +128,43 @@ const ViewAllPatientVitals = () => {
           };
         })
       : []
-  ), [vitals, dependants, patientName]);
+  ), [vitals, dependants, patientName, nurseNameById]);
+
+  const normalizeUserResponse = (response) => {
+    const payload = response?.data ?? response;
+    const candidate = payload?.data ?? payload?.user ?? payload;
+    return candidate?.user ?? candidate;
+  };
+
+  // Load nurse names when vitals change
+  useEffect(() => {
+    const loadNurses = async () => {
+      if (!Array.isArray(vitals) || vitals.length === 0) return;
+      const ids = new Set();
+      vitals.forEach((v) => {
+        const id = v.nurseId || v.nurse?.id || v.nurse?._id || v.createdBy;
+        if (id && !nurseNameById[id]) ids.add(id);
+      });
+      if (ids.size === 0) return;
+      try {
+        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
+        const newNames = {};
+        Array.from(ids).forEach((id, idx) => {
+          const res = responses[idx];
+          if (res?.status === 'fulfilled') {
+            const userData = normalizeUserResponse(res.value);
+            newNames[id] = userData?.fullName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'Unknown Nurse';
+          } else {
+            newNames[id] = 'Unknown Nurse';
+          }
+        });
+        setNurseNameById(prev => ({ ...prev, ...newNames }));
+      } catch (e) {
+        console.error('Failed loading nurse names', e);
+      }
+    };
+    loadNurses();
+  }, [vitals]);
 
   // Pagination
   const paginationData = useMemo(() => {
@@ -191,6 +231,7 @@ const ViewAllPatientVitals = () => {
                     <thead>
                       <tr>
                         <th> Type </th>
+                        <th>Recorded by</th>
                         <th>Date &Time</th>
                         <th>B.P</th>
                         <th>Heart Rate</th>
@@ -219,6 +260,7 @@ const ViewAllPatientVitals = () => {
                                 </span>
                               </div>
                             </td>
+                            <td className="text-sm">{row.nurseName || 'Unknown Nurse'}</td>
                             <td className="text-sm">
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-medium">{row.date}</span>
