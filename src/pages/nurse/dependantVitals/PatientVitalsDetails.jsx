@@ -511,6 +511,7 @@ const PatientVitalsDetails = () => {
                       setRecordError("");
                       const payload = {
                         patientId: selectedDependantId || patientUUID || patientId,
+                        nurseId: user?.id,
                         bp: recordForm.bp,
                         temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
                         weight: recordForm.weight ? Number(recordForm.weight) : undefined,

@@ -6,6 +6,7 @@ import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
 import { getDependantById } from "@/services/api/dependantAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import toast from "react-hot-toast";
 
 const LabResultsHistory = () => {
@@ -17,6 +18,7 @@ const LabResultsHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const resultsPerPage = 10;
   const [patientCache, setPatientCache] = useState({});
+  const [technicianNameById, setTechnicianNameById] = useState({});
 
   const fetchLabResults = useCallback(async () => {
     try {
@@ -39,6 +41,88 @@ const LabResultsHistory = () => {
   useEffect(() => {
     fetchLabResults();
   }, [fetchLabResults]);
+
+  // Helper: Normalize API response
+  const normalizeUserResponse = (response) => {
+    if (response?.data?.data) return response.data.data;
+    if (response?.data) return response.data;
+    return response;
+  };
+
+  // Helper: Get technician display name
+  const getTechnicianDisplayName = (technician) => {
+    if (!technician) return '';
+    if (typeof technician === 'string') return technician;
+    if (technician.fullName) return technician.fullName;
+    if (technician.firstName || technician.lastName) {
+      return `${technician.firstName || ''} ${technician.lastName || ''}`.trim();
+    }
+    return '';
+  };
+
+  // Helper: Get technician ID from result
+  const getTechnicianId = (result) => {
+    if (!result) return null;
+    if (result.labTechnicianId) return result.labTechnicianId;
+    if (result.technician?.id) return result.technician.id;
+    if (result.technician?._id) return result.technician._id;
+    return null;
+  };
+
+  // Helper: Get technician name from result
+  const getTechnicianName = (result) => {
+    if (!result) return 'Unknown Technician';
+    if (result.labTechnicianName) return result.labTechnicianName;
+    if (result.technician && typeof result.technician === 'object') {
+      return getTechnicianDisplayName(result.technician) || 'Unknown Technician';
+    }
+    const techId = getTechnicianId(result);
+    if (techId && technicianNameById[techId]) {
+      return technicianNameById[techId];
+    }
+    return 'Unknown Technician';
+  };
+
+  // Load technician names
+  const loadTechnicianNames = useCallback(async () => {
+    if (!Array.isArray(allLabResults) || allLabResults.length === 0) return;
+
+    const techIds = new Set();
+    allLabResults.forEach((result) => {
+      const techId = getTechnicianId(result);
+      if (techId && !technicianNameById[techId]) {
+        techIds.add(techId);
+      }
+    });
+
+    if (techIds.size === 0) return;
+
+    try {
+      const responses = await Promise.allSettled(
+        Array.from(techIds).map((id) => usersAPI.getUserById(id))
+      );
+
+      const newTechNames = {};
+      responses.forEach((result, index) => {
+        const techId = Array.from(techIds)[index];
+        if (result.status === 'fulfilled') {
+          const userData = normalizeUserResponse(result.value);
+          newTechNames[techId] = getTechnicianDisplayName(userData) || 'Unknown Technician';
+        } else {
+          newTechNames[techId] = 'Unknown Technician';
+        }
+      });
+
+      setTechnicianNameById((prev) => ({ ...prev, ...newTechNames }));
+    } catch (e) {
+      console.error('Error loading technician names:', e);
+    }
+  }, [allLabResults, technicianNameById]);
+
+  // Load technician names when results change
+  useEffect(() => {
+    loadTechnicianNames();
+  }, [loadTechnicianNames]);
 
 const filteredLabResults = useMemo(() => {
   const query = search.trim().toLowerCase();
@@ -212,6 +296,7 @@ useEffect(() => {
                     <th className="px-4 py-3 text-left">Date</th>
                     <th className="px-4 py-3 text-left">Patient Name</th>
                     <th className="px-4 py-3 text-left">Patient Type</th>
+                    <th className="px-4 py-3 text-left">Technician</th>
                      <th className="px-4 py-3 text-left">Actions</th>
                   </tr>
                 </thead>
@@ -222,6 +307,7 @@ useEffect(() => {
                       result={result}
                       getPatientName={getPatientName}
                       getPatientType={getPatientType}
+                      getTechnicianName={getTechnicianName}
                       navigate={navigate}
                     />
                   ))}
@@ -277,7 +363,7 @@ useEffect(() => {
 };
 
 // Separate component for table rows to handle async patient name fetching
-const LabResultRow = ({ result, getPatientName, getPatientType, navigate }) => {
+const LabResultRow = ({ result, getPatientName, getPatientType, getTechnicianName, navigate }) => {
   const [patientName, setPatientName] = useState("Loading...");
 
   useEffect(() => {
@@ -308,6 +394,7 @@ const LabResultRow = ({ result, getPatientName, getPatientType, navigate }) => {
           {getPatientType(result)}
         </span>
       </td>
+      <td className="px-4 py-3 text-sm">{getTechnicianName(result)}</td>
     
       <td className="px-4 py-3">
         <button

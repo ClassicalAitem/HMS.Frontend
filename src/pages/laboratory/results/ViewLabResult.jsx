@@ -10,6 +10,7 @@ import { updatePatient } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import {  getDependantById } from '@/services/api/dependantAPI';
+import { usersAPI } from "@/services/api/usersAPI";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -113,6 +114,7 @@ const ViewLabResult = () => {
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [patientId, setPatientId] = useState(null);
   const [investigation, setInvestigation] = useState(null);
+  const [technicianName, setTechnicianName] = useState('Unknown Technician');
 
 const effectiveInvestigationId = 
   labResult?.investigationRequestId || 
@@ -331,6 +333,52 @@ const loadDependantDetails = async (dependantId) => {
 
   if (labResultId) fetchData();
 }, [labResultId]);
+
+  // Load technician name when lab result is fetched
+  useEffect(() => {
+    if (!labResult) {
+      setTechnicianName('Unknown Technician');
+      return;
+    }
+
+    const loadTechnicianName = async () => {
+      try {
+        // Check if technician name is already in the result
+        if (labResult?.labTechnicianName) {
+          setTechnicianName(labResult.labTechnicianName);
+          return;
+        }
+
+        // Check if technician object exists
+        if (labResult?.technician && typeof labResult.technician === 'object') {
+          const displayName = labResult.technician.fullName ||
+            `${labResult.technician.firstName || ''} ${labResult.technician.lastName || ''}`.trim();
+          if (displayName) {
+            setTechnicianName(displayName);
+            return;
+          }
+        }
+
+        // Try to fetch by technician ID
+        const techId = labResult?.labTechnicianId;
+        if (techId) {
+          const response = await usersAPI.getUserById(techId);
+          const userData = response?.data?.data || response?.data || response;
+          const displayName = userData?.fullName ||
+            `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim();
+          setTechnicianName(displayName || 'Unknown Technician');
+        } else {
+          setTechnicianName('Unknown Technician');
+        }
+      } catch (e) {
+        console.error('Error loading technician name:', e);
+        setTechnicianName('Unknown Technician');
+      }
+    };
+
+    loadTechnicianName();
+  }, [labResult]);
+
   const handleOpenAttachmentViewer = async (fileIndex = 0) => {
     const atts = labResult?.attachedFiles || labResult?.form?.attachments;
     if (!atts || atts.length === 0) {
@@ -724,7 +772,7 @@ const patientName =
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
-                  <p className="text-lg font-bold">{labResult?.form?.labNo || "__"}</p>
+                  <p className="text-lg font-bold">{technicianName}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Date</p>
