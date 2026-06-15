@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
@@ -10,6 +10,7 @@ import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
@@ -75,6 +76,8 @@ const PatientVitalsDetails = () => {
   // Vitals pagination
   const [vitalsPage, setVitalsPage] = useState(1);
   const vitalsPerPage = 8;
+  // Nurse name cache
+  const [nurseNameById, setNurseNameById] = useState({});
 
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
@@ -265,6 +268,83 @@ useEffect(() => {
     console.log('consultation state:', consultation);
   }, [prescriptions, investigations, consultation]);
 
+  // Helper: Normalize API response structure
+  const normalizeUserResponse = (response) => {
+    if (response?.data?.data) return response.data.data;
+    if (response?.data) return response.data;
+    return response;
+  };
+
+  // Helper: Get nurse display name from nurse object
+  const getNurseDisplayName = (nurse) => {
+    if (!nurse) return '';
+    if (typeof nurse === 'string') return nurse;
+    if (nurse.fullName) return nurse.fullName;
+    if (nurse.firstName || nurse.lastName) {
+      return `${nurse.firstName || ''} ${nurse.lastName || ''}`.trim();
+    }
+    return '';
+  };
+
+  // Helper: Get nurse ID from various vital record structures
+  const getNurseId = (vital) => {
+    if (!vital) return null;
+    if (typeof vital.nurseId === 'string' || typeof vital.nurseId === 'object') return vital.nurseId;
+    if (vital.nurse?.id) return vital.nurse.id;
+    if (vital.nurse?._id) return vital.nurse._id;
+    return null;
+  };
+
+  // Helper: Get nurse display name for a vital record
+  const getNurseName = (vital) => {
+    if (!vital) return 'Unknown Nurse';
+    if (vital.nurseName) return vital.nurseName;
+    if (vital.nurse && typeof vital.nurse === 'object') {
+      return getNurseDisplayName(vital.nurse) || 'Unknown Nurse';
+    }
+    const nurseId = getNurseId(vital);
+    if (nurseId && nurseNameById[nurseId]) {
+      return nurseNameById[nurseId];
+    }
+    return 'Unknown Nurse';
+  };
+
+  // Helper: Load nurse names for all vitals
+  const loadNurseNames = useCallback(async () => {
+    if (!Array.isArray(vitals) || vitals.length === 0) return;
+
+    const nurseIds = new Set();
+    vitals.forEach((vital) => {
+      const nurseId = getNurseId(vital);
+      if (nurseId && !nurseNameById[nurseId]) {
+        nurseIds.add(nurseId);
+      }
+    });
+
+    if (nurseIds.size === 0) return;
+
+    try {
+      const responses = await Promise.allSettled(
+        Array.from(nurseIds).map((id) => usersAPI.getUserById(id))
+      );
+
+      const newNurseNames = {};
+      responses.forEach((result, index) => {
+        const nurseId = Array.from(nurseIds)[index];
+        if (result.status === 'fulfilled') {
+          const userData = normalizeUserResponse(result.value);
+          newNurseNames[nurseId] = getNurseDisplayName(userData) || 'Unknown Nurse';
+        } else {
+          newNurseNames[nurseId] = 'Unknown Nurse';
+        }
+      });
+
+      setNurseNameById((prev) => ({ ...prev, ...newNurseNames }));
+    } catch (e) {
+      console.error('Error loading nurse names:', e);
+    }
+  }, [vitals, nurseNameById]);
+
   const latest = useMemo(() => getLatestVital(vitals), [vitals]);
 
   // Sort vitals history by time descending so latest appears first
@@ -294,6 +374,11 @@ useEffect(() => {
   const subjectHospitalId = currentSubject?.hospitalId || patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
   const subjectName = currentSubject?.fullName || `${currentSubject?.firstName || ''} ${currentSubject?.lastName || ''}`.trim() || 'Unknown';
 
+  // Load nurse names when vitals change
+  useEffect(() => {
+    loadNurseNames();
+  }, [loadNurseNames]);
+
     const enrichedVitals = useMemo(() =>
       Array.isArray(sortedVitals)
         ? sortedVitals.map(vital => {
@@ -314,11 +399,12 @@ useEffect(() => {
             return {
               ...vital,
               isForDependant: isDependant,
-              forName
+              forName,
+              nurseName: getNurseName(vital)
             };
           })
         : [],
-      [sortedVitals, dependants, patient]
+      [sortedVitals, dependants, patient, nurseNameById]
     );
   
    
@@ -874,6 +960,7 @@ useEffect(() => {
                       const payload = {
                         patientId: patientUUID || patientId,
                         dependantId: selectedDependantId || undefined,
+                        nurseId: user?.id,
                         bp: recordForm.bp,
                         temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
                         weight: recordForm.weight ? Number(recordForm.weight) : undefined,

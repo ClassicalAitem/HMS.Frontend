@@ -44,6 +44,7 @@ const VitalsHistoryTable = ({ sortedVitals, loading, onViewAll, patientName = "P
                 <thead>
                   <tr>
                     <th>Type</th>
+                    <th>Nurse</th>
                     <th>Time</th>
                     <th>B.P</th>
                     <th>Heart Rate</th>
@@ -71,6 +72,7 @@ const VitalsHistoryTable = ({ sortedVitals, loading, onViewAll, patientName = "P
                                 </span>
                               </div>
                             </td>
+                      <td className="text-sm">{v?.nurseName || 'Unknown Nurse'}</td>
                       <td>{v?.createdAt ? formatNigeriaTime(v.createdAt) : "—"}</td>
                       <td>{v?.bp ?? "—"} <span className="text-sm text-base-content/70">mnHg</span></td>
                       <td>{v?.pulse ?? "—"} <span className="text-sm text-base-content/70">bpm</span></td>

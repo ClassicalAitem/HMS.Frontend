@@ -294,13 +294,13 @@ useEffect(() => {
     if (Object.keys(preg).length > 0) out.presentPregnancyHistories = [preg];
 
     const routine = {};
-    if (fd.routineTest.rvs?.trim()) routine.RVS = fd.routineTest.rvs.trim();
-    if (fd.routineTest.vdrl?.trim()) routine.VDRL = fd.routineTest.vdrl.trim();
-    if (fd.routineTest.pcv?.trim()) routine.PCV = fd.routineTest.pcv.trim();
-    if (fd.routineTest.hbv?.trim()) routine.HBV = fd.routineTest.hbv.trim();
-    if (fd.routineTest.abo?.trim()) routine.ABO = fd.routineTest.abo.trim();
-    if (fd.routineTest.genotype?.trim()) routine.GENOTYPE = fd.routineTest.genotype.trim();
-    if (Object.keys(routine).length > 0) out.routineTest = [routine];
+    if (fd.routineTest.rvs?.trim()) routine.rvs = fd.routineTest.rvs.trim();
+    if (fd.routineTest.vdrl?.trim()) routine.vdrl = fd.routineTest.vdrl.trim();
+    if (fd.routineTest.pcv?.trim()) routine.pcv = fd.routineTest.pcv.trim();
+    if (fd.routineTest.hbv?.trim()) routine.hbv = fd.routineTest.hbv.trim();
+    if (fd.routineTest.abo?.trim()) routine.abo = fd.routineTest.abo.trim();
+    if (fd.routineTest.genotype?.trim()) routine.genotype = fd.routineTest.genotype.trim();
+    if (Object.keys(routine).length > 0) out.routineTest = routine;
 
     const exams = fd.antenatalExaminations
       .filter(i => i.date?.trim() || i.heightOfFundus?.trim() || i.bp?.trim() || (i.weight != null && String(i.weight).trim()) || (i.nextVisit != null && String(i.nextVisit).trim()))
