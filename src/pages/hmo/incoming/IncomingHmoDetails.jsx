@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useAppSelector } from '@/store/hooks';
 import { Header, PatientCardTypeInfo } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
@@ -29,6 +30,10 @@ const IncomingHmoDetails = () => {
   const [billings, setBillings] = useState([]);
   const [hmos, setHmos] = useState([]);
   const [itemDecisions, setItemDecisions] = useState({});
+
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const hmoUserId = currentUser?.id || currentUser?._id;
+  const hmoUserName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
 
   useEffect(() => {
     let mounted = true;
@@ -169,6 +174,9 @@ const saveDecisions = async () => {
         itemDetails: updatedItems,
         outstandingBill,
         hmoCoveredAmount,
+        hmoApprovedBy: hmoUserName,
+        hmoApprovedById: hmoUserId,
+        hmoApprovedAt: new Date().toISOString(),
       });
     })
   );

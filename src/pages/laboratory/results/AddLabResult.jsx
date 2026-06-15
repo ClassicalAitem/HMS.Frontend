@@ -785,6 +785,7 @@ const handleSave = async () => {
         return cleanForm;
       })(),
       remarks: formData.remarks,
+      labTechnicianId: currentUser?.id,
     };
 
     // ✅ Set the right patient ID type
