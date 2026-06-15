@@ -13,6 +13,7 @@ import RecordVitalsModal from "@/components/doctor/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependantById } from "@/services/api/dependantAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
@@ -39,6 +40,7 @@ const PatientMedicalHistory = () => {
   const [sortedVitals, setSortedVitals] = useState([]);
 const [latest, setLatest] = useState(null);
   const [patient, setPatient] = useState(null);
+  const [nurseNameById, setNurseNameById] = useState({});
   const [isRecordOpen, setIsRecordOpen] = useState(false);
  const [consultations, setConsultations] = useState([]);
   const [labResults, setLabResults] = useState([]);
@@ -624,15 +626,54 @@ const dependant = isDependant
               : 'Dependant'
             : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
 
+          const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
+
           return {
             ...vital,
             isForDependant: isDependant,
-            forName
+            forName,
+            nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse')
           };
         })
       : [],
-    [sortedVitals, dependantCache, patient]
+    [sortedVitals, dependantCache, patient, nurseNameById]
   );
+
+  const normalizeUserResponse = (response) => {
+    const payload = response?.data ?? response;
+    const candidate = payload?.data ?? payload?.user ?? payload;
+    return candidate?.user ?? candidate;
+  };
+
+  // Load nurse names for vitals
+  useEffect(() => {
+    const loadNurses = async () => {
+      if (!Array.isArray(sortedVitals) || sortedVitals.length === 0) return;
+      const ids = new Set();
+      sortedVitals.forEach((v) => {
+        const id = v.nurseId || v.nurse?.id || v.nurse?._id || v.createdBy;
+        if (id && !nurseNameById[id]) ids.add(id);
+      });
+      if (ids.size === 0) return;
+      try {
+        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
+        const newNames = {};
+        Array.from(ids).forEach((id, idx) => {
+          const res = responses[idx];
+          if (res?.status === 'fulfilled') {
+            const userData = normalizeUserResponse(res.value);
+            newNames[id] = userData?.fullName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'Unknown Nurse';
+          } else {
+            newNames[id] = 'Unknown Nurse';
+          }
+        });
+        setNurseNameById(prev => ({ ...prev, ...newNames }));
+      } catch (e) {
+        console.error('Failed loading nurse names', e);
+      }
+    };
+    loadNurses();
+  }, [sortedVitals]);
 
   // Get the enriched latest vital
   const enrichedLatest = useMemo(() => enrichedVitals[0] || latest, [enrichedVitals, latest]);
@@ -790,12 +831,17 @@ const dependant = isDependant
                     ? c.dependant.relationshipType || "Dependant"
                     : "Patient";
 
+                  const doctorName = c?.doctor
+                    ? `Dr. ${c.doctor.firstName || ""} ${c.doctor.lastName || ""}`.trim()
+                    : c?.doctorName || c?.createdBy?.name || "Unknown Doctor";
+
                   return {
                     id: c?._id || c?.id,
                     type: "Consultation",
                     diagnosis: c?.diagnosis || "—",
                     time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
                     date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
+                    doctorName,
                     notes: c?.notes || "—",
                     canEdit: within24h,
                     forName,        
