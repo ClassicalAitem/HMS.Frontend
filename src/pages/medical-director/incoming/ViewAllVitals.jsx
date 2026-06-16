@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
 import Sidebar from '@/components/doctor/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
+import { usersAPI } from '@/services/api/usersAPI';
 import { getVitalsByPatient } from '@/services/api/vitalsAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
@@ -20,6 +21,7 @@ const ViewAllVitals = () => {
   const [patient, setPatient] = useState(null);
   const [vitals, setVitals] = useState([]);
   const [dependants, setDependants] = useState([]);
+  const [nurseNameById, setNurseNameById] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -107,10 +109,12 @@ const ViewAllVitals = () => {
               : 'Dependant'
             : patientName;
 
+          const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
           return {
             _id: vital._id || vital.id,
             forName,
             isForDependant: isDependant,
+            nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
             bp: vital.bp || '—',
             pulse: vital.pulse || '—',
             temperature: vital.temperature || '—',
@@ -124,7 +128,36 @@ const ViewAllVitals = () => {
           };
         })
       : []
-  ), [vitals, dependants, patientName]);
+  ), [vitals, dependants, patientName, nurseNameById]);
+
+  useEffect(() => {
+    const loadNurses = async () => {
+      if (!Array.isArray(vitals) || vitals.length === 0) return;
+      const ids = new Set();
+      vitals.forEach((v) => {
+        const id = v.nurseId || v.nurse?.id || v.nurse?._id || v.createdBy;
+        if (id && !nurseNameById[id]) ids.add(id);
+      });
+      if (ids.size === 0) return;
+      try {
+        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
+        const newNames = {};
+        Array.from(ids).forEach((id, idx) => {
+          const res = responses[idx];
+          if (res?.status === 'fulfilled') {
+            const userData = res?.value?.data?.data || res?.value?.data || res?.value;
+            newNames[id] = userData?.fullName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'Unknown Nurse';
+          } else {
+            newNames[id] = 'Unknown Nurse';
+          }
+        });
+        setNurseNameById(prev => ({ ...prev, ...newNames }));
+      } catch (e) {
+        console.error('Failed loading nurse names', e);
+      }
+    };
+    loadNurses();
+  }, [vitals]);
 
   // Pagination
   const paginationData = useMemo(() => {
@@ -191,6 +224,7 @@ const ViewAllVitals = () => {
                     <thead>
                       <tr>
                         <th>Patient Type</th>
+                        <th>Recorded by</th>
                         <th>Date & Time</th>
                         <th>Blood Pressure</th>
                         <th>Heart Rate</th>
@@ -207,24 +241,22 @@ const ViewAllVitals = () => {
                           <tr key={idx} className="hover">
                             <td className="py-3">
                               <div className="flex flex-col items-center gap-1">
-                                <span className="font-medium text-base-content">
-                                  {row.forName}
-                                </span>
-                                <span
-                                  className={`badge badge-sm ${
-                                    row.isForDependant ? 'badge-secondary' : 'badge-primary'
-                                  }`}
-                                >
+                                <span className="font-medium text-base-content">{row.forName}</span>
+                                <span className={`badge badge-sm ${row.isForDependant ? 'badge-secondary' : 'badge-primary'}`}>
                                   {row.isForDependant ? 'Dependant' : 'Patient'}
                                 </span>
                               </div>
                             </td>
+
+                            <td className="text-sm">{row.nurseName || 'Unknown Nurse'}</td>
+
                             <td className="text-sm">
                               <div className="flex flex-col gap-0.5">
                                 <span className="font-medium">{row.date}</span>
                                 <span className="text-base-content/70">{row.time}</span>
                               </div>
                             </td>
+
                             <td>
                               {row.bp} <span className="text-xs text-base-content/70">mmHg</span>
                             </td>
@@ -240,9 +272,6 @@ const ViewAllVitals = () => {
                             <td>
                               {row.height} <span className="text-xs text-base-content/70">cm</span>
                             </td>
-                            {/* <td>
-                              {row.spo2} <span className="text-xs text-base-content/70">%</span>
-                            </td> */}
                             <td>
                               {row.respiratoryRate} <span className="text-xs text-base-content/70">bpm</span>
                             </td>
@@ -250,9 +279,7 @@ const ViewAllVitals = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={9} className="py-6 text-base-content/70">
-                            No vitals found
-                          </td>
+                          <td colSpan={9} className="py-6 text-base-content/70">No vitals found</td>
                         </tr>
                       )}
                     </tbody>

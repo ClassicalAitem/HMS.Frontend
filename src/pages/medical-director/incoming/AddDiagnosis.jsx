@@ -7,6 +7,7 @@ import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
+import { useAppSelector } from "@/store/hooks";
 import toast from "react-hot-toast";
 import { IoCloseCircleOutline } from "react-icons/io5";
 import { IoIosCloseCircleOutline } from "react-icons/io";
@@ -53,6 +54,7 @@ const AddDiagnosis = () => {
   const [diagnosis, setDiagnosis] = useState("");
   const [cid, setCid] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const { user } = useAppSelector((state) => state.auth);
   const [activeModal, setActiveModal] = useState(null);
     const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [sortedVitals, setSortedVitals] = useState([]);
@@ -256,6 +258,8 @@ const handleConfirmSave = async () => {
 
     const payload = {
       patientId,
+      doctorId: user?.id || user?._id,
+      doctorName: user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim(),
       ...(selectedDependantId && { dependantId: selectedDependantId }),
       ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
       visitReason,
