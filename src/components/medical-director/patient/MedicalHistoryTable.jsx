@@ -59,7 +59,7 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, lo
                     <th className="text-base-content/60 font-semibold">Diagnosis</th>
                     <th className="text-base-content/60 font-semibold">Date</th>
                     <th className="text-base-content/60 font-semibold">Time</th>
-                    <th className="text-base-content/60 font-semibold">Notes</th>
+                    <th className="text-base-content/60 font-semibold">Doctor</th>
                     <th className="text-base-content/60 font-semibold text-right">Actions</th>
                   </tr>
                 </thead>
@@ -104,7 +104,7 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, lo
                         <td className="py-3 text-base-content/70">{row.time}</td>
 
                         <td className="py-3 text-base-content/60 max-w-[160px]">
-                          <span className="truncate block">{row.notes}</span>
+                          <span className="truncate block">{row.doctorName || row.notes || "—"}</span>
                         </td>
 
                         {/* Actions */}

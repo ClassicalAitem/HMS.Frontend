@@ -4,6 +4,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getPrescriptionsByAntenatalId } from "@/services/api/prescriptionsAPI";
 import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
@@ -23,6 +24,7 @@ const AntenatalRecordDetails = () => {
   const [patient, setPatient] = useState(null);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [doctorNameById, setDoctorNameById] = useState({});
   const [error, setError] = useState(null);
   const [dependants, setDependants] = useState([]);
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
@@ -87,6 +89,66 @@ const AntenatalRecordDetails = () => {
     if (Array.isArray(payload.data)) return payload.data;
     return [];
   };
+
+  const getDoctorDisplayName = (doctor) => {
+    if (!doctor) return null;
+    if (typeof doctor === "string") return doctor;
+    if (doctor.name) return doctor.name;
+    const fullName = `${doctor.firstName || ""} ${doctor.lastName || ""}`.trim();
+    return fullName || null;
+  };
+
+  const getRecordDoctorName = (record) => {
+    if (!record) return "Unknown Doctor";
+    if (record.doctorName) return record.doctorName;
+    const resolvedName = getDoctorDisplayName(record.doctor || record.createdBy);
+    if (resolvedName) return resolvedName;
+    if (record.doctorId) return doctorNameById[record.doctorId] || `Dr. ${record.doctorId}`;
+    return "Unknown Doctor";
+  };
+
+  const loadDoctorNames = async (doctorIds = []) => {
+    const idsToFetch = [...new Set(doctorIds.filter(Boolean).filter((id) => !doctorNameById[id]))];
+    if (!idsToFetch.length) return;
+
+    try {
+      const results = await Promise.allSettled(idsToFetch.map((id) => usersAPI.getUserById(id)));
+      const nameMap = {};
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          const user = result.value?.data ?? result.value;
+          const displayName = getDoctorDisplayName(user);
+          if (displayName) {
+            nameMap[idsToFetch[index]] = displayName;
+          }
+        }
+      });
+
+      if (Object.keys(nameMap).length) {
+        setDoctorNameById((prev) => ({ ...prev, ...nameMap }));
+      }
+    } catch (err) {
+      console.warn("Failed to load doctor names for antenatal records:", err);
+    }
+  };
+
+  useEffect(() => {
+    const doctorIds = [];
+    antenatalRecords.forEach((record) => {
+      if (record?.doctorId && !record?.doctorName && !record?.doctor && !doctorNameById[record.doctorId]) {
+        doctorIds.push(record.doctorId);
+      }
+    });
+
+    if (selectedRecord?.doctorId && !selectedRecord?.doctorName && !selectedRecord?.doctor && !doctorNameById[selectedRecord.doctorId]) {
+      doctorIds.push(selectedRecord.doctorId);
+    }
+
+    if (doctorIds.length) {
+      loadDoctorNames(doctorIds);
+    }
+  }, [antenatalRecords, selectedRecord, doctorNameById]);
 
   useEffect(() => {
     let mounted = true;
@@ -374,6 +436,9 @@ const handleOrderCreated = () => {
                             <p className="text-sm text-base-content/70">
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
                             </p>
+                            <p className="text-sm text-base-content/70">
+                              Created by: {getRecordDoctorName(record)}
+                            </p>
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -400,6 +465,9 @@ const handleOrderCreated = () => {
               {/* Selected Record Details */}
               {selectedRecord && (
                 <div className="space-y-6">
+                  <div className="px-6">
+                    <p className="text-sm text-base-content/70">Created by: {getRecordDoctorName(selectedRecord)}</p>
+                  </div>
                   {/* Present Pregnancy */}
                   {selectedRecord.presentPregnancyHistories && selectedRecord.presentPregnancyHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
