@@ -4,6 +4,7 @@ import { Header, EmptyState } from "@/components/common";
 import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
+import { usersAPI } from "@/services/api/usersAPI";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const NurseAntenatalRecords = () => {
@@ -14,6 +15,69 @@ const NurseAntenatalRecords = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [patientLoading, setPatientLoading] = useState(true);
+  const [doctorNameById, setDoctorNameById] = useState({});
+
+  const normalizeUserResponse = (response) => {
+    if (response?.data?.data) return response.data.data;
+    if (response?.data) return response.data;
+    return response;
+  };
+
+  const getDoctorDisplayName = (doctor) => {
+    if (!doctor) return '';
+    if (typeof doctor === 'string') return doctor;
+    if (doctor.fullName) return doctor.fullName;
+    if (doctor.firstName || doctor.lastName) return `${doctor.firstName || ''} ${doctor.lastName || ''}`.trim();
+    return '';
+  };
+
+  const getDoctorId = (record) => {
+    if (!record) return null;
+    if (record.doctorId) return record.doctorId;
+    if (record.doctor?.id) return record.doctor.id;
+    if (record.doctor?._id) return record.doctor._id;
+    if (record.createdBy) return record.createdBy;
+    return null;
+  };
+
+  const getRecordDoctorName = (record) => {
+    if (!record) return 'Unknown Doctor';
+    if (record.doctorName) return record.doctorName;
+    if (record.doctor && typeof record.doctor === 'object') return getDoctorDisplayName(record.doctor) || 'Unknown Doctor';
+    const did = getDoctorId(record);
+    if (did && doctorNameById[did]) return doctorNameById[did];
+    return 'Unknown Doctor';
+  };
+
+  useEffect(() => {
+    const loadDoctorNames = async () => {
+      if (!Array.isArray(records) || records.length === 0) return;
+      const ids = new Set();
+      records.forEach((r) => {
+        const id = getDoctorId(r);
+        if (id && !doctorNameById[id]) ids.add(id);
+      });
+      if (ids.size === 0) return;
+      try {
+        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
+        const newNames = {};
+        Array.from(ids).forEach((id, idx) => {
+          const res = responses[idx];
+          if (res?.status === 'fulfilled') {
+            const userData = normalizeUserResponse(res.value);
+            newNames[id] = getDoctorDisplayName(userData) || 'Unknown Doctor';
+          } else {
+            newNames[id] = 'Unknown Doctor';
+          }
+        });
+        setDoctorNameById(prev => ({ ...prev, ...newNames }));
+      } catch (e) {
+        console.error('Failed loading doctor names', e);
+      }
+    };
+
+    loadDoctorNames();
+  }, [records]);
 
   useEffect(() => {
     let mounted = true;
@@ -146,6 +210,7 @@ const NurseAntenatalRecords = () => {
                       <th>LMP</th>
                       <th>EDD</th>
                       <th>Gestation</th>
+                      <th>Doctor</th>
                       <th>Status</th>
                       <th className="text-right">Action</th>
                     </tr>
@@ -153,13 +218,14 @@ const NurseAntenatalRecords = () => {
                   <tbody>
                     {records.map((record, idx) => {
                       const presentPregnancy = getPresentPregnancy(record);
-                      return (
+                        return (
                         <tr key={record._id || record.id || idx} className={selectedRecord?._id === record._id ? 'bg-base-200' : ''}>
                           <td>{idx + 1}</td>
                           <td>{presentPregnancy.dateOfBooking ? formatNigeriaDate(presentPregnancy.dateOfBooking) : '—'}</td>
                           <td>{presentPregnancy.LMP || presentPregnancy.lmp ? formatNigeriaDate(presentPregnancy.LMP || presentPregnancy.lmp) : '—'}</td>
                           <td>{presentPregnancy.EDD || presentPregnancy.edd ? formatNigeriaDate(presentPregnancy.EDD || presentPregnancy.edd) : '—'}</td>
                           <td>{presentPregnancy.durationOfPregnancyInWeek || presentPregnancy.durationInWeeks ? `${presentPregnancy.durationOfPregnancyInWeek || presentPregnancy.durationInWeeks} w` : '—'}</td>
+                          <td>{getRecordDoctorName(record)}</td>
                           <td>{record.createdAt ? new Date(record.createdAt).toLocaleDateString() : '—'}</td>
                           <td className="text-right">
                             <button type="button" className="btn btn-xs btn-primary" onClick={() => setSelectedRecord(record)}>
@@ -177,8 +243,8 @@ const NurseAntenatalRecords = () => {
                 <div className="p-4 border rounded-lg bg-base-100">
                   <h3 className="text-lg font-semibold mb-3">Record Details</h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
-                    <div><span className="font-medium">Doctor ID:</span> {selectedRecord.doctorId || '—'}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4">
+                    <div><span className="font-medium">Doctor:</span> {getRecordDoctorName(selectedRecord)} </div>
                     <div><span className="font-medium">Record ID:</span> {selectedRecord._id || selectedRecord.id || '—'}</div>
                     <div><span className="font-medium">Created:</span> {selectedRecord.createdAt ? formatNigeriaDate(selectedRecord.createdAt) : '—'}</div>
                     <div><span className="font-medium">Updated:</span> {selectedRecord.updatedAt ? formatNigeriaDate(selectedRecord.updatedAt) : '—'}</div>
