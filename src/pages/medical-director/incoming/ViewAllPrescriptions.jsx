@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
-import Sidebar from '@/components/doctor/dashboard/Sidebar';
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getInventories } from '@/services/api/inventoryAPI';

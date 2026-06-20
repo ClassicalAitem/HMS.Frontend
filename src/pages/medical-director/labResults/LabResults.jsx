@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Header, EmptyState, DataTable } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { FaDownload } from 'react-icons/fa';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { getPatients } from '@/services/api/patientsAPI';
