@@ -69,6 +69,7 @@ import MDSendToNurse from "@/pages/medical-director/incoming/SendToNurse";
 import MDViewConsultation from "@/pages/medical-director/incoming/ViewConsultation";
 import MDWritePrescription from "@/pages/medical-director/incoming/WritePrescription";
 import MDAllPatients from "@/pages/medical-director/allPatients/AllPatients";
+import MDPatients from "@/pages/medical-director/Patients/Patients";
 import MDAppointment from "@/pages/medical-director/appiontments/Appointment";
 import MDPaymentRecords from "@/pages/medical-director/payment-records/ReceiptRecord";
 import MDTask from "@/pages/medical-director/assignTask/Task";
@@ -499,6 +500,11 @@ const AppRoutes = () => {
       <MDAntenatalRecordDetails />
     </ProtectedRoute>
   } />
+      <Route path="/dashboard/medical-director/patients" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDPatients />
+        </ProtectedRoute>
+      } />
 <Route path="/dashboard/medical-director/antenatal-records/:patientId" element={<MDAntenatalRecords />} />
 <Route path="/dashboard/medical-director/antenatal-records/:patientId/edit/:recordIndex" element={<MDAntenatalRecords />} />
   <Route path="/dashboard/medical-director/medical-history/:patientId/add" element={
