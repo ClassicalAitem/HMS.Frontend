@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getConsultationById, getConsultationFile, updateConsultation } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { usersAPI } from "@/services/api/usersAPI";
-import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage, FaStickyNote } from "react-icons/fa";
+import { IoIosCloseCircleOutline } from "react-icons/io";import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage, FaStickyNote, FaTimes } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
 import OrderInvestigationModal from "./modals/OrderInvestigationModal";
 import SendToNurseModal from "./modals/SendToNurseModal";
@@ -17,6 +16,7 @@ import { updateInvestigation, deleteInvestigation } from "@/services/api/investi
 import { updatePrescription, deletePrescription } from "@/services/api/prescriptionsAPI";
 import { FaTrash, FaEdit } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import toast from "react-hot-toast";
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -269,6 +269,26 @@ const handleEditPrescription = async (pres, e) => {
     }
   };
 
+const handleRemoveDiagnosisItem = async (itemToRemove) => {
+  if (!window.confirm(`Remove "${itemToRemove}" from diagnosis?`)) return;
+  try {
+    const remaining = (consultation?.diagnosis || "")
+      .split(',')
+      .map(d => d.trim())
+      .filter(d => d && d.toLowerCase() !== itemToRemove.toLowerCase());
+
+    const payload = remaining.length > 0
+      ? remaining.join(', ')
+      : "Pending diagnosis"; // backend rejects empty string
+
+    await updateConsultation(consultationId, { diagnosis: payload });
+    await loadData();
+  } catch (error) {
+    console.error("Error removing diagnosis:", error);
+    toast.error(error?.response?.data?.message || "Failed to remove diagnosis");
+  }
+};
+
   // Mapped Data
   const complaints = consultation?.complaint || [];
   const medicalHistory = consultation?.medicalHistory || [];
@@ -350,12 +370,13 @@ const subjectRelation = isForDependant
 
   return (
     <div className="flex h-screen bg-base-200/50">
-      <AddDiagnosisModal 
-        isOpen={isDiagnosisModalOpen}
-        onClose={() => setIsDiagnosisModalOpen(false)}
-        consultationId={consultationId}
-        onDiagnosisAdded={loadData}
-      />
+     <AddDiagnosisModal 
+      isOpen={isDiagnosisModalOpen}
+      onClose={() => setIsDiagnosisModalOpen(false)}
+      consultationId={consultationId}
+      existingDiagnosis={consultation?.diagnosis || ""}
+      onDiagnosisAdded={loadData}
+    />
 <OrderInvestigationModal
   isOpen={isInvestigationModalOpen}
   onClose={() => {
@@ -460,15 +481,15 @@ const subjectRelation = isForDependant
                     <div className="flex items-center gap-2">
                       <FaNotesMedical className="text-primary w-5 h-5" />
                       <h3 className="font-bold text-lg text-base-content">Consultation Overview</h3>
-                    </div>
-                    {(!diagnosis || diagnosis.toLowerCase().includes("pending")) && (
+                      </div>
                       <button 
                         className="btn btn-sm btn-outline btn-success gap-2"
                         onClick={() => setIsDiagnosisModalOpen(true)}
                       >
-                        <FaPlus className="w-3 h-3" /> Add Diagnosis
+                        <FaPlus className="w-3 h-3" />
+                        {(!diagnosis || diagnosis.toLowerCase().includes("pending")) ? "Add Diagnosis" : "Edit Diagnoses"}
                       </button>
-                    )}
+                
                   </div>
                   
                   <div className="p-6 grid gap-6">
@@ -482,15 +503,26 @@ const subjectRelation = isForDependant
                       </div>
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Diagnosis</h4>
-                        {diagnosis.includes("Pending") ? (
+                       {diagnosis.includes("Pending") ? (
                           <div className="p-3 rounded-lg border bg-warning/10 border-warning/20 text-warning-content">
                             <p className="font-medium">{diagnosis}</p>
                           </div>
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {diagnosis.split(',').map((item, idx) => (
-                              <span key={idx} className="inline-flex items-center px-3 py-1 bg-success/10 border border-success/30 rounded-full text-sm text-success-content font-medium">
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-2 px-3 py-1 bg-success/10 border border-success/30 rounded-full text-sm text-success-content font-medium"
+                              >
                                 {item.trim()}
+                                <button
+                                  type="button"
+                                  className="text-error hover:text-red-700"
+                                  onClick={() => handleRemoveDiagnosisItem(item.trim())}
+                                  title="Remove this diagnosis"
+                                >
+                                  <FaTimes className="w-3 h-3" />
+                                </button>
                               </span>
                             ))}
                           </div>
