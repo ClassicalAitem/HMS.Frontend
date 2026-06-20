@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import PatientSummaryCard from "@/components/doctor/patient/PatientSummaryCard";
 import MedicalHistoryTable from "@/components/doctor/patient/MedicalHistoryTable";
@@ -817,40 +817,35 @@ const dependant = isDependant
           )}
 
           <MedicalHistoryTable
-              rows={useMemo(() => (
-                Array.isArray(consultations) ? consultations.map((c) => {
-                  const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
-                  const now = Date.now();
-                  const within24h = now - createdTime < 24 * 60 * 60 * 1000;
+             rows={useMemo(() => (
+              Array.isArray(consultations) ? consultations.map((c) => {
+                const isForDependant = !!c?.dependantId && !!c?.dependant;
+                const forName = isForDependant
+                  ? `${c.dependant.firstName || ""} ${c.dependant.lastName || ""}`.trim()
+                  : patientName;
+                const forRelation = isForDependant
+                  ? c.dependant.relationshipType || "Dependant"
+                  : "Patient";
 
-                  const isForDependant = !!c?.dependantId && !!c?.dependant;
-                  const forName = isForDependant
-                    ? `${c.dependant.firstName || ""} ${c.dependant.lastName || ""}`.trim()
-                    : patientName;
-                  const forRelation = isForDependant
-                    ? c.dependant.relationshipType || "Dependant"
-                    : "Patient";
+                const doctorName = c?.doctor
+                  ? `Dr. ${c.doctor.firstName || ""} ${c.doctor.lastName || ""}`.trim()
+                  : c?.doctorName || c?.createdBy?.name || "Unknown Doctor";
 
-                  const doctorName = c?.doctor
-                    ? `Dr. ${c.doctor.firstName || ""} ${c.doctor.lastName || ""}`.trim()
-                    : c?.doctorName || c?.createdBy?.name || "Unknown Doctor";
-
-                  return {
-                    id: c?._id || c?.id,
-                    type: "Consultation",
-                    diagnosis: c?.diagnosis || "—",
-                    time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
-                    date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
-                    doctorName,
-                    notes: c?.notes || "—",
-                    canEdit: within24h,
-                    forName,        
-                    forRelation,    
-                    isForDependant, 
-                  };
-                }) : []
-              // eslint-disable-next-line react-hooks/exhaustive-deps
-              ), [consultations, patientName])}
+                return {
+                  id: c?._id || c?.id,
+                  type: "Consultation",
+                  diagnosis: c?.diagnosis || "—",
+                  time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
+                  date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
+                  doctorName,
+                  notes: c?.notes || "—",
+                  canEdit: true, // MD can edit anytime
+                  forName,
+                  forRelation,
+                  isForDependant,
+                };
+              }) : []
+            ), [consultations, patientName])}
               loading={loading}
             onAdd={() => lockAndNavigate(
               `/dashboard/medical-director/medical-history/${patientId}/add`,
