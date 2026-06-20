@@ -4,7 +4,7 @@ import { useForm, useFieldArray, Controller, get } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup'; 
 import * as yup from 'yup'; 
 import { Header } from '@/components/common'; 
-import Sidebar from '@/components/doctor/dashboard/Sidebar'; 
+import Sidebar from "@/components/medical-director/dashboard/Sidebar"; 
 import { getConsultationById } from '@/services/api/consultationAPI'; 
 import { getPatientById } from '@/services/api/patientsAPI'; 
 import { getAnteNatalRecordByPatientId } from '@/services/api/anteNatalAPI'; 

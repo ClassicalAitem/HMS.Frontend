@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
-import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { PharmacyActionModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";

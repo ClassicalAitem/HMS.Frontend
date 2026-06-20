@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { Header, DataTable } from '@/components/common';
-import { Sidebar } from '@/components/doctor/dashboard';
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
