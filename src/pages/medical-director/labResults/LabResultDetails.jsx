@@ -7,7 +7,7 @@ import { getPatientById } from "@/services/api/patientsAPI";
 import { getDependantById } from "@/services/api/dependantAPI";
 import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
-import { Sidebar } from "@/components/doctor/dashboard";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { FaFileImage } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 

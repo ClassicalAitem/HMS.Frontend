@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FaThLarge, FaUsers, FaSignOutAlt } from "react-icons/fa";
-import { GoChecklist } from "react-icons/go";
+import { GoChecklist, GoPerson } from "react-icons/go";
 import { FaSuitcaseMedical } from "react-icons/fa6";
 import { IoReceiptOutline } from "react-icons/io5";
 import { SlCalender } from "react-icons/sl";
@@ -40,7 +40,7 @@ const Sidebar = () => {
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/medical-director" },
     { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/medical-director/incoming" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/medical-director/appointments" },
-    // { icon: GoChecklist, label: "Lab Results", path: "/dashboard/medical-director/labResults" },
+    {icon: GoPerson, label: 'Patients', path: '/dashboard/medical-director/patients'},
     { icon: FaUsers, label: "All Patients", path: "/dashboard/medical-director/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/medical-director/payment-records" },
   ];
