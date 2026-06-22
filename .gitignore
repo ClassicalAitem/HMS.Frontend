@@ -27,8 +27,4 @@ dist-ssr
 .env*
 .env
 .env.example
-<<<<<<< HEAD
-.vs
-=======
 .vs/
->>>>>>> main
