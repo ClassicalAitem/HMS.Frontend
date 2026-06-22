@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { useAppSelector } from "@/store/hooks";
 import toast, { Toaster } from "react-hot-toast";
