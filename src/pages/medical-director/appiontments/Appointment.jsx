@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { DataTable } from "@/components/common";
 import { BookAppointmentModal } from "@/components/modals";
 import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal";
