@@ -160,14 +160,10 @@ const getHmoCoveredAmount = (bill) => {
     }
   };
 
-  const totalOutstanding = billings.reduce((sum, bill) => {
-    // Sum all unpaid amounts - for cleared bills check outstandingBill, for uncleared sum full totalAmount
-    if (bill.isCleared) {
-      return sum + parseInt(bill.outstandingBill || 0);
-    } else {
-      // Uncleared bills: count the full total amount as outstanding
-      return sum + parseInt(bill.totalAmount || 0);
-    }
+    const totalOutstanding = billings.reduce((sum, bill) => {
+    if (bill.isCleared) return sum; 
+    const outstanding = Number(bill.outstandingBill) || 0;
+    return sum + (outstanding > 0 ? outstanding : Number(bill.totalAmount || 0));
   }, 0);
 
   // Show loading state only if no snapshot is available
