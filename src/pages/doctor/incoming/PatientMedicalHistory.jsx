@@ -507,66 +507,74 @@ const getDependantName = (dependant) => {
     return tests.length > 0 ? tests.join(', ') : inv.type || 'Lab Investigation';
   };
 
-  const getLabInvestigationBillItems = () => {
-    if (!Array.isArray(investigations)) return [];
-    
-    // Filter out investigations that have already been billed
-    const unbilledInvestigations = investigations.filter(inv => !inv.isBilled && !inv.billId);
+    const getLabInvestigationBillItems = () => {
+      if (!Array.isArray(investigations)) return [];
 
-    return unbilledInvestigations
-      .map(inv => {
-        // Check if service charge exists and is billable
+      const unbilledInvestigations = investigations.filter(inv => !inv.isBilled && !inv.billId);
+
+      return unbilledInvestigations.flatMap(inv => {
         const serviceCharge = serviceCharges.find(sc => sc.id === inv.serviceChargeId);
-        if (serviceCharge && !serviceCharge.isBillable) return null; // Skip non-billable items
+        if (serviceCharge && !serviceCharge.isBillable) return [];
 
         const tests = Array.isArray(inv.tests) ? inv.tests : [];
-        const price = tests.reduce((sum, test) => {
+
+        if (tests.length === 0) {
+          return [{
+            serviceChargeId: inv?.serviceChargeId || '',
+            code: 'LAB',
+            description: inv.type || 'Lab Investigation',
+            quantity: 1,
+            price: 0,
+            investigationId: inv?.id || inv?._id,
+          }];
+        }
+
+        return tests.map(test => {
           const testName = typeof test === 'string' ? test : (test?.name || test?.code || '');
-          return sum + (getLabInvestigationPrice(testName) || 0);
-        }, 0);
+          return {
+            serviceChargeId: inv?.serviceChargeId || '',
+            code: 'LAB',
+            description: testName || 'Lab Test',
+            quantity: 1,
+            price: getLabInvestigationPrice(testName) || 0,
+            investigationId: inv?.id || inv?._id,
+          };
+        });
+      });
+    };
 
-        return {
-          serviceChargeId: inv?.serviceChargeId || '',
-          code: 'LAB',
-          description: getInvestigationDescription(inv),
-          quantity: 1,
-          price,
-          investigationId: inv?.id || inv?._id,  // Track which investigation this is from
-        };
-      })
-      .filter(Boolean); // Remove null entries
-  };
+    const getPrescriptionBillItems = () => {
+      if (!Array.isArray(prescriptions)) return [];
 
-  const getPrescriptionBillItems = () => {
-    if (!Array.isArray(prescriptions)) return [];
-    
-    // Filter out prescriptions that have already been billed
-    const unbilledPrescriptions = prescriptions.filter(pres => !pres.isBilled && !pres.billId);
+      const unbilledPrescriptions = prescriptions.filter(pres => !pres.isBilled && !pres.billId);
 
-    return unbilledPrescriptions
-      .map(pres => {
-        // Check if service charge exists and is billable
+      return unbilledPrescriptions.flatMap(pres => {
         const serviceCharge = serviceCharges.find(sc => sc.id === pres.serviceChargeId);
-        if (serviceCharge && !serviceCharge.isBillable) return null; // Skip non-billable items
+        if (serviceCharge && !serviceCharge.isBillable) return [];
 
         const medications = Array.isArray(pres.medications) ? pres.medications : [];
-        const price = medications.reduce((sum, med) => {
-          const drugPrice = getDrugPrice(med?.drugName);
-          return sum + (Number(drugPrice) || 0);
-        }, 0);
 
-        return {
+        if (medications.length === 0) {
+          return [{
+            serviceChargeId: pres?.serviceChargeId || '',
+            code: 'PRESCRIPTION',
+            description: 'Prescription',
+            quantity: 1,
+            price: 0,
+            prescriptionId: pres?.id || pres?._id,
+          }];
+        }
+
+        return medications.map(med => ({
           serviceChargeId: pres?.serviceChargeId || '',
           code: 'PRESCRIPTION',
-          description: medications.map(m => `${m.drugName} (${m.dosage})`).join(', ') || 'Prescription',
+          description: `${med.drugName} (${med.dosage})`,
           quantity: 1,
-          price,
-          prescriptionId: pres?.id || pres?._id, 
-        };
-      })
-      .filter(Boolean); 
-  };
-
+          price: Number(getDrugPrice(med?.drugName)) || 0,
+          prescriptionId: pres?.id || pres?._id,
+        }));
+      });
+    };
   // Helper function to check if item is within last 48 hours
   const isWithin48Hours = (createdAt) => {
     if (!createdAt) return false;
