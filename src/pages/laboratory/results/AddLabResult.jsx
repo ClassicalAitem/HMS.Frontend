@@ -477,7 +477,7 @@ useEffect(() => {
       }
 
       // ✅ Helper: normalize patient/dependant into form
-  const mapToForm = (data) => {
+  const mapToForm = (data ,referral = "") => {
   if (!data || typeof data !== "object") {
     console.warn("Invalid data passed to mapToForm:", data);
     return;
@@ -516,6 +516,7 @@ useEffect(() => {
     patientNames: fullName,
     age: age?.toString() || "",
     sex,
+     ...(referral ? { referral } : {}),
   }));
 };
 
@@ -641,34 +642,35 @@ useEffect(() => {
         setInvestigation(foundInvestigation);
 
         // doctor name
-        let referralName = "";
-        if (foundInvestigation.doctorId) {
-          try {
-            const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
-            const doc = docRes?.data || docRes;
-            referralName =
-              doc?.name ||
-              `${doc?.firstName || ""} ${doc?.lastName || ""}`.trim();
-          } catch {
-            console.warn("Failed to load doctor data for referral name");
-          }
+      let referralName = "";
+      if (foundInvestigation.doctorId) {
+        try {
+        const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
+        const doc = docRes?.data?.data || docRes?.data || docRes;
+        referralName = doc?.name || `${doc?.firstName || ""} ${doc?.lastName || ""}`.trim();
+        console.log('Final referralName:', referralName);
+        } catch {
+          console.warn("Failed to load doctor data for referral name");
         }
+      }
 
-        // ✅ dependant first (DO NOT override later)
-        if (foundInvestigation.dependantId) {
-          const depRes = await getDependantById(foundInvestigation.dependantId);
-          const dependant =  depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.data || depRes;
+      // Set referral immediately so it's not lost
+      setFormData(prev => ({ ...prev, referral: referralName }));
 
-          setPatient(dependant);
-          setIsDependant(true);
-          setMainPatientId(foundInvestigation.patientId);
-          mapToForm(dependant);
 
-          return
+      if (foundInvestigation.dependantId) {
+        const depRes = await getDependantById(foundInvestigation.dependantId);
+        const dependant = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.data || depRes;
+
+        setPatient(dependant);
+        setIsDependant(true);
+        setMainPatientId(foundInvestigation.patientId);
+        mapToForm(dependant , referralName);
+
+        return;
         } else {
           let patientData = null;
 
-          // ✅ If investigation has opdPatientId, call OPD API explicitly
           if (foundInvestigation.opdPatientId) {
             try {
               const res = await getOpdPatientById(foundInvestigation.opdPatientId);
@@ -682,7 +684,7 @@ useEffect(() => {
 
           if (patientData) {
             setPatient(patientData);
-            mapToForm(patientData);
+            mapToForm(patientData, referralName);
           }
         }
 

@@ -40,7 +40,7 @@ const CashierPatientDetails = () => {
   const fullName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || (patient?.name || 'Unknown');
   const gender = patient?.gender || snapshot?.gender || '—';
   const phone = patient?.phone || patient?.phoneNumber || snapshot?.phone || '—';
-  const patientIdDisplay = patient?.id || patient?.patientId || patient?.hospitalId || '—';
+  const patientIdDisplay =  patient?.hospitalId || '—';
   const insuranceProvider = patient?.hmos?.length
     ? patient.hmos.map(h => `${h.provider} (${h.plan})`).join(', ')
     : snapshot?.insurance || '—';

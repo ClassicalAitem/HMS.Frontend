@@ -46,8 +46,8 @@ const IncomingDoctor = () => {
 
         const sorted = filtered.sort(
           (a, b) =>
-            new Date(b?.updatedAt || b?.createdAt || 0).getTime() -
-            new Date(a?.updatedAt || a?.createdAt || 0).getTime()
+            new Date(a?.updatedAt || a?.createdAt || 0).getTime() -
+            new Date(b?.updatedAt || b?.createdAt || 0).getTime()
         );
 
         const prettifyStatus = (arr) =>
