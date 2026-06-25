@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 
-const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, loading = false }) => {
+const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll,onViewMedicalHistory, loading = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -34,6 +34,12 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, lo
               onClick={typeof onViewAll === "function" ? onViewAll : undefined}
             >
               View All Records
+            </button>
+              <button
+              className="btn btn-outline btn-info btn-sm"
+              onClick={typeof onViewMedicalHistory === "function" ? onViewMedicalHistory : undefined}
+            >
+              Medical Record History
             </button>
           </div>
         </div>
@@ -116,26 +122,7 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, lo
                             >
                               View
                             </button>
-                            {typeof onEdit === "function" && (
-                              <button
-                                className={`btn btn-xs btn-outline btn-secondary ${
-                                  row.canEdit
-                                    ? ""
-                                    : "opacity-40 cursor-not-allowed"
-                                }`}
-                                onClick={() => {
-                                  if (row.canEdit) onEdit(row, idx);
-                                }}
-                                disabled={!row.canEdit}
-                                title={
-                                  !row.canEdit
-                                    ? "Edit window expired (24h)"
-                                    : "Edit consultation"
-                                }
-                              >
-                                Edit
-                              </button>
-                            )}
+                       
                           </div>
                         </td>
                       </tr>
