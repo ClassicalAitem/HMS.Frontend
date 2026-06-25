@@ -10,6 +10,8 @@ import { getLabResults } from "@/services/api/labResultsAPI";
 import AcceptTestRequestModal from "@/pages/laboratory/incoming/modals/AcceptTestRequestModal";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
 import toast from "react-hot-toast";
+import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { updateOpdPatient } from "@/services/api/opdPatientAPI";
 
 const OrderedLab = () => {
   const navigate = useNavigate();
@@ -24,10 +26,11 @@ const OrderedLab = () => {
   const [showModal, setShowModal] = useState(false);
   const [showModal2, setShowModal2] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [sendingToDoctor, setSendingToDoctor] = useState(null);
 
-  const fetchInvestigations = useCallback(async () => {
+  const fetchInvestigations = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await getInvestigations();
       const investigationsData = Array.isArray(response)
         ? response
@@ -37,12 +40,34 @@ const OrderedLab = () => {
       setError(null);
     } catch (err) {
       console.error("Error fetching investigations:", err);
-      setError("Failed to load ordered lab requests");
-      toast.error("Failed to load ordered lab requests");
+      if (!silent) {
+        setError("Failed to load ordered lab requests");
+        toast.error("Failed to load ordered lab requests");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
+
+
+    const handleSendToDoctor = async (inv) => {
+      const invId = inv._id || inv.id;
+      try {
+        setSendingToDoctor(invId);
+        if (inv.opdPatientId) {
+          await updateOpdPatient(inv.opdPatientId, { status: "lab_completed" });
+        } else if (inv.patientId) {
+          await updatePatientStatus(inv.patientId, "lab_completed");
+        }
+        toast.success("Patient status updated to lab completed!");
+        await fetchInvestigations(true);
+      } catch (err) {
+        console.error("Error sending to doctor:", err);
+        toast.error(err?.response?.data?.message || "Failed to update patient status");
+      } finally {
+        setSendingToDoctor(null);
+      }
+    };
 
   useEffect(() => {
     fetchInvestigations();
@@ -287,6 +312,8 @@ useEffect(() => {
                         onViewDetails={(inv) => { setSelectedCard(inv); setShowModal2(true); }}
                         onAcceptFromDetails={handleAcceptFromDetails}
                         onProcess={handleProcess}
+                        onSendToDoctor={handleSendToDoctor} 
+                        sendingToDoctor={sendingToDoctor}
                       />
                     ))}
                   </tbody>
@@ -358,18 +385,23 @@ useEffect(() => {
   );
 };
 
+
 // Separate component for table rows to handle async patient name fetching
 const InvestigationRow = ({
   investigation,
   getPatientName,
   existingLabResults,
   onViewDetails,
-  onAcceptFromDetails,
-  onProcess
+  onProcess,
+  onSendToDoctor,
+  sendingToDoctor,
 }) => {
+    const invId = investigation._id || investigation.id;
+    const isSending = sendingToDoctor === invId;
   const [patientInfo, setPatientInfo] = useState({ name: "Loading...", type: "Patient" });
 
   useEffect(() => {
+
     const fetchName = async () => {
       const info = await getPatientName(investigation);
       setPatientInfo(info);
@@ -422,28 +454,53 @@ const InvestigationRow = ({
         </span>
       </td>
       <td className="px-4 py-3 text-sm">{formatDate(investigation.createdAt)}</td>
-      <td className="px-4 py-3">
-        <div className="flex gap-2">
-          <button
-            onClick={() => onViewDetails(investigation)}
+        <td className="px-4 py-3">
+        <div className="flex gap-2 flex-wrap">
+          {investigation.status?.toLowerCase() === "completed" ? (
+            <>
+              {hasExistingLabResult && (
+                <button
+                  onClick={() => window.open(`/dashboard/laboratory/results/${hasExistingLabResult}`, '_blank')}
+                  className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-all"
+                >
+                  View Result
+                </button>
+              )}
+              <button
+            onClick={() => onSendToDoctor(investigation)}
+             disabled={isSending}
             className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-all"
           >
-            View Details
+            {isSending ? (
+              <span className="flex items-center gap-1">
+                <span className="loading loading-spinner loading-xs"></span>
+                Sending...
+              </span>
+            ) : "Send to Doctor"}
           </button>
-          {hasExistingLabResult ? (
-            <button
-              onClick={() => window.open(`/dashboard/laboratory/results/${hasExistingLabResult}`, '_blank')}
-              className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-all"
-            >
-              View Result
-            </button>
+              
+            </>
           ) : (
-            <button
-              onClick={() => onProcess(investigation)}
-              className="px-3 py-1 bg-[#00943C] text-white text-sm rounded hover:bg-[#007a31] transition-all"
-            >
-              Process
-            </button>
+            <>
+              <button
+                onClick={() => onProcess(investigation)}
+                className="px-3 py-1 bg-[#00943C] text-white text-sm rounded hover:bg-[#007a31] transition-all"
+              >
+                Process
+              </button>
+               <button
+            onClick={() => onSendToDoctor(investigation)}
+             disabled={isSending}
+            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-all"
+          >
+            {isSending ? (
+              <span className="flex items-center gap-1">
+                <span className="loading loading-spinner loading-xs"></span>
+                Sending...
+              </span>
+            ) : "Send to Doctor"}
+          </button>
+            </>
           )}
         </div>
       </td>

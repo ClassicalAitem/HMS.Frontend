@@ -54,7 +54,7 @@ const normalizeStatus = (status) => {
         const sorted = filtered.sort((a, b) => {
           const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
           const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-          return bTime - aTime;
+          return aTime - bTime;
         });
 
        const prettifyStatus = (s) => {
