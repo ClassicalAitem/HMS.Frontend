@@ -867,14 +867,13 @@ const dependant = isDependant
                 const cid = row?.id;
                 if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
               }}
-              onEdit={(row) => {
-              const cid = row?.id;
-              if (cid) lockAndNavigate(
-                `/dashboard/doctor/medical-history/${patientId}/consultation/${cid}/edit`,
-                { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
-              );
-            }}
+             
               onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
+              onViewMedicalHistory={() => navigate(
+              `/dashboard/doctor/medical-record-history/${patientId}`,
+              { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+            )}
+
             />
 
 
