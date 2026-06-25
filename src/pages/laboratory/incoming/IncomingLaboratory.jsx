@@ -323,15 +323,19 @@ const IncomingLaboratory = () => {
       const highPriorityCount = formattedRequests.filter((card) => card.status === "High").length;
 
       const uniqueRequests = formattedRequests.filter(
-        (item, index, self) =>
-          index ===
-          self.findIndex(
-            (t) =>
-              t.userId === item.userId &&
-              t.test === item.test &&
-              t.date === item.date
-          )
-      );
+  (item, index, self) =>
+    index ===
+    self.findIndex(
+      (t) =>
+        t.userId === item.userId &&
+        t.test === item.test &&
+        t.date === item.date
+    )
+      ).sort((a, b) => {
+        const aTime = new Date(a.createdAt || 0).getTime();
+        const bTime = new Date(b.createdAt || 0).getTime();
+        return aTime - bTime; 
+      });
 
       setTestRequests(uniqueRequests);
 
