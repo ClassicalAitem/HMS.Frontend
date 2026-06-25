@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import SendPatientModal from '@/components/modals/SendPatientModal'
+import PatientSummaryCard from '@/components/pharmacist/dashboard/PatientSummaryCard'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -289,27 +290,17 @@ const promise = Promise.all([
       <div className="p-6">
 
         {/* header */}
-        <div className="mb-4 flex justify-between">
-          <div>
+        <div className="mb-4  justify-between">
+          <div className='mb-4 flex justify-between'>
+
             <h1 className="text-2xl font-semibold text-primary">
               Prescription Details
             </h1>
-            <p className="text-sm">
-              {patient?.firstName} {patient?.lastName}
-            </p>
-            {patient && (
-              <div className="mt-3">
-                <PatientCardTypeInfo
-                  cardType={patient?.cardType}
-                  familyName={patient?.familyName}
-                  companyName={patient?.companyName}
-                />
-              </div>
-            )}
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={() => navigate(-1)}>
-            Back
+            <button className="btn btn-primary btn-sm" onClick={() => navigate(-1)}>
+            Back To Incoming
           </button>
+          </div>
+                      <PatientSummaryCard patient={patient} loading={loading} />
           <div>
 
            <SendPatientModal
@@ -317,7 +308,7 @@ const promise = Promise.all([
                 onUpdated={() => navigate('/dashboard/pharmacist')}
                 allowedRoles={['nurse', 'doctor', 'medical-director', 'cashier', 'labtechnician', 'hmo']}
                 />
-                </div>
+          </div>
         </div>
 
         <div className="p-6 border rounded-xl bg-base-100">
