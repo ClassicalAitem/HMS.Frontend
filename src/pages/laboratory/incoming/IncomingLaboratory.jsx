@@ -12,7 +12,7 @@ import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getAllOpdPatients } from "@/services/api/opdPatientAPI";
-import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 
 const IncomingLaboratory = () => {
@@ -275,6 +275,7 @@ const IncomingLaboratory = () => {
             requestedBy,
             time: inv.createdAt ? formatNigeriaTime(inv.createdAt) : "N/A",
             createdAt: inv.createdAt,
+            updatedAt: patient?.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : "N/A",
             // symptoms: testNotes,
             patientType,
             investigationStatus: inv.status, // Add investigation status
@@ -311,6 +312,7 @@ const IncomingLaboratory = () => {
             ? formatNigeriaTime(opdPatient.createdAt)
             : "N/A",
           createdAt: opdPatient.createdAt,
+          updatedAt: opdPatient.updatedAt ? formatNigeriaDateTime(opdPatient.updatedAt) : "N/A",
           // symptoms: "Direct lab request",
           patientType: "opd",
           patientStatus: opdPatient.status || "unknown",
@@ -558,6 +560,7 @@ const IncomingLaboratory = () => {
                             <div>Test: {testCard.test}</div>
                             <div>Date: {testCard.date} | Time: {testCard.time} </div>
                             <div>Investigation Status: {testCard.investigationStatus}</div>
+                            <div>Updated at: {testCard.updatedAt}</div>
                           </div>
                         </div>
 
