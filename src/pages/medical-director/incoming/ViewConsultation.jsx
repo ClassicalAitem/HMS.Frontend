@@ -931,29 +931,27 @@ const subjectRelation = isForDependant
 
 
                           {/* ACTION BUTTONS */}
-                          <div className="flex gap-2">
-
-                    <button
-                      type="button"
-                      className="btn btn-xs btn-ghost text-warning"
-                      onClick={() => {
-                        setEditingLab(lab);
-                        setIsInvestigationModalOpen(true);
-                      }}
-                    >
-                      <FaEdit />
-                    </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-xs btn-ghost text-error"
-                    onClick={() => handleDeleteLab(lab._id)}
-                  >
-                    <FaTrash />
-                  </button>
-
-                          </div>
-
+                            {lab.status !== 'completed' && (
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-ghost text-warning"
+                                  onClick={() => {
+                                    setEditingLab(lab);
+                                    setIsInvestigationModalOpen(true);
+                                  }}
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-ghost text-error"
+                                  onClick={() => handleDeleteLab(lab._id)}
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
+                            )}
                         </div>
                           ))}
                         </div>
@@ -992,25 +990,24 @@ const subjectRelation = isForDependant
 
 
                                 {/* ACTION BUTTONS */}
-                                <div className="flex gap-2">
-
-                                <button
-                                type="button"
-                                className="btn btn-xs btn-ghost text-warning"
-                                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
-                              >
-                                <FaEdit />
-                              </button>
-
-                              <button
-                                type="button"
-                                className="btn btn-xs btn-ghost text-error"
-                                onClick={() => handleDeletePrescription(pres._id)}
-                              >
-                                <FaTrash />
-                              </button>
-
-                                </div>
+                                {pres.status !== 'completed' && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-ghost text-warning"
+                                      onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-ghost text-error"
+                                      onClick={() => handleDeletePrescription(pres._id)}
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  </div>
+                                )}
 
                               </div>
                               <div className="space-y-1">
