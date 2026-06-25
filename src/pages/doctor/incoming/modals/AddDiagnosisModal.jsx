@@ -6,7 +6,7 @@ import { getAllComplaint, createMedicalRecord } from '@/services/api/medicalReco
 
 
 
-const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }) => {
+const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded , existingDiagnosis }) => {
   const [diagnoses, setDiagnoses] = useState([]); // Array of selected diagnoses
   const [diagnosisInput, setDiagnosisInput] = useState('');
   const [search, setSearch] = useState('');
@@ -15,6 +15,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
   const [isLoading, setIsLoading] = useState(false);
   const [diagnosisOptions, setDiagnosisOptions] = useState([]);
   const [localDiagnosisOptions, setLocalDiagnosisOptions] = useState([]);
+
 
   useEffect(() => {
     if (!isOpen) return;
@@ -33,9 +34,16 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
     fetchDiagnosis();
     setSearch('');
     setDiagnosisInput('');
-    setDiagnoses([]);
-    setLocalDiagnosisOptions([]);
-  }, [isOpen]);
+
+    // Seed the chip list with whatever diagnoses are already saved
+    const initial = existingDiagnosis
+      ? existingDiagnosis
+          .split(',')
+          .map(d => d.trim())
+          .filter(d => d && !d.toLowerCase().includes('pending'))
+      : [];
+    setDiagnoses(initial);
+  }, [isOpen, existingDiagnosis]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -102,7 +110,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded }
       await updateConsultation(consultationId, payload);
       toast.success('Diagnosis updated successfully!');
       setDiagnoses([]);
-      onDiagnosisAdded();
+      onDiagnosisAdded(diagnoses.join(', '));
       onClose();
     } catch (error) {
       console.error('Error updating diagnosis:', error);
