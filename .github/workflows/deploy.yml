@@ -17,14 +17,26 @@ jobs:
       # =========================================
       # 🚀 DEVELOP → VERCEL
       # =========================================
+      - name: Setup Node.js
+        if: github.ref == 'refs/heads/develop'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: github.ref == 'refs/heads/develop'
+        run: npm ci
+
+      - name: Build (with full output)
+        if: github.ref == 'refs/heads/develop'
+        run: npm run build 2>&1 | tee build.log || (echo "❌ Build failed. Full output:" && cat build.log && exit 1)
+
       - name: Deploy to Vercel (Develop)
         if: github.ref == 'refs/heads/develop'
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
+        run: npx vercel@latest --token=${{ secrets.VERCEL_TOKEN }} --debug 2>&1 | tee vercel.log || (echo "❌ Vercel deploy failed:" && cat vercel.log && exit 1)
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       # =========================================
       # 🖥️ MAIN → VPS (NGINX)
@@ -49,7 +61,7 @@ jobs:
             cp ../.env .env
 
             npm install
-            npm run build
+            npm run build 2>&1 | tee /tmp/hms-build.log || (echo "❌ Build failed:" && cat /tmp/hms-build.log && exit 1)
 
             rm -rf /var/www/hms-frontend/*
             cp -r dist/* /var/www/hms-frontend/
