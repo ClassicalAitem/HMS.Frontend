@@ -204,7 +204,7 @@ const mapped = filtered.map((p) => ({
                     <p className="text-sm text-base-content/70">Name: {patient.name}</p>
                     <p className="text-sm text-base-content/70">Insurance: {patient.insurance}</p>
                     <p className="text-sm text-base-content/70">Patient ID: {patient.patientId}</p>
-                    <p className="text-sm text-base-content/70">Registered: {patient.registeredTime}</p>
+                    {/* <p className="text-sm text-base-content/70">Registered: {patient.registeredTime}</p> */}
                   </div>
                 </div>
 
