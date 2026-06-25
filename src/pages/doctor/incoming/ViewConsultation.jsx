@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getConsultationById, getConsultationFile, updateConsultation } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { usersAPI } from "@/services/api/usersAPI";
-import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage, FaStickyNote } from "react-icons/fa";
+import { IoIosCloseCircleOutline } from "react-icons/io";import { FaUserMd, FaNotesMedical, FaSyringe, FaAllergies, FaHistory, FaUsers, FaCalendarAlt, FaFileMedical, FaPlus, FaPrescriptionBottleAlt, FaFlask, FaFileImage, FaStickyNote, FaTimes } from "react-icons/fa";
 import AddDiagnosisModal from "./modals/AddDiagnosisModal";
 import OrderInvestigationModal from "./modals/OrderInvestigationModal";
 import SendToNurseModal from "./modals/SendToNurseModal";
@@ -15,8 +14,15 @@ import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI
 import { getInvestigationByConsultationId } from "@/services/api/investigationAPI";
 import { updateInvestigation, deleteInvestigation } from "@/services/api/investigationAPI";
 import { updatePrescription, deletePrescription } from "@/services/api/prescriptionsAPI";
+import AddComplaintModal from "./modals/AddComplaintModal";
+import AddFamilyHistoryModal from "./modals/AddFamilyHistoryModal";
+import AddHistoryModal from "./modals/AddHistoryModal";
+import { getAllComplaint } from "@/services/api/medicalRecordAPI";
+import { getInventories } from "@/services/api/inventoryAPI";
+import { IoCloseCircleOutline } from "react-icons/io5";
 import { FaTrash, FaEdit } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import toast from "react-hot-toast";
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -41,7 +47,31 @@ const ViewConsultation = () => {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
-const [editingLab, setEditingLab] = useState(null);
+  const [editingLab, setEditingLab] = useState(null);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    visitReason: '',
+    notes: '',
+    complaints: [],
+    medicalHistory: [],
+    surgicalHistory: [],
+    familyHistory: [],
+    socialHistory: [],
+    allergyHistory: [],
+  });
+  const [activeModal, setActiveModal] = useState(null);
+  const [medicalRecords, setMedicalRecords] = useState({
+    symptoms: [], surgical: [], family: [], social: [], allergic: []
+  });
+
+
+
+  const canEdit = useMemo(() => {
+    if (!consultation?.createdAt) return false;
+    return (Date.now() - new Date(consultation.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+  }, [consultation]);
+
 
   const loadData = async () => {
     try {
@@ -114,6 +144,101 @@ const [editingLab, setEditingLab] = useState(null);
       console.error("Error loading consultation details:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+    useEffect(() => {
+    if (!consultation) return;
+    setEditForm({
+      visitReason: consultation.visitReason || '',
+      notes: consultation.notes || '',
+      complaints: (consultation.complaint || []).map(c => ({
+        name: c.symptom,
+        duration: (c.durationInDays || 0).toString(),
+        unit: 'Day(s)'
+      })),
+      medicalHistory: (consultation.medicalHistory || []).map(m =>
+        typeof m === 'object' ? m.title || m.name || '' : m
+      ),
+      surgicalHistory: (consultation.surgicalHistory || []).map(s =>
+        typeof s === 'object' ? s.procedureName || s.procedure || '' : s
+      ),
+      familyHistory: (consultation.familyHistory || []).map(f => ({
+        title: f.relation || f.title || '',
+        value: f.condition || f.value || ''
+      })),
+      socialHistory: (consultation.socialHistory || []).map(s =>
+        typeof s === 'object' ? s.title || s.habit || '' : s
+      ),
+      allergyHistory: (consultation.allergicHistory || []).map(a =>
+        typeof a === 'object' ? a.allergen || a.title || '' : a
+      ),
+    });
+  }, [consultation]);
+
+
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    const loadRecords = async () => {
+      try {
+        const [recordsRes, inventoryRes] = await Promise.allSettled([
+          getAllComplaint(),
+          getInventories()
+        ]);
+        if (recordsRes.status === 'fulfilled' && Array.isArray(recordsRes.value)) {
+          const r = recordsRes.value;
+          setMedicalRecords({
+            symptoms: r.filter(x => x.category === 'symptoms'),
+            surgical: r.filter(x => x.category === 'surgical'),
+            family:   r.filter(x => x.category === 'family'),
+            social:   r.filter(x => x.category === 'social'),
+            allergic: r.filter(x => x.category === 'allergic'),
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load medical records', err);
+      }
+    };
+    loadRecords();
+  }, [isEditMode]);
+
+
+
+
+  const handleSaveEdit = async () => {
+    setIsSavingEdit(true);
+    try {
+      const payload = {
+        visitReason: editForm.visitReason,
+        notes: editForm.notes,
+        complaint: editForm.complaints.map(c => {
+          let days = parseInt(c.duration) || 1;
+          if (c.unit === 'Week(s)') days *= 7;
+          else if (c.unit === 'Month(s)') days *= 30;
+          else if (c.unit === 'Year(s)') days *= 365;
+          return { symptom: c.name, durationInDays: days };
+        }),
+        surgicalHistory: editForm.surgicalHistory.map(s => ({
+          procedureName: s,
+          dateOfSurgery: new Date().toISOString().split('T')[0]
+        })),
+        familyHistory: editForm.familyHistory.map(f => ({
+          relation: f.title, condition: f.value, value: '1'
+        })),
+        medicalHistory: editForm.medicalHistory.map(m => ({ title: m, value: '1' })),
+        allergicHistory: editForm.allergyHistory.map(a => ({ allergen: a })),
+        socialHistory: editForm.socialHistory.map(s => ({ title: s, value: '1' })),
+      };
+      await toast.promise(updateConsultation(consultationId, payload), {
+        loading: 'Saving changes...',
+        success: 'Consultation updated!',
+        error: (err) => err?.response?.data?.message || 'Failed to update',
+      });
+      setIsEditMode(false);
+      await loadData();
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -269,6 +394,26 @@ const handleEditPrescription = async (pres, e) => {
     }
   };
 
+const handleRemoveDiagnosisItem = async (itemToRemove) => {
+  if (!window.confirm(`Remove "${itemToRemove}" from diagnosis?`)) return;
+  try {
+    const remaining = (consultation?.diagnosis || "")
+      .split(',')
+      .map(d => d.trim())
+      .filter(d => d && d.toLowerCase() !== itemToRemove.toLowerCase());
+
+    const payload = remaining.length > 0
+      ? remaining.join(', ')
+      : "Pending diagnosis"; // backend rejects empty string
+
+    await updateConsultation(consultationId, { diagnosis: payload });
+    await loadData();
+  } catch (error) {
+    console.error("Error removing diagnosis:", error);
+    toast.error(error?.response?.data?.message || "Failed to remove diagnosis");
+  }
+};
+
   // Mapped Data
   const complaints = consultation?.complaint || [];
   const medicalHistory = consultation?.medicalHistory || [];
@@ -350,12 +495,39 @@ const subjectRelation = isForDependant
 
   return (
     <div className="flex h-screen bg-base-200/50">
-      <AddDiagnosisModal 
-        isOpen={isDiagnosisModalOpen}
-        onClose={() => setIsDiagnosisModalOpen(false)}
-        consultationId={consultationId}
-        onDiagnosisAdded={loadData}
-      />
+    <AddDiagnosisModal 
+  isOpen={isDiagnosisModalOpen}
+  onClose={() => setIsDiagnosisModalOpen(false)}
+  consultationId={consultationId}
+  existingDiagnosis={consultation?.diagnosis || ""}
+  onDiagnosisAdded={(newDiagnosis) => {
+    setConsultation(prev => ({ ...prev, diagnosis: newDiagnosis }));
+  }}
+/>
+    <AddComplaintModal
+  isOpen={activeModal === 'complaint'}
+  onClose={() => setActiveModal(null)}
+  onAdd={item => setEditForm(prev => ({ ...prev, complaints: [...prev.complaints, item] }))}
+  data={medicalRecords.symptoms}
+/>
+<AddFamilyHistoryModal
+  isOpen={activeModal === 'family'}
+  onClose={() => setActiveModal(null)}
+  onAdd={item => setEditForm(prev => ({ ...prev, familyHistory: [...prev.familyHistory, item] }))}
+  data={medicalRecords.family}
+/>
+<AddHistoryModal isOpen={activeModal === 'medical'} onClose={() => setActiveModal(null)}
+  onAdd={item => setEditForm(prev => ({ ...prev, medicalHistory: [...prev.medicalHistory, item] }))}
+  type="Medical" data={medicalRecords.symptoms} />
+<AddHistoryModal isOpen={activeModal === 'surgical'} onClose={() => setActiveModal(null)}
+  onAdd={item => setEditForm(prev => ({ ...prev, surgicalHistory: [...prev.surgicalHistory, item] }))}
+  type="Surgical" data={medicalRecords.surgical} />
+<AddHistoryModal isOpen={activeModal === 'social'} onClose={() => setActiveModal(null)}
+  onAdd={item => setEditForm(prev => ({ ...prev, socialHistory: [...prev.socialHistory, item] }))}
+  type="Social" data={medicalRecords.social} />
+<AddHistoryModal isOpen={activeModal === 'allergy'} onClose={() => setActiveModal(null)}
+  onAdd={item => setEditForm(prev => ({ ...prev, allergyHistory: [...prev.allergyHistory, item] }))}
+  type="Allergy" data={medicalRecords.allergic} />
 <OrderInvestigationModal
   isOpen={isInvestigationModalOpen}
   onClose={() => {
@@ -391,7 +563,7 @@ const subjectRelation = isForDependant
         diagnosis={diagnosis}
         patientId={patientId}
         consultationId={consultationId}
-        onSentSuccessfully={() => navigate(fromIncoming ? '/dashboard/doctor/incoming' : `/dashboard/doctor/medical-history/${patientId}`)}
+        onSentSuccessfully={() => navigate(fromIncoming ? '/dashboard/medical-director/incoming' : `/dashboard/medical-director/medical-history/${patientId}`)}
        />
 
       <AttachmentViewerModal
@@ -440,12 +612,43 @@ const subjectRelation = isForDependant
                 </div>
               </div>
             </div>
-            <button 
-              className="btn btn-ghost btn-circle text-base-content/70 hover:bg-base-200" 
+           <div className="flex items-center gap-2">
+            {canEdit && (
+              <>
+                {isEditMode ? (
+                  <>
+                    <button
+                      className="btn btn-sm btn-success gap-2"
+                      onClick={handleSaveEdit}
+                      disabled={isSavingEdit}
+                    >
+                      {isSavingEdit ? <span className="loading loading-spinner loading-xs" /> : 'Save Changes'}
+                    </button>
+                    <button
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => setIsEditMode(false)}
+                      disabled={isSavingEdit}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn btn-sm btn-outline btn-primary gap-2"
+                    onClick={() => setIsEditMode(true)}
+                  >
+                    <FaEdit className="w-3 h-3" /> Edit Consultation
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              className="btn btn-ghost btn-circle text-base-content/70 hover:bg-base-200"
               onClick={() => navigate(-1)}
             >
               <IoIosCloseCircleOutline className="w-8 h-8" />
             </button>
+          </div>
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -460,15 +663,15 @@ const subjectRelation = isForDependant
                     <div className="flex items-center gap-2">
                       <FaNotesMedical className="text-primary w-5 h-5" />
                       <h3 className="font-bold text-lg text-base-content">Consultation Overview</h3>
-                    </div>
-                    {(!diagnosis || diagnosis.toLowerCase().includes("pending")) && (
+                      </div>
                       <button 
                         className="btn btn-sm btn-outline btn-success gap-2"
                         onClick={() => setIsDiagnosisModalOpen(true)}
                       >
-                        <FaPlus className="w-3 h-3" /> Add Diagnosis
+                        <FaPlus className="w-3 h-3" />
+                        {(!diagnosis || diagnosis.toLowerCase().includes("pending")) ? "Add Diagnosis" : "Edit Diagnoses"}
                       </button>
-                    )}
+                
                   </div>
                   
                   <div className="p-6 grid gap-6">
@@ -477,20 +680,40 @@ const subjectRelation = isForDependant
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Visit Reason</h4>
                         <div className="p-3 bg-base-200/50 rounded-lg">
-                          <p className="font-medium text-base-content">{visitReason}</p>
+                          {isEditMode ? (
+                            <textarea
+                              className="textarea textarea-bordered w-full"
+                              rows={3}
+                              value={editForm.visitReason}
+                              onChange={e => setEditForm(prev => ({ ...prev, visitReason: e.target.value }))}
+                            />
+                          ) : (
+                            <p className="font-medium text-base-content">{visitReason}</p>
+                          )}
                         </div>
                       </div>
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Diagnosis</h4>
-                        {diagnosis.includes("Pending") ? (
+                       {diagnosis.includes("Pending") ? (
                           <div className="p-3 rounded-lg border bg-warning/10 border-warning/20 text-warning-content">
                             <p className="font-medium">{diagnosis}</p>
                           </div>
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {diagnosis.split(',').map((item, idx) => (
-                              <span key={idx} className="inline-flex items-center px-3 py-1 bg-success/10 border border-success/30 rounded-full text-sm text-success-content font-medium">
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-2 px-3 py-1 bg-success/10 border border-success/30 rounded-full text-sm text-success-content font-medium"
+                              >
                                 {item.trim()}
+                                <button
+                                  type="button"
+                                  className="text-error hover:text-red-700"
+                                  onClick={() => handleRemoveDiagnosisItem(item.trim())}
+                                  title="Remove this diagnosis"
+                                >
+                                  <FaTimes className="w-3 h-3" />
+                                </button>
                               </span>
                             ))}
                           </div>
@@ -499,33 +722,62 @@ const subjectRelation = isForDependant
                     </div>
 
                     {/* Complaints */}
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Patient Complaints</h4>
-                      {complaints.length > 0 ? (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60">Patient Complaints</h4>
+                      {isEditMode && (
+                        <button className="btn btn-xs btn-primary gap-1" onClick={() => setActiveModal('complaint')}>
+                          <FaPlus className="w-2 h-2" /> Add
+                        </button>
+                      )}
+                    </div>
+                    {isEditMode ? (
+                      <div className="flex flex-wrap gap-2">
+                        {editForm.complaints.map((item, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm">
+                            <span className="font-medium">{item.name}</span>
+                            <span className="text-xs text-base-content/50">{item.duration}</span>
+                            <button type="button" onClick={() => setEditForm(prev => ({
+                              ...prev, complaints: prev.complaints.filter((_, i) => i !== idx)
+                            }))} className="text-error">
+                              <FaTimes className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                        {editForm.complaints.length === 0 && <span className="text-sm text-base-content/40 italic">No complaints added</span>}
+                      </div>
+                    ) : (
+                      // existing view chips
+                      complaints.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {complaints.map((item, idx) => (
                             <div key={idx} className="badge badge-lg badge-outline gap-2 p-3 bg-base-100">
                               <span className="font-semibold">{item.symptom}</span>
                               {item.durationInDays && (
-                                <span className="text-xs opacity-70 border-l pl-2 border-base-content/20">
-                                  {item.durationInDays} days
-                                </span>
+                                <span className="text-xs opacity-70 border-l pl-2">{item.durationInDays} days</span>
                               )}
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        <p className="text-sm text-base-content/50 italic">No complaints recorded</p>
-                      )}
-                    </div>
+                      ) : <p className="text-sm text-base-content/50 italic">No complaints recorded</p>
+                    )}
+                  </div>
 
                     {/* Clinical Notes */}
                     <div>
                       <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Clinical Notes</h4>
                       <div className="p-4 bg-base-200/30 rounded-xl border border-base-200 min-h-[100px]">
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-base-content/80">
-                          {notes || "No additional clinical notes."}
-                        </p>
+                       {isEditMode ? (
+                          <textarea
+                            className="textarea textarea-bordered w-full min-h-[100px]"
+                            value={editForm.notes}
+                            onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                          />
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-base-content/80">
+                            {notes || "No additional clinical notes."}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -631,7 +883,7 @@ const subjectRelation = isForDependant
                       <button
                       className="btn btn-sm btn-primary gap-2"
                         onClick={() => navigate(
-                          `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`
+                          `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`
                         )}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
@@ -748,7 +1000,7 @@ const subjectRelation = isForDependant
                                 <button
                                 type="button"
                                 className="btn btn-xs btn-ghost text-warning"
-                                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
+                                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
                               >
                                 <FaEdit />
                               </button>
@@ -869,39 +1121,80 @@ const subjectRelation = isForDependant
 
             {/* Right Column - History & Background */}
             <div className="space-y-6">
-              
-              {/* Medical History */}
-              <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center gap-2 mb-4 text-primary">
+
+            {/* Medical History */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-primary">
                     <FaHistory />
                     <h3 className="font-bold uppercase text-sm tracking-wider">Medical History</h3>
                   </div>
-                  {medicalHistory.length > 0 ? (
+                  {isEditMode && (
+                    <button className="btn btn-xs btn-primary" onClick={() => setActiveModal('medical')}>
+                      <FaPlus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {isEditMode ? (
+                  <div className="flex flex-wrap gap-2">
+                    {editForm.medicalHistory.map((item, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm">
+                        {item}
+                        <button type="button" onClick={() => setEditForm(prev => ({
+                          ...prev, medicalHistory: prev.medicalHistory.filter((_, i) => i !== idx)
+                        }))} className="text-error">
+                          <IoCloseCircleOutline className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
+                    {editForm.medicalHistory.length === 0 && <span className="text-sm text-base-content/40 italic">None added</span>}
+                  </div>
+                ) : (
+                  medicalHistory.length > 0 ? (
                     <ul className="space-y-3">
                       {medicalHistory.map((item, idx) => (
-                        <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
-                          <span className="font-medium">{typeof item === 'object' ? item.title || item.name || JSON.stringify(item) : item}</span>
-                          <span className="text-base-content/60 bg-base-200 px-2 py-0.5 rounded text-xs">
-                            {idx + 1}
-                          </span>
+                        <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2">
+                          <span className="font-medium">{typeof item === 'object' ? item.title || item.name : item}</span>
+                          <span className="text-base-content/60 bg-base-200 px-2 py-0.5 rounded text-xs">{idx + 1}</span>
                         </li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-sm text-base-content/50 italic">None recorded</p>
-                  )}
-                </div>
+                  ) : <p className="text-sm text-base-content/50 italic">None recorded</p>
+                )}
               </div>
-            
-              {/* Surgical History */}
-              <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center gap-2 mb-4 text-secondary">
+            </div>
+
+            {/* Surgical History */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-secondary">
                     <FaSyringe />
                     <h3 className="font-bold uppercase text-sm tracking-wider">Surgical History</h3>
                   </div>
-                  {surgicalHistory.length > 0 ? (
+                  {isEditMode && (
+                    <button className="btn btn-xs btn-secondary" onClick={() => setActiveModal('surgical')}>
+                      <FaPlus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {isEditMode ? (
+                  <div className="flex flex-wrap gap-2">
+                    {editForm.surgicalHistory.map((item, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm">
+                        {item}
+                        <button type="button" onClick={() => setEditForm(prev => ({
+                          ...prev, surgicalHistory: prev.surgicalHistory.filter((_, i) => i !== idx)
+                        }))} className="text-error">
+                          <IoCloseCircleOutline className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
+                    {editForm.surgicalHistory.length === 0 && <span className="text-sm text-base-content/40 italic">None added</span>}
+                  </div>
+                ) : (
+                  surgicalHistory.length > 0 ? (
                     <ul className="space-y-3">
                       {surgicalHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
@@ -912,20 +1205,41 @@ const subjectRelation = isForDependant
                         </li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-sm text-base-content/50 italic">None recorded</p>
-                  )}
-                </div>
+                  ) : <p className="text-sm text-base-content/50 italic">None recorded</p>
+                )}
               </div>
+            </div>
 
-              {/* Allergies - Highlighted */}
-              <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center gap-2 mb-4 text-error">
+            {/* Allergies */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-error">
                     <FaAllergies />
                     <h3 className="font-bold uppercase text-sm tracking-wider">Allergies</h3>
                   </div>
-                  {allergyHistory.length > 0 ? (
+                  {isEditMode && (
+                    <button className="btn btn-xs btn-error" onClick={() => setActiveModal('allergy')}>
+                      <FaPlus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {isEditMode ? (
+                  <div className="flex flex-wrap gap-2">
+                    {editForm.allergyHistory.map((item, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-2 px-3 py-1 bg-error/10 border border-error/30 rounded-full text-sm">
+                        {item}
+                        <button type="button" onClick={() => setEditForm(prev => ({
+                          ...prev, allergyHistory: prev.allergyHistory.filter((_, i) => i !== idx)
+                        }))} className="text-error">
+                          <IoCloseCircleOutline className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
+                    {editForm.allergyHistory.length === 0 && <span className="text-sm text-base-content/40 italic">None added</span>}
+                  </div>
+                ) : (
+                  allergyHistory.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {allergyHistory.map((item, idx) => (
                         <div key={idx} className="badge badge-error badge-outline gap-1 h-auto py-1">
@@ -937,29 +1251,52 @@ const subjectRelation = isForDependant
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-base-content/50 italic">None recorded</p>
-                  )}
-                  {/* Show patient/dependant info if available */}
-                  {consultation?.dependantName && (
-                    <div className="mt-2">
-                      <span className="badge badge-info badge-sm">Dependant: {consultation.dependantName}</span>
-                      {consultation.dependantRelation && (
-                        <span className="badge badge-outline badge-sm ml-2">{consultation.dependantRelation}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  ) : <p className="text-sm text-base-content/50 italic">None recorded</p>
+                )}
+                {consultation?.dependantName && (
+                  <div className="mt-2">
+                    <span className="badge badge-info badge-sm">Dependant: {consultation.dependantName}</span>
+                    {consultation.dependantRelation && (
+                      <span className="badge badge-outline badge-sm ml-2">{consultation.dependantRelation}</span>
+                    )}
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* Family History */}
-              <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center gap-2 mb-4 text-info">
+            {/* Family History */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-info">
                     <FaUsers />
                     <h3 className="font-bold uppercase text-sm tracking-wider">Family History</h3>
                   </div>
-                  {familyHistory.length > 0 ? (
+                  {isEditMode && (
+                    <button className="btn btn-xs btn-info" onClick={() => setActiveModal('family')}>
+                      <FaPlus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {isEditMode ? (
+                  <div className="space-y-2">
+                    {editForm.familyHistory.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between px-3 py-2 bg-base-200 border border-base-300 rounded-lg text-sm">
+                        <div className="flex gap-4">
+                          <span className="font-medium">{item.title}</span>
+                          <span className="text-base-content/60">{item.value}</span>
+                        </div>
+                        <button type="button" onClick={() => setEditForm(prev => ({
+                          ...prev, familyHistory: prev.familyHistory.filter((_, i) => i !== idx)
+                        }))} className="text-error">
+                          <IoCloseCircleOutline className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {editForm.familyHistory.length === 0 && <span className="text-sm text-base-content/40 italic">None added</span>}
+                  </div>
+                ) : (
+                  familyHistory.length > 0 ? (
                     <ul className="space-y-3">
                       {familyHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
@@ -968,20 +1305,41 @@ const subjectRelation = isForDependant
                         </li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-sm text-base-content/50 italic">None recorded</p>
-                  )}
-                </div>
+                  ) : <p className="text-sm text-base-content/50 italic">None recorded</p>
+                )}
               </div>
+            </div>
 
-              {/* Social History */}
-              <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center gap-2 mb-4 text-success">
+            {/* Social History */}
+            <div className="card bg-base-100 shadow-sm border border-base-200">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-success">
                     <FaUsers />
                     <h3 className="font-bold uppercase text-sm tracking-wider">Social History</h3>
                   </div>
-                  {socialHistory.length > 0 ? (
+                  {isEditMode && (
+                    <button className="btn btn-xs btn-success" onClick={() => setActiveModal('social')}>
+                      <FaPlus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {isEditMode ? (
+                  <div className="flex flex-wrap gap-2">
+                    {editForm.socialHistory.map((item, idx) => (
+                      <span key={idx} className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm">
+                        {item}
+                        <button type="button" onClick={() => setEditForm(prev => ({
+                          ...prev, socialHistory: prev.socialHistory.filter((_, i) => i !== idx)
+                        }))} className="text-error">
+                          <IoCloseCircleOutline className="w-4 h-4" />
+                        </button>
+                      </span>
+                    ))}
+                    {editForm.socialHistory.length === 0 && <span className="text-sm text-base-content/40 italic">None added</span>}
+                  </div>
+                ) : (
+                  socialHistory.length > 0 ? (
                     <ul className="space-y-3">
                       {socialHistory.map((item, idx) => (
                         <li key={idx} className="flex justify-between items-start text-sm border-b border-base-200 last:border-0 pb-2 last:pb-0">
@@ -989,12 +1347,12 @@ const subjectRelation = isForDependant
                         </li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-sm text-base-content/50 italic">None recorded</p>
-                  )}
-                </div>
+                  ) : <p className="text-sm text-base-content/50 italic">None recorded</p>
+                )}
               </div>
             </div>
+
+          </div>
           </div>
           
           {/* Bottom Spacing */}
