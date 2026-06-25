@@ -47,6 +47,7 @@ import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import DoctorPaymentRecords from "@/pages/doctor/payment-records/ReceiptRecord";
+import MedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
 
 // Medical Director Pages
 import MDDashboard from "@/pages/medical-director/dashboard/MDDashboard";
@@ -55,6 +56,7 @@ import MDViewConsultationRecords from "@/pages/medical-director/incoming/ViewCon
 import MDViewAllPrescriptions from "@/pages/medical-director/incoming/ViewAllPrescriptions";
 import MDViewAllInvestigations from "@/pages/medical-director/incoming/ViewAllInvestigations";
 import MDViewAllLabResults from "@/pages/medical-director/incoming/ViewAllLabResults";
+import MDMedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
 import MDViewAllVitals from "@/pages/medical-director/incoming/ViewAllVitals";
 import MDLabResults from "@/pages/medical-director/labResults/LabResults";
 import MDLabResultDetails from "@/pages/medical-director/labResults/LabResultDetails";
@@ -333,6 +335,12 @@ const AppRoutes = () => {
       <PatientMedicalHistory />
     </ProtectedRoute>
   } />
+
+    <Route path="/dashboard/doctor/medical-record-history/:patientId" element={
+   <ProtectedRoute allowedRoles={['doctor']}>
+      <MedicalRecordHistory />
+    </ProtectedRoute>
+     } />
   <Route path="/dashboard/doctor/view-consultation-records/:patientId" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <ViewConsultationRecords />
@@ -465,6 +473,12 @@ const AppRoutes = () => {
       <MDPatientMedicalHistory />
     </ProtectedRoute>
   } />
+
+  <Route path="/dashboard/medical-director/medical-record-history/:patientId" element={
+   <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDMedicalRecordHistory />
+    </ProtectedRoute>
+     } />
   <Route path="/dashboard/medical-director/view-consultation-records/:patientId" element={
     <ProtectedRoute allowedRoles={['medical-director']}>
       <MDViewConsultationRecords />
