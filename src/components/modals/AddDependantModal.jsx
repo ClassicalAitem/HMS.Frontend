@@ -49,14 +49,15 @@ const AddDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
       return;
     }
 
-    const first = dependants[0];
     setIsLoading(true);
     try {
-      const promise = addDependantForPatient(patient.id, first);
+      const promise = Promise.all(
+        dependants.map((dep) => addDependantForPatient(patient.id, dep))
+      );
       toast.promise(promise, {
-        loading: 'Adding dependant...',
-        success: 'Dependant added successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to add dependant'
+        loading: `Adding ${dependants.length} dependant${dependants.length > 1 ? 's' : ''}...`,
+        success: 'Dependants added successfully',
+        error: (err) => err?.response?.data?.message || 'Failed to add dependants'
       }, { duration: 3000 });
 
       await promise;
@@ -176,7 +177,7 @@ const AddDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
             </div>
 
             <div className="flex justify-end items-center">
-              <button type="button" className="btn btn-outline hidden" onClick={addRow}>Add another</button>
+              <button type="button" className="btn btn-outline" onClick={addRow}>Add another</button>
               <div className="space-x-2">
                 <button type="button" className="btn" onClick={handleCancel} disabled={isLoading}>Cancel</button>
                 <button type="submit" className="btn btn-primary" disabled={isLoading}>
