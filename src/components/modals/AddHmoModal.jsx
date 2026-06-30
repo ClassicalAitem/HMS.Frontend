@@ -6,7 +6,8 @@ import { addHmoForPatient } from '@/services/api/hmoAPI';
 
 const emptyHmo = { provider: '', memberId: '', plan: '', expiresAt: '' };
 
-const AddHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
+const AddHmoModal = ({ isOpen, onClose, patient, dependantId = null, onSuccess }) => {
+ 
   const [hmos, setHmos] = useState([ { ...emptyHmo } ]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,23 +30,22 @@ const AddHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
     return null;
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  const error = validate();
-  if (error) {
-    toast.error(error);
-    return;
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const error = validate();
+    if (error) {
+      toast.error(error);
+      return;
+    }
 
-  // 🔥 Convert empty expiresAt to null
-  const formattedHmos = hmos.map(h => ({
-    ...h,
-    expiresAt: h.expiresAt || null
-  }));
+    const formattedHmos = hmos.map(h => ({
+      ...h,
+      expiresAt: h.expiresAt || null
+    }));
 
-  setIsLoading(true);
-  try {
-    const promise = addHmoForPatient(patient.id, formattedHmos);
+    setIsLoading(true);
+    try {
+      const promise = addHmoForPatient(patient.id, formattedHmos, dependantId);
       toast.promise(promise, {
         loading: 'Adding HMO(s)...',
         success: 'HMO(s) added successfully',
@@ -56,7 +56,6 @@ const handleSubmit = async (e) => {
       onSuccess && onSuccess();
       onClose();
     } catch (err) {
-      // errors handled in toast.promise
       console.error('AddHmoModal submit error', err);
     } finally {
       setIsLoading(false);
@@ -75,7 +74,10 @@ const handleSubmit = async (e) => {
         <div className="p-6 card-body">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-base-content">Add HMO Plan(s)</h2>
+            {/* <h2 className="text-2xl font-bold text-base-content">Add HMO Plan(s)</h2> */}
+            <h2 className="text-2xl font-bold text-base-content">
+              {dependantId ? 'Add HMO Plan for Dependant' : 'Add HMO Plan(s)'}
+            </h2>
             <button type="button" onClick={handleCancel} className="btn btn-ghost btn-sm btn-circle">
               <FaTimes className="w-4 h-4" />
             </button>
