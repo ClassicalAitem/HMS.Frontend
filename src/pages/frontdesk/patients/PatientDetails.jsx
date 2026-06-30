@@ -31,6 +31,7 @@ const PatientDetails = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddHmoOpen, setIsAddHmoOpen] = useState(false);
+  const [hmoTargetDependantId, setHmoTargetDependantId] = useState(null);
   const [isEditHmoOpen, setIsEditHmoOpen] = useState(false);
   const [isAddDependantOpen, setIsAddDependantOpen] = useState(false);
   const [isEditDependantOpen, setIsEditDependantOpen] = useState(false);
@@ -166,10 +167,17 @@ const PatientDetails = () => {
               <HmoDependantsSection
                 patient={patient}
                 isTransitionLoading={isTransitionLoading}
-                onAddHmo={() => setIsAddHmoOpen(true)}
+                onAddHmo={() => {
+                  setHmoTargetDependantId(null); // patient-level HMO
+                  setIsAddHmoOpen(true);
+                }}
                 onEditHmo={() => setIsEditHmoOpen(true)}
                 onAddDependant={() => setIsAddDependantOpen(true)}
                 onEditDependant={() => setIsEditDependantOpen(true)}
+                onAddHmoForDependant={(dep) => {
+                  setHmoTargetDependantId(dep.id);
+                  setIsAddHmoOpen(true);
+                }}
               />
             </div>
 
@@ -199,13 +207,18 @@ const PatientDetails = () => {
       />
       <AddHmoModal
         isOpen={isAddHmoOpen}
-        onClose={() => setIsAddHmoOpen(false)}
+        onClose={() => {
+          setIsAddHmoOpen(false);
+          setHmoTargetDependantId(null);
+        }}
         patient={patient}
+        dependantId={hmoTargetDependantId}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
           }
           setIsAddHmoOpen(false);
+          setHmoTargetDependantId(null);
         }}
       />
       <EditHmoModal
