@@ -6,12 +6,11 @@ import { API_ENDPOINTS } from '@/config/env';
  * POST /hmo/:patientId
  * Payload shape: { hmos: [{ provider, memberId, plan, expiresAt }] }
  */
-export const addHmoForPatient = async (patientId, hmos) => {
+export const addHmoForPatient = async (patientId, hmos, dependantId = null) => {
   if (!patientId) throw new Error('Patient ID is required');
   if (!Array.isArray(hmos)) throw new Error('hmos must be an array');
-
-  const payload = { hmos };
-  return apiClient.post(`/hmo/${patientId}`, payload);
+  const payload = { patientId, hmos, ...(dependantId ? { dependantId } : {}) };
+  return apiClient.post('/hmo', payload);
 };
 
 export const updateHmoExpiry = async (hmoId, expiresAt) => {
