@@ -151,6 +151,7 @@ const PatientDetails = () => {
                   <div className="flex gap-4 items-center mt-3">
             <SendPatientModal
               patientId={patient?.id || patientId}
+              patient={patient}
               onUpdated={() => navigate('/frontdesk/dashboard')}
               allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
             />

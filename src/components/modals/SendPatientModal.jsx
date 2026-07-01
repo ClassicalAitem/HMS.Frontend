@@ -1,256 +1,326 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
-import { updateOpdPatient } from '@/services/api/opdPatientAPI';
+import { updateDependantStatus } from '@/services/api/dependantAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 
-const SendPatientModal = ({ 
-  patientId, 
+const STEP = { SUBJECT: 'subject', ROLE: 'role', STATUS: 'status' };
+
+const roleConfig = {
+  nurse: {
+    label: 'Nurse',
+    status: [PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_NURSE, PATIENT_STATUS.AWAITING_INJECTION],
+    icon: '🏥',
+    color: 'btn-info',
+  },
+  doctor: {
+    label: 'Doctor',
+    status: [PATIENT_STATUS.AWAITING_CONSULTATION, PATIENT_STATUS.AWAITING_SURGERY, PATIENT_STATUS.AWAITING_DOCTOR],
+    icon: '👨‍⚕️',
+    color: 'btn-primary',
+  },
+  'medical-director': {
+    label: 'Medical Director',
+    status: PATIENT_STATUS.AWAITING_MD,
+    icon: '👨‍⚕️',
+    color: 'btn-primary',
+  },
+  pharmacist: {
+    label: 'Pharmacist',
+    status: PATIENT_STATUS.AWAITING_PHARMACY,
+    icon: '💊',
+    color: 'btn-warning',
+  },
+  labtechnician: {
+    label: 'Lab',
+    status: PATIENT_STATUS.AWAITING_LAB,
+    icon: '🔬',
+    color: 'btn-success',
+  },
+  cashier: {
+    label: 'Cashier',
+    status: PATIENT_STATUS.AWAITING_CASHIER,
+    icon: '💰',
+    color: 'btn-accent',
+  },
+  hmo: {
+    label: 'HMO',
+    status: PATIENT_STATUS.AWAITING_HMO,
+    icon: '🏢',
+    color: 'btn-primary',
+  },
+};
+
+const initials = (firstName = '', lastName = '') =>
+  `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || '?';
+
+const SendPatientModal = ({
+  patientId,
+  patient = null,
   currentStatus = '',
   onUpdated,
   allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
   isOpdPatient = false,
 }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState(STEP.SUBJECT);
+  const [selectedSubject, setSelectedSubject] = useState(null); // { type: 'patient'|'dependant', id, label }
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState(null);
-  const [showStatusSelector, setShowStatusSelector] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  // Helper to update patient status based on type
-  const updateStatus = async (id, statusData) => {
-    if (isOpdPatient) {
-      return updateOpdPatient(id, statusData);
+  const dependants = patient?.dependants || [];
+  const hasDependants = dependants.length > 0;
+  const visibleRoles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
+
+  const open = () => {
+    // if no dependants, skip subject step and default to patient
+    if (!hasDependants) {
+      setSelectedSubject({ type: 'patient', id: patientId, label: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient' });
+      setStep(STEP.ROLE);
     } else {
-      return updatePatientStatus(id, statusData);
+      setStep(STEP.SUBJECT);
+      setSelectedSubject(null);
     }
+    setSelectedRole(null);
+    setSelectedStatus(null);
+    setIsOpen(true);
   };
 
-  // Role configuration with display name and default status
-  const roleConfig = {
-    nurse: {
-      label: 'Send to Nurse',
-      status: [PATIENT_STATUS.AWAITING_VITALS, PATIENT_STATUS.AWAITING_SAMPLING, PATIENT_STATUS.AWAITING_NURSE, PATIENT_STATUS.AWAITING_INJECTION],
-      icon: '🏥',
-      color: 'btn-info',
-    },
-    doctor: {
-      label: 'Send to Doctor',
-      status: [PATIENT_STATUS.AWAITING_CONSULTATION, PATIENT_STATUS.AWAITING_SURGERY, PATIENT_STATUS.AWAITING_DOCTOR],
-      icon: '👨‍⚕️',
-      color: 'btn-primary',
-    },
-    'medical-director': {
-      label: 'Send to Medical Director',
-      status: PATIENT_STATUS.AWAITING_MD,
-      icon: '👨‍⚕️',
-      color: 'btn-primary',
-    },
-    pharmacist: {
-      label: 'Send to Pharmacist',
-      status: PATIENT_STATUS.AWAITING_PHARMACY,
-      icon: '💊',
-      color: 'btn-warning',
-    },
-    labtechnician: {
-      label: 'Send to Lab',
-      status: PATIENT_STATUS.AWAITING_LAB,
-      icon: '🔬',
-      color: 'btn-success',
-    },
-    cashier: {
-      label: 'Send to Cashier',
-      status: PATIENT_STATUS.AWAITING_CASHIER,
-      icon: '💰',
-      color: 'btn-accent',
-    },
-    hmo: {
-      label: 'Send to HMO',
-      status: PATIENT_STATUS.AWAITING_HMO,
-      icon: '🏢',
-      color: 'btn-primary',
-    },
-  };
-
-  const visibleRoles = Object.keys(roleConfig).filter(role => allowedRoles.includes(role));
-
-
-  // Handle single status send
-  const handleSendDirect = async (role) => {
-    if (!patientId) {
-      toast.error('Patient ID is missing');
-      return;
-    }
-
-    try {
-      setIsSending(true);
-      const config = roleConfig[role];
-      const statusToSend = Array.isArray(config.status) ? config.status[0] : config.status;
-
-      const promise = updateStatus(patientId, { status: statusToSend });
-
-      toast.promise(promise, {
-        loading: `Sending to ${config.label}...`,
-        success: `Patient sent to ${config.label} successfully`,
-        error: (err) => err?.response?.data?.message || `Failed to send to ${config.label}`,
-      });
-
-      await promise;
-
-      if (onUpdated) onUpdated();
-
-    } catch (e) {
-      toast.error(e?.response?.data?.message || 'An error occurred');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  // Handle multi-status role - show status selector
-  const handleMultiStatusRole = (role) => {
-    setSelectedRole(role);
-    setShowStatusSelector(true);
-  };
-
-  // Confirm status selection for multi-status roles
-  const handleConfirmStatus = async () => {
-    if (!selectedStatus || !selectedRole || !patientId) {
-      toast.error('Invalid selection');
-      return;
-    }
-
-    try {
-      setIsSending(true);
-      const config = roleConfig[selectedRole];
-
-      const promise = updateStatus(patientId, { status: selectedStatus });
-
-      toast.promise(promise, {
-        loading: `Sending to ${config.label}...`,
-        success: `Patient sent to ${config.label} successfully`,
-        error: (err) => err?.response?.data?.message || `Failed to send to ${config.label}`,
-      });
-
-      await promise;
-
-      // Reset
-      setSelectedRole(null);
-      setSelectedStatus(null);
-      setShowStatusSelector(false);
-
-      if (onUpdated) onUpdated();
-
-    } catch (e) {
-      toast.error(e?.response?.data?.message || 'An error occurred');
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const closeStatusSelector = () => {
-    setShowStatusSelector(false);
+  const close = () => {
+    setIsOpen(false);
+    setStep(STEP.SUBJECT);
+    setSelectedSubject(null);
     setSelectedRole(null);
     setSelectedStatus(null);
   };
 
+  const handleSelectSubject = (subject) => {
+    setSelectedSubject(subject);
+    setStep(STEP.ROLE);
+  };
+
+  const handleSelectRole = (role) => {
+    const config = roleConfig[role];
+    setSelectedRole(role);
+    if (Array.isArray(config.status)) {
+      setSelectedStatus(null);
+      setStep(STEP.STATUS);
+    } else {
+      setSelectedStatus(config.status);
+      handleSend(role, config.status, selectedSubject);
+    }
+  };
+
+  const handleSend = async (role, status, subject) => {
+    if (!subject?.id) {
+      toast.error('No subject selected');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const isDependent = subject.type === 'dependant';
+      const promise = isDependent
+        ? updateDependantStatus(subject.id, { status })
+        : updatePatientStatus(subject.id, { status });
+
+      toast.promise(promise, {
+        loading: `Sending ${subject.label} to ${roleConfig[role].label}...`,
+        success: `${subject.label} sent to ${roleConfig[role].label}`,
+        error: (err) => err?.response?.data?.message || `Failed to send to ${roleConfig[role].label}`,
+      });
+
+      await promise;
+      close();
+      if (onUpdated) onUpdated();
+    } catch {
+      // handled by toast.promise
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleConfirmStatus = () => {
+    if (!selectedStatus || !selectedRole || !selectedSubject) return;
+    handleSend(selectedRole, selectedStatus, selectedSubject);
+  };
+
+  const stepTitle = {
+    [STEP.SUBJECT]: 'Who are you sending?',
+    [STEP.ROLE]: `Send ${selectedSubject?.label || ''} to...`,
+    [STEP.STATUS]: `Select task for ${roleConfig[selectedRole]?.label || ''}`,
+  };
+
   return (
     <>
-      {/* Individual Action Buttons */}
+      {/* Trigger button(s) — kept same as before for backward compat */}
       <div className={containerClass}>
-        {visibleRoles.map(role => {
-          const config = roleConfig[role];
-          const isMultiStatus = Array.isArray(config.status);
-          
-          return (
-            <button
-              key={role}
-              className={`btn btn-sm ${config.color}`}
-              onClick={() => isMultiStatus ? handleMultiStatusRole(role) : handleSendDirect(role)}
-              disabled={isSending}
-            >
-              <span>{config.icon}</span>
-              <span>{config.label}</span>
-            </button>
-          );
-        })}
+        <button className="btn btn-sm btn-primary" onClick={open} disabled={isSending}>
+           Send Patient
+        </button>
       </div>
 
-      {/* Status Selector Modal (for multi-status roles) */}
-      {showStatusSelector && selectedRole && (
+      {!isOpen ? null : (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={closeStatusSelector} />
-          
+          <div className="fixed inset-0 bg-black/60" onClick={close} />
+
           <div className="relative z-10 w-full max-w-md shadow-xl card bg-base-100">
             <div className="p-6 card-body">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-base-content">
-                  {roleConfig[selectedRole]?.label}
-                </h2>
-                <button 
-                  className="btn btn-ghost btn-sm" 
-                  onClick={closeStatusSelector}
-                  disabled={isSending}
-                >
-                  ✕
-                </button>
+
+              {/* Header */}
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  {step !== STEP.SUBJECT && (
+                    <button
+                      className="btn btn-ghost btn-xs btn-circle"
+                      onClick={() => {
+                        if (step === STEP.STATUS) setStep(STEP.ROLE);
+                        else if (step === STEP.ROLE) {
+                          hasDependants ? setStep(STEP.SUBJECT) : close();
+                        }
+                      }}
+                      disabled={isSending}
+                      aria-label="Back"
+                    >
+                      ←
+                    </button>
+                  )}
+                  <h2 className="text-lg font-bold text-base-content">{stepTitle[step]}</h2>
+                </div>
+                <button className="btn btn-ghost btn-xs btn-circle" onClick={close} disabled={isSending}>✕</button>
               </div>
 
-              <p className="mb-4 text-sm text-base-content/70">
-                Select the task for this patient:
-              </p>
+              {/* Step indicator */}
+              {hasDependants && (
+                <div className="flex gap-1 mb-4">
+                  {[STEP.SUBJECT, STEP.ROLE, STEP.STATUS].map((s, i) => (
+                    <div
+                      key={s}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        [STEP.SUBJECT, STEP.ROLE, STEP.STATUS].indexOf(step) >= i
+                          ? 'bg-primary'
+                          : 'bg-base-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
 
-              <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
-                {Array.isArray(roleConfig[selectedRole]?.status) && 
-                  roleConfig[selectedRole]?.status.map((status) => {
-                    const statusLabel = status.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
-                    return (
-                      <label
-                        key={status}
-                        className="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all"
-                        style={{
-                          borderColor: selectedStatus === status ? '#7c3aed' : '#e5e7eb',
-                          backgroundColor: selectedStatus === status ? 'rgba(124, 58, 237, 0.05)' : 'transparent',
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="sendStatus"
-                          className="radio radio-primary mt-1"
-                          checked={selectedStatus === status}
-                          onChange={() => setSelectedStatus(status)}
-                          disabled={isSending}
-                        />
-                        <div className="flex-1">
-                          <div className="font-semibold text-base-content">{statusLabel}</div>
+              {/* STEP 1 — Subject selection */}
+              {step === STEP.SUBJECT && (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {/* Patient option */}
+                  <button
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border border-base-300 hover:border-primary hover:bg-primary/5 transition-all text-left"
+                    onClick={() => handleSelectSubject({
+                      type: 'patient',
+                      id: patientId,
+                      label: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient',
+                    })}
+                  >
+                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                      {initials(patient?.firstName, patient?.lastName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold truncate">
+                        {`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}
+                      </div>
+                      <div className="text-xs text-base-content/50">{patient?.hospitalId || 'Patient'}</div>
+                    </div>
+                    <span className="badge badge-ghost badge-sm shrink-0">Patient</span>
+                  </button>
+
+                  {/* Dependant options */}
+                  {dependants.map(dep => (
+                    <button
+                      key={dep.id}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-base-300 hover:border-primary hover:bg-primary/5 transition-all text-left"
+                      onClick={() => handleSelectSubject({
+                        type: 'dependant',
+                        id: dep.id,
+                        label: `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+                      })}
+                    >
+                      <div className="w-9 h-9 rounded-full bg-secondary/10 text-secondary flex items-center justify-center text-xs font-bold shrink-0">
+                        {initials(dep.firstName, dep.lastName)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">
+                          {`${dep.firstName || ''} ${dep.lastName || ''}`.trim()}
                         </div>
-                      </label>
+                        <div className="text-xs text-base-content/50 capitalize">{dep.relationshipType || 'Dependant'}</div>
+                      </div>
+                      <span className="badge badge-ghost badge-sm shrink-0">Dependant</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* STEP 2 — Role selection */}
+              {step === STEP.ROLE && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {visibleRoles.map(role => {
+                    const config = roleConfig[role];
+                    return (
+                      <button
+                        key={role}
+                        className={`btn btn-sm ${config.color} btn-outline`}
+                        onClick={() => handleSelectRole(role)}
+                        disabled={isSending}
+                      >
+                        <span>{config.icon}</span>
+                        <span>{config.label}</span>
+                      </button>
                     );
                   })}
-              </div>
+                </div>
+              )}
 
-              <div className="flex justify-end gap-3 mt-6 border-t border-base-200 pt-4">
-                <button 
-                  className="btn btn-ghost btn-sm"
-                  onClick={closeStatusSelector}
-                  disabled={isSending}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="btn btn-primary btn-sm"
-                  disabled={isSending || !selectedStatus}
-                  onClick={handleConfirmStatus}
-                >
-                  {isSending ? (
-                    <>
-                      <span className="loading loading-spinner loading-sm" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send'
-                  )}
-                </button>
-              </div>
+              {/* STEP 3 — Status selection (multi-status roles only) */}
+              {step === STEP.STATUS && selectedRole && (
+                <div className="space-y-2 mt-2 max-h-72 overflow-y-auto">
+                  {Array.isArray(roleConfig[selectedRole]?.status) &&
+                    roleConfig[selectedRole].status.map(status => {
+                      const label = status.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+                      return (
+                        <label
+                          key={status}
+                          className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedStatus === status
+                              ? 'border-primary bg-primary/5'
+                              : 'border-base-300'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="sendStatus"
+                            className="radio radio-primary radio-sm"
+                            checked={selectedStatus === status}
+                            onChange={() => setSelectedStatus(status)}
+                            disabled={isSending}
+                          />
+                          <span className="text-sm font-medium">{label}</span>
+                        </label>
+                      );
+                    })}
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-base-200">
+                    <button className="btn btn-ghost btn-sm" onClick={() => setStep(STEP.ROLE)} disabled={isSending}>
+                      Back
+                    </button>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      disabled={isSending || !selectedStatus}
+                      onClick={handleConfirmStatus}
+                    >
+                      {isSending ? <span className="loading loading-spinner loading-sm" /> : 'Send'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
