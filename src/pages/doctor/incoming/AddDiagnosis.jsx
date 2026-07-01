@@ -23,6 +23,8 @@ import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 const AddDiagnosis = () => {
   const { patientId } = useParams();
   const location = useLocation();
+  const incomingDependantId = location?.state?.dependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
@@ -34,12 +36,15 @@ const AddDiagnosis = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [dependants, setDependants] = useState([]);
   const [selectedDependantId, setSelectedDependantId] = useState("");
+
   const selectedDependant = useMemo(() => {
     if (!selectedDependantId) return null;
-    return dependants.find(
-      d => (d.id || d._id) === selectedDependantId
-    ) || null;
-  }, [selectedDependantId, dependants]);
+    return (
+      dependants.find(d => (d.id || d._id) === selectedDependantId) ||
+      incomingDependantSnapshot ||
+      null
+    );
+  }, [selectedDependantId, dependants, incomingDependantSnapshot]);
 
   // Form State
   const [complaints, setComplaints] = useState([]);
@@ -186,6 +191,30 @@ const AddDiagnosis = () => {
     load();
     return () => { mounted = false; };
   }, [patientId, snapshot]);
+
+  const summarySubject = useMemo(() => {
+  if (!incomingDependantId) return patient;
+  const dep = selectedDependant || incomingDependantSnapshot || {};
+  return {
+    phone: patient?.phone,
+    phoneNumber: patient?.phoneNumber,
+    hospitalId: patient?.hospitalId,
+    cardType: patient?.cardType,
+    id: dep.id || incomingDependantId,
+    firstName: dep.firstName,
+    middleName: dep.middleName,
+    lastName: dep.lastName,
+    fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+    gender: dep.gender,
+    dob: dep.dob,
+    relationshipType: dep.relationshipType,
+    hmos: Array.isArray(dep.hmos) ? dep.hmos : [],
+  };
+}, [incomingDependantId, selectedDependant, incomingDependantSnapshot, patient]);
+
+const summarySubjectName = summarySubject?.fullName
+  || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
+  || patientName;
 
   useEffect(() => {
     let mounted = true;
@@ -334,9 +363,9 @@ const handleConfirmSave = async () => {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold text-base-content">Add New Consultation</h1>
                 <div className="flex items-center gap-1 flex-col">
-                  <p className="text-sm text-base-content/70">{patientName || ""}</p>
-                  <p className="text-sm text-base-content/70">{patient?.hospitalId || patientId || "—"}</p>
-                </div>
+                 <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
+                  <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
+               </div>
               </div>
               <IoIosCloseCircleOutline
                 className="text-error text-3xl cursor-pointer"
@@ -347,40 +376,46 @@ const handleConfirmSave = async () => {
             </div>
           </div>
 
-          {/* Dependant Selection */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
               <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
-              <select
-                className="select select-bordered w-full"
-                value={selectedDependantId}
-                onChange={e => setSelectedDependantId(e.target.value)}
-              >
-                <option value=""> Patient ({patientName})</option>
-                {dependants.length > 0 ? (
-                  dependants.map(dep => (
-                    <option key={dep.id} value={dep.id}>
-                      {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled value="">No dependants found</option>
-                )}
-              </select>
-              {selectedDependant && (
-                <div className="mt-2 text-sm text-base-content/70">
-                  <span className="badge badge-secondary mr-2">Dependant</span>
-                  <span>{selectedDependant.fullName}</span>
-                  {selectedDependant.relationshipType && (
-                    <span className="ml-2 badge badge-outline badge-sm">{selectedDependant.relationshipType}</span>
+              {incomingDependantId ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-200/30">
+                  <span className="badge badge-secondary">Dependant</span>
+                  <span className="font-medium">
+                    {selectedDependant?.fullName
+                      || `${incomingDependantSnapshot?.firstName || ''} ${incomingDependantSnapshot?.lastName || ''}`.trim()
+                      || 'Dependant'}
+                  </span>
+                  {(selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType) && (
+                    <span className="badge badge-outline badge-sm">
+                      {selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType}
+                    </span>
                   )}
                 </div>
+              ) : (
+                <select
+                  className="select select-bordered w-full"
+                  value={selectedDependantId}
+                  onChange={e => setSelectedDependantId(e.target.value)}
+                >
+                  <option value=""> Patient ({patientName})</option>
+                  {dependants.length > 0 ? (
+                    dependants.map(dep => (
+                      <option key={dep.id} value={dep.id}>
+                        {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled value="">No dependants found</option>
+                  )}
+                </select>
               )}
             </div>
           </div>
 
-   <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
-
+          <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+ 
           {/* Visit Reason */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
