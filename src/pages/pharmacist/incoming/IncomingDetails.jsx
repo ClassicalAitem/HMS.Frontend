@@ -305,6 +305,7 @@ const promise = Promise.all([
 
            <SendPatientModal
                 patientId={patient?.id || patientId}
+                patient={patient}
                 onUpdated={() => navigate('/dashboard/pharmacist')}
                 allowedRoles={['nurse', 'doctor', 'medical-director', 'cashier', 'labtechnician', 'hmo']}
                 />
