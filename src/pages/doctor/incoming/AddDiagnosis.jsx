@@ -5,7 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
 import { useAppSelector } from "@/store/hooks";
 import toast from "react-hot-toast";
@@ -35,16 +35,18 @@ const AddDiagnosis = () => {
   const [saving, setSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [dependants, setDependants] = useState([]);
-  const [selectedDependantId, setSelectedDependantId] = useState("");
+  const [fullDependantRecord, setFullDependantRecord] = useState(null);
+  const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
 
   const selectedDependant = useMemo(() => {
     if (!selectedDependantId) return null;
     return (
       dependants.find(d => (d.id || d._id) === selectedDependantId) ||
+      fullDependantRecord ||
       incomingDependantSnapshot ||
       null
     );
-  }, [selectedDependantId, dependants, incomingDependantSnapshot]);
+  }, [selectedDependantId, dependants, fullDependantRecord, incomingDependantSnapshot]);
 
   // Form State
   const [complaints, setComplaints] = useState([]);
@@ -130,6 +132,24 @@ const AddDiagnosis = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  useEffect(() => {
+    let mounted = true;
+    const fetchDependant = async () => {
+      if (!incomingDependantId) return;
+      try {
+        const res = await getDependantById(incomingDependantId);
+        const dep = res?.data?.data?.dependant || res?.data?.dependant || res?.data || null;
+        if (mounted) setFullDependantRecord(dep);
+      } catch (error) {
+        if (mounted && incomingDependantSnapshot) {
+          setFullDependantRecord(incomingDependantSnapshot);
+        }
+      }
+    };
+    fetchDependant();
+    return () => { mounted = false; };
+  }, [incomingDependantId, incomingDependantSnapshot]);
+
   // ✅ Fix 2 — inventory fetch in its own useEffect
   useEffect(() => {
     let mounted = true;
@@ -192,14 +212,25 @@ const AddDiagnosis = () => {
     return () => { mounted = false; };
   }, [patientId, snapshot]);
 
+  const patientName = useMemo(() => (
+    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
+  ), [patient]);
+
   const summarySubject = useMemo(() => {
   if (!incomingDependantId) return patient;
-  const dep = selectedDependant || incomingDependantSnapshot || {};
+  const dep = selectedDependant || fullDependantRecord || incomingDependantSnapshot || {};
+  const guardian = patient || {};
+  const dependantHmos = Array.isArray(guardian.hmos)
+    ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+    : [];
+
   return {
-    phone: patient?.phone,
-    phoneNumber: patient?.phoneNumber,
-    hospitalId: patient?.hospitalId,
-    cardType: patient?.cardType,
+    phone: guardian.phone,
+    phoneNumber: guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    cardType: guardian.cardType,
+    familyName: guardian.familyName,
+    companyName: guardian.companyName,
     id: dep.id || incomingDependantId,
     firstName: dep.firstName,
     middleName: dep.middleName,
@@ -208,9 +239,9 @@ const AddDiagnosis = () => {
     gender: dep.gender,
     dob: dep.dob,
     relationshipType: dep.relationshipType,
-    hmos: Array.isArray(dep.hmos) ? dep.hmos : [],
+    hmos: dependantHmos,
   };
-}, [incomingDependantId, selectedDependant, incomingDependantSnapshot, patient]);
+}, [incomingDependantId, selectedDependant, fullDependantRecord, incomingDependantSnapshot, patient]);
 
 const summarySubjectName = summarySubject?.fullName
   || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
@@ -230,9 +261,14 @@ const summarySubjectName = summarySubject?.fullName
         const list = normalizeVitalsResponse(res);
         if (!mounted) return;
 
-        const sorted = Array.isArray(list)
-          ? [...list].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-          : [];
+        const allVitals = Array.isArray(list) ? list : [];
+        const filteredVitals = incomingDependantId
+          ? allVitals.filter((v) => v.dependantId === incomingDependantId)
+          : allVitals;
+
+        const sorted = [...filteredVitals].sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
 
         setSortedVitals(sorted);
         setLatest(getLatestVital(sorted));
@@ -246,10 +282,6 @@ const summarySubjectName = summarySubject?.fullName
     loadVitals();
     return () => { mounted = false; };
   }, [patientId]);
-
-  const patientName = useMemo(() => (
-    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
-  ), [patient]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -370,7 +402,12 @@ const handleConfirmSave = async () => {
               <IoIosCloseCircleOutline
                 className="text-error text-3xl cursor-pointer"
                 onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
-                  state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient }
+                  state: {
+                    from: fromIncoming ? "incoming" : "patients",
+                    patientSnapshot: patient,
+                    dependantId: incomingDependantId,
+                    dependantSnapshot: selectedDependant || fullDependantRecord || incomingDependantSnapshot,
+                  },
                 })}
               />
             </div>

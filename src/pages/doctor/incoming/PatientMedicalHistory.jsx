@@ -70,6 +70,13 @@ const isViewingDependant = !!dependantId;
 const [subject, setSubject] = useState(null);
 const [subjectLoading, setSubjectLoading] = useState(true);
 
+  const filterSubjectRecords = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items.filter((item) => (
+      isViewingDependant && dependantId ? item?.dependantId === dependantId : !item?.dependantId
+    ));
+  };
+
 // Helper to navigate with loading
 const safeNavigate = (path, options) => {
   setIsNavigating(true);
@@ -175,16 +182,20 @@ const summarySubject = useMemo(() => {
         setLoading(true);
         const res = await getVitalsByPatient(patientId);
         const list = normalizeVitalsResponse(res);
-        if (mounted) setVitals(list);
+        const scopedList = filterSubjectRecords(list);
+        if (mounted) setVitals(scopedList);
 
-         if (list.length > 0) {
-          const sorted = [...list].sort(
+         if (scopedList.length > 0) {
+          const sorted = [...scopedList].sort(
             (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
           setLatest(sorted[0]);
           setSortedVitals(sorted);
+        } else {
+          setLatest(null);
+          setSortedVitals([]);
         }
-        const fromVitalsPatient = list?.[0]?.patient;
+        const fromVitalsPatient = scopedList?.[0]?.patient;
         if (fromVitalsPatient) {
           if (mounted) setPatient(fromVitalsPatient);
         } else {
@@ -201,7 +212,7 @@ const summarySubject = useMemo(() => {
     };
     load();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   // When this page unmounts, release the lock so another doctor can open the profile
 useEffect(() => {
@@ -248,9 +259,7 @@ const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", mon
         );
         const raw = res?.data ?? res ?? [];
         let list = Array.isArray(raw) ? raw : raw?.data ?? [];
-        if (isViewingDependant && dependantId) {
-          list = list.filter(c => c.dependantId === dependantId);
-        }
+        list = filterSubjectRecords(list);
         if (mounted) {
           setConsultations(list);
           // Set the latest consultation automatically
@@ -265,7 +274,7 @@ const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", mon
     };
     loadConsultations();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   useEffect(() => {
     let mounted = true;
@@ -275,9 +284,7 @@ const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", mon
         const res = await getLabResults({ patientId });
         const raw = res?.data ?? res ?? [];
         let list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-        if (isViewingDependant && dependantId) {
-          list = list.filter(r => r.dependantId === dependantId);
-        }
+        list = filterSubjectRecords(list);
         if (mounted) setLabResults(list);
       } finally {
         if (mounted) setLabLoading(false);
@@ -285,7 +292,7 @@ const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", mon
     };
     loadLabs();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
 useEffect(() => {
   let mounted = true;
@@ -311,9 +318,7 @@ useEffect(() => {
         }
       }
 
-      if (isViewingDependant && dependantId) {
-        list = list.filter(p => p.dependantId === dependantId);
-      }
+      list = filterSubjectRecords(list);
 
       // patient + dependants
       const patientData = patientRes?.data ?? patientRes;
@@ -404,9 +409,7 @@ useEffect(() => {
             list = [rawData];
           }
         }
-        if (isViewingDependant && dependantId) {
-          list = list.filter(inv => inv.dependantId === dependantId);
-        }
+        list = filterSubjectRecords(list);
         if (mounted) setLabInvestigations(list);
       } catch (err) {
         // toast .error("Failed to load lab investigations");
@@ -416,7 +419,7 @@ useEffect(() => {
     };
     if (patientId) loadInvestigations();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   // Fetch dependants on-demand as we encounter them in various data
   useEffect(() => {
@@ -544,7 +547,7 @@ const latestLab = useMemo(() => {
           list = [rawData];
         }
       }
-      setLabInvestigations(list);
+      setLabInvestigations(filterSubjectRecords(list));
     } catch (err) {
       console.error("Failed to refresh lab investigations", err);
     }
@@ -563,7 +566,7 @@ const latestLab = useMemo(() => {
           list = [rawData];
         }
       }
-      setPrescriptions(list);
+      setPrescriptions(filterSubjectRecords(list));
     } catch (err) {
       console.error("Failed to refresh prescriptions", err);
     }
@@ -808,21 +811,20 @@ const dependant = isDependant
 
           <PatientSummaryCard patient={summarySubject} loading={loading || subjectLoading} />
 
-          
-            {isViewingDependant && dependantSnapshot && (
-            <div className="alert alert-info mb-4 py-2 text-sm">
-              Viewing records for <strong className="mx-1">
-                {`${dependantSnapshot.firstName || ''} ${dependantSnapshot.lastName || ''}`.trim()}
-              </strong>
-              <span className="capitalize mx-1">{dependantSnapshot.relationshipType || 'Dependant'}</span>
-              of <strong className="mx-1">{patientName}</strong>
+          {isViewingDependant && summarySubject?.fullName && (
+            <div className="mb-4 text-sm text-base-content/70">
+              Viewing records for <strong>{summarySubject.fullName}</strong>
+              {summarySubject.relationshipType ? ` (${summarySubject.relationshipType})` : ""}
+              {patientName ? <> — Dependant of <strong>{patientName}</strong></> : null}
             </div>
           )}
+
           <div>
               <SendPatientModal
                 patientId={patientId}
                 patient={patient}
                 defaultDependantId={dependantId}
+                defaultDependantLabel={summarySubject?.fullName}
                 onUpdated={() => navigate('/dashboard/doctor')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
@@ -965,7 +967,14 @@ const dependant = isDependant
               loading={loading}
             onAdd={() => lockAndNavigate(
               `/dashboard/doctor/medical-history/${patientId}/add`,
-              { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+              {
+                state: {
+                  from: fromIncoming ? "incoming" : "patients",
+                  patientSnapshot: patient,
+                  dependantId,
+                  dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                },
+              }
             )} onViewDetails={(row) => {
                 const cid = row?.id;
                 if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, dependantId,                                         // NEW
@@ -974,17 +983,23 @@ const dependant = isDependant
               }}
              
               onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`, {
-                state: {                                                  
+                state: {
+                  from: fromIncoming ? "incoming" : "patients",
+                  patientSnapshot: patient,
                   dependantId,
                   dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
                 },
               })}
               onViewMedicalHistory={() => navigate(
               `/dashboard/doctor/medical-record-history/${patientId}`,
-              { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient,
-                  dependantId,                                        
-              dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
-            } }
+              {
+                state: {
+                  from: fromIncoming ? "incoming" : "patients",
+                  patientSnapshot: patient,
+                  dependantId: dependantId || null,
+                  dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                },
+              }
             )}
 
             />
@@ -1026,19 +1041,37 @@ const dependant = isDependant
             }) : []
           // eslint-disable-next-line react-hooks/exhaustive-deps
           ), [prescriptions, inventoryData, dependantCache, patientName])}
-            onViewAll={() => navigate(`/dashboard/doctor/view-prescriptions/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
+            onViewAll={() => navigate(`/dashboard/doctor/view-prescriptions/${patientId}`, {
+              state: {
+                from: fromIncoming ? "incoming" : "patients",
+                dependantId,
+                dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+              },
+            })}
           />
 
           <LabInvestigationRequestTable 
             investigations={enrichedInvestigations}
             loading={investigationsLoading}
-            onViewAll={() => navigate(`/dashboard/doctor/view-investigations/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
+            onViewAll={() => navigate(`/dashboard/doctor/view-investigations/${patientId}`, {
+              state: {
+                from: fromIncoming ? "incoming" : "patients",
+                dependantId,
+                dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+              },
+            })}
           />
           <VitalsHistoryTable 
             sortedVitals={enrichedVitals} 
             loading={loading}
             patientName={patientName}
-            onViewAll={() => navigate(`/dashboard/doctor/view-vitals/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
+            onViewAll={() => navigate(`/dashboard/doctor/view-vitals/${patientId}`, {
+              state: {
+                from: fromIncoming ? "incoming" : "patients",
+                dependantId,
+                dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+              },
+            })}
           />
 
 

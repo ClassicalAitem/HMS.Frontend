@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { updateDependantStatus } from '@/services/api/dependantAPI';
@@ -77,7 +77,7 @@ const SendPatientModal = ({
   const visibleRoles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
 
     // Resolve the locked subject once, if we're scoped to a dependant
-  const lockedSubject = React.useMemo(() => {
+  const lockedSubject = useMemo(() => {
     if (!defaultDependantId) return null;
     const match = dependants.find(d => d.id === defaultDependantId);
     return {
@@ -92,7 +92,6 @@ const SendPatientModal = ({
 
   const open = () => {
     if (lockedSubject) {
-      // Scoped to a specific dependant — skip subject picking entirely
       setSelectedSubject(lockedSubject);
       setStep(STEP.ROLE);
     } else if (!hasDependants) {
@@ -197,7 +196,9 @@ const SendPatientModal = ({
                       onClick={() => {
                         if (step === STEP.STATUS) setStep(STEP.ROLE);
                         else if (step === STEP.ROLE) {
-                          hasDependants ? setStep(STEP.SUBJECT) : close();
+                          if (lockedSubject) close();
+                          else if (hasDependants) setStep(STEP.SUBJECT);
+                          else close();
                         }
                       }}
                       disabled={isSending}
@@ -212,7 +213,7 @@ const SendPatientModal = ({
               </div>
 
               {/* Step indicator */}
-              {hasDependants && (
+              {hasDependants && !lockedSubject && (
                 <div className="flex gap-1 mb-4">
                   {[STEP.SUBJECT, STEP.ROLE, STEP.STATUS].map((s, i) => (
                     <div
@@ -328,9 +329,6 @@ const SendPatientModal = ({
                     })}
 
                   <div className="flex justify-end gap-2 pt-3 border-t border-base-200">
-                    <button className="btn btn-ghost btn-sm" onClick={() => setStep(STEP.ROLE)} disabled={isSending}>
-                      Back
-                    </button>
                     <button
                       className="btn btn-primary btn-sm"
                       disabled={isSending || !selectedStatus}
