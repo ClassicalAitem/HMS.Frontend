@@ -64,6 +64,12 @@ const [billedItemIds, setBilledItemIds] = useState(new Set());
 
   const [isNavigating, setIsNavigating] = useState(false);
 
+  const dependantId = location?.state?.dependantId || null;
+const dependantSnapshot = location?.state?.dependantSnapshot || null;
+const isViewingDependant = !!dependantId;
+const [subject, setSubject] = useState(null);
+const [subjectLoading, setSubjectLoading] = useState(true);
+
 // Helper to navigate with loading
 const safeNavigate = (path, options) => {
   setIsNavigating(true);
@@ -72,10 +78,15 @@ const safeNavigate = (path, options) => {
 
 // Lock the patient record for this doctor before navigation
 const lockPatientForConsultation = async () => {
-  if (!patientId) return;
-  try {await updatePatientStatus(patientId, { status: "in_consultation" });
-  } catch (err) {
-    console.error("Failed to lock patient for consultation", err);
+  try {
+    if (isViewingDependant && dependantId) {
+      const { updateDependantStatus } = await import('@/services/api/dependantAPI');
+      await updateDependantStatus(dependantId, { status: 'in_consultation' });
+    } else if (patientId) {
+      await updatePatientStatus(patientId, { status: 'in_consultation' });
+    }
+  } catch {
+    toast.error("Failed to lock patient record for consultation. Please try again.");
   }
 };
 
@@ -99,6 +110,63 @@ const lockAndNavigate = async (path, options) => {
       setPatient((prev) => prev || snap);
     }
   }, [location?.state]);
+
+  useEffect(() => {
+  let mounted = true;
+  const loadSubject = async () => {
+    try {
+      setSubjectLoading(true);
+      if (isViewingDependant && dependantId) {
+        try {
+          const res = await getDependantById(dependantId);
+          const dep = res?.data?.data?.dependant || res?.data?.dependant || dependantSnapshot;
+          if (mounted) setSubject(dep || dependantSnapshot);
+        } catch {
+          if (mounted) setSubject(dependantSnapshot); 
+        }
+      } else {
+        if (mounted) setSubject(patient);
+      }
+    } finally {
+      if (mounted) setSubjectLoading(false);
+    }
+  };
+  loadSubject();
+  return () => { mounted = false; };
+}, [isViewingDependant, dependantId, dependantSnapshot, patient]);
+
+
+const summarySubject = useMemo(() => {
+  if (!isViewingDependant) return patient;
+
+  const dep = subject || dependantSnapshot || {};
+  const guardian = dep.patient || patient || {}; 
+
+  const ownHmos = Array.isArray(guardian.hmos)
+    ? guardian.hmos.filter(h => h.dependantId === dep.id)
+    : [];
+
+  return {
+
+    phone: guardian.phone,
+    phoneNumber: guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    cardType: guardian.cardType,
+    familyName: guardian.familyName,
+    companyName: guardian.companyName,
+
+    
+    id: dep.id || dependantId,
+    firstName: dep.firstName,
+    middleName: dep.middleName,
+    lastName: dep.lastName,
+    fullName: dep.fullName,
+    gender: dep.gender,
+    dob: dep.dob,
+    relationshipType: dep.relationshipType,
+    hmos: ownHmos,
+  };
+}, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 
   useEffect(() => {
     let mounted = true;
@@ -175,9 +243,14 @@ const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", mon
     let mounted = true;
     const loadConsultations = async () => {
       try {
-        const res = await getConsultations({ patientId });
+        const res = await getConsultations( 
+          isViewingDependant ? { patientId, dependantId } : { patientId } 
+        );
         const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : raw?.data ?? [];
+        let list = Array.isArray(raw) ? raw : raw?.data ?? [];
+        if (isViewingDependant && dependantId) {
+          list = list.filter(c => c.dependantId === dependantId);
+        }
         if (mounted) {
           setConsultations(list);
           // Set the latest consultation automatically
@@ -201,7 +274,10 @@ const formatNigeriaDateTime = (value) => formatUTC(value, { year: "numeric", mon
         setLabLoading(true);
         const res = await getLabResults({ patientId });
         const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        let list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        if (isViewingDependant && dependantId) {
+          list = list.filter(r => r.dependantId === dependantId);
+        }
         if (mounted) setLabResults(list);
       } finally {
         if (mounted) setLabLoading(false);
@@ -219,8 +295,8 @@ useEffect(() => {
       setPrescriptionsLoading(true);
 
       const [presRes, patientRes] = await Promise.all([
-        getPrescriptionByPatientId(patientId),
-        getPatientById(patientId), 
+       getPrescriptionByPatientId(patientId, isViewingDependant ? { dependantId } : {}),
+       getPatientById(patientId),
       ]);
 
       //  prescriptions
@@ -233,6 +309,10 @@ useEffect(() => {
         if (Object.keys(rawData).length > 0) {
           list = [rawData];
         }
+      }
+
+      if (isViewingDependant && dependantId) {
+        list = list.filter(p => p.dependantId === dependantId);
       }
 
       // patient + dependants
@@ -254,6 +334,25 @@ useEffect(() => {
 
   return () => { mounted = false; };
 }, [patientId]);
+
+
+useEffect(() => {
+  return () => {
+    if (isViewingDependant && dependantId) {
+      import('@/services/api/dependantAPI').then(({ updateDependantStatus }) => {
+        updateDependantStatus(dependantId, { status: 'awaiting_doctor' }).catch(() => {});
+      });
+    } else if (patientId) {
+      getPatientById(patientId).then((res) => {
+        const currentStatus = res?.data?.status ?? '';
+        if (currentStatus.toLowerCase() === 'in_consultation') {
+          updatePatientStatus(patientId, { status: 'awaiting_doctor' }).catch(() => {});
+        }
+      }).catch(() => {});
+    }
+    localStorage.setItem('refreshIncoming', Date.now().toString());
+  };
+}, [patientId, dependantId, isViewingDependant]);
 
   // Fetch inventory data to match drug prices
   useEffect(() => {
@@ -304,6 +403,9 @@ useEffect(() => {
           if (Object.keys(rawData).length > 0) {
             list = [rawData];
           }
+        }
+        if (isViewingDependant && dependantId) {
+          list = list.filter(inv => inv.dependantId === dependantId);
         }
         if (mounted) setLabInvestigations(list);
       } catch (err) {
@@ -358,10 +460,10 @@ useEffect(() => {
 
 
 const isEligibleForAntenatal = useMemo(() => {
-  if (!patient) return false;
-  const gender = patient.gender?.toLowerCase();
-  return gender === 'female';
-}, [patient]);
+  const subject = isViewingDependant ? dependantSnapshot : patient;
+  return subject?.gender?.toLowerCase() === 'female';
+}, [patient, dependantSnapshot, isViewingDependant]);
+
 
   // Fetch antenatal records for eligible female patients
   useEffect(() => {
@@ -484,10 +586,7 @@ const latestLab = useMemo(() => {
     return inventoryDrug?.sellingPrice || null;
   };
 
-const getDependantName = (dependant) => {
-  if (!dependant) return null;
-  return `${dependant.firstName} ${dependant.lastName}`.trim();
-};
+
 
   const getLabInvestigationPrice = (testName) => {
     if (!testName) return 0;
@@ -499,13 +598,7 @@ const getDependantName = (dependant) => {
     return Number(match?.amount || match?.price || 0);
   };
 
-  const getInvestigationDescription = (inv) => {
-    if (!inv) return 'Lab Investigation';
-    const tests = Array.isArray(inv.tests)
-      ? inv.tests.map(test => typeof test === 'string' ? test : test?.name || test?.code || '').filter(Boolean)
-      : [];
-    return tests.length > 0 ? tests.join(', ') : inv.type || 'Lab Investigation';
-  };
+
 
     const getLabInvestigationBillItems = () => {
       if (!Array.isArray(investigations)) return [];
@@ -584,12 +677,10 @@ const getDependantName = (dependant) => {
     return now - itemTime < hours48Ms;
   };
 
-  // Filter investigations — no time restriction (investigations need full history)
   const investigations = useMemo(() => 
     Array.isArray(labInvestigations)
       ? labInvestigations.filter(inv => {
           const status = (inv?.status || '').toLowerCase();
-          // Show all statuses: requested, in_progress, completed
           const isValid =
             status === 'requested' ||
             status === 'in_progress' ||
@@ -715,19 +806,30 @@ const dependant = isDependant
             onBack={() => navigate(fromIncoming ? "/dashboard/doctor/incoming" : "/dashboard/doctor/patientVitals")}
           />
 
-          <PatientSummaryCard patient={patient} loading={loading} />
+          <PatientSummaryCard patient={summarySubject} loading={loading || subjectLoading} />
+
+          
+            {isViewingDependant && dependantSnapshot && (
+            <div className="alert alert-info mb-4 py-2 text-sm">
+              Viewing records for <strong className="mx-1">
+                {`${dependantSnapshot.firstName || ''} ${dependantSnapshot.lastName || ''}`.trim()}
+              </strong>
+              <span className="capitalize mx-1">{dependantSnapshot.relationshipType || 'Dependant'}</span>
+              of <strong className="mx-1">{patientName}</strong>
+            </div>
+          )}
           <div>
               <SendPatientModal
                 patientId={patientId}
                 patient={patient}
+                defaultDependantId={dependantId}
                 onUpdated={() => navigate('/dashboard/doctor')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
              
             </div>
 
-          <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
-
+          <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
           {/* Antenatal Records Section */}
           {isEligibleForAntenatal && (
