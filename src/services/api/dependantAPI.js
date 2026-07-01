@@ -53,8 +53,15 @@ export const getDependantById = async (dependantId) => {
   return apiClient.get(`/dependant/${dependantId}`);
 };
 
+
+export const updateDependantStatus = async (dependantId, statusData) => {
+  if (!dependantId) throw new Error('Dependant ID is required');
+  return apiClient.patch(`/dependant/dependantStatus/${dependantId}`, statusData);
+};
+
 export default {
   addDependantForPatient,
   updateDependant,
-  getAllDependantsForPatient
+  getAllDependantsForPatient,
+  updateDependantStatus
 };

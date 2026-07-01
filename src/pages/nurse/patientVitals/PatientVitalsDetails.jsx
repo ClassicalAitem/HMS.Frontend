@@ -523,6 +523,7 @@ useEffect(() => {
                 <div className="flex flex-wrap gap-2">
                   <SendPatientModal
                     patientId={patientUUID || patientId}
+                    patient={patient}
                     onUpdated={() => navigate('/dashboard/nurse')}
                     allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
                     containerClass="flex flex-wrap gap-2"
