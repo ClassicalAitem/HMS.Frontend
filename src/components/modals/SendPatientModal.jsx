@@ -62,6 +62,8 @@ const SendPatientModal = ({
   allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
   isOpdPatient = false,
+    defaultDependantId = null,       
+  defaultDependantLabel = null,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(STEP.SUBJECT);
@@ -74,9 +76,26 @@ const SendPatientModal = ({
   const hasDependants = dependants.length > 0;
   const visibleRoles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
 
+    // Resolve the locked subject once, if we're scoped to a dependant
+  const lockedSubject = React.useMemo(() => {
+    if (!defaultDependantId) return null;
+    const match = dependants.find(d => d.id === defaultDependantId);
+    return {
+      type: 'dependant',
+      id: defaultDependantId,
+      label:
+        (match ? `${match.firstName || ''} ${match.lastName || ''}`.trim() : '') ||
+        defaultDependantLabel ||
+        'Dependant',
+    };
+  }, [defaultDependantId, dependants, defaultDependantLabel]);
+
   const open = () => {
-    // if no dependants, skip subject step and default to patient
-    if (!hasDependants) {
+    if (lockedSubject) {
+      // Scoped to a specific dependant — skip subject picking entirely
+      setSelectedSubject(lockedSubject);
+      setStep(STEP.ROLE);
+    } else if (!hasDependants) {
       setSelectedSubject({ type: 'patient', id: patientId, label: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient' });
       setStep(STEP.ROLE);
     } else {
@@ -158,7 +177,7 @@ const SendPatientModal = ({
       {/* Trigger button(s) — kept same as before for backward compat */}
       <div className={containerClass}>
         <button className="btn btn-sm btn-primary" onClick={open} disabled={isSending}>
-           Send Patient
+          {lockedSubject ? `Send ${lockedSubject.label}` : 'Send Patient'}
         </button>
       </div>
 
@@ -207,6 +226,8 @@ const SendPatientModal = ({
                   ))}
                 </div>
               )}
+
+            
 
               {/* STEP 1 — Subject selection */}
               {step === STEP.SUBJECT && (
