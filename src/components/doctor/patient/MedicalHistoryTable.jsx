@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 
-const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll,onViewMedicalHistory, loading = false }) => {
+const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, onViewMedicalHistory, scopedToSingleSubject = false, loading = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -79,15 +79,17 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll,onV
                             <span className="font-medium text-base-content truncate max-w-[140px]">
                               {row.forName || "—"}
                             </span>
-                            <span
-                              className={`badge badge-xs w-fit ${
-                                row.isForDependant
-                                  ? "badge-secondary"
-                                  : "badge-primary"
-                              }`}
-                            >
-                              {row.forRelation || " Patient"}
-                            </span>
+                            {!scopedToSingleSubject && (
+                              <span
+                                className={`badge badge-xs w-fit ${
+                                  row.isForDependant
+                                    ? "badge-secondary"
+                                    : "badge-primary"
+                                }`}
+                              >
+                                {row.forRelation || " Patient"}
+                              </span>
+                            )}
                           </div>
                         </td>
 
