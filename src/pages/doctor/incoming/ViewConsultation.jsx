@@ -986,7 +986,6 @@ const subjectRelation = isForDependant
                                   <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}>
                                     {pres.status}
                                   </span>
-
                                   <span className="text-xs text-base-content/50">
                                     Ordered {formatNigeriaDate(pres.createdAt)}
                                   </span>

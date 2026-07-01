@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 
-const PrescriptionHistoryTable = ({ rows, loading = false, onViewAll }) => {
+const PrescriptionHistoryTable = ({ rows, loading = false, onViewAll, scopedToSingleSubject = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -67,13 +67,13 @@ const PrescriptionHistoryTable = ({ rows, loading = false, onViewAll }) => {
                           <span className="font-medium text-base-content">
                             {row.forName || "Unknown"}
                           </span>
-
-                        
-                          <span className={`badge badge-sm ${
-                            row.isForDependant ? 'badge-secondary' : 'badge-primary'
-                          }`}>
-                            {row.isForDependant ? 'Dependant' : 'Patient'}
-                          </span>
+                          {!scopedToSingleSubject && (
+                            <span className={`badge badge-sm ${
+                              row.isForDependant ? 'badge-secondary' : 'badge-primary'
+                            }`}>
+                              {row.isForDependant ? 'Dependant' : 'Patient'}
+                            </span>
+                          )}
 
   </div>
 </td>
