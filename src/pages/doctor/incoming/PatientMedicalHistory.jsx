@@ -968,13 +968,23 @@ const dependant = isDependant
               { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
             )} onViewDetails={(row) => {
                 const cid = row?.id;
-                if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+                if (cid) lockAndNavigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, dependantId,                                         // NEW
+                  dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+              } });
               }}
              
-              onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`)}
+              onViewAll={() => navigate(`/dashboard/doctor/view-consultation-records/${patientId}`, {
+                state: {                                                  
+                  dependantId,
+                  dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                },
+              })}
               onViewMedicalHistory={() => navigate(
               `/dashboard/doctor/medical-record-history/${patientId}`,
-              { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } }
+              { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient,
+                  dependantId,                                        
+              dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+            } }
             )}
 
             />
