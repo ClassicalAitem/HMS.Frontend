@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getConsultations } from "@/services/api/consultationAPI";
@@ -9,7 +9,11 @@ import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtil
 
 const ViewConsultationRecords = () => {
   const { patientId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const incomingDependantId = location?.state?.dependantId || location?.state?.selectedDependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || location?.state?.selectedDependantSnapshot || null;
+  const targetPatientId = location?.state?.patientId || patientId;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mainPatient, setMainPatient] = useState(null);
@@ -19,110 +23,121 @@ const ViewConsultationRecords = () => {
   const [consultationsLoading, setConsultationsLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState(new Set());
 
-// In ViewConsultationRecords, replace the patient load useEffect:
-useEffect(() => {
-  let mounted = true;
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [patientRes, dependantsRes] = await Promise.allSettled([
-        getPatientById(patientId),
-        // ✅ Use your dependant API directly
-        getAllDependantsForPatient(patientId),
-      ]);
+  const mainPatientName = useMemo(() => (
+    mainPatient?.fullName || `${mainPatient?.firstName || ""} ${mainPatient?.lastName || ""}`.trim() || "Patient"
+  ), [mainPatient]);
 
-      if (!mounted) return;
-
-      const data = patientRes.status === 'fulfilled'
-        ? (patientRes.value?.data ?? patientRes.value)
-        : null;
-
-      if (data) setMainPatient(data);
-
-      // Get dependants from dedicated API (more reliable than data.dependants)
-      let dependantsList = [];
-      if (dependantsRes.status === 'fulfilled') {
-        const raw = dependantsRes.value?.data?.data?.dependants
-          ?? dependantsRes.value?.data?.dependants
-          ?? dependantsRes.value?.data
-          ?? [];
-        dependantsList = Array.isArray(raw) ? raw : [];
-      }
-
-      const allPatients = [
-        {
-          id: data?.id || data?._id,
-          name: data?.fullName || `${data?.firstName || ""} ${data?.lastName || ""}`.trim(),
-          relation: "Main Patient",
-          isMain: true,
-        },
-        ...dependantsList.map(d => ({
-          id: d.id || d._id,
-          name: d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim(),
-          relation: d.relationshipType || d.relationship || "Dependant",
-          isMain: false,
-        }))
-      ];
-
-      setPatients(allPatients);
-      setSelectedPatientId(allPatients[0]?.id);
-    } catch (err) {
-      console.error("Failed to load patient", err);
-    } finally {
-      if (mounted) setLoading(false);
-    }
-  };
-  load();
-  return () => { mounted = false; };
-}, [patientId]);
-// Load consultations when selected patient changes
-useEffect(() => {
-  if (!selectedPatientId) return;
-  let mounted = true;
-
-  const load = async () => {
-    setConsultationsLoading(true);
-    try {
-      const selectedInfo = patients.find(p => p.id === selectedPatientId);
-
-      let res;
-      if (selectedInfo?.isMain) {
-        // ✅ Main patient — fetch by patientId only (no dependantId)
-        res = await getConsultations({ patientId: selectedPatientId });
-      } else {
-        // ✅ Dependant — fetch by dependantId
-        res = await getConsultations({ dependantId: selectedPatientId });
-      }
-      
-      const raw = res?.data ?? res ?? [];
-      const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-       // ✅ Filter based on who is selected
-      const filtered = list.filter(c => {
-        if (selectedInfo?.isMain) {
-          // ✅ Main patient — only show consultations with NO dependantId
-          return !c.dependantId;
-        } else {
-          // ✅ Dependant — only show consultations matching this dependantId
-          return c.dependantId === selectedPatientId;
-        }
-      });
-       const sorted = [...filtered].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  const scopeLabel = useMemo(() => {
+    if (incomingDependantId) {
+      return (
+        incomingDependantSnapshot?.fullName ||
+        `${incomingDependantSnapshot?.firstName || ""} ${incomingDependantSnapshot?.lastName || ""}`.trim() ||
+        "Dependant"
       );
-
-      if (mounted) {
-        setConsultations(sorted);
-        setExpandedIds(new Set());
-      }
-    } catch {
-      if (mounted) setConsultations([]);
-    } finally {
-      if (mounted) setConsultationsLoading(false);
     }
-  };
-  load();
-  return () => { mounted = false; };
-}, [selectedPatientId, patients]);
+    return mainPatientName;
+  }, [incomingDependantId, incomingDependantSnapshot, mainPatientName]);
+
+  const scopeSubtitle = useMemo(() => {
+    if (incomingDependantId) {
+      return incomingDependantSnapshot?.relationshipType || "Dependant";
+    }
+    return "Main Patient";
+  }, [incomingDependantId, incomingDependantSnapshot]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const patientRes = await getPatientById(targetPatientId);
+        if (!mounted) return;
+        const data = patientRes?.data ?? patientRes;
+        if (data) setMainPatient(data);
+
+        const dependantsRes = await getAllDependantsForPatient(targetPatientId);
+        const raw = dependantsRes?.data?.data?.dependants
+          ?? dependantsRes?.data?.dependants
+          ?? dependantsRes?.data
+          ?? [];
+        const dependantsList = Array.isArray(raw) ? raw : [];
+        const allPatients = [
+          {
+            id: data?.id || data?._id,
+            name: data?.fullName || `${data?.firstName || ""} ${data?.lastName || ""}`.trim(),
+            relation: "Main Patient",
+            isMain: true,
+          },
+          ...dependantsList.map(d => ({
+            id: d.id || d._id,
+            name: d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim(),
+            relation: d.relationshipType || d.relationship || "Dependant",
+            isMain: false,
+          }))
+        ];
+
+        if (mounted) {
+          setPatients(allPatients);
+          if (incomingDependantId) {
+            setSelectedPatientId(incomingDependantId);
+          } else if (!selectedPatientId && allPatients[0]?.id) {
+            setSelectedPatientId(allPatients[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load patient", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [targetPatientId, incomingDependantId]);
+
+  useEffect(() => {
+    if (!selectedPatientId) return;
+    let mounted = true;
+
+    const load = async () => {
+      setConsultationsLoading(true);
+      try {
+        const selectedInfo = patients.find(p => p.id === selectedPatientId);
+        const res = await getConsultations(
+          incomingDependantId
+            ? { patientId: targetPatientId, dependantId: incomingDependantId }
+            : selectedInfo?.isMain
+              ? { patientId: targetPatientId }
+              : { dependantId: selectedPatientId }
+        );
+
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const filtered = list.filter(c => {
+          if (incomingDependantId) {
+            return c.dependantId === incomingDependantId;
+          }
+          if (selectedInfo?.isMain) {
+            return !c.dependantId;
+          }
+          return c.dependantId === selectedPatientId;
+        });
+        const sorted = [...filtered].sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        if (mounted) {
+          setConsultations(sorted);
+          setExpandedIds(new Set());
+        }
+      } catch {
+        if (mounted) setConsultations([]);
+      } finally {
+        if (mounted) setConsultationsLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [selectedPatientId, incomingDependantId, targetPatientId, patients]);
   const selectedPatientInfo = useMemo(() =>
     patients.find(p => p.id === selectedPatientId),
     [patients, selectedPatientId]

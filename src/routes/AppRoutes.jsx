@@ -71,6 +71,7 @@ import MDSendToNurse from "@/pages/medical-director/incoming/SendToNurse";
 import MDViewConsultation from "@/pages/medical-director/incoming/ViewConsultation";
 import MDWritePrescription from "@/pages/medical-director/incoming/WritePrescription";
 import MDAllPatients from "@/pages/medical-director/allPatients/AllPatients";
+import MDAttendedToday from "@/pages/medical-director/attended-today/AttendedToday";
 import MDPatients from "@/pages/medical-director/patients/Patients";
 import MDAppointment from "@/pages/medical-director/appiontments/Appointment";
 import MDPaymentRecords from "@/pages/medical-director/payment-records/ReceiptRecord";
@@ -166,6 +167,7 @@ import SonographerDashboard from "@/pages/sonographer/dashboard/SonographerDashb
 import SonographerIncoming from "@/pages/sonographer/incoming/Incoming";
 import SonographerIncomingDetails from "@/pages/sonographer/incoming/IncomingDetails";
 import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory";
+import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
 
 
 const AppRoutes = () => {
@@ -437,6 +439,11 @@ const AppRoutes = () => {
           <IncomingDoctor />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/doctor/attended-today" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <AttendedToday />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/doctor/allPatients" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <AllPatients />
@@ -580,9 +587,15 @@ const AppRoutes = () => {
           <IncomingMD />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/medical-director/attended-today" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAttendedToday />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/medical-director/allPatients" element={
         <ProtectedRoute allowedRoles={['medical-director']}>
           <MDAllPatients />
+          <MDAttendedToday />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/medical-director/assign-task" element={
