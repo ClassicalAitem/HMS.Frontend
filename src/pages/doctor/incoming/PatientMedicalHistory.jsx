@@ -214,21 +214,7 @@ const summarySubject = useMemo(() => {
     return () => { mounted = false; };
   }, [patientId, isViewingDependant, dependantId]);
 
-  // When this page unmounts, release the lock so another doctor can open the profile
-useEffect(() => {
-  return () => {
-    if (!patientId) return;
-    getPatientById(patientId)
-      .then((res) => {
-        const currentStatus = res?.data?.status ?? res?.status ?? '';
-        if (currentStatus.toLowerCase() === 'in_consultation') {
-          updatePatientStatus(patientId, { status: "in_consultation" }).catch(() => {});
-        }
-      })
-      .catch(() => {});
-    localStorage.setItem('refreshIncoming', Date.now().toString());
-  };
-}, [patientId]);
+
 
     const patientName = useMemo(() => (
       patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
@@ -344,8 +330,20 @@ useEffect(() => {
 useEffect(() => {
   return () => {
     if (isViewingDependant && dependantId) {
-      import('@/services/api/dependantAPI').then(({ updateDependantStatus }) => {
-        updateDependantStatus(dependantId, { status: 'awaiting_doctor' }).catch(() => {});
+      import('@/services/api/dependantAPI').then(({ getDependantById, updateDependantStatus }) => {
+        getDependantById(dependantId)
+          .then((res) => {
+            const currentStatus = (
+              res?.data?.data?.dependant?.status ??
+              res?.data?.dependant?.status ??
+              res?.data?.status ??
+              ''
+            ).toString().toLowerCase();
+            if (currentStatus === 'in_consultation') {
+              updateDependantStatus(dependantId, { status: 'awaiting_doctor' }).catch(() => {});
+            }
+          })
+          .catch(() => {});
       });
     } else if (patientId) {
       getPatientById(patientId).then((res) => {
@@ -1000,8 +998,8 @@ const dependant = isDependant
                   dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
                 },
               })}
-              onViewMedicalHistory={() => navigate(
-              `/dashboard/doctor/medical-record-history/${patientId}`,
+             onViewMedicalHistory={() => navigate(
+              `/dashboard/doctor/medical-record-history/${patientId}${dependantId ? `?dependantId=${dependantId}` : ''}`,
               {
                 state: {
                   from: fromIncoming ? "incoming" : "patients",
@@ -1074,7 +1072,7 @@ const dependant = isDependant
           <VitalsHistoryTable 
             sortedVitals={enrichedVitals} 
             loading={loading}
-            patientName={patientName}
+            patientName={summarySubject?.fullName || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim() || 'Patient'}
             onViewAll={() => navigate(`/dashboard/doctor/view-vitals/${patientId}`, {
               state: {
                 from: fromIncoming ? "incoming" : "patients",
@@ -1181,6 +1179,7 @@ const dependant = isDependant
   onClose={() => setIsSendToHmoModalOpen(false)}
   patientId={patientId}
   patientName={patientName}
+  dependantId={dependantId}
   doctorName={doctorName}
   consultationDate={consultationDate}
   visitReason={visitReason}
@@ -1193,10 +1192,11 @@ const dependant = isDependant
 />
 
           
-          <CreateBillModal 
+         <CreateBillModal 
             isOpen={isBillModalOpen}
             onClose={() => setIsBillModalOpen(false)}
             patientId={patientId}
+            dependantId={dependantId}
             defaultItems={billDefaults}
             onSuccess={() => {
               setBilledItemIds(prev => {
