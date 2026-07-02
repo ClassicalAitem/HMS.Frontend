@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
 import { PharmacistLayout } from '@/layouts/pharmacist'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
+import { updateDependantStatus } from '@/services/api/dependantAPI'
 import { getInventories, updateInventory } from '@/services/api/inventoryAPI'
 import { AddDrugModal } from '@/components/modals'
 import { hasStatus } from '@/utils/statusUtils'
@@ -17,7 +18,14 @@ import PatientSummaryCard from '@/components/pharmacist/dashboard/PatientSummary
 const IncomingDetails = () => {
   const { patientId } = useParams()
   const navigate = useNavigate()
-
+  const location = useLocation()
+  const incomingDependantId = location?.state?.dependantId || null
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || null
+  const isViewingDependant = !!incomingDependantId
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -53,8 +61,12 @@ useEffect(() => {
       const presData = presRes?.data ?? presRes;
       const list = Array.isArray(presData) ? presData : (presData ? [presData] : []);
 
-      const active = list.filter(p => String(p.status).toLowerCase() !== 'completed');
-      const history = list
+      const filtered = isViewingDependant
+        ? list.filter(p => p.dependantId === incomingDependantId)
+        : list.filter(p => !p.dependantId);
+
+      const active = filtered.filter(p => String(p.status).toLowerCase() !== 'completed');
+      const history = filtered
         .filter(p => String(p.status).toLowerCase() === 'completed')
         .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
@@ -212,29 +224,67 @@ useEffect(() => {
   };
 
  
+
+  const summarySubject = useMemo(() => {
+    if (!isViewingDependant) return patient;
+  
+    const dep = subject || dependantSnapshot || {};
+    const guardian = dep.patient || patient || {}; 
+  
+    const ownHmos = Array.isArray(guardian.hmos)
+      ? guardian.hmos.filter(h => h.dependantId === dep.id)
+      : [];
+  
+    return {
+  
+      phone: guardian.phone,
+      phoneNumber: guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      cardType: guardian.cardType,
+      familyName: guardian.familyName,
+      companyName: guardian.companyName,
+  
+      
+      id: dep.id || dependantId,
+      firstName: dep.firstName,
+      middleName: dep.middleName,
+      lastName: dep.lastName,
+      fullName: dep.fullName,
+      gender: dep.gender,
+      dob: dep.dob,
+      relationshipType: dep.relationshipType,
+      hmos: ownHmos,
+    };
+  }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+  
   const handleComplete = async () => {
     const activePrescriptions = prescriptions.active;
     if (!activePrescriptions.length) return
 
     const pid = patient?.id || patient?._id || patient?.patientId
 
-const promise = Promise.all([
-        ...activePrescriptions.map(p =>
-          updatePrescription(p._id, {
-            status: 'completed',
-            pharmacistId,
+
+    const promise = Promise.all([
+      ...activePrescriptions.map(p =>
+        updatePrescription(p._id, {
+          status: 'completed',
+          pharmacistId,
           pharmacistName
         })
       ),
 
-      updatePatientStatus(pid, {
-        status: PATIENT_STATUS.PHARMACY_COMPLETED
-      }),
+      isViewingDependant
+        ? updateDependantStatus(incomingDependantId, {
+            status: PATIENT_STATUS.PHARMACY_COMPLETED
+          })
+        : updatePatientStatus(pid, {
+            status: PATIENT_STATUS.PHARMACY_COMPLETED
+          }),
 
       ...activePrescriptions.map(p =>
         reduceInventoryStock(p.medications)
       )
-    ]);
+    ])
 
     toast.promise(promise, {
       loading: 'Completing...',
@@ -275,10 +325,16 @@ const promise = Promise.all([
         };
       });
 
-      setPatient(prev => ({
-        ...(prev || {}),
-        status: PATIENT_STATUS.PHARMACY_COMPLETED
-      }))
+      setPatient(prev => (
+        isViewingDependant
+          ? prev
+          : {
+              ...(prev || {}),
+              status: PATIENT_STATUS.PHARMACY_COMPLETED
+            }
+      ))
+
+      
 
     } catch (e) {
       toast.error('Failed to complete')
@@ -300,14 +356,32 @@ const promise = Promise.all([
             Back To Incoming
           </button>
           </div>
-                      <PatientSummaryCard patient={patient} loading={loading} />
+                      <PatientSummaryCard
+                        patient={isViewingDependant
+                          ? {
+                              ...incomingDependantSnapshot,
+                              hospitalId: patient?.hospitalId || '—',
+                            }
+                          : patient}
+                        loading={loading}
+                      />
+          {isViewingDependant && incomingDependantSnapshot && (
+            <div className="text-sm text-base-content/70 mb-3">
+              Viewing prescriptions for <strong>{`${incomingDependantSnapshot.firstName || ''} ${incomingDependantSnapshot.lastName || ''}`.trim()}</strong>
+              {incomingDependantSnapshot.relationshipType ? ` (${incomingDependantSnapshot.relationshipType})` : ''}
+              {' '}· dependant of <strong>{patient?.firstName} {patient?.lastName}</strong>
+            </div>
+          )}
           <div>
 
            <SendPatientModal
-                patientId={patient?.id || patientId}
-                onUpdated={() => navigate('/dashboard/pharmacist')}
-                allowedRoles={['nurse', 'doctor', 'medical-director', 'cashier', 'labtechnician', 'hmo']}
-                />
+                patientId={patientId}
+                patient={patient}
+                defaultDependantId={dependantId}
+                defaultDependantLabel={summarySubject?.fullName}
+                onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
+                allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo', 'doctor', 'medical-director']}
+              />
           </div>
         </div>
 
@@ -354,9 +428,13 @@ const promise = Promise.all([
                           })
                         ),
 
-                            updatePatientStatus(pid, {
-                              status: PATIENT_STATUS.AWAITING_INJECTION
-                            }),
+                            isViewingDependant
+                              ? updateDependantStatus(incomingDependantId, {
+                                  status: PATIENT_STATUS.AWAITING_INJECTION
+                                })
+                              : updatePatientStatus(pid, {
+                                  status: PATIENT_STATUS.AWAITING_INJECTION
+                                }),
 
                             ...activePrescriptions.map(p =>
                               reduceInventoryStock(p.medications)
@@ -405,10 +483,14 @@ const promise = Promise.all([
                         });
 
                         //  update patient status
-                        setPatient(prev => ({
-                          ...(prev || {}),
-                          status: PATIENT_STATUS.AWAITING_INJECTION
-                        }));
+                        setPatient(prev => (
+                          isViewingDependant
+                            ? prev
+                            : {
+                                ...(prev || {}),
+                                status: PATIENT_STATUS.AWAITING_INJECTION
+                              }
+                        ));
 
                       } catch (e) {
                         toast.error('Failed to send to nurse');

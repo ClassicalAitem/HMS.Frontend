@@ -7,6 +7,7 @@ import { getAllReceipts, updateReceipt, getReceiptsByOpdPatientId } from '@/serv
 import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
+import { getDependantById } from '@/services/api/dependantAPI';
 
 const PaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -50,24 +51,51 @@ const PaymentRecords = () => {
 
 
   useEffect(() => {
-    const fetchReceipt = async () => {
-      try {
-        setIsLoading(true);
-        const [regularRes, opdPatientsRes] = await Promise.all([getAllReceipts(), getAllOpdPatients()]);
-        const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
-        const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
-        
-        // Fetch receipts for each OPD patient
-        const opdReceiptsPromises = opdPatients.map(patient => getReceiptsByOpdPatientId(patient.id).catch(() => null));
-        const opdReceiptsResults = await Promise.all(opdReceiptsPromises);
-        const opdReceipts = opdReceiptsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
-        
-        const allReceipts = [...regularList, ...opdReceipts];
-        const list = Array.isArray(allReceipts) ? allReceipts : [];
-        const mapped = list.map((a, idx) => ({
+  const fetchReceipt = async () => {
+    try {
+      setIsLoading(true);
+      const [regularRes, opdPatientsRes] = await Promise.all([getAllReceipts(), getAllOpdPatients()]);
+      const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
+      const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
+
+      const opdReceiptsPromises = opdPatients.map(patient => getReceiptsByOpdPatientId(patient.id).catch(() => null));
+      const opdReceiptsResults = await Promise.all(opdReceiptsPromises);
+      const opdReceipts = opdReceiptsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
+
+      const allReceipts = [...regularList, ...opdReceipts];
+      const list = Array.isArray(allReceipts) ? allReceipts : [];
+
+      // ✅ Pull unique dependantIds and fetch them, since the API doesn't nest dependant data on the receipt
+      const dependantIds = [...new Set(list.filter(a => a.dependantId).map(a => a.dependantId))];
+      const dependantEntries = await Promise.all(
+        dependantIds.map(id =>
+          getDependantById(id)
+            .then(res => [id, res?.data?.data?.dependant || res?.data?.dependant || res?.data])
+            .catch(() => [id, null])
+        )
+      );
+      const dependantMap = Object.fromEntries(dependantEntries);
+
+      const mapped = list.map((a, idx) => {
+        const isForDependant = !!a.dependantId;
+        const dependant = isForDependant ? dependantMap[a.dependantId] : null;
+        const guardian = a.billing.patient;
+        const opdPatient = a.billing.opdPatient;
+
+        const name = isForDependant
+          ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
+          : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (opdPatient ? `${opdPatient.firstName} ${opdPatient.lastName}` : 'N/A'));
+
+        const guardianName = isForDependant && guardian
+          ? `${guardian.firstName} ${guardian.lastName}`
+          : null;
+
+        return {
           receiptId: a.id,
           transactionId: a.reference || `Kolak-${idx + 1}`,
-          name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : (a.billing.opdPatient ? `${a.billing.opdPatient.firstName} ${a.billing.opdPatient.lastName}` : 'N/A'),
+          name,
+          isForDependant,
+          guardianName,
           paymentMethod: a.paymentMethod,
           paymentDestination: a.paymentDestination || 'N/A',
           paidBy: a.paidBy || 'N/A',
@@ -77,14 +105,15 @@ const PaymentRecords = () => {
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
           bankName: a.bankName || 'N/A',
           senderName: a.senderName || 'N/A',
-        }));
-        setPaymentRecords(mapped);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchReceipt();
-  }, [])
+        };
+      });
+      setPaymentRecords(mapped);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchReceipt();
+}, [])
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -237,7 +266,15 @@ const handlePrintReceipt = (payment) => {
       key: 'name',
       title: 'Patient Name',
       sortable: true,
-      className: 'text-base-content font-medium'
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          <span>{value}</span>
+          {row.isForDependant && (
+            <span className="badge badge-sm badge-outline">Dependant</span>
+          )}
+        </div>
+      )
     },
     {
       key: 'paymentMethod',
@@ -426,7 +463,13 @@ const handlePrintReceipt = (payment) => {
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Patient Details</label>
-                  <p className="text-base-content">{selectedPayment.name}</p>
+                  <p className="text-base-content">
+                    {selectedPayment.name}
+                    {selectedPayment.isForDependant && <span className="badge badge-sm badge-outline ml-2">Dependant</span>}
+                  </p>
+                  {selectedPayment.isForDependant && selectedPayment.guardianName && (
+                    <p className="text-xs text-base-content/50">Guardian: {selectedPayment.guardianName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Amount</label>
