@@ -15,7 +15,9 @@ const ViewAllVitals = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fromIncoming = location?.state?.from === 'incoming';
-
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState(null);
@@ -67,6 +69,14 @@ const ViewAllVitals = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  const subjectName = useMemo(() => {
+  if (isViewingDependant) {
+    return dependantSnapshot?.fullName
+      || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
+      || 'Dependant';
+  }
+  return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+}, [patient, isViewingDependant, dependantSnapshot]);
   // Fetch vitals
   useEffect(() => {
     let mounted = true;
@@ -80,7 +90,10 @@ const ViewAllVitals = () => {
         const sorted = vitalsList.sort((a, b) => 
           new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
         );
-        if (mounted) setVitals(sorted);
+        const scoped = isViewingDependant
+          ? sorted.filter(v => v.dependantId === dependantId)
+          : sorted.filter(v => !v.dependantId);
+        if (mounted) setVitals(scoped);
       } catch (err) {
         console.error('Failed to load vitals:', err);
         if (mounted) setVitals([]);
@@ -97,30 +110,16 @@ const ViewAllVitals = () => {
   const vitalRows = useMemo(() => (
     Array.isArray(vitals)
       ? vitals.map((vital) => {
-          const isDependant = !!vital.dependantId;
-          
-          const dependant = isDependant
-            ? dependants.find(d => d.id === vital.dependantId || d._id === vital.dependantId)
-            : null;
-
-          const forName = isDependant
-            ? dependant
-              ? dependant.fullName
-              : 'Dependant'
-            : patientName;
-
           const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
           return {
             _id: vital._id || vital.id,
-            forName,
-            isForDependant: isDependant,
+            forName: subjectName,
             nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
             bp: vital.bp || '—',
             pulse: vital.pulse || '—',
             temperature: vital.temperature || '—',
             weight: vital.weight || '—',
             height: vital.height || '—',
-            // spo2: vital.spo2 || vital.oxygen || '—',
             respiratoryRate: vital.respiratoryRate || '—',
             date: formatNigeriaDate(vital.createdAt),
             time: formatNigeriaTime(vital.createdAt),
@@ -128,7 +127,7 @@ const ViewAllVitals = () => {
           };
         })
       : []
-  ), [vitals, dependants, patientName, nurseNameById]);
+  ), [vitals, subjectName, nurseNameById]);
 
   // Helper: normalize user API response
   const normalizeUserResponse = (response) => {
@@ -207,13 +206,20 @@ const ViewAllVitals = () => {
                   </div>
                   <h1 className="text-2xl font-bold text-base-content">Vitals History</h1>
                 </div>
-                <p className="text-base-content/70">
-                  Patient: {patientName}
-                </p>
+             <p className="text-base-content/70">
+                {isViewingDependant ? 'Dependant' : 'Patient'}: {subjectName}
+                {isViewingDependant && (
+                  <span className="text-sm ml-1">
+                    (of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()})
+                  </span>
+                )}
+              </p>
               </div>
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                  state: { dependantId, dependantSnapshot }
+                })}
               >
                 Back
               </button>

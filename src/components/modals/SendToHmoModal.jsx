@@ -9,6 +9,7 @@ import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { updateSubjectStatus } from '@/utils/statusHelper';
 
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
@@ -127,6 +128,7 @@ const SendToHmoModal = ({
   onClose,
   patientId,
   patientName,
+  dependantId = null,
   doctorName,
   consultationDate,
   visitReason,
@@ -216,7 +218,6 @@ const SendToHmoModal = ({
     if (!patientId) return toast.error('Patient ID is missing');
     setIsLoading(true);
     try {
-      // ✅ Create billing first
       const payload = {
         itemDetail: data.items.map(item => ({
           code: item.code,
@@ -225,7 +226,8 @@ const SendToHmoModal = ({
           price: Number(item.price),
           total: Number(item.quantity) * Number(item.price),
           serviceChargeId: item.serviceChargeId,
-        }))
+        })),
+        ...(dependantId && { dependantId }),
       };
 
       await toast.promise(createBilling(patientId, payload), {
@@ -234,12 +236,11 @@ const SendToHmoModal = ({
         error: (err) => err?.response?.data?.message || 'Failed to create bill',
       });
 
-      // ✅ Then update status to awaiting_hmo instead of awaiting_cashier
       await toast.promise(
-        updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_HMO }),
+        updateSubjectStatus(patientId, dependantId, PATIENT_STATUS.AWAITING_HMO),
         {
           loading: 'Sending to HMO...',
-          success: 'Patient sent to HMO successfully!',
+          success: dependantId ? 'Dependant sent to HMO successfully!' : 'Patient sent to HMO successfully!',
           error: (err) => err?.response?.data?.message || 'Failed to update status',
         }
       );
@@ -269,7 +270,7 @@ const SendToHmoModal = ({
             <div>
               <h2 className="text-xl font-bold text-base-content">Send to HMO</h2>
               <p className="text-xs text-base-content/60">
-                {patientName} · {consultationDate}
+                 {consultationDate}
               </p>
             </div>
           </div>
