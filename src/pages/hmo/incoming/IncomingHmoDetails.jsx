@@ -1,490 +1,347 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useAppSelector } from '@/store/hooks';
-import { Header, PatientCardTypeInfo } from "@/components/common";
-import Sidebar from "@/components/hmo/dashboard/Sidebar";
-import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
+  import React, { useEffect, useMemo, useState } from "react";
+  import { useNavigate, useParams, useLocation } from "react-router-dom";
+  import { useAppSelector } from '@/store/hooks';
+  import { Header, PatientCardTypeInfo } from "@/components/common";
+  import Sidebar from "@/components/hmo/dashboard/Sidebar";
+  import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
+  import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
 
-import { getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
-import { formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
-import toast from "react-hot-toast";
-import apiClient from "@/services/api/apiClient";
-import SendPatientModal from "@/components/modals/SendPatientModal";
+  import { getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
+  import { formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
+  import toast from "react-hot-toast";
+  import apiClient from "@/services/api/apiClient";
+  import SendPatientModal from "@/components/modals/SendPatientModal";
 
-const IncomingHmoDetails = () => {
-  const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
+  const IncomingHmoDetails = () => {
+    const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
 
-  const { patientId } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const snapshot = location.state?.patientSnapshot;
+    const { patientId } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const snapshot = location.state?.patientSnapshot;
+    const dependantId = location.state?.dependantId || null;
+    const dependantSnapshot = location.state?.dependantSnapshot || null;
+    const isViewingDependant = !!dependantId;
+    const [patient, setPatient] = useState(snapshot || null);
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [sendingStatuses, setSendingStatuses] = useState({
+      Lab: false,
+      Pharmacy: false,
+    });
+    const [billings, setBillings] = useState([]);
+    const [hmos, setHmos] = useState([]);
+    const [itemDecisions, setItemDecisions] = useState({});
 
-  const [patient, setPatient] = useState(snapshot || null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [sendingStatuses, setSendingStatuses] = useState({
-    Lab: false,
-    Pharmacy: false,
-  });
-  const [billings, setBillings] = useState([]);
-  const [hmos, setHmos] = useState([]);
-  const [itemDecisions, setItemDecisions] = useState({});
+    const currentUser = useAppSelector((state) => state.auth.user);
+    const hmoUserId = currentUser?.id || currentUser?._id;
+    const hmoUserName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
 
-  const currentUser = useAppSelector((state) => state.auth.user);
-  const hmoUserId = currentUser?.id || currentUser?._id;
-  const hmoUserName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
+    useEffect(() => {
+      let mounted = true;
+      const loadAll = async () => {
+        setLoading(true);
+        try {
+          const [patientRes, billingsRes] = await Promise.allSettled([
+            snapshot ? Promise.resolve({ data: snapshot }) : getPatientById(patientId),
+            getAllBillings({ patientId }),
+          ]);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadAll = async () => {
-      setLoading(true);
-      try {
-        const [patientRes, billingsRes] = await Promise.allSettled([
-          snapshot ? Promise.resolve({ data: snapshot }) : getPatientById(patientId),
-          getAllBillings({ patientId }),
-        ]);
-        const hmosRes = await apiClient.get(`/hmo`, { params: { patientId } })
-  .catch(() => ({ data: [] }));
-const hmoRaw = hmosRes?.data?.data ?? hmosRes?.data ?? [];
-if (mounted) setHmos(Array.isArray(hmoRaw) ? hmoRaw : []);
+          // ✅ fetch HMO records FIRST, declare hmoRaw before using it
+          const hmosRes = await apiClient
+            .get(`/hmo`, { params: { patientId } })
+            .catch(() => ({ data: [] }));
+          const hmoRaw = hmosRes?.data?.data ?? hmosRes?.data ?? [];
+          const hmoList = Array.isArray(hmoRaw) ? hmoRaw : [];
+          const scopedHmos = isViewingDependant
+            ? hmoList.filter(h => h.dependantId === dependantId)
+            : hmoList.filter(h => !h.dependantId);
+          if (mounted) setHmos(scopedHmos);
 
+          if (!mounted) return;
 
-        if (!mounted) return;
+          if (patientRes.status === 'fulfilled') {
+            setPatient(patientRes.value?.data ?? patientRes.value);
+          }
 
-        if (patientRes.status === 'fulfilled') {
-          setPatient(patientRes.value?.data ?? patientRes.value);
-        }
+          if (billingsRes.status === 'fulfilled') {
+            const raw = billingsRes.value?.data?.data ?? billingsRes.value?.data ?? [];
+            const list = Array.isArray(raw) ? raw : [];
 
-        if (billingsRes.status === 'fulfilled') {
-          const raw = billingsRes.value?.data?.data ?? billingsRes.value?.data ?? [];
-          const list = Array.isArray(raw) ? raw : [];
-          setBillings(list);
-
-
-          // ✅ Initialize decisions from existing hmoStatus or default to 'pending'
-          const initial = {};
-          list.forEach(bill => {
-            initial[bill.id] = {};
-            (bill.itemDetails || []).forEach((item, idx) => {
-              initial[bill.id][idx] = item.hmoStatus || 'pending';
+            // ✅ Initialize decisions from existing hmoStatus or default to 'pending'
+            const initial = {};
+            list.forEach(bill => {
+              initial[bill.id] = {};
+              (bill.itemDetails || []).forEach((item, idx) => {
+                initial[bill.id][idx] = {
+                  status: item.hmoStatus || 'pending',
+                  hmoCovered: Number(item.hmoCovered || 0),
+                };
+              });
             });
-          });
-          setItemDecisions(initial);
+            setItemDecisions(initial);
 
-          const unreviewedBills = list.filter(bill => {
-  // Show bill if ANY item has no hmoStatus yet (never reviewed)
-  const hasUnreviewedItems = (bill.itemDetails || []).some(
-    item => !item.hmoStatus || item.hmoStatus === 'pending'
-  );
-  // Also show if bill is not cleared (outstanding balance exists)
-  return hasUnreviewedItems && !bill.isCleared;
-});
-setBillings(unreviewedBills);
+            const unreviewedBills = list.filter(bill => {
+              const hasUnreviewedItems = (bill.itemDetails || []).some(
+                item => !item.hmoStatus || item.hmoStatus === 'pending'
+              );
+              const matchesSubject = isViewingDependant
+                ? bill.dependantId === dependantId
+                : !bill.dependantId;
+              return hasUnreviewedItems && !bill.isCleared && matchesSubject;
+            });
+            setBillings(unreviewedBills);
+          }
+        } catch (err) {
+          console.error("IncomingHmoDetails: load error", err);
+        } finally {
+          if (mounted) setLoading(false);
         }
+      };
+      loadAll();
+      return () => { mounted = false; };
+    }, [patientId, isViewingDependant, dependantId]);
+
+    const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
+      setItemDecisions(prev => ({
+        ...prev,
+        [billingId]: {
+          ...prev[billingId],
+          [itemIdx]: { status, hmoCovered: Number(hmoCovered) || 0 }
+        }
+      }));
+      setHasSavedDecisions(false);
+    };
+
+    const setAllDecisions = (status) => {
+      setHasSavedDecisions(false);
+
+      setItemDecisions(() => {
+        const next = {};
+        billings.forEach(bill => {
+          next[bill.id] = {};
+          (bill.itemDetails || []).forEach((item, idx) => {
+            next[bill.id][idx] = {
+              status,
+              hmoCovered: status === 'approved' ? Number(item.total || 0) : 0
+            };
+          });
+        });
+        return next;
+      });
+    };
+
+    const approvedTotal = useMemo(() => {
+      let total = 0;
+      billings.forEach(bill => {
+        (bill.itemDetails || []).forEach((item, idx) => {
+          const decision = itemDecisions[bill.id]?.[idx];
+          if (decision?.status === 'approved') {
+            total += Number(item.total || 0);
+          } else if (decision?.status === 'partial') {
+            total += Number(decision.hmoCovered || 0);
+          }
+        });
+      });
+      return total;
+    }, [billings, itemDecisions]);
+
+    // ✅ Patient Pays total, computed the same way as approvedTotal (was broken/inline before)
+    const patientPaysTotal = useMemo(() => {
+      let total = 0;
+      billings.forEach(bill => {
+        (bill.itemDetails || []).forEach((item, idx) => {
+          const decision = itemDecisions[bill.id]?.[idx];
+          const itemTotal = Number(item.total || 0);
+          if (decision?.status === 'rejected') {
+            total += itemTotal;
+          } else if (decision?.status === 'partial') {
+            total += itemTotal - Number(decision.hmoCovered || 0);
+          }
+        });
+      });
+      return total;
+    }, [billings, itemDecisions]);
+
+    const saveDecisions = async () => {
+      await Promise.all(
+        billings.map(async (bill) => {
+          const updatedItems = (bill.itemDetails || []).map((item, idx) => {
+            const decision = itemDecisions[bill.id]?.[idx] || { status: 'pending', hmoCovered: 0 };
+            const itemTotal = Number(item.total || 0);
+
+            let hmoCovered = 0;
+            if (decision.status === 'approved') hmoCovered = itemTotal;
+            else if (decision.status === 'partial') hmoCovered = Number(decision.hmoCovered || 0);
+            else hmoCovered = 0;
+
+            const patientPays = itemTotal - hmoCovered;
+
+            return {
+              ...item,
+              hmoStatus: decision.status,
+              hmoCovered,
+              patientOwes: patientPays,
+            };
+          });
+
+          const outstandingBill = updatedItems.reduce(
+            (sum, item) => sum + Number(item.patientOwes || 0),
+            0
+          );
+
+          const hmoCoveredAmount = updatedItems.reduce(
+            (sum, item) => sum + Number(item.hmoCovered || 0),
+            0
+          );
+
+          await updateBilling(bill.id, {
+            itemDetails: updatedItems,
+            outstandingBill,
+            hmoCoveredAmount,
+            hmoApprovedBy: hmoUserName,
+            hmoApprovedById: hmoUserId,
+            hmoApprovedAt: new Date().toISOString(),
+          });
+        })
+      );
+    };
+
+    const handleSave = async () => {
+      setSubmitting(true);
+      try {
+        await saveDecisions();
+        setHasSavedDecisions(true);
+        toast.success('HMO items saved');
+        setTimeout(() => {
+          window.location.reload();
+        }, 700);
       } catch (err) {
-        console.error("IncomingHmoDetails: load error", err);
+        console.error('Save items error', err);
+        toast.error(err?.response?.data?.message || 'Failed to save items');
       } finally {
-        if (mounted) setLoading(false);
+        setSubmitting(false);
       }
     };
-    loadAll();
-    return () => { mounted = false; };
-  }, [patientId]);
 
-const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
-  setItemDecisions(prev => ({
-    ...prev,
-    [billingId]: {
-      ...prev[billingId],
-      [itemIdx]: { status, hmoCovered: Number(hmoCovered) || 0 }
-    }
-  }));
-  setHasSavedDecisions(false);
-};
+    const fullName = isViewingDependant
+      ? (dependantSnapshot?.fullName || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim() || 'Dependant')
+      : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
 
-const setAllDecisions = (status) => {
-  setHasSavedDecisions(false);
-
-  setItemDecisions(() => {
-    const next = {};
-    billings.forEach(bill => {
-      next[bill.id] = {};
-      (bill.itemDetails || []).forEach((item, idx) => {
-        next[bill.id][idx] = {
-          status,
-          hmoCovered: status === 'approved' ? Number(item.total || 0) : 0
-        };
-      });
-    });
-    return next;
-  });
-};
-
-
-const approvedTotal = useMemo(() => {
-  let total = 0;
-  billings.forEach(bill => {
-    (bill.itemDetails || []).forEach((item, idx) => {
-      const decision = itemDecisions[bill.id]?.[idx];
-      if (decision?.status === 'approved') {
-        total += Number(item.total || 0);
-      } else if (decision?.status === 'partial') {
-        total += Number(decision.hmoCovered || 0);
-      }
-    });
-  });
-  return total;
-}, [billings, itemDecisions]);
-
-
-const saveDecisions = async () => {
-  await Promise.all(
-    billings.map(async (bill) => {
-      const updatedItems = (bill.itemDetails || []).map((item, idx) => {
-        const decision = itemDecisions[bill.id]?.[idx] || { status: 'pending', hmoCovered: 0 };
-        const itemTotal = Number(item.total || 0);
-
-        let hmoCovered = 0;
-        if (decision.status === 'approved') hmoCovered = itemTotal;
-        else if (decision.status === 'partial') hmoCovered = Number(decision.hmoCovered || 0);
-        else hmoCovered = 0;
-
-        const patientPays = itemTotal - hmoCovered;
-
-        return {
-          ...item,
-          hmoStatus: decision.status,
-          hmoCovered,
-          patientOwes: patientPays,
-        };
-      });
-
-      const outstandingBill = updatedItems.reduce(
-        (sum, item) => sum + Number(item.patientOwes || 0),
-        0
+      const displayStatus = getStatusDisplayText(
+        isViewingDependant ? dependantSnapshot?.status : patient?.status
+      );
+      const badgeClass = getStatusBadgeClass(
+        isViewingDependant ? dependantSnapshot?.status : patient?.status
       );
 
-      const hmoCoveredAmount = updatedItems.reduce(
-        (sum, item) => sum + Number(item.hmoCovered || 0),
-        0
-      );
+    return (
+      <div className="flex h-screen">
+        <Sidebar />
+        <div className="flex overflow-hidden flex-col flex-1">
+          <Header />
+          <div className="overflow-y-auto flex-1 p-6">
 
-      await updateBilling(bill.id, {
-        itemDetails: updatedItems,
-        outstandingBill,
-        hmoCoveredAmount,
-        hmoApprovedBy: hmoUserName,
-        hmoApprovedById: hmoUserId,
-        hmoApprovedAt: new Date().toISOString(),
-      });
-    })
-  );
-};
-
-const handleSave = async () => {
-  setSubmitting(true);
-  try {
-    await saveDecisions();
-    setHasSavedDecisions(true);
-    toast.success('HMO items saved');
-    setTimeout(() => {
-      window.location.reload();
-    }, 700);
-  } catch (err) {
-    console.error('Save items error', err);
-    toast.error(err?.response?.data?.message || 'Failed to save items');
-  } finally {
-    setSubmitting(false);
-  }
-};
-
-
-
-  const fullName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
-  const displayStatus = getStatusDisplayText(patient?.status);
-  const badgeClass = getStatusBadgeClass(patient?.status);
-
-  return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
-        <div className="overflow-y-auto flex-1 p-6">
-
-          {/* Header */}
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold">HMO Review</h1>
-              <p className="text-base-content/60 text-sm mt-1">
-                Approve or reject each item. All items go to cashier —
-                approved items are HMO-covered, rejected items are patient self-pay.
-              </p>
-            </div>
-            <button className="btn btn-sm btn-outline" onClick={() => navigate('/dashboard/hmo/incoming')}>
-              ← Back
-            </button>
-          </div>
-
-          {/* Patient Info */}
-          <div className="card bg-base-100 border border-base-200 mb-6">
-            <div className="card-body p-5">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-bold">
-                    {fullName.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="font-bold text-base-content">{fullName}</p>
-                    <p className="text-sm text-base-content/60">
-                      {patient?.hospitalId || patientId} 
-                    </p>
-                  </div>
-                </div>
-                <span className={`badge ${badgeClass}`}>{displayStatus}</span>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-semibold">HMO Review</h1>
+                <p className="text-base-content/60 text-sm mt-1">
+                  Approve or reject each item. All items go to cashier —
+                  approved items are HMO-covered, rejected items are patient self-pay.
+                </p>
               </div>
-            </div>
-          <div className="mt-3">
-                          <PatientCardTypeInfo
-                            cardType={patient?.cardType}
-                            familyName={patient?.familyName}
-                            companyName={patient?.companyName}
-                          />
-                        </div>
-          </div>
-<div className="flex items-center gap-2 mb-4">
-
-    <SendPatientModal
-            patientId={patient?.id || patientId}
-            patient={patient}
-            onUpdated={() => navigate('/dashboard/hmo')}
-            allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'cashier', 'labtechnician']}
-          />
-</div>
-          {hmos.length > 0 && (
-  <div className="card bg-base-100 border border-base-200 mb-6">
-    <div className="card-body p-0">
-      <div className="px-5 py-3 bg-base-200/40 border-b border-base-200">
-        <p className="text-sm font-semibold text-base-content">
-          Insurance / HMO Records
-          <span className="ml-2 badge badge-info badge-sm">{hmos.length}</span>
-        </p>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="table table-sm w-full">
-          <thead>
-            <tr className="border-b border-base-200">
-              <th>Provider</th>
-              <th>Plan</th>
-              <th>Member ID</th>
-              <th>Expires</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hmos.map((hmo, idx) => {
-              const isExpired = hmo.expiresAt
-                ? new Date(hmo.expiresAt) < new Date()
-                : false;
-              return (
-                <tr key={hmo.id || idx} className="border-b border-base-200 last:border-0">
-                  <td className="font-medium capitalize">{hmo.provider || '—'}</td>
-                  <td className="capitalize">{hmo.plan || '—'}</td>
-                  <td className="font-mono text-sm">{hmo.memberId || '—'}</td>
-                  <td className="text-sm">
-                    {hmo.expiresAt
-                      ? formatNigeriaDateShort(hmo.expiresAt)
-                      : '—'}
-                  </td>
-                  <td>
-                    <span className={`badge badge-sm ${isExpired ? 'badge-error' : 'badge-success'}`}>
-                      {isExpired ? 'Expired' : 'Active'}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-)}
-
-     
-
-          {/* Bulk actions */}
-          {!loading && billings.length > 0 && (
-            <div className="flex gap-2 mb-4">
-              <button className="btn btn-success btn-sm" onClick={() => setAllDecisions('approved')} disabled={submitting}>
-                Approve All
+              <button className="btn btn-sm btn-outline" onClick={() => navigate('/dashboard/hmo/incoming')}>
+                ← Back
               </button>
-              <button className="btn btn-error btn-sm" onClick={() => setAllDecisions('rejected')} disabled={submitting}>
-                Reject All
-              </button>
-                  {/* ✅ Reset all back to pending */}
-    <button className="btn btn-ghost btn-sm" onClick={() => setAllDecisions('pending')} disabled={submitting}>
-      ↺ Reset All
-    </button>
             </div>
-          )}
 
-          {/* Billing Items */}
-          {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="loading loading-spinner loading-lg" />
-            </div>
-          ) : billings.length === 0 ? (
-            <div className="card bg-base-100 border border-base-200">
-              <div className="card-body py-12 text-center text-base-content/50">
-                No billing items found for this patient.
-              </div>
-            </div>
-          ) : (
-            billings.map(bill => (
-              <div key={bill.id} className="card bg-base-100 border border-base-200 mb-4">
-                <div className="card-body p-0">
-                  {/* Bill Header */}
-                  <div className="px-5 py-3 bg-base-200/40 border-b border-base-200 flex items-center justify-between">
+            {/* Patient Info */}
+            <div className="card bg-base-100 border border-base-200 mb-6">
+              <div className="card-body p-5">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-bold">
+                      {fullName.charAt(0)}
+                    </div>
                     <div>
-                      <p className="text-sm font-semibold">Bill #{bill.id?.slice(-8)}</p>
-                      <p className="text-xs text-base-content/50">
-                        By {bill.raisedBy?.firstName} {bill.raisedBy?.lastName} · {bill.raisedBy?.accountType}
+                      <p className="font-bold text-base-content">{fullName}</p>
+                      <p className="text-sm text-base-content/60">
+                        {patient?.hospitalId || patient?.hospitalNumber || 'Unknown ID'}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold">₦{Number(bill.totalAmount || 0).toLocaleString()}</p>
-                      <p className="text-xs text-base-content/50">Total</p>
-                    </div>
                   </div>
+                  <span className={`badge ${badgeClass}`}>{displayStatus}</span>
+                </div>
+              </div>
+              <div className="mt-3">
+                <PatientCardTypeInfo
+                  cardType={patient?.cardType}
+                  familyName={patient?.familyName}
+                  companyName={patient?.companyName}
+                />
+              </div>
+            </div>
 
+            <div className="flex items-center gap-2 mb-4">
+              {isViewingDependant && (
+                <div className="mb-4 text-sm text-base-content/70">
+                  Viewing HMO items for <strong>{fullName}</strong>
+                  {dependantSnapshot?.relationshipType ? ` (${dependantSnapshot.relationshipType})` : ""}
+                  {' '}— Dependant of <strong>{`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()}</strong>
+                </div>
+              )}
+
+              <SendPatientModal
+                patientId={patient?.id || patientId}
+                patient={patient}
+                defaultDependantId={dependantId}
+                defaultDependantLabel={fullName}
+                onUpdated={() => navigate('/dashboard/hmo')}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'cashier', 'labtechnician']}
+              />
+            </div>
+
+            {hmos.length > 0 && (
+              <div className="card bg-base-100 border border-base-200 mb-6">
+                <div className="card-body p-0">
+                  <div className="px-5 py-3 bg-base-200/40 border-b border-base-200">
+                    <p className="text-sm font-semibold text-base-content">
+                      Insurance / HMO Records
+                      <span className="ml-2 badge badge-info badge-sm">{hmos.length}</span>
+                    </p>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="table table-sm w-full">
                       <thead>
                         <tr className="border-b border-base-200">
-                          <th>Description</th>
-                          <th>Code</th>
-                          <th className="text-right">Price</th>
-                          <th className="text-right">Qty</th>
-                          <th className="text-right">Total</th>
-                          <th className="text-center w-48">HMO Decision</th>
+                          <th>Provider</th>
+                          <th>Plan</th>
+                          <th>Member ID</th>
+                          <th>Expires</th>
+                          <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {(bill.itemDetails || []).map((item, idx) => {
-                          const decision = itemDecisions[bill.id]?.[idx] || 'pending';
+                        {hmos.map((hmo, idx) => {
+                          const isExpired = hmo.expiresAt
+                            ? new Date(hmo.expiresAt) < new Date()
+                            : false;
                           return (
-                            <tr
-                              key={idx}
-                              className={`border-b border-base-200 last:border-0 transition-colors ${
-                                decision === 'approved' ? 'bg-success/5' :
-                                decision === 'rejected' ? 'bg-error/5' :
-                                'hover:bg-base-200/30'
-                              }`}
-                            >
-                       <td>
-  <p className="font-medium">{item.description}</p>
-  {(() => {
-    const d = itemDecisions[bill.id]?.[idx];
-    if (d?.status === 'approved') return <span className="text-xs text-success">HMO Covers Full ₦{Number(item.total).toLocaleString()}</span>;
-    if (d?.status === 'rejected') return <span className="text-xs text-error">Patient Self-Pay ₦{Number(item.total).toLocaleString()}</span>;
-    if (d?.status === 'partial') return (
-      <span className="text-xs text-warning">
-        Partial — HMO: ₦{Number(d.hmoCovered || 0).toLocaleString()} · Patient: ₦{(Number(item.total) - Number(d.hmoCovered || 0)).toLocaleString()}
-      </span>
-    );
-    return null;
-  })()}
-</td>
-                              <td className="text-xs text-base-content/60">{item.code}</td>
-                              <td className="text-right">₦{Number(item.price || 0).toLocaleString()}</td>
-                              <td className="text-right">{item.quantity}</td>
-                              <td className="text-right font-medium">₦{Number(item.total || 0).toLocaleString()}</td>
-                       <td className="text-center">
-  <div className="flex flex-col items-center gap-2">
-    {/* Approve / Reject / Partial toggle buttons */}
-    <div className="flex items-center gap-1">
-      <button
-        className={`btn btn-xs ${
-          itemDecisions[bill.id]?.[idx]?.status === 'approved'
-            ? 'btn-success' : 'btn-outline btn-success'
-        }`}
-        onClick={() => setDecision(bill.id, idx, 
-          itemDecisions[bill.id]?.[idx]?.status === 'approved' ? 'pending' : 'approved',
-          item.total  // HMO covers full amount
-        )}
-        disabled={submitting}
-      >
-        ✓ Full
-      </button>
-      <button
-        className={`btn btn-xs ${
-          itemDecisions[bill.id]?.[idx]?.status === 'partial'
-            ? 'btn-warning' : 'btn-outline btn-warning'
-        }`}
-        onClick={() => setDecision(bill.id, idx, 
-          itemDecisions[bill.id]?.[idx]?.status === 'partial' ? 'pending' : 'partial',
-          0  // user will enter amount
-        )}
-        disabled={submitting}
-      >
-        ½ Partial
-      </button>
-      <button
-        className={`btn btn-xs ${
-          itemDecisions[bill.id]?.[idx]?.status === 'rejected'
-            ? 'btn-error' : 'btn-outline btn-error'
-        }`}
-        onClick={() => setDecision(bill.id, idx,
-          itemDecisions[bill.id]?.[idx]?.status === 'rejected' ? 'pending' : 'rejected',
-          0
-        )}
-        disabled={submitting}
-      >
-        ✕ None
-      </button>
-    </div>
-
-    {/* ✅ Show amount input only when partial is selected */}
-    {itemDecisions[bill.id]?.[idx]?.status === 'partial' && (
-      <div className="flex items-center gap-1 mt-1">
-        <span className="text-xs text-base-content/60">₦</span>
-        <input
-          type="number"
-          className="input input-bordered input-xs w-24 text-right"
-          placeholder="HMO amount"
-          min={0}
-          max={Number(item.total || 0)}
-          value={itemDecisions[bill.id]?.[idx]?.hmoCovered || ''}
-          onChange={(e) => {
-            const val = Math.min(
-              Number(e.target.value) || 0,
-              Number(item.total || 0)
-            );
-            setDecision(bill.id, idx, 'partial', val);
-          }}
-          disabled={submitting}
-        />
-        <span className="text-xs text-base-content/40">
-          / ₦{Number(item.total || 0).toLocaleString()}
-        </span>
-      </div>
-    )}
-
-    {/* Show per-item breakdown */}
-    {itemDecisions[bill.id]?.[idx]?.status === 'partial' && (
-      <div className="text-xs mt-0.5">
-        <span className="text-success">
-          HMO: ₦{Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0).toLocaleString()}
-        </span>
-        <span className="text-base-content/40 mx-1">·</span>
-        <span className="text-error">
-          Patient: ₦{(Number(item.total || 0) - Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0)).toLocaleString()}
-        </span>
-      </div>
-    )}
-  </div>
-</td>
+                            <tr key={hmo.id || idx} className="border-b border-base-200 last:border-0">
+                              <td className="font-medium capitalize">{hmo.provider || '—'}</td>
+                              <td className="capitalize">{hmo.plan || '—'}</td>
+                              <td className="font-mono text-sm">{hmo.memberId || '—'}</td>
+                              <td className="text-sm">
+                                {hmo.expiresAt
+                                  ? formatNigeriaDateShort(hmo.expiresAt)
+                                  : '—'}
+                              </td>
+                              <td>
+                                <span className={`badge badge-sm ${isExpired ? 'badge-error' : 'badge-success'}`}>
+                                  {isExpired ? 'Expired' : 'Active'}
+                                </span>
+                              </td>
                             </tr>
                           );
                         })}
@@ -493,83 +350,245 @@ const handleSave = async () => {
                   </div>
                 </div>
               </div>
-            ))
-          )}
+            )}
 
-     {/* Submit Footer */}
-{/* Submit Footer */}
-{!loading && billings.length > 0 && (
-  <div className="card bg-base-100 border border-base-200 mt-6">
-    <div className="card-body p-5">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        
-        {/* ✅ Breakdown summary */}
-        <div className="space-y-1">
-          {/* Total bill */}
-          <p className="text-sm text-base-content/60">
-            Total Bill: <span className="font-medium text-base-content">
-              ₦{billings.reduce((s, b) => s + Number(b.totalAmount || 0), 0).toLocaleString()}
-            </span>
-          </p>
+            {/* Bulk actions */}
+            {!loading && billings.length > 0 && (
+              <div className="flex gap-2 mb-4">
+                <button className="btn btn-success btn-sm" onClick={() => setAllDecisions('approved')} disabled={submitting}>
+                  Approve All
+                </button>
+                <button className="btn btn-error btn-sm" onClick={() => setAllDecisions('rejected')} disabled={submitting}>
+                  Reject All
+                </button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setAllDecisions('pending')} disabled={submitting}>
+                  ↺ Reset All
+                </button>
+              </div>
+            )}
 
-          {/* HMO covers */}
-          {approvedTotal > 0 && (
-            <p className="text-sm text-success font-medium">
-              ✓ HMO Covers: ₦{approvedTotal.toLocaleString()}
-            </p>
-          )}
+            {/* Billing Items */}
+            {loading ? (
+              <div className="flex justify-center py-16">
+                <div className="loading loading-spinner loading-lg" />
+              </div>
+            ) : billings.length === 0 ? (
+              <div className="card bg-base-100 border border-base-200">
+                <div className="card-body py-12 text-center text-base-content/50">
+                  No billing items found for this patient.
+                </div>
+              </div>
+            ) : (
+              billings.map(bill => (
+                <div key={bill.id} className="card bg-base-100 border border-base-200 mb-4">
+                  <div className="card-body p-0">
+                    {/* Bill Header */}
+                    <div className="px-5 py-3 bg-base-200/40 border-b border-base-200 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">Bill #{bill.id?.slice(-8)}</p>
+                        <p className="text-xs text-base-content/50">
+                          By {bill.raisedBy?.firstName} {bill.raisedBy?.lastName} · {bill.raisedBy?.accountType}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">₦{Number(bill.totalAmount || 0).toLocaleString()}</p>
+                        <p className="text-xs text-base-content/50">Total</p>
+                      </div>
+                    </div>
 
-          {/* Patient pays */}
-          {(() => {
-            const rejectedTotal = billings.reduce((sum, bill) => {
-              return sum + (bill.itemDetails || []).reduce((s, item, idx) => {
-                if (itemDecisions[bill.id]?.[idx] === 'rejected') {
-                  return s + Number(item.total || 0);
-                }
-                return s;
-              }, 0);
-            }, 0);
-            return rejectedTotal > 0 ? (
-              <p className="text-sm text-error font-medium">
-                ✕ Patient Pays: ₦{rejectedTotal.toLocaleString()}
-              </p>
-            ) : null;
-          })()}
+                    <div className="overflow-x-auto">
+                      <table className="table table-sm w-full">
+                        <thead>
+                          <tr className="border-b border-base-200">
+                            <th>Description</th>
+                            <th>Code</th>
+                            <th className="text-right">Price</th>
+                            <th className="text-right">Qty</th>
+                            <th className="text-right">Total</th>
+                            <th className="text-center w-48">HMO Decision</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(bill.itemDetails || []).map((item, idx) => {
+                            // ✅ was comparing object to string before; now reads .status
+                            const decisionStatus = itemDecisions[bill.id]?.[idx]?.status || 'pending';
+                            return (
+                              <tr
+                                key={idx}
+                                className={`border-b border-base-200 last:border-0 transition-colors ${
+                                  decisionStatus === 'approved' ? 'bg-success/5' :
+                                  decisionStatus === 'rejected' ? 'bg-error/5' :
+                                  'hover:bg-base-200/30'
+                                }`}
+                              >
+                                <td>
+                                  <p className="font-medium">{item.description}</p>
+                                  {(() => {
+                                    const d = itemDecisions[bill.id]?.[idx];
+                                    if (d?.status === 'approved') return <span className="text-xs text-success">HMO Covers Full ₦{Number(item.total).toLocaleString()}</span>;
+                                    if (d?.status === 'rejected') return <span className="text-xs text-error">Patient Self-Pay ₦{Number(item.total).toLocaleString()}</span>;
+                                    if (d?.status === 'partial') return (
+                                      <span className="text-xs text-warning">
+                                        Partial — HMO: ₦{Number(d.hmoCovered || 0).toLocaleString()} · Patient: ₦{(Number(item.total) - Number(d.hmoCovered || 0)).toLocaleString()}
+                                      </span>
+                                    );
+                                    return null;
+                                  })()}
+                                </td>
+                                <td className="text-xs text-base-content/60">{item.code}</td>
+                                <td className="text-right">₦{Number(item.price || 0).toLocaleString()}</td>
+                                <td className="text-right">{item.quantity}</td>
+                                <td className="text-right font-medium">₦{Number(item.total || 0).toLocaleString()}</td>
+                                <td className="text-center">
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        className={`btn btn-xs ${
+                                          itemDecisions[bill.id]?.[idx]?.status === 'approved'
+                                            ? 'btn-success' : 'btn-outline btn-success'
+                                        }`}
+                                        onClick={() => setDecision(bill.id, idx,
+                                          itemDecisions[bill.id]?.[idx]?.status === 'approved' ? 'pending' : 'approved',
+                                          item.total
+                                        )}
+                                        disabled={submitting}
+                                      >
+                                        ✓ Full
+                                      </button>
+                                      <button
+                                        className={`btn btn-xs ${
+                                          itemDecisions[bill.id]?.[idx]?.status === 'partial'
+                                            ? 'btn-warning' : 'btn-outline btn-warning'
+                                        }`}
+                                        onClick={() => setDecision(bill.id, idx,
+                                          itemDecisions[bill.id]?.[idx]?.status === 'partial' ? 'pending' : 'partial',
+                                          0
+                                        )}
+                                        disabled={submitting}
+                                      >
+                                        ½ Partial
+                                      </button>
+                                      <button
+                                        className={`btn btn-xs ${
+                                          itemDecisions[bill.id]?.[idx]?.status === 'rejected'
+                                            ? 'btn-error' : 'btn-outline btn-error'
+                                        }`}
+                                        onClick={() => setDecision(bill.id, idx,
+                                          itemDecisions[bill.id]?.[idx]?.status === 'rejected' ? 'pending' : 'rejected',
+                                          0
+                                        )}
+                                        disabled={submitting}
+                                      >
+                                        ✕ None
+                                      </button>
+                                    </div>
 
-          {/* Pending items warning */}
-          {(() => {
-            const hasPending = billings.some(bill =>
-              (bill.itemDetails || []).some((_, idx) =>
-                !itemDecisions[bill.id]?.[idx] || itemDecisions[bill.id]?.[idx] === 'pending'
-              )
-            );
-            return hasPending ? (
-              <p className="text-xs text-warning">⚠ Some items still need a decision</p>
-            ) : null;
-          })()}
+                                    {itemDecisions[bill.id]?.[idx]?.status === 'partial' && (
+                                      <div className="flex items-center gap-1 mt-1">
+                                        <span className="text-xs text-base-content/60">₦</span>
+                                        <input
+                                          type="number"
+                                          className="input input-bordered input-xs w-24 text-right"
+                                          placeholder="HMO amount"
+                                          min={0}
+                                          max={Number(item.total || 0)}
+                                          value={itemDecisions[bill.id]?.[idx]?.hmoCovered || ''}
+                                          onChange={(e) => {
+                                            const val = Math.min(
+                                              Number(e.target.value) || 0,
+                                              Number(item.total || 0)
+                                            );
+                                            setDecision(bill.id, idx, 'partial', val);
+                                          }}
+                                          disabled={submitting}
+                                        />
+                                        <span className="text-xs text-base-content/40">
+                                          / ₦{Number(item.total || 0).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {itemDecisions[bill.id]?.[idx]?.status === 'partial' && (
+                                      <div className="text-xs mt-0.5">
+                                        <span className="text-success">
+                                          HMO: ₦{Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0).toLocaleString()}
+                                        </span>
+                                        <span className="text-base-content/40 mx-1">·</span>
+                                        <span className="text-error">
+                                          Patient: ₦{(Number(item.total || 0) - Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0)).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {/* Submit Footer */}
+            {!loading && billings.length > 0 && (
+              <div className="card bg-base-100 border border-base-200 mt-6">
+                <div className="card-body p-5">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+
+                    <div className="space-y-1">
+                      <p className="text-sm text-base-content/60">
+                        Total Bill: <span className="font-medium text-base-content">
+                          ₦{billings.reduce((s, b) => s + Number(b.totalAmount || 0), 0).toLocaleString()}
+                        </span>
+                      </p>
+
+                      {approvedTotal > 0 && (
+                        <p className="text-sm text-success font-medium">
+                          ✓ HMO Covers: ₦{approvedTotal.toLocaleString()}
+                        </p>
+                      )}
+
+                      {/* ✅ fixed: uses patientPaysTotal (rejected + partial patient share), was comparing object to string before */}
+                      {patientPaysTotal > 0 && (
+                        <p className="text-sm text-error font-medium">
+                          ✕ Patient Pays: ₦{patientPaysTotal.toLocaleString()}
+                        </p>
+                      )}
+
+                      {(() => {
+                        const hasPending = billings.some(bill =>
+                          (bill.itemDetails || []).some((_, idx) =>
+                            !itemDecisions[bill.id]?.[idx] || itemDecisions[bill.id]?.[idx]?.status === 'pending'
+                          )
+                        );
+                        return hasPending ? (
+                          <p className="text-xs text-warning">⚠ Some items still need a decision</p>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={handleSave}
+                        disabled={submitting || billings.length === 0}
+                      >
+                        {submitting ? <span className="loading loading-spinner loading-sm" /> : 'Save items'}
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
         </div>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleSave}
-            disabled={submitting || billings.length === 0}
-          >
-            {submitting ? <span className="loading loading-spinner loading-sm" /> : 'Save items'}
-          </button>
-       
       </div>
-      
-        </div>
-    </div>
-  </div>
-)}
-{/* Modals removed - sending directly */}
+    );
+  };
 
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default IncomingHmoDetails;
+  export default IncomingHmoDetails;

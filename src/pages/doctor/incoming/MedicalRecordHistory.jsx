@@ -10,6 +10,7 @@ import {
   FaUsers, FaHeartbeat, FaCalendarAlt, FaChevronDown, FaChevronUp
 } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { useSearchParam } from "react-use";
 
 // ─── Section Card ─────────────────────────────────────────────────────────────
 const SectionCard = ({ icon, title, color, children, count }) => {
@@ -52,8 +53,16 @@ const MedicalRecordHistory = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+ const [searchParams] = useSearchParam();
+
   const fromIncoming = location?.state?.from === "incoming";
-  const dependantId = location?.state?.dependantId || location?.state?.selectedDependantId || null;
+
+  // ✅ URL query param takes priority — survives refresh/back-forward
+  const dependantId = searchParams.get('dependantId')
+    || location?.state?.dependantId
+    || location?.state?.selectedDependantId
+    || null;
+
   const dependantSnapshot = location?.state?.dependantSnapshot || location?.state?.selectedDependantSnapshot || null;
   const isViewingDependant = !!dependantId;
   const snapshot = location?.state?.patientSnapshot || null;
