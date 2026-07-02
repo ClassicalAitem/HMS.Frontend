@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -10,6 +10,11 @@ import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 const NurseAntenatalRecords = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+
   const [patient, setPatient] = useState(null);
   const [records, setRecords] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -102,7 +107,11 @@ const NurseAntenatalRecords = () => {
       try {
         setLoading(true);
         const data = await getAnteNatalRecordByPatientId(patientId);
-        if (mounted) setRecords(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        const scoped = isViewingDependant
+          ? list.filter(r => r?.dependantId === dependantId)
+          : list.filter(r => !r?.dependantId);
+        if (mounted) setRecords(scoped);
       } catch (err) {
         console.error("Failed to fetch antenatal records", err);
         if (mounted) setRecords([]);
@@ -114,10 +123,15 @@ const NurseAntenatalRecords = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  const heading = useMemo(() => {
-    if (patient) return `${patient.fullName || `${patient.firstName || ''} ${patient.lastName || ''}`.trim()}`;
-    return "Antenatal Records";
-  }, [patient]);
+const heading = useMemo(() => {
+  if (isViewingDependant) {
+    return dependantSnapshot?.fullName
+      || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
+      || 'Dependant';
+  }
+  if (patient) return patient.fullName || `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
+  return "Antenatal Records";
+}, [patient, isViewingDependant, dependantSnapshot]);
 
   const getPresentPregnancy = (record) => record?.presentPregnancy || record?.presentPregnancyHistories?.[0] || {};
   const getExams = (record) => record?.antenatalExaminations || record?.anteNatalExamination || [];
@@ -139,10 +153,19 @@ const NurseAntenatalRecords = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl font-bold text-base-content">{heading}</h1>
-              <p className="text-sm text-base-content/70">All antenatal records</p>
+              <p className="text-sm text-base-content/70">
+                {isViewingDependant
+                  ? `Dependant of ${patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()} — All antenatal records`
+                  : 'All antenatal records'}
+              </p>
             </div>
             <div className="flex gap-2">
-              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/dashboard/nurse/patient/${patientId}`)}>
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => navigate(`/dashboard/nurse/patient/${patientId}`, {
+                  state: { dependantId, dependantSnapshot }
+                })}
+              >
                 Back to Patient
               </button>
               <button className="btn btn-primary btn-sm" onClick={() => setSelectedRecord(null)} disabled={!selectedRecord}>
