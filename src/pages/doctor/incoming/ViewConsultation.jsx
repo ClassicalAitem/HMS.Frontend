@@ -644,7 +644,18 @@ const subjectRelation = isForDependant
             )}
             <button
               className="btn btn-ghost btn-circle text-base-content/70 hover:bg-base-200"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate(
+                `/dashboard/doctor/medical-history/${consultation?.patientId || patientId}`,
+                {
+                  state: {
+                    from: "incoming",
+                    patientSnapshot: consultation?.snapshot || patient,
+                    // key prop — PatientMedicalHistory reads this to scope to dependant
+                    dependantId: consultation?.dependantId,
+                    dependantSnapshot: consultation?.type === 'dependant' ? consultation?.snapshot : null,
+                  },
+                }
+              )}
             >
               <IoIosCloseCircleOutline className="w-8 h-8" />
             </button>
@@ -880,10 +891,17 @@ const subjectRelation = isForDependant
                       > 
                         <FaFlask /> Order Labs
                       </button>
-                      <button
-                      className="btn btn-sm btn-primary gap-2"
+                     <button
+                        className="btn btn-sm btn-primary gap-2"
                         onClick={() => navigate(
-                          `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`
+                          `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
+                          {
+                            state: {
+                              dependantId: consultation?.dependantId || null,
+                              dependantSnapshot: consultation?.dependant || null,
+                              patientSnapshot: patient,
+                            }
+                          }
                         )}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
