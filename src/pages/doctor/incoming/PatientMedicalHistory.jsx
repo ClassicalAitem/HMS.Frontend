@@ -849,7 +849,17 @@ const dependant = isDependant
                     </button>
                     <button
                       className="btn btn-secondary btn-sm gap-2"
-                      onClick={() => lockAndNavigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
+                     onClick={() => lockAndNavigate(
+                        `/dashboard/doctor/antenatal-records/${patientId}`,
+                        {
+                          state: {
+                            from: fromIncoming ? "incoming" : "patients",
+                            patientSnapshot: patient,
+                            dependantId: dependantId || null,
+                            dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                          }
+                        }
+                      )}
                     >
                       <span>+</span> {antenatalRecords.length > 0 ? 'Add New Record' : 'Add First Record'}
                     </button>
