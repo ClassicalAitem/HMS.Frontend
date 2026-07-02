@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
-const VitalsHistoryTable = ({ sortedVitals, loading, onViewAll, patientName = "Patient" }) => {
+const VitalsHistoryTable = ({ sortedVitals, loading, onViewAll, patientName = "Patient", scopedToSingleSubject = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -63,13 +63,15 @@ const VitalsHistoryTable = ({ sortedVitals, loading, onViewAll, patientName = "P
                                 <span className="font-medium text-base-content">
                                   {v?.forName}
                                 </span>
-                                <span
-                                  className={`badge badge-sm ${
-                                    v?.isForDependant ? 'badge-secondary' : 'badge-primary'
-                                  }`}
-                                >
-                                  {v?.isForDependant ? 'Dependant' : 'Patient'}
-                                </span>
+                                {!scopedToSingleSubject && (
+                                  <span
+                                    className={`badge badge-sm ${
+                                      v?.isForDependant ? 'badge-secondary' : 'badge-primary'
+                                    }`}
+                                  >
+                                    {v?.isForDependant ? 'Dependant' : 'Patient'}
+                                  </span>
+                                )}
                               </div>
                             </td>
                       <td className="text-sm">{v?.nurseName || 'Unknown Nurse'}</td>

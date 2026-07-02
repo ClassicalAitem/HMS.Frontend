@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
 import { FaArrowLeft, FaFileInvoice, FaSearch } from 'react-icons/fa';
 import { getAllReceiptByPatientId } from '@/services/api/billingAPI';
@@ -9,6 +9,15 @@ import toast from 'react-hot-toast';
 const PaymentReceiptHistory = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const patientSnapshot = location?.state?.patientSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const subjectName = isViewingDependant
+    ? `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim() || 'Dependant'
+    : `${patientSnapshot?.firstName || ''} ${patientSnapshot?.lastName || ''}`.trim() || 'Patient';
+
   const [receipts, setReceipts] = useState([]);
   const [filteredReceipts, setFilteredReceipts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,14 +26,18 @@ const PaymentReceiptHistory = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date-desc');
 
-  useEffect(() => {
+ 
+     useEffect(() => {
     const fetchReceipts = async () => {
       try {
         setIsLoading(true);
         const res = await getAllReceiptByPatientId(patientId);
         const receiptsData = res?.data?.data || res?.data || [];
         const receiptsList = Array.isArray(receiptsData) ? receiptsData : [];
-        setReceipts(receiptsList);
+         const scoped = isViewingDependant
+          ? receiptsList.filter(r => r.dependantId === dependantId)
+          : receiptsList.filter(r => !r.dependantId);
+        setReceipts(scoped);
       } catch (err) {
         console.error('Error fetching receipts:', err);
         setError(err.message || 'Failed to load receipts');
@@ -34,10 +47,8 @@ const PaymentReceiptHistory = () => {
       }
     };
 
-    if (patientId) {
-      fetchReceipts();
-    }
-  }, [patientId]);
+    if (patientId) fetchReceipts();
+  }, [patientId, isViewingDependant, dependantId]);
 
   // Filter and sort receipts
   useEffect(() => {
@@ -118,7 +129,10 @@ const PaymentReceiptHistory = () => {
           Back to Patient
         </button>
 
-        <h2 className="text-2xl font-regular text-base-content mb-6">Payment Receipt History</h2>
+        <h2 className="text-2xl font-regular text-base-content mb-6">
+          Payment Receipt History
+          <span className="text-base font-normal text-base-content/60"> — {subjectName}{isViewingDependant ? ' (Dependant)' : ''}</span>
+        </h2>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

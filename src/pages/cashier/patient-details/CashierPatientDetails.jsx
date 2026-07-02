@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
 import { FaFileInvoice } from 'react-icons/fa';
@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
+import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
@@ -31,50 +32,124 @@ const CashierPatientDetails = () => {
     setOpenRow(openRow === id ? null : id);
   };
 
-  console.log('receipts:', receipts);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
 
   // Prefer snapshot passed from Incoming; fallback to store
   const snapshot = location?.state?.patientSnapshot || null;
   const patient = currentPatient || snapshot || null;
 
-  const fullName = `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || (patient?.name || 'Unknown');
-  const gender = patient?.gender || snapshot?.gender || '—';
-  const phone = patient?.phone || patient?.phoneNumber || snapshot?.phone || '—';
-  const patientIdDisplay =  patient?.hospitalId || '—';
-  const insuranceProvider = patient?.hmos?.length
-    ? patient.hmos.map(h => `${h.provider} (${h.plan})`).join(', ')
-    : snapshot?.insurance || '—';
-  const insuranceStatus = patient?.hmos?.length
-    ? patient.hmos.map(h => {
-        const expiresAt = h.expiresAt || h.expiryDate;
-        if (expiresAt) {
-          const expiryDate = new Date(expiresAt);
-          const today = new Date();
-          return expiryDate < today ? 'Expired' : (h.status || 'Active');
+   const filterSubjectRecords = (items) => {
+    if (!Array.isArray(items)) return [];
+    return items.filter((item) => (
+      isViewingDependant && dependantId ? item?.dependantId === dependantId : !item?.dependantId
+    ));
+  };
+
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadSubject = async () => {
+      try {
+        setSubjectLoading(true);
+        if (isViewingDependant && dependantId) {
+          try {
+            const res = await getDependantById(dependantId);
+            const dep = res?.data?.data?.dependant || res?.data?.dependant || dependantSnapshot;
+            if (mounted) setSubject(dep || dependantSnapshot);
+          } catch {
+            if (mounted) setSubject(dependantSnapshot);
+          }
+        } else {
+          if (mounted) setSubject(patient);
         }
-        return h.status || 'Active';
-      }).join(', ')
+      } finally {
+        if (mounted) setSubjectLoading(false);
+      }
+    };
+    loadSubject();
+    return () => { mounted = false; };
+  }, [isViewingDependant, dependantId, dependantSnapshot, patient]);
+
+   const summarySubject = useMemo(() => {
+    const guardian = patient || {};
+
+    if (!isViewingDependant) {
+      return {
+        id: guardian.id,
+        fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
+        gender: guardian.gender,
+        phone: guardian.phone || guardian.phoneNumber,
+        hospitalId: guardian.hospitalId,
+        status: guardian.status,
+        hmos: Array.isArray(guardian.hmos) ? guardian.hmos : [],
+        relationshipType: null,
+      };
+    }
+
+    const dep = subject || dependantSnapshot || {};
+
+    // Dependants don't carry their own hmos — pull them out of the guardian's list
+    const ownHmos = Array.isArray(guardian.hmos)
+      ? guardian.hmos.filter(h => h.dependantId === (dep.id || dependantId))
+      : [];
+
+    return {
+      id: dep.id || dependantId,
+      fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || 'Dependant',
+      gender: dep.gender || '—',
+      // Dependants don't carry their own phone in this schema — fall back to guardian's
+      phone: dep.phone || guardian.phone || guardian.phoneNumber,
+      // Hospital ID always belongs to the parent/guardian patient record
+      hospitalId: guardian.hospitalId,
+      status: dep.status || dependantSnapshot?.status || 'Unknown',
+      hmos: ownHmos,
+      relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
+    };
+  }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+
+  const fullName = summarySubject.fullName;
+  const gender = summarySubject.gender || '—';
+  const phone = summarySubject.phone || '—';
+  const patientIdDisplay = summarySubject.hospitalId || '—';
+  const statusDisplay = summarySubject.status || 'Unknown';
+  const prettyStatus = String(statusDisplay).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const hmoList = summarySubject.hmos;
+
+  const insuranceProvider = hmoList.length
+    ? hmoList.map(h => `${h.provider || '—'} (${h.plan || '—'})`).join(', ')
+    : 'None';
+
+  const isAnyExpired = hmoList.some(h => {
+    const expiresAt = h.expiresAt || h.expiryDate;
+    return expiresAt ? new Date(expiresAt) < new Date() : false;
+  });
+
+  const insuranceStatus = hmoList.length
+    ? (isAnyExpired ? 'Expired' : 'Active')
     : 'Inactive';
-  const statusDisplay = (patient?.status || snapshot?.status || 'Unknown');
 
   const getReceiptStatus = (receipt) => {
-  if (!receipt.hmoId) return "paid"; // self-pay, cashier collected
-  const items = receipt.items || []; // each item in the billing
-  if (items.every(i => i.hmoStatus === "approved")) return "approved";
-  if (items.some(i => i.hmoStatus === "partial")) return "partial";
-  if (items.every(i => i.hmoStatus === "rejected")) return "rejected";
-  return "pending";
-}
+    if (!receipt.hmoId) return "paid"; // self-pay, cashier collected
+    const items = receipt.items || [];
+    if (items.every(i => i.hmoStatus === "approved")) return "approved";
+    if (items.some(i => i.hmoStatus === "partial")) return "partial";
+    if (items.every(i => i.hmoStatus === "rejected")) return "rejected";
+    return "pending";
+  }
 
-  // Fetch patient details from backend
+  // Fetch guardian patient details — always needed even for dependant view,
+  // since hospitalId/insurance/phone fall back to the guardian's record
   useEffect(() => {
     if (patientId && !location?.state?.patientSnapshot) {
-      console.log('🔄 CashierPatientDetails: Fetching patient details for ID:', patientId);
       dispatch(fetchPatientById(patientId));
     }
   }, [dispatch, patientId, location?.state?.patientSnapshot]);
 
-  // Show error toast if there's an error
   useEffect(() => {
     if (error && !snapshot && !currentPatient) {
       toast.error(error);
@@ -82,57 +157,53 @@ const CashierPatientDetails = () => {
     }
   }, [error, dispatch, snapshot, currentPatient]);
 
-const getHmoCoveredAmount = (bill) => {
-  return (bill.itemDetails || []).reduce(
-    (sum, item) => sum + Number(item.hmoCovered || 0),
-    0
-  );
-};
+  const getHmoCoveredAmount = (bill) => {
+    return (bill.itemDetails || []).reduce(
+      (sum, item) => sum + Number(item.hmoCovered || 0),
+      0
+    );
+  };
+
   useEffect(() => {
     const fetchBillings = async () => {
       try {
         setIsReceiptModalOpen(false);
         const res = await getAllBillings({ patientId });
-
-        console.log('Fetched Billings', res.data.data);
-
-        // Handle different response structures
         const billingsData = res?.data?.data || res?.data || [];
-        setBillings(Array.isArray(billingsData) ? billingsData : []);
+        const list = Array.isArray(billingsData) ? billingsData : [];
+        setBillings(filterSubjectRecords(list));
       } catch (error) {
         console.error('Error fetching billings:', error);
         setBillings([]);
       }
     }
-
     fetchBillings();
-  }, [])
+  }, [patientId, isViewingDependant, dependantId])
 
   useEffect(() => {
     const fetchReceipts = async () => {
       try {
         const res = await getAllReceiptByPatientId(patientId);
-
-        console.log('Fetched Receipts', res.data);
-
-        // Handle different response structures
         const receiptsData = res?.data?.data || res?.data || [];
-        setReceipts(Array.isArray(receiptsData) ? receiptsData : []);
+        const list = Array.isArray(receiptsData) ? receiptsData : [];
+        setReceipts(filterSubjectRecords(list));
       } catch (error) {
         console.error('Error fetching receipts:', error);
         setReceipts([]);
       }
     }
-
     fetchReceipts();
-  }, []);
+  }, [patientId, isViewingDependant, dependantId]);
 
-
-  const handleReceiptSubmit = async(receiptData) => {
+  const handleReceiptSubmit = async (receiptData) => {
     try {
-      console.log('Receipt Data:', receiptData);
+      const receiptPayload = {
+        ...receiptData,
+        dependantId: isViewingDependant ? dependantId : null,
+      };
+
       await toast.promise(
-        createReceipt(selectedBillingId, receiptData),
+        createReceipt(selectedBillingId, receiptPayload),
         {
           loading: 'Submitting receipt...',
           success: 'Receipt submitted successfully!',
@@ -141,32 +212,28 @@ const getHmoCoveredAmount = (bill) => {
       );
 
       setIsReceiptModalOpen(false);
-      // Refresh receipts and billings after successful submission
       try {
         const receiptsRes = await getAllReceiptByPatientId(patientId);
         const receiptsData = receiptsRes?.data?.data || receiptsRes?.data || [];
-        setReceipts(Array.isArray(receiptsData) ? receiptsData : []);
+        setReceipts(filterSubjectRecords(Array.isArray(receiptsData) ? receiptsData : []));
 
         const billingsRes = await getAllBillings({ patientId });
         const billingsData = billingsRes?.data?.data || billingsRes?.data || [];
-        setBillings(Array.isArray(billingsData) ? billingsData : []);
+        setBillings(filterSubjectRecords(Array.isArray(billingsData) ? billingsData : []));
       } catch (refreshError) {
         console.error('Error refreshing data:', refreshError);
       }
-
-
     } catch (error) {
       console.error('Error submitting receipt:', error);
     }
   };
 
-    const totalOutstanding = billings.reduce((sum, bill) => {
-    if (bill.isCleared) return sum; 
+  const totalOutstanding = billings.reduce((sum, bill) => {
+    if (bill.isCleared) return sum;
     const outstanding = Number(bill.outstandingBill) || 0;
     return sum + (outstanding > 0 ? outstanding : Number(bill.totalAmount || 0));
   }, 0);
 
-  // Show loading state only if no snapshot is available
   if (isLoading && !snapshot) {
     return (
       <CashierLayout>
@@ -177,7 +244,6 @@ const getHmoCoveredAmount = (bill) => {
     );
   }
 
-  // Show error state only if no snapshot/currentPatient is available
   if (error && !snapshot && !currentPatient) {
     return (
       <CashierLayout>
@@ -185,16 +251,10 @@ const getHmoCoveredAmount = (bill) => {
           <div className="text-error text-lg font-semibold mb-2">Error Loading Patient</div>
           <div className="text-base-content/70 mb-4">{error}</div>
           <div className="flex gap-2">
-            <button
-              onClick={() => dispatch(fetchPatientById(patientId))}
-              className="btn btn-primary btn-sm"
-            >
+            <button onClick={() => dispatch(fetchPatientById(patientId))} className="btn btn-primary btn-sm">
               Try Again
             </button>
-            <button
-              onClick={() => navigate('/cashier/patients')}
-              className="btn btn-outline btn-sm"
-            >
+            <button onClick={() => navigate('/cashier/patients')} className="btn btn-outline btn-sm">
               Back to Patients
             </button>
           </div>
@@ -203,17 +263,13 @@ const getHmoCoveredAmount = (bill) => {
     );
   }
 
-  // Show not found state
   if (!patient) {
     return (
       <CashierLayout>
         <div className="flex flex-col justify-center items-center h-64 text-center">
           <div className="text-base-content text-lg font-semibold mb-2">Patient Not Found</div>
           <div className="text-base-content/70 mb-4">The patient you're looking for doesn't exist.</div>
-          <button
-            onClick={() => navigate('/cashier/incoming')}
-            className="btn btn-primary btn-sm"
-          >
+          <button onClick={() => navigate('/cashier/incoming')} className="btn btn-primary btn-sm">
             Back to Incoming
           </button>
         </div>
@@ -224,9 +280,26 @@ const getHmoCoveredAmount = (bill) => {
   return (
     <CashierLayout>
       <div className="mb-8">
-        <h2 className="text-2xl font-regular text-base-content mb-6">Patient Details</h2>
+        <h2 className="text-2xl font-regular text-base-content mb-6">
+          {isViewingDependant ? 'Dependant Details' : 'Patient Details'}
+        </h2>
 
-        {/* Patient Details Card */}
+        {isViewingDependant && (
+          <div className="mb-4 text-sm text-base-content/70">
+            Viewing billing for <strong>{fullName}</strong>
+            {summarySubject.relationshipType ? ` (${summarySubject.relationshipType})` : ''}
+            {' '}— Dependant of <strong>{`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()}</strong>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-regular text-base-content">Patient Details</h2>
+          <button className="btn btn-outline btn-sm" onClick={() => navigate('/cashier/incoming')}>
+            ← Back to Incoming
+          </button>
+        </div>
+
+        {/* Patient Details Card — unchanged below, now driven by summarySubject-derived values */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
           <div className="flex items-center gap-6">
             <div className="w-15 h-15 2xl:w-20 2xl:h-20 rounded-full border-2 border-primary overflow-hidden">
@@ -240,7 +313,9 @@ const getHmoCoveredAmount = (bill) => {
             </div>
             <div className="flex-1 grid grid-cols-5 gap-6">
               <div>
-                <p className="text-xs text-base-content/50 uppercase tracking-wide">Patient Name</p>
+                <p className="text-xs text-base-content/50 uppercase tracking-wide">
+                  {isViewingDependant ? 'Dependant Name' : 'Patient Name'}
+                </p>
                 <p className="text-md 2xl:text-lg font-semibold text-base-content">{fullName}</p>
               </div>
               <div>
@@ -252,14 +327,20 @@ const getHmoCoveredAmount = (bill) => {
                 <p className="text-md 2xl:text-lg font-semibold text-base-content">{phone}</p>
               </div>
               <div className="col-span-2">
-                <p className="text-xs text-base-content/50 uppercase tracking-wide">Patient ID</p>
+                <p className="text-xs text-base-content/50 uppercase tracking-wide">
+                  {isViewingDependant ? 'Parent Patient ID' : 'Patient ID'}
+                </p>
                 <p className="text-md 2xl:text-lg font-semibold text-base-content">{patientIdDisplay}</p>
               </div>
             </div>
             <div className="text-right">
               <div className="flex flex-col items-center gap-2">
                 <span className="text-xs text-base-content/50">Status</span>
-                <span className={`badge ${String(statusDisplay).toLowerCase() === 'active' ? 'badge-info' : 'badge-neutral'}`}>{statusDisplay}</span>
+                <span className={`badge ${
+                  String(statusDisplay).toLowerCase().includes('cashier') ? 'badge-warning' :
+                  String(statusDisplay).toLowerCase().includes('completed') ? 'badge-success' :
+                  'badge-neutral'
+                }`}>{prettyStatus}</span>
               </div>
             </div>
           </div>
@@ -268,154 +349,155 @@ const getHmoCoveredAmount = (bill) => {
             <div className="flex items-center gap-2">
               <span className="text-xs text-base-content/50">Status</span>
               <span className={`badge ${
-                String(insuranceStatus).toLowerCase().includes('expired') ? 'badge-error' :
-                String(insuranceStatus).toLowerCase().includes('active') ? 'badge-info' :
+                insuranceStatus === 'Expired' ? 'badge-error' :
+                insuranceStatus === 'Active' ? 'badge-info' :
                 'badge-neutral'
               }`}>{insuranceStatus}</span>
             </div>
-            {/* <button className=" hidden text-sm text-primary font-semibold hover:underline">Make Payments Now</button> */}
           </div>
-                        <div className="flex flex-col gap-2">
-              <p className="text-sm text-base-content/70">• Insurance: <span className="font-medium text-base-content">{insuranceProvider}</span></p>
-              <PatientCardTypeInfo
-                cardType={patient?.cardType}
-                familyName={patient?.familyName}
-                companyName={patient?.companyName}
-              />
-            </div>
         </div>
+
+
 
         {/* Outstanding Bills */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
-          <h3 className="text-xl font-bold text-primary mb-4">Patient Billings</h3>
+          <h3 className="text-xl font-bold text-primary mb-4">
+            {isViewingDependant ? `${fullName}'s Billings` : 'Patient Billings'}
+          </h3>
           <div className="overflow-x-auto">
-            
+
             <table className="table w-full">
-      <thead>
-        <tr>
-          <th></th>
-          <th>Billing ID</th>
-          <th>Total amount</th>
-          <th>Outstanding Bills</th>
-          <th>Raised By</th>
-          <th>Role</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Billing ID</th>
+                  <th>Total amount</th>
+                  <th>Outstanding Bills</th>
+                  <th>Raised By</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
 
-      <tbody>
-        {billings.map((bill) => (
-          
-          <React.Fragment key={bill.id}>
-            
-            <tr className="text-sm">
-              <td
-                onClick={() => toggleRow(bill.id)}
-                className="cursor-pointer select-none"
-                title={openRow === bill.id ? "Collapse" : "Expand"}
-              >
-                {openRow === bill.id ? "▼" : "▶"}
-              </td>
-              
+              <tbody>
+                {billings.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-base-content/50">
+                      No billing records found{isViewingDependant ? ' for this dependant' : ''}.
+                    </td>
+                  </tr>
+                ) : billings.map((bill) => (
 
-              <td className="font-medium">{bill.id}</td>
-              <td> ₦ {bill.totalAmount.toLocaleString()}</td>
-              <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
-              <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
-              <td className="text-success">{bill.raisedBy.accountType}</td>
-              <td>
-                {bill.isCleared ? (
-                  <button
-                    className="btn btn-sm btn-ghost"
-                    disabled
-                  >
-                    Completed
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setIsReceiptModalOpen(true);
-                      setSelectedBillingId(bill.id);
-                    }}
-                    className="btn btn-sm btn-ghost"
-                  >
-                    Pay now
-                  </button>
-                )}
-              </td>
+                  <React.Fragment key={bill.id}>
+
+                    <tr className="text-sm">
+                      <td
+                        onClick={() => toggleRow(bill.id)}
+                        className="cursor-pointer select-none"
+                        title={openRow === bill.id ? "Collapse" : "Expand"}
+                      >
+                        {openRow === bill.id ? "▼" : "▶"}
+                      </td>
 
 
-            </tr>
+                      <td className="font-medium">{bill.id}</td>
+                      <td> ₦ {bill.totalAmount.toLocaleString()}</td>
+                      <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
+                      <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
+                      <td className="text-success">{bill.raisedBy.accountType}</td>
+                      <td>
+                        {bill.isCleared ? (
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            disabled
+                          >
+                            Completed
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setIsReceiptModalOpen(true);
+                              setSelectedBillingId(bill.id);
+                            }}
+                            className="btn btn-sm btn-ghost"
+                          >
+                            Pay now
+                          </button>
+                        )}
+                      </td>
 
-            {openRow === bill.id && (
-              
-              <tr>
-                <td colSpan={7} className="bg-base-200">
-                  <div className="p-3">
-                     <div className="mb-3 text-sm space-y-1">
-                    <p>Total:  ₦{Number(bill.totalAmount).toLocaleString()}</p>
-                    <p className="text-success">
-                    HMO:  ₦{getHmoCoveredAmount(bill).toLocaleString()}
-                    </p>
-              
-                  </div>
-                    <h4 className="font-semibold mb-2">Item Details</h4>
-                    <table className="table w-full">
-                      <thead>
-                        <tr>
-                          <th>Description</th>
-                        <th>Code</th>
-                        <th>Price</th>
-                        <th>Qty</th>
-                        <th>Total</th>
-                        <th>HMO Covers</th>
-                        <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bill.itemDetails.map((item, idx) => (
-                          <tr key={idx}>
-                            <td>{item.description}</td>
-                            <td>{item.code}</td>
-                            <td> ₦ {Number(item.price).toLocaleString()}</td>
-                            <td>{item.quantity}</td>
-                           <td>₦ {Number(item.total).toLocaleString()}</td>
 
-                            <td className="text-success">
-                              ₦ {Number(item.hmoCovered || 0).toLocaleString()}
-                            </td>
+                    </tr>
 
-                            
+                    {openRow === bill.id && (
 
-                            <td>
-                              <span className={`badge badge-sm ${
-                                item.hmoStatus === 'approved' ? 'badge-success' :
-                                item.hmoStatus === 'partial' ? 'badge-warning' :
-                                item.hmoStatus === 'rejected' ? 'badge-error' :
-                                'badge-neutral'
-                              }`}>
-                                {item.hmoStatus || 'self-pay'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </React.Fragment>
-        ))}
-      </tbody>
-    </table>
+                      <tr>
+                        <td colSpan={7} className="bg-base-200">
+                          <div className="p-3">
+                            <div className="mb-3 text-sm space-y-1">
+                              <p>Total:  ₦{Number(bill.totalAmount).toLocaleString()}</p>
+                              <p className="text-success">
+                                HMO:  ₦{getHmoCoveredAmount(bill).toLocaleString()}
+                              </p>
+
+                            </div>
+                            <h4 className="font-semibold mb-2">Item Details</h4>
+                            <table className="table w-full">
+                              <thead>
+                                <tr>
+                                  <th>Description</th>
+                                  <th>Code</th>
+                                  <th>Price</th>
+                                  <th>Qty</th>
+                                  <th>Total</th>
+                                  <th>HMO Covers</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {bill.itemDetails.map((item, idx) => (
+                                  <tr key={idx}>
+                                    <td>{item.description}</td>
+                                    <td>{item.code}</td>
+                                    <td> ₦ {Number(item.price).toLocaleString()}</td>
+                                    <td>{item.quantity}</td>
+                                    <td>₦ {Number(item.total).toLocaleString()}</td>
+
+                                    <td className="text-success">
+                                      ₦ {Number(item.hmoCovered || 0).toLocaleString()}
+                                    </td>
+
+
+
+                                    <td>
+                                      <span className={`badge badge-sm ${
+                                        item.hmoStatus === 'approved' ? 'badge-success' :
+                                        item.hmoStatus === 'partial' ? 'badge-warning' :
+                                        item.hmoStatus === 'rejected' ? 'badge-error' :
+                                        'badge-neutral'
+                                      }`}>
+                                        {item.hmoStatus || 'self-pay'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
           </div>
           <div className="mt-4 pt-4 border-t border-base-300 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-error"></span>
               <span className="text-error font-semibold">Outstanding Balance: ₦{totalOutstanding.toLocaleString()}</span>
             </div>
-            
+
             <button
               onClick={() => navigate(`/cashier/generate-bill/${patientId}`)}
               className="btn btn-sm btn-primary hidden"
@@ -425,7 +507,7 @@ const getHmoCoveredAmount = (bill) => {
             </button>
           </div>
         </div>
-        
+
 
         {/* Payment History */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6">
@@ -469,17 +551,17 @@ const getHmoCoveredAmount = (bill) => {
                       <td>{payment.paymentMethod}</td>
                       <td>{payment.paymentDestination}</td>
                       <td>
-                      <span className={`badge badge-sm ${
-                        payment.status === "paid" ? "badge-success" :
-                        payment.status === "pending" ? "badge-info" :
-                        "badge-neutral"
-                      }`}>
-                        {payment.status}
-                      </span>
-                    </td>
+                        <span className={`badge badge-sm ${
+                          payment.status === "paid" ? "badge-success" :
+                          payment.status === "pending" ? "badge-info" :
+                          "badge-neutral"
+                        }`}>
+                          {payment.status}
+                        </span>
+                      </td>
                       <td>{payment.paidBy}</td>
                       <td>{time}</td>
-                       </tr>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -489,7 +571,9 @@ const getHmoCoveredAmount = (bill) => {
           {receipts.length > 2 && !showAllReceipts && (
             <div className="mt-4 flex justify-center">
               <button
-                onClick={() => navigate(`/cashier/payment-receipt-history/${patientId}`)}
+                onClick={() => navigate(`/cashier/payment-receipt-history/${patientId}`, {
+                  state: { dependantId, dependantSnapshot, patientSnapshot: patient },
+                })}
                 className="btn btn-outline btn-primary btn-sm"
               >
                 View All ({receipts.length} receipts)
@@ -509,14 +593,6 @@ const getHmoCoveredAmount = (bill) => {
           )}
         </div>
 
-        {/* Receipt Modal */}
-        <ReceiptModal isOpen={isReceiptModalOpen}
-           onClose={() => setIsReceiptModalOpen(false)}
-                patientId={patient?.id || patientId}
-                selectedBillingId={selectedBillingId}
-                onSubmit={handleReceiptSubmit}
-              />
-
         {/* Post-Payment Actions */}
         {receipts.length > 0 && (
           <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
@@ -525,13 +601,16 @@ const getHmoCoveredAmount = (bill) => {
             <div className="flex flex-wrap gap-3">
               <SendPatientModal
                 patientId={patient?.id || patientId}
+                patient={patient}
+                defaultDependantId={dependantId}
+                defaultDependantLabel={fullName}
                 onUpdated={() => navigate('/cashier/dashboard')}
                 allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo']}
               />
             </div>
           </div>
         )}
-        
+
         {/* Receipt Modal */}
         <ReceiptModal
           isOpen={isReceiptModalOpen}

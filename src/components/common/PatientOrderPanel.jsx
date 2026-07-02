@@ -11,13 +11,10 @@ const PrescriptionCard = ({ p, patientName }) => {
   const isForDependant = !!p?.dependantId;
   const forName = isForDependant ? 'Dependant' : patientName;
 
-  return (
+   return (
     <div className="border border-base-200 rounded-lg p-3">
       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-100">
-        <span className="text-sm font-medium">{forName}</span>
-        <span className={`badge badge-sm ${isForDependant ? 'badge-secondary' : 'badge-primary'}`}>
-          {isForDependant ? 'Dependant' : 'Main Patient'}
-        </span>
+        <span className="text-sm font-medium">{patientName}</span>
         <span className={`badge badge-sm ml-auto ${
           p?.status === 'pending' ? 'badge-warning' :
           p?.status === 'completed' ? 'badge-success' : 'badge-ghost'
@@ -92,13 +89,10 @@ const InvestigationCard = ({ inv, patientName }) => {
   const isForDependant = !!inv?.dependantId;
   const forName = isForDependant ? 'Dependant' : patientName;
 
-  return (
+    return (
     <div className="border border-base-200 rounded-lg p-3">
       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-100">
-        <span className="text-sm font-medium">{forName}</span>
-        <span className={`badge badge-sm ${isForDependant ? 'badge-secondary' : 'badge-primary'}`}>
-          {isForDependant ? 'Dependant' : 'Main Patient'}
-        </span>
+        <span className="text-sm font-medium">{patientName}</span>
         <div className="flex items-center gap-1 ml-auto">
           {inv?.priority === 'urgent' && (
             <span className="badge badge-error badge-xs">Urgent</span>
@@ -111,6 +105,7 @@ const InvestigationCard = ({ inv, patientName }) => {
           </span>
         </div>
       </div>
+
 
       {(inv?.tests || []).length > 0 ? (
         <div className="space-y-1">
@@ -167,18 +162,25 @@ const PatientOrdersPanel = ({
   loading = false,
   role = "nurse",
   patientName = "Patient",
+  dependantId = null,
 }) => {
   const [showAllPrescriptions, setShowAllPrescriptions] = useState(false);
   const [showAllInvestigations, setShowAllInvestigations] = useState(false);
 
+  const isViewingDependant = !!dependantId;
+
   const recentPrescriptions = useMemo(() =>
-    prescriptions,
-    [prescriptions]
+    prescriptions.filter(p =>
+      isViewingDependant ? p?.dependantId === dependantId : !p?.dependantId
+    ),
+    [prescriptions, isViewingDependant, dependantId]
   );
 
   const recentInvestigations = useMemo(() =>
-    investigations,
-    [investigations]
+    investigations.filter(inv =>
+      isViewingDependant ? inv?.dependantId === dependantId : !inv?.dependantId
+    ),
+    [investigations, isViewingDependant, dependantId]
   );
 
   if (loading) {

@@ -8,6 +8,7 @@ import { getPatients } from "@/services/api/patientsAPI";
 import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { getDependants } from "@/services/api/dependantAPI";
 
 const Incoming = () => {
   const navigate = useNavigate();
@@ -36,11 +37,10 @@ const normalizeStatus = (status) => {
 };
   useEffect(() => {
     let mounted = true;
-    const fetchIncoming = async () => {
+     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const res = await getPatients();
-        const patients = Array.isArray(res?.data) ? res.data : [];
+
         const nurseStatuses = [
           PATIENT_STATUS.AWAITING_INJECTION,
           PATIENT_STATUS.AWAITING_SAMPLING,
@@ -48,52 +48,88 @@ const normalizeStatus = (status) => {
           PATIENT_STATUS.AWAITING_NURSE,
         ];
 
-        const filtered = patients.filter((p) =>
-          hasAnyStatus(p?.status, nurseStatuses)
-          );  
-        const sorted = filtered.sort((a, b) => {
-          const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-          const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-          return aTime - bTime;
-        });
+        const [patientsRes, dependantsRes] = await Promise.allSettled([
+          getPatients(),
+          getDependants(),
+        ]);
 
-       const prettifyStatus = (s) => {
-          const status = normalizeStatus(s); 
+        const patients = patientsRes.status === 'fulfilled'
+          ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
+          : [];
+
+        const dependants = dependantsRes.status === 'fulfilled'
+          ? (() => {
+              const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? [];
+              return Array.isArray(raw) ? raw : (raw?.dependants ?? []);
+            })()
+          : [];
+
+        const prettifyStatus = (s) => {
+          const status = normalizeStatus(s);
           switch ((status || '').toLowerCase()) {
             case 'awaiting_vitals': return 'Awaiting Vitals';
             case 'awaiting_sampling': return 'Awaiting Sampling';
             case 'awaiting_injection': return 'Awaiting Injection';
             case 'awaiting_nurse': return 'Awaiting Nurse';
             default: return status || '—';
-            }
-          };
-
-       const mapped = sorted.map((p) => {
-        const latestStatus = normalizeStatus(p?.status); // <-- ensures string
-        const prettyStatus = prettifyStatus(latestStatus);
-
-        return {
-          id: p?.id,
-          hospitalId: p?.hospitalId,
-          snapshot: p,
-          name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
-          patientId: p?.hospitalId || p?.id || '—',
-          illness: prettyStatus,
-          insurance: p?.hmos?.provider || '—',
-          updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
-          alert: prettyStatus,
-          status: latestStatus.toLowerCase(), // <-- safe string now
+          }
         };
-      });
 
-        if (mounted) setItems(mapped);
+        const mappedPatients = patients
+          .filter((p) => hasAnyStatus(p?.status, nurseStatuses))
+          .map((p) => {
+            const latestStatus = normalizeStatus(p?.status);
+            return {
+              type: 'patient',
+              id: p?.id,
+              patientId: p?.id,
+              dependantId: null,
+              hospitalId: p?.hospitalId,
+              snapshot: p,
+              name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+              displayId: p?.hospitalId || p?.id || '—',
+              illness: prettifyStatus(latestStatus),
+              updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
+              status: latestStatus.toLowerCase(),
+            };
+          });
+
+        const patientMap = new Map(patients.map(p => [p.id || p._id, p]));
+
+        const mappedDependants = dependants
+          .filter((d) => hasAnyStatus(d?.status, nurseStatuses))
+          .map((d) => {
+            const latestStatus = normalizeStatus(d?.status);
+            const parentPatient = patientMap.get(d?.patientId);
+            return {
+              type: 'dependant',
+              id: d?.id,
+              patientId: d?.patientId,
+              dependantId: d?.id,
+              hospitalId: parentPatient?.hospitalId || null,
+              snapshot: d,
+              name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
+              displayId: parentPatient?.hospitalId || d?.patientId || '—',
+              badge: d?.relationshipType || 'Dependant',
+              illness: prettifyStatus(latestStatus),
+              updatedAt: d?.updatedAt ? formatNigeriaDateTime(d.updatedAt) : "—",
+              status: latestStatus.toLowerCase(),
+            };
+          });
+
+        const merged = [...mappedPatients, ...mappedDependants].sort((a, b) => {
+          const aTime = new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime();
+          const bTime = new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime();
+          return aTime - bTime;
+        });
+
+        if (mounted) setItems(merged);
       } catch (err) {
-        console.error('Incoming page: patients fetch error', err);
+        console.error('Incoming page: fetch error', err);
       } finally {
         if (mounted) setLoading(false);
       }
     };
-
     fetchIncoming();
     return () => { mounted = false; };
   }, [refreshKey]);
@@ -270,8 +306,16 @@ const normalizeStatus = (status) => {
                         {/* Patient ID */}
                         <div className="col-span-2">
                           <span className="text-sm font-mono text-base-content/70">
-                            {data.patientId}
+                            {data.hospitalId || data.patientId || '—'}
                           </span>
+                        </div>
+
+                        <div className="col-span-2">
+                          {data.type === 'dependant' ? (
+                            <span className="badge badge-sm badge-secondary">{data.badge}</span>
+                          ) : (
+                            <span className="badge badge-sm badge-primary">Patient</span>
+                          )}
                         </div>
 
                         {/* Status */}
@@ -294,7 +338,14 @@ const normalizeStatus = (status) => {
                         <div className="col-span-1 flex justify-end">
                           <button
                             className="btn btn-sm btn-primary"
-                            onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.id}`, { state: { from: 'incoming', patientSnapshot: data.snapshot } })}
+                            onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
+                              state: {
+                                from: 'incoming',
+                                patientSnapshot: data.type === 'dependant' ? items.find(p => p.id === data.patientId && p.type === 'patient') : data.snapshot,
+                                dependantId: data.dependantId,
+                                dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
+                              }
+                            })}
                           >
                             View
                           </button>
