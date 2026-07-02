@@ -239,13 +239,21 @@ const payload = {
     } 
 
     if (isAntenatal) {
-      navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, { 
-        state: { from: "antenatal" } 
-      }); 
+      navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}`, {
+        state: {
+          from: fromIncoming ? "incoming" : "patients",
+          dependantId: consultation?.dependantId || null,
+          dependantSnapshot: consultation?.dependant || null,
+        }
+      });
     } else {
-      navigate(`/dashboard/doctor/medical-history/${patientId}`, { 
-        state: { from: fromIncoming ? "incoming" : "patients" } 
-      }); 
+      navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}`, {
+        state: {
+          from: fromIncoming ? "incoming" : "patients",
+          dependantId: consultation?.dependantId || null,
+          dependantSnapshot: consultation?.dependant || null,
+        }
+      });
     }
  
  
@@ -660,12 +668,20 @@ useEffect(() => {
                     className="btn btn-ghost" 
                     onClick={() => {
                       if (isAntenatal) {
-                        navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal-details/${patientId}`, { 
-                          state: { from: "antenatal" } 
-                        });
+                       navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}`, {
+                        state: {
+                          from: fromIncoming ? "incoming" : "patients",
+                          dependantId: consultation?.dependantId || null,
+                          dependantSnapshot: consultation?.dependant || null,
+                        }
+                      });
                       } else {
-                        navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}`, { 
-                          state: { from: fromIncoming ? "incoming" : "patients" } 
+                       navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}`, {
+                          state: {
+                            from: fromIncoming ? "incoming" : "patients",
+                            dependantId: consultation?.dependantId || null,
+                            dependantSnapshot: consultation?.dependant || null,
+                          }
                         });
                       }
                     }} 
@@ -683,24 +699,7 @@ useEffect(() => {
               </form> 
             </div> 
  
-            {/* Right Sidebar - Consultation Details */} 
-            {/* <div className="w-80 bg-base-100 border-l border-base-200 overflow-y-auto hidden xl:block mr-7 my-7 shadow-md"> 
-              <div className="p-6 space-y-6"> 
-                <div className="flex items-center gap-2 text-base-content/70 pb-4 border-b border-base-200"> 
-                  <FaFileMedicalAlt /> 
-                  <h2 className="font-semibold uppercase text-sm tracking-wide">Consultation Reference</h2> 
-                </div> 
- 
-                <div className="space-y-4"> 
-                  <div> 
-                    <h3 className="text-sm font-medium text-base-content/60 mb-2 uppercase tracking-wide flex items-center gap-2"> 
-                      Consultation ID 
-                    </h3> 
-                    <p className="text-base font-mono font-semibold text-base-content">{consultationId}</p> 
-                  </div> 
-                </div> 
-              </div> 
-            </div>  */}
+          
           </div> 
         </div> 
       </div> 

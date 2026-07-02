@@ -10,6 +10,7 @@ import {
   FaUsers, FaHeartbeat, FaCalendarAlt, FaChevronDown, FaChevronUp
 } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { useSearchParam } from "react-use";
 
 // ─── Section Card ─────────────────────────────────────────────────────────────
 const SectionCard = ({ icon, title, color, children, count }) => {
@@ -52,8 +53,20 @@ const MedicalRecordHistory = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+ const [searchParams] = useSearchParam();
+
   const fromIncoming = location?.state?.from === "incoming";
+
+  // ✅ URL query param takes priority — survives refresh/back-forward
+  const dependantId = searchParams.get('dependantId')
+    || location?.state?.dependantId
+    || location?.state?.selectedDependantId
+    || null;
+
+  const dependantSnapshot = location?.state?.dependantSnapshot || location?.state?.selectedDependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
   const snapshot = location?.state?.patientSnapshot || null;
+  const targetPatientId = location?.state?.patientId || patientId;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -69,13 +82,18 @@ const MedicalRecordHistory = () => {
       try {
         setLoading(true);
         const [consultRes, patientRes] = await Promise.allSettled([
-          getConsultations({ patientId }),
-          snapshot ? Promise.resolve(null) : getPatientById(patientId),
+          getConsultations({ patientId: targetPatientId, ...(dependantId ? { dependantId } : {}) }),
+          snapshot ? Promise.resolve(null) : getPatientById(targetPatientId),
         ]);
 
         if (consultRes.status === 'fulfilled') {
           const raw = consultRes.value?.data ?? consultRes.value ?? [];
-          const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+          let list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+          if (isViewingDependant && dependantId) {
+            list = list.filter(c => c.dependantId === dependantId);
+          } else {
+            list = list.filter(c => !c.dependantId);
+          }
           if (mounted) setConsultations(list);
         }
 
@@ -91,11 +109,14 @@ const MedicalRecordHistory = () => {
     };
     load();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [targetPatientId, dependantId, isViewingDependant, snapshot]);
 
-  const patientName = useMemo(() => (
-    patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'
-  ), [patient]);
+  const patientName = useMemo(() => {
+    if (isViewingDependant) {
+      return dependantSnapshot?.fullName || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim() || 'Dependant';
+    }
+    return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient';
+  }, [patient, isViewingDependant, dependantSnapshot]);
 
   // ─── Aggregate all history entries across all consultations ─────────────────
   const aggregated = useMemo(() => {
@@ -213,6 +234,11 @@ const MedicalRecordHistory = () => {
                   <span className="flex items-center gap-1">
                     <FaUserMd className="w-3 h-3" />
                     {patientName}
+                    {isViewingDependant && (
+                      <span className="badge badge-secondary badge-xs ml-1">
+                        {dependantSnapshot?.relationshipType || 'Dependant'}
+                      </span>
+                    )}
                   </span>
                   {patient?.hospitalId && (
                     <>
@@ -324,7 +350,7 @@ const MedicalRecordHistory = () => {
               <div className="space-y-3">
                 {/* Warning banner if allergies exist */}
                 <div className="alert alert-error alert-soft py-2 text-sm">
-                  ⚠ This patient has {aggregated.allergyHistory.length} known allergen{aggregated.allergyHistory.length !== 1 ? 's' : ''} on record.
+                  ⚠ This {isViewingDependant ? 'dependant' : 'patient'} has {aggregated.allergyHistory.length} known allergen....
                 </div>
                 <div className="overflow-x-auto">
                   <table className="table table-sm w-full">
