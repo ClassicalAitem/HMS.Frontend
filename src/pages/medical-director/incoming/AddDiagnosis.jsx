@@ -5,7 +5,7 @@ import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getAllComplaint } from "@/services/api/medicalRecordAPI";
 import { createConsultation } from "@/services/api/consultationAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
 import { useAppSelector } from "@/store/hooks";
 import toast from "react-hot-toast";
@@ -24,6 +24,8 @@ const AddDiagnosis = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const incomingDependantId = location?.state?.dependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
 
@@ -33,13 +35,17 @@ const AddDiagnosis = () => {
   const [saving, setSaving] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [dependants, setDependants] = useState([]);
-  const [selectedDependantId, setSelectedDependantId] = useState("");
+  const [fullDependantRecord, setFullDependantRecord] = useState(null);
+  const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
   const selectedDependant = useMemo(() => {
     if (!selectedDependantId) return null;
-    return dependants.find(
-      d => (d.id || d._id) === selectedDependantId
-    ) || null;
-  }, [selectedDependantId, dependants]);
+    return (
+      dependants.find(d => (d.id || d._id) === selectedDependantId) ||
+      fullDependantRecord ||
+      incomingDependantSnapshot ||
+      null
+    );
+  }, [selectedDependantId, dependants, fullDependantRecord, incomingDependantSnapshot]);
 
   // Form State
   const [complaints, setComplaints] = useState([]);
