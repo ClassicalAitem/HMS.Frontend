@@ -258,7 +258,7 @@ export const createReceipt = async (billingId, receiptData) => {
   if (!billingId) throw new Error('Billing ID is required');
   if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
 
-  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId } = receiptData;
+  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId, dependantId } = receiptData;
   if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');
   if (!paymentMethod) throw new Error('Payment method is required');
   if (!paidBy) throw new Error('Payer information is required');
@@ -272,6 +272,7 @@ export const createReceipt = async (billingId, receiptData) => {
   };
 
   if (hmoId) payload.hmoId = hmoId;
+  if (dependantId != null && dependantId !== '') payload.dependantId = dependantId;
   if (bankName && bankName.trim()) payload.bankName = bankName.trim();
   if (senderName && senderName.trim()) payload.senderName = senderName.trim();
   if (cashierName && cashierName.trim()) payload.cashierName = cashierName.trim();

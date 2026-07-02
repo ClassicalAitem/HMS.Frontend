@@ -7,6 +7,7 @@ import cashierData from '@/data/cashierData.json';
 import { getAllBillings, getBillingsByOpdPatientId } from '@/services/api/billingAPI';
 import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { getDependantById } from '@/services/api/dependantAPI';
 
 const PaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -20,38 +21,64 @@ const PaymentRecords = () => {
   //   setPaymentRecords(cashierData.paymentRecords);
   // }, []);
 
-  useEffect(() => {
-    const fetchBilling = async() => {
-      try {
-        setIsLoading(true);
-        const [regularRes, opdPatientsRes] = await Promise.all([getAllBillings(), getAllOpdPatients()]);
-        const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
-        const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
-        
-        // Fetch billings for each OpD patient
-        const opdBillingsPromises = opdPatients.map(patient => getBillingsByOpdPatientId(patient.id).catch(() => null));
-        const opdBillingsResults = await Promise.all(opdBillingsPromises);
-        const opdBillings = opdBillingsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
-        
-        const allBillings = [...regularList, ...opdBillings];
-        const list = Array.isArray(allBillings) ? allBillings : [];
-        const mapped = list.map((a, idx) => ({
+useEffect(() => {
+  const fetchBilling = async() => {
+    try {
+      setIsLoading(true);
+      const [regularRes, opdPatientsRes] = await Promise.all([getAllBillings(), getAllOpdPatients()]);
+      const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
+      const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
+
+      const opdBillingsPromises = opdPatients.map(patient => getBillingsByOpdPatientId(patient.id).catch(() => null));
+      const opdBillingsResults = await Promise.all(opdBillingsPromises);
+      const opdBillings = opdBillingsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
+
+      const allBillings = [...regularList, ...opdBillings];
+      const list = Array.isArray(allBillings) ? allBillings : [];
+
+      const dependantIds = [...new Set(list.filter(a => a.dependantId).map(a => a.dependantId))];
+      const dependantEntries = await Promise.all(
+        dependantIds.map(id =>
+          getDependantById(id)
+            .then(res => [id, res?.data?.data?.dependant || res?.data?.dependant || res?.data])
+            .catch(() => [id, null])
+        )
+      );
+      const dependantMap = Object.fromEntries(dependantEntries);
+
+      const mapped = list.map((a, idx) => {
+        const isForDependant = !!a.dependantId;
+        const dependant = isForDependant ? dependantMap[a.dependantId] : null;
+        const guardian = a.patient;
+
+        const name = isForDependant
+          ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
+          : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'));
+
+        const guardianName = isForDependant && guardian
+          ? `${guardian.firstName} ${guardian.lastName}`
+          : null;
+
+        return {
           billingId: a.id,
-          name: a.patient ? `${a.patient.firstName} ${a.patient.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'),
+          name,
+          isForDependant,
+          guardianName,
           outstandingBill: `₦ ${Number(a.outstandingBill).toLocaleString()}`,
           totalAmount: `₦ ${Number(a.totalAmount).toLocaleString()}`,
           itemDetails: a.itemDetails,
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
           dateTime: formatNigeriaDateTime(a.createdAt),
           cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
-        }));
-        setPaymentRecords(mapped);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchBilling();
-  }, [])
+        };
+      });
+      setPaymentRecords(mapped);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchBilling();
+}, [])
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -221,7 +248,15 @@ const handlePrintReceipt = (billing) => {
       key: 'name',
       title: 'Name',
       sortable: true,
-      className: 'text-base-content font-medium'
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          <span>{value}</span>
+          {row.isForDependant && (
+            <span className="badge badge-sm badge-outline">Dependant</span>
+          )}
+        </div>
+      )
     },
     {
       key: 'totalAmount',
@@ -383,7 +418,11 @@ const handlePrintReceipt = (billing) => {
                   <label className="text-sm font-medium text-base-content/70">Patient</label>
                   <p className="text-base-content">
                     {selectedBilling.name}
+                    {selectedBilling.isForDependant && <span className="badge badge-sm badge-outline ml-2">Dependant</span>}
                   </p>
+                  {selectedBilling.isForDependant && selectedBilling.guardianName && (
+                    <p className="text-xs text-base-content/50">Guardian: {selectedBilling.guardianName}</p>
+                  )}
                 </div>
 
                 {/* Cashier */}
