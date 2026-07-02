@@ -25,13 +25,12 @@ const EmptyScreen = ({ onClose }) => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const SamplingModals = ({ setIsRecordSampling, patientId, patientData }) => {
+const SamplingModals = ({ setIsRecordSampling, patientId, patientData, dependantId }) => {
   const [investigation, setInvestigation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
 
-  // ─── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
 
@@ -44,9 +43,14 @@ const SamplingModals = ({ setIsRecordSampling, patientId, patientData }) => {
         if (cancelled) return;
 
         const data = res.data.data;
+        const list = Array.isArray(data) ? data : (data ? [data] : []);
 
-        // Handle array response
-        const investigationData = Array.isArray(data) ? data[0] : data;
+        // scope to dependant or main patient
+        const scoped = dependantId
+          ? list.filter((inv) => inv?.dependantId === dependantId)
+          : list.filter((inv) => !inv?.dependantId);
+
+        const investigationData = scoped[0] || null;
 
         setInvestigation(investigationData);
         setSelectedStatus(investigationData?.status || "");
@@ -59,7 +63,7 @@ const SamplingModals = ({ setIsRecordSampling, patientId, patientData }) => {
 
     fetchInvestigation();
     return () => { cancelled = true; };
-  }, [patientId]);
+  }, [patientId, dependantId]);
 
   console.log('investigation', investigation);
 

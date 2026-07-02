@@ -15,7 +15,9 @@ const ViewAllPatientVitals = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fromIncoming = location?.state?.from === 'incoming';
-
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState(null);
@@ -28,6 +30,15 @@ const ViewAllPatientVitals = () => {
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
+
+  const subjectName = useMemo(() => {
+  if (isViewingDependant) {
+    return dependantSnapshot?.fullName
+      || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
+      || 'Dependant';
+  }
+  return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+}, [patient, isViewingDependant, dependantSnapshot]);
 
   // Fetch patient data
   useEffect(() => {
@@ -80,7 +91,10 @@ const ViewAllPatientVitals = () => {
         const sorted = vitalsList.sort((a, b) => 
           new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
         );
-        if (mounted) setVitals(sorted);
+        const scoped = isViewingDependant
+        ? sorted.filter(v => v.dependantId === dependantId)
+        : sorted.filter(v => !v.dependantId);
+      if (mounted) setVitals(scoped);
       } catch (err) {
         console.error('Failed to load vitals:', err);
         if (mounted) setVitals([]);
@@ -97,23 +111,10 @@ const ViewAllPatientVitals = () => {
   const vitalRows = useMemo(() => (
     Array.isArray(vitals)
       ? vitals.map((vital) => {
-          const isDependant = !!vital.dependantId;
-          
-          const dependant = isDependant
-            ? dependants.find(d => d.id === vital.dependantId || d._id === vital.dependantId)
-            : null;
-
-          const forName = isDependant
-            ? dependant
-              ? dependant.fullName
-              : 'Dependant'
-            : patientName;
-
           const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
           return {
             _id: vital._id || vital.id,
-            forName,
-            isForDependant: isDependant,
+            forName: subjectName,
             nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
             bp: vital.bp || '—',
             pulse: vital.pulse || '—',
@@ -128,7 +129,7 @@ const ViewAllPatientVitals = () => {
           };
         })
       : []
-  ), [vitals, dependants, patientName, nurseNameById]);
+  ), [vitals, subjectName, nurseNameById]);
 
   const normalizeUserResponse = (response) => {
     const payload = response?.data ?? response;
@@ -207,15 +208,22 @@ const ViewAllPatientVitals = () => {
                   <h1 className="text-2xl font-bold text-base-content">Vitals History</h1>
                 </div>
                 <p className="text-base-content/70">
-                  Patient: {patientName}
-                </p>
+                {isViewingDependant ? 'Dependant' : 'Patient'}: {subjectName}
+                {isViewingDependant && (
+                  <span className="text-sm ml-1">
+                    (of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()})
+                  </span>
+                )}
+              </p>
               </div>
               <button
-                className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/nurse/patient/${patientId}`)}
-              >
-                Back
-              </button>
+            className="btn btn-outline"
+            onClick={() => navigate(`/dashboard/nurse/patient/${patientId}`, {
+              state: { dependantId, dependantSnapshot }
+            })}
+          >
+            Back
+          </button>
             </div>
           </div>
 
@@ -246,20 +254,7 @@ const ViewAllPatientVitals = () => {
                       {paginationData.paginatedItems.length > 0 ? (
                         paginationData.paginatedItems.map((row, idx) => (
                           <tr key={idx} className="hover">
-                            <td className="py-3">
-                              <div className="flex flex-col items-center gap-1">
-                                <span className="font-medium text-base-content">
-                                  {row.forName}
-                                </span>
-                                <span
-                                  className={`badge badge-sm ${
-                                    row.isForDependant ? 'badge-secondary' : 'badge-primary'
-                                  }`}
-                                >
-                                  {row.isForDependant ? 'Dependant' : 'Patient'}
-                                </span>
-                              </div>
-                            </td>
+                            <td className="py-3 font-medium text-base-content">{row.forName}</td>
                             <td className="text-sm">{row.nurseName || 'Unknown Nurse'}</td>
                             <td className="text-sm">
                               <div className="flex flex-col gap-0.5">
