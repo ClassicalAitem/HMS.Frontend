@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { getPatients } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
+import { getDependants } from '@/services/api/dependantAPI';
 
 const Incoming = () => {
   const [patients, setPatients] = useState([])
@@ -21,29 +22,60 @@ const Incoming = () => {
       setLoading(true)
       setError(null)
       try {
-        const res = await getPatients()
-        const list = Array.isArray(res?.data) ? res.data : []
-       const statuses = new Set(['awaiting_pharmacy'])
+        const [patientsRes, dependantsRes] = await Promise.allSettled([
+          getPatients(),
+          getDependants(),
+        ])
 
-const filtered = list.filter((p) => {
-  const statusArray = Array.isArray(p?.status) ? p.status : [p?.status]
-  return statusArray.some(s => statuses.has(String(s).toLowerCase()))
-})
-        const mapped = filtered.map((p) => ({
-          id: p?.id || p?._id || p?.patientId,
-          snapshot: p,
-          name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
-          patientId: p?.id || p?._id || p?.hospitalId || '—',
-          profilePicture: p?.profilePicture || p?.photo || null,
-          status: Array.isArray(p?.status)
-  ? p.status.find(s => s.toLowerCase().includes('pharmacy')) || p.status[0]
-  : p?.status || '—',
-          updatedAt: p?.updatedAt || p?.createdAt,
-          cardType: p?.cardType || 'personal',
-          familyName: p?.familyName || '',
-          companyName: p?.companyName || '',
-        }))
-        if (mounted) setPatients(mapped)
+        const patientList = patientsRes.status === 'fulfilled'
+          ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
+          : []
+
+        const dependantList = dependantsRes.status === 'fulfilled'
+          ? (() => {
+              const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? []
+              return Array.isArray(raw) ? raw : (raw?.dependants ?? [])
+            })()
+          : []
+
+        const PHARMACY_STATUSES = new Set(['awaiting_pharmacy', 'pharmacy_completed'])
+
+        const mappedPatients = patientList
+          .filter(p => PHARMACY_STATUSES.has(String(p?.status).toLowerCase()))
+          .map(p => ({
+            type: 'patient',
+            id: p?.id || p?._id,
+            patientId: p?.id || p?._id,
+            dependantId: null,
+            name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+            displayId: p?.hospitalId || p?.id || '—',
+            status: p?.status || '—',
+            updatedAt: p?.updatedAt || p?.createdAt,
+            cardType: p?.cardType || 'personal',
+            familyName: p?.familyName || '',
+            companyName: p?.companyName || '',
+            snapshot: p,
+          }))
+
+        const mappedDependants = dependantList
+          .filter(d => PHARMACY_STATUSES.has(String(d?.status).toLowerCase()))
+          .map(d => ({
+            type: 'dependant',
+            id: d?.id,
+            patientId: d?.patientId,
+            dependantId: d?.id,
+            name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
+            displayId: d?.patient?.hospitalId || d?.patientId || '—',
+            badge: d?.relationshipType || 'Dependant',
+            status: d?.status || '—',
+            updatedAt: d?.updatedAt || d?.createdAt,
+            cardType: null,
+            familyName: '',
+            companyName: '',
+            snapshot: d,
+          }))
+
+        if (mounted) setPatients([...mappedPatients, ...mappedDependants])
       } catch (err) {
         console.error('Incoming (pharmacist) failed to fetch patients', err)
         if (mounted) setError(err)
@@ -67,7 +99,12 @@ const filtered = list.filter((p) => {
   const handleViewDetails = (p) => {
     const id = p?.patientId || p?.id
     if (!id) return
-    navigate(`/dashboard/pharmacist/incoming/${id}`)
+    navigate(`/dashboard/pharmacist/incoming/${id}`, {
+      state: {
+        dependantId: p.dependantId || null,
+        dependantSnapshot: p.type === 'dependant' ? p.snapshot : null,
+      }
+    })
   }
 
   return (
@@ -111,8 +148,15 @@ const filtered = list.filter((p) => {
                   {p.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]?.toUpperCase()).join('.')}
                 </div>
                 <div>
-                  <div className="font-medium">{p.name}</div>
-                  <div className="text-xs text-base-content/60">Patient ID: {p.patientId}</div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="font-medium">{p.name}</div>
+                    <span className={`badge badge-sm ${p.type === 'dependant' ? 'badge-secondary' : 'badge-primary'}`}>
+                      {p.type === 'dependant' ? (p.badge || 'Dependant') : 'Patient'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-base-content/60">
+                    {p.type === 'dependant' ? `Parent: ${p.displayId}` : `ID: ${p.displayId}`}
+                  </div>
                 </div>
               </div>
               <PatientCardTypeInfo
