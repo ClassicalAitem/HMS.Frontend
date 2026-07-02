@@ -40,6 +40,11 @@ const PatientVitalsDetails = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch()
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true);
   const fromIncoming = location?.state?.from === 'incoming';
   const { user } = useAppSelector((state) => state.auth);
   const role = String(user?.role || '').toLowerCase();
@@ -91,6 +96,21 @@ const PatientVitalsDetails = () => {
   }, [location?.state, patientId]);
 
   useEffect(() => {
+  let mounted = true;
+  const loadSubject = async () => {
+    setSubjectLoading(true);
+    if (isViewingDependant) {
+      setSubject(dependantSnapshot || null);
+    } else {
+      setSubject(patient);
+    }
+    setSubjectLoading(false);
+  };
+  loadSubject();
+  return () => { mounted = false; };
+}, [isViewingDependant, dependantSnapshot, patient]);
+
+  useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
@@ -99,7 +119,10 @@ const PatientVitalsDetails = () => {
         // Fetch vitals for this patient
         const res = await getVitalsByPatient(patientId);
         const list = normalizeVitalsResponse(res);
-        if (mounted) setVitals(list);
+        const scoped = isViewingDependant
+          ? list.filter(v => v.dependantId === dependantId)
+          : list.filter(v => !v.dependantId);
+        if (mounted) setVitals(scoped);
 
         // Try to infer patient info from vitals; fallback to patient API
         const fromVitalsPatient = list?.[0]?.patient;
@@ -122,7 +145,7 @@ const PatientVitalsDetails = () => {
     };
     load();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   // Get All Dependant
 useEffect(() => {
@@ -155,6 +178,32 @@ useEffect(() => {
   return () => { mounted = false; };
 }, [patientId]);
 
+const summarySubject = useMemo(() => {
+  if (!isViewingDependant) return patient;
+  const dep = subject || dependantSnapshot || {};
+  const guardian = patient || {};
+  const ownHmos = Array.isArray(guardian.hmos)
+    ? guardian.hmos.filter(h => h.dependantId === dep.id)
+    : [];
+  return {
+    phone: guardian.phone,
+    phoneNumber: guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    cardType: guardian.cardType,
+    familyName: guardian.familyName,
+    companyName: guardian.companyName,
+    id: dep.id || dependantId,
+    firstName: dep.firstName,
+    middleName: dep.middleName,
+    lastName: dep.lastName,
+    fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+    gender: dep.gender,
+    dob: dep.dob,
+    relationshipType: dep.relationshipType,
+    hmos: ownHmos,
+  };
+}, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+
 // Fetch antenatal records (nurse read-only view)
 useEffect(() => {
   let mounted = true;
@@ -162,7 +211,11 @@ useEffect(() => {
     setAntenatalLoading(true);
     try {
       const records = await getAnteNatalRecordByPatientId(patientId);
-      if (mounted) setAntenatalRecords(Array.isArray(records) ? records : []);
+      const list = Array.isArray(records) ? records : [];
+      const scoped = isViewingDependant
+        ? list.filter(r => r?.dependantId === dependantId)
+        : list.filter(r => !r?.dependantId);
+      if (mounted) setAntenatalRecords(scoped);
     } catch (error) {
       console.error('Error fetching antenatal records:', error);
       if (mounted) setAntenatalRecords([]);
@@ -174,7 +227,7 @@ useEffect(() => {
   if (patientId) fetchAntenatal();
 
   return () => { mounted = false; };
-}, [patientId]);
+}, [patientId, isViewingDependant, dependantId]);
 
 // Fetch doctor's consultation data
 useEffect(() => {
@@ -190,10 +243,10 @@ useEffect(() => {
         ? consultationRes.data
         : [];
 
-      const patientConsult = allConsults.find(
-        c => String(c.patientId) === String(patientId)
+      const patientConsult = allConsults.find(c =>
+        String(c.patientId) === String(patientId) &&
+        (isViewingDependant ? c.dependantId === dependantId : !c.dependantId)
       );
-
       if (mounted) setConsultation(patientConsult || null);
 
       const [presRes, invRes] = await Promise.allSettled([
@@ -219,6 +272,7 @@ useEffect(() => {
           : [];
       }
 
+      presList = isViewingDependant ? presList.filter(p => p.dependantId === dependantId) : presList.filter(p => !p.dependantId);
       if (mounted) {
         setPrescriptions(presList);
         setPrescriptionError(presList.length === 0);
@@ -246,7 +300,6 @@ useEffect(() => {
         setInvestigations(invList);
         setInvestigationError(invList.length === 0);
       }
-
     } catch (error) {
       console.error("consultation fetch error", error);
     } finally {
@@ -254,12 +307,13 @@ useEffect(() => {
     }
   };
 
+
   fetchConsultationData();
 
   return () => {
     mounted = false;
   };
-}, [patientId]);
+}, [patientId, isViewingDependant, dependantId]);
   // Log state changes for debugging
   useEffect(() => {
     console.log('=== PatientVitalsDetails State ===');
@@ -461,7 +515,7 @@ useEffect(() => {
           <div className="shadow-xl card bg-base-100 mb-4">
             <div className="p-4 card-body">
               {loading ? (
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-4 flex-wrap items-center">
                   <div className="skeleton w-14 h-14 rounded-full" />
                   <div className="flex-1">
                     <div className="skeleton h-4 w-48 mb-2" />
@@ -469,37 +523,36 @@ useEffect(() => {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex flex-col flex-wrap sm:flex-row items-start sm:items-center gap-4">
                   <div className="ml-4 avatar">
                     <div className="w-20 h-20 rounded-full border-3 border-primary/80 flex items-center justify-center overflow-hidden p-[2px]">
                       {loading ? (
                         <div className="skeleton w-full h-full rounded-full" />
                       ) : (
                         <div className="w-full h-full grid place-items-center bg-primary text-primary-content text-2xl font-bold">
-                          {getInitials(patient?.firstName, patient?.lastName)}
+                          {getInitials(summarySubject?.firstName, summarySubject?.lastName)}
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex-1">
+                  <div className="flex-1 flex-wrap">
                     {/* Top row items mimicking frontdesk style */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Patient Name</span>
-                        <span className="text-base font-medium text-base-content">{patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown'}</span>
+                        <span className="text-base font-medium text-base-content">{summarySubject?.fullName || 'Unknown'}</span>
                       </div>
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Gender</span>
-                        <span className="text-base font-medium text-base-content capitalize">{patient?.gender || '—'}</span>
+                        <span className="text-base font-medium text-base-content capitalize">{summarySubject?.gender || '—'}</span>
                       </div>
                       <div className="flex flex-col space-y-1">
                         <span className="text-sm text-base-content/70">Phone Number</span>
-                        <span className="text-base font-medium text-base-content">{patient?.phone || patient?.phoneNumber || '—'}</span>
+                        <span className="text-base font-medium text-base-content">{summarySubject?.phone || summarySubject?.phoneNumber || '—'}</span>
                       </div>
                       <div className="flex flex-col space-y-1">
-                        {/* <span className="text-sm text-base-content/70">Patient ID</span>
-                        <span className="text-base font-medium text-base-content">{patientUUID || '—'}</span> */}
-                        <span className="text-sm text-base font-medium text-base-content/70">Hospital ID: {patient?.hospitalId || '—'}</span>
+                        <span className="text-sm text-base font-medium text-base-content/70">Hospital ID: {summarySubject?.hospitalId || '—'}</span>
+                      </div>
                 </div>
               </div>
 
@@ -507,9 +560,9 @@ useEffect(() => {
               <div className=" justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
                 <div className="space-y-1">
                   <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
-                  {Array.isArray(patient?.hmos) && patient.hmos.length > 0 ? (
+                  {Array.isArray(summarySubject?.hmos) && summarySubject.hmos.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {patient.hmos.map((h, i) => (
+                      {summarySubject.hmos.map((h, i) => (
                         <span key={i} className="badge badge-outline font-normal text-sm">
                           {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? formatNigeriaDate(h.expiresAt) : '—'})`}
                         </span>
@@ -520,30 +573,39 @@ useEffect(() => {
                   )}
                 </div>
                 
-                <div className="flex flex-wrap gap-2">
-                  <SendPatientModal
-                    patientId={patientUUID || patientId}
-                    onUpdated={() => navigate('/dashboard/nurse')}
-                    allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
-                    containerClass="flex flex-wrap gap-2"
-                  />
-                  <button className="btn btn-outline btn-sm" onClick={() => setIsReviewBillOpen(true)}>Preview Doctor's Bill</button>
-                </div>
+                
               </div>
 
-              {/* Card Type Info */}
-              <div className="px-1 pt-4">
-                <PatientCardTypeInfo
-                  cardType={patient?.cardType}
-                  familyName={patient?.familyName}
-                  companyName={patient?.companyName}
-                />
-              </div>
+             
             </div>
-          </div>
+    
               )}
             </div>
           </div>
+
+
+                <PatientCardTypeInfo
+                  cardType={summarySubject?.cardType}
+                  familyName={summarySubject?.familyName}
+                  companyName={summarySubject?.companyName}
+                />
+                
+          {isViewingDependant && summarySubject?.fullName && (
+              <div className="mb-4 text-sm text-base-content/70">
+                Viewing records for <strong>{summarySubject.fullName}</strong>
+                {summarySubject.relationshipType ? ` (${summarySubject.relationshipType})` : ""}
+                {' '}— Dependant of <strong>{patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()}</strong>
+              </div>
+            )}
+            <SendPatientModal
+              patientId={patientUUID || patientId}
+              patient={patient}
+              defaultDependantId={dependantId}
+              defaultDependantLabel={summarySubject?.fullName}
+              onUpdated={() => navigate('/dashboard/nurse')}
+              allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+              containerClass="flex flex-wrap gap-2"
+            />
 
           {/* Current vitals */}
           <div className="shadow-xl card bg-base-100 mb-4">
@@ -555,14 +617,14 @@ useEffect(() => {
                     {/* Record Vitals - Primary if AWAITING_VITALS */}
                     <button
                       className={`btn btn-sm ${
-                        hasStatus(patient?.status, PATIENT_STATUS.AWAITING_VITALS)
+                        hasStatus(summarySubject?.status, PATIENT_STATUS.AWAITING_VITALS)
                           ? "btn-success"
                           : "btn-outline"
                       }`}
                       onClick={() => { setIsRecordOpen(true); setEditingVitalId(null); }}
                     >
                       + Record Vitals
-                      {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_VITALS) && (
+                      {hasStatus(summarySubject?.status, PATIENT_STATUS.AWAITING_VITALS) && (
                         <span className="badge badge-xs badge-warning ml-1">Primary</span>
                       )}
                     </button>
@@ -595,7 +657,7 @@ useEffect(() => {
                     {/* Record Injection - Primary if AWAITING_INJECTION */}
                     <button
                       className={`btn btn-sm ${
-                        hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
+                        hasStatus(summarySubject?.status, PATIENT_STATUS.AWAITING_INJECTION)
                           ? "btn-success"
                           : "btn-outline"
                       }`}
@@ -604,7 +666,7 @@ useEffect(() => {
                       onClick={() => setIsRecordInjection(true)}
                     >
                       + Record Injection
-                      {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION) && (
+                      {hasStatus(summarySubject?.status, PATIENT_STATUS.AWAITING_INJECTION) && (
                         <span className="badge badge-xs badge-warning ml-1">Primary</span>
                       )}
                     </button>
@@ -612,7 +674,7 @@ useEffect(() => {
                     {/* Collect Sampling - Primary if AWAITING_SAMPLING */}
                     <button
                       className={`btn btn-sm ${
-                        hasStatus(patient?.status, PATIENT_STATUS.AWAITING_SAMPLING)
+                        hasStatus(summarySubject?.status, PATIENT_STATUS.AWAITING_SAMPLING)
                           ? "btn-success"
                           : "btn-outline"
                       }`}
@@ -621,7 +683,7 @@ useEffect(() => {
                       onClick={() => setIsRecordSampling(true)}
                     >
                       + Collect Sampling
-                      {hasStatus(patient?.status, PATIENT_STATUS.AWAITING_SAMPLING) && (
+                      {hasStatus(summarySubject?.status, PATIENT_STATUS.AWAITING_SAMPLING) && (
                         <span className="badge badge-xs badge-warning ml-1">Primary</span>
                       )}
                     </button>
@@ -629,7 +691,7 @@ useEffect(() => {
               </div>
 
              
-                    <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+                             <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
             </div>
           </div>
 
@@ -753,24 +815,26 @@ useEffect(() => {
   prescriptions={prescriptions}
   investigations={investigations}
   loading={consultationLoading}
-  patientName={`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}
+  patientName={summarySubject?.fullName || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim() || 'Patient'}
+  dependantId={dependantId}
 />
 
           {/* Antenatal Records (Nurse, Female patients only). Read-only, view all/details */}
-          {patient?.gender?.toLowerCase() === 'female' && (
+          {summarySubject?.gender?.toLowerCase() === 'female' && (
           <div className="shadow-xl card bg-base-100 mb-4">
             <div className="p-4 card-body">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-base-content">Antenatal Records</h2>
-                <button
-                  className="btn btn-sm btn-outline"
-                  onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`)}
-                  disabled={antenatalLoading || antenatalRecords.length === 0}
-                >
-                  View All ({antenatalRecords.length})
-                </button>
+             <button
+                className="btn btn-sm btn-outline"
+                onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`, {
+                  state: { dependantId, dependantSnapshot }
+                })}
+                disabled={antenatalLoading || antenatalRecords.length === 0}
+              >
+                View All ({antenatalRecords.length})
+              </button>
               </div>
-
               {antenatalLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="loading loading-spinner loading-md" />
@@ -862,13 +926,15 @@ useEffect(() => {
           )}
 
 
-
- <VitalsHistoryTable 
-            sortedVitals={enrichedVitals} 
-            loading={loading}
-            // patientName={patient.}
-            onViewAll={() => navigate(`/dashboard/nurse/view-vitals/${patientId}`)}
-          />
+<VitalsHistoryTable 
+  sortedVitals={enrichedVitals} 
+  loading={loading}
+  patientName={summarySubject?.fullName || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim() || 'Patient'}
+  scopedToSingleSubject={true}
+  onViewAll={() => navigate(`/dashboard/nurse/view-vitals/${patientId}`, {
+    state: { dependantId, dependantSnapshot }
+  })}
+/>
        
           {/* Record Vitals Modal */}
           {isRecordOpen && (
@@ -1059,21 +1125,22 @@ useEffect(() => {
               currentStatus={patient?.status || ''}
 />
           {/* Injection Modal */}
-          {isRecordInjection && (
+        {isRecordInjection && (
             <InjectionModals
               isOpen={isRecordInjection}
               setIsRecordInjection={setIsRecordInjection}
               patientId={patientId}
-              patientData={patient}
+              dependantId={dependantId}
+              patientData={summarySubject}
             />
           )}
 
-          {/* Sampling Modal */}
           {isRecordSampling && (
             <SamplingModals
               setIsRecordSampling={setIsRecordSampling}
               patientId={patientId}
-              patientData={patient}
+              dependantId={dependantId}
+              patientData={summarySubject}
             />
           )}
         </div>
