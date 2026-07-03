@@ -22,6 +22,8 @@ const AntenatalRecordDetails = () => {
   const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
   const dependantId = location?.state?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true)
   const fromIncoming = location?.state?.from === "incoming";
   const isViewingDependant = !!dependantId;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -1125,7 +1127,11 @@ const handleOrderCreated = () => {
                 <div className="mt-4">
                   <button
                     className="btn btn-secondary"
-                    onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`)}
+                    onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, 
+                      { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient,  dependantId: dependantId || null,
+                         dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,  } }
+                    )}
+                
                   >
                     Create Antenatal Record
                   </button>
