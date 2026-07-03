@@ -53,12 +53,16 @@ const MedicalRecordHistory = () => {
   const { patientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParam();
+ const [searchParams] = useSearchParam();
+
   const fromIncoming = location?.state?.from === "incoming";
+
+  // ✅ URL query param takes priority — survives refresh/back-forward
   const dependantId = searchParams.get('dependantId')
     || location?.state?.dependantId
     || location?.state?.selectedDependantId
     || null;
+
   const dependantSnapshot = location?.state?.dependantSnapshot || location?.state?.selectedDependantSnapshot || null;
   const isViewingDependant = !!dependantId;
   const snapshot = location?.state?.patientSnapshot || null;
@@ -230,6 +234,11 @@ const MedicalRecordHistory = () => {
                   <span className="flex items-center gap-1">
                     <FaUserMd className="w-3 h-3" />
                     {patientName}
+                    {isViewingDependant && (
+                      <span className="badge badge-secondary badge-xs ml-1">
+                        {dependantSnapshot?.relationshipType || 'Dependant'}
+                      </span>
+                    )}
                   </span>
                   {patient?.hospitalId && (
                     <>
@@ -341,7 +350,7 @@ const MedicalRecordHistory = () => {
               <div className="space-y-3">
                 {/* Warning banner if allergies exist */}
                 <div className="alert alert-error alert-soft py-2 text-sm">
-                  ⚠ This patient has {aggregated.allergyHistory.length} known allergen{aggregated.allergyHistory.length !== 1 ? 's' : ''} on record.
+                  ⚠ This {isViewingDependant ? 'dependant' : 'patient'} has {aggregated.allergyHistory.length} known allergen....
                 </div>
                 <div className="overflow-x-auto">
                   <table className="table table-sm w-full">
