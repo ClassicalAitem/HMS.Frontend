@@ -1,132 +1,105 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const ViewConsultationRecords = () => {
   const { patientId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const incomingDependantId = location?.state?.dependantId || location?.state?.selectedDependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || location?.state?.selectedDependantSnapshot || null;
+  const targetPatientId = location?.state?.patientId || patientId;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mainPatient, setMainPatient] = useState(null);
-  const [patients, setPatients] = useState([]); // main + dependants
-  const [selectedPatientId, setSelectedPatientId] = useState(patientId);
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState(new Set());
 
-// In ViewConsultationRecords, replace the patient load useEffect:
-useEffect(() => {
-  let mounted = true;
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [patientRes, dependantsRes] = await Promise.allSettled([
-        getPatientById(patientId),
-        // ✅ Use your dependant API directly
-        getAllDependantsForPatient(patientId),
-      ]);
+  const mainPatientName = useMemo(() => (
+    mainPatient?.fullName || `${mainPatient?.firstName || ""} ${mainPatient?.lastName || ""}`.trim() || "Patient"
+  ), [mainPatient]);
 
-      if (!mounted) return;
-
-      const data = patientRes.status === 'fulfilled'
-        ? (patientRes.value?.data ?? patientRes.value)
-        : null;
-
-      if (data) setMainPatient(data);
-
-      // Get dependants from dedicated API (more reliable than data.dependants)
-      let dependantsList = [];
-      if (dependantsRes.status === 'fulfilled') {
-        const raw = dependantsRes.value?.data?.data?.dependants
-          ?? dependantsRes.value?.data?.dependants
-          ?? dependantsRes.value?.data
-          ?? [];
-        dependantsList = Array.isArray(raw) ? raw : [];
-      }
-
-      const allPatients = [
-        {
-          id: data?.id || data?._id,
-          name: data?.fullName || `${data?.firstName || ""} ${data?.lastName || ""}`.trim(),
-          relation: "Main Patient",
-          isMain: true,
-        },
-        ...dependantsList.map(d => ({
-          id: d.id || d._id,
-          name: d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim(),
-          relation: d.relationshipType || d.relationship || "Dependant",
-          isMain: false,
-        }))
-      ];
-
-      setPatients(allPatients);
-      setSelectedPatientId(allPatients[0]?.id);
-    } catch (err) {
-      console.error("Failed to load patient", err);
-    } finally {
-      if (mounted) setLoading(false);
-    }
-  };
-  load();
-  return () => { mounted = false; };
-}, [patientId]);
-// Load consultations when selected patient changes
-useEffect(() => {
-  if (!selectedPatientId) return;
-  let mounted = true;
-
-  const load = async () => {
-    setConsultationsLoading(true);
-    try {
-      const selectedInfo = patients.find(p => p.id === selectedPatientId);
-
-      let res;
-      if (selectedInfo?.isMain) {
-        // ✅ Main patient — fetch by patientId only (no dependantId)
-        res = await getConsultations({ patientId: selectedPatientId });
-      } else {
-        // ✅ Dependant — fetch by dependantId
-        res = await getConsultations({ dependantId: selectedPatientId });
-      }
-      
-      const raw = res?.data ?? res ?? [];
-      const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-       // ✅ Filter based on who is selected
-      const filtered = list.filter(c => {
-        if (selectedInfo?.isMain) {
-          // ✅ Main patient — only show consultations with NO dependantId
-          return !c.dependantId;
-        } else {
-          // ✅ Dependant — only show consultations matching this dependantId
-          return c.dependantId === selectedPatientId;
-        }
-      });
-       const sorted = [...filtered].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  const scopeLabel = useMemo(() => {
+    if (incomingDependantId) {
+      return (
+        incomingDependantSnapshot?.fullName ||
+        `${incomingDependantSnapshot?.firstName || ""} ${incomingDependantSnapshot?.lastName || ""}`.trim() ||
+        "Dependant"
       );
-
-      if (mounted) {
-        setConsultations(sorted);
-        setExpandedIds(new Set());
-      }
-    } catch {
-      if (mounted) setConsultations([]);
-    } finally {
-      if (mounted) setConsultationsLoading(false);
     }
-  };
-  load();
-  return () => { mounted = false; };
-}, [selectedPatientId, patients]);
-  const selectedPatientInfo = useMemo(() =>
-    patients.find(p => p.id === selectedPatientId),
-    [patients, selectedPatientId]
-  );
+    return mainPatientName;
+  }, [incomingDependantId, incomingDependantSnapshot, mainPatientName]);
+
+  const scopeSubtitle = useMemo(() => {
+    if (incomingDependantId) {
+      return incomingDependantSnapshot?.relationshipType || "Dependant";
+    }
+    return "Main Patient";
+  }, [incomingDependantId, incomingDependantSnapshot]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const patientRes = await getPatientById(targetPatientId);
+        if (!mounted) return;
+        const data = patientRes?.data ?? patientRes;
+        if (data) setMainPatient(data);
+      } catch (err) {
+        console.error("Failed to load patient", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, [targetPatientId]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const load = async () => {
+      setConsultationsLoading(true);
+      try {
+        const res = await getConsultations(
+          incomingDependantId
+            ? { patientId: targetPatientId, dependantId: incomingDependantId }
+            : { patientId: targetPatientId }
+        );
+
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const filtered = list.filter((c) => {
+          if (incomingDependantId) {
+            return c.dependantId === incomingDependantId;
+          }
+          return !c.dependantId;
+        });
+        const sorted = [...filtered].sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+
+        if (mounted) {
+          setConsultations(sorted);
+          setExpandedIds(new Set());
+        }
+      } catch {
+        if (mounted) setConsultations([]);
+      } finally {
+        if (mounted) setConsultationsLoading(false);
+      }
+    };
+
+    load();
+    return () => { mounted = false; };
+  }, [incomingDependantId, targetPatientId]);
 
   const toggleExpand = (id) => {
     setExpandedIds(prev => {
@@ -138,6 +111,58 @@ useEffect(() => {
       }
       return next;
     });
+  };
+
+  const handleNewConsultation = () => {
+    navigate(`/dashboard/doctor/medical-history/${targetPatientId}/add`, {
+      state: {
+        ...(location?.state || {}),
+        patientId: targetPatientId,
+        dependantId: incomingDependantId,
+        dependantSnapshot: incomingDependantSnapshot,
+        patientSnapshot: mainPatient,
+        from: location?.state?.from || "incoming",
+      },
+    });
+  };
+
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history?.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(`/dashboard/doctor/medical-history/${targetPatientId}`, {
+      state: {
+        ...(location?.state || {}),
+        patientId: targetPatientId,
+        dependantId: incomingDependantId,
+        dependantSnapshot: incomingDependantSnapshot,
+        patientSnapshot: mainPatient,
+      },
+    });
+  };
+
+  const toDisplayText = (value) => {
+    if (value == null) return "";
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      return value.map(toDisplayText).filter(Boolean).join(", ");
+    }
+    if (typeof value === "object") {
+      if (typeof value.title === "string" && value.title) return value.title;
+      if (typeof value.name === "string" && value.name) return value.name;
+      if (typeof value.value === "string" && value.value) return value.value;
+      if (typeof value.symptom === "string" && value.symptom) return value.symptom;
+      if (typeof value.allergen === "string" && value.allergen) return value.allergen;
+      if (typeof value.reaction === "string" && value.reaction) return value.reaction;
+      if (typeof value.condition === "string" && value.condition) return value.condition;
+      if (typeof value.label === "string" && value.label) return value.label;
+      return JSON.stringify(value);
+    }
+    return "";
   };
 
   if (loading) {
@@ -168,43 +193,27 @@ useEffect(() => {
             <div>
               <h1 className="text-2xl font-bold text-base-content">Consultation Records</h1>
               <p className="text-base-content/60 text-sm mt-1">
-                {mainPatient?.fullName || `${mainPatient?.firstName || ""} ${mainPatient?.lastName || ""}`.trim()}
+                {scopeLabel}
+                {incomingDependantId && mainPatientName ? (
+                  <span className="text-base-content/40"> — dependant of {mainPatientName}</span>
+                ) : null}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
-              {/* Patient / Dependant switcher */}
-              {patients.length > 1 && (
-                <select
-                  className="select select-bordered select-sm"
-                  value={selectedPatientId}
-                  onChange={(e) => setSelectedPatientId(e.target.value)}
-                >
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.relation})
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
-              >
-                ← Back
-              </button>
-            </div>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={handleBack}
+            >
+              ← Back
+            </button>
           </div>
 
-          {/* Viewing label */}
-          {selectedPatientInfo && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-base-content/60">Viewing consultations for:</span>
-              <span className={`badge ${selectedPatientInfo.isMain ? 'badge-primary' : 'badge-primary badge-outline'} badge-sm`}>
-                {selectedPatientInfo.name}
-              </span>
-              <span className="badge badge-outline badge-sm">{selectedPatientInfo.relation}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-base-content/60">Viewing consultations for:</span>
+            <span className={`badge badge-sm ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+              {scopeLabel}
+            </span>
+            <span className="badge badge-outline badge-sm">{scopeSubtitle}</span>
+          </div>
 
           {/* Consultations */}
           <div className="card bg-base-100 shadow-sm">
@@ -216,7 +225,7 @@ useEffect(() => {
                 </h3>
                 <button
                   className="btn btn-success btn-sm"
-                  onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/add`)}
+                  onClick={handleNewConsultation}
                 >
                   + New Consultation
                 </button>
@@ -229,7 +238,7 @@ useEffect(() => {
               ) : consultations.length === 0 ? (
                 <div className="text-center py-10 text-base-content/60">
                   <p className="text-lg">No consultations found</p>
-                  <p className="text-sm mt-1">No consultations recorded for {selectedPatientInfo?.name}.</p>
+                  <p className="text-sm mt-1">No consultations recorded for {scopeLabel}.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -270,41 +279,21 @@ useEffect(() => {
   <span className="font-medium text-base-content">
     Consultation #{consultations.length - idx}
   </span>
-  {/* ✅ Show who this consultation is actually for */}
-  {c.dependantId && c.dependant ? (
-    <span className="badge badge-primary badge-sm">
-      {c.dependant.firstName} {c.dependant.lastName}
-      {/* <span className="ml-1 opacity-70">({c.dependant.relation}) </span> */}
-    </span>
-  ) : (
-    <span className="badge badge-primary badge-sm">
-      {selectedPatientInfo?.name} · Main Patient
-    </span>
-  )}
+  <span className={`badge badge-sm ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+    {scopeSubtitle}
+  </span>
 </div>
 
 
 <div>
-  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Patient</p>
+  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">
+    {incomingDependantId ? "Dependant" : "Patient"}
+  </p>
   <div className="flex items-center gap-2">
-    {c.dependantId && c.dependant ? (
-      <>
-        <span className="font-medium">
-          {c.dependant.firstName} {c.dependant.lastName}
-        </span>
-        <span className="badge badge-secondary badge-xs">
-          {c.dependant.relationshipType}
-        </span>
-        <span className="text-xs text-base-content/50">
-          of {mainPatient?.fullName || `${mainPatient?.firstName} ${mainPatient?.lastName}`}
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="font-medium">{selectedPatientInfo?.name}</span>
-        <span className="badge badge-primary badge-xs">Main Patient</span>
-      </>
-    )}
+    <span className="font-medium">{scopeLabel}</span>
+    <span className={`badge badge-xs ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+      {scopeSubtitle}
+    </span>
   </div>
 </div>
                               <div className="text-sm text-base-content/60 mt-0.5">
@@ -324,7 +313,15 @@ useEffect(() => {
                               className="btn btn-outline btn-xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cId}`);
+                                navigate(`/dashboard/doctor/medical-history/${targetPatientId}/consultation/${cId}`, {
+                                  state: {
+                                    ...(location?.state || {}),
+                                    patientId: targetPatientId,
+                                    dependantId: incomingDependantId,
+                                    dependantSnapshot: incomingDependantSnapshot,
+                                    patientSnapshot: mainPatient,
+                                  },
+                                });
                               }}
                             >
                               Full View
@@ -339,11 +336,13 @@ useEffect(() => {
                               {/* Left column */}
                               <div className="space-y-3">
                                 <div>
-                                  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Patient</p>
+                                  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">
+                                    {incomingDependantId ? "Dependant" : "Patient"}
+                                  </p>
                                   <div className="flex items-center gap-2">
-                                    <span className="font-medium">{selectedPatientInfo?.name}</span>
-                                    <span className={`badge badge-xs ${selectedPatientInfo?.isMain ? 'badge-primary' : 'badge-secondary'}`}>
-                                      {selectedPatientInfo?.relation}
+                                    <span className="font-medium">{scopeLabel}</span>
+                                    <span className={`badge badge-xs ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+                                      {scopeSubtitle}
                                     </span>
                                   </div>
                                 </div>
@@ -363,14 +362,8 @@ useEffect(() => {
                                     <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Complaints</p>
                                     <div className="flex flex-wrap gap-1">
                                       {c.complaint.map((comp, i) => {
-                                        if (typeof comp === 'object' && comp !== null) {
-                                          // Render object complaint as formatted string
-                                          const symptom = comp.symptom || '';
-                                          const duration = comp.durationInDays ? ` (${comp.durationInDays} days)` : '';
-                                          return <span key={i} className="badge badge-outline badge-sm">{symptom}{duration}</span>;
-                                        }
-                                        // Render string complaint
-                                        return <span key={i} className="badge badge-outline badge-sm">{comp}</span>;
+                                        const text = toDisplayText(comp);
+                                        return <span key={i} className="badge badge-outline badge-sm">{text}</span>;
                                       })}
                                     </div>
                                   </div>
@@ -396,7 +389,7 @@ useEffect(() => {
                                     <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Medical History</p>
                                     <div className="flex flex-wrap gap-1">
                                       {c.medicalHistory.map((h, i) => (
-                                        <span key={i} className="badge badge-warning badge-outline badge-sm">{h}</span>
+                                        <span key={i} className="badge badge-warning badge-outline badge-sm">{toDisplayText(h)}</span>
                                       ))}
                                     </div>
                                   </div>
@@ -406,13 +399,9 @@ useEffect(() => {
                                   <div>
                                     <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Allergies</p>
                                     <div className="flex flex-wrap gap-1">
-                                      {c.allergicHistory.map((a, i) => {
-                                        if (typeof a === 'object' && a !== null) {
-                                          // Render object allergy as formatted string
-                                          return <span key={i} className="badge badge-error badge-outline badge-sm">{a.allergen || JSON.stringify(a)}</span>;
-                                        }
-                                        return <span key={i} className="badge badge-error badge-outline badge-sm">{a}</span>;
-                                      })}
+                                      {c.allergicHistory.map((a, i) => (
+                                        <span key={i} className="badge badge-error badge-outline badge-sm">{toDisplayText(a)}</span>
+                                      ))}
                                     </div>
                                   </div>
                                 )}
@@ -423,24 +412,19 @@ useEffect(() => {
                             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-base-300">
                               <button
                                 className="btn btn-outline btn-sm"
-                                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cId}`)}
+                                onClick={() => navigate(`/dashboard/doctor/medical-history/${targetPatientId}/consultation/${cId}`, {
+                                  state: {
+                                    ...(location?.state || {}),
+                                    patientId: targetPatientId,
+                                    dependantId: incomingDependantId,
+                                    dependantSnapshot: incomingDependantSnapshot,
+                                    patientSnapshot: mainPatient,
+                                  },
+                                })}
                               >
                                 View Full Details
                               </button>
-                              {/* Only allow edit within 24h */}
-                              {(() => {
-                                const within24h = Date.now() - new Date(c.createdAt).getTime() < 24 * 60 * 60 * 1000;
-                                return within24h ? (
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cId}/edit`)}
-                                  >
-                                    Edit
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-base-content/40 self-center">Edit window expired</span>
-                                );
-                              })()}
+                             
                             </div>
                           </div>
                         )}

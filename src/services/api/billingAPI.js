@@ -193,7 +193,7 @@ export const getBillingsByOpdPatientId = async (opdPatientId) => {
 export const createBilling = async (patientId, payload) => {
   if (!patientId) throw new Error('Patient ID is required');
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
-  const { itemDetail = [], totalAmount } = payload;
+  const { itemDetail = [], totalAmount, dependantId } = payload;
   if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
   const sanitized = itemDetail.map(({ code, description, quantity, price, total, serviceChargeId, investigationId, prescriptionId }) => ({
     code,
@@ -207,12 +207,12 @@ export const createBilling = async (patientId, payload) => {
   }));
   const body = { itemDetail: sanitized };
   if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
+  if (dependantId) body.dependantId = dependantId;   // ← added
   const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
   console.log('🧾 BillingAPI: Creating billing (detailed)', { patientId, body, url });
   const response = await apiClient.post(url, body);
   return response;
 };
-
 export const getAllReceipts = async (params = {}) => {
   const url = API_ENDPOINTS.GET_RECEIPTS; // '/receipts'
   console.log('🧾 ReceiptAPI: Fetching all receipts', { params, url });
@@ -258,7 +258,7 @@ export const createReceipt = async (billingId, receiptData) => {
   if (!billingId) throw new Error('Billing ID is required');
   if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
 
-  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId } = receiptData;
+  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId, dependantId } = receiptData;
   if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');
   if (!paymentMethod) throw new Error('Payment method is required');
   if (!paidBy) throw new Error('Payer information is required');
@@ -272,6 +272,7 @@ export const createReceipt = async (billingId, receiptData) => {
   };
 
   if (hmoId) payload.hmoId = hmoId;
+  if (dependantId != null && dependantId !== '') payload.dependantId = dependantId;
   if (bankName && bankName.trim()) payload.bankName = bankName.trim();
   if (senderName && senderName.trim()) payload.senderName = senderName.trim();
   if (cashierName && cashierName.trim()) payload.cashierName = cashierName.trim();

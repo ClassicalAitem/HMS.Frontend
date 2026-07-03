@@ -31,17 +31,14 @@ apiClient.interceptors.request.use(
       try {
         const parsedRoot = JSON.parse(persistRoot);
         const authToken = parsedRoot?.auth?.token;
-        if (authToken) {
-          token = authToken.replace(/"/g, ''); // Remove quotes if present
-          console.log('🔍 API Client: Token extracted from persist:root');
-        }
-      } catch (error) {
-        console.error('❌ API Client: Error parsing persist:root:', error);
+        if (authToken) token = authToken.replace(/"/g, '');
+      } catch {
+        // malformed persist:root, skip
       }
     }
 
+
     if (token) {
-      // Clean the token - remove any extra quotes or whitespace
       const cleanToken = token.replace(/^["']|["']$/g, '').trim();
 
       // Validate JWT format (should have 3 parts separated by dots)
@@ -53,35 +50,22 @@ apiClient.interceptors.request.use(
         console.error('❌ API Client: Clean token:', cleanToken);
       } else {
         config.headers.Authorization = `Bearer ${cleanToken}`;
-        console.log('🔑 API Client: Token added to request');
-        console.log('🔑 API Client: Token preview:', cleanToken.substring(0, 20) + '...');
-        console.log('🔑 API Client: JWT parts count:', jwtParts.length);
       }
-    } else {
-      console.log('🔑 API Client: No token found in any location');
-      console.log('🔍 API Client: Available localStorage keys:', Object.keys(localStorage));
     }
+
 
     return config;
   },
-  (error) => {
-    console.error('❌ API Client: Request interceptor error:', error);
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor
 apiClient.interceptors.response.use(
-  (response) => {
-    console.log('✅ API Client: Response received');
-    console.log('📥 API Client: Response status:', response.status);
-    console.log('📥 API Client: Response data:', response.data);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const errorMessage = error.response?.data?.message?.toLowerCase() ?? '';
 
-    // Handle 401 errors (unauthorized) - JWT expired or invalid
     if (error.response?.status === 401) {
       console.log('🚨 API Client: 401 Unauthorized error detected');
       console.log('🚨 API Client: Error message:', error.response?.data?.message);
@@ -125,18 +109,13 @@ apiClient.interceptors.response.use(
       // For other 401 errors, try token refresh if available
       if (!originalRequest._retry) {
         originalRequest._retry = true;
-
         try {
           // Try to refresh token (if refresh endpoint is implemented)
           const refreshToken = localStorage.getItem('refreshToken') ||
                              JSON.parse(localStorage.getItem('persist:root') || '{}')?.auth?.refreshToken?.replace(/"/g, '');
 
           if (refreshToken) {
-            console.log('🔄 API Client: Attempting token refresh');
-            const response = await axios.post(`${config.API_BASE_URL}/user/refresh`, {
-              refreshToken,
-            });
-
+            const response = await axios.post(`${config.API_BASE_URL}/user/refresh`, { refreshToken });
             const { token: newToken, refreshToken: newRefreshToken } = response.data;
 
             // Update tokens in localStorage

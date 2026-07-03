@@ -109,7 +109,7 @@ const MedicationRow = ({ med, index, onDosesChange, onStatusChange }) => (
 );
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
+const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId, patientData }) => {
   const [prescription, setPrescription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -125,39 +125,29 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
     const fetchPrescription = async () => {
       try {
         setLoading(true);
-        console.log("Fetching prescription for patientId:", patientId);
         const res = await apiClient.get(
           `/prescription/getPrescriptionByPatientId/${patientId}`
         );
 
-
         if (cancelled) return;
 
         const data = res.data.data;
-       let prescriptionData;
+        const list = Array.isArray(data) ? data : (data ? [data] : []);
 
-        if (Array.isArray(data)) {
-          prescriptionData = data.find(p => {
-            const injectionMeds = (p.medications || []).filter(
-              m => m.medicationType === "injection"
-            );
+        const scoped = dependantId
+          ? list.filter((p) => p?.dependantId === dependantId)
+          : list.filter((p) => !p?.dependantId);
 
-            if (!injectionMeds.length) return false;
+        let prescriptionData = scoped.find(p => {
+          const injectionMeds = (p.medications || []).filter(
+            m => m.medicationType === "injection"
+          );
+          if (!injectionMeds.length) return false;
+          return injectionMeds.some(m => m.injectionStatus !== "completed");
+        }) || null;
 
-
-            const hasPendingInjection = injectionMeds.some(
-              m => m.injectionStatus !== "completed"
-            );
-
-            return hasPendingInjection;
-          }) || null;
-        } else {
-          prescriptionData = data;
-        }
-
-                // console.log(data);
-                setPrescription(prescriptionData);
-                setSelectedStatus(prescriptionData?.status || "");
+        setPrescription(prescriptionData);
+        setSelectedStatus(prescriptionData?.status || "");
         setIsFullyAdministered(
           checkAllCompleted(prescriptionData?.medications || [])
         );
@@ -171,7 +161,12 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
 
     fetchPrescription();
     return () => { cancelled = true; };
-  }, [isOpen, patientId]);
+  }, [isOpen, patientId, dependantId]);
+
+    const patientName =
+    patientData?.fullName ||
+    `${patientData?.firstName || ""} ${patientData?.lastName || ""}`.trim() ||
+    "Unknown Patient";
 
   // console.log(prescription);
 
@@ -256,10 +251,10 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId }) => {
             </div>
             <div className="flex justify-between flex-wrap gap-4">
               <div>
-                <div className="text-[12px] text-gray-600">Patient ID</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <FaRegIdBadge />
-                  <p className="text-[14px] font-medium">{prescription?.patientId}</p>
+              
+                <div>
+                  <div className="text-[12px] text-gray-600">Patient Name</div>
+                  <p className="text-[14px] font-medium mt-1">{patientName}</p>
                 </div>
               </div>
             </div>

@@ -719,6 +719,7 @@ const dependant = isDependant
           <div>
               <SendPatientModal
                 patientId={patientId}
+                patient={patient}
                 onUpdated={() => navigate('/dashboard/medical-director')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />

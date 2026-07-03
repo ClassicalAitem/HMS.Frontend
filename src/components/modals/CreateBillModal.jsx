@@ -8,6 +8,7 @@ import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { updateSubjectStatus } from '@/utils/statusHelper';
 
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
@@ -137,7 +138,7 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
 };
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
-const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems = [] }) => {
+const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess, defaultItems = [] }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -224,6 +225,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
 
   const onSubmit = async (data) => {
     if (!patientId) { toast.error("Patient ID is missing"); return; }
+    console.log('🔍 dependantId at submit time:', dependantId, typeof dependantId);
     setIsLoading(true);
     try {
       const payload = {
@@ -236,23 +238,24 @@ const CreateBillModal = ({ isOpen, onClose, patientId, onSuccess, defaultItems =
           serviceChargeId: item.serviceChargeId,
           investigationId: item.investigationId,
           prescriptionId: item.prescriptionId,
-        }))
+        })),
+        ...(dependantId && { dependantId }),
       };
 
-      console.log('payload being sent:', JSON.stringify(payload, null, 2));
-      await createBilling(patientId, payload);
-      toast.success('Bill created successfully!');
-      try {
-        await toast.promise(
-          updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_CASHIER }),
-          {
-            loading: 'Updating patient status...',
-            success: 'Patient sent to cashier',
-            error: (err) => err?.response?.data?.message || 'Failed to update patient status',
-          }
-        );
+    await createBilling(patientId, payload);
+    toast.success('Bill created successfully!');
+
+    try {
+          await toast.promise(
+            updateSubjectStatus(patientId, dependantId, PATIENT_STATUS.AWAITING_CASHIER),
+            {
+              loading: 'Updating status...',
+              success: dependantId ? 'Dependant sent to cashier' : 'Patient sent to cashier',
+              error: (err) => err?.response?.data?.message || 'Failed to update status',
+            }
+          );
       } catch (err) {
-        console.error('Failed updating patient status', err);
+        console.error('Failed updating status', err);
       }
       reset();
       if (onSuccess) onSuccess();

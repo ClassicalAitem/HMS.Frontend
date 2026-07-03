@@ -7,7 +7,7 @@ import {
 } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
-const LabInvestigationTable = ({ investigations = [], loading = false, onViewAll }) => {
+const LabInvestigationTable = ({ investigations = [], loading = false, onViewAll, scopedToSingleSubject = false }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -114,14 +114,15 @@ const LabInvestigationTable = ({ investigations = [], loading = false, onViewAll
                               <span className="font-medium">
                                 {inv.forName || "Unknown"}
                               </span>
-
-                              <span
-                                className={`badge badge-sm ${
-                                  inv.isForDependant ? "badge-secondary" : "badge-primary"
-                                }`}
-                              >
-                                {inv.isForDependant ? "Dependant" : "Patient"}
-                              </span>
+                              {!scopedToSingleSubject && (
+                                <span
+                                  className={`badge badge-sm ${
+                                    inv.isForDependant ? "badge-secondary" : "badge-primary"
+                                  }`}
+                                >
+                                  {inv.isForDependant ? "Dependant" : "Patient"}
+                                </span>
+                              )}
 
                              
                             </div>
