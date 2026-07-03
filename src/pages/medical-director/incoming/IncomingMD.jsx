@@ -17,6 +17,8 @@ const DOCTOR_STATUSES = new Set([
   "lab_completed",
 ]);
 
+
+
 const prettifyStatus = (status) =>
   (Array.isArray(status) ? status : [status])
     .filter((s) => DOCTOR_STATUSES.has(String(s).toLowerCase()))
