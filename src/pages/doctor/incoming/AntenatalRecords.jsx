@@ -50,6 +50,11 @@ const AntenatalRecords = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState(null);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true)
   const [formData, setFormData] = useState(emptyForm(doctorName));
 
   const [dependants, setDependants] = useState([]);
@@ -857,7 +862,13 @@ useEffect(() => {
               <button
                 className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
                 onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
-                  state: { selectedRecord: savedRecord }
+                state: {
+                            from: fromIncoming ? "incoming" : "patients",
+                            selectedRecord: savedRecord ,
+                            patientSnapshot: patient,
+                            dependantId: dependantId || null,
+                            dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                          }
                 })}
               >
                 Next
