@@ -64,14 +64,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const errorMessage = error.response?.data?.message?.toLowerCase() ?? '';
 
     if (error.response?.status === 401) {
       console.log('🚨 API Client: 401 Unauthorized error detected');
       console.log('🚨 API Client: Error message:', error.response?.data?.message);
 
       // Check if it's a JWT expiration error or no token error
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || '';
+      const errorMessage = error.response?.data?.message?.toLowerCase();
       const isJwtExpired = errorMessage?.includes('jwt expired') ||
                           errorMessage?.includes('token expired') ||
                           errorMessage?.includes('jwt malformed') ||
