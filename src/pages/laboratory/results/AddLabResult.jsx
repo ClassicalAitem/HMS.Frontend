@@ -780,6 +780,7 @@ const handleSave = async () => {
 
     const searchParams = new URLSearchParams(location.search);
     const opdPatientId = searchParams.get('opdPatientId');
+    const investigationRealId = investigation?._id || investigation?.id;   // ← add this
 
     const payload = {
       form: (() => {
@@ -790,40 +791,34 @@ const handleSave = async () => {
       labTechnicianId: currentUser?.id,
     };
 
-    // ✅ Set the right patient ID type
-    if (opdPatientId && !investigationId) {
+    if (isDependant) {
+      payload.patientId = mainPatientId;
+      payload.dependantId = patient?.id;
+    } else if (opdPatientId && !investigation) {
       payload.opdPatientId = opdPatientId;
     } else {
-      payload.patientId = isDependant ? mainPatientId : patient?._id || patient?.id;
+      payload.patientId = patient?._id || patient?.id;
     }
 
-    if (investigation?.opdPatientId) {
-      payload.opdPatientId = isDependant ? mainPatientId : patient?._id || patient?.id;
-    }
-
-    if (isDependant) {
-      payload.dependantId = patient?.id;
+    if (investigation?.opdPatientId && !isDependant) {
+      payload.opdPatientId = patient?._id || patient?.id;
     }
 
     let resultId = paramLabResultId;
     if (editing && resultId) {
       await updateLabResult(resultId, payload);
+    } else if (investigation && investigationRealId) {   // ← guard on real id too
+      const response = await createLabResult(investigationRealId, payload);   // ← fixed
+      const labResultData = response?.data || response;
+      resultId = labResultData?._id || labResultData?.id;
+    } else if (opdPatientId && !isDependant) {
+      const response = await createLabResult(null, payload);
+      const labResultData = response?.data || response;
+      resultId = labResultData?._id || labResultData?.id;
     } else {
-      if (investigation) {
-        // Use the investigation's ObjectId
-        const response = await createLabResult(investigation.id, payload);
-        const labResultData = response?.data || response;
-        resultId = labResultData?._id || labResultData?.id;
-      } else if (opdPatientId) {
-        // For direct OpD patients without investigation, use null to trigger /opd endpoint
-        const response = await createLabResult(null, payload);
-        const labResultData = response?.data || response;
-        resultId = labResultData?._id || labResultData?.id;
-      } else {
-        setError("Unable to determine lab result type");
-        setSaving(false);
-        return;
-      }
+      setError("Unable to determine lab result type");
+      setSaving(false);
+      return;
     }
 
     navigate(`/dashboard/laboratory/results/${resultId}`, {

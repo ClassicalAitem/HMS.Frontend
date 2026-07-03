@@ -28,87 +28,39 @@ const SonographerIncoming = () => {
         const res = await getPatients();
         const allPatients = Array.isArray(res?.data) ? res.data : [];
 
-        // Fetch OPD patients
         const opdRes = await getAllOpdPatients();
         const allOpdPatients = Array.isArray(opdRes?.data) ? opdRes.data : (Array.isArray(opdRes) ? opdRes : []);
 
-        // Fetch investigations to map patient types
         const investigationsRes = await getInvestigations();
         const allInvestigations = Array.isArray(investigationsRes) ? investigationsRes : (investigationsRes?.data || []);
 
-        // Filter regular patients with awaiting_sonographer status
-        const incomingPatients = allPatients.filter((patient) => {
-          if (!patient?.status) return false;
-          const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
-          return statusList.some((status) => {
-            const normalized = String(status || "").toLowerCase();
-            return normalized === "awaiting_sonographer";
-          });
-        });
+        const isAwaitingSonographer = (status) => {
+          const statusList = Array.isArray(status) ? status : [status];
+          return statusList.some((s) => String(s || "").toLowerCase() === "awaiting_sonographer");
+        };
 
-        // Filter OPD patients with awaiting_sonographer status
-        const incomingOpdPatients = allOpdPatients.filter((patient) => {
-          if (!patient?.status) return false;
-          const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
-          return statusList.some((status) => {
-            const normalized = String(status || "").toLowerCase();
-            return normalized === "awaiting_sonographer";
-          });
-        });
+        // Regular (guardian-own) patients awaiting sonographer
+        const incomingPatients = allPatients.filter((patient) => isAwaitingSonographer(patient?.status));
 
-        // Enrich patients with investigation details (dependantId, opdPatientId, patientType)
+        // OPD patients awaiting sonographer
+        const incomingOpdPatients = allOpdPatients.filter((patient) => isAwaitingSonographer(patient?.status));
+
+        // Enrich regular/guardian-own patients (unchanged)
         const enrichedPatients = await Promise.all(
           incomingPatients.map(async (patient) => {
             const patientId = patient?.id || patient?._id;
             const investigation = allInvestigations.find(
-              (inv) => String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId)
+              (inv) => String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId
             );
-
-            let patientType = "regular";
-            let dependantInfo = null;
-            let opdPatientInfo = null;
-
-            if (investigation?.dependantId) {
-              // This is a dependant
-              patientType = "dependant";
-              try {
-                const depRes = await getDependantById(investigation.dependantId);
-                const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant;
-                if (dep) {
-                  dependantInfo = {
-                    id: dep.id || dep._id,
-                    name: `${dep.firstName || ""} ${dep.lastName || ""}`.trim() || dep.fullName,
-                  };
-                }
-              } catch (err) {
-                console.warn("Failed to load dependant:", err);
-              }
-            } else if (investigation?.opdPatientId) {
-              // This is an OPD patient
-              patientType = "opd";
-              try {
-                const opdRes = await getOpdPatientById(investigation.opdPatientId);
-                const opd = opdRes?.data || opdRes;
-                if (opd) {
-                  opdPatientInfo = {
-                    id: opd.id || opd._id,
-                    name: opd.fullName || `${opd.firstName || ""} ${opd.lastName || ""}`.trim(),
-                  };
-                }
-              } catch (err) {
-                console.warn("Failed to load OPD patient:", err);
-              }
-            }
-
             return {
               ...patient,
-              patientType,
-              dependantId: investigation?.dependantId,
-              dependantInfo,
+              patientType: "regular",
+              dependantId: null,
+              dependantInfo: null,
               opdPatientId: investigation?.opdPatientId,
-              opdPatientInfo,
+              opdPatientInfo: null,
               investigationId: investigation?.id || investigation?._id,
-              investigation: investigation,
+              investigation,
               cardType: patient?.cardType || 'personal',
               familyName: patient?.familyName || '',
               companyName: patient?.companyName || '',
@@ -116,13 +68,65 @@ const SonographerIncoming = () => {
           })
         );
 
-        // Enrich OPD patients
+        // ✅ NEW: Find dependants whose OWN status is awaiting_sonographer,
+        // by scanning investigations that carry a dependantId
+        const dependantCache = {};
+        const dependantInvestigations = allInvestigations.filter((inv) => inv.dependantId);
+
+        const enrichedDependants = (
+          await Promise.all(
+            dependantInvestigations.map(async (inv) => {
+              const depId = inv.dependantId;
+              if (dependantCache[depId] === undefined) {
+                try {
+                  const depRes = await getDependantById(depId);
+                  const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant || depRes?.data;
+                  dependantCache[depId] = dep || null;
+                } catch {
+                  dependantCache[depId] = null;
+                }
+              }
+              const dep = dependantCache[depId];
+              if (!dep || !isAwaitingSonographer(dep.status)) return null;
+
+              const parentPatient = allPatients.find(
+                (p) => String(p.id || p._id) === String(dep.patientId || inv.patientId)
+              );
+
+              return {
+                ...dep,
+                status: dep.status,
+                hospitalId: parentPatient?.hospitalId,
+                patientId: dep.patientId || inv.patientId,
+                patientType: "dependant",
+                dependantId: depId,
+                dependantInfo: {
+                  id: dep.id || dep._id,
+                  name: `${dep.firstName || ""} ${dep.lastName || ""}`.trim() || dep.fullName,
+                },
+                opdPatientId: null,
+                opdPatientInfo: null,
+                investigationId: inv.id || inv._id,
+                investigation: inv,
+                cardType: parentPatient?.cardType || 'personal',
+                familyName: parentPatient?.familyName || '',
+                companyName: parentPatient?.companyName || '',
+              };
+            })
+          )
+        ).filter(Boolean);
+
+        // De-dupe dependants (multiple investigations could point to same dependant)
+        const uniqueDependants = Array.from(
+          new Map(enrichedDependants.map(d => [d.dependantId, d])).values()
+        );
+
+        // Enrich OPD patients (unchanged)
         const enrichedOpdPatients = incomingOpdPatients.map((patient) => {
           const patientId = patient?.id;
           const investigation = allInvestigations.find(
             (inv) => String(inv.opdPatientId) === String(patientId)
           );
-
           return {
             ...patient,
             patientType: "opd",
@@ -134,15 +138,14 @@ const SonographerIncoming = () => {
               name: patient.fullName || `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
             },
             investigationId: investigation?.id || investigation?._id,
-            investigation: investigation,
+            investigation,
             cardType: patient?.cardType || 'personal',
             familyName: patient?.familyName || '',
             companyName: patient?.companyName || '',
           };
         });
 
-        // Combine regular and OPD patients
-        const allIncomingPatients = [...enrichedPatients, ...enrichedOpdPatients];
+        const allIncomingPatients = [...enrichedPatients, ...uniqueDependants, ...enrichedOpdPatients];
 
         if (mounted) setPatients(allIncomingPatients);
       } catch (err) {
@@ -155,8 +158,8 @@ const SonographerIncoming = () => {
         if (mounted) setLoading(false);
       }
     };
-
     fetchIncomingPatients();
+
     return () => {
       mounted = false;
     };
@@ -286,11 +289,13 @@ const SonographerIncoming = () => {
                       <button
                         key={patientIdValue}
                         type="button"
-                        onClick={() => {
+                       onClick={() => {
                           if (patient.patientType === "opd") {
                             navigate(`/dashboard/sonographer/incoming/${patient.opdPatientInfo?.id || patientIdValue}`);
                           } else if (patient.patientType === "dependant") {
-                            navigate(`/dashboard/sonographer/incoming/${patientIdValue}`);
+                            navigate(`/dashboard/sonographer/incoming/${patient.patientId}`, {
+                              state: { dependantId: patient.dependantId, dependantSnapshot: patient }
+                            });
                           } else {
                             navigate(`/dashboard/sonographer/incoming/${patientIdValue}`);
                           }
