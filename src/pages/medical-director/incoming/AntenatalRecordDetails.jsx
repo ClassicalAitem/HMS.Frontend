@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { usersAPI } from "@/services/api/usersAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getAllDependantsForPatient, getDependantById } from "@/services/api/dependantAPI";
 import { getPrescriptionsByAntenatalId } from "@/services/api/prescriptionsAPI";
 import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
 import { deletePrescription, updatePrescription } from "@/services/api/prescriptionsAPI";
@@ -18,6 +18,14 @@ const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const incomingDependantId = location?.state?.dependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true)
+  const fromIncoming = location?.state?.from === "incoming";
+  const isViewingDependant = !!dependantId;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -33,6 +41,18 @@ const AntenatalRecordDetails = () => {
   const [loadingTreatmentData, setLoadingTreatmentData] = useState(false);
   const [editingPrescription, setEditingPrescription] = useState(null);
   const [editingLab, setEditingLab] = useState(null);
+  const [fullDependantRecord, setFullDependantRecord] = useState(null);
+  const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
+
+    const selectedDependant = useMemo(() => {
+      if (!selectedDependantId) return null;
+      return (
+        dependants.find(d => (d.id || d._id) === selectedDependantId) ||
+        fullDependantRecord ||
+        incomingDependantSnapshot ||
+        null
+      );
+    }, [selectedDependantId, dependants, fullDependantRecord, incomingDependantSnapshot]);
 
   useEffect(() => {
     console.log('AntenatalRecordDetails: Component mounted with patientId:', patientId);
@@ -74,6 +94,25 @@ const AntenatalRecordDetails = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+    // Add after the existing fetchDependants useEffect
+  useEffect(() => {
+    let mounted = true;
+    const fetchFullDependant = async () => {
+      if (!incomingDependantId) return;
+      try {
+        const res = await getDependantById(incomingDependantId);
+        const dep = res?.data?.data?.dependant || res?.data?.dependant || res?.data || null;
+        if (mounted) setFullDependantRecord(dep);
+      } catch {
+        if (mounted && incomingDependantSnapshot) {
+          setFullDependantRecord(incomingDependantSnapshot);
+        }
+      }
+    };
+    fetchFullDependant();
+    return () => { mounted = false; };
+  }, [incomingDependantId, incomingDependantSnapshot]);
+
   const normalizeAntenatalRecordFromState = (record) => {
     if (!record) return null;
     if (Array.isArray(record.anteNatalRecords)) {
@@ -82,13 +121,22 @@ const AntenatalRecordDetails = () => {
     return record;
   };
 
-  const getRecordsArray = (payload) => {
-    if (!payload) return [];
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload.anteNatalRecords)) return payload.anteNatalRecords;
-    if (Array.isArray(payload.data)) return payload.data;
-    return [];
-  };
+    const getRecordsArray = (payload) => {
+      if (!payload) return [];
+      if (Array.isArray(payload)) {
+        return payload.flatMap(wrapper =>
+          (wrapper.anteNatalRecords || []).map((r, i) => ({
+            ...r,
+            __wrapperId: wrapper._id,
+            __originalIndex: i,
+          }))
+        );
+      }
+      // Single wrapper object
+      if (Array.isArray(payload.anteNatalRecords)) return payload.anteNatalRecords;
+      if (Array.isArray(payload.data)) return payload.data;
+      return [];
+    };
 
   const getDoctorDisplayName = (doctor) => {
     if (!doctor) return null;
@@ -98,16 +146,33 @@ const AntenatalRecordDetails = () => {
     return fullName || null;
   };
 
+  const normalizeUserResponse = (response) => {
+    if (!response) return null;
+    if (response.data?.data) return response.data.data;
+    if (response.data) return response.data;
+    return response;
+  };
+
+  const getDoctorId = (record) => {
+    if (!record) return null;
+    if (typeof record.doctorId === "string") return record.doctorId;
+    if (typeof record.doctorId === "object") return record.doctorId.id || record.doctorId._id || null;
+    if (typeof record.doctor === "object") return record.doctor.id || record.doctor._id || null;
+    if (typeof record.createdBy === "object") return record.createdBy.id || record.createdBy._id || null;
+    return null;
+  };
+
   const getRecordDoctorName = (record) => {
     if (!record) return "Unknown Doctor";
     if (record.doctorName) return record.doctorName;
     const resolvedName = getDoctorDisplayName(record.doctor || record.createdBy);
     if (resolvedName) return resolvedName;
-    if (record.doctorId) return doctorNameById[record.doctorId] || `Dr. ${record.doctorId}`;
+    const doctorId = getDoctorId(record);
+    if (doctorId) return doctorNameById[doctorId] || "Unknown Doctor";
     return "Unknown Doctor";
   };
 
-  const loadDoctorNames = async (doctorIds = []) => {
+  const loadDoctorNames = useCallback(async (doctorIds = []) => {
     const idsToFetch = [...new Set(doctorIds.filter(Boolean).filter((id) => !doctorNameById[id]))];
     if (!idsToFetch.length) return;
 
@@ -117,7 +182,7 @@ const AntenatalRecordDetails = () => {
 
       results.forEach((result, index) => {
         if (result.status === "fulfilled") {
-          const user = result.value?.data ?? result.value;
+          const user = normalizeUserResponse(result.value);
           const displayName = getDoctorDisplayName(user);
           if (displayName) {
             nameMap[idsToFetch[index]] = displayName;
@@ -131,24 +196,26 @@ const AntenatalRecordDetails = () => {
     } catch (err) {
       console.warn("Failed to load doctor names for antenatal records:", err);
     }
-  };
+  }, [doctorNameById]);
 
   useEffect(() => {
     const doctorIds = [];
     antenatalRecords.forEach((record) => {
-      if (record?.doctorId && !record?.doctorName && !record?.doctor && !doctorNameById[record.doctorId]) {
-        doctorIds.push(record.doctorId);
+      const doctorId = getDoctorId(record);
+      if (doctorId && !record?.doctorName && !record?.doctor && !doctorNameById[doctorId]) {
+        doctorIds.push(doctorId);
       }
     });
 
-    if (selectedRecord?.doctorId && !selectedRecord?.doctorName && !selectedRecord?.doctor && !doctorNameById[selectedRecord.doctorId]) {
-      doctorIds.push(selectedRecord.doctorId);
+    const selectedDoctorId = getDoctorId(selectedRecord);
+    if (selectedDoctorId && !selectedRecord?.doctorName && !selectedRecord?.doctor && !doctorNameById[selectedDoctorId]) {
+      doctorIds.push(selectedDoctorId);
     }
 
     if (doctorIds.length) {
       loadDoctorNames(doctorIds);
     }
-  }, [antenatalRecords, selectedRecord, doctorNameById]);
+  }, [antenatalRecords, selectedRecord, doctorNameById, loadDoctorNames]);
 
   useEffect(() => {
     let mounted = true;
@@ -156,11 +223,8 @@ const AntenatalRecordDetails = () => {
       try {
         setLoadingData(true);
         setError(null);
-        console.log('Loading antenatal records for patient ID:', patientId);
         const res = await getAnteNatalRecordByPatientId(patientId);
-        console.log('Antenatal records response:', res);
         const records = getRecordsArray(res?.data ?? res);
-        console.log('Processed antenatal records:', records);
         if (mounted) {
           const recordsWithOriginalIndex = records.map((record, originalIndex) => ({
             ...record,
@@ -170,7 +234,11 @@ const AntenatalRecordDetails = () => {
           const sortedRecords = [...recordsWithOriginalIndex].sort(
             (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
           );
-          setAntenatalRecords(sortedRecords);
+          const scoped = isViewingDependant && dependantId
+            ? sortedRecords.filter(r => r.dependantId === dependantId)
+            : sortedRecords.filter(r => !r.dependantId);
+
+          setAntenatalRecords(scoped);(sortedRecords);
 
           const selectedFromState = normalizeAntenatalRecordFromState(location.state?.selectedRecord);
           if (selectedFromState) {
@@ -266,6 +334,42 @@ const getDependantName = (dependantId) => {
   return dep ? `${dep.fullName} (${dep.relationshipType || 'Dependant'})` : null;
 };
 
+  const patientName = useMemo(() => (
+    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
+  ), [patient]);
+
+
+  const summarySubject = useMemo(() => {
+  if (!incomingDependantId) return patient;
+  const dep = selectedDependant || fullDependantRecord || incomingDependantSnapshot || {};
+  const guardian = patient || {};
+  const dependantHmos = Array.isArray(guardian.hmos)
+    ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+    : [];
+
+  return {
+    phone: guardian.phone,
+    phoneNumber: guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    cardType: guardian.cardType,
+    familyName: guardian.familyName,
+    companyName: guardian.companyName,
+    id: dep.id || incomingDependantId,
+    firstName: dep.firstName,
+    middleName: dep.middleName,
+    lastName: dep.lastName,
+    fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+    gender: dep.gender,
+    dob: dep.dob,
+    relationshipType: dep.relationshipType,
+    hmos: dependantHmos,
+  };
+}, [incomingDependantId, selectedDependant, fullDependantRecord, incomingDependantSnapshot, patient]);
+
+const summarySubjectName = summarySubject?.fullName
+  || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
+  || patientName;
+
 const getRoutineTestField = (record, field) => {
   if (!record) return '-';
   const routine = Array.isArray(record.routineTest) ? record.routineTest[0] : record.routineTest;
@@ -303,7 +407,7 @@ const handleDeleteLab = async (labId) => {
 
 const handleEditPrescription = (prescription) => {
   setEditingPrescription(prescription);
-  navigate(`/dashboard/medical-director/medical-history/${patientId}/antenatal/${selectedRecord._id}/prescription`, {
+  navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord._id}/prescription`, {
     state: { prescription, antenatalId: selectedRecord._id }
   });
 };
@@ -375,22 +479,37 @@ const handleOrderCreated = () => {
 
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-base-content">Antenatal Record Details</h1>
-              <p className="text-base-content/70 mt-1">
-                Patient: {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()}
-              </p>
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-base-content">Antenatal Record Details</h1>
+                <div className="flex items-center gap-1 flex-col">
+                  <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
+                  <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
+                </div>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                  state: {
+                    from: fromIncoming ? "incoming" : "patients",
+                    patientSnapshot: patient,
+                    dependantId: incomingDependantId,
+                    dependantSnapshot: selectedDependant || fullDependantRecord || incomingDependantSnapshot,
+                  },
+                })}
               >
                 Back to Patient
               </button>
               <button
                 className="btn btn-secondary gap-2"
-                onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}`)}
+                onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, {
+                  state: {
+                    dependantId: dependantId || null,
+                    dependantSnapshot: dependantSnapshot || null,
+                  }
+                })}
               >
                 <span>+</span> Add New Record
               </button>
@@ -407,8 +526,15 @@ const handleOrderCreated = () => {
                     {antenatalRecords.map((record, index) => {
                     const dependantName = getDependantName(record.dependantId);
                     return (
-                      <div key={record._id || record.id || index} className="border border-base-300 rounded-lg p-4">
-                        <div className="flex justify-between items-start">
+                      <div
+                          key={record._id || record.id || index}
+                          className={`border rounded-lg p-4 ${
+                            isViewingDependant && record.dependantId === dependantId
+                              ? 'border-secondary bg-secondary/5'
+                              : 'border-base-300'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-medium text-base-content">
@@ -437,7 +563,7 @@ const handleOrderCreated = () => {
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
                             </p>
                             <p className="text-sm text-base-content/70">
-                              Created by: {getRecordDoctorName(record)}
+                              Created by: Dr {getRecordDoctorName(record)}
                             </p>
                           </div>
                           <div className="flex gap-2">
@@ -447,12 +573,20 @@ const handleOrderCreated = () => {
                             >
                               {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
                             </button>
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}/edit/${record.__originalIndex ?? index}`)}
-                            >
-                              Edit
-                            </button>
+                           <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => navigate(
+                              `/dashboard/doctor/antenatal-records/${patientId}/edit/${record.__originalIndex ?? index}`,
+                              {
+                                state: {
+                                  dependantId: record.dependantId || null,
+                                  dependantSnapshot: record.dependantId === dependantId ? dependantSnapshot : null,
+                                }
+                              }
+                            )}
+                          >
+                            Edit
+                          </button>
                           </div>
                         </div>
                       </div>
@@ -466,7 +600,7 @@ const handleOrderCreated = () => {
               {selectedRecord && (
                 <div className="space-y-6">
                   <div className="px-6">
-                    <p className="text-sm text-base-content/70">Created by: {getRecordDoctorName(selectedRecord)}</p>
+                    <p className="text-sm text-base-content/70">Created by: Dr  {getRecordDoctorName(selectedRecord)}</p>
                   </div>
                   {/* Present Pregnancy */}
                   {selectedRecord.presentPregnancyHistories && selectedRecord.presentPregnancyHistories.length > 0 && (
@@ -813,7 +947,7 @@ const handleOrderCreated = () => {
                           <button
                             className="btn btn-sm btn-primary gap-2"
                             disabled={!selectedRecord}
-                            onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/antenatal/${selectedRecord?._id || selectedRecord?.id}/prescription`, { state: { antenatalId: selectedRecord?._id || selectedRecord?.id } })}
+                            onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord?._id || selectedRecord?.id}/prescription`, { state: { antenatalId: selectedRecord?._id || selectedRecord?.id } })}
                           >
                             <span className="text-sm">💊</span> Prescribe
                           </button>
@@ -993,7 +1127,11 @@ const handleOrderCreated = () => {
                 <div className="mt-4">
                   <button
                     className="btn btn-secondary"
-                    onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}`)}
+                    onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, 
+                      { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient,  dependantId: dependantId || null,
+                         dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,  } }
+                    )}
+                
                   >
                     Create Antenatal Record
                   </button>
