@@ -4,6 +4,7 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
+import { getDependants } from "@/services/api/dependantAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 
@@ -26,8 +27,17 @@ const IncomingMD = () => {
     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const res = await getPatients();
-        const patients = Array.isArray(res?.data) ? res.data : [];
+        const [patientsRes, dependantsRes] = await Promise.allSettled([getPatients(), getDependants()]);
+        const patients = Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : Array.isArray(patientsRes.value) ? patientsRes.value : [];
+        const dependants = Array.isArray(dependantsRes.value?.data?.data?.dependants)
+          ? dependantsRes.value.data.data.dependants
+          : Array.isArray(dependantsRes.value?.data?.dependants)
+            ? dependantsRes.value.data.dependants
+            : Array.isArray(dependantsRes.value?.data)
+              ? dependantsRes.value.data
+              : Array.isArray(dependantsRes.value)
+                ? dependantsRes.value
+                : [];
 
         const mdStatuses = new Set([
           "awaiting_consultation",
@@ -39,18 +49,6 @@ const IncomingMD = () => {
           "lab_completed",
         ]);
 
-        const filtered = patients.filter((p) => {
-          if (!p?.status) return false;
-          const statuses = Array.isArray(p.status) ? p.status : [p.status];
-          return statuses.some((s) => mdStatuses.has(String(s).toLowerCase()));
-        });
-
-        const sorted = filtered.sort(
-          (a, b) =>
-            new Date(a?.updatedAt || a?.createdAt || 0).getTime() -
-            new Date(b?.updatedAt || b?.createdAt || 0).getTime()
-        );
-
         const prettifyStatus = (arr) =>
           (Array.isArray(arr) ? arr : [arr])
             .filter((s) => mdStatuses.has(String(s).toLowerCase()))
@@ -59,31 +57,70 @@ const IncomingMD = () => {
             )
             .join(", ");
 
-        const mapped = sorted.map((p) => ({
-          id: p?.id || p?._id,
-          hospitalId: p?.hospitalId,
-          snapshot: p,
-          name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
-          patientId: p?.hospitalId || p?.id || "—",
-          reason: prettifyStatus(p?.status) || "Consultation",
-          insurance: p?.hmos?.provider || "—",
-          cardType: p?.cardType || 'personal',
-          familyName: p?.familyName || '',
-          companyName: p?.companyName || '',
-          rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
-          updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
-          gender: p?.gender || null,
-          age:
-            p?.dateOfBirth || p?.dob
+        const mappedPatients = patients
+          .filter((p) => {
+            if (!p?.status) return false;
+            const statuses = Array.isArray(p.status) ? p.status : [p.status];
+            return statuses.some((s) => mdStatuses.has(String(s).toLowerCase()));
+          })
+          .map((p) => ({
+            id: p?.id || p?._id,
+            hospitalId: p?.hospitalId,
+            snapshot: p,
+            name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
+            patientId: p?.hospitalId || p?.id || "—",
+            reason: prettifyStatus(p?.status) || "Consultation",
+            insurance: p?.hmos?.provider || "—",
+            cardType: p?.cardType || 'personal',
+            familyName: p?.familyName || '',
+            companyName: p?.companyName || '',
+            rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
+            updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
+            gender: p?.gender || null,
+            age: p?.dateOfBirth || p?.dob
               ? Math.floor(
-                  (Date.now() -
-                    new Date(p.dateOfBirth || p.dob).getTime()) /
-                    (365.25 * 24 * 60 * 60 * 1000)
+                  (Date.now() - new Date(p.dateOfBirth || p.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
                 )
               : null,
-        }));
+          }));
 
-        if (mounted) setItems(mapped);
+        const mappedDependants = dependants
+          .filter((dep) => {
+            if (!dep?.status) return false;
+            const statuses = Array.isArray(dep.status) ? dep.status : [dep.status];
+            return statuses.some((s) => mdStatuses.has(String(s).toLowerCase()));
+          })
+          .map((dep) => ({
+            id: dep?.id || dep?._id,
+            hospitalId: dep?.hospitalId || dep?.patient?.hospitalId,
+            snapshot: dep,
+            dependantId: dep?.id || dep?._id,
+            dependantSnapshot: dep,
+            kind: 'dependant',
+            name: `${dep?.firstName || ""} ${dep?.lastName || ""}`.trim() || "Unknown",
+            patientId: dep?.patient?.hospitalId || dep?.patientId || dep?.parentPatientId || "—",
+            reason: prettifyStatus(dep?.status) || "Consultation",
+            insurance: dep?.patient?.hmos?.provider || "—",
+            cardType: dep?.cardType || 'personal',
+            familyName: dep?.familyName || dep?.patient?.familyName || '',
+            companyName: dep?.companyName || dep?.patient?.companyName || '',
+            rawStatus: (typeof dep?.status === "string" ? dep.status : "").toLowerCase(),
+            updatedAt: dep?.updatedAt ? formatNigeriaDateTime(dep.updatedAt) : "—",
+            gender: dep?.gender || null,
+            age: dep?.dateOfBirth || dep?.dob
+              ? Math.floor(
+                  (Date.now() - new Date(dep.dateOfBirth || dep.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+                )
+              : null,
+          }));
+
+        const combined = [...mappedPatients, ...mappedDependants].sort(
+          (a, b) =>
+            new Date(a?.updatedAt || 0).getTime() -
+            new Date(b?.updatedAt || 0).getTime()
+        );
+
+        if (mounted) setItems(combined);
       } catch (err) {
         console.error("Medical Director Incoming: patients fetch error", err);
       } finally {
@@ -340,7 +377,16 @@ const IncomingMD = () => {
           return;
         }
         navigate(`/dashboard/medical-director/medical-history/${data.id}`, {
-          state: { from: "incoming", patientSnapshot: data.snapshot },
+          state: {
+            from: "incoming",
+            patientSnapshot: data.snapshot,
+            ...(data.kind === 'dependant'
+              ? {
+                  dependantId: data.dependantId,
+                  dependantSnapshot: data.dependantSnapshot,
+                }
+              : {}),
+          },
         });
       }}
     >

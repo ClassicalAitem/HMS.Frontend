@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -37,6 +37,10 @@ const emptyForm = (doctorName = "") => ({
 const AntenatalRecords = () => {
   const { patientId, recordIndex } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const incomingDependantId = location?.state?.dependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
+  const fromIncoming = location?.state?.from === "incoming";
   const { user } = useAppSelector((state) => state.auth);
   const doctorName = user?.fullName || user?.name || "";
   const isEditing = Boolean(recordIndex);
@@ -46,12 +50,18 @@ const AntenatalRecords = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [saving, setSaving] = useState(false);
   const [patient, setPatient] = useState(null);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true)
   const [formData, setFormData] = useState(emptyForm(doctorName));
 
   const [dependants, setDependants] = useState([]);
-  const [selectedDependantId, setSelectedDependantId] = useState("");
   const [latestVital, setLatestVital] = useState(null);
   const [savedRecord, setSavedRecord] = useState(null);
+
+  const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
 
 const selectedDependant = useMemo(() => {
   if (!selectedDependantId) return null;
@@ -162,6 +172,37 @@ useEffect(() => {
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
+
+    const summarySubject = useMemo(() => {
+    if (!incomingDependantId) return patient;
+    const dep = selectedDependant || incomingDependantSnapshot || {};
+    const guardian = patient || {};
+    const dependantHmos = Array.isArray(guardian.hmos)
+      ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+      : [];
+  
+    return {
+      phone: guardian.phone,
+      phoneNumber: guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      cardType: guardian.cardType,
+      familyName: guardian.familyName,
+      companyName: guardian.companyName,
+      id: dep.id || incomingDependantId,
+      firstName: dep.firstName,
+      middleName: dep.middleName,
+      lastName: dep.lastName,
+      fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+      gender: dep.gender,
+      dob: dep.dob,
+      relationshipType: dep.relationshipType,
+      hmos: dependantHmos,
+    };
+  }, [incomingDependantId, selectedDependant, incomingDependantSnapshot, patient]);
+  
+  const summarySubjectName = summarySubject?.fullName
+    || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
+    || patientName;
 
   const transformBackendToFrontend = (backendData, docName = "") => {
     if (!backendData) return emptyForm(docName);
@@ -409,13 +450,20 @@ useEffect(() => {
                   </h1>
                 </div>
                 <div className="flex items-center gap-1 flex-col">
-                  <p className="text-sm text-base-content/70">{patientName || "Unknown"}</p>
-                  <p className="text-sm text-base-content/70">{patient?.hospitalId || patientId || "—"}</p>
+                 <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
+                  <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
                 </div>
               </div>
               <button
                 className="btn btn-ghost text-error btn-md btn-circle"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                  state: {
+                    from: fromIncoming ? "incoming" : "patients",
+                    patientSnapshot: patient,
+                    dependantId: incomingDependantId,
+                    dependantSnapshot: selectedDependant || incomingDependantSnapshot,
+                  },
+                })}
               >✕</button>
             </div>
           </div>
@@ -423,23 +471,41 @@ useEffect(() => {
 <div className="card bg-base-100 shadow-sm">
   <div className="card-body p-4">
     <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
-    <select
-      className="select select-bordered w-full"
-      value={selectedDependantId}
-      onChange={e => setSelectedDependantId(e.target.value)}
-    >
-      <option value="">Patient ({patientName})</option>
-      {dependants.length > 0 ? (
-        dependants.map(dep => (
-          <option key={dep.id} value={dep.id}>
-            {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
-          </option>
-        ))
-      ) : (
-        <option disabled value="">No dependants found</option>
-      )}
-    </select>
-    {selectedDependant && (
+    {incomingDependantId ? (
+      // Locked — came from a dependant context, no choice needed
+      <div className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-200/30">
+        <span className="badge badge-secondary">Dependant</span>
+        <span className="font-medium">
+          {selectedDependant?.fullName
+            || `${incomingDependantSnapshot?.firstName || ''} ${incomingDependantSnapshot?.lastName || ''}`.trim()
+            || 'Dependant'}
+        </span>
+        {(selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType) && (
+          <span className="badge badge-outline badge-sm">
+            {selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType}
+          </span>
+        )}
+      </div>
+    ) : (
+      // Free choice — doctor opened this page from the patient context
+      <select
+        className="select select-bordered w-full"
+        value={selectedDependantId}
+        onChange={e => setSelectedDependantId(e.target.value)}
+      >
+        <option value="">Patient ({patientName})</option>
+        {dependants.length > 0 ? (
+          dependants.map(dep => (
+            <option key={dep.id} value={dep.id}>
+              {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
+            </option>
+          ))
+        ) : (
+          <option disabled value="">No dependants found</option>
+        )}
+      </select>
+    )}
+    {selectedDependant && !incomingDependantId && (
       <div className="mt-2 text-sm text-base-content/70">
         <span className="badge badge-secondary mr-2">Dependant</span>
         <span>{selectedDependant.fullName}</span>
@@ -796,7 +862,13 @@ useEffect(() => {
               <button
                 className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
                 onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
-                  state: { selectedRecord: savedRecord }
+                state: {
+                            from: fromIncoming ? "incoming" : "patients",
+                            selectedRecord: savedRecord ,
+                            patientSnapshot: patient,
+                            dependantId: dependantId || null,
+                            dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                          }
                 })}
               >
                 Next

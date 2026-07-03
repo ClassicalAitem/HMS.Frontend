@@ -573,6 +573,7 @@ const CashierOpdPatientDetails = () => {
           </p>
           <SendPatientModal
             patientId={patient?.id || patientId}
+            patient={patient}
             onUpdated={() => navigate('/cashier/opd-patients')}
             allowedRoles={['labtechnician']}
             isOpdPatient={true}
