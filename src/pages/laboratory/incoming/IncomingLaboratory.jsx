@@ -117,27 +117,23 @@ const IncomingLaboratory = () => {
             );
 
             let matchesDependant = false;
-            if (inv.dependantId && inv.patientId) {
-              // Check if parent patient is still in awaitingLabPatients
-              const parentIsAwaitingLab = awaitingLabPatients.some((patient) =>
-                String(patient._id || patient.id) === String(inv.patientId)
-              );
-              if (parentIsAwaitingLab) {
+            let dependantRecord = null;
+            if (inv.dependantId) {
+              if (inv.patientId) {
                 const dependants = await loadDependantsForPatient(inv.patientId);
-                matchesDependant = dependants.some(
+                dependantRecord = dependants.find(
+                  (d) => String(d.id || d._id) === String(inv.dependantId)
+                );
+              } else if (Array.isArray(inv.patient?.dependants)) {
+                dependantRecord = inv.patient.dependants.find(
                   (d) => String(d.id || d._id) === String(inv.dependantId)
                 );
               }
-            } else if (inv.dependantId && Array.isArray(inv.patient?.dependants)) {
-              // Check if parent patient is still in awaitingLabPatients
-              const parentIsAwaitingLab = awaitingLabPatients.some((patient) =>
-                String(patient._id || patient.id) === String(inv.patient._id || inv.patient.id)
-              );
-              if (parentIsAwaitingLab) {
-                matchesDependant = inv.patient.dependants.some(
-                  (d) => String(d.id || d._id) === String(inv.dependantId)
-                );
-              }
+
+              matchesDependant = dependantRecord
+                ? (hasStatus(dependantRecord.status, PATIENT_STATUS.AWAITING_LAB) ||
+                    hasStatus(dependantRecord.status, 'sonography_completed'))
+                : false;
             }
 
             const shouldInclude = matchesRegularPatient || matchesOpdPatient || matchesDependant;
@@ -253,8 +249,8 @@ const IncomingLaboratory = () => {
 
           // Get patient status
           let patientStatus = "unknown";
-          if (dependant && patient) {
-            patientStatus = patient.status || "unknown";
+          if (dependant) {
+            patientStatus = dependant.status || "unknown";
           } else if (patient) {
             patientStatus = patient.status || "unknown";
           }
@@ -441,9 +437,9 @@ const IncomingLaboratory = () => {
       if (testCard.patientType === 'opd' && testCard.opdPatientId) {
         // Update OPD patient status
         await updateOpdPatient(testCard.opdPatientId, { status: "awaiting_sonographer" });
-      } else if (testCard.patientType === 'dependant' && testCard.patientId) {
-        // Update main patient status for dependant
-        await updatePatientStatus(testCard.patientId, "awaiting_sonographer");
+      } else if (testCard.patientType === 'dependant' && testCard.dependantId) {
+        const { updateDependantStatus } = await import('@/services/api/dependantAPI');
+        await updateDependantStatus(testCard.dependantId, { status: "awaiting_sonographer" });
       } else if (testCard.patientId) {
         // Update regular patient status
         await updatePatientStatus(testCard.patientId, "awaiting_sonographer");
