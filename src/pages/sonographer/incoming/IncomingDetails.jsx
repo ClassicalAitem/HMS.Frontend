@@ -12,6 +12,7 @@ import { FaUpload, FaCheckCircle, FaArrowLeft, FaTimes, FaPrint, FaEye } from "r
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 import { useAppSelector } from "@/store/hooks";
+import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const SonographerIncomingDetails = () => {
   const { patientId } = useParams();
@@ -26,6 +27,7 @@ const SonographerIncomingDetails = () => {
   const [existingLabResult, setExistingLabResult] = useState(null);
   const [patientType, setPatientType] = useState("regular");
   const [dependantId, setDependantId] = useState(null);
+  const [dependantInfo, setDependantInfo] = useState(null);
   const [opdPatientId, setOpdPatientId] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -79,6 +81,15 @@ const SonographerIncomingDetails = () => {
             console.error("Failed to load patient:", err);
             patientData = null;
           }
+
+          try {
+              const { getDependantById } = await import('@/services/api/dependantAPI');
+              const depRes = await getDependantById(investigationData.dependantId);
+              const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant || depRes?.data;
+              if (mounted && dep) setDependantInfo(dep);
+            } catch (err) {
+              console.warn("Failed to load dependant details:", err);
+            }
         } else {
           // Regular patient
           detectedPatientType = "regular";
@@ -220,15 +231,16 @@ const SonographerIncomingDetails = () => {
   const handleSendToLab = async () => {
     try {
       setActionLoading(true);
-      
+
       if (patientType === "opd" && opdPatientId) {
         await updateOpdPatient(opdPatientId, { status: "sonography_completed" });
-      } else if (patientType === "dependant" && patient?.id) {
-        await updatePatientStatus(patient.id || patient._id, "sonography_completed");
+      } else if (patientType === "dependant" && dependantId) {
+        const { updateDependantStatus } = await import('@/services/api/dependantAPI');
+        await updateDependantStatus(dependantId, { status: "sonography_completed" });
       } else if (patient?.id) {
         await updatePatientStatus(patient.id || patient._id, "sonography_completed");
       }
-      
+
       toast.success("Patient sent to lab successfully!");
       navigate('/dashboard/sonographer/incoming');
     } catch (error) {
@@ -242,13 +254,14 @@ const SonographerIncomingDetails = () => {
   const handleSendToDoctor = async () => {
     try {
       setActionLoading(true);
-      
-      if (patientType === "dependant" && patient?.id) {
-        await updatePatientStatus(patient.id || patient._id, "sonography_completed");
+
+      if (patientType === "dependant" && dependantId) {
+        const { updateDependantStatus } = await import('@/services/api/dependantAPI');
+        await updateDependantStatus(dependantId, { status: "sonography_completed" });
       } else if (patient?.id) {
         await updatePatientStatus(patient.id || patient._id, "sonography_completed");
       }
-      
+
       toast.success("Patient sent to doctor successfully!");
       navigate('/dashboard/sonographer/incoming');
     } catch (error) {
@@ -258,7 +271,6 @@ const SonographerIncomingDetails = () => {
       setActionLoading(false);
     }
   };
-
   const handleComplete = async () => {
 
     if (actionLoading) return;
@@ -327,6 +339,14 @@ const SonographerIncomingDetails = () => {
               <button className="btn btn-ghost" onClick={() => navigate('/dashboard/sonographer/incoming')}>
                 <FaArrowLeft className="w-4 h-4 mr-2" /> Back to Incoming
               </button>
+              <SendPatientModal
+                patientId={patient?.id || patientId}
+                patient={patient}
+                defaultDependantId={dependantId}
+                // defaultDependantLabel={fullName}
+                onUpdated={() => navigate('/cashier/dashboard')}
+                allowedRoles={[ 'doctor', 'medical-director', 'labtechnician']}
+              />
             </div>
           </div>
 
@@ -353,7 +373,16 @@ const SonographerIncomingDetails = () => {
                             <span className="badge badge-info badge-xs">OPD</span>
                           )}
                         </div>
-                        <p className="font-semibold text-base-content">{patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown'}</p>
+                        <p className="font-semibold text-base-content">
+                          {patientType === "dependant"
+                            ? (dependantInfo?.fullName || `${dependantInfo?.firstName || ''} ${dependantInfo?.lastName || ''}`.trim() || 'Unknown Dependant')
+                            : (patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown')}
+                        </p>
+                        {patientType === "dependant" && (
+                          <p className="text-xs text-base-content/50 mt-1">
+                            Dependant of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()}
+                          </p>
+                        )}
                       </div>
                       <div>
                         <p className="text-xs uppercase text-base-content/50">Patient ID</p>
@@ -361,7 +390,11 @@ const SonographerIncomingDetails = () => {
                       </div>
                       <div>
                         <p className="text-xs uppercase text-base-content/50">Current Status</p>
-                        <p className="text-base-content">{Array.isArray(patient?.status) ? patient.status.join(', ') : patient?.status || '—'}</p>
+                        <p className="text-base-content">
+                          {patientType === "dependant"
+                            ? (Array.isArray(dependantInfo?.status) ? dependantInfo.status.join(', ') : dependantInfo?.status || '—')
+                            : (Array.isArray(patient?.status) ? patient.status.join(', ') : patient?.status || '—')}
+                        </p>
                       </div>
                       {patient?.updatedAt && (
                         <div>
