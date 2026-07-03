@@ -471,22 +471,36 @@ const isEligibleForAntenatal = useMemo(() => {
     if (!isEligibleForAntenatal) return;
 
     let mounted = true;
-    const loadAntenatalRecords = async () => {
+   const loadAntenatalRecords = async () => {
       try {
         setAntenatalLoading(true);
         const res = await getAnteNatalRecordByPatientId(patientId);
-        const records = res?.data ?? res ?? [];
+        const raw = res?.data ?? res ?? [];
+
+        const allRecords = (Array.isArray(raw) ? raw : [])
+          .flatMap(wrapper => {
+            if (wrapper.patientId !== patientId) return [];
+            return (wrapper.anteNatalRecords || []).map(r => ({
+              ...r,
+              __wrapperId: wrapper._id,
+            }));
+          });
+
         if (mounted) {
-          const sortedRecords = Array.isArray(records)
-          ? [...records].sort(
-              (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-            )
-          : [];
-        setAntenatalRecords(sortedRecords);
+          const sorted = [...allRecords].sort(
+            (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          );
+
+          const scoped = isViewingDependant && dependantId
+            ? sorted.filter(r => r.dependantId === dependantId)
+            : sorted.filter(r => !r.dependantId);
+
+          setAntenatalRecords(scoped);
+
+          
         }
       } catch (err) {
         console.error("Failed to load antenatal records", err);
-        // Don't show error for missing records, just leave as empty array
       } finally {
         if (mounted) setAntenatalLoading(false);
       }
@@ -494,7 +508,7 @@ const isEligibleForAntenatal = useMemo(() => {
 
     loadAntenatalRecords();
     return () => { mounted = false; };
-  }, [patientId, isEligibleForAntenatal]);
+  }, [patientId, isEligibleForAntenatal, isViewingDependant, dependantId]);
 
 const latestLab = useMemo(() => { 
   if (!Array.isArray(labResults) || labResults.length === 0) return null;
@@ -840,10 +854,17 @@ const dependant = isDependant
                   <div className="flex gap-2">
                     <button
                       className="btn btn-outline btn-sm"
-                      onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`)}
+                      onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
+                          state: {
+                            from: fromIncoming ? "incoming" : "patients",
+                            patientSnapshot: patient,
+                            dependantId: dependantId || null,
+                            dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                          }
+                        } )}
                       disabled={antenatalRecords.length === 0}
                     >
-                      View Records ({antenatalRecords.length})
+                      View Records
                     </button>
                     <button
                       className="btn btn-secondary btn-sm gap-2"
