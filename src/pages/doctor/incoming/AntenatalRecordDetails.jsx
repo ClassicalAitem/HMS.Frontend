@@ -119,13 +119,22 @@ const AntenatalRecordDetails = () => {
     return record;
   };
 
-  const getRecordsArray = (payload) => {
-    if (!payload) return [];
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload.anteNatalRecords)) return payload.anteNatalRecords;
-    if (Array.isArray(payload.data)) return payload.data;
-    return [];
-  };
+    const getRecordsArray = (payload) => {
+      if (!payload) return [];
+      if (Array.isArray(payload)) {
+        return payload.flatMap(wrapper =>
+          (wrapper.anteNatalRecords || []).map((r, i) => ({
+            ...r,
+            __wrapperId: wrapper._id,
+            __originalIndex: i,
+          }))
+        );
+      }
+      // Single wrapper object
+      if (Array.isArray(payload.anteNatalRecords)) return payload.anteNatalRecords;
+      if (Array.isArray(payload.data)) return payload.data;
+      return [];
+    };
 
   const getDoctorDisplayName = (doctor) => {
     if (!doctor) return null;
@@ -212,11 +221,8 @@ const AntenatalRecordDetails = () => {
       try {
         setLoadingData(true);
         setError(null);
-        console.log('Loading antenatal records for patient ID:', patientId);
         const res = await getAnteNatalRecordByPatientId(patientId);
-        console.log('Antenatal records response:', res);
         const records = getRecordsArray(res?.data ?? res);
-        console.log('Processed antenatal records:', records);
         if (mounted) {
           const recordsWithOriginalIndex = records.map((record, originalIndex) => ({
             ...record,
@@ -226,7 +232,11 @@ const AntenatalRecordDetails = () => {
           const sortedRecords = [...recordsWithOriginalIndex].sort(
             (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
           );
-          setAntenatalRecords(sortedRecords);
+          const scoped = isViewingDependant && dependantId
+            ? sortedRecords.filter(r => r.dependantId === dependantId)
+            : sortedRecords.filter(r => !r.dependantId);
+
+          setAntenatalRecords(scoped);(sortedRecords);
 
           const selectedFromState = normalizeAntenatalRecordFromState(location.state?.selectedRecord);
           if (selectedFromState) {
