@@ -179,9 +179,16 @@ useEffect(() => {
 }, [patientId]);
 
 const summarySubject = useMemo(() => {
-  if (!isViewingDependant) return patient;
-  const dep = subject || dependantSnapshot || {};
   const guardian = patient || {};
+
+  if (!isViewingDependant) {
+    return {
+      ...guardian,
+      fullName: guardian.fullName || `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || 'Unknown',
+    };
+  }
+
+  const dep = subject || dependantSnapshot || {};
   const ownHmos = Array.isArray(guardian.hmos)
     ? guardian.hmos.filter(h => h.dependantId === dep.id)
     : [];
@@ -203,7 +210,6 @@ const summarySubject = useMemo(() => {
     hmos: ownHmos,
   };
 }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
-
 // Fetch antenatal records (nurse read-only view)
 useEffect(() => {
   let mounted = true;
@@ -634,9 +640,7 @@ useEffect(() => {
                       <button
                         className="btn btn-outline btn-sm"
                         onClick={() => {
-                          // Prefill modal with latest values for editing
                           setEditingVitalId(latest?.id || latest?._id || null);
-                          setSelectedDependantId(latest?.dependantId || null);
                           setRecordForm({
                             bp: latest?.bp || latest?.bloodPressure || "",
                             pulse: latest?.pulse || latest?.heartRate || "",
@@ -940,29 +944,13 @@ useEffect(() => {
           {isRecordOpen && (
             <div className="modal modal-open">
               <div className="modal-box">
-                <h3 className="font-bold text-lg">Record New Vitals - {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}</h3>
-                <p className="py-1 text-sm">Enter the latest vital signs for this patient.</p>
+               <h3 className="font-bold text-lg">Record New Vitals - {summarySubject?.fullName || patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient'}</h3>
+               <p className="py-1 text-sm">Enter the latest vital signs for this patient.</p>
 
-                <div className="mb-4">
-                  <label className="block mb-1 text-sm text-base-content/70">Family Member / Dependant (Optional)</label>
-                  <select 
-                    value={selectedDependantId || ''} 
-                    onChange={(e) => setSelectedDependantId(e.target.value || null)}
-                    className="select select-bordered w-full"
-                  >
-                    <option value="">Record for main patient</option>
-                    {dependants && dependants.length > 0 ? (
-                      dependants.map((dep) => (
-                        <option key={dep?.id} value={dep?.id}>
-                          {dep?.fullName || `${dep?.firstName || ''} ${dep?.lastName || ''}`.trim() || 'Unknown'} - {dep?.relationship || 'Family'}
-                        </option>
-                      ))
-                    ) : (
-                      <option disabled>No family members added</option>
-                    )}
-                  </select>
+                <div className="mb-4 text-sm text-base-content/70">
+                  Recording vitals for <span className="font-medium text-base-content">{summarySubject?.fullName || 'Patient'}</span>
+                  {isViewingDependant && summarySubject?.relationshipType ? ` (${summarySubject.relationshipType})` : ''}
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                   <div>
                     <label className="block mb-1 text-sm text-base-content/70">Blood Pressure</label>
@@ -1023,19 +1011,19 @@ useEffect(() => {
                     try {
                       setRecordLoading(true);
                       setRecordError("");
-                      const payload = {
-                        patientId: patientUUID || patientId,
-                        dependantId: selectedDependantId || undefined,
-                        nurseId: user?.id,
-                        bp: recordForm.bp,
-                        temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
-                        weight: recordForm.weight ? Number(recordForm.weight) : undefined,
-                        pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
-                        spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
-                        height: recordForm.height ? Number(recordForm.height) : undefined,
-                        respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
-                        notes: recordForm.notes || undefined,
-                      };
+                     const payload = {
+                      patientId: patientUUID || patientId,
+                      dependantId: dependantId || undefined,
+                      nurseId: user?.id,
+                      bp: recordForm.bp,
+                      temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
+                      weight: recordForm.weight ? Number(recordForm.weight) : undefined,
+                      pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
+                      spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
+                      height: recordForm.height ? Number(recordForm.height) : undefined,
+                      respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
+                      notes: recordForm.notes || undefined,
+                    };
 
                       if (editingVitalId) {
                         // Edit existing vital
@@ -1051,7 +1039,7 @@ useEffect(() => {
 
                       setIsRecordOpen(false);
                       setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
-                      setSelectedDependantId(null);
+                     
                       setEditingVitalId(null);
                     } catch (e) {
                       const msg = e?.response?.data?.message || 'Failed to record vitals';
