@@ -67,7 +67,10 @@ const ViewConsultation = () => {
 
 
 
-  const canEdit = true;
+  const canEdit = useMemo(() => {
+    if (!consultation?.createdAt) return false;
+    return (Date.now() - new Date(consultation.createdAt).getTime()) < 24 * 60 * 60 * 1000;
+  }, [consultation]);
 
 
   const loadData = async () => {
@@ -641,7 +644,18 @@ const subjectRelation = isForDependant
             )}
             <button
               className="btn btn-ghost btn-circle text-base-content/70 hover:bg-base-200"
-              onClick={() => navigate(`/dashboard/medical-director/medical-history/${patient.id}`)}
+              onClick={() => navigate(
+                `/dashboard/doctor/medical-history/${consultation?.patientId || patientId}`,
+                {
+                  state: {
+                    from: "incoming",
+                    patientSnapshot: consultation?.snapshot || patient,
+                    // key prop — PatientMedicalHistory reads this to scope to dependant
+                    dependantId: consultation?.dependantId,
+                    dependantSnapshot: consultation?.type === 'dependant' ? consultation?.snapshot : null,
+                  },
+                }
+              )}
             >
               <IoIosCloseCircleOutline className="w-8 h-8" />
             </button>
@@ -877,10 +891,17 @@ const subjectRelation = isForDependant
                       > 
                         <FaFlask /> Order Labs
                       </button>
-                      <button
-                      className="btn btn-sm btn-primary gap-2"
+                     <button
+                        className="btn btn-sm btn-primary gap-2"
                         onClick={() => navigate(
-                          `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`
+                          `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
+                          {
+                            state: {
+                              dependantId: consultation?.dependantId || null,
+                              dependantSnapshot: consultation?.dependant || null,
+                              patientSnapshot: patient,
+                            }
+                          }
                         )}
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
@@ -931,27 +952,29 @@ const subjectRelation = isForDependant
 
 
                           {/* ACTION BUTTONS */}
-                            {lab.status !== 'completed' && (
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-ghost text-warning"
-                                  onClick={() => {
-                                    setEditingLab(lab);
-                                    setIsInvestigationModalOpen(true);
-                                  }}
-                                >
-                                  <FaEdit />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-ghost text-error"
-                                  onClick={() => handleDeleteLab(lab._id)}
-                                >
-                                  <FaTrash />
-                                </button>
-                              </div>
-                            )}
+                          <div className="flex gap-2">
+
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-ghost text-warning"
+                      onClick={() => {
+                        setEditingLab(lab);
+                        setIsInvestigationModalOpen(true);
+                      }}
+                    >
+                      <FaEdit />
+                    </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-ghost text-error"
+                    onClick={() => handleDeleteLab(lab._id)}
+                  >
+                    <FaTrash />
+                  </button>
+
+                          </div>
+
                         </div>
                           ))}
                         </div>
@@ -981,7 +1004,6 @@ const subjectRelation = isForDependant
                                   <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}>
                                     {pres.status}
                                   </span>
-
                                   <span className="text-xs text-base-content/50">
                                     Ordered {formatNigeriaDate(pres.createdAt)}
                                   </span>
@@ -990,24 +1012,25 @@ const subjectRelation = isForDependant
 
 
                                 {/* ACTION BUTTONS */}
-                                {pres.status !== 'completed' && (
-                                  <div className="flex gap-2">
-                                    <button
-                                      type="button"
-                                      className="btn btn-xs btn-ghost text-warning"
-                                      onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
-                                    >
-                                      <FaEdit />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="btn btn-xs btn-ghost text-error"
-                                      onClick={() => handleDeletePrescription(pres._id)}
-                                    >
-                                      <FaTrash />
-                                    </button>
-                                  </div>
-                                )}
+                                <div className="flex gap-2">
+
+                                <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-warning"
+                                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`, { state: { prescription: pres } })}
+                              >
+                                <FaEdit />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-error"
+                                onClick={() => handleDeletePrescription(pres._id)}
+                              >
+                                <FaTrash />
+                              </button>
+
+                                </div>
 
                               </div>
                               <div className="space-y-1">

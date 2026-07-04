@@ -7,10 +7,11 @@
   import { createReceipt, getAllBillings, getAllReceiptByPatientId, updateBilling } from "@/services/api/billingAPI";
 
   import { getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
-  import { formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
+  import { formatNigeriaDate, formatNigeriaDateShort } from "@/utils/formatDateTimeUtils";
   import toast from "react-hot-toast";
   import apiClient from "@/services/api/apiClient";
   import SendPatientModal from "@/components/modals/SendPatientModal";
+import { getConsultations } from "@/services/api/consultationAPI";
 
   const IncomingHmoDetails = () => {
     const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
@@ -32,6 +33,8 @@
     const [billings, setBillings] = useState([]);
     const [hmos, setHmos] = useState([]);
     const [itemDecisions, setItemDecisions] = useState({});
+    const [consultations, setConsultations] = useState([]);
+    const [consultationsLoading, setConsultationsLoading] = useState(true);
 
     const currentUser = useAppSelector((state) => state.auth.user);
     const hmoUserId = currentUser?.id || currentUser?._id;
@@ -101,6 +104,31 @@
       loadAll();
       return () => { mounted = false; };
     }, [patientId, isViewingDependant, dependantId]);
+
+    useEffect(() => {
+  let mounted = true;
+  const fetchConsultations = async () => {
+    try {
+      setConsultationsLoading(true);
+      const res = await getConsultations({ patientId });
+      const raw = res?.data?.data ?? res?.data ?? res ?? [];
+      const list = Array.isArray(raw) ? raw : (raw?.consultations ?? []);
+      if (mounted) {
+        setConsultations(
+          [...list].sort((a, b) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          )
+        );
+      }
+    } catch {
+      if (mounted) setConsultations([]);
+    } finally {
+      if (mounted) setConsultationsLoading(false);
+    }
+  };
+  if (patientId) fetchConsultations();
+  return () => { mounted = false; };
+}, [patientId]);
 
     const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
       setItemDecisions(prev => ({
@@ -240,7 +268,8 @@
         <Sidebar />
         <div className="flex overflow-hidden flex-col flex-1">
           <Header />
-          <div className="overflow-y-auto flex-1 p-6">
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6">
 
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
@@ -393,6 +422,9 @@
                       <div className="text-right">
                         <p className="text-sm font-bold">₦{Number(bill.totalAmount || 0).toLocaleString()}</p>
                         <p className="text-xs text-base-content/50">Total</p>
+                        <p className="text-xs text-base-content/40 mt-1">
+                          {bill.createdAt ? formatNigeriaDate(bill.createdAt) : '—'}
+                        </p>
                       </div>
                     </div>
 
@@ -586,8 +618,106 @@
             )}
 
           </div>
+
+          <aside className="w-[360px] max-w-[32vw] border-l border-base-200 bg-base-100/80 p-4 overflow-y-auto">
+            <div className="card bg-base-100 shadow-sm border border-base-200 h-full">
+              <div className="card-body p-5">
+                <h3 className="font-semibold text-base-content text-base mb-4">
+                  Consultations
+                  {!consultationsLoading && (
+                    <span className="text-base-content/40 font-normal text-sm ml-2">
+                      ({consultations.length})
+                    </span>
+                  )}
+                </h3>
+
+                {consultationsLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="skeleton h-20 w-full rounded-lg" />
+                    ))}
+                  </div>
+                ) : consultations.length === 0 ? (
+                  <p className="text-sm text-base-content/50 py-4 text-center">
+                    No consultations on record
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {consultations.map((c) => {
+                      const isDependant = !!c.dependantId;
+                      const subjectName = isDependant
+                        ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
+                        : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
+                      const complaints = Array.isArray(c.complaint)
+                        ? c.complaint.map(cp => cp.symptom).filter(Boolean).join(', ')
+                        : null;
+
+                      return (
+                        <div
+                          key={c.id}
+                          className={`p-4 rounded-lg border ${
+                            isDependant
+                              ? 'border-secondary/30 bg-secondary/5'
+                              : 'border-base-300 bg-base-200/30'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`badge badge-sm shrink-0 ${
+                                isDependant ? 'badge-secondary' : 'badge-primary'
+                              }`}>
+                                {isDependant
+                                  ? (c.dependant?.relationshipType || 'Dependant')
+                                  : 'Patient'}
+                              </span>
+                              {isDependant && (
+                                <span className="text-xs text-base-content/60 truncate">
+                                  {subjectName}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-base-content/40 shrink-0">
+                              {c.createdAt ? formatNigeriaDate(c.createdAt) : '—'}
+                            </span>
+                          </div>
+
+                          <div className="mb-1">
+                            <span className="text-xs text-base-content/50">Diagnosis: </span>
+                            <span className="text-sm font-medium text-base-content">
+                              {c.diagnosis || 'Pending'}
+                            </span>
+                          </div>
+
+                          {complaints ? (
+                            <div>
+                              <span className="text-xs text-base-content/50">Complaint: </span>
+                              <span className="text-sm text-base-content/80">{complaints}</span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="text-xs text-base-content/50">Complaint: </span>
+                              <span className="text-sm text-base-content/40">None recorded</span>
+                            </div>
+                          )}
+
+                          {c.visitReason && (
+                            <div className="mt-2">
+                              <span className="badge badge-ghost badge-xs capitalize">
+                                {c.visitReason}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
+    </div>
     );
   };
 
