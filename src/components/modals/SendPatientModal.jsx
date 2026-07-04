@@ -131,6 +131,34 @@ const SendPatientModal = ({
     }
   };
 
+  const handleComplete = async (subject) => {
+  if (!subject?.id) {
+    toast.error('No subject selected');
+    return;
+  }
+
+  setIsSending(true);
+  try {
+    const isDependent = subject.type === 'dependant';
+    const promise = isDependent
+      ? updateDependantStatus(subject.id, { status: PATIENT_STATUS.COMPLETED })
+      : updatePatientStatus(subject.id, { status: PATIENT_STATUS.COMPLETED });
+
+    toast.promise(promise, {
+      loading: `Marking ${subject.label} as completed...`,
+      success: `${subject.label} marked as completed`,
+      error: (err) => err?.response?.data?.message || `Failed to mark ${subject.label} as completed`,
+    });
+
+    await promise;
+    close();
+    if (onUpdated) onUpdated();
+  } catch {
+    toast.error(`Failed to mark ${subject.label} as completed`);
+  } finally {
+    setIsSending(false);
+  }
+};
   const handleSend = async (role, status, subject) => {
     if (!subject?.id) {
       toast.error('No subject selected');
@@ -297,6 +325,15 @@ const SendPatientModal = ({
                       </button>
                     );
                   })}
+                  <div className="pt-2 border-t border-base-200">
+                  <button
+                    className="btn btn-sm btn-success w-full"
+                    onClick={() => handleComplete(selectedSubject)}
+                    disabled={isSending}
+                  >
+                    ✅ Mark as Completed
+                  </button>
+                </div>
                 </div>
               )}
 
