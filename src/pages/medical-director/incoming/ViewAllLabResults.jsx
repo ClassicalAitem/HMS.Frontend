@@ -202,7 +202,7 @@ useEffect(() => {
               </div>
               <button
                 className="btn btn-outline"
-                onClick={() => navigate( `/dashboard/medical-director/medical-history/${patientId}`)}
+                onClick={() => navigate( `/dashboard/doctor/medical-history/${patientId}`)}
               >
                 Back
               </button>
@@ -261,7 +261,7 @@ useEffect(() => {
                             <td>
                               <button
                                 className="btn btn-sm btn-ghost"
-                                onClick={() => navigate(`/dashboard/medical-director/labResults/${row._id}`)}
+                                onClick={() => navigate(`/dashboard/doctor/labResults/${row._id}`)}
                               >
                                 View
                               </button>

@@ -23,9 +23,9 @@ import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 const AddDiagnosis = () => {
   const { patientId } = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const incomingDependantId = location?.state?.dependantId || null;
   const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
+  const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
 
@@ -37,6 +37,7 @@ const AddDiagnosis = () => {
   const [dependants, setDependants] = useState([]);
   const [fullDependantRecord, setFullDependantRecord] = useState(null);
   const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
+
   const selectedDependant = useMemo(() => {
     if (!selectedDependantId) return null;
     return (
@@ -131,6 +132,24 @@ const AddDiagnosis = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
+  useEffect(() => {
+    let mounted = true;
+    const fetchDependant = async () => {
+      if (!incomingDependantId) return;
+      try {
+        const res = await getDependantById(incomingDependantId);
+        const dep = res?.data?.data?.dependant || res?.data?.dependant || res?.data || null;
+        if (mounted) setFullDependantRecord(dep);
+      } catch (error) {
+        if (mounted && incomingDependantSnapshot) {
+          setFullDependantRecord(incomingDependantSnapshot);
+        }
+      }
+    };
+    fetchDependant();
+    return () => { mounted = false; };
+  }, [incomingDependantId, incomingDependantSnapshot]);
+
   // ✅ Fix 2 — inventory fetch in its own useEffect
   useEffect(() => {
     let mounted = true;
@@ -193,6 +212,41 @@ const AddDiagnosis = () => {
     return () => { mounted = false; };
   }, [patientId, snapshot]);
 
+  const patientName = useMemo(() => (
+    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
+  ), [patient]);
+
+  const summarySubject = useMemo(() => {
+  if (!incomingDependantId) return patient;
+  const dep = selectedDependant || fullDependantRecord || incomingDependantSnapshot || {};
+  const guardian = patient || {};
+  const dependantHmos = Array.isArray(guardian.hmos)
+    ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+    : [];
+
+  return {
+    phone: guardian.phone,
+    phoneNumber: guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    cardType: guardian.cardType,
+    familyName: guardian.familyName,
+    companyName: guardian.companyName,
+    id: dep.id || incomingDependantId,
+    firstName: dep.firstName,
+    middleName: dep.middleName,
+    lastName: dep.lastName,
+    fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+    gender: dep.gender,
+    dob: dep.dob,
+    relationshipType: dep.relationshipType,
+    hmos: dependantHmos,
+  };
+}, [incomingDependantId, selectedDependant, fullDependantRecord, incomingDependantSnapshot, patient]);
+
+const summarySubjectName = summarySubject?.fullName
+  || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
+  || patientName;
+
   useEffect(() => {
     let mounted = true;
     const loadVitals = async () => {
@@ -207,9 +261,14 @@ const AddDiagnosis = () => {
         const list = normalizeVitalsResponse(res);
         if (!mounted) return;
 
-        const sorted = Array.isArray(list)
-          ? [...list].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-          : [];
+        const allVitals = Array.isArray(list) ? list : [];
+        const filteredVitals = incomingDependantId
+          ? allVitals.filter((v) => v.dependantId === incomingDependantId)
+          : allVitals;
+
+        const sorted = [...filteredVitals].sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
 
         setSortedVitals(sorted);
         setLatest(getLatestVital(sorted));
@@ -223,10 +282,6 @@ const AddDiagnosis = () => {
     loadVitals();
     return () => { mounted = false; };
   }, [patientId]);
-
-  const patientName = useMemo(() => (
-    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
-  ), [patient]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -340,53 +395,64 @@ const handleConfirmSave = async () => {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-semibold text-base-content">Add New Consultation</h1>
                 <div className="flex items-center gap-1 flex-col">
-                  <p className="text-sm text-base-content/70">{patientName || ""}</p>
-                  <p className="text-sm text-base-content/70">{patient?.hospitalId || patientId || "—"}</p>
-                </div>
+                 <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
+                  <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
+               </div>
               </div>
               <IoIosCloseCircleOutline
                 className="text-error text-3xl cursor-pointer"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
-                  state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient }
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                  state: {
+                    from: fromIncoming ? "incoming" : "patients",
+                    patientSnapshot: patient,
+                    dependantId: incomingDependantId,
+                    dependantSnapshot: selectedDependant || fullDependantRecord || incomingDependantSnapshot,
+                  },
                 })}
               />
             </div>
           </div>
 
-          {/* Dependant Selection */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
               <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
-              <select
-                className="select select-bordered w-full"
-                value={selectedDependantId}
-                onChange={e => setSelectedDependantId(e.target.value)}
-              >
-                <option value=""> Patient ({patientName})</option>
-                {dependants.length > 0 ? (
-                  dependants.map(dep => (
-                    <option key={dep.id} value={dep.id}>
-                      {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled value="">No dependants found</option>
-                )}
-              </select>
-              {selectedDependant && (
-                <div className="mt-2 text-sm text-base-content/70">
-                  <span className="badge badge-secondary mr-2">Dependant</span>
-                  <span>{selectedDependant.fullName}</span>
-                  {selectedDependant.relationshipType && (
-                    <span className="ml-2 badge badge-outline badge-sm">{selectedDependant.relationshipType}</span>
+              {incomingDependantId ? (
+                <div className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-200/30">
+                  <span className="badge badge-secondary">Dependant</span>
+                  <span className="font-medium">
+                    {selectedDependant?.fullName
+                      || `${incomingDependantSnapshot?.firstName || ''} ${incomingDependantSnapshot?.lastName || ''}`.trim()
+                      || 'Dependant'}
+                  </span>
+                  {(selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType) && (
+                    <span className="badge badge-outline badge-sm">
+                      {selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType}
+                    </span>
                   )}
                 </div>
+              ) : (
+                <select
+                  className="select select-bordered w-full"
+                  value={selectedDependantId}
+                  onChange={e => setSelectedDependantId(e.target.value)}
+                >
+                  <option value=""> Patient ({patientName})</option>
+                  {dependants.length > 0 ? (
+                    dependants.map(dep => (
+                      <option key={dep.id} value={dep.id}>
+                        {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled value="">No dependants found</option>
+                  )}
+                </select>
               )}
             </div>
           </div>
 
-   <CurrentVitalsCard patient={patient} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
-
+          <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+ 
           {/* Visit Reason */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
@@ -664,7 +730,7 @@ const handleConfirmSave = async () => {
             {cid && (
               <button
                 className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cid}`, {
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, {
                   state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient }
                 })}
               >
