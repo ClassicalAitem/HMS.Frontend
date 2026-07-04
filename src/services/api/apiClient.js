@@ -4,7 +4,7 @@ import { config } from '../../config/env';
 // Create axios instance
 const apiClient = axios.create({
   baseURL: config.API_BASE_URL,
-  timeout: 30000, 
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -13,10 +13,20 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
+    console.log('🚀 API Client: Making request to:', config.url);
+    console.log('🚀 API Client: Request method:', config.method);
+    console.log('🚀 API Client: Request data:', config.data);
+
+    // Get token from localStorage
     const directToken = localStorage.getItem('token');
     const persistRoot = localStorage.getItem('persist:root');
+
+    console.log('🔍 API Client: Direct token from localStorage:', directToken ? 'Present' : 'Missing');
+    console.log('🔍 API Client: persist:root exists:', persistRoot ? 'Yes' : 'No');
+
     let token = directToken;
 
+    // Fallback: try to get token from persist:root
     if (!token && persistRoot) {
       try {
         const parsedRoot = JSON.parse(persistRoot);
@@ -27,12 +37,22 @@ apiClient.interceptors.request.use(
       }
     }
 
+
     if (token) {
       const cleanToken = token.replace(/^["']|["']$/g, '').trim();
-      if (cleanToken.split('.').length === 3) {
+
+      // Validate JWT format (should have 3 parts separated by dots)
+      const jwtParts = cleanToken.split('.');
+      if (jwtParts.length !== 3) {
+        console.error('❌ API Client: Invalid JWT format - expected 3 parts, got:', jwtParts.length);
+        console.error('❌ API Client: Token parts:', jwtParts);
+        console.error('❌ API Client: Raw token:', token);
+        console.error('❌ API Client: Clean token:', cleanToken);
+      } else {
         config.headers.Authorization = `Bearer ${cleanToken}`;
       }
     }
+
 
     return config;
   },
@@ -44,53 +64,88 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const errorMessage = error.response?.data?.message?.toLowerCase() ?? '';
 
     if (error.response?.status === 401) {
-      const isAuthError =
-        errorMessage.includes('jwt expired') ||
-        errorMessage.includes('token expired') ||
-        errorMessage.includes('jwt malformed') ||
-        errorMessage.includes('please log in') ||
-        errorMessage.includes('unauthorized') ||
-        errorMessage.includes('no token provided') ||
-        errorMessage.includes('access denied');
+      console.log('🚨 API Client: 401 Unauthorized error detected');
+      console.log('🚨 API Client: Error message:', error.response?.data?.message);
 
-      if (isAuthError) {
-        ['token', 'refreshToken', 'persist:root', 'authToken', 'user'].forEach(k =>
-          localStorage.removeItem(k)
-        );
-        window.dispatchEvent(new CustomEvent('auth:token-expired', {
-          detail: { message: 'Your session has expired. Please log in again.' }
-        }));
-        setTimeout(() => { window.location.href = '/login'; }, 1000);
+      // Check if it's a JWT expiration error or no token error
+      const errorMessage = error.response?.data?.message?.toLowerCase();
+      const isJwtExpired = errorMessage?.includes('jwt expired') ||
+                          errorMessage?.includes('token expired') ||
+                          errorMessage?.includes('jwt malformed') ||
+                          errorMessage?.includes('please log in') ||
+                          errorMessage?.includes('unauthorized') ||
+                          errorMessage?.includes('no token provided') ||
+                          errorMessage?.includes('access denied');
+
+      if (isJwtExpired) {
+        console.log('⏰ API Client: Authentication issue detected (token expired/missing)');
+        console.log('🔄 API Client: Clearing authentication data and redirecting to login');
+
+        // Clear all authentication data
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('persist:root');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+
+        // Show user-friendly error message
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('auth:token-expired', {
+            detail: { message: 'Your session has expired. Please log in again.' }
+          }));
+        }
+
+        // Redirect to login page
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1000);
+
         return Promise.reject(new Error('Session expired. Please log in again.'));
       }
 
+      // For other 401 errors, try token refresh if available
       if (!originalRequest._retry) {
         originalRequest._retry = true;
         try {
-          const refreshToken =
-            localStorage.getItem('refreshToken') ||
-            JSON.parse(localStorage.getItem('persist:root') || '{}')?.auth?.refreshToken?.replace(/"/g, '');
+          // Try to refresh token (if refresh endpoint is implemented)
+          const refreshToken = localStorage.getItem('refreshToken') ||
+                             JSON.parse(localStorage.getItem('persist:root') || '{}')?.auth?.refreshToken?.replace(/"/g, '');
 
           if (refreshToken) {
             const response = await axios.post(`${config.API_BASE_URL}/user/refresh`, { refreshToken });
             const { token: newToken, refreshToken: newRefreshToken } = response.data;
+
+            // Update tokens in localStorage
             localStorage.setItem('token', newToken);
             localStorage.setItem('refreshToken', newRefreshToken);
+
+            // Retry original request with new token
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return apiClient(originalRequest);
           }
-        } catch {
-          ['token', 'refreshToken', 'persist:root', 'authToken', 'user'].forEach(k =>
-            localStorage.removeItem(k)
-          );
-          setTimeout(() => { window.location.href = '/login'; }, 1000);
-          return Promise.reject(error);
+        } catch (refreshError) {
+          console.log('❌ API Client: Token refresh failed');
+          // Refresh failed, clear auth data and redirect
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('persist:root');
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 1000);
+
+          return Promise.reject(refreshError);
         }
       }
     }
+
+    console.log('❌ API Client: Request failed');
+    console.log('❌ API Client: Error status:', error.response?.status);
+    console.log('❌ API Client: Error message:', error.response?.data?.message);
 
     return Promise.reject(error);
   }
