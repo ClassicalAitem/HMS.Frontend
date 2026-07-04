@@ -5,6 +5,7 @@ import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { RiSearchLine } from 'react-icons/ri';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import { getDependants } from '@/services/api/dependantAPI';
 
 const AllPatients = () => {
   const navigate = useNavigate();
@@ -23,20 +24,39 @@ const AllPatients = () => {
     const fetchAll = async () => {
       try {
         setLoading(true);
-        const res = await getPatients();
-        const patients = Array.isArray(res?.data) ? res.data : [];
-        const filtered = patients.filter((p) => {
-          const status = (p?.status || '').toLowerCase();
-          return status === 'awaiting_consultation' || status === 'lab_completed';
-        });
-        const sorted = filtered.sort((a, b) => {
-          const at = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
-          const bt = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
-          return bt - at;
-        });
-        const mapped = sorted.map((p, idx) => ({
-          sn: String(idx + 1).padStart(2, '0'),
+
+        const [patientsRes, dependantsRes] = await Promise.allSettled([
+          getPatients(),
+          getDependants(),
+        ]);
+
+        const patients = patientsRes.status === 'fulfilled'
+          ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
+          : [];
+
+        const dependants = dependantsRes.status === 'fulfilled'
+          ? (() => {
+              const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? [];
+              return Array.isArray(raw) ? raw : (raw?.dependants ?? []);
+            })()
+          : [];
+
+        const VALID_STATUSES = new Set(['awaiting_consultation', 'lab_completed']);
+
+        const filteredPatients = patients.filter((p) =>
+          VALID_STATUSES.has((p?.status || '').toLowerCase())
+        );
+
+        const filteredDependants = dependants.filter((d) =>
+          VALID_STATUSES.has((d?.status || '').toLowerCase())
+        );
+
+        const patientMap = new Map(patients.map(p => [p.id || p._id, p]));
+
+        const mappedPatients = filteredPatients.map((p) => ({
+          type: 'patient',
           id: p?.id,
+          dependantId: null,
           snapshot: p,
           name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || p?.fullName || 'Unknown',
           patientId: p?.hospitalId || p?.id || '—',
@@ -45,10 +65,42 @@ const AllPatients = () => {
           phone: p?.phone || p?.phoneNumber || '—',
           status: (p?.status || '').replace(/_/g, ' '),
           registered: p?.createdAt ? formatNigeriaDate(p.createdAt) : '—',
+          updatedAt: p?.updatedAt || p?.createdAt,
         }));
-        if (mounted) setItems(mapped);
+
+        const mappedDependants = filteredDependants.map((d) => {
+          const parentPatient = patientMap.get(d?.patientId);
+          return {
+            type: 'dependant',
+            id: d?.patientId,           // navigate using guardian's patientId
+            dependantId: d?.id,
+            snapshot: d,
+            name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || d?.fullName || 'Unknown',
+            badge: d?.relationshipType || 'Dependant',
+            patientId: parentPatient?.hospitalId || d?.patientId || '—',
+            insurance: parentPatient?.hmos?.provider || '—',
+            gender: d?.gender || '—',
+            phone: parentPatient?.phone || parentPatient?.phoneNumber || '—',
+            status: (d?.status || '').replace(/_/g, ' '),
+            registered: d?.createdAt ? formatNigeriaDate(d.createdAt) : '—',
+            updatedAt: d?.updatedAt || d?.createdAt,
+          };
+        });
+
+        const combined = [...mappedPatients, ...mappedDependants].sort((a, b) => {
+          const at = new Date(a.updatedAt || 0).getTime();
+          const bt = new Date(b.updatedAt || 0).getTime();
+          return bt - at;
+        });
+
+        const mapped = combined.map((item, idx) => ({
+          ...item,
+          sn: String(idx + 1).padStart(2, '0'),
+        }));
+
+        setItems(mapped);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     };
     fetchAll();
@@ -61,7 +113,7 @@ const AllPatients = () => {
     const q = query.trim().toLowerCase();
     const base = items;    
      if (!q) return base;
-    return base.filter((d) => [d.name, d.patientId, d.insurance, d.gender, d.phone, d.status].filter(Boolean).join(' ').toLowerCase().includes(q));
+   return base.filter((d) => [d.name, d.patientId, d.insurance, d.gender, d.phone, d.status, d.badge].filter(Boolean).join(' ').toLowerCase().includes(q));
   }, [items, query]);
 
   const start = page * pageSize;
@@ -71,7 +123,22 @@ const AllPatients = () => {
   const columns = useMemo(() => ([
     { key: 'sn', title: 'S/n', className: 'text-base-content/70' },
     { key: 'name', title: 'Patient Name', className: 'font-medium text-base-content', render: (value, row) => (
-      <button className="text-primary hover:underline text-sm" onClick={(e) => { e.preventDefault(); e.stopPropagation(); row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, { state: { from: 'patients', patientSnapshot: row.snapshot } }); }}>{value}</button>
+      <button className="text-primary hover:underline text-sm" onClick={(e) => {
+        e.preventDefault(); e.stopPropagation();
+        row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+          state: {
+            from: 'patients',
+            patientSnapshot: row.type === 'dependant' ? null : row.snapshot,
+            dependantId: row.dependantId,
+            dependantSnapshot: row.type === 'dependant' ? row.snapshot : null,
+          }
+        });
+      }}>{value}</button>
+    ) },
+    { key: 'type', title: 'Type', className: 'text-base-content/70', render: (_, row) => (
+      row.type === 'dependant'
+        ? <span className="badge badge-sm badge-secondary">{row.badge}</span>
+        : <span className="badge badge-sm badge-primary">Patient</span>
     ) },
     { key: 'patientId', title: 'Patient ID', className: 'text-base-content/70' },
     { key: 'gender', title: 'Gender', className: 'text-base-content/70' },
@@ -80,7 +147,14 @@ const AllPatients = () => {
     { key: 'registered', title: 'Registered', className: 'text-base-content/70' },
     { key: 'status', title: 'Status', className: 'text-base-content/70' },
     { key: '__action', title: '', className: 'text-right', render: (_, row) => (
-      <button className="btn btn-ghost btn-xs text-primary" onClick={() => row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, { state: { from: 'patients', patientSnapshot: row.snapshot } })}>View Details</button>
+      <button className="btn btn-ghost btn-xs text-primary" onClick={() => row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+        state: {
+          from: 'patients',
+          patientSnapshot: row.type === 'dependant' ? null : row.snapshot,
+          dependantId: row.dependantId,
+          dependantSnapshot: row.type === 'dependant' ? row.snapshot : null,
+        }
+      })}>View Details</button>
     ) },
   ]), [navigate]);
 
