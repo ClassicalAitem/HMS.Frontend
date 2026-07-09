@@ -3,6 +3,10 @@ import apiClient from './apiClient';
 // Create a new OPD patient (backend still uses /opdPatient endpoint)
 export const createOpdPatient = async (data) => {
   try {
+  const requiredFields = ['fullName', 'phone'];
+  for (const field of requiredFields) {
+    if (!data?.[field]) throw new Error(`${field} is required`);
+  }
     const response = await apiClient.post('/opdPatient', data);
     return response.data ?? response;
   } catch (error) {
