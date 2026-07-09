@@ -16,6 +16,9 @@ export const getAllDepartments = async() => {
 export const createDepartment = async(departmentData) => {
   try {
     const response = await apiClient.post('/department', departmentData);
+    if(!departmentData.name) {
+      throw new Error("Name is required")
+    }
     return response.data;
   } catch (error) {
     console.error('❌ DepartmentsAPI: Create Department error occurred');
