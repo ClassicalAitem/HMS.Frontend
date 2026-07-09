@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
+import { getDependants } from '@/services/api/dependantAPI';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
@@ -16,6 +17,27 @@ const Patients = () => {
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [dependants, setDependants] = useState([]);
+const [dependantsLoading, setDependantsLoading] = useState(true);
+
+useEffect(() => {
+  let mounted = true;
+  const loadDependants = async () => {
+    try {
+      const res = await getDependants();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw?.dependants ?? []);
+      if (mounted) setDependants(list);
+    } catch (err) {
+      console.error('Failed to load dependants', err);
+    } finally {
+      if (mounted) setDependantsLoading(false);
+    }
+  };
+  loadDependants();
+  return () => { mounted = false; };
+}, []);
 
   // Fetch patients from backend
   useEffect(() => {
@@ -83,9 +105,17 @@ const StatusBadge = ({ status }) => {
   };
 
   // Process patients data to match frontend expectations
-  const processedPatients = useMemo(() => patients.map((patient, index) => ({
+const patientMap = useMemo(
+  () => new Map(patients.map(p => [p.id || p._id, p])),
+  [patients]
+);
+
+const processedPatients = useMemo(() => {
+  const mappedPatients = patients.map((patient, index) => ({
     ...patient,
-    serialNumber: index + 1, // Serial number for display
+    type: 'patient',
+    dependantId: null,
+    serialNumber: index + 1,
     name: `${patient.firstName} ${patient.lastName}`.trim(),
     age: calculateAge(patient.dob),
     fullName: `${patient.firstName} ${patient.middleName || ''} ${patient.lastName}`.trim(),
@@ -97,8 +127,32 @@ const StatusBadge = ({ status }) => {
     createdAtFormatted: formatNigeriaDate(patient.createdAt),
     updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
     cardType: patient.cardType || 'N/A',
-  })), [patients]);
+  }));
 
+  const mappedDependants = dependants.map((dep) => {
+    const parent = patientMap.get(dep.patientId);
+    return {
+      ...dep,
+      type: 'dependant',
+      id: dep.patientId,          // navigate using guardian's patientId
+      dependantId: dep.id,
+      badge: dep.relationshipType || 'Dependant',
+      hospitalId: parent?.hospitalId || dep.patientId || 'N/A',
+      name: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Unknown',
+      gender: dep.gender || 'N/A',
+      age: calculateAge(dep.dob),
+      phone: parent?.phone || 'N/A',
+      email: parent?.email || 'N/A',
+      status: dep.status,
+      cardType: parent?.cardType || 'N/A',
+    };
+  });
+
+  return [...mappedPatients, ...mappedDependants].map((row, index) => ({
+    ...row,
+    serialNumber: index + 1,
+  }));
+}, [patients, dependants, patientMap]);
   // Define table columns
   const columns = useMemo(() => [
     {
@@ -114,22 +168,38 @@ const StatusBadge = ({ status }) => {
       className: 'text-base-content font-medium'
     },
     {
-      key: 'name',
-      title: 'Patient Name',
-      sortable: true,
-      className: 'text-base-content font-medium',
-      render: (value, row) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            navigate(`/dashboard/medical-director/medical-history/${row.id}`);
-          }}
-          className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
-        >
-          {value}
-        </button>
+    key: 'name',
+    title: 'Patient Name',
+    sortable: true,
+    className: 'text-base-content font-medium',
+    render: (value, row) => (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+            state: {
+              patientSnapshot: row.type === 'dependant' ? null : row,
+              dependantId: row.dependantId,
+              dependantSnapshot: row.type === 'dependant' ? row : null,
+            }
+          });
+        }}
+        className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+      >
+        {value}
+      </button>
+    )
+    },
+    {
+      key: 'type',
+      title: 'Type',
+      className: 'text-base-content/70',
+      render: (_, row) => (
+        row.type === 'dependant'
+          ? <span className="badge badge-sm badge-secondary">{row.badge}</span>
+          : <span className="badge badge-sm badge-primary">Patient</span>
       )
     },
     {
