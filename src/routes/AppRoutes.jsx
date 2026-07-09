@@ -168,6 +168,8 @@ import SonographerIncoming from "@/pages/sonographer/incoming/Incoming";
 import SonographerIncomingDetails from "@/pages/sonographer/incoming/IncomingDetails";
 import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory";
 import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
+import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
+import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
 
 
 const AppRoutes = () => {
@@ -625,7 +627,16 @@ const AppRoutes = () => {
           <IncomingHmoDetails />
         </ProtectedRoute>
       } />
-
+      <Route path="/dashboard/hmo/consultations" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <HmoConsultations />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hmo/consultations/:id" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <HmoConsultationDetail />
+        </ProtectedRoute>
+      } />
       {/*==============================================================================================================
 
       ====================================  Admin DashBoard Route =====================================================
