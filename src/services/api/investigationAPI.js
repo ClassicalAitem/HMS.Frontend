@@ -2,6 +2,11 @@ import apiClient from './apiClient';
 
 export const createInvestigation = async (consultationId, data) => {
   try{
+    const payload = data?.tests?.[0] || [];
+    const requiredFields = ['name'];
+    for (const field of requiredFields) {
+      if (!payload?.[field]) throw new Error(`${field} is required`);
+    }
     const response = await apiClient.post(`/investigation/${consultationId}`, data);
     return response.data ?? response;
   } catch (error) {
