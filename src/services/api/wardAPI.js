@@ -15,6 +15,12 @@ export const getAllWards = async() => {
 
 export const createWard = async(wardData) => {
   try {
+    const requiredFields = ['name', 'departmentId', 'status'];
+    for (const field of requiredFields) {
+      if (!wardData?.[field]) {
+        throw new Error(`Missing required field: ${field}`);
+      }
+    }
     const response = await apiClient.post('/ward', wardData);
     return response.data;
   } catch (error) {

@@ -47,6 +47,12 @@ export const usersAPI = {
     console.log('📤 UsersAPI: User data:', userData);
 
     try {
+      const requiredFields = ['firstName', 'lastName', 'email', 'password', 'role'];
+      for (const field of requiredFields) {
+        if (!userData?.[field]) {
+          throw new Error(`Missing required field: ${field}`);
+        }
+      }
       const response = await apiClient.post(API_ENDPOINTS.CREATE_STAFF, userData);
       console.log('✅ UsersAPI: Create user response received');
       console.log('📥 UsersAPI: Response data:', response.data);

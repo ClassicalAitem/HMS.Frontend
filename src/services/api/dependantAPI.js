@@ -7,6 +7,11 @@ import apiClient from './apiClient';
  */
 export const addDependantForPatient = async (patientId, dependant) => {
   if (!patientId) throw new Error('Patient ID is required');
+  const required = ['firstName', 'lastName', 'dob', 'gender', 'relationshipType'];
+
+  for (const key of required) {
+    if (!dependant?.[key]) throw new Error(`${key} is required`);
+  }
   if (!dependant || typeof dependant !== 'object') throw new Error('dependant must be an object');
 
   console.log('Adding dependant for patient ID:', patientId, 'with data:', dependant);

@@ -16,6 +16,12 @@ export const getAllComplaint = async () => {
 // Create a new medical record
 export const createMedicalRecord = async (payload) => {
   try {
+    const requiredField = ['name', 'category']
+    for (const field of requiredField) {
+      if (!payload[field]) {
+        throw new Error(`Missing required field: ${field}`)
+      }
+    }
     const response = await apiClient.post('/medicalRecord', payload);
     return response.data;
   } catch (error) {
