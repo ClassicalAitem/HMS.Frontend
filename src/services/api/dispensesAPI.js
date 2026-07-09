@@ -23,6 +23,11 @@ export const getDispense = async (id) => {
 
 export const createDispense = async (prescriptionId, payload) => {
   try {
+    const data = payload?.items?.[0] || [];
+    const requiredFields = ['inventoryId', 'drugName', 'quantity', 'batchNumber'];
+    for (const field of requiredFields) {
+    if (!data?.[field]) throw new Error(`${field} is required`);
+  }
     const response = await apiClient.post(`/dispense/${prescriptionId}`, payload)
     return response.data ?? response
   } catch (err) {
