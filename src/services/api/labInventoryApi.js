@@ -22,6 +22,12 @@ export const getLaboratoryInventory = async (id) => {
 
 export const createLaboratoryInventory = async (payload) => {
   try {
+    const requiredFields = ['name', 'batchNumber']
+    for (const field of requiredFields) {
+      if (!payload[field]) {
+        throw new Error(`Missing required field: ${field}`)
+      }
+    }
     const response = await apiClient.post('/laboratoryInventory', payload)
     return response.data ?? response
   } catch (err) {
