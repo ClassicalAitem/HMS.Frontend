@@ -89,7 +89,7 @@ export const getPatientById = async (patientId) => {
 export const createPatient = async (patientData) => {
   try {
     const data = patientData?.hmo?.[0] || [];
-    const requiredFields = ['firstName', 'lastName', 'phone', 'dob', 'gender', 'plan', 'provider', 'memberId', 'expiresAt'];
+    const requiredFields = ['firstName', 'lastName', 'phone', 'dob', 'gender'];
     for (const field of requiredFields) {
       if (!patientData?.[field] && !data?.[field]) {
         throw new Error(`Missing required field: ${field}`);
