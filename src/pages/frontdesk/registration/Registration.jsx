@@ -168,6 +168,7 @@ const Registration = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         middleName: formData.middleName || undefined,
+        // fullName: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
         address: formData.address || undefined,
         dob: formData.dob,
