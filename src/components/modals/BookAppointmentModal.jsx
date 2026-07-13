@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { getPatients } from '@/services/api/patientsAPI';
+import { getAllComplaint } from '@/services/api/medicalRecordAPI';
 import { toast } from 'react-hot-toast';
 
 const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
@@ -15,6 +16,33 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     procedureCode: '',
     notes: ''
   });
+
+  console.log('Form Data:', formData);
+
+  const [complaints, setComplaints] = useState([]);
+
+  useEffect(() => {
+    const fetchComplaints = async () => {
+      try {
+        const res = await getAllComplaint();
+        if(res || Array.isArray(res)) {
+
+          setComplaints(prev => ({
+            ...prev,
+            surgical: res.filter(c => c.category === 'surgical'),
+          }));
+        }
+      } catch (e) {
+        toast.error('Failed to load complaints');
+      }
+    };
+
+    if (isOpen) {
+      fetchComplaints();
+    }
+  }, [isOpen]);
+
+  console.log('Fetched complaints:', complaints);
 
   // Validation state
   const [dateError, setDateError] = useState('');
@@ -317,7 +345,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   onFocus={handleFocus}
                   onChange={handleQueryChange}
                   onKeyDown={handleKeyDown}
-                  className="w-full input input-bordered pr-10"
+                  className="w-full input input-bordered pr-10 focus:ring focus:ring-primary/30"
                 />
                 {isSearching && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 loading loading-spinner loading-sm" aria-hidden="true" />
@@ -326,7 +354,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   <ul
                     id={listboxId}
                     role="listbox"
-                    className="absolute z-20 mt-1 w-full max-h-56 overflow-auto menu bg-base-100 border border-base-300 rounded-box shadow"
+                    className="absolute z-20 mt-1 w-full max-h-56 overflow-auto bg-base-100 border border-base-300 rounded-lg shadow-lg divide-y divide-base-200"
                   >
                     {!isSearching && filteredResults.length === 0 && (
                       <li className="px-4 py-2 text-sm text-base-content/70">No results</li>
@@ -337,19 +365,26 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                         id={`${listboxId}-option-${idx}`}
                         role="option"
                         aria-selected={activeIndex === idx}
-                        className={`px-4 py-2 cursor-pointer flex justify-between items-center ${activeIndex === idx ? 'bg-base-200' : ''}`}
+                        className={`px-4 py-2 cursor-pointer flex justify-between items-center hover:bg-base-200 ${
+                          activeIndex === idx ? 'bg-base-200' : ''
+                        }`}
                         onMouseEnter={() => setActiveIndex(idx)}
                         onMouseDown={(e) => { e.preventDefault(); selectPatient(p); }}
                       >
-                        <span className="text-sm text-base-content">{p.name || 'Unknown'}</span>
+                        <span className="text-sm font-medium text-base-content">{p.name || 'Unknown'}</span>
                         <span className="text-xs text-base-content/70">{p.hospitalId || p.id}</span>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
-              <p className="mt-2 text-xs text-base-content/60">Selected patient ID: {formData.patientId || 'None'}</p>
+              {formData.patientId && (
+                <span className="mt-2 inline-block px-2 py-1 text-xs rounded bg-base-200 text-base-content/70">
+                  Selected ID: {formData.patientId}
+                </span>
+              )}
             </div>
+
 
             {/* Date and Time Row */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -441,14 +476,19 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   <label className="block mb-2 text-sm font-medium text-base-content">
                     Procedure Name <span className="text-error">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="procedureName"
                     value={formData.procedureName}
                     onChange={handleInputChange}
-                    placeholder="e.g. Appendectomy"
-                    className={`w-full input input-bordered ${procedureError.name ? 'input-error' : ''}`}
-                  />
+                    className={`w-full select select-bordered ${procedureError.name ? 'select-error' : ''}`}
+                  >
+                    <option value="">Select a procedure</option>
+                    {complaints.surgical?.map((item, idx) => (
+                      <option key={item.name} value={item.name}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
                   {procedureError.name && (
                     <p className="mt-1 text-xs text-error">{procedureError.name}</p>
                   )}
