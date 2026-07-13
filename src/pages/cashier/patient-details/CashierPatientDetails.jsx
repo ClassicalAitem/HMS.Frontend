@@ -280,9 +280,7 @@ const CashierPatientDetails = () => {
   return (
     <CashierLayout>
       <div className="mb-8">
-        <h2 className="text-2xl font-regular text-base-content mb-6">
-          {isViewingDependant ? 'Dependant Details' : 'Patient Details'}
-        </h2>
+
 
         {isViewingDependant && (
           <div className="mb-4 text-sm text-base-content/70">
@@ -293,7 +291,9 @@ const CashierPatientDetails = () => {
         )}
 
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-regular text-base-content">Patient Details</h2>
+          <h2 className="text-2xl font-regular text-base-content mb-6">
+            {isViewingDependant ? 'Dependant Details' : 'Patient Details'}
+          </h2>
           <button className="btn btn-outline btn-sm" onClick={() => navigate('/cashier/incoming')}>
             ← Back to Incoming
           </button>
