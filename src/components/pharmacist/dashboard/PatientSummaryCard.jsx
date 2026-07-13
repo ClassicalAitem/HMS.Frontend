@@ -11,7 +11,19 @@ const getInitials = (firstName, lastName) => {
 };
 
 const PatientSummaryCard = ({ patient, loading }) => {
-  const patientUUID = patient?.id || "";
+  console.log("PatientSummaryCard: patient data:", patient);
+  // Calculate the age of the patient based on the date of birth
+  const calculateAge = (dob) => {
+    if (!dob) return "—";
+    const birthDate = new Date(dob);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
   const patientHospitalId = patient?.hospitalId || "";
   return (
     <div className="shadow-xl card bg-base-100 mb-4">
@@ -38,7 +50,7 @@ const PatientSummaryCard = ({ patient, loading }) => {
               </div>
             </div>
             <div className="flex-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                 <div className="flex flex-col space-y-1">
                   <span className="text-sm text-base-content/70">Patient Name</span>
                   <span className="text-base font-medium text-base-content">{patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Unknown"}</span>
@@ -50,6 +62,10 @@ const PatientSummaryCard = ({ patient, loading }) => {
                 <div className="flex flex-col space-y-1">
                   <span className="text-sm text-base-content/70">Phone Number</span>
                   <span className="text-base font-medium text-base-content">{patient?.phone || patient?.phoneNumber || "—"}</span>
+                </div>
+                <div className="flex flex-col space-y-1">
+                  <span className="text-sm text-base-content/70">Age</span>
+                  <span className="text-base font-medium text-base-content">{calculateAge(patient?.dob) || "—"}</span>
                 </div>
                 <div className="flex flex-col space-y-1">
                   <span className="text-sm text-base-content/70">Patient ID</span>
