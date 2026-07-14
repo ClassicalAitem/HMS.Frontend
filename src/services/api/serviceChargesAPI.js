@@ -35,12 +35,12 @@ export const getServiceCharge = async (id) => {
 // Create new service charge
 export const createServiceCharge = async (payload) => {
   try {
-    const requiredFields = ['service', 'category`'];
-    for (const field of requiredFields) {
-      if (!payload?.[field]) {
-        throw new Error(`Missing required field: ${field}`);
-      }
-    }
+    // const requiredFields = ['service', 'category`'];
+    // for (const field of requiredFields) {
+    //   if (!payload?.[field]) {
+    //     throw new Error(`Missing required field: ${field}`);
+    //   }
+    // }
     console.log('💰 ServiceChargesAPI: Creating service charge with payload:', payload);
     const response = await apiClient.post('/serviceCharge', payload);
     console.log('✅ ServiceChargesAPI: Service charge created successfully');
