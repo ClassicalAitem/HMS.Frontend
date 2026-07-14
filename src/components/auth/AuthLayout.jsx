@@ -2,12 +2,12 @@ import React from 'react';
 import CarouselComponent from './CarouselComponent';
 import AuthLogo from './AuthLogo';
 
-const AuthLayout = ({ 
-  children, 
-  title, 
-  subtitle, 
+const AuthLayout = ({
+  children,
+  title,
+  subtitle,
   showCarousel = true,
-  carouselAutoRotate = 4000 
+  carouselAutoRotate = 4000
 }) => {
   return (
     <div className="flex min-h-screen">
@@ -46,7 +46,7 @@ const AuthLayout = ({
             <p
               className="text-xs text-base-content/80 2xl:text-base"
             >
-              © Kolak Hospital Management System 2025
+              © Kolak Hospital Management System 2026
             </p>
           </div>
         </div>
