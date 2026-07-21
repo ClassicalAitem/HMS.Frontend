@@ -13,6 +13,8 @@ const normalizePatientStatus = (status) => {
 };
 
 export const addPatientStatus = async (patient, newStatus) => {
+  if (!patient?.id) throw new Error('Patient ID is required');
+  if (!newStatus || typeof newStatus !== 'string') throw new Error('New status must be a non-empty string');
   // Backwards compatible helper; treats status as a single-valued field now.
   const normalizedStatus = normalizePatientStatus(newStatus);
   return updatePatientStatus(patient.id, normalizedStatus);
@@ -86,6 +88,13 @@ export const getPatientById = async (patientId) => {
 // Create new patient
 export const createPatient = async (patientData) => {
   try {
+    const data = patientData?.hmo?.[0] || [];
+    const requiredFields = ['firstName', 'lastName', 'phone', 'dob', 'gender'];
+    for (const field of requiredFields) {
+      if (!patientData?.[field] && !data?.[field]) {
+        throw new Error(`Missing required field: ${field}`);
+      }
+    }
     console.log('📤 PatientsAPI: Creating new patient');
     console.log('📊 PatientsAPI: Patient data:', patientData);
     const response = await apiClient.post('/patient', patientData);
@@ -139,13 +148,13 @@ export const getUniqueFamilyNames = async () => {
   try {
     const response = await getPatients();
     const patients = Array.isArray(response?.data) ? response.data : [];
-    
+
     const familyNames = patients
       .filter(p => p.cardType === 'family' && p.familyName)
       .map(p => p.familyName)
       .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
       .sort();
-    
+
     return familyNames;
   } catch (error) {
     console.error('Error fetching family names:', error);
@@ -158,13 +167,13 @@ export const getUniqueCompanyNames = async () => {
   try {
     const response = await getPatients();
     const patients = Array.isArray(response?.data) ? response.data : [];
-    
+
     const companyNames = patients
       .filter(p => p.cardType === 'company' && p.companyName)
       .map(p => p.companyName)
       .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
       .sort();
-    
+
     return companyNames;
   } catch (error) {
     console.error('Error fetching company names:', error);
