@@ -29,6 +29,8 @@ export const createAppointment = async (payload) => {
     appointmentTime: payload.appointmentTime,
     department: payload.department,
     appointmentType: payload.appointmentType || 'consultation',
+    procedureCode: payload.procedureCode,
+    procedureName: payload.procedureName,
     notes: payload.notes,
   };
   const url = '/appointment';
