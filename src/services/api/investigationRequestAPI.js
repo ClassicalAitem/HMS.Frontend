@@ -65,7 +65,12 @@ export const updateInvestigation = async (id, updateData) => {
 
 export const createInvestigation = async (data, contextId, contextType = 'consultation') => {
   try {
-    const endpoint = contextType === 'antenatal' 
+    const payload = data?.tests?.[0] || [];
+    const requiredFields = ['name'];
+    for (const field of requiredFields) {
+      if (!payload?.[field]) throw new Error(`${field} is required`);
+    }
+    const endpoint = contextType === 'antenatal'
       ? `/investigation/antenatal/${contextId}`
       : `/investigation/consultation/${contextId}`
     const response = await apiClient.post(endpoint, data)

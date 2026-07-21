@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical, FaIdBadge } from 'react-icons/fa';
+import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical, FaIdBadge, FaBarcode } from 'react-icons/fa';
 import { getAppointmentById, updateAppointment } from '@/services/api/appointmentsAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
@@ -33,7 +33,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
       const response = await getAppointmentById(appointmentId);
       console.log('Appointment details response:', response);
       console.log('Response data:', response?.data?.data);
-      
+
       if (response?.data?.data) {
         const appointmentData = response.data.data;
         setAppointment(appointmentData);
@@ -143,7 +143,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black bg-opacity-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }} onClick={onClose} />
-      
+
       {/* Modal */}
       <div className="relative z-10 w-full max-w-2xl mx-4 shadow-xl card bg-base-100" style={{ zIndex: 10000 }}>
         <div className="p-6 card-body">
@@ -218,6 +218,30 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
                     <p className="text-base font-medium flex items-center gap-2">
                       <FaClock className="text-base-content/50" />
                       {formatTime(appointment.appointmentTime)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Appointment Procedure */}
+              <div className="bg-base-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <FaNotesMedical className="text-primary" />
+                  Appointment Procedure
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-base-content/70">Procedure Name</label>
+                    <p className="text-base font-medium flex items-center gap-2">
+                      <FaNotesMedical className="text-base-content/50" />
+                      {appointment.procedureName || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-base-content/70">Procedure Code</label>
+                    <p className="text-base font-medium flex items-center gap-2">
+                      <FaBarcode className="text-base-content/50" />
+                      {appointment.procedureCode || 'N/A'}
                     </p>
                   </div>
                 </div>
