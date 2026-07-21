@@ -135,11 +135,11 @@ useEffect(() => {
               status: p.status,              pharmacistName: p.pharmacistName,              _id: p._id,
               createdAt: p.createdAt,
               updatedAt: p.updatedAt,
-              
+
               isForDependant,
               dependantId: p.dependantId,
               patientId: p.patientId,
-              forName, 
+              forName,
             };
           });
         });
@@ -153,7 +153,7 @@ useEffect(() => {
               >
             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-200">
 
-            
+
             <span className="font-medium text-sm">
               {m.forName || 'Unknown'}
             </span>
@@ -223,28 +223,28 @@ useEffect(() => {
     return Promise.all(updates);
   };
 
- 
+
 
   const summarySubject = useMemo(() => {
     if (!isViewingDependant) return patient;
-  
+
     const dep = subject || dependantSnapshot || {};
-    const guardian = dep.patient || patient || {}; 
-  
+    const guardian = dep.patient || patient || {};
+
     const ownHmos = Array.isArray(guardian.hmos)
       ? guardian.hmos.filter(h => h.dependantId === dep.id)
       : [];
-  
+
     return {
-  
+
       phone: guardian.phone,
       phoneNumber: guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
       cardType: guardian.cardType,
       familyName: guardian.familyName,
       companyName: guardian.companyName,
-  
-      
+
+
       id: dep.id || dependantId,
       firstName: dep.firstName,
       middleName: dep.middleName,
@@ -256,7 +256,7 @@ useEffect(() => {
       hmos: ownHmos,
     };
   }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
-  
+
   const handleComplete = async () => {
     const activePrescriptions = prescriptions.active;
     if (!activePrescriptions.length) return
@@ -334,7 +334,7 @@ useEffect(() => {
             }
       ))
 
-      
+
 
     } catch (e) {
       toast.error('Failed to complete')
@@ -505,7 +505,7 @@ useEffect(() => {
 
               {/* HISTORY */}
               <h3 className="font-medium mt-6 mb-3">History</h3>
-               
+
               {renderMedications(prescriptions.history, true)}
             </>
           )}
