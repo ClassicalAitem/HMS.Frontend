@@ -222,24 +222,24 @@ const Appointments = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
+
       {/* Sidebar */}
       <div className={`${
         'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0'
       } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-      
+
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-        
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -248,7 +248,7 @@ const Appointments = () => {
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
             </div>
-             <button 
+             <button
                className="btn btn-primary btn-sm 2xl:btn-md"
                onClick={() => setIsBookModalOpen(true)}
              >
@@ -262,7 +262,7 @@ const Appointments = () => {
           {/* Filter Bar */}
           <div className="flex gap-4 justify-between items-center mb-6">
             <div className="flex gap-3 items-center">
-              <button 
+              <button
                 className="flex gap-2 items-center btn btn-sm"
                 onClick={() => setFilterOpen(!filterOpen)}
               >
@@ -270,7 +270,7 @@ const Appointments = () => {
                 <span className="text-xs">Filter</span>
               </button>
             </div>
-            
+
             <div className="flex gap-3 items-center">
               <div className="dropdown dropdown-end">
                 <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm">

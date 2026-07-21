@@ -8,7 +8,7 @@ import { API_ENDPOINTS } from '../../config/env';
  */
 export const createBill = async (patientId, billData) => {
   if (!patientId) throw new Error('Patient ID is required:');
-  
+
   // Allow passing raw payload directly if it matches expected structure { itemDetail: [...] }
   // This supports the new CreateBillModal usage
   if (billData.itemDetail && Array.isArray(billData.itemDetail)) {
@@ -22,14 +22,14 @@ export const createBill = async (patientId, billData) => {
   const { items = [], paymentMethod } = billData;
   if (!Array.isArray(items) || items.length === 0) throw new Error('At least one bill item is required');
   // Payment method removed as requirement for BILL creation (it's for receipt)
-  
+
   const totalAmount = items.reduce((sum, item) => sum + (Number(item.rate) || 0), 0);
-  
+
   // Map old structure to new structure expected by backend
   const payload = {
-    itemDetail: items.map(({ category, description, rate }) => ({ 
-        code: category || 'misc', 
-        description, 
+    itemDetail: items.map(({ category, description, rate }) => ({
+        code: category || 'misc',
+        description,
         quantity: 1,
         price: Number(rate) || 0,
         total: Number(rate) || 0
@@ -97,9 +97,9 @@ export const getAllBillings = async (params = {}) => {
  */
 export const getBillingbypatientId = async (patientId) => {
   if (!patientId) throw new Error('Patient ID is required');
-  
+
   console.log('🧾 BillingAPI: Starting getBillingbypatientId', { patientId });
-  
+
   // Try endpoint 1: /billing/patient/{patientId}
   try {
     const url = `/billing/patient/${patientId}`;
@@ -132,9 +132,9 @@ export const getBillingbypatientId = async (patientId) => {
     console.log('🧾 BillingAPI: Attempting fallback - fetching all billings');
     const allBillings = await getAllBillings();
     console.log('🧾 BillingAPI: All billings response', allBillings);
-    
+
     let billingsList = [];
-    
+
     // Handle various response formats
     if (Array.isArray(allBillings?.data)) {
       billingsList = allBillings.data;
@@ -145,9 +145,9 @@ export const getBillingbypatientId = async (patientId) => {
     } else if (Array.isArray(allBillings)) {
       billingsList = allBillings;
     }
-    
+
     console.log('🧾 BillingAPI: Processed billings list', { count: billingsList.length, billingsList });
-    
+
     // Filter by patient ID
     const patientBillings = billingsList.filter(b => {
       const bPatientId = b?.patientId || b?.patient?.id || b?.patient?._id;
@@ -155,13 +155,13 @@ export const getBillingbypatientId = async (patientId) => {
       console.log('🧾 BillingAPI: Checking billing', { billingId: b?.id, bPatientId, patientId, matches });
       return matches;
     });
-    
-    console.log('🧾 BillingAPI: Filtered billings for patient', { 
-      patientId, 
+
+    console.log('🧾 BillingAPI: Filtered billings for patient', {
+      patientId,
       count: patientBillings.length,
-      billings: patientBillings 
+      billings: patientBillings
     });
-    
+
     if (patientBillings.length > 0) {
       // Sort by creation date (most recent first) and return the latest
       const sorted = patientBillings.sort((a, b) => {
@@ -169,7 +169,7 @@ export const getBillingbypatientId = async (patientId) => {
         const dateB = new Date(b?.createdAt || b?.created_at || 0).getTime();
         return dateB - dateA;
       });
-      
+
       console.log('🧾 BillingAPI: Returning most recent billing', sorted[0]);
       return { data: sorted[0] };
     } else {
@@ -192,6 +192,11 @@ export const getBillingsByOpdPatientId = async (opdPatientId) => {
 
 export const createBilling = async (patientId, payload) => {
   if (!patientId) throw new Error('Patient ID is required');
+  const data = payload?.itemDetail?.[0] || [];
+  const requiredFields = ['code', 'description', 'quantity', 'price', 'total'];
+  for (const field of requiredFields) {
+    if (!data?.[field]) throw new Error(`${field} is required`);
+  }
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
   const { itemDetail = [], totalAmount, dependantId } = payload;
   if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
@@ -257,6 +262,12 @@ export const getReceiptsByOpdPatientId = async (opdPatientId) => {
 export const createReceipt = async (billingId, receiptData) => {
   if (!billingId) throw new Error('Billing ID is required');
   if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
+  const requiredFields = ['amountPaid', 'paymentMethod'];
+  for (const field of requiredFields) {
+    if (receiptData[field] == null || receiptData[field] === '') {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
 
   const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId, dependantId } = receiptData;
   if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');

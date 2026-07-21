@@ -22,6 +22,12 @@ export const getInventory = async (id) => {
 
 export const createInventory = async (payload) => {
   try {
+    const requiredFields = ['name',  'batchNumber']
+    for (const field of requiredFields) {
+      if (!payload[field]) {
+        throw new Error(`Missing required field: ${field}`)
+      }
+    }
     const response = await apiClient.post('/inventory', payload)
     return response.data ?? response
   } catch (err) {
