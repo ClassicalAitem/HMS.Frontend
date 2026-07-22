@@ -173,6 +173,7 @@ const Appointment = () => {
       setAppointments(mapped);
     } catch (err) {
       console.error("Doctor Appointments: create error", err);
+      toast.error(err?.message || "Failed to book appointment");
     }
   };
 
