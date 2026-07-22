@@ -99,6 +99,7 @@ const ViewAllInvestigations = () => {
         if (mounted) setServiceCharges(list);
       } catch (err) {
         console.error('Failed to load service charges:', err);
+        toast.error(err?.message || 'Failed to load service charges');
       }
     };
     loadServiceCharges();
@@ -108,23 +109,23 @@ const ViewAllInvestigations = () => {
   // Helper to get lab investigation price
   const getLabInvestigationPrice = (testName) => {
     if (!testName) return 0;
-    
+
     const testNameLower = testName.toLowerCase().trim();
-    
+
     const exactMatch = serviceCharges.find(charge => {
       const chargeService = (charge?.service || '').toLowerCase().trim();
       const chargeName = (charge?.name || '').toLowerCase().trim();
-      
-      return chargeService === testNameLower || 
+
+      return chargeService === testNameLower ||
              chargeName === testNameLower ||
              chargeService.includes(testNameLower) ||
              chargeName.includes(testNameLower);
     });
-    
+
     if (exactMatch) {
       return Number(exactMatch?.amount || exactMatch?.price || 0);
     }
-    
+
     return 0;
   };
 

@@ -29,7 +29,7 @@ export const createServiceCharge = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('❌ ServiceChargesSlice: Create service charge error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to create service charge');
+      throw error; // Rethrow the error to be caught in the component
     }
   }
 );
@@ -96,7 +96,7 @@ const serviceChargesSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Create service charge
       .addCase(createServiceCharge.pending, (state) => {
         state.creating = true;
@@ -110,7 +110,7 @@ const serviceChargesSlice = createSlice({
         state.creating = false;
         state.error = action.payload;
       })
-      
+
       // Update service charge
       .addCase(updateServiceCharge.pending, (state) => {
         state.updating = true;
@@ -127,7 +127,7 @@ const serviceChargesSlice = createSlice({
         state.updating = false;
         state.error = action.payload;
       })
-      
+
       // Delete service charge
       .addCase(deleteServiceCharge.pending, (state) => {
         state.deleting = true;
