@@ -178,6 +178,17 @@ const GenerateReports = () => {
         } else if (reportType === 'Billing Report') {
           const payload = await getAllBillings();
           const billings = extractArrayFromPayload(payload);
+
+
+
+            const patientIds = billings.map((r) => resolveIdString(r?.patientId)).filter(Boolean);
+          const dependantIds = billings.map((r) => resolveIdString(r?.dependantId)).filter(Boolean);
+
+          const [patientMap, dependantMap] = await Promise.all([
+            fetchEntityMap(patientIds, getPatientById),
+            fetchEntityMap(dependantIds, getDependantById),
+          ]);
+
           rows = billings.map((record, index) => {
             const amount = Number(record?.totalAmount || 0);
             const outstanding = Number(record?.outstandingBill || 0);
@@ -189,6 +200,12 @@ const GenerateReports = () => {
                 : 'Pending';
             const patient = record?.patient || {};
 
+            const parentPatient = resolveEmbeddedEntity(record?.patientId) || patientMap.get(resolveIdString(record?.patientId));
+
+            const subject = record?.dependantId
+              ? (resolveEmbeddedEntity(record.dependantId) || dependantMap.get(resolveIdString(record.dependantId)))
+              : parentPatient;
+
             return {
               id: record?._id || record?.id || `${reportType}-${index}`,
               name: formatName(patient) || record?.patientName || '—',
@@ -197,8 +214,7 @@ const GenerateReports = () => {
               outstandingBalance: outstanding,
               paymentDate: record?.createdAt || record?.paymentDate || '',
               attendedBy: record?.cashierName || record?.attendedBy || record?.createdBy || '—',
-              patientId: patient?.hospitalId || patient?.patientId || record?.patientId || '—',
-            };
+               patientId: parentPatient?.hospitalId || subject?.patient?.hospitalId || subject?.hospitalId || resolveIdString(record?.patientId) || resolveIdString(record?.dependantId) || '—', };
           });
         } else if (reportType === 'Lab Report') {
           const payload = await getLabResults();
@@ -396,7 +412,6 @@ const GenerateReports = () => {
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="flex overflow-y-auto flex-col pt-4 pl-6 h-full">
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <div className="space-y-6 xl:col-span-2">
               <div className="p-4 rounded-lg shadow-lg bg-base-100">
                 <div className="flex flex-col justify-between gap-4 mb-6 lg:flex-row lg:items-center">
@@ -566,36 +581,10 @@ const GenerateReports = () => {
               </div>
             </div>
 
-            <div className="xl:col-span-1">
-              <div className="p-6 rounded-lg shadow-lg bg-base-100" style={{ height: 'fit-content' }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <FaFileAlt className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-semibold text-primary">Report Overview</h2>
-                </div>
-                <div className="space-y-3">
-                  <div className="p-4 rounded-lg bg-base-200">
-                    <p className="text-sm text-base-content/70">Current Report</p>
-                    <p className="text-lg font-semibold text-base-content">{reportType}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-base-200">
-                    <p className="text-sm text-base-content/70">Visible Records</p>
-                    <p className="text-lg font-semibold text-base-content">{filteredRows.length}</p>
-                  </div>
-                  <div className="p-4 rounded-lg bg-base-200">
-                    <p className="text-sm text-base-content/70">Filter Criteria</p>
-                    <ul className="mt-2 space-y-1 text-sm text-base-content/70">
-                      <li>• Range: {dateRangeOption === 'custom' ? 'Custom' : reportDateRangeOptions.find((option) => option.value === dateRangeOption)?.label || 'All'}</li>
-                      <li>• Name: {nameFilter || 'All'}</li>
-                      <li>• Hospital ID: {hospitalIdFilter || 'All'}</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
+        
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
