@@ -5,11 +5,15 @@ export const getServiceCharges = async () => {
   try {
     console.log('💰 ServiceChargesAPI: Fetching all service charges');
     const response = await apiClient.get('/serviceCharge');
-    console.log('✅ ServiceChargesAPI: All service charges fetched successfully');
+    console.log(
+      '✅ ServiceChargesAPI: All service charges fetched successfully',
+    );
     console.log('💰 ServiceChargesAPI: Response data:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ ServiceChargesAPI: Get all service charges error occurred');
+    console.error(
+      '❌ ServiceChargesAPI: Get all service charges error occurred',
+    );
     console.error('📥 ServiceChargesAPI: Error response:', error.response);
     console.error('📥 ServiceChargesAPI: Error data:', error.response?.data);
     throw error;
@@ -35,13 +39,16 @@ export const getServiceCharge = async (id) => {
 // Create new service charge
 export const createServiceCharge = async (payload) => {
   try {
-    const requiredFields = ['service', 'category'];
-    for (const field of requiredFields) {
-      if (!payload?.[field]) {
-        throw new Error(`Missing required field: ${field}`);
-      }
-    }
-    console.log('💰 ServiceChargesAPI: Creating service charge with payload:', payload);
+    // const requiredFields = ['service', 'category`'];
+    // for (const field of requiredFields) {
+    //   if (!payload?.[field]) {
+    //     throw new Error(`Missing required field: ${field}`);
+    //   }
+    // }
+    console.log(
+      '💰 ServiceChargesAPI: Creating service charge with payload:',
+      payload,
+    );
     const response = await apiClient.post('/serviceCharge', payload);
     console.log('✅ ServiceChargesAPI: Service charge created successfully');
     console.log('💰 ServiceChargesAPI: Create response data:', response.data);
