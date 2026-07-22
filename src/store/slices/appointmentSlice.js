@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 // Initial state
@@ -29,7 +30,7 @@ export const fetchAppointments = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const queryParams = new URLSearchParams(params).toString();
       const response = await fetch(`/api/appointments?${queryParams}`, {
@@ -37,11 +38,11 @@ export const fetchAppointments = createAsyncThunk(
           Authorization: `Bearer ${auth.token}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch appointments');
       }
-      
+
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);
@@ -57,18 +58,18 @@ export const fetchAppointmentById = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const response = await fetch(`/api/appointments/${appointmentId}`, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch appointment details');
       }
-      
+
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);
@@ -84,7 +85,7 @@ export const createAppointment = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const response = await fetch('/api/appointments', {
         method: 'POST',
@@ -94,14 +95,14 @@ export const createAppointment = createAsyncThunk(
         },
         body: JSON.stringify(appointmentData),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to create appointment');
       }
-      
+
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      throw error; // Rethrow the error to be caught in the component
     }
   }
 );
@@ -114,7 +115,7 @@ export const updateAppointment = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const response = await fetch(`/api/appointments/${appointmentId}`, {
         method: 'PUT',
@@ -124,11 +125,11 @@ export const updateAppointment = createAsyncThunk(
         },
         body: JSON.stringify(appointmentData),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update appointment');
       }
-      
+
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);
@@ -179,7 +180,7 @@ const appointmentSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch appointment by ID
       .addCase(fetchAppointmentById.pending, (state) => {
         state.isLoading = true;
@@ -194,7 +195,7 @@ const appointmentSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Create appointment
       .addCase(createAppointment.pending, (state) => {
         state.isLoading = true;
@@ -209,7 +210,7 @@ const appointmentSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Update appointment
       .addCase(updateAppointment.pending, (state) => {
         state.isLoading = true;
