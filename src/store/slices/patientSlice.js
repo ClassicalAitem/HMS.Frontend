@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 // Initial state
@@ -28,7 +29,7 @@ export const fetchPatients = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const queryParams = new URLSearchParams(params).toString();
       const response = await fetch(`/api/patients?${queryParams}`, {
@@ -36,11 +37,11 @@ export const fetchPatients = createAsyncThunk(
           Authorization: `Bearer ${auth.token}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch patients');
       }
-      
+
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);
@@ -56,18 +57,18 @@ export const fetchPatientById = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const response = await fetch(`/api/patients/${patientId}`, {
         headers: {
           Authorization: `Bearer ${auth.token}`,
         },
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch patient details');
       }
-      
+
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);
@@ -83,7 +84,7 @@ export const createPatient = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const response = await fetch('/api/patients', {
         method: 'POST',
@@ -93,14 +94,14 @@ export const createPatient = createAsyncThunk(
         },
         body: JSON.stringify(patientData),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to create patient');
       }
-      
+
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      throw error;
     }
   }
 );
@@ -113,7 +114,7 @@ export const updatePatient = createAsyncThunk(
       if (!auth.token) {
         throw new Error('No authentication token');
       }
-      
+
       // Simulate API call
       const response = await fetch(`/api/patients/${patientId}`, {
         method: 'PUT',
@@ -123,11 +124,11 @@ export const updatePatient = createAsyncThunk(
         },
         body: JSON.stringify(patientData),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update patient');
       }
-      
+
       return await response.json();
     } catch (error) {
       return rejectWithValue(error.message);
@@ -177,7 +178,7 @@ const patientSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch patient by ID
       .addCase(fetchPatientById.pending, (state) => {
         state.isLoading = true;
@@ -192,7 +193,7 @@ const patientSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Create patient
       .addCase(createPatient.pending, (state) => {
         state.isLoading = true;
@@ -207,7 +208,7 @@ const patientSlice = createSlice({
         state.isLoading = false;
         state.error = action.payload;
       })
-      
+
       // Update patient
       .addCase(updatePatient.pending, (state) => {
         state.isLoading = true;

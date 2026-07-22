@@ -207,7 +207,7 @@ const CashierPatientDetails = () => {
         {
           loading: 'Submitting receipt...',
           success: 'Receipt submitted successfully!',
-          error: (e) => e?.message || "Error submitting receipt."
+          error: (e) => e?.response?.data?.message || 'Error submitting receipt. Please try again.',
         }
       );
 
