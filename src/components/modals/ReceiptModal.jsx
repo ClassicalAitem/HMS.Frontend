@@ -34,8 +34,6 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
       const res = await getAllHmos({ patientId });
       const list = Array.isArray(res) ? res : res?.data.data ?? [];
 
-      console.log('Fetched HMOs for patient:', list);
-
       setHmos(list);
       setFilteredResults(list);  // ✅ IMPORTANT FIX
 
@@ -165,8 +163,6 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
     setFilteredResults([]);
   };
 
-  console.log('filterResults', filteredResults);
-
   if (!isOpen) return null;
 
   return (
@@ -290,6 +286,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
                   value={formData.paymentDestination}
                   onChange={handleInputChange}
                   className="w-full select select-bordered"
+                  required
                 >
                   <option value="">Select Destination</option>
                   <option value="form">Form Registration</option>
@@ -310,7 +307,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
             {formData.paymentMethod === 'transfer' && (
               <div className="space-y-1 p-3 bg-base-200 rounded-lg border-l-4 border-primary">
                 <p className="text-sm font-medium text-base-content mb-3">Bank Transfer Details</p>
-                
+
                 <div>
                   <label className="block mb-2 text-sm font-medium text-base-content">
                     Bank Name <span className="text-error">*</span>
@@ -341,7 +338,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
                   />
                 </div>
 
-                
+
                 <div>
                   <label className="block mb-2 text-sm font-medium text-base-content">
                     Session ID <span className="text-base-content/50">(Optional)</span>
@@ -371,8 +368,8 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
                 type="submit"
                 className="btn btn-primary"
                 disabled={
-                  !formData.amountPaid || 
-                  !formData.paymentMethod || 
+                  !formData.amountPaid ||
+                  !formData.paymentMethod ||
                   !formData.paidBy ||
                   (formData.paymentMethod === 'transfer' && (!formData.bankName || !formData.senderName))
                 }

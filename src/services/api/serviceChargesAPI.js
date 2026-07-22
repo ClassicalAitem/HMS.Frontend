@@ -35,7 +35,7 @@ export const getServiceCharge = async (id) => {
 // Create new service charge
 export const createServiceCharge = async (payload) => {
   try {
-    const requiredFields = ['service', 'category`'];
+    const requiredFields = ['service', 'category'];
     for (const field of requiredFields) {
       if (!payload?.[field]) {
         throw new Error(`Missing required field: ${field}`);
