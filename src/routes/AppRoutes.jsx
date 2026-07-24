@@ -11,6 +11,7 @@ import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
 import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
 import Task from "@/pages/nurse/assignedTask/AssignedTask";
 import ViewAllPatientVitals from "@/pages/nurse/patientVitals/ViewAllPatientVitals";
+import ViewAllAdmission from "@/pages/nurse/patientVitals/ViewAllAdmission";
 import NurseAntenatalRecords from "@/pages/nurse/patientVitals/NurseAntenatalRecords";
 
 import Appointmentss from "@/pages/nurse/appointment/Appointment"
@@ -170,6 +171,7 @@ import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory
 import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
 import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
 import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
+import ViewAllAdmissions from "@/pages/doctor/incoming/ViewAllAdmission";
 
 
 const AppRoutes = () => {
@@ -286,6 +288,11 @@ const AppRoutes = () => {
           <ViewAllPatientVitals />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/view-admissions/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <ViewAllAdmission />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/nurse/patient/:patientId/antenatal-records" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <NurseAntenatalRecords />
@@ -358,6 +365,11 @@ const AppRoutes = () => {
   <Route path="/dashboard/doctor/view-investigations/:patientId" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <ViewAllInvestigations />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/view-admissions/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <ViewAllAdmissions />
     </ProtectedRoute>
   } />
   <Route path="/dashboard/doctor/view-lab-results/:patientId" element={

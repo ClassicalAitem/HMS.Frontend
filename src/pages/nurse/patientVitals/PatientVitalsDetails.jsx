@@ -34,6 +34,8 @@ import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import ViewAllVitals from "./ViewAllPatientVitals";
 import { getInvestigationByPatientId } from "@/services/api/investigationAPI";
+import { getAdmissionByPatientId } from "@/services/api/admissionApi";
+import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -75,6 +77,8 @@ const PatientVitalsDetails = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [investigations, setInvestigations] = useState([]);
   const [consultationLoading, setConsultationLoading] = useState(false);
+  const [admissions, setAdmissions] = useState([]);
+  const [admissionsLoading, setAdmissionsLoading] = useState(false);
   // Track if prescription/investigation failed to load
   const [prescriptionError, setPrescriptionError] = useState(false);
   const [investigationError, setInvestigationError] = useState(false);
@@ -231,6 +235,37 @@ useEffect(() => {
   };
 
   if (patientId) fetchAntenatal();
+
+  return () => { mounted = false; };
+}, [patientId, isViewingDependant, dependantId]);
+
+// Fetch admissions (nurse read-only view)
+useEffect(() => {
+  let mounted = true;
+  const fetchAdmissions = async () => {
+    setAdmissionsLoading(true);
+    try {
+      const res = await getAdmissionByPatientId(patientId);
+      const rawData = res?.data ?? res;
+      let list = [];
+      if (Array.isArray(rawData)) {
+        list = rawData;
+      } else if (rawData && typeof rawData === 'object' && Object.keys(rawData).length > 0) {
+        list = [rawData];
+      }
+      const scoped = isViewingDependant
+        ? list.filter(a => a?.dependantId === dependantId)
+        : list.filter(a => !a?.dependantId);
+      if (mounted) setAdmissions(scoped);
+    } catch (error) {
+      console.error('Error fetching admissions:', error);
+      if (mounted) setAdmissions([]);
+    } finally {
+      if (mounted) setAdmissionsLoading(false);
+    }
+  };
+
+  if (patientId) fetchAdmissions();
 
   return () => { mounted = false; };
 }, [patientId, isViewingDependant, dependantId]);
@@ -822,6 +857,38 @@ useEffect(() => {
   patientName={summarySubject?.fullName || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim() || 'Patient'}
   dependantId={dependantId}
 />
+
+          <AdmissionHistoryTable
+            loading={admissionsLoading}
+            rows={useMemo(() => (
+              Array.isArray(admissions) ? admissions.map((a) => {
+                const forName = summarySubject?.fullName
+                  || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
+                  || 'Patient';
+
+                const totalPrice = (a?.admissions || []).reduce(
+                  (sum, item) => sum + (Number(item?.amount) || 0), 0
+                );
+
+                return {
+                  id: a?._id || a?.id,
+                  status: a?.status || 'active',
+                  ward: a?.ward || '—',
+                  date: a?.createdAt ? formatNigeriaDate(a.createdAt) : "—",
+                  itemsCount: a?.admissions?.length || 0,
+                  itemsSummary: a?.admissions?.slice(0, 2).map(item => item.name) || [],
+                  totalPrice: totalPrice > 0 ? totalPrice : null,
+                  isForDependant: isViewingDependant,
+                  forName,
+                };
+              }) : []
+              // eslint-disable-next-line react-hooks/exhaustive-deps
+            ), [admissions, summarySubject, isViewingDependant])}
+            onViewAll={() => navigate(`/dashboard/nurse/view-admissions/${patientId}`, {
+              state: { dependantId, dependantSnapshot }
+            })}
+            hidePrice
+          />
 
           {/* Antenatal Records (Nurse, Female patients only). Read-only, view all/details */}
           {summarySubject?.gender?.toLowerCase() === 'female' && (

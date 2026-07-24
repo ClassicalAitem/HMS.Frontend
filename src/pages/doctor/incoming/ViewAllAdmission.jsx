@@ -3,25 +3,27 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
 import Sidebar from '@/components/doctor/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
-import { getInvestigationByPatientId } from '@/services/api/investigationAPI';
-import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
-import { FaFlask } from 'react-icons/fa';
+import { FaHospital } from 'react-icons/fa';
+import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 
-const ViewAllInvestigations = () => {
+const ViewAllAdmissions = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const fromIncoming = location?.state?.from === 'incoming';
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState(null);
-  const [investigations, setInvestigations] = useState([]);
+  const [subject, setSubject] = useState(dependantSnapshot);
+  const [admissions, setAdmissions] = useState([]);
   const [dependants, setDependants] = useState([]);
-  const [serviceCharges, setServiceCharges] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -29,7 +31,12 @@ const ViewAllInvestigations = () => {
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  // Fetch patient data
+  const subjectName = useMemo(() => {
+    if (!isViewingDependant) return patientName;
+    return subject?.fullName || `${subject?.firstName || ""} ${subject?.lastName || ""}`.trim() || 'Dependant';
+  }, [isViewingDependant, subject, patientName]);
+
+  // Fetch patient data (always needed for the guardian record / header)
   useEffect(() => {
     let mounted = true;
     const loadPatient = async () => {
@@ -46,7 +53,9 @@ const ViewAllInvestigations = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch dependants
+  // Fetch dependants (used to resolve names for OTHER dependants' rows
+  // when we're looking at the patient's full list, and as a fallback
+  // if no snapshot was passed in for the active dependant)
   useEffect(() => {
     let mounted = true;
     const loadDependants = async () => {
@@ -58,151 +67,107 @@ const ViewAllInvestigations = () => {
           id: dep.id || dep._id,
           fullName: dep.fullName || `${dep.firstName || ""} ${dep.lastName || ""}`.trim(),
         }));
-        if (mounted) setDependants(normalized);
+        if (mounted) {
+          setDependants(normalized);
+          if (isViewingDependant && !dependantSnapshot) {
+            const match = normalized.find(d => d.id === dependantId);
+            if (match) setSubject(match);
+          }
+        }
       } catch {
         if (mounted) toast.error('Failed to load dependants');
       }
     };
     if (patientId) loadDependants();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId, dependantSnapshot]);
 
-  // Fetch investigations
+  // Fetch admissions
   useEffect(() => {
     let mounted = true;
-    const loadInvestigations = async () => {
+    const loadAdmissions = async () => {
       try {
         setLoading(true);
-        const res = await getInvestigationByPatientId(patientId);
-        const rawData = res?.data ?? res ?? [];
-        if (mounted) setInvestigations(Array.isArray(rawData) ? rawData : []);
+        const res = await getAdmissionByPatientId(patientId);
+        const raw = res?.data ?? res ?? [];
+        let list = Array.isArray(raw) ? raw : [];
+        // Scope to the subject we actually navigated in for
+        list = list.filter(a =>
+          isViewingDependant ? a.dependantId === dependantId : !a.dependantId
+        );
+        if (mounted) setAdmissions(list);
       } catch (err) {
-        console.error('Failed to load investigations:', err);
-        if (mounted) setInvestigations([]);
+        console.error('Failed to load admissions:', err);
+        if (mounted) setAdmissions([]);
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    if (patientId) loadInvestigations();
+    if (patientId) loadAdmissions();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
-  // Fetch service charges
-  useEffect(() => {
-    let mounted = true;
-    const loadServiceCharges = async () => {
-      try {
-        const res = await getServiceCharges();
-        const rawData = res?.data ?? res;
-        const list = Array.isArray(rawData) ? rawData : (rawData?.data ?? []);
-        if (mounted) setServiceCharges(list);
-      } catch (err) {
-        console.error('Failed to load service charges:', err);
-        toast.error(err?.message || 'Failed to load service charges');
-      }
-    };
-    loadServiceCharges();
-    return () => { mounted = false; };
-  }, []);
-
-  // Helper to get lab investigation price
-  const getLabInvestigationPrice = (testName) => {
-    if (!testName) return 0;
-
-    const testNameLower = testName.toLowerCase().trim();
-
-    const exactMatch = serviceCharges.find(charge => {
-      const chargeService = (charge?.service || '').toLowerCase().trim();
-      const chargeName = (charge?.name || '').toLowerCase().trim();
-
-      return chargeService === testNameLower ||
-             chargeName === testNameLower ||
-             chargeService.includes(testNameLower) ||
-             chargeName.includes(testNameLower);
-    });
-
-    if (exactMatch) {
-      return Number(exactMatch?.amount || exactMatch?.price || 0);
-    }
-
-    return 0;
-  };
-
-  // Format investigation rows
-  const investigationRows = useMemo(() => (
-    Array.isArray(investigations)
-      ? investigations.map((inv) => {
-          const isDependant = !!inv.dependantId;
+  // Format admission rows
+  const admissionRows = useMemo(() => (
+    Array.isArray(admissions)
+      ? admissions.map((a) => {
+          const isDependant = !!a.dependantId;
           const targetName = isDependant
-            ? dependants.find(d => d.id === inv.dependantId)?.fullName || 'Unknown'
+            ? (isViewingDependant && a.dependantId === dependantId
+                ? subjectName
+                : dependants.find(d => d.id === a.dependantId)?.fullName || 'Unknown')
             : patientName;
 
-          const testsCount = inv.tests?.length || 0;
-          const testsSummary = inv.tests
-            ? inv.tests.slice(0, 2).map(t => typeof t === 'string' ? t : (t.name || 'Test'))
+          const itemsCount = a.admissions?.length || 0;
+          const itemsSummary = a.admissions
+            ? a.admissions.slice(0, 2).map(item => item.name || 'Item')
             : [];
 
-          const totalPrice = inv.tests
-            ? inv.tests.reduce((sum, test) => {
-                const testName = typeof test === 'string' ? test : (test.name || 'Test');
-                return sum + (getLabInvestigationPrice(testName) || 0);
-              }, 0)
+          const totalPrice = a.admissions
+            ? a.admissions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
             : 0;
 
           return {
-            _id: inv._id,
+            _id: a._id,
             forName: targetName,
             isForDependant: isDependant,
-            status: inv.status || 'pending',
-            type: inv.type || 'Lab',
-            testsCount,
-            testsSummary,
-            date: formatNigeriaDate(inv.createdAt),
+            status: a.status || 'active',
+            ward: a.ward || '—',
+            itemsCount,
+            itemsSummary,
+            date: formatNigeriaDate(a.createdAt),
             totalPrice,
-            tests: inv.tests || [],
-            createdAt: inv.createdAt,
-            priority: inv.priority || 'normal',
+            admissions: a.admissions || [],
+            createdAt: a.createdAt,
           };
         })
       : []
-  ), [investigations, dependants, patientName, serviceCharges]);
+  ), [admissions, dependants, patientName, isViewingDependant, dependantId, subjectName]);
+  // ... rest (pagination, JSX) stays the same, just swap patientName -> subjectName in the header display
 
   // Pagination
   const paginationData = useMemo(() => {
-    const totalItems = investigationRows.length;
+    const totalItems = admissionRows.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     const startIdx = (currentPage - 1) * itemsPerPage;
-    const paginatedItems = investigationRows.slice(startIdx, startIdx + itemsPerPage);
+    const paginatedItems = admissionRows.slice(startIdx, startIdx + itemsPerPage);
     return { paginatedItems, totalPages, totalItems };
-  }, [investigationRows, currentPage]);
+  }, [admissionRows, currentPage]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
-      case 'completed':
+      case 'active':
         return 'badge-success';
-      case 'in_progress':
-      case 'processing':
-        return 'badge-warning';
-      case 'requested':
-      case 'pending':
-        return 'badge-info';
+      case 'discharged':
+        return 'badge-ghost';
+      case 'cancelled':
+        return 'badge-error';
       default:
         return 'badge-ghost';
-    }
-  };
-
-  const getPriorityBadge = (priority) => {
-    switch (priority?.toLowerCase()) {
-      case 'urgent':
-        return 'badge-error';
-      case 'high':
-        return 'badge-warning';
-      default:
-        return 'badge-info';
     }
   };
 
@@ -229,13 +194,13 @@ const ViewAllInvestigations = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-info/10 p-3 rounded-full text-info">
-                    <FaFlask className="w-6 h-6" />
+                  <div className="bg-primary/10 p-3 rounded-full text-primary">
+                    <FaHospital className="w-6 h-6" />
                   </div>
-                  <h1 className="text-2xl font-bold text-base-content">Lab Investigations</h1>
+                  <h1 className="text-2xl font-bold text-base-content">Admission History</h1>
                 </div>
                 <p className="text-base-content/70">
-                  Patient: {patientName}
+                  Patient: {subjectName}
                 </p>
               </div>
               <button
@@ -259,11 +224,12 @@ const ViewAllInvestigations = () => {
                     <thead>
                       <tr>
                         <th className="font-bold text-base">Patient Type</th>
-                        <th className="font-bold text-base">Investigation Type</th>
+                        <th className="font-bold text-base">Ward</th>
                         <th className="font-bold text-base">Status</th>
-                        <th className="font-bold text-base">Priority</th>
-                        <th className="font-bold text-base">Tests</th>
+                        <th className="font-bold text-base">Items Count</th>
                         <th className="font-bold text-base">Created At</th>
+                        <th className="font-bold text-base">Items</th>
+                        <th className="font-bold text-base">Total Price</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -284,45 +250,31 @@ const ViewAllInvestigations = () => {
                                 </span>
                               </div>
                             </td>
+                            <td className="font-semibold text-sm">{row.ward}</td>
                             <td>
-                              <span className="font-bold text-sm text-base-content">
-                                {row.type}
+                              <span className={`badge font-semibold ${getStatusBadge(row.status)}`}>
+                                {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
                               </span>
                             </td>
-                            <td>
-                              <span className={`badge ${getStatusBadge(row.status)}`}>
-                                {row.status?.replace(/_/g, ' ')}
-                              </span>
-                            </td>
-                            <td>
-                              {row.priority ? (
-                                <span className={`badge badge-sm ${getPriorityBadge(row.priority)}`}>
-                                  {row.priority}
-                                </span>
-                              ) : (
-                                '—'
-                              )}
-                            </td>
-                            <td className="text-left">
-                              <div className="flex flex-col gap-2">
-                                <span className="font-semibold text-sm text-base-content">
-                                  {row.testsCount} test{row.testsCount !== 1 ? 's' : ''}
-                                </span>
-                                <ul className="list-disc list-inside text-sm font-medium">
-                                  {row.testsSummary.map((test, i) => (
-                                    <li key={i} className="text-base-content">{test}</li>
-                                  ))}
-                                  {row.testsCount > 2 && <li className="text-base-content/60">...</li>}
-                                </ul>
-                              </div>
-                            </td>
+                            <td className="font-bold text-sm">{row.itemsCount}</td>
                             <td className="font-semibold text-sm">{row.date}</td>
+                            <td className="text-left">
+                              <ul className="list-disc list-inside text-sm font-medium">
+                                {row.itemsSummary.map((item, i) => (
+                                  <li key={i} className="text-base-content">{item}</li>
+                                ))}
+                                {row.itemsCount > 2 && <li className="text-base-content/60">...</li>}
+                              </ul>
+                            </td>
+                            <td className="font-medium text-primary text-sm">
+                              {row.totalPrice ? `₦${Number(row.totalPrice).toLocaleString()}` : '—'}
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
                           <td colSpan={7} className="py-6 text-base-content/70">
-                            No investigations found
+                            No admissions found
                           </td>
                         </tr>
                       )}
@@ -384,4 +336,4 @@ const ViewAllInvestigations = () => {
   );
 };
 
-export default ViewAllInvestigations;
+export default ViewAllAdmissions;

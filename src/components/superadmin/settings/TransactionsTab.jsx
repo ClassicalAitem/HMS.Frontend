@@ -70,21 +70,25 @@ const TransactionsTab = () => {
     const currentMonth = new Date().getMonth();
     return transactions
       .filter(txn => new Date(txn.date).getMonth() === currentMonth && txn.status === 'paid')
-      .reduce((sum, txn) => sum + txn.amount, 0);
+      .reduce((sum, txn) => sum + Number(txn.amount), 0);
   }
 
   const pendingBills = () => {
     return transactions
       .filter(txn => txn.status === 'pending')
-      .reduce((sum, txn) => sum + txn.amount, 0);
+      .reduce((sum, txn) => sum + Number(txn.amount), 0);
   }
+
+  console.log('Pending Bills:', pendingBills());
 
   const todayRevenue = () => {
     const today = new Date().toISOString().split('T')[0];
     return transactions
       .filter(txn => txn.date === today && txn.status === 'paid')
-      .reduce((sum, txn) => sum + txn.amount, 0);
+      .reduce((sum, txn) => sum + Number(txn.amount), 0);
   }
+
+  console.log('Today Revenue:', todayRevenue());
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-NG', {
@@ -114,7 +118,7 @@ const TransactionsTab = () => {
     <div className="bg-base-100 rounded-lg shadow-lg p-6">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-2xl font-semibold text-base-content">Transactions</h2>
-        
+
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
           {/* Search Input */}
           <div className="relative w-full sm:w-64">
@@ -276,14 +280,14 @@ const TransactionsTab = () => {
             Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredTransactions.length)} of {filteredTransactions.length} entries
           </div>
           <div className="join">
-            <button 
+            <button
               className="join-item btn btn-sm"
               onClick={() => paginate(currentPage - 1)}
               disabled={currentPage === 1}
             >
               <FaChevronLeft className="w-3 h-3" />
             </button>
-            
+
             {[...Array(totalPages)].map((_, i) => {
               // Show limited page numbers logic could go here for many pages
               // For now showing all pages or a simple range
@@ -301,8 +305,8 @@ const TransactionsTab = () => {
                 </button>
               );
             })}
-            
-            <button 
+
+            <button
               className="join-item btn btn-sm"
               onClick={() => paginate(currentPage + 1)}
               disabled={currentPage === totalPages}

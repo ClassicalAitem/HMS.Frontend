@@ -14,6 +14,7 @@ const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
   investigationId: yup.string().nullable().optional(),
   prescriptionId: yup.string().nullable().optional(),
+  admissionId: yup.string().nullable().optional(),
   code: yup.string().required('Item code is required'),
   description: yup.string().required('Description is required'),
   quantity: yup.number().typeError('Must be a number').min(1, 'Min 1').required(),
@@ -195,6 +196,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
           serviceChargeId: d.serviceChargeId || null,
           investigationId: d.investigationId || null,
           prescriptionId: d.prescriptionId || null,
+          admissionId: d.admissionId || null,
           code: d.code || '',
           description: d.description || '',
           quantity: d.quantity || 1,
@@ -203,7 +205,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
         }))
       });
     } else {
-      reset({ items: [{ serviceChargeId: null,investigationId: null, prescriptionId: null, code: '', description: '', quantity: 1, price: 0 }] });
+      reset({ items: [{ serviceChargeId: null,investigationId: null, prescriptionId: null, admissionId: null, code: '', description: '', quantity: 1, price: 0 }] });
     }
   }, [isOpen, defaultItems, reset]);
 
@@ -238,6 +240,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
           serviceChargeId: item.serviceChargeId,
           investigationId: item.investigationId,
           prescriptionId: item.prescriptionId,
+          admissionId: item.admissionId,
         })),
         ...(dependantId && { dependantId }),
       };
