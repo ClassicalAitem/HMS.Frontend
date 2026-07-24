@@ -26,8 +26,10 @@ import { FaUserMd } from "react-icons/fa";
 import { SendToHmoModal } from "@/components/modals";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
+import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
+import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -69,6 +71,9 @@ const dependantSnapshot = location?.state?.dependantSnapshot || null;
 const isViewingDependant = !!dependantId;
 const [subject, setSubject] = useState(null);
 const [subjectLoading, setSubjectLoading] = useState(true);
+
+const [admissions, setAdmissions] = useState([]);
+const [admissionsLoading, setAdmissionsLoading] = useState(false);
 
   const filterSubjectRecords = (items) => {
     if (!Array.isArray(items)) return [];
@@ -419,12 +424,38 @@ useEffect(() => {
     return () => { mounted = false; };
   }, [patientId, isViewingDependant, dependantId]);
 
+
+  useEffect(() => {
+  let mounted = true;
+  const loadAdmissions = async () => {
+    try {
+      setAdmissionsLoading(true);
+      const res = await getAdmissionByPatientId(patientId);
+      const rawData = res?.data ?? res; 
+      let list = [];
+      if (Array.isArray(rawData)) {
+        list = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        if (Object.keys(rawData).length > 0) list = [rawData];
+      }
+      list = filterSubjectRecords(list);
+      if (mounted) setAdmissions(list);
+    } catch (err) {
+      // getAdmissionByPatientId already suppresses 404s and returns []
+      console.error("Failed to load admissions", err);
+    } finally {
+      if (mounted) setAdmissionsLoading(false);
+    }
+  };
+  if (patientId) loadAdmissions();
+  return () => { mounted = false; };
+}, [patientId, isViewingDependant, dependantId]);
   // Fetch dependants on-demand as we encounter them in various data
   useEffect(() => {
     const dependantIdsNeeded = new Set();
 
     // Collect all dependant IDs from various sources
-    [consultations, prescriptions, sortedVitals, labResults, labInvestigations]?.forEach(arr => {
+    [consultations, prescriptions, sortedVitals, labResults, labInvestigations, admissions]?.forEach(arr => {
       if (Array.isArray(arr)) {
         arr.forEach(item => {
           if (item?.dependantId && !dependantCache[item.dependantId]) {
@@ -584,9 +615,28 @@ const latestLab = useMemo(() => {
     }
   };
 
-  // Refresh both after billing
+  // Refresh admissions after billing
+  const refreshAdmissions = async () => {
+    try {
+      const res = await getAdmissionByPatientId(patientId);
+      const rawData = res?.data ?? res;
+      let list = [];
+      if (Array.isArray(rawData)) {
+        list = rawData;
+      } else if (rawData && typeof rawData === 'object') {
+        if (Object.keys(rawData).length > 0) {
+          list = [rawData];
+        }
+      }
+      setAdmissions(filterSubjectRecords(list));
+    } catch (err) {
+      console.error("Failed to refresh admissions", err);
+    }
+  };
+
+  // Refresh all after billing
   const refreshBillableItems = async () => {
-    await Promise.all([refreshLabInvestigations(), refreshPrescriptions()]);
+    await Promise.all([refreshLabInvestigations(), refreshPrescriptions(), refreshAdmissions()]);
   };
 
   // Helper function to find drug price from inventory
@@ -681,6 +731,41 @@ const latestLab = useMemo(() => {
           price: Number(getDrugPrice(med?.drugName)) || 0,
           prescriptionId: pres?.id || pres?._id,
         }));
+      });
+    };
+
+    const getAdmissionBillItems = () => {
+      if (!Array.isArray(admissions)) return [];
+
+      const unbilledAdmissions = admissions.filter(adm => !adm.isBilled && !adm.billId);
+
+      return unbilledAdmissions.flatMap(adm => {
+        const items = Array.isArray(adm.admissions) ? adm.admissions : [];
+
+        if (items.length === 0) {
+          return [{
+            serviceChargeId: '',
+            code: 'ADMISSION',
+            description: adm.ward || 'Admission',
+            quantity: 1,
+            price: 0,
+            admissionId: adm?.id || adm?._id,
+          }];
+        }
+
+        return items.map(item => {
+          const serviceCharge = serviceCharges.find(sc => sc.id === item?.serviceChargeId);
+          if (serviceCharge && !serviceCharge.isBillable) return null;
+
+          return {
+            serviceChargeId: item?.serviceChargeId || '',
+            code: 'ADMISSION',
+            description: item.name || adm.ward || 'Admission Item',
+            quantity: 1,
+            price: Number(item?.amount) || 0,
+            admissionId: adm?.id || adm?._id,
+          };
+        }).filter(Boolean);
       });
     };
   // Helper function to check if item is within last 48 hours
@@ -1090,6 +1175,46 @@ const dependant = isDependant
               },
             })}
           />
+          <AdmissionHistoryTable
+            loading={admissionsLoading}
+            rows={useMemo(() => (
+              Array.isArray(admissions) ? admissions.map((a) => {
+                const isDependant = !!a?.dependantId;
+
+                const dependant = isDependant
+                  ? dependantCache[a.dependantId]?.data?.dependant || dependantCache[a.dependantId]?.dependant || dependantCache[a.dependantId]
+                  : null;
+
+                const forName = isDependant
+                  ? `${dependant?.firstName || ''} ${dependant?.lastName || ''}`.trim() || 'Dependant'
+                  : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+
+                const totalPrice = (a?.admissions || []).reduce(
+                  (sum, item) => sum + (Number(item?.amount) || 0), 0
+                );
+
+                return {
+                  id: a?._id || a?.id,
+                  status: a?.status || 'active',
+                  ward: a?.ward || '—',
+                  date: a?.createdAt ? formatNigeriaDate(a.createdAt) : "—",
+                  itemsCount: a?.admissions?.length || 0,
+                  itemsSummary: a?.admissions?.slice(0, 2).map(item => item.name) || [],
+                  totalPrice: totalPrice > 0 ? totalPrice : null,
+                  isForDependant: isDependant,
+                  forName,
+                };
+              }) : []
+              // eslint-disable-next-line react-hooks/exhaustive-deps
+            ), [admissions, dependantCache, patientName])}
+            onViewAll={() => navigate(`/dashboard/doctor/view-admissions/${patientId}`, {
+              state: {
+                from: fromIncoming ? "incoming" : "patients",
+                dependantId,
+                dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+              },
+            })}
+          />
           <VitalsHistoryTable 
             sortedVitals={enrichedVitals} 
             loading={loading}
@@ -1157,7 +1282,8 @@ const dependant = isDependant
               onClick={() => {
                 const labItems = getLabInvestigationBillItems();
                 const prescriptionItems = getPrescriptionBillItems();
-                const allItems = [...labItems, ...prescriptionItems];
+                const admissionItems = getAdmissionBillItems();
+                const allItems = [...labItems, ...prescriptionItems, ...admissionItems];
                 
                
                 
@@ -1179,7 +1305,8 @@ const dependant = isDependant
                onClick={() => {
                   const labItems = getLabInvestigationBillItems();
                   const prescriptionItems = getPrescriptionBillItems();
-                  const allItems = [...labItems, ...prescriptionItems];
+                  const admissionItems = getAdmissionBillItems();
+                  const allItems = [...labItems, ...prescriptionItems, ...admissionItems];
                   
                 
                   
@@ -1225,6 +1352,7 @@ const dependant = isDependant
                 billDefaults.forEach(item => {
                   if (item.investigationId) next.add(item.investigationId);
                   if (item.prescriptionId) next.add(item.prescriptionId);
+                  if (item.admissionId) next.add(item.admissionId);
                 });
                 return next;
               });
