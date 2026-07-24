@@ -76,6 +76,7 @@ const Appointment = () => {
       setAppointments(mapAppointments(raw));
     } catch (err) {
       console.error("Surgeon Appointments: create error", err);
+      toast.error(err?.message || "Failed to book appointment");
     }
   };
 

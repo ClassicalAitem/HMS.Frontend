@@ -27,9 +27,11 @@ const addServiceChargeSchema = yup.object({
 
 const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [admissionCovered, setAdmissionCovered] = useState([]);
+  const [admissionInput, setAdmissionInput] = useState('');
+  const [admissionInputError, setAdmissionInputError] = useState('');
   const dispatch = useAppDispatch();
 
-  // Sample categories for dropdown
   const categories = [
     'General',
     'Laboratory',
@@ -38,7 +40,8 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
     'Emergency',
     'Pharmacy',
     'Therapy',
-    'Consultation'
+    'Consultation',
+    'Admission',
   ];
 
   const {
@@ -60,30 +63,63 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
   });
 
   const isBillable = formWatch('isBillable');
+  const watchedCategory = formWatch('category');
+  const isAdmission = watchedCategory === 'Admission';
+
+  const handleAddAdmissionItem = () => {
+    const trimmed = admissionInput.trim();
+    if (!trimmed) {
+      setAdmissionInputError('Please enter a value before adding');
+      return;
+    }
+    if (admissionCovered.includes(trimmed)) {
+      setAdmissionInputError('This item has already been added');
+      return;
+    }
+    setAdmissionCovered((prev) => [...prev, trimmed]);
+    setAdmissionInput('');
+    setAdmissionInputError('');
+  };
+
+  const handleAdmissionInputKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddAdmissionItem();
+    }
+  };
+
+  const handleRemoveAdmissionItem = (item) => {
+    setAdmissionCovered((prev) => prev.filter((i) => i !== item));
+  };
 
   const onSubmit = async (data) => {
+    if (isAdmission && admissionCovered.length === 0) {
+      setAdmissionInputError('Please add at least one item covered by this admission');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // If not billable, set amount to 0
       const finalAmount = !data.isBillable ? '0' : data.amount.toString();
-      
-      // Convert amount to string as required by API
+
       const payload = {
         service: data.service,
         category: data.category,
         amount: finalAmount,
-        isBillable: data.isBillable
+        isBillable: data.isBillable,
+        ...(isAdmission && { admissionCovered }),
       };
-      
-      console.log('💰 Creating service charge with payload:', payload);
+
       await dispatch(createServiceCharge(payload)).unwrap();
-      
       toast.success('Service charge added successfully!');
       reset();
+      setAdmissionCovered([]);
+      setAdmissionInput('');
+      setAdmissionInputError('');
       onServiceChargeAdded();
     } catch (error) {
       console.error('❌ Error adding service charge:', error);
-      toast.error('Failed to add service charge');
+      toast.error(error?.message || 'Failed to add service charge');
     } finally {
       setIsLoading(false);
     }
@@ -91,6 +127,9 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
 
   const handleClose = () => {
     reset();
+    setAdmissionCovered([]);
+    setAdmissionInput('');
+    setAdmissionInputError('');
     onClose();
   };
 
@@ -98,7 +137,7 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md mx-4">
+      <div className="bg-base-100 rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-base-300">
           <div className="flex items-center">
@@ -107,11 +146,7 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
             </div>
             <h3 className="text-lg font-semibold text-base-content">Add Service Charge</h3>
           </div>
-          <button
-            onClick={handleClose}
-            className="btn btn-ghost btn-sm"
-            disabled={isLoading}
-          >
+          <button onClick={handleClose} className="btn btn-ghost btn-sm" disabled={isLoading}>
             <FaTimes className="w-4 h-4" />
           </button>
         </div>
@@ -157,6 +192,71 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
                 <p className="text-error text-xs mt-1">{errors.category.message}</p>
               )}
             </div>
+
+            {/* Admission Covered — only shown when category is Admission */}
+            {isAdmission && (
+              <div>
+                <label className="block text-sm font-medium text-base-content/70 mb-2">
+                  Admission Covered <span className="text-error">*</span>
+                </label>
+
+                {/* Input row */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={admissionInput}
+                    onChange={(e) => {
+                      setAdmissionInput(e.target.value);
+                      if (admissionInputError) setAdmissionInputError('');
+                    }}
+                    onKeyDown={handleAdmissionInputKeyDown}
+                    placeholder="e.g. Bed fee, Nursing care..."
+                    className={`input input-bordered flex-1 ${admissionInputError ? 'input-error' : ''}`}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddAdmissionItem}
+                    className="btn btn-primary btn-sm h-12"
+                    disabled={isLoading}
+                  >
+                    Add
+                  </button>
+                </div>
+                <p className="text-xs text-base-content/50 mt-1">Press Enter or click Add</p>
+                {admissionInputError && (
+                  <p className="text-error text-xs mt-1">{admissionInputError}</p>
+                )}
+
+                {/* Added items preview */}
+                {admissionCovered.length > 0 && (
+                  <div className="mt-3 p-3 rounded-lg border border-base-300 bg-base-200/50">
+                    <p className="text-xs font-medium text-base-content/60 mb-2">
+                      Added ({admissionCovered.length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {admissionCovered.map((item) => (
+                        <span
+                          key={item}
+                          className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                        >
+                          {item}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdmissionItem(item)}
+                            className="ml-1 hover:text-error transition-colors"
+                            disabled={isLoading}
+                            aria-label={`Remove ${item}`}
+                          >
+                            <FaTimes className="w-2.5 h-2.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Billable Checkbox */}
             <div className="flex items-center space-x-3">
