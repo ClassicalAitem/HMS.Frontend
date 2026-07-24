@@ -4,6 +4,7 @@ import { Header } from '@/components/common';
 import Sidebar from '@/components/nurse/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
+import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
@@ -86,8 +87,24 @@ const ViewAllPatientAdmissions = () => {
     const loadAdmissions = async () => {
       try {
         setLoading(true);
-        const res = await getAdmissionByPatientId(patientId);
-        const rawData = res?.data ?? res;
+        const [admRes, chargesRes] = await Promise.allSettled([
+          getAdmissionByPatientId(patientId),
+          getServiceCharges(),
+        ]);
+
+        // Build serviceChargeId -> admissionCovered[] lookup
+        let coveredById = {};
+        if (chargesRes.status === 'fulfilled') {
+          const rawCharges = chargesRes.value?.data ?? chargesRes.value ?? [];
+          const chargesList = Array.isArray(rawCharges) ? rawCharges : (rawCharges?.data ?? []);
+          chargesList.forEach((c) => {
+            const id = c?._id || c?.id;
+            if (id) coveredById[id] = Array.isArray(c?.admissionCovered) ? c.admissionCovered : [];
+          });
+        }
+
+        if (admRes.status !== 'fulfilled') throw admRes.reason;
+        const rawData = admRes.value?.data ?? admRes.value;
         let list = [];
         if (Array.isArray(rawData)) {
           list = rawData;
@@ -98,9 +115,17 @@ const ViewAllPatientAdmissions = () => {
         const sorted = list.sort((a, b) =>
           new Date(b?.admittedAt || b?.createdAt || 0).getTime() - new Date(a?.admittedAt || a?.createdAt || 0).getTime()
         );
+        // Attach admissionCovered onto each admission item via its serviceChargeId
+        const withCovered = sorted.map((a) => ({
+          ...a,
+          admissions: (a?.admissions || []).map((item) => ({
+            ...item,
+            admissionCovered: coveredById[item?.serviceChargeId] || [],
+          })),
+        }));
         const scoped = isViewingDependant
-          ? sorted.filter(a => a?.dependantId === dependantId)
-          : sorted.filter(a => !a?.dependantId);
+          ? withCovered.filter(a => a?.dependantId === dependantId)
+          : withCovered.filter(a => !a?.dependantId);
         if (mounted) setAdmissions(scoped);
       } catch (err) {
         console.error('Failed to load admissions:', err);
@@ -127,7 +152,7 @@ const ViewAllPatientAdmissions = () => {
             status: a.status || 'active',
             isBilled: !!a.isBilled,
             itemsCount: items.length,
-            itemsSummary: items.slice(0, 3).map(item => item.name),
+            items,
             totalPrice,
             date: formatNigeriaDate(a.admittedAt || a.createdAt),
             time: formatNigeriaTime(a.admittedAt || a.createdAt),
@@ -212,6 +237,7 @@ const ViewAllPatientAdmissions = () => {
                         <th>Date &amp; Time</th>
                         <th>Status</th>
                         <th>Items</th>
+                        <th>Billed</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -233,18 +259,34 @@ const ViewAllPatientAdmissions = () => {
                               {row.itemsCount === 0 ? (
                                 '—'
                               ) : (
-                                <>
-                                  {row.itemsSummary.join(', ')}
-                                  {row.itemsCount > row.itemsSummary.length ? ` +${row.itemsCount - row.itemsSummary.length} more` : ''}
-                                </>
+                                <div className="space-y-2">
+                                  {row.items.map((item, i) => (
+                                    <div key={item._id || i}>
+                                      <span className="font-medium">{item.name}</span>
+                                      {Array.isArray(item.admissionCovered) && item.admissionCovered.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {item.admissionCovered.map((cond, ci) => (
+                                            <span key={ci} className="badge badge-outline badge-xs">
+                                              {cond}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
                               )}
                             </td>
-                         
+                            <td>
+                              <span className={`badge ${row.isBilled ? 'badge-success' : 'badge-warning'}`}>
+                                {row.isBilled ? 'Billed' : 'Unbilled'}
+                              </span>
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={7} className="py-6 text-base-content/70">
+                          <td colSpan={6} className="py-6 text-base-content/70">
                             No admissions found
                           </td>
                         </tr>
