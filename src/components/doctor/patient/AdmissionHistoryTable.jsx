@@ -102,12 +102,23 @@ const AdmissionHistoryTable = ({ rows, loading = false, onViewAll, scopedToSingl
                         <td>{row.itemsCount}</td>
                         <td>{row.date}</td>
                         <td className="text-left">
-                          <ul className="list-disc list-inside text-xs">
-                            {row.itemsSummary.map((item, i) => (
-                              <li key={i}>{item}</li>
+                          <div className="space-y-2">
+                            {(row.items && row.items.length > 0
+                              ? row.items
+                              : (row.itemsSummary || []).map(name => ({ name, admissionCovered: [] }))
+                            ).map((item, i) => (
+                              <div key={item._id || i}>
+                                <span className="text-xs font-medium">{item.name}</span>
+                                {Array.isArray(item.admissionCovered) && item.admissionCovered.length > 0 && (
+                                  <ul className="list-disc list-inside mt-1 ml-1 text-xs text-base-content/60">
+                                    {item.admissionCovered.map((cond, ci) => (
+                                      <li key={ci}>{cond}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
                             ))}
-                            {row.itemsCount > 2 && <li>...</li>}
-                          </ul>
+                          </div>
                         </td>
                         {!hidePrice && (
                           <td className="font-medium text-primary">

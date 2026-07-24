@@ -35,6 +35,7 @@ import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import ViewAllVitals from "./ViewAllPatientVitals";
 import { getInvestigationByPatientId } from "@/services/api/investigationAPI";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
+import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
 
 const PatientVitalsDetails = () => {
@@ -245,17 +246,41 @@ useEffect(() => {
   const fetchAdmissions = async () => {
     setAdmissionsLoading(true);
     try {
-      const res = await getAdmissionByPatientId(patientId);
-      const rawData = res?.data ?? res;
+      const [admRes, chargesRes] = await Promise.allSettled([
+        getAdmissionByPatientId(patientId),
+        getServiceCharges(),
+      ]);
+
+      // Build serviceChargeId -> admissionCovered[] lookup
+      let coveredById = {};
+      if (chargesRes.status === 'fulfilled') {
+        const rawCharges = chargesRes.value?.data ?? chargesRes.value ?? [];
+        const chargesList = Array.isArray(rawCharges) ? rawCharges : (rawCharges?.data ?? []);
+        chargesList.forEach((c) => {
+          const id = c?._id || c?.id;
+          if (id) coveredById[id] = Array.isArray(c?.admissionCovered) ? c.admissionCovered : [];
+        });
+      }
+
+      if (admRes.status !== 'fulfilled') throw admRes.reason;
+      const rawData = admRes.value?.data ?? admRes.value;
       let list = [];
       if (Array.isArray(rawData)) {
         list = rawData;
       } else if (rawData && typeof rawData === 'object' && Object.keys(rawData).length > 0) {
         list = [rawData];
       }
+      // Attach admissionCovered onto each admission item via its serviceChargeId
+      const withCovered = list.map((a) => ({
+        ...a,
+        admissions: (a?.admissions || []).map((item) => ({
+          ...item,
+          admissionCovered: coveredById[item?.serviceChargeId] || [],
+        })),
+      }));
       const scoped = isViewingDependant
-        ? list.filter(a => a?.dependantId === dependantId)
-        : list.filter(a => !a?.dependantId);
+        ? withCovered.filter(a => a?.dependantId === dependantId)
+        : withCovered.filter(a => !a?.dependantId);
       if (mounted) setAdmissions(scoped);
     } catch (error) {
       console.error('Error fetching admissions:', error);
@@ -876,7 +901,7 @@ useEffect(() => {
                   ward: a?.ward || '—',
                   date: a?.createdAt ? formatNigeriaDate(a.createdAt) : "—",
                   itemsCount: a?.admissions?.length || 0,
-                  itemsSummary: a?.admissions?.slice(0, 2).map(item => item.name) || [],
+                  items: a?.admissions || [],
                   totalPrice: totalPrice > 0 ? totalPrice : null,
                   isForDependant: isViewingDependant,
                   forName,
