@@ -200,16 +200,17 @@ export const createBilling = async (patientId, payload) => {
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
   const { itemDetail = [], totalAmount, dependantId } = payload;
   if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
-  const sanitized = itemDetail.map(({ code, description, quantity, price, total, serviceChargeId, investigationId, prescriptionId }) => ({
-    code,
-    description,
-    quantity: Number(quantity) || 1,
-    price: Number(price) || 0,
-    total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
-    serviceChargeId: serviceChargeId || null,
-    investigationId: investigationId || null,
-    prescriptionId: prescriptionId || null,
-  }));
+  const sanitized = itemDetail.map(({ code, description, quantity, price, total, serviceChargeId, investigationId, prescriptionId, admissionId }) => ({
+  code,
+  description,
+  quantity: Number(quantity) || 1,
+  price: Number(price) || 0,
+  total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
+  serviceChargeId: serviceChargeId || null,
+  investigationId: investigationId || null,
+  prescriptionId: prescriptionId || null,
+  admissionId: admissionId || null,
+}));
   const body = { itemDetail: sanitized };
   if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
   if (dependantId) body.dependantId = dependantId;   // ← added
@@ -260,39 +261,39 @@ export const getReceiptsByOpdPatientId = async (opdPatientId) => {
 };
 
 export const createReceipt = async (billingId, receiptData) => {
-  if (!billingId) throw new Error('Billing ID is required');
-  if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
-  const requiredFields = ['amountPaid', 'paymentMethod'];
-  for (const field of requiredFields) {
-    if (receiptData[field] == null || receiptData[field] === '') {
-      throw new Error(`Missing required field: ${field}`);
-    }
+  try {
+    if (!billingId) throw new Error('Billing ID is required');
+    if (!receiptData || typeof receiptData !== 'object') throw new Error('receiptData must be an object');
+
+    const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId, dependantId } = receiptData;
+    if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');
+    if (!paymentMethod) throw new Error('Payment method is required');
+    if (!paidBy) throw new Error('Payer information is required');
+    if (!paymentDestination) throw new Error('Payment destination is required');
+
+    const payload = {
+      amountPaid: Number(amountPaid),
+      paymentMethod,
+      paidBy,
+      paymentDestination,
+    };
+
+    if (hmoId) payload.hmoId = hmoId;
+    if (dependantId != null && dependantId !== '') payload.dependantId = dependantId;
+    if (bankName && bankName.trim()) payload.bankName = bankName.trim();
+    if (senderName && senderName.trim()) payload.senderName = senderName.trim();
+    if (cashierName && cashierName.trim()) payload.cashierName = cashierName.trim();
+    if (sessionId && sessionId.trim()) payload.sessionId = sessionId.trim();
+
+    const url = `/receipt/create/${billingId}`;
+    console.log('🧾 ReceiptAPI: Creating receipt', { billingId, payload, url });
+    const response = await apiClient.post(url, payload);
+    return response;
+
+  } catch (error) {
+    console.error('❌ ReceiptAPI: Error creating receipt', error);
+    throw error;
   }
-
-  const { amountPaid, paymentMethod, paidBy, hmoId, paymentDestination, bankName, senderName, cashierName, sessionId, dependantId } = receiptData;
-  if (amountPaid == null || isNaN(Number(amountPaid))) throw new Error('Valid amountPaid is required');
-  if (!paymentMethod) throw new Error('Payment method is required');
-  if (!paidBy) throw new Error('Payer information is required');
-  if (!paymentDestination) throw new Error('Payment destination is required');
-
-  const payload = {
-    amountPaid: Number(amountPaid),
-    paymentMethod,
-    paidBy,
-    paymentDestination,
-  };
-
-  if (hmoId) payload.hmoId = hmoId;
-  if (dependantId != null && dependantId !== '') payload.dependantId = dependantId;
-  if (bankName && bankName.trim()) payload.bankName = bankName.trim();
-  if (senderName && senderName.trim()) payload.senderName = senderName.trim();
-  if (cashierName && cashierName.trim()) payload.cashierName = cashierName.trim();
-  if (sessionId && sessionId.trim()) payload.sessionId = sessionId.trim();
-
-  const url = `/receipt/create/${billingId}`;
-  console.log('🧾 ReceiptAPI: Creating receipt', { billingId, payload, url });
-  const response = await apiClient.post(url, payload);
-  return response;
 };
 
 export const updateReceipt = async(receiptId, status) => {
