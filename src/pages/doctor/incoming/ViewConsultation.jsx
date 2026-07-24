@@ -52,6 +52,8 @@ import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import AdmissionModal from '@/components/modals/admissionModal';
 
+import { deleteAdmission, getAdmissionsForConsultation } from '@/services/api/admissionApi';
+
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
   const location = useLocation();
@@ -139,6 +141,7 @@ const ViewConsultation = () => {
           getPatientById(pid),
           getPrescriptionsForConsultation(consultationId),
           getInvestigationByConsultationId(consultationId),
+          getAdmissionsForConsultation(consultationId),
         ];
 
         const results = await Promise.allSettled(promises);
@@ -174,6 +177,16 @@ const ViewConsultation = () => {
           setLabRequests(labList);
         } else {
           console.error('Error loading lab investigations:', results[2].reason);
+        }
+
+        // 4. Admissions
+        if (results[3].status === 'fulfilled') {
+          const admRes = results[3].value;
+          const rawAdmData = admRes?.data ?? admRes ?? [];
+          const admList = Array.isArray(rawAdmData) ? rawAdmData : [];
+          setActiveAdmissions(admList);
+        } else {
+          console.error('Error loading admissions:', results[3].reason);
         }
       } else if (data?.patient) {
         setPatient(data.patient);
@@ -1357,9 +1370,20 @@ const ViewConsultation = () => {
                                 <button
                                   type="button"
                                   className="btn btn-xs btn-ghost text-error"
-                                  onClick={() => {
+                                  onClick={async () => {
+                                    if (admission._id) {
+                                      try {
+                                        await deleteAdmission(admission._id);
+                                      } catch (err) {
+                                        console.error('Failed to delete admission:', err);
+                                        toast.error('Failed to delete admission');
+                                        return;
+                                      }
+                                    }
                                     setActiveAdmissions((prev) =>
-                                      prev.filter((_, index) => index !== idx),
+                                      prev.filter((a) =>
+                                        a._id ? a._id !== admission._id : a !== admission,
+                                      ),
                                     );
                                   }}
                                 >
