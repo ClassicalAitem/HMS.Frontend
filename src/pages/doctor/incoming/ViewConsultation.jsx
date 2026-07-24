@@ -53,6 +53,7 @@ import toast from 'react-hot-toast';
 import AdmissionModal from '@/components/modals/admissionModal';
 
 import { deleteAdmission, getAdmissionsForConsultation } from '@/services/api/admissionApi';
+import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -142,6 +143,7 @@ const ViewConsultation = () => {
           getPrescriptionsForConsultation(consultationId),
           getInvestigationByConsultationId(consultationId),
           getAdmissionsForConsultation(consultationId),
+          getServiceCharges(),
         ];
 
         const results = await Promise.allSettled(promises);
@@ -184,7 +186,28 @@ const ViewConsultation = () => {
           const admRes = results[3].value;
           const rawAdmData = admRes?.data ?? admRes ?? [];
           const admList = Array.isArray(rawAdmData) ? rawAdmData : [];
-          setActiveAdmissions(admList);
+
+          // Build serviceChargeId -> admissionCovered[] lookup
+          let coveredById = {};
+          if (results[4]?.status === 'fulfilled') {
+            const chargesRes = results[4].value;
+            const rawCharges = chargesRes?.data ?? chargesRes ?? [];
+            const chargesList = Array.isArray(rawCharges) ? rawCharges : (rawCharges?.data ?? []);
+            chargesList.forEach((c) => {
+              const id = c?._id || c?.id;
+              if (id) coveredById[id] = Array.isArray(c?.admissionCovered) ? c.admissionCovered : [];
+            });
+          }
+
+          const admListWithCovered = admList.map((a) => ({
+            ...a,
+            admissions: (a?.admissions || []).map((item) => ({
+              ...item,
+              admissionCovered: coveredById[item?.serviceChargeId] || [],
+            })),
+          }));
+
+          setActiveAdmissions(admListWithCovered);
         } else {
           console.error('Error loading admissions:', results[3].reason);
         }
@@ -1344,10 +1367,29 @@ const ViewConsultation = () => {
                     {/* Admission section */}
                     {/* Active Admissions */}
                     <div>
-                      <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-primary"></span>
-                        Active Admissions
-                      </h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-base-content flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-primary"></span>
+                          Active Admissions
+                        </h4>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          onClick={() =>
+                            navigate(`/dashboard/doctor/view-admissions/${patientId}`, {
+                              state: {
+                                dependantId: consultation?.dependantId,
+                                dependantSnapshot:
+                                  consultation?.type === 'dependant'
+                                    ? consultation?.snapshot
+                                    : null,
+                              },
+                            })
+                          }
+                        >
+                          View All
+                        </button>
+                      </div>
 
                       {activeAdmissions.length > 0 ? (
                         <div className="grid gap-3">
@@ -1391,23 +1433,30 @@ const ViewConsultation = () => {
                                 </button>
                               </div>
 
-                              <div className="mt-3 space-y-2">
+                              <div className="mt-3 space-y-3">
                                 {admission.admissions?.map(
                                   (item, itemIndex) => (
-                                    <div
-                                      key={item._id || itemIndex}
-                                      className="flex items-center justify-between text-sm"
-                                    >
-                                      <span className="font-medium">
-                                        {item.name}
-                                      </span>
+                                    <div key={item._id || itemIndex}>
+                                      <div className="flex items-center justify-between text-sm">
+                                        <span className="font-medium">
+                                          {item.name}
+                                        </span>
 
-                                      <span className="text-base-content/70">
-                                        ₦
-                                        {Number(
-                                          item.amount || 0,
-                                        ).toLocaleString()}
-                                      </span>
+                                        <span className="text-base-content/70">
+                                          ₦
+                                          {Number(
+                                            item.amount || 0,
+                                          ).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      {Array.isArray(item.admissionCovered) &&
+                                        item.admissionCovered.length > 0 && (
+                                          <ul className="list-disc list-inside mt-1 ml-1 text-xs text-base-content/60">
+                                            {item.admissionCovered.map((cond, ci) => (
+                                              <li key={ci}>{cond}</li>
+                                            ))}
+                                          </ul>
+                                        )}
                                     </div>
                                   ),
                                 )}
