@@ -200,16 +200,17 @@ export const createBilling = async (patientId, payload) => {
   if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
   const { itemDetail = [], totalAmount, dependantId } = payload;
   if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
-  const sanitized = itemDetail.map(({ code, description, quantity, price, total, serviceChargeId, investigationId, prescriptionId }) => ({
-    code,
-    description,
-    quantity: Number(quantity) || 1,
-    price: Number(price) || 0,
-    total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
-    serviceChargeId: serviceChargeId || null,
-    investigationId: investigationId || null,
-    prescriptionId: prescriptionId || null,
-  }));
+  const sanitized = itemDetail.map(({ code, description, quantity, price, total, serviceChargeId, investigationId, prescriptionId, admissionId }) => ({
+  code,
+  description,
+  quantity: Number(quantity) || 1,
+  price: Number(price) || 0,
+  total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
+  serviceChargeId: serviceChargeId || null,
+  investigationId: investigationId || null,
+  prescriptionId: prescriptionId || null,
+  admissionId: admissionId || null,
+}));
   const body = { itemDetail: sanitized };
   if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
   if (dependantId) body.dependantId = dependantId;   // ← added
