@@ -205,17 +205,6 @@ const AdmissionModal = ({
               )}
             </div>
 
-            {/* REASON */}
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium">Reason for Admission</span>
-              </label>
-              <textarea
-                className="textarea textarea-bordered w-full"
-                placeholder="Reason for admission (optional)"
-                {...register('reason')}
-              />
-            </div>
 
             <div className="divider">Admission Items / Charges</div>
 
