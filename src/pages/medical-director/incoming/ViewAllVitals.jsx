@@ -217,7 +217,7 @@ const ViewAllVitals = () => {
               </div>
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
                   state: { dependantId, dependantSnapshot }
                 })}
               >
