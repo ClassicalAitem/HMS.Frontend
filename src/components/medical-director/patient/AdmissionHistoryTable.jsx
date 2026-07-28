@@ -67,7 +67,7 @@ const AdmissionHistoryTable = ({ rows, loading = false, onViewAll, scopedToSingl
                     <th>Items Count</th>
                     <th>Created At</th>
                     <th>Items</th>
-                    {/* {!hidePrice && <th>Total Price</th>} */}
+                    {!hidePrice && <th>Total Price</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -120,11 +120,11 @@ const AdmissionHistoryTable = ({ rows, loading = false, onViewAll, scopedToSingl
                             ))}
                           </div>
                         </td>
-                        {/* {!hidePrice && (
+                        {!hidePrice && (
                           <td className="font-medium text-primary">
                             {row.totalPrice ? `₦${Number(row.totalPrice).toLocaleString()}` : '—'}
                           </td>
-                        )} */}
+                        )}
                       </tr>
                     ))
                   ) : (
