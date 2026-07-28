@@ -155,8 +155,100 @@ const Registration = () => {
     }));
   };
 
+  const validateForm = () => {
+    if (!formData.firstName.trim()) {
+      toast.error("First name is required.");
+      return false;
+    }
+    if (!formData.lastName.trim()) {
+      toast.error("Last name is required.");
+      return false;
+    }
+    if (!formData.dob) {
+      toast.error("Date of birth is required.");
+      return false;
+    }
+    if (new Date(formData.dob) > new Date()) {
+      toast.error("Date of birth cannot be in the future.");
+      return false;
+    }
+    // if (!formData.gender) {
+    //   toast.error("Please select a gender.");
+    //   return false;
+    // }
+    if (!formData.phone.trim()) {
+      toast.error("Phone number is required.");
+      return false;
+    }
+    // if (!/^\+?\d{10,14}$/.test(formData.phone.replace(/\s/g, ''))) {
+    //   toast.error("Please enter a valid phone number.");
+    //   return false;
+    // }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error("Please enter a valid email address.");
+      return false;
+    }
+
+    // Next of kin — required per the form, so validate explicitly instead of relying on HTML5
+    if (!formData.nextOfKin.name.trim()) {
+      toast.error("Next of kin name is required.");
+      return false;
+    }
+    if (!formData.nextOfKin.phone.trim()) {
+      toast.error("Next of kin phone number is required.");
+      return false;
+    }
+    if (!formData.nextOfKin.relationship) {
+      toast.error("Please select next of kin relationship.");
+      return false;
+    }
+
+    // Card type name requirements
+    if (formData.cardType === 'family' && !formData.familyName.trim()) {
+      toast.error("Family name is required for a family card.");
+      return false;
+    }
+    if (formData.cardType === 'company' && !formData.companyName.trim()) {
+      toast.error("Company name is required for a company card.");
+      return false;
+    }
+
+    // HMO — backend requires provider, memberId, plan, AND expiresAt together.
+    // If the user started filling any HMO field, all four must be present.
+    const hmo = formData.hmos[0];
+    const hmoTouched = hmo.provider || hmo.memberId || hmo.plan || hmo.expiresAt;
+    if (hmoTouched) {
+      if (!hmo.provider.trim()) {
+        toast.error("HMO provider is required if adding HMO details.");
+        return false;
+      }
+      if (!hmo.memberId.trim()) {
+        toast.error("HMO member ID is required if adding HMO details.");
+        return false;
+      }
+      if (!hmo.plan.trim()) {
+        toast.error("HMO plan is required if adding HMO details.");
+        return false;
+      }
+      if (!hmo.expiresAt) {
+        toast.error("HMO expiry date is required if adding HMO details.");
+        return false;
+      }
+      if (new Date(hmo.expiresAt) < new Date()) {
+        toast.error("HMO expiry date has already passed — please confirm this is correct before saving.");
+        return false;
+      }
+    }
+
+
+    
+
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     setIsLoading(true);
     
     try {
