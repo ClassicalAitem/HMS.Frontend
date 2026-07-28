@@ -401,7 +401,7 @@ const handleConfirmSave = async () => {
               </div>
               <IoIosCloseCircleOutline
                 className="text-error text-3xl cursor-pointer"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
                   state: {
                     from: fromIncoming ? "incoming" : "patients",
                     patientSnapshot: patient,
@@ -730,7 +730,7 @@ const handleConfirmSave = async () => {
             {cid && (
               <button
                 className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, {
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cid}`, {
                   state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient }
                 })}
               >
