@@ -196,7 +196,7 @@ const IncomingDoctor = () => {
 
       localStorage.setItem('refreshIncoming', Date.now().toString());
 
-      navigate(`/dashboard/doctor/medical-history/${data.patientId}`, {
+      navigate(`/dashboard/medical-director/medical-history/${data.patientId}`, {
         state: {
           from: "incoming",
           patientSnapshot: data.snapshot,
