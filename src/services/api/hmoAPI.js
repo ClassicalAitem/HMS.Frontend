@@ -7,13 +7,16 @@ import { API_ENDPOINTS } from '@/config/env';
  * Payload shape: { hmos: [{ provider, memberId, plan, expiresAt }] }
  */
 export const addHmoForPatient = async (patientId, hmos, dependantId = null) => {
-  const data = hmos?.hmo?.[0] || [];
-  const requiredFields = ['memberId', 'provider'];
-  for (const field of requiredFields) {
-    if (!data?.[field]) throw new Error(`${field} is required`);
-  }
   if (!patientId) throw new Error('Patient ID is required');
-  if (!Array.isArray(hmos)) throw new Error('hmos must be an array');
+  if (!Array.isArray(hmos) || hmos.length === 0) throw new Error('hmos must be a non-empty array');
+
+  const requiredFields = ['memberId', 'provider'];
+  for (const entry of hmos) {
+    for (const field of requiredFields) {
+      if (!entry?.[field]) throw new Error(`${field} is required`);
+    }
+  }
+
   const payload = { patientId, hmos, ...(dependantId ? { dependantId } : {}) };
   return apiClient.post('/hmo', payload);
 };
