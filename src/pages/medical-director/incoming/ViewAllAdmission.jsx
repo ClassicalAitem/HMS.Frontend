@@ -1,16 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
+import Sidebar from '@/components/medical-director/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
-import { usersAPI } from '@/services/api/usersAPI';
-import { getVitalsByPatient } from '@/services/api/vitalsAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
-import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
-import { FaHeartbeat } from 'react-icons/fa';
+import { FaHospital } from 'react-icons/fa';
+import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 
-const ViewAllVitals = () => {
+const ViewAllAdmissions = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,12 +17,13 @@ const ViewAllVitals = () => {
   const dependantId = location?.state?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patient, setPatient] = useState(null);
-  const [vitals, setVitals] = useState([]);
+  const [subject, setSubject] = useState(dependantSnapshot);
+  const [admissions, setAdmissions] = useState([]);
   const [dependants, setDependants] = useState([]);
-  const [nurseNameById, setNurseNameById] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -31,7 +31,12 @@ const ViewAllVitals = () => {
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  // Fetch patient data
+  const subjectName = useMemo(() => {
+    if (!isViewingDependant) return patientName;
+    return subject?.fullName || `${subject?.firstName || ""} ${subject?.lastName || ""}`.trim() || 'Dependant';
+  }, [isViewingDependant, subject, patientName]);
+
+  // Fetch patient data (always needed for the guardian record / header)
   useEffect(() => {
     let mounted = true;
     const loadPatient = async () => {
@@ -48,7 +53,9 @@ const ViewAllVitals = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch dependants
+  // Fetch dependants (used to resolve names for OTHER dependants' rows
+  // when we're looking at the patient's full list, and as a fallback
+  // if no snapshot was passed in for the active dependant)
   useEffect(() => {
     let mounted = true;
     const loadDependants = async () => {
@@ -60,123 +67,109 @@ const ViewAllVitals = () => {
           id: dep.id || dep._id,
           fullName: dep.fullName || `${dep.firstName || ""} ${dep.lastName || ""}`.trim(),
         }));
-        if (mounted) setDependants(normalized);
+        if (mounted) {
+          setDependants(normalized);
+          if (isViewingDependant && !dependantSnapshot) {
+            const match = normalized.find(d => d.id === dependantId);
+            if (match) setSubject(match);
+          }
+        }
       } catch {
         if (mounted) toast.error('Failed to load dependants');
       }
     };
     if (patientId) loadDependants();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId, dependantSnapshot]);
 
-  const subjectName = useMemo(() => {
-  if (isViewingDependant) {
-    return dependantSnapshot?.fullName
-      || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
-      || 'Dependant';
-  }
-  return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
-}, [patient, isViewingDependant, dependantSnapshot]);
-  // Fetch vitals
+  // Fetch admissions
   useEffect(() => {
     let mounted = true;
-    const loadVitals = async () => {
+    const loadAdmissions = async () => {
       try {
         setLoading(true);
-        const res = await getVitalsByPatient(patientId);
-        const rawData = res?.data ?? res ?? [];
-        const vitalsList = Array.isArray(rawData) ? rawData : [];
-        // Sort by date descending (newest first)
-        const sorted = vitalsList.sort((a, b) => 
-          new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+        const res = await getAdmissionByPatientId(patientId);
+        const raw = res?.data ?? res ?? [];
+        let list = Array.isArray(raw) ? raw : [];
+        // Scope to the subject we actually navigated in for
+        list = list.filter(a =>
+          isViewingDependant ? a.dependantId === dependantId : !a.dependantId
         );
-        const scoped = isViewingDependant
-          ? sorted.filter(v => v.dependantId === dependantId)
-          : sorted.filter(v => !v.dependantId);
-        if (mounted) setVitals(scoped);
+        if (mounted) setAdmissions(list);
       } catch (err) {
-        console.error('Failed to load vitals:', err);
-        if (mounted) setVitals([]);
+        console.error('Failed to load admissions:', err);
+        if (mounted) setAdmissions([]);
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    if (patientId) loadVitals();
+    if (patientId) loadAdmissions();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
-  // Format vital rows
-  const vitalRows = useMemo(() => (
-    Array.isArray(vitals)
-      ? vitals.map((vital) => {
-          const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
+  // Format admission rows
+  const admissionRows = useMemo(() => (
+    Array.isArray(admissions)
+      ? admissions.map((a) => {
+          const isDependant = !!a.dependantId;
+          const targetName = isDependant
+            ? (isViewingDependant && a.dependantId === dependantId
+                ? subjectName
+                : dependants.find(d => d.id === a.dependantId)?.fullName || 'Unknown')
+            : patientName;
+
+          const itemsCount = a.admissions?.length || 0;
+          const itemsSummary = a.admissions
+            ? a.admissions.slice(0, 2).map(item => item.name || 'Item')
+            : [];
+
+          const totalPrice = a.admissions
+            ? a.admissions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+            : 0;
+
           return {
-            _id: vital._id || vital.id,
-            forName: subjectName,
-            nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
-            bp: vital.bp || '—',
-            pulse: vital.pulse || '—',
-            temperature: vital.temperature || '—',
-            weight: vital.weight || '—',
-            height: vital.height || '—',
-            respiratoryRate: vital.respiratoryRate || '—',
-            date: formatNigeriaDate(vital.createdAt),
-            time: formatNigeriaTime(vital.createdAt),
-            createdAt: vital.createdAt,
+            _id: a._id,
+            forName: targetName,
+            isForDependant: isDependant,
+            status: a.status || 'active',
+            ward: a.ward || '—',
+            itemsCount,
+            itemsSummary,
+            date: formatNigeriaDate(a.createdAt),
+            totalPrice,
+            admissions: a.admissions || [],
+            createdAt: a.createdAt,
           };
         })
       : []
-  ), [vitals, subjectName, nurseNameById]);
-
-  // Helper: normalize user API response
-  const normalizeUserResponse = (response) => {
-    if (response?.data?.data) return response.data.data;
-    if (response?.data) return response.data;
-    return response;
-  };
-
-  // Load nurse names for vitals
-  useEffect(() => {
-    const loadNurses = async () => {
-      if (!Array.isArray(vitals) || vitals.length === 0) return;
-      const ids = new Set();
-      vitals.forEach((v) => {
-        const id = v.nurseId || v.nurse?.id || v.nurse?._id || v.createdBy;
-        if (id && !nurseNameById[id]) ids.add(id);
-      });
-      if (ids.size === 0) return;
-      try {
-        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
-        const newNames = {};
-        Array.from(ids).forEach((id, idx) => {
-          const res = responses[idx];
-          if (res?.status === 'fulfilled') {
-            const userData = normalizeUserResponse(res.value);
-            newNames[id] = userData?.fullName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'Unknown Nurse';
-          } else {
-            newNames[id] = 'Unknown Nurse';
-          }
-        });
-        setNurseNameById(prev => ({ ...prev, ...newNames }));
-      } catch (e) {
-        console.error('Failed loading nurse names', e);
-      }
-    };
-    loadNurses();
-  }, [vitals]);
+  ), [admissions, dependants, patientName, isViewingDependant, dependantId, subjectName]);
+  // ... rest (pagination, JSX) stays the same, just swap patientName -> subjectName in the header display
 
   // Pagination
   const paginationData = useMemo(() => {
-    const totalItems = vitalRows.length;
+    const totalItems = admissionRows.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     const startIdx = (currentPage - 1) * itemsPerPage;
-    const paginatedItems = vitalRows.slice(startIdx, startIdx + itemsPerPage);
+    const paginatedItems = admissionRows.slice(startIdx, startIdx + itemsPerPage);
     return { paginatedItems, totalPages, totalItems };
-  }, [vitalRows, currentPage]);
+  }, [admissionRows, currentPage]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
+
+  const getStatusBadge = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return 'badge-success';
+      case 'discharged':
+        return 'badge-ghost';
+      case 'cancelled':
+        return 'badge-error';
+      default:
+        return 'badge-ghost';
+    }
+  };
 
   return (
     <div className="flex h-screen">
@@ -201,25 +194,18 @@ const ViewAllVitals = () => {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-success/10 p-3 rounded-full text-success">
-                    <FaHeartbeat className="w-6 h-6" />
+                  <div className="bg-primary/10 p-3 rounded-full text-primary">
+                    <FaHospital className="w-6 h-6" />
                   </div>
-                  <h1 className="text-2xl font-bold text-base-content">Vitals History</h1>
+                  <h1 className="text-2xl font-bold text-base-content">Admission History</h1>
                 </div>
-             <p className="text-base-content/70">
-                {isViewingDependant ? 'Dependant' : 'Patient'}: {subjectName}
-                {isViewingDependant && (
-                  <span className="text-sm ml-1">
-                    (of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()})
-                  </span>
-                )}
-              </p>
+                <p className="text-base-content/70">
+                  Patient: {subjectName}
+                </p>
               </div>
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
-                  state: { dependantId, dependantSnapshot }
-                })}
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
               >
                 Back
               </button>
@@ -234,19 +220,16 @@ const ViewAllVitals = () => {
             <div className="card bg-base-100 shadow-sm">
               <div className="card-body p-6">
                 <div className="overflow-x-auto">
-                  <table className="table w-full text-center">
+                  <table className="table w-full text-center text-sm">
                     <thead>
                       <tr>
-                      <th>Patient Type</th>
-                      <th>Recorded by</th>
-                      <th>Date & Time</th>
-                      <th>Blood Pressure</th>
-                      <th>Heart Rate</th>
-                      <th>Temperature</th>
-                      <th>Weight</th>
-                      <th>Height</th>
-                      {/* <th>O2 Saturation</th> */}
-                      <th>Respiratory Rate</th>
+                        <th className="font-bold text-base">Patient Type</th>
+                        <th className="font-bold text-base">Ward</th>
+                        <th className="font-bold text-base">Status</th>
+                        <th className="font-bold text-base">Items Count</th>
+                        <th className="font-bold text-base">Created At</th>
+                        <th className="font-bold text-base">Items</th>
+                        <th className="font-bold text-base">Total Price</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -255,45 +238,44 @@ const ViewAllVitals = () => {
                           <tr key={idx} className="hover">
                             <td className="py-3">
                               <div className="flex flex-col items-center gap-1">
-                                <span className="font-medium text-base-content">{row.forName}</span>
-                                <span className={`badge badge-sm ${row.isForDependant ? 'badge-secondary' : 'badge-primary'}`}>
+                                <span className="font-bold text-sm text-base-content">
+                                  {row.forName}
+                                </span>
+                                <span
+                                  className={`badge badge-sm ${
+                                    row.isForDependant ? 'badge-secondary' : 'badge-primary'
+                                  }`}
+                                >
                                   {row.isForDependant ? 'Dependant' : 'Patient'}
                                 </span>
                               </div>
                             </td>
-
-                            <td className="text-sm">{row.nurseName || 'Unknown Nurse'}</td>
-
-                            <td className="text-sm">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="font-medium">{row.date}</span>
-                                <span className="text-base-content/70">{row.time}</span>
-                              </div>
-                            </td>
-
+                            <td className="font-semibold text-sm">{row.ward}</td>
                             <td>
-                              {row.bp} <span className="text-xs text-base-content/70">mmHg</span>
+                              <span className={`badge font-semibold ${getStatusBadge(row.status)}`}>
+                                {row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+                              </span>
                             </td>
-                            <td>
-                              {row.pulse} <span className="text-xs text-base-content/70">bpm</span>
+                            <td className="font-bold text-sm">{row.itemsCount}</td>
+                            <td className="font-semibold text-sm">{row.date}</td>
+                            <td className="text-left">
+                              <ul className="list-disc list-inside text-sm font-medium">
+                                {row.itemsSummary.map((item, i) => (
+                                  <li key={i} className="text-base-content">{item}</li>
+                                ))}
+                                {row.itemsCount > 2 && <li className="text-base-content/60">...</li>}
+                              </ul>
                             </td>
-                            <td>
-                              {row.temperature} <span className="text-xs text-base-content/70">°F</span>
-                            </td>
-                            <td>
-                              {row.weight} <span className="text-xs text-base-content/70">kg</span>
-                            </td>
-                            <td>
-                              {row.height} <span className="text-xs text-base-content/70">cm</span>
-                            </td>
-                            <td>
-                              {row.respiratoryRate} <span className="text-xs text-base-content/70">bpm</span>
+                            <td className="font-medium text-primary text-sm">
+                              {row.totalPrice ? `₦${Number(row.totalPrice).toLocaleString()}` : '—'}
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={9} className="py-6 text-base-content/70">No vitals found</td>
+                          <td colSpan={7} className="py-6 text-base-content/70">
+                            No admissions found
+                          </td>
                         </tr>
                       )}
                     </tbody>
@@ -354,4 +336,4 @@ const ViewAllVitals = () => {
   );
 };
 
-export default ViewAllVitals;
+export default ViewAllAdmissions;

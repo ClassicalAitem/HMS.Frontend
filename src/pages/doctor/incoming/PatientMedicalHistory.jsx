@@ -30,6 +30,7 @@ import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryT
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
+import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -74,6 +75,9 @@ const [subjectLoading, setSubjectLoading] = useState(true);
 
 const [admissions, setAdmissions] = useState([]);
 const [admissionsLoading, setAdmissionsLoading] = useState(false);
+
+const [procedures, setProcedures] = useState([]);
+const [proceduresLoading, setProceduresLoading] = useState(false);
 
   const filterSubjectRecords = (items) => {
     if (!Array.isArray(items)) return [];
@@ -450,12 +454,41 @@ useEffect(() => {
   if (patientId) loadAdmissions();
   return () => { mounted = false; };
 }, [patientId, isViewingDependant, dependantId]);
+
+  // Fetch procedures (surgical notes) tied to this subject's lab investigations
+  useEffect(() => {
+    let mounted = true;
+    const loadProcedures = async () => {
+      if (!labInvestigations.length) {
+        if (mounted) setProcedures([]);
+        return;
+      }
+      try {
+        setProceduresLoading(true);
+        const results = await Promise.allSettled(
+          labInvestigations.map((inv) => getSurgeryByInvestigationRequestId(inv._id || inv.id))
+        );
+        const list = results
+          .filter((r) => r.status === 'fulfilled')
+          .map((r) => r.value?.data)
+          .filter(Boolean);
+        if (mounted) setProcedures(list);
+      } catch (err) {
+        console.error("Failed to load procedures", err);
+      } finally {
+        if (mounted) setProceduresLoading(false);
+      }
+    };
+    loadProcedures();
+    return () => { mounted = false; };
+  }, [labInvestigations]);
+
   // Fetch dependants on-demand as we encounter them in various data
   useEffect(() => {
     const dependantIdsNeeded = new Set();
 
     // Collect all dependant IDs from various sources
-    [consultations, prescriptions, sortedVitals, labResults, labInvestigations, admissions]?.forEach(arr => {
+    [consultations, prescriptions, sortedVitals, labResults, labInvestigations, admissions, procedures]?.forEach(arr => {
       if (Array.isArray(arr)) {
         arr.forEach(item => {
           if (item?.dependantId && !dependantCache[item.dependantId]) {
@@ -488,7 +521,7 @@ useEffect(() => {
     };
 
     fetchMissingDependants();
-  }, [consultations, prescriptions, sortedVitals, labResults, labInvestigations, labInvestigations, dependantCache]);
+  }, [consultations, prescriptions, sortedVitals, labResults, labInvestigations, admissions, procedures, dependantCache]);
 
 
 const isEligibleForAntenatal = useMemo(() => {
@@ -1175,6 +1208,94 @@ const dependant = isDependant
               },
             })}
           />
+          <div className="shadow-xl card bg-base-100 mb-4">
+            <div className="p-4 card-body">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-medium text-base-content">Procedures / Surgical Notes</h3>
+              </div>
+              {proceduresLoading ? (
+                <div className="skeleton h-4 w-48" />
+              ) : procedures.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="table w-full text-center text-sm">
+                    <thead>
+                      <tr>
+                        <th>For</th>
+                        <th>Procedure</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {procedures.slice(0, 5).map((proc) => {
+                        const isForDependant = !!proc?.dependantId;
+                        const dependant = isForDependant
+                          ? dependantCache[proc.dependantId]?.data?.dependant || dependantCache[proc.dependantId]?.dependant || dependantCache[proc.dependantId]
+                          : null;
+                        const forName = isForDependant
+                          ? `${dependant?.firstName || ''} ${dependant?.lastName || ''}`.trim() || 'Dependant'
+                          : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+                        const relatedInvestigation = labInvestigations.find(
+                          (inv) => (inv._id || inv.id) === proc.investigationRequestId
+                        );
+                        const consultationIdForProc = relatedInvestigation?.consultationId;
+
+                        return (
+                          <tr key={proc._id} className="hover">
+                            <td>
+                              <div className="flex items-center justify-center gap-2 flex-wrap">
+                                <span className="badge badge-sm badge-outline">
+                                  {isForDependant ? 'Dependant' : 'Patient'}
+                                </span>
+                                <span className="text-sm font-semibold text-base-content">{forName}</span>
+                              </div>
+                            </td>
+                            <td className="text-left">
+                              {proc.procedureName} {proc.procedureCode && `(${proc.procedureCode})`}
+                            </td>
+                            <td>
+                              <span className={`badge badge-sm ${proc.status === 'completed' ? 'badge-success' : proc.status === 'in_progress' ? 'badge-info' : proc.status === 'cancelled' ? 'badge-error' : 'badge-ghost'}`}>
+                                {proc.status?.replace('_', ' ')}
+                              </span>
+                            </td>
+                            <td>{proc.scheduledDate ? formatNigeriaDate(proc.scheduledDate) : '—'}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-ghost"
+                                disabled={!consultationIdForProc}
+                                onClick={() => consultationIdForProc && lockAndNavigate(
+                                  `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationIdForProc}`,
+                                  {
+                                    state: {
+                                      from: fromIncoming ? "incoming" : "patients",
+                                      patientSnapshot: patient,
+                                      dependantId,
+                                      dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                                    },
+                                  }
+                                )}
+                              >
+                                View
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {procedures.length > 5 && (
+                    <p className="text-xs text-base-content/50 mt-2">
+                      Showing 5 of {procedures.length} procedures
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-base-content/70">No procedures recorded</p>
+              )}
+            </div>
+          </div>
+
           <AdmissionHistoryTable
             loading={admissionsLoading}
             rows={useMemo(() => (
