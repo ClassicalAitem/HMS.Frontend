@@ -1316,12 +1316,12 @@ const handleDeleteProcedure = async (id) => {
                       >
                         <FaPrescriptionBottleAlt /> Prescribe
                       </button>
-                      <button
+                      {/* <button
                         className="btn btn-sm btn-info gap-2"
                         onClick={() => setIsSendToNurseModalOpen(true)}
                       >
                         <FaUserMd /> Send to Nurse
-                      </button>
+                      </button> */}
                       <button
                         className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200"
                         onClick={() => setIsAdmissionModalOpen(true)}
