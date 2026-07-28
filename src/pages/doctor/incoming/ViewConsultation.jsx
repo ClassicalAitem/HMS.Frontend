@@ -54,6 +54,7 @@ import AdmissionModal from '@/components/modals/admissionModal';
 
 import { deleteAdmission, getAdmissionsForConsultation } from '@/services/api/admissionApi';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
+import { deleteSurgery, getSurgeryByInvestigationRequestId } from '@/services/api/surgeryAPI';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -83,6 +84,8 @@ const ViewConsultation = () => {
   const [editingLab, setEditingLab] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [procedures, setProcedures] = useState([]);
+  const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [editForm, setEditForm] = useState({
     visitReason: '',
     notes: '',
@@ -104,6 +107,10 @@ const ViewConsultation = () => {
 
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [activeAdmissions, setActiveAdmissions] = useState([]);
+
+  // Picker for choosing which investigation the surgical note attaches to,
+  // shown only when the consultation has more than one lab request
+  const [isProcedurePickerOpen, setIsProcedurePickerOpen] = useState(false);
 
   const canEdit = useMemo(() => {
     if (!consultation?.createdAt) return false;
@@ -220,6 +227,51 @@ const ViewConsultation = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+  if (labRequests.length === 0) {
+    setProcedures([]);
+    return;
+  }
+  const loadProcedures = async () => {
+   const results = await Promise.allSettled(
+    labRequests.map((lab) => getSurgeryByInvestigationRequestId(lab._id))
+  );
+    const list = results
+      .filter((r) => r.status === 'fulfilled')
+      .map((r) => r.value?.data)
+      .filter(Boolean);
+    setProcedures(list);
+  }
+  loadProcedures();
+}, [labRequests]);
+
+
+const handleEditProcedure = (surgery) => {
+  navigate(
+    `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/surgical-note/${surgery.investigationRequestId}`,
+    {
+      state: {
+        dependantId: consultation?.dependantId || null,
+        dependantSnapshot: consultation?.dependant || null,
+        patientSnapshot: patient,
+        investigationRequestId: surgery.investigationRequestId,
+        editSurgery: surgery,
+      },
+    },
+  );
+};
+
+const handleDeleteProcedure = async (id) => {
+  if (!window.confirm('Delete this surgical note?')) return;
+  try {
+    await deleteSurgery(id);
+    setProcedures((prev) => prev.filter((p) => p._id !== id));
+  } catch (error) {
+    console.error('Error deleting surgery:', error);
+    toast.error(error?.response?.data?.message || 'Failed to delete procedure');
+  }
+};
 
   useEffect(() => {
     if (!consultation) return;
@@ -512,6 +564,36 @@ const ViewConsultation = () => {
     }
   };
 
+  // ================= ADD PROCEDURE (SURGICAL NOTE) =================
+  // CreateSurgicalNote needs an investigationRequestId to attach the surgical
+  // note to. If none exist, block with a toast; if exactly one, go straight
+  // there; if more than one, let the doctor pick which one.
+  const navigateToCreateProcedure = (investigationRequestId) => {
+    navigate(
+      `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/surgical-note/${investigationRequestId}`,
+      {
+        state: {
+          dependantId: consultation?.dependantId || null,
+          dependantSnapshot: consultation?.dependant || null,
+          patientSnapshot: patient,
+          investigationRequestId,
+        },
+      },
+    );
+  };
+
+  const handleAddProcedureClick = () => {
+    if (labRequests.length === 0) {
+      toast('Please order a lab investigation before adding a procedure.');
+      return;
+    }
+    if (labRequests.length === 1) {
+      navigateToCreateProcedure(labRequests[0]._id);
+      return;
+    }
+    setIsProcedurePickerOpen(true);
+  };
+
   // Mapped Data
   const complaints = consultation?.complaint || [];
   const medicalHistory = consultation?.medicalHistory || [];
@@ -713,6 +795,52 @@ const ViewConsultation = () => {
         }}
       />
 
+      {isProcedurePickerOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-base-100 shadow-xl">
+            <div className="flex items-center justify-between border-b border-base-200 p-5">
+              <h2 className="text-lg font-bold">Select Investigation</h2>
+              <button
+                type="button"
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setIsProcedurePickerOpen(false)}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-5 space-y-2 max-h-[60vh] overflow-y-auto">
+              <p className="text-sm text-base-content/60 mb-3">
+                This consultation has more than one lab investigation. Choose which one this procedure belongs to.
+              </p>
+              {labRequests.map((lab) => (
+                <button
+                  key={lab._id}
+                  type="button"
+                  className="w-full text-left rounded-lg border border-base-200 p-3 hover:border-primary hover:bg-primary/5 transition-all"
+                  onClick={() => {
+                    setIsProcedurePickerOpen(false);
+                    navigateToCreateProcedure(lab._id);
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`badge badge-sm ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'}`}
+                    >
+                      {lab.status?.replace('_', ' ')}
+                    </span>
+                    <span className="text-xs text-base-content/50">
+                      Requested {formatNigeriaDate(lab.createdAt)}
+                    </span>
+                  </div>
+                  <div className="text-sm text-base-content/80">
+                    {lab.tests?.map((test) => test.name).join(', ') || 'No tests listed'}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <SendToNurseModal
         isOpen={isSendToNurseModalOpen}
         onClose={() => setIsSendToNurseModalOpen(false)}
@@ -1155,12 +1283,13 @@ const ViewConsultation = () => {
               {/* Treatment Plan Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-0">
-                  <div className="p-4 border-b border-base-200 bg-base-50/50 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="p-4 border-b border-base-200 bg-base-50/50  items-center justify-between">
+                    <div className="flex items-center gap-3">
                       <FaPrescriptionBottleAlt className="text-success w-5 h-5" />
-                      <h3 className="font-bold text-lg text-base-content">
+                      <h3 className="font-bold text-lg text-base-content p-2 m-2">
                         Treatment Plan & Orders
                       </h3>
+                      
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -1198,6 +1327,12 @@ const ViewConsultation = () => {
                         onClick={() => setIsAdmissionModalOpen(true)}
                       >
                         <FaHospital /> Admit Patient
+                      </button>
+                      <button
+                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200"
+                        onClick={handleAddProcedureClick}
+                      >
+                        <FaHospital /> Add Procedure
                       </button>
                     </div>
                   </div>
@@ -1276,6 +1411,213 @@ const ViewConsultation = () => {
                     </div>
 
                     <div className="divider my-0"></div>
+
+                  <div>
+                    <h4>Procedures / Surgical Notes</h4>
+                  </div>
+                   {procedures.map((proc) => (
+                      <div
+                        key={proc._id}
+                        className="border border-base-200 rounded-lg p-3 hover:shadow-sm hover:border-primary transition-all cursor-pointer"
+                        onClick={() => setSelectedProcedure(proc)}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className={`badge badge-sm ${proc.status === 'completed' ? 'badge-success' : proc.status === 'in_progress' ? 'badge-info' : proc.status === 'cancelled' ? 'badge-error' : 'badge-ghost'}`}>
+                                {proc.status?.replace('_', ' ')}
+                              </span>
+                              <span className="text-xs text-base-content/50">
+                                {formatNigeriaDate(proc.scheduledDate)}
+                              </span>
+                            </div>
+                            <span className="text-sm font-medium text-base-content">
+                              {proc.procedureName} {proc.procedureCode && `(${proc.procedureCode})`}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-ghost text-warning"
+                              onClick={(e) => { e.stopPropagation(); handleEditProcedure(proc); }}
+                            >
+                              <FaEdit />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-ghost text-error"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteProcedure(proc._id); }}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    
+
+      {selectedProcedure && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-base-200 p-5 sticky top-0 bg-base-100 z-10">
+              <h2 className="text-lg font-bold">Surgical Note Details</h2>
+              <button
+                type="button"
+                className="btn btn-sm btn-circle btn-ghost"
+                onClick={() => setSelectedProcedure(null)}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex items-center gap-2">
+                <span className={`badge ${selectedProcedure.status === 'completed' ? 'badge-success' : selectedProcedure.status === 'in_progress' ? 'badge-info' : selectedProcedure.status === 'cancelled' ? 'badge-error' : 'badge-ghost'}`}>
+                  {selectedProcedure.status?.replace('_', ' ')}
+                </span>
+                <span className="text-sm text-base-content/60">
+                  {formatNigeriaDate(selectedProcedure.scheduledDate)}
+                </span>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Procedure</h4>
+                  <p className="font-medium">{selectedProcedure.procedureName} {selectedProcedure.procedureCode && `(${selectedProcedure.procedureCode})`}</p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Operation Room</h4>
+                  <p className="font-medium">{selectedProcedure.operationRoom || '—'}</p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Time</h4>
+                  <p className="font-medium">{selectedProcedure.startTime || '—'} - {selectedProcedure.endTime || '—'}</p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Estimated Blood Loss</h4>
+                  <p className="font-medium">{selectedProcedure.estimatedBloodLoss ?? '—'}</p>
+                </div>
+              </div>
+
+              {selectedProcedure.surgeonTeam?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Surgeon Team</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProcedure.surgeonTeam.map((s, i) => (
+                      <span key={s._id || i} className="badge badge-outline">{s.surgeonName}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedProcedure.surgeonAssistants?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Surgeon Assistants</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProcedure.surgeonAssistants.map((a, i) => (
+                      <span key={a._id || i} className="badge badge-outline">{a.assistantName}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedProcedure.anesthesiaDosages?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Anesthesia</h4>
+                  <div className="space-y-1">
+                    {selectedProcedure.anesthesiaDosages.map((a, i) => (
+                      <p key={a._id || i} className="text-sm">{a.anesthesiaType} — Dosage :  {a.dosage}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedProcedure.vitalSigns?.length > 0 && selectedProcedure.vitalSigns.some(v => v.bloodPressure || v.heartRate || v.respiratoryRate || v.temperature || v.oxygenSaturation) && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Vital Signs (Theatre)</h4>
+                  {selectedProcedure.vitalSigns.map((v, i) => (
+                    <div key={v._id || i} className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm bg-base-200/40 rounded-lg p-3 mb-2">
+                      <p><span className="text-base-content/50">BP:</span> {v.bloodPressure || '—'}</p>
+                      <p><span className="text-base-content/50">HR:</span> {v.heartRate ?? '—'}</p>
+                      <p><span className="text-base-content/50">RR:</span> {v.respiratoryRate ?? '—'}</p>
+                      <p><span className="text-base-content/50">Temp:</span> {v.temperature ?? '—'}</p>
+                      <p><span className="text-base-content/50">O2 Sat:</span> {v.oxygenSaturation ?? '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Surgical Findings</h4>
+                <p className="text-sm bg-base-200/40 rounded-lg p-3">{selectedProcedure.surgicalFindings || 'None recorded'}</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Complications</h4>
+                  <p className="text-sm bg-base-200/40 rounded-lg p-3">{selectedProcedure.complications || 'None'}</p>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Outcomes</h4>
+                  <p className="text-sm bg-base-200/40 rounded-lg p-3">{selectedProcedure.outcomes || '—'}</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Specimens for Histology</h4>
+                <p className="text-sm">{selectedProcedure.specimensForHistology === 'sent' ? 'Sent' : 'Not Sent'}</p>
+              </div>
+
+              {selectedProcedure.postOperativeAssessment?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Post-Op Medications</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProcedure.postOperativeAssessment.map((m, i) => (
+                      <span key={m._id || i} className="badge badge-outline">{m.medication}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedProcedure.babyAssessment?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Baby Assessment</h4>
+                  {selectedProcedure.babyAssessment.map((b, i) => (
+                    <div key={b._id || i} className="text-sm bg-base-200/40 rounded-lg p-3 mb-2 grid grid-cols-2 gap-2">
+                      <p><span className="text-base-content/50">Weight:</span> {b.weight ?? '—'}</p>
+                      <p><span className="text-base-content/50">Length:</span> {b.length ?? '—'}</p>
+                      <p><span className="text-base-content/50">Head Circ.:</span> {b.headCircumference ?? '—'}</p>
+                      <p><span className="text-base-content/50">Delivery:</span> {b.deliveryTime ? formatNigeriaDate(b.deliveryTime) : '—'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Notes</h4>
+                <p className="text-sm bg-base-200/40 rounded-lg p-3">{selectedProcedure.notes || 'No additional notes'}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 p-5 border-t border-base-200 sticky bottom-0 bg-base-100">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline btn-warning gap-2"
+                onClick={() => { setSelectedProcedure(null); handleEditProcedure(selectedProcedure); }}
+              >
+                <FaEdit /> Edit
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() => setSelectedProcedure(null)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
                     {/* Prescriptions */}
                     <div>

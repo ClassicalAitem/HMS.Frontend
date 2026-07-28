@@ -4,7 +4,7 @@ import apiClient from './apiClient';
 
 export const createSurgery = async (investigationRequestId, data) => {
   try {
-    const requiredFields = ['procedureName', 'scheduleDate'];
+    const requiredFields = ['procedureName', 'scheduledDate'];
     for (const field of requiredFields) {
       if (!data?.[field]) {
         throw new Error(`Missing required field: ${field}`);
@@ -39,8 +39,43 @@ export const getSurgeryById = async (surgeryId) => {
   }
 };
 
+export const deleteSurgery = async (surgeryId) => {
+  try {
+
+    const response = await apiClient.delete(`/surgery/${surgeryId}`);
+    return response.data;
+  } catch (error) {
+   throw error;
+  }
+};
+
+export const getSurgeryByInvestigationRequestId = async (investigationRequestId) =>
+{
+  try{
+    const response  = await apiClient.get(`/surgery/investigation/${investigationRequestId}`);
+    return response.data;
+  } catch (error){
+    throw error ;
+  }
+}
+
+export const updateSurgery = async (id) => {
+  try{
+    const response = await  apiClient.patch(`/surgery/${id}`);
+    return response.data;
+  } catch (error){
+    throw error;
+  }
+} 
+
+
+// export const deleteSurgery = (id) => api.delete(`/surgery/${id}`);
+
 export default {
   getAllSurgeries,
   getSurgeryById,
-  createSurgery
+  createSurgery,
+  deleteSurgery,
+  getSurgeryByInvestigationRequestId,
+  updateSurgery
 };
