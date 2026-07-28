@@ -547,17 +547,7 @@ const handleOrderCreated = () => {
                               </h4>
                             </div>
 
-                            {/* ✅ Show who this record is for */}
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs text-base-content/50">Record for:</span>
-                              {dependantName ? (
-                                <span className="badge badge-secondary badge-sm">{dependantName}</span>
-                              ) : (
-                                <span className="badge badge-primary badge-sm">
-                                  {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()} (Patient)
-                                </span>
-                              )}
-                            </div>
+                            
 
                             <p className="text-sm text-base-content/70">
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}

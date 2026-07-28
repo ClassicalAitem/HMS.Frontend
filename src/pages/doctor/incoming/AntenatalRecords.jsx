@@ -467,57 +467,6 @@ useEffect(() => {
               >✕</button>
             </div>
           </div>
-          {/* Record For — Dependant Selection */}
-<div className="card bg-base-100 shadow-sm">
-  <div className="card-body p-4">
-    <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
-    {incomingDependantId ? (
-      // Locked — came from a dependant context, no choice needed
-      <div className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-200/30">
-        <span className="badge badge-secondary">Dependant</span>
-        <span className="font-medium">
-          {selectedDependant?.fullName
-            || `${incomingDependantSnapshot?.firstName || ''} ${incomingDependantSnapshot?.lastName || ''}`.trim()
-            || 'Dependant'}
-        </span>
-        {(selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType) && (
-          <span className="badge badge-outline badge-sm">
-            {selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType}
-          </span>
-        )}
-      </div>
-    ) : (
-      // Free choice — doctor opened this page from the patient context
-      <select
-        className="select select-bordered w-full"
-        value={selectedDependantId}
-        onChange={e => setSelectedDependantId(e.target.value)}
-      >
-        <option value="">Patient ({patientName})</option>
-        {dependants.length > 0 ? (
-          dependants.map(dep => (
-            <option key={dep.id} value={dep.id}>
-              {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
-            </option>
-          ))
-        ) : (
-          <option disabled value="">No dependants found</option>
-        )}
-      </select>
-    )}
-    {selectedDependant && !incomingDependantId && (
-      <div className="mt-2 text-sm text-base-content/70">
-        <span className="badge badge-secondary mr-2">Dependant</span>
-        <span>{selectedDependant.fullName}</span>
-        {selectedDependant.relationshipType && (
-          <span className="ml-2 badge badge-outline badge-sm">
-            {selectedDependant.relationshipType}
-          </span>
-        )}
-      </div>
-    )}
-  </div>
-</div>
 
           {/* Previous Medical History */}
           <div className="card bg-base-100 shadow-sm">
