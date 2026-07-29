@@ -780,17 +780,17 @@ const handleSave = async () => {
 
     const searchParams = new URLSearchParams(location.search);
     const opdPatientId = searchParams.get('opdPatientId');
-    const investigationRealId = investigation?._id || investigation?.id;   // ← add this
+    const investigationRealId = investigation?._id || investigation?.id;  
 
-    const payload = {
+   const payload = {
+      result: [],
       form: (() => {
         const { patientNames, age, sex, referral, ...cleanForm } = formData;
         return cleanForm;
       })(),
       remarks: formData.remarks,
-      labTechnicianId: currentUser?.id,
+      labTechnicianId: currentUser?._id || currentUser?.id,
     };
-
     if (isDependant) {
       payload.patientId = mainPatientId;
       payload.dependantId = patient?.id;
@@ -825,9 +825,11 @@ const handleSave = async () => {
       state: { from: editing ? "edit" : "add", patientSnapshot: patient },
     });
   } catch (err) {
-    setError(err.response?.data?.message || "Failed to save lab result.");
-    setSaving(false);
-  }
+  console.error("Save lab result error:", err.response?.data || err.message || err);
+  setError(err.response?.data?.message || err.response?.data?.error || "Failed to save lab result.");
+  setSaving(false);
+}
+
 };
 
 const handleComplete = async () => {
@@ -836,12 +838,14 @@ const handleComplete = async () => {
     setError(null);
 
     const payload = {
-      form: (() => {
-        const { patientNames, age, sex, referral, ...cleanForm } = formData;
-        return cleanForm;
-      })(),
-      remarks: formData.remarks,
-    };
+  result: [],
+  form: (() => {
+    const { patientNames, age, sex, referral, ...cleanForm } = formData;
+    return cleanForm;
+  })(),
+  remarks: formData.remarks,
+  labTechnicianId: currentUser?._id || currentUser?.id,
+};
 
     // Set the right patient ID type
     if (investigation?.opdPatientId || location.search.includes('opdPatientId')) {
