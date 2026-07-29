@@ -46,6 +46,7 @@ import SendToNurse from "@/pages/doctor/incoming/SendToNurse";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
+// import PatientHistory from "@/pages/doctor/patien/PatientHistory";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import DoctorPaymentRecords from "@/pages/doctor/payment-records/ReceiptRecord";
 import MedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
@@ -173,6 +174,7 @@ import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
 import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
 import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
 import ViewAllAdmissions from "@/pages/doctor/incoming/ViewAllAdmission";
+import PatientsHistory from "@/pages/doctor/patients/PatientsHistory";
 
 
 const AppRoutes = () => {
@@ -391,6 +393,11 @@ const AppRoutes = () => {
   <Route path="/dashboard/doctor/antenatal-records/:patientId/view" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <AntenatalRecordDetails />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/patientshistory" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <PatientsHistory />
     </ProtectedRoute>
   } />
 <Route path="/dashboard/doctor/antenatal-records/:patientId" element={<AntenatalRecords />} />
