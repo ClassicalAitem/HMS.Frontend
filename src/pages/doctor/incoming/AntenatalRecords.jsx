@@ -6,6 +6,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { useAppSelector } from "@/store/hooks";
 import toast, { Toaster } from "react-hot-toast";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import {
   createAnteNatalRecord,
   getAnteNatalRecord,
@@ -13,6 +14,9 @@ import {
 } from "@/services/api/anteNatalAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI"; 
+
+
+
 
 const emptyForm = (doctorName = "") => ({
   previousMedicalHistory: {
@@ -68,6 +72,28 @@ const selectedDependant = useMemo(() => {
   return dependants.find(d => (d.id || d._id) === selectedDependantId) || null;
 }, [selectedDependantId, dependants]);
 
+const [openSections, setOpenSections] = useState({
+  medical: false,
+  family: false,
+  obstetric: false,
+  pregnancy: false,
+  routine: false,
+  examinations: false,
+});
+
+const toggleSection = (key) =>
+  setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+
+const SectionHeader = ({ title, sectionKey }) => (
+  <div
+    className="card-title text-lg font-semibold mb-4 flex items-center justify-between cursor-pointer select-none"
+    onClick={() => toggleSection(sectionKey)}
+  >
+    <span>{title}</span>
+    {openSections[sectionKey] ? <FaChevronUp className="text-base-content/50" /> : <FaChevronDown className="text-base-content/50" />}
+  </div>
+);
 
 
 useEffect(() => {
@@ -469,37 +495,40 @@ useEffect(() => {
           </div>
 
           {/* Previous Medical History */}
-          <div className="card bg-base-100 shadow-sm">
+         <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">PREVIOUS MEDICAL HISTORY</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  ['heartDisease', 'Heart Disease'],
-                  ['yawsOrSyphilis', 'Yaws or Syphilis'],
-                  ['previousOperation', 'Previous Operation'],
-                  ['kidney', 'Kidney'],
-                  ['hypertension', 'Hypertension'],
-                  ['others', 'Others'],
-                ].map(([field, label]) => (
-                  <div key={field}>
-                    <label className="label"><span className="label-text">{label}</span></label>
-                    <input
-                      type="text"
-                      className="input input-bordered w-full"
-                      placeholder="Details"
-                      value={formData.previousMedicalHistory[field]}
-                      onChange={(e) => updateMedical(field, e.target.value)}
-                    />
-                  </div>
-                ))}
-              </div>
+              <SectionHeader title="PREVIOUS MEDICAL HISTORY" sectionKey="medical" />
+              {openSections.medical && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    ['heartDisease', 'Heart Disease'],
+                    ['yawsOrSyphilis', 'Yaws or Syphilis'],
+                    ['previousOperation', 'Previous Operation'],
+                    ['kidney', 'Kidney'],
+                    ['hypertension', 'Hypertension'],
+                    ['others', 'Others'],
+                   ].map(([field, label]) => (
+                    <div key={field}>
+                      <label className="label"><span className="label-text">{label}</span></label>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        placeholder="Details"
+                        value={formData.previousMedicalHistory[field]}
+                        onChange={(e) => updateMedical(field, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Family History */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">FAMILY HISTORY</h3>
+              <SectionHeader title="FAMILY HISTORY" sectionKey="family" />
+              {openSections.family && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[['twins', 'Twins'], ['malformation', 'Malformation'], ['tuberculosis', 'Tuberculosis']].map(([field, label]) => (
                   <div key={field}>
@@ -514,6 +543,7 @@ useEffect(() => {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           </div>
 
@@ -559,7 +589,8 @@ useEffect(() => {
           {/* Present Pregnancy */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">HISTORY OF PRESENT PREGNANCY</h3>
+              <SectionHeader title="HISTORY OF PRESENT PREGNANCY" sectionKey="pregnancy" />
+              {openSections.pregnancy && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { field: 'dateOfBooking', label: 'Date of Booking', type: 'date' },
@@ -592,14 +623,17 @@ useEffect(() => {
                   <label className="label"><span className="label-text">Taken By</span></label>
                   <input type="text" className="input input-bordered w-full" value={formData.presentPregnancy.takenBy || doctorName} disabled />
                 </div>
+                
               </div>
+              )}
             </div>
           </div>
 
           {/* Routine Tests Section */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">ROUTINE TESTS</h3>
+              <SectionHeader title="ROUTINE TESTS" sectionKey="routine" />
+              {openSections.pregnancy && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { field: 'rvs', label: 'RVS', type: 'text', placeholder: 'Negative/Positive' },
@@ -621,6 +655,7 @@ useEffect(() => {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           </div>
 

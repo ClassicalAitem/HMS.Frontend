@@ -4,6 +4,7 @@ import { getAppointmentById, updateAppointment } from '@/services/api/appointmen
 import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import { getDependantById } from '@/services/api/dependantAPI';
 
 const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) => {
   const [appointment, setAppointment] = useState(null);
@@ -38,17 +39,35 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
         const appointmentData = response.data.data;
         setAppointment(appointmentData);
 
-        // Fetch patient details if patientId is available
-        if (appointmentData.patientId) {
+        // If this appointment belongs to a dependant, fetch the dependant record
+        // (which includes the guardian patient nested inside it). Otherwise,
+        // fetch the patient directly.
+        if (appointmentData.dependantId) {
+          try {
+            console.log('Fetching dependant details for ID:', appointmentData.dependantId);
+            const dr = await getDependantById(appointmentData.dependantId);
+            console.log('Dependant details raw payload:', dr);
+            const dependantData = dr?.data?.data?.dependant ?? dr?.data?.dependant ?? dr?.data ?? dr;
+            if (dependantData) {
+              console.log('Resolved dependant data:', dependantData);
+              setPatient({ ...dependantData, isDependant: true });
+            } else {
+              console.warn('No dependant data found for ID:', appointmentData.dependantId);
+              setPatient(null);
+            }
+          } catch (dependantError) {
+            console.error('Error fetching dependant details:', dependantError);
+            setPatient(null);
+          }
+        } else if (appointmentData.patientId) {
           try {
             console.log('Fetching patient details for ID:', appointmentData.patientId);
             const pr = await getPatientById(appointmentData.patientId);
             console.log('Patient details raw payload:', pr);
-            // getPatientById returns axios.data; backend wraps actual patient in pr.data
             const patientData = pr?.data ?? pr;
             if (patientData) {
               console.log('Resolved patient data:', patientData);
-              setPatient(patientData);
+              setPatient({ ...patientData, isDependant: false });
             } else {
               console.warn('No patient data found for ID:', appointmentData.patientId);
               setPatient(null);
@@ -61,7 +80,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
       } else {
         console.error('No data in response');
         setAppointment(null);
-      setPatient(null);
+        setPatient(null);
         toast.error('No appointment data found');
       }
     } catch (error) {
@@ -145,10 +164,10 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
       <div className="fixed inset-0 bg-black bg-opacity-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }} onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-2xl mx-4 shadow-xl card bg-base-100" style={{ zIndex: 10000 }}>
-        <div className="p-6 card-body">
+      <div className="relative z-10 w-full max-w-2xl mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col" style={{ zIndex: 10000 }}>
+        <div className="p-6 card-body overflow-y-auto flex-1">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-6 sticky top-0 bg-base-100 z-10 pb-2">
             <h2 className="text-2xl font-bold text-primary">Appointment Details</h2>
             <button
               type="button"
@@ -165,40 +184,61 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
             </div>
           ) : appointment ? (
             <div className="space-y-6">
-              {/* Patient Information */}
+             {/* Patient Information */}
               <div className="bg-base-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                   <FaUser className="text-primary" />
-                  Patient Information
+                  {patient?.isDependant ? 'Dependant Information' : 'Patient Information'}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-base-content/70">Patient ID</label>
+                    <label className="block text-sm font-medium text-base-content/70">
+                      {patient?.isDependant ? 'Dependant Hospital ID' : 'Patient Hospital ID'}
+                    </label>
                     <p className="text-base font-medium flex items-center gap-2">
                       <FaIdBadge className="text-base-content/50" />
-                      {appointment.patientId || 'N/A'}
+                      {patient?.isDependant
+                        ? (patient?.patient?.hospitalId || 'N/A')
+                        : (patient?.hospitalId || 'N/A')}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-base-content/70">Patient Name</label>
+                    <label className="block text-sm font-medium text-base-content/70">
+                      {patient?.isDependant ? 'Dependant Name' : 'Patient Name'}
+                    </label>
                     <p className="text-base font-medium">
                       {patient
                         ? `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim() || 'N/A'
                         : 'N/A'}
                     </p>
                   </div>
+                  {patient?.isDependant && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-base-content/70">Relationship</label>
+                        <p className="text-base font-medium capitalize">{patient.relationshipType || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-base-content/70">Guardian</label>
+                        <p className="text-base font-medium">
+                          {patient.patient
+                            ? `${patient.patient.firstName || ''} ${patient.patient.lastName || ''}`.trim()
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
-                {patient && (
+                {(patient?.isDependant ? patient.patient : patient) && (
                   <div className="mt-4">
                     <PatientCardTypeInfo
-                      cardType={patient?.cardType}
-                      familyName={patient?.familyName}
-                      companyName={patient?.companyName}
+                      cardType={(patient?.isDependant ? patient.patient?.cardType : patient?.cardType)}
+                      familyName={(patient?.isDependant ? patient.patient?.familyName : patient?.familyName)}
+                      companyName={(patient?.isDependant ? patient.patient?.companyName : patient?.companyName)}
                     />
                   </div>
                 )}
               </div>
-
               {/* Appointment Schedule */}
               <div className="bg-base-200 rounded-lg p-4">
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
