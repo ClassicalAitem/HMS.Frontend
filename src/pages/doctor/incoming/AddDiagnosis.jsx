@@ -706,7 +706,7 @@ const handleConfirmSave = async () => {
       {/* Modals */}
       <AddComplaintModal isOpen={activeModal === "complaint"} onClose={() => setActiveModal(null)} onAdd={handleAddComplaint} data={medicalRecords.symptoms} />
       <AddFamilyHistoryModal isOpen={activeModal === "family"} onClose={() => setActiveModal(null)} onAdd={handleAddFamily} data={medicalRecords.family} />
-      <AddHistoryModal isOpen={activeModal === "medical"} onClose={() => setActiveModal(null)} onAdd={handleAddMedical} type="Medical_History" data={medicalRecords.symptoms} />
+      <AddHistoryModal isOpen={activeModal === "medical"} onClose={() => setActiveModal(null)} onAdd={handleAddMedical} type="Medical History" data={medicalRecords.symptoms} />
       <AddHistoryModal isOpen={activeModal === "surgical"} onClose={() => setActiveModal(null)} onAdd={handleAddSurgical} type="Surgical" data={medicalRecords.surgical} />
       <AddHistoryModal isOpen={activeModal === "social"} onClose={() => setActiveModal(null)} onAdd={handleAddSocial} type="Social" data={medicalRecords.social} />
       <AddHistoryModal isOpen={activeModal === "allergic"} onClose={() => setActiveModal(null)} onAdd={handleAddAllergic} type="Allergic" data={medicalRecords.allergic} />
