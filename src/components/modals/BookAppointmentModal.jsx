@@ -4,6 +4,7 @@ import { FaTimes } from 'react-icons/fa';
 import { getPatients } from '@/services/api/patientsAPI';
 import { getAllComplaint } from '@/services/api/medicalRecordAPI';
 import { toast } from 'react-hot-toast';
+import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 
 const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -66,6 +67,9 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [isOpenList, setIsOpenList] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [dependants, setDependants] = useState([]);
+  const [loadingDependants, setLoadingDependants] = useState(false);
+  const [subjectType, setSubjectType] = useState('patient'); // 'patient' | 'dependant'
   const listboxId = 'patient-combobox-listbox';
   const inputRef = useRef(null);
 
@@ -137,12 +141,33 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients]);
 
-  const selectPatient = (patient) => {
-    setFormData((prev) => ({ ...prev, patientId: patient.id }));
-    setQuery(`${patient.name} — ${patient.hospitalId || patient.id}`);
-    setIsOpenList(false);
-    setActiveIndex(-1);
-  };
+  const selectPatient = async (patient) => {
+  setFormData((prev) => ({ ...prev, patientId: patient.id, dependantId: '' }));
+  setQuery(`${patient.name} — ${patient.hospitalId || patient.id}`);
+  setIsOpenList(false);
+  setActiveIndex(-1);
+  setSubjectType('patient');
+
+  // Fetch this patient's dependants so frontdesk can book for either
+  setDependants([]);
+  setLoadingDependants(true);
+  try {
+    const res = await getAllDependantsForPatient(patient.id);
+    const raw = res?.data?.data?.dependants ?? res?.data?.dependants ?? res?.data ?? [];
+    const list = Array.isArray(raw) ? raw : [];
+    const normalized = list.map((d) => ({
+      ...d,
+      id: d.id || d._id,
+      fullName: d.fullName || `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+    }));
+    setDependants(normalized);
+  } catch (e) {
+    console.error('Failed to load dependants for patient', e);
+    setDependants([]);
+  } finally {
+    setLoadingDependants(false);
+  }
+};
 
   const handleKeyDown = (e) => {
     if (!isOpenList) return;
@@ -258,23 +283,25 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const resetForm = () => {
-    setFormData({
-      patientId: '',
-      appointmentDate: '',
-      appointmentTime: '',
-      department: '',
-      appointmentType: 'consultation',
-      procedureName: '',
-      procedureCode: '',
-      notes: ''
-    });
-    setQuery('');
-    setFilteredResults([]);
-    setDateError('');
-    setTimeError('');
-    setProcedureError({ name: '', code: '' });
-  };
-
+      setFormData({
+        patientId: '',
+        dependantId: '',
+        appointmentDate: '',
+        appointmentTime: '',
+        department: '',
+        appointmentType: 'consultation',
+        procedureName: '',
+        procedureCode: '',
+        notes: ''
+      });
+      setQuery('');
+      setFilteredResults([]);
+      setDependants([]);
+      setSubjectType('patient');
+      setDateError('');
+      setTimeError('');
+      setProcedureError({ name: '', code: '' });
+    };
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -383,6 +410,42 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                   Selected ID: {formData.patientId}
                 </span>
               )}
+
+              {/* Who is this appointment for? Only shown once dependants are found */}
+              {formData.patientId && (
+                <div className="mt-4">
+                  {loadingDependants ? (
+                    <p className="text-xs text-base-content/50">Checking for dependants...</p>
+                  ) : dependants.length > 0 ? (
+                    <>
+                      <label className="block mb-2 text-sm font-medium text-base-content">
+                        Who is this appointment for?
+                      </label>
+                      <select
+                        className="w-full select select-bordered"
+                        value={subjectType === 'dependant' ? formData.dependantId : ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (!value) {
+                            setSubjectType('patient');
+                            setFormData((prev) => ({ ...prev, dependantId: '' }));
+                          } else {
+                            setSubjectType('dependant');
+                            setFormData((prev) => ({ ...prev, dependantId: value }));
+                          }
+                        }}
+                      >
+                        <option value="">The patient themselves</option>
+                        {dependants.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.fullName} ({d.relationshipType || 'Dependant'})
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  ) : null}
+                </div>
+              )}
             </div>
 
 
@@ -437,6 +500,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
               >
                 <option value="">Select department/doctor</option>
                 <option value="doctor">Doctor</option>
+                <option value="medical-director">Medical Director</option>
               </select>
             </div>
 
