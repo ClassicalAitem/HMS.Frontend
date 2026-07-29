@@ -57,6 +57,7 @@ import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import AddProcedureModal from './modals/AddProcedureModal';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
+import SendPatientModal from '@/components/modals/SendPatientModal';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -69,6 +70,11 @@ const ViewConsultation = () => {
   const [consultation, setConsultation] = useState(null);
   const [consultationDoctorName, setConsultationDoctorName] = useState('');
   const [patient, setPatient] = useState(null);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const [subject, setSubject] = useState(null);
+  const [subjectLoading, setSubjectLoading] = useState(true);
   const [prescriptions, setPrescriptions] = useState(() => {
     const saved = localStorage.getItem('currentPrescriptions');
     return saved ? JSON.parse(saved) : [];
@@ -118,6 +124,39 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
   // shown only when the consultation has more than one lab request
   const [isProcedurePickerOpen, setIsProcedurePickerOpen] = useState(false);
 
+
+  const summarySubject = useMemo(() => {
+    if (!isViewingDependant) return patient;
+  
+    const dep = subject || dependantSnapshot || {};
+    const guardian = dep.patient || patient || {}; 
+  
+    const ownHmos = Array.isArray(guardian.hmos)
+      ? guardian.hmos.filter(h => h.dependantId === dep.id)
+      : [];
+  
+    return {
+  
+      phone: guardian.phone,
+      phoneNumber: guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      cardType: guardian.cardType,
+      familyName: guardian.familyName,
+      companyName: guardian.companyName,
+  
+      
+      id: dep.id || dependantId,
+      firstName: dep.firstName,
+      middleName: dep.middleName,
+      lastName: dep.lastName,
+      fullName: dep.fullName,
+      gender: dep.gender,
+      dob: dep.dob,
+      relationshipType: dep.relationshipType,
+      hmos: ownHmos,
+    };
+  }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+  
 
   const canEdit = useMemo(() => {
     if (!consultation?.createdAt) return false;
@@ -925,6 +964,14 @@ const handleEditProcedure = (surgery) => {
                 </div>
               </div>
             </div>
+                 <SendPatientModal
+                            patientId={patientId}
+                            patient={patient}
+                            defaultDependantId={dependantId}
+                            defaultDependantLabel={summarySubject?.fullName}
+                            onUpdated={() => navigate('/dashboard/doctor')}
+                            allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
+                          />
             <div className="flex items-center gap-2">
               {canEdit && (
                 <>
