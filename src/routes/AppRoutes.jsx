@@ -70,7 +70,6 @@ import MDSendToCashier from "@/pages/medical-director/incoming/SendToCashier";
 import MDSendToPharmacy from "@/pages/medical-director/incoming/SendToPharmacy";
 import MDSendToNurse from "@/pages/medical-director/incoming/SendToNurse";
 import MDViewConsultation from "@/pages/medical-director/incoming/ViewConsultation";
-import MDCreateSurgicalNote from "@/pages/medical-director/incoming/CreateSurgicalNote";
 import MDViewAllAdmissions from "@/pages/medical-director/incoming/ViewAllAdmission";
 import MDWritePrescription from "@/pages/medical-director/incoming/WritePrescription";
 import MDAllPatients from "@/pages/medical-director/allPatients/AllPatients";
@@ -174,7 +173,6 @@ import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
 import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
 import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
 import ViewAllAdmissions from "@/pages/doctor/incoming/ViewAllAdmission";
-import CreateSurgicalNote from "@/pages/doctor/incoming/CreateSurgicalNote";
 
 
 const AppRoutes = () => {
@@ -416,11 +414,7 @@ const AppRoutes = () => {
       <WritePrescription />
     </ProtectedRoute>
   } />
-  <Route path="/dashboard/doctor/medical-history/:patientId/consultation/:consultationId/surgical-note/:investigationRequestId" element={
-    <ProtectedRoute allowedRoles={['doctor']}>
-      <CreateSurgicalNote />
-    </ProtectedRoute>
-  } />
+
 
   <Route path="/dashboard/doctor/medical-history/:patientId/antenatal/:antenatalId/prescription" element={
     <ProtectedRoute allowedRoles={['doctor']}>
@@ -512,11 +506,6 @@ const AppRoutes = () => {
   <Route path="/dashboard/medical-director/view-consultation-records/:patientId" element={
     <ProtectedRoute allowedRoles={['medical-director']}>
       <MDViewConsultationRecords />
-    </ProtectedRoute>
-  } />
-   <Route path="/dashboard/medical-director/medical-history/:patientId/consultation/:consultationId/surgical-note/:investigationRequestId" element={
-     <ProtectedRoute allowedRoles={['medical-director']}>
-      <MDCreateSurgicalNote />
     </ProtectedRoute>
   } />
     <Route path="/dashboard/medical-director/view-admissions/:patientId" element={

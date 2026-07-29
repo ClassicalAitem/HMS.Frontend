@@ -413,43 +413,7 @@ const handleConfirmSave = async () => {
             </div>
           </div>
 
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold text-base-content mb-2">Record For</h3>
-              {incomingDependantId ? (
-                <div className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-200/30">
-                  <span className="badge badge-secondary">Dependant</span>
-                  <span className="font-medium">
-                    {selectedDependant?.fullName
-                      || `${incomingDependantSnapshot?.firstName || ''} ${incomingDependantSnapshot?.lastName || ''}`.trim()
-                      || 'Dependant'}
-                  </span>
-                  {(selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType) && (
-                    <span className="badge badge-outline badge-sm">
-                      {selectedDependant?.relationshipType || incomingDependantSnapshot?.relationshipType}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <select
-                  className="select select-bordered w-full"
-                  value={selectedDependantId}
-                  onChange={e => setSelectedDependantId(e.target.value)}
-                >
-                  <option value=""> Patient ({patientName})</option>
-                  {dependants.length > 0 ? (
-                    dependants.map(dep => (
-                      <option key={dep.id} value={dep.id}>
-                        {dep.fullName || "Unknown"} — {dep.relationshipType || dep.relation || "Dependant"}
-                      </option>
-                    ))
-                  ) : (
-                    <option disabled value="">No dependants found</option>
-                  )}
-                </select>
-              )}
-            </div>
-          </div>
+          
 
           <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
  
