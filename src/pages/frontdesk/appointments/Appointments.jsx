@@ -44,12 +44,16 @@ const Appointments = () => {
         const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
         console.log('Raw appointment data:', list);
         const mapped = list.map((a, idx) => ({
-          id: a?.id || a?._id || a?.appointmentId || idx + 1, // Use actual appointment ID
-          patientId: a?.patientId, // keep original patientId for name resolution
+          id: a?.id || a?._id || a?.appointmentId || idx + 1,
+          patientId: a?.patientId,
+          dependantId: a?.dependantId || null,
+          dependant: a?.dependant || null,
+          patient: a?.patient || null,
           patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
           date: a?.appointmentDate || a?.date,
-          time: a?.appointmentTime || a?.time,
-          appointmentType: a?.department || a?.appointmentType || 'General',
+          time: a?.appointmentTime || a?.time, 
+          appointmentType: a?.appointmentType || 'consultation',
+          department: a?.department || 'doctor',
           status: a?.status || 'Active',
         }));
         console.log('Mapped appointments:', mapped);
@@ -119,6 +123,10 @@ const Appointments = () => {
 
   // Process appointments data
   const resolvePatientName = (a) => {
+    if (a?.dependantId) {
+      const depName = `${a?.dependant?.firstName || ''} ${a?.dependant?.lastName || ''}`.trim();
+      return depName || 'Dependant';
+    }
     const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
     const resolved = pid ? patientsById[pid] : undefined;
     return resolved || a?.patientName || a?.patient?.fullName || 'Unknown';
@@ -141,7 +149,17 @@ const Appointments = () => {
       key: 'patientName',
       title: 'Patient Name',
       sortable: true,
-      className: 'text-base-content font-medium'
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          <span>{value}</span>
+          {row.dependantId && (
+            <span className="badge badge-secondary badge-xs">
+              {row.dependant?.relationshipType || 'Dependant'}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'date',
@@ -158,6 +176,12 @@ const Appointments = () => {
     {
       key: 'appointmentType',
       title: 'Appointment type',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'department',
+      title: 'Department',
       sortable: true,
       className: 'text-base-content/70'
     },
@@ -204,12 +228,16 @@ const Appointments = () => {
       const raw = res?.data?.data ?? res?.data ?? [];
       const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
       const mapped = list.map((a, idx) => ({
-        id: a?.id || a?._id || a?.appointmentId || idx + 1, // Use actual appointment ID
-        patientId: a?.patientId, // keep original patientId for name resolution
+        id: a?.id || a?._id || a?.appointmentId || idx + 1,
+        patientId: a?.patientId,
+        dependantId: a?.dependantId || null,
+        dependant: a?.dependant || null,
+        patient: a?.patient || null,
         patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
         date: a?.appointmentDate || a?.date,
-        time: a?.appointmentTime || a?.time,
-        appointmentType: a?.department || a?.appointmentType || 'General',
+        time: a?.appointmentTime || a?.time, 
+        appointmentType: a?.appointmentType || 'consultation',
+        department: a?.department || 'doctor',
         status: a?.status || 'Active',
       }));
       setAppointments(mapped);
