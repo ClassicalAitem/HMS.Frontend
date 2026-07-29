@@ -36,6 +36,9 @@ const Appointment = () => {
         const mapped = list.map((a, idx) => ({
           id: a?.id || a?._id || a?.appointmentId || idx + 1,
           patientId: a?.patientId,
+          dependantId: a?.dependantId || null,
+          dependant: a?.dependant || null,
+          patient: a?.patient || null,
           patientName: a?.patientName || a?.patient?.fullName || a?.patientId || "Unknown",
           date: a?.appointmentDate || a?.date,
           time: a?.appointmentTime || a?.time,
@@ -44,7 +47,7 @@ const Appointment = () => {
         }));
         setAppointments(mapped);
       } catch (err) {
-        console.error("Medical Director Appointments: load error", err);
+        console.error("Doctor Appointments: load error", err);
       }
     };
     load();
@@ -64,7 +67,7 @@ const Appointment = () => {
         });
         setPatientsById(map);
       } catch (err) {
-        console.error("Medical Director Appointments: fetch patients error", err);
+        console.error("Doctor Appointments: fetch patients error", err);
         setPatientsById({});
       }
     };
@@ -91,6 +94,11 @@ const Appointment = () => {
   };
 
   const resolvePatientName = (a) => {
+    // Dependant appointment — use the embedded dependant name, not the guardian
+    if (a?.dependantId) {
+      const depName = `${a?.dependant?.firstName || ""} ${a?.dependant?.lastName || ""}`.trim();
+      return depName || "Dependant";
+    }
     const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
     const resolved = pid ? patientsById[pid] : undefined;
     return resolved || a?.patientName || a?.patient?.fullName || "Unknown";
@@ -103,7 +111,22 @@ const Appointment = () => {
 
   const columns = useMemo(() => [
     { key: "id", title: "S/n", sortable: true, className: "text-base-content font-medium" },
-    { key: "patientName", title: "Patient Name", sortable: true, className: "text-base-content font-medium" },
+    {
+      key: "patientName",
+      title: "Patient Name",
+      sortable: true,
+      className: "text-base-content font-medium",
+      render: (v, row) => (
+        <div className="flex items-center gap-2">
+          <span>{v}</span>
+          {row.dependantId && (
+            <span className="badge badge-secondary badge-xs">
+              {row.dependant?.relationshipType || 'Dependant'}
+            </span>
+          )}
+        </div>
+      ),
+    },
     { key: "date", title: "Date", sortable: true, className: "text-base-content/70" },
     { key: "time", title: "Time", sortable: true, className: "text-base-content/70" },
     { key: "appointmentType", title: "Appointment type", sortable: true, className: "text-base-content/70" },
@@ -172,7 +195,7 @@ const Appointment = () => {
       }));
       setAppointments(mapped);
     } catch (err) {
-      console.error("Medical Director Appointments: create error", err);
+      console.error("Doctor Appointments: create error", err);
       toast.error(err?.message || "Failed to book appointment");
     }
   };
