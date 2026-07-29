@@ -25,6 +25,8 @@ export const createAppointment = async (payload) => {
   }
   const body = {
     patientId: payload.patientId,
+    dependantId: payload.dependantId,
+    consultationId: payload.consultationId,
     appointmentDate: payload.appointmentDate,
     appointmentTime: payload.appointmentTime,
     department: payload.department,
