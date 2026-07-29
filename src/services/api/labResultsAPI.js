@@ -13,11 +13,7 @@ export const getLabResultById = async (id) => {
 
 export const createLabResult = async (investigationRequestId, data) => {
 
-  const result = data?.result?.[0] || [];
-  const requiredFields = ['code', 'value'];
-  for (const field of requiredFields) {
-    if (!result?.[field]) throw new Error(`${field} is required`);
-  }
+  
 
   // For OpD patients without investigation, use /opd endpoint
   const endpoint = investigationRequestId ? `/labResult/${investigationRequestId}` : '/labResult/opd';
@@ -61,11 +57,7 @@ export const createLabResult = async (investigationRequestId, data) => {
 };
 
 export const updateLabResult = async (id, payload) => {
-  const result = payload?.result?.[0] || [];
-  const requiredFields = ['value'];
-  for (const field of requiredFields) {
-    if (!result?.[field]) throw new Error(`${field} is required`);
-  }
+  
   // if attachments included with update convert to FormData
   if (payload?.form?.attachments && payload.form.attachments.length > 0) {
     const formData = new FormData();

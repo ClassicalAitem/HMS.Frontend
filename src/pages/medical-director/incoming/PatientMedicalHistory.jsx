@@ -170,6 +170,7 @@ const summarySubject = useMemo(() => {
     cardType: guardian.cardType,
     familyName: guardian.familyName,
     companyName: guardian.companyName,
+    status: guardian.status,
 
     
     id: dep.id || dependantId,
