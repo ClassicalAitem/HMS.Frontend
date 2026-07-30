@@ -52,7 +52,10 @@ import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import AdmissionModal from '@/components/modals/admissionModal';
 
-import { deleteAdmission, getAdmissionsForConsultation } from '@/services/api/admissionApi';
+import {
+  deleteAdmission,
+  getAdmissionsForConsultation,
+} from '@/services/api/admissionApi';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import AddProcedureModal from './modals/AddProcedureModal';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
@@ -96,9 +99,9 @@ const ViewConsultation = () => {
   const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [isAddProcedureModalOpen, setIsAddProcedureModalOpen] = useState(false);
   const [selectedProcedureId, setSelectedProcedureId] = useState(null);
-const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
+  const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
+  const [doctorNamesById, setDoctorNamesById] = useState({});
   const [editForm, setEditForm] = useState({
-    
     visitReason: '',
     notes: '',
     complaints: [],
@@ -124,27 +127,24 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
   // shown only when the consultation has more than one lab request
   const [isProcedurePickerOpen, setIsProcedurePickerOpen] = useState(false);
 
-
   const summarySubject = useMemo(() => {
     if (!isViewingDependant) return patient;
-  
+
     const dep = subject || dependantSnapshot || {};
-    const guardian = dep.patient || patient || {}; 
-  
+    const guardian = dep.patient || patient || {};
+
     const ownHmos = Array.isArray(guardian.hmos)
-      ? guardian.hmos.filter(h => h.dependantId === dep.id)
+      ? guardian.hmos.filter((h) => h.dependantId === dep.id)
       : [];
-  
+
     return {
-  
       phone: guardian.phone,
       phoneNumber: guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
       cardType: guardian.cardType,
       familyName: guardian.familyName,
       companyName: guardian.companyName,
-  
-      
+
       id: dep.id || dependantId,
       firstName: dep.firstName,
       middleName: dep.middleName,
@@ -156,7 +156,6 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
       hmos: ownHmos,
     };
   }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
-  
 
   const canEdit = useMemo(() => {
     if (!consultation?.createdAt) return false;
@@ -220,6 +219,10 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
             if (Object.keys(rawData).length > 0) list = [rawData];
           }
           setPrescriptions(list);
+          const doctorIdsToResolve = [
+            ...(typeof list !== 'undefined' ? list.map((p) => p.doctorId) : []),
+          ];
+          resolveDoctorNames(doctorIdsToResolve);
         } else {
           console.error('Error loading prescriptions:', results[1].reason);
         }
@@ -230,6 +233,12 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
           const rawLabData = labRes?.data ?? labRes ?? [];
           const labList = Array.isArray(rawLabData) ? rawLabData : [];
           setLabRequests(labList);
+          const doctorIdsToResolve = [
+            ...(typeof labList !== 'undefined'
+              ? labList.map((l) => l.doctorId)
+              : []),
+          ];
+          resolveDoctorNames(doctorIdsToResolve);
         } else {
           console.error('Error loading lab investigations:', results[2].reason);
         }
@@ -245,10 +254,15 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
           if (results[4]?.status === 'fulfilled') {
             const chargesRes = results[4].value;
             const rawCharges = chargesRes?.data ?? chargesRes ?? [];
-            const chargesList = Array.isArray(rawCharges) ? rawCharges : (rawCharges?.data ?? []);
+            const chargesList = Array.isArray(rawCharges)
+              ? rawCharges
+              : (rawCharges?.data ?? []);
             chargesList.forEach((c) => {
               const id = c?._id || c?.id;
-              if (id) coveredById[id] = Array.isArray(c?.admissionCovered) ? c.admissionCovered : [];
+              if (id)
+                coveredById[id] = Array.isArray(c?.admissionCovered)
+                  ? c.admissionCovered
+                  : [];
             });
           }
 
@@ -261,9 +275,39 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
           }));
 
           setActiveAdmissions(admListWithCovered);
+
+          const doctorIdsToResolve = [
+            ...(typeof admListWithCovered !== 'undefined'
+              ? admListWithCovered.map((a) => a.doctorId)
+              : []),
+          ];
+          resolveDoctorNames(doctorIdsToResolve);
         } else {
           console.error('Error loading admissions:', results[3].reason);
         }
+        // Resolve doctor names for lab requests, prescriptions, admissions
+        // (may differ from the consultation's own doctor)
+        const labDoctorIds =
+          results[2].status === 'fulfilled'
+            ? (Array.isArray(results[2].value?.data ?? results[2].value)
+                ? (results[2].value?.data ?? results[2].value)
+                : []
+              ).map((l) => l.doctorId)
+            : [];
+        const presDoctorIds =
+          results[1].status === 'fulfilled'
+            ? prescriptions.map((p) => p.doctorId)
+            : [];
+        const admDoctorIds =
+          results[3].status === 'fulfilled'
+            ? activeAdmissions.map((a) => a.doctorId)
+            : [];
+
+        resolveDoctorNames([
+          ...labDoctorIds,
+          ...presDoctorIds,
+          ...admDoctorIds,
+        ]);
       } else if (data?.patient) {
         setPatient(data.patient);
       }
@@ -274,59 +318,92 @@ const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
     }
   };
 
-
   useEffect(() => {
-  if (!consultationId) return;
-  const loadProcedures = async () => {
-    try {
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : raw.appointments ?? [];
-      const surgicalForThisConsultation = list.filter(
-        (a) => a.appointmentType === 'surgery' && a.consultationId === consultationId,
+    if (!consultationId) return;
+    const loadProcedures = async () => {
+      try {
+        const res = await getAllAppointments();
+        const raw = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+        const surgicalForThisConsultation = list.filter(
+          (a) =>
+            a.appointmentType === 'surgery' &&
+            a.consultationId === consultationId,
+        );
+        setProcedures(surgicalForThisConsultation);
+      } catch (err) {
+        console.error('Failed to load procedures', err);
+      }
+    };
+    loadProcedures();
+  }, [consultationId]);
+
+  const getProcedureSubjectName = (proc) => {
+    if (proc.dependantId) {
+      return (
+        `${proc.dependant?.firstName || ''} ${proc.dependant?.lastName || ''}`.trim() ||
+        'Dependant'
       );
-      setProcedures(surgicalForThisConsultation);
-    } catch (err) {
-      console.error('Failed to load procedures', err);
     }
+    return (
+      `${proc.patient?.firstName || ''} ${proc.patient?.lastName || ''}`.trim() ||
+      'Unknown'
+    );
   };
-  loadProcedures();
-}, [consultationId]);
 
-const getProcedureSubjectName = (proc) => {
-  if (proc.dependantId) {
-    return `${proc.dependant?.firstName || ''} ${proc.dependant?.lastName || ''}`.trim() || 'Dependant';
-  }
-  return `${proc.patient?.firstName || ''} ${proc.patient?.lastName || ''}`.trim() || 'Unknown';
-};
+  const resolveDoctorNames = async (ids) => {
+    const uniqueIds = [...new Set(ids.filter(Boolean))];
+    const idsToFetch = uniqueIds.filter((id) => !doctorNamesById[id]);
+    if (idsToFetch.length === 0) return;
 
+    const results = await Promise.allSettled(
+      idsToFetch.map((id) => usersAPI.getUserById(id)),
+    );
 
+    setDoctorNamesById((prev) => {
+      const updated = { ...prev };
+      idsToFetch.forEach((id, idx) => {
+        const res = results[idx];
+        if (res.status === 'fulfilled') {
+          const user = res.value?.data?.data || res.value?.data || res.value;
+          const name =
+            user?.name ||
+            `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+          if (name) updated[id] = name;
+        }
+      });
+      return updated;
+    });
+  };
 
-const handleEditProcedure = (surgery) => {
-  navigate(
-    `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/surgical-note/${surgery.investigationRequestId}`,
-    {
-      state: {
-        dependantId: consultation?.dependantId || null,
-        dependantSnapshot: consultation?.dependant || null,
-        patientSnapshot: patient,
-        investigationRequestId: surgery.investigationRequestId,
-        editSurgery: surgery,
+  const getDoctorName = (id) =>
+    id ? doctorNamesById[id] || 'Unknown Doctor' : null;
+
+  const handleEditProcedure = (surgery) => {
+    navigate(
+      `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/surgical-note/${surgery.investigationRequestId}`,
+      {
+        state: {
+          dependantId: consultation?.dependantId || null,
+          dependantSnapshot: consultation?.dependant || null,
+          patientSnapshot: patient,
+          investigationRequestId: surgery.investigationRequestId,
+          editSurgery: surgery,
+        },
       },
-    },
-  );
-};
+    );
+  };
 
-// const handleDeleteProcedure = async (id) => {
-//   if (!window.confirm('Delete this surgical note?')) return;
-//   try {
-//     await deleteAppointment(id);
-//     setProcedures((prev) => prev.filter((p) => p._id !== id));
-//   } catch (error) {
-//     console.error('Error deleting surgery:', error);
-//     toast.error(error?.response?.data?.message || 'Failed to delete procedure');
-//   }
-// };
+  // const handleDeleteProcedure = async (id) => {
+  //   if (!window.confirm('Delete this surgical note?')) return;
+  //   try {
+  //     await deleteAppointment(id);
+  //     setProcedures((prev) => prev.filter((p) => p._id !== id));
+  //   } catch (error) {
+  //     console.error('Error deleting surgery:', error);
+  //     toast.error(error?.response?.data?.message || 'Failed to delete procedure');
+  //   }
+  // };
 
   useEffect(() => {
     if (!consultation) return;
@@ -637,9 +714,9 @@ const handleEditProcedure = (surgery) => {
     );
   };
 
- const handleAddProcedureClick = () => {
-  setIsAddProcedureModalOpen(true);
-};
+  const handleAddProcedureClick = () => {
+    setIsAddProcedureModalOpen(true);
+  };
 
   // Mapped Data
   const complaints = consultation?.complaint || [];
@@ -842,7 +919,6 @@ const handleEditProcedure = (surgery) => {
         }}
       />
 
-       
       <SendToNurseModal
         isOpen={isSendToNurseModalOpen}
         onClose={() => setIsSendToNurseModalOpen(false)}
@@ -904,7 +980,9 @@ const handleEditProcedure = (surgery) => {
         onUpdated={(updated) => {
           setProcedures((prev) =>
             prev.map((p) =>
-              (p._id || p.id) === (updated?._id || updated?.id) ? { ...p, ...updated } : p,
+              (p._id || p.id) === (updated?._id || updated?.id)
+                ? { ...p, ...updated }
+                : p,
             ),
           );
         }}
@@ -964,14 +1042,20 @@ const handleEditProcedure = (surgery) => {
                 </div>
               </div>
             </div>
-                 <SendPatientModal
-                            patientId={patientId}
-                            patient={patient}
-                            defaultDependantId={dependantId}
-                            defaultDependantLabel={summarySubject?.fullName}
-                            onUpdated={() => navigate('/dashboard/doctor')}
-                            allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
-                          />
+            <SendPatientModal
+              patientId={patientId}
+              patient={patient}
+              defaultDependantId={dependantId}
+              defaultDependantLabel={summarySubject?.fullName}
+              onUpdated={() => navigate('/dashboard/doctor')}
+              allowedRoles={[
+                'nurse',
+                'labtechnician',
+                'pharmacist',
+                'cashier',
+                'hmo',
+              ]}
+            />
             <div className="flex items-center gap-2">
               {canEdit && (
                 <>
@@ -1327,7 +1411,6 @@ const handleEditProcedure = (surgery) => {
                       <h3 className="font-bold text-lg text-base-content p-2 m-2">
                         Treatment Plan & Orders
                       </h3>
-                      
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -1400,10 +1483,9 @@ const handleEditProcedure = (surgery) => {
                                   <span className="text-xs text-base-content/50">
                                     Requested {formatNigeriaDate(lab.createdAt)}
                                   </span>
-
-                                  {lab.priority === 'urgent' && (
-                                    <span className="badge badge-error badge-outline badge-xs">
-                                      Urgent
+                                  {lab.doctorId && (
+                                    <span className="text-xs text-base-content/50">
+                                      • by Dr. {getDoctorName(lab.doctorId)}
                                     </span>
                                   )}
                                 </div>
@@ -1416,26 +1498,29 @@ const handleEditProcedure = (surgery) => {
                               </div>
 
                               {/* ACTION BUTTONS */}
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-ghost text-warning"
-                                  onClick={() => {
-                                    setEditingLab(lab);
-                                    setIsInvestigationModalOpen(true);
-                                  }}
-                                >
-                                  <FaEdit />
-                                </button>
+                              {/* ACTION BUTTONS */}
+                              {!lab.isBilled && (
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-ghost text-warning"
+                                    onClick={() => {
+                                      setEditingLab(lab);
+                                      setIsInvestigationModalOpen(true);
+                                    }}
+                                  >
+                                    <FaEdit />
+                                  </button>
 
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-ghost text-error"
-                                  onClick={() => handleDeleteLab(lab._id)}
-                                >
-                                  <FaTrash />
-                                </button>
-                              </div>
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-ghost text-error"
+                                    onClick={() => handleDeleteLab(lab._id)}
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1450,116 +1535,133 @@ const handleEditProcedure = (surgery) => {
 
                     <div className="divider my-0"></div>
 
-                 <div>
-  <h4>Procedures / Surgical Notes</h4>
-</div>
-<div className="max-h-72 overflow-y-auto pr-1 space-y-3">
-  {procedures.length > 0 ? (
-    procedures.map((proc) => (
-      <div
-        key={proc._id || proc.id}
-        className="border border-base-200 rounded-lg p-3 hover:shadow-sm hover:border-primary transition-all cursor-pointer"
-        onClick={() => {
-          setSelectedProcedureId(proc._id || proc.id || proc.appointmentId);
-          setIsProcedureDetailsOpen(true);
-        }}
-      >
-        <div className="flex justify-between items-start mb-1">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span
-                className={`badge badge-sm ${
-                  proc.status === 'completed'
-                    ? 'badge-success'
-                    : proc.status === 'cancelled'
-                      ? 'badge-error'
-                      : 'badge-ghost'
-                }`}
-              >
-                {proc.status?.replace('_', ' ') || 'scheduled'}
-              </span>
-              <span className="text-xs text-base-content/50">
-              {formatNigeriaDate(proc.appointmentDate)} • 
-           
-            </span>
-            </div>
-            <span className="text-sm font-medium text-base-content">
-              {proc.procedureName} {proc.procedureCode && `(${proc.procedureCode})`}
-            </span>
-          </div>
-        </div>
-      </div>
-    ))
-  ) : (
-    <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
-      <p className="text-sm text-base-content/50">No procedures scheduled yet</p>
-    </div>
-  )}
-</div>
-                    
+                    <div>
+                      <h4>Procedures / Surgical Notes</h4>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto pr-1 space-y-3">
+                      {procedures.length > 0 ? (
+                        procedures.map((proc) => (
+                          <div
+                            key={proc._id || proc.id}
+                            className="border border-base-200 rounded-lg p-3 hover:shadow-sm hover:border-primary transition-all cursor-pointer"
+                            onClick={() => {
+                              setSelectedProcedureId(
+                                proc._id || proc.id || proc.appointmentId,
+                              );
+                              setIsProcedureDetailsOpen(true);
+                            }}
+                          >
+                            <div className="flex justify-between items-start mb-1">
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`badge badge-sm ${
+                                      proc.status === 'completed'
+                                        ? 'badge-success'
+                                        : proc.status === 'cancelled'
+                                          ? 'badge-error'
+                                          : 'badge-ghost'
+                                    }`}
+                                  >
+                                    {proc.status?.replace('_', ' ') ||
+                                      'scheduled'}
+                                  </span>
+                                  <span className="text-xs text-base-content/50">
+                                    {formatNigeriaDate(proc.appointmentDate)} •
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium text-base-content">
+                                  {proc.procedureName}{' '}
+                                  {proc.procedureCode &&
+                                    `(${proc.procedureCode})`}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+                          <p className="text-sm text-base-content/50">
+                            No procedures scheduled yet
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
-      {selectedProcedure && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-base-200 p-5 sticky top-0 bg-base-100 z-10">
-              <h2 className="text-lg font-bold">Surgical Note Details</h2>
-              <button
-                type="button"
-                className="btn btn-sm btn-circle btn-ghost"
-                onClick={() => setSelectedProcedure(null)}
-              >
-                <FaTimes />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              <div className="flex items-center gap-2">
-                <span className={`badge ${selectedProcedure.status === 'completed' ? 'badge-success' : selectedProcedure.status === 'in_progress' ? 'badge-info' : selectedProcedure.status === 'cancelled' ? 'badge-error' : 'badge-ghost'}`}>
-                  {selectedProcedure.status?.replace('_', ' ')}
-                </span>
-                <span className="text-sm text-base-content/60">
-                  {formatNigeriaDate(selectedProcedure.scheduledDate)}
-                </span>
-              </div>
+                    {selectedProcedure && (
+                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                        <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl max-h-[85vh] overflow-y-auto">
+                          <div className="flex items-center justify-between border-b border-base-200 p-5 sticky top-0 bg-base-100 z-10">
+                            <h2 className="text-lg font-bold">
+                              Surgical Note Details
+                            </h2>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-circle btn-ghost"
+                              onClick={() => setSelectedProcedure(null)}
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+                          <div className="p-6 space-y-6">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`badge ${selectedProcedure.status === 'completed' ? 'badge-success' : selectedProcedure.status === 'in_progress' ? 'badge-info' : selectedProcedure.status === 'cancelled' ? 'badge-error' : 'badge-ghost'}`}
+                              >
+                                {selectedProcedure.status?.replace('_', ' ')}
+                              </span>
+                              <span className="text-sm text-base-content/60">
+                                {formatNigeriaDate(
+                                  selectedProcedure.scheduledDate,
+                                )}
+                              </span>
+                            </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Procedure</h4>
-                  <p className="font-medium">{selectedProcedure.procedureName} {selectedProcedure.procedureCode && `(${selectedProcedure.procedureCode})`}</p>
-                </div>
-              
-              </div>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">
+                                  Procedure
+                                </h4>
+                                <p className="font-medium">
+                                  {selectedProcedure.procedureName}{' '}
+                                  {selectedProcedure.procedureCode &&
+                                    `(${selectedProcedure.procedureCode})`}
+                                </p>
+                              </div>
+                            </div>
 
-             
-
-
-             
-
-            
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Notes</h4>
-                <p className="text-sm bg-base-200/40 rounded-lg p-3">{selectedProcedure.notes || 'No additional notes'}</p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 p-5 border-t border-base-200 sticky bottom-0 bg-base-100">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline btn-warning gap-2"
-                onClick={() => { setSelectedProcedure(null); handleEditProcedure(selectedProcedure); }}
-              >
-                <FaEdit /> Edit
-              </button>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost"
-                onClick={() => setSelectedProcedure(null)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
+                            <div>
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">
+                                Notes
+                              </h4>
+                              <p className="text-sm bg-base-200/40 rounded-lg p-3">
+                                {selectedProcedure.notes ||
+                                  'No additional notes'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 p-5 border-t border-base-200 sticky bottom-0 bg-base-100">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline btn-warning gap-2"
+                              onClick={() => {
+                                setSelectedProcedure(null);
+                                handleEditProcedure(selectedProcedure);
+                              }}
+                            >
+                              <FaEdit /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => setSelectedProcedure(null)}
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Prescriptions */}
                     <div>
@@ -1584,33 +1686,41 @@ const handleEditProcedure = (surgery) => {
                                   <span className="text-xs text-base-content/50">
                                     Ordered {formatNigeriaDate(pres.createdAt)}
                                   </span>
+                                  {pres.doctorId && (
+                                    <span className="text-xs text-base-content/50">
+                                      • by Dr. {getDoctorName(pres.doctorId)}
+                                    </span>
+                                  )}
                                 </div>
 
                                 {/* ACTION BUTTONS */}
-                                <div className="flex gap-2">
-                                  <button
-                                    type="button"
-                                    className="btn btn-xs btn-ghost text-warning"
-                                    onClick={() =>
-                                      navigate(
-                                        `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
-                                        { state: { prescription: pres } },
-                                      )
-                                    }
-                                  >
-                                    <FaEdit />
-                                  </button>
+                                {/* ACTION BUTTONS */}
+                                {!pres.isBilled && (
+                                  <div className="flex gap-2">
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-ghost text-warning"
+                                      onClick={() =>
+                                        navigate(
+                                          `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
+                                          { state: { prescription: pres } },
+                                        )
+                                      }
+                                    >
+                                      <FaEdit />
+                                    </button>
 
-                                  <button
-                                    type="button"
-                                    className="btn btn-xs btn-ghost text-error"
-                                    onClick={() =>
-                                      handleDeletePrescription(pres._id)
-                                    }
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-ghost text-error"
+                                      onClick={() =>
+                                        handleDeletePrescription(pres._id)
+                                      }
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                               <div className="space-y-1">
                                 {pres.medications?.map((med, mIdx) => (
@@ -1660,15 +1770,18 @@ const handleEditProcedure = (surgery) => {
                           type="button"
                           className="btn btn-outline btn-sm"
                           onClick={() =>
-                            navigate(`/dashboard/doctor/view-admissions/${patientId}`, {
-                              state: {
-                                dependantId: consultation?.dependantId,
-                                dependantSnapshot:
-                                  consultation?.type === 'dependant'
-                                    ? consultation?.snapshot
-                                    : null,
+                            navigate(
+                              `/dashboard/doctor/view-admissions/${patientId}`,
+                              {
+                                state: {
+                                  dependantId: consultation?.dependantId,
+                                  dependantSnapshot:
+                                    consultation?.type === 'dependant'
+                                      ? consultation?.snapshot
+                                      : null,
+                                },
                               },
-                            })
+                            )
                           }
                         >
                           View All
@@ -1684,37 +1797,48 @@ const handleEditProcedure = (surgery) => {
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className="badge badge-success badge-sm">
-                                    Active
-                                  </span>
-
                                   <span className="text-xs text-base-content/50">
                                     Admission
                                   </span>
+                                  {admission.doctorId && (
+                                    <span className="text-xs text-base-content/50">
+                                      • by Dr.{' '}
+                                      {getDoctorName(admission.doctorId)}
+                                    </span>
+                                  )}
                                 </div>
 
-                                <button
-                                  type="button"
-                                  className="btn btn-xs btn-ghost text-error"
-                                  onClick={async () => {
-                                    if (admission._id) {
-                                      try {
-                                        await deleteAdmission(admission._id);
-                                      } catch (err) {
-                                        console.error('Failed to delete admission:', err);
-                                        toast.error('Failed to delete admission');
-                                        return;
+                                {!admission.isBilled && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-xs btn-ghost text-error"
+                                    onClick={async () => {
+                                      if (admission._id) {
+                                        try {
+                                          await deleteAdmission(admission._id);
+                                        } catch (err) {
+                                          console.error(
+                                            'Failed to delete admission:',
+                                            err,
+                                          );
+                                          toast.error(
+                                            'Failed to delete admission',
+                                          );
+                                          return;
+                                        }
                                       }
-                                    }
-                                    setActiveAdmissions((prev) =>
-                                      prev.filter((a) =>
-                                        a._id ? a._id !== admission._id : a !== admission,
-                                      ),
-                                    );
-                                  }}
-                                >
-                                  <FaTrash />
-                                </button>
+                                      setActiveAdmissions((prev) =>
+                                        prev.filter((a) =>
+                                          a._id
+                                            ? a._id !== admission._id
+                                            : a !== admission,
+                                        ),
+                                      );
+                                    }}
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                )}
                               </div>
 
                               <div className="mt-3 space-y-3">
@@ -1736,9 +1860,11 @@ const handleEditProcedure = (surgery) => {
                                       {Array.isArray(item.admissionCovered) &&
                                         item.admissionCovered.length > 0 && (
                                           <ul className="list-disc list-inside mt-1 ml-1 text-xs text-base-content/60">
-                                            {item.admissionCovered.map((cond, ci) => (
-                                              <li key={ci}>{cond}</li>
-                                            ))}
+                                            {item.admissionCovered.map(
+                                              (cond, ci) => (
+                                                <li key={ci}>{cond}</li>
+                                              ),
+                                            )}
                                           </ul>
                                         )}
                                     </div>
