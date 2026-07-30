@@ -1051,7 +1051,7 @@ const handleComplete = async () => {
 
               {/* PT TEST SECTION */}
               <div className="bg-white rounded-lg shadow">
-                <SectionHeader title="PT Test" id="ptTest" count={3} expandedSection={expandedSection} toggleSection={toggleSection} />
+                <SectionHeader title="PT Test And Malaria Test" id="ptTest" count={3} expandedSection={expandedSection} toggleSection={toggleSection} />
                 {expandedSection === "ptTest" && (
                   <SectionContent>
                     {Object.entries(formData.ptTest).map(([key, value]) => (
