@@ -562,9 +562,7 @@ const handleOrderCreated = () => {
                             <p className="text-sm text-base-content/70">
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
                             </p>
-                            <p className="text-sm text-base-content/70">
-                              Created by: Dr {getRecordDoctorName(record)}
-                            </p>
+                            
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -879,25 +877,31 @@ const handleOrderCreated = () => {
                                 </span>
                               </div>
 
-                              <div className="overflow-x-auto">
+                             <div className="overflow-x-auto">
                                 <table className="table table-zebra w-full">
                                   <thead>
                                     <tr className="bg-base-200">
+                                      <th className="font-semibold">EGA</th>
+                                      <th className="font-semibold">Fundal Height</th>
+                                      <th className="font-semibold">Presentation & Lie</th>
+                                      <th className="font-semibold">P.P to Brim</th>
+                                      <th className="font-semibold">Foetal Heart</th>
+                                      <th className="font-semibold">Urine</th>
                                       <th className="font-semibold">Weight (kg)</th>
                                       <th className="font-semibold">Blood Pressure</th>
-                                      <th className="font-semibold">Fundal Height</th>
-                                      <th className="font-semibold">Presentation</th>
-                                      <th className="font-semibold">Fetal Heart</th>
                                       <th className="font-semibold">Next Visit</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
-                                      <td>{exam.weight || '-'}</td>
-                                      <td>{exam.bloodPressure || '-'}</td>
+                                      <td>{exam.EGA || '-'}</td>
                                       <td>{exam.heightOfFundus || '-'}</td>
                                       <td>{exam.presentationAndLife || '-'}</td>
+                                      <td>{exam.relationOfPPToBrim || '-'}</td>
                                       <td>{exam.foetalHeart || '-'}</td>
+                                      <td>{exam.urine || '-'}</td>
+                                      <td>{exam.weight || '-'}</td>
+                                      <td>{exam.bloodPressure || '-'}</td>
                                       <td>{exam.nextVisit || '-'}</td>
                                     </tr>
                                   </tbody>
