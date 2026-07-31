@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
@@ -491,7 +491,7 @@ const handleOrderCreated = () => {
             <div className="flex gap-2">
               <button
                 className="btn btn-outline"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
                   state: {
                     from: fromIncoming ? "incoming" : "patients",
                     patientSnapshot: patient,
@@ -504,7 +504,7 @@ const handleOrderCreated = () => {
               </button>
               <button
                 className="btn btn-secondary gap-2"
-                onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, {
+                onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}`, {
                   state: {
                     dependantId: dependantId || null,
                     dependantSnapshot: dependantSnapshot || null,
@@ -547,14 +547,22 @@ const handleOrderCreated = () => {
                               </h4>
                             </div>
 
-                            
+                            {/* ✅ Show who this record is for */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs text-base-content/50">Record for:</span>
+                              {dependantName ? (
+                                <span className="badge badge-secondary badge-sm">{dependantName}</span>
+                              ) : (
+                                <span className="badge badge-primary badge-sm">
+                                  {patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()} (Patient)
+                                </span>
+                              )}
+                            </div>
 
                             <p className="text-sm text-base-content/70">
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
                             </p>
-                            <p className="text-sm text-base-content/70">
-                              Created by: Dr {getRecordDoctorName(record)}
-                            </p>
+                            
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -566,7 +574,7 @@ const handleOrderCreated = () => {
                            <button
                             className="btn btn-sm btn-primary"
                             onClick={() => navigate(
-                              `/dashboard/doctor/antenatal-records/${patientId}/edit/${record.__originalIndex ?? index}`,
+                              `/dashboard/medical-director/antenatal-records/${patientId}/edit/${record.__originalIndex ?? index}`,
                               {
                                 state: {
                                   dependantId: record.dependantId || null,
@@ -869,25 +877,31 @@ const handleOrderCreated = () => {
                                 </span>
                               </div>
 
-                              <div className="overflow-x-auto">
+                             <div className="overflow-x-auto">
                                 <table className="table table-zebra w-full">
                                   <thead>
                                     <tr className="bg-base-200">
+                                      <th className="font-semibold">EGA</th>
+                                      <th className="font-semibold">Fundal Height</th>
+                                      <th className="font-semibold">Presentation & Lie</th>
+                                      <th className="font-semibold">P.P to Brim</th>
+                                      <th className="font-semibold">Foetal Heart</th>
+                                      <th className="font-semibold">Urine</th>
                                       <th className="font-semibold">Weight (kg)</th>
                                       <th className="font-semibold">Blood Pressure</th>
-                                      <th className="font-semibold">Fundal Height</th>
-                                      <th className="font-semibold">Presentation</th>
-                                      <th className="font-semibold">Fetal Heart</th>
                                       <th className="font-semibold">Next Visit</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     <tr>
-                                      <td>{exam.weight || '-'}</td>
-                                      <td>{exam.bloodPressure || '-'}</td>
+                                      <td>{exam.EGA || '-'}</td>
                                       <td>{exam.heightOfFundus || '-'}</td>
                                       <td>{exam.presentationAndLife || '-'}</td>
+                                      <td>{exam.relationOfPPToBrim || '-'}</td>
                                       <td>{exam.foetalHeart || '-'}</td>
+                                      <td>{exam.urine || '-'}</td>
+                                      <td>{exam.weight || '-'}</td>
+                                      <td>{exam.bloodPressure || '-'}</td>
                                       <td>{exam.nextVisit || '-'}</td>
                                     </tr>
                                   </tbody>
@@ -937,7 +951,7 @@ const handleOrderCreated = () => {
                           <button
                             className="btn btn-sm btn-primary gap-2"
                             disabled={!selectedRecord}
-                            onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord?._id || selectedRecord?.id}/prescription`, { state: { antenatalId: selectedRecord?._id || selectedRecord?.id } })}
+                            onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/antenatal/${selectedRecord?._id || selectedRecord?.id}/prescription`, { state: { antenatalId: selectedRecord?._id || selectedRecord?.id } })}
                           >
                             <span className="text-sm">💊</span> Prescribe
                           </button>
@@ -1117,7 +1131,7 @@ const handleOrderCreated = () => {
                 <div className="mt-4">
                   <button
                     className="btn btn-secondary"
-                    onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, 
+                    onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}`, 
                       { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient,  dependantId: dependantId || null,
                          dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,  } }
                     )}
