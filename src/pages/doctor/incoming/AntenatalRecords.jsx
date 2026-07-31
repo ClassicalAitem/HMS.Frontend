@@ -238,6 +238,13 @@ useEffect(() => {
       if (Array.isArray(raw)) return raw[0] || {};
       return raw || {};
     })();
+    const parseUrine = (urineStr = '') => {
+      const match = String(urineStr || '').match(/^(Protein|Sugar)\s*-\s*(.*)$/i);
+      if (!match) return { urineType: '', urineValue: '' };
+      const type = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+      return { urineType: type, urineValue: match[2].trim() };
+    };
+
 
     return {
       previousMedicalHistory: {
@@ -295,7 +302,8 @@ useEffect(() => {
         presentationAndLie: item.presentationAndLife || '',
         relationsOfPpToBirth: item.relationOfPPToBrim || '',
         foetalHeart: item.foetalHeart || '',
-        urine: item.urine || '',
+       urine: item.urine || '',
+...parseUrine(item.urine),
         weight: item.weight || '',
         bp: item.bloodPressure || '',
         nextVisit: item.nextVisit || '',
@@ -403,7 +411,7 @@ useEffect(() => {
           if (!isEditing) {
             setSavedRecord(data);
           } else {
-            navigate(`/dashboard/doctor/medical-history/${patientId}`);
+            navigate(-1);
           }
           return isEditing ? 'Record updated successfully!' : 'Record created successfully!';
         },
@@ -428,14 +436,28 @@ useEffect(() => {
     relationsOfPpToBirth: '',
     foetalHeart: '',
     urine: '',
+    urineType: '',      
+    urineValue: '',
     weight: latestVital?.weight || '',
     bp: latestVital?.bp || latestVital?.bloodPressure || '',
     nextVisit: '',
     remark: '',
     signature: doctorName
   }] }));
-  const updateExamination = (idx, field, value) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
-  const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.filter((_, i) => i !== idx) }));
+  const updateExamination = (idx, field, value) => setFormData(p => ({
+  ...p,
+  antenatalExaminations: p.antenatalExaminations.map((item, i) => {
+    if (i !== idx) return item;
+    const updated = { ...item, [field]: value };
+    if (field === 'urineType' || field === 'urineValue') {
+      const type = field === 'urineType' ? value : item.urineType;
+      const val = field === 'urineValue' ? value : item.urineValue;
+      updated.urine = type && val ? `${type} - ${val}` : (type || val || '');
+    }
+    return updated;
+  })
+}));
+const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.filter((_, i) => i !== idx) }));
 
   if (loadingPatient || loadingData) {
     return (
@@ -629,11 +651,10 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Routine Tests Section */}
+         {/* Routine Tests Section */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
-              <SectionHeader title="ROUTINE TESTS" sectionKey="routine" />
-              {openSections.pregnancy && (
+              <h3 className="card-title text-lg font-semibold mb-4">ROUTINE TESTS</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                   { field: 'rvs', label: 'RVS', type: 'text', placeholder: 'Negative/Positive' },
@@ -655,7 +676,6 @@ useEffect(() => {
                   </div>
                 ))}
               </div>
-              )}
             </div>
           </div>
 
@@ -754,13 +774,24 @@ useEffect(() => {
                     />
                   </td>
                   <td className="py-2">
-                    <input
-                      type="text"
-                      className="input input-bordered input-sm w-full min-w-[80px]"
-                      placeholder="Results"
-                      value={item.urine}
-                      onChange={(e) => updateExamination(idx, 'urine', e.target.value)}
-                    />
+                    <div className="flex flex-col gap-1 min-w-[130px]">
+                      <select
+                        className="select select-bordered select-sm w-full"
+                        value={item.urineType}
+                        onChange={(e) => updateExamination(idx, 'urineType', e.target.value)}
+                      >
+                        <option value="">Type</option>
+                        <option value="Protein">Protein</option>
+                        <option value="Sugar">Sugar</option>
+                      </select>
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm w-full"
+                        placeholder="e.g. +++"
+                        value={item.urineValue}
+                        onChange={(e) => updateExamination(idx, 'urineValue', e.target.value)}
+                      />
+                    </div>
                   </td>
                   <td className="py-2">
                     <input
