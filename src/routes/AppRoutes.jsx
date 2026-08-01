@@ -175,6 +175,9 @@ import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
 import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
 import ViewAllAdmissions from "@/pages/doctor/incoming/ViewAllAdmission";
 import PatientsHistory from "@/pages/doctor/patients/PatientsHistory";
+import PatientHmoHistory from "@/pages/hmo/incoming/PatientHmoHistory";
+import HMOPatients from "@/pages/hmo/HmoPatients/HmoPatients";
+import PatientHmoHistoryFull from "@/pages/hmo/incoming/PatientHmoHistoryFull";
 
 
 const AppRoutes = () => {
@@ -654,6 +657,17 @@ const AppRoutes = () => {
           <IncomingHmoDetails />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/hmo/patient-history/:patientId" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <PatientHmoHistoryFull />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hmo/patients" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <HMOPatients />
+        </ProtectedRoute>
+      } />
+      
       <Route path="/dashboard/hmo/consultations" element={
         <ProtectedRoute allowedRoles={['hmo']}>
           <HmoConsultations />
