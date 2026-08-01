@@ -237,7 +237,7 @@ useEffect(() => {
         phone: guardian.phone || guardian.phoneNumber,
         hospitalId: guardian.hospitalId,
         status: guardian.status,
-        hmos: Array.isArray(guardian.hmos) ? guardian.hmos : [],
+        hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
       };
     }

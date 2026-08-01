@@ -49,8 +49,6 @@ const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => 
             </p>
             <p className="text-md 2xl:text-lg font-semibold text-base-content">{patientIdDisplay}</p>
           </div>
-        
-
         </div>
         <div className="text-right">
           <div className="flex flex-col items-center gap-2">
@@ -61,10 +59,8 @@ const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => 
               'badge-neutral'
             }`}>{prettyStatus}</span>
           </div>
-        <PatientCardTypeInfo />
-
+          <PatientCardTypeInfo />
         </div>
-
       </div>
       <div className="mt-4 pt-4 border-t border-base-300">
         <p className="text-xs text-base-content/50 uppercase tracking-wide mb-2">Insurance</p>
@@ -81,6 +77,7 @@ const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => 
                 <div className="flex items-center gap-2 text-sm">
                   <span className="text-base-content/70">
                     {h.provider || '—'} <span className="text-base-content/50">({h.plan || '—'})</span>
+                    {h.memberId && <span className="text-base-content/40 ml-1">· ID: {h.memberId}</span>}
                   </span>
                   <span className={`badge badge-sm ${isExpired(h) ? 'badge-error' : 'badge-info'}`}>
                     {isExpired(h) ? 'Expired' : 'Active'}
