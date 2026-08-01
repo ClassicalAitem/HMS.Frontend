@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
+import { Header, EmptyState  } from "@/components/common";
+import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/medical-director/patient/PatientHeaderActions";
-import PatientSummaryCard from "@/components/medical-director/patient/PatientSummaryCard";
 import MedicalHistoryTable from "@/components/medical-director/patient/MedicalHistoryTable";
 import CurrentVitalsCard from "@/components/medical-director/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/medical-director/patient/VitalsHistoryTable";
@@ -153,37 +153,39 @@ const lockAndNavigate = async (path, options) => {
 
 
 const summarySubject = useMemo(() => {
-  if (!isViewingDependant) return patient;
+  if (!isViewingDependant) {
+    const guardian = patient || {};
+    return {
+      id: guardian.id,
+      fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
+      gender: guardian.gender,
+      phone: guardian.phone || guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      status: guardian.status,
+      hmos: Array.isArray(guardian.hmos) ? guardian.hmos : [],
+      relationshipType: null,
+    };
+  }
 
   const dep = subject || dependantSnapshot || {};
-  const guardian = dep.patient || patient || {}; 
+  const guardian = dep.patient || patient || {};
 
   const ownHmos = Array.isArray(guardian.hmos)
     ? guardian.hmos.filter(h => h.dependantId === dep.id)
     : [];
 
   return {
-
-    phone: guardian.phone,
-    phoneNumber: guardian.phoneNumber,
-    hospitalId: guardian.hospitalId,
-    cardType: guardian.cardType,
-    familyName: guardian.familyName,
-    companyName: guardian.companyName,
-    status: guardian.status,
-
-    
     id: dep.id || dependantId,
-    firstName: dep.firstName,
-    middleName: dep.middleName,
-    lastName: dep.lastName,
-    fullName: dep.fullName,
-    gender: dep.gender,
-    dob: dep.dob,
-    relationshipType: dep.relationshipType,
+    fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Dependant',
+    gender: dep.gender || '—',
+    phone: dep.phone || guardian.phone || guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    status: dep.status || dependantSnapshot?.status || 'Unknown',
     hmos: ownHmos,
+    relationshipType: dep.relationshipType,
   };
 }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+
 
   useEffect(() => {
     let mounted = true;
@@ -940,8 +942,13 @@ const dependant = isDependant
             onBack={() => navigate(fromIncoming ? "/dashboard/medical-director/incoming" : "/dashboard/medical-director/patientVitals")}
           />
 
-          <PatientSummaryCard patient={summarySubject} loading={loading || subjectLoading} />
-
+            {/* Patient Info */}
+            <PatientDetailsCard
+              patientId={patientId}
+              patient={patient}
+              summarySubject={summarySubject}
+              isViewingDependant={isViewingDependant}
+            />
           {isViewingDependant && summarySubject?.fullName && (
             <div className="mb-4 text-sm text-base-content/70">
               Viewing records for <strong>{summarySubject.fullName}</strong>
@@ -956,6 +963,7 @@ const dependant = isDependant
                 patient={patient}
                 defaultDependantId={dependantId}
                 defaultDependantLabel={summarySubject?.fullName}
+                lockSubject
                 onUpdated={() => navigate('/dashboard/medical-director')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
