@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { addHmoForPatient } from '@/services/api/hmoAPI';
@@ -11,8 +11,16 @@ const AddHmoModal = ({ isOpen, onClose, patient, dependantId = null, onSuccess }
   const [hmos, setHmos] = useState([ { ...emptyHmo } ]);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+  if (isOpen) {
+    setHmos([{ ...emptyHmo }]);
+  }
+}, [isOpen, dependantId]);
+
   if (!isOpen || !patient) return null;
 
+
+  if (!isOpen || !patient) return null;
   const handleChange = (index, field, value) => {
     setHmos(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
