@@ -369,6 +369,7 @@ const IncomingHmoDetails = () => {
                 patient={patient}
                 defaultDependantId={dependantId}
                 defaultDependantLabel={fullName}
+                lockSubject
                 onUpdated={() => navigate('/dashboard/hmo')}
                 allowedRoles={[
                   'nurse',
@@ -380,66 +381,7 @@ const IncomingHmoDetails = () => {
                 ]}
               />
          </div>
-            {hmos.length > 0 && (
-              <div className="card bg-base-100 border border-base-200 mb-6">
-                <div className="card-body p-0">
-                  <div className="px-5 py-3 bg-base-200/40 border-b border-base-200">
-                    <p className="text-sm font-semibold text-base-content">
-                      Insurance / HMO Records
-                      <span className="ml-2 badge badge-info badge-sm">
-                        {hmos.length}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="table table-sm w-full">
-                      <thead>
-                        <tr className="border-b border-base-200">
-                          <th>Provider</th>
-                          <th>Plan</th>
-                          <th>Member ID</th>
-                          <th>Expires</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {hmos.map((hmo, idx) => {
-                          const isExpired = hmo.expiresAt
-                            ? new Date(hmo.expiresAt) < new Date()
-                            : false;
-                          return (
-                            <tr
-                              key={hmo.id || idx}
-                              className="border-b border-base-200 last:border-0"
-                            >
-                              <td className="font-medium capitalize">
-                                {hmo.provider || '—'}
-                              </td>
-                              <td className="capitalize">{hmo.plan || '—'}</td>
-                              <td className="font-mono text-sm">
-                                {hmo.memberId || '—'}
-                              </td>
-                              <td className="text-sm">
-                                {hmo.expiresAt
-                                  ? formatNigeriaDateShort(hmo.expiresAt)
-                                  : '—'}
-                              </td>
-                              <td>
-                                <span
-                                  className={`badge badge-sm ${isExpired ? 'badge-error' : 'badge-success'}`}
-                                >
-                                  {isExpired ? 'Expired' : 'Active'}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
+           
 
             {/* Bulk actions */}
             {!loading && billings.length > 0 && (

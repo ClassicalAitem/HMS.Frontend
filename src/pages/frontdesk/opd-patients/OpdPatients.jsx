@@ -8,7 +8,6 @@ import { getAllOpdPatients, deleteOpdPatient } from '@/services/api/opdPatientAP
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaTrash } from 'react-icons/fa';
-import SendPatientModal from '@/components/modals/SendPatientModal';
 
 const OpdPatients = () => {
   const navigate = useNavigate();

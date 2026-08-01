@@ -64,6 +64,7 @@ const SendPatientModal = ({
   isOpdPatient = false,
     defaultDependantId = null,       
   defaultDependantLabel = null,
+  lockSubject = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(STEP.SUBJECT);
@@ -77,8 +78,8 @@ const SendPatientModal = ({
   const visibleRoles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
 
     // Resolve the locked subject once, if we're scoped to a dependant
-  const lockedSubject = useMemo(() => {
-    if (!defaultDependantId) return null;
+const lockedSubject = useMemo(() => {
+  if (defaultDependantId) {
     const match = dependants.find(d => d.id === defaultDependantId);
     return {
       type: 'dependant',
@@ -88,8 +89,19 @@ const SendPatientModal = ({
         defaultDependantLabel ||
         'Dependant',
     };
-  }, [defaultDependantId, dependants, defaultDependantLabel]);
+  }
 
+  // Not viewing a dependant, but this page still shouldn't show the picker
+  if (lockSubject) {
+    return {
+      type: 'patient',
+      id: patientId,
+      label: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient',
+    };
+  }
+
+  return null;
+}, [defaultDependantId, dependants, defaultDependantLabel, lockSubject, patientId, patient]);
   const open = () => {
     if (lockedSubject) {
       setSelectedSubject(lockedSubject);
@@ -203,7 +215,7 @@ const SendPatientModal = ({
     <>
       {/* Trigger button(s) — kept same as before for backward compat */}
       <div className={containerClass}>
-        <button className="btn btn-primary" onClick={open} disabled={isSending}>
+        <button className="btn btn-primary m-3" onClick={open} disabled={isSending}>
           {lockedSubject ? `Send ${lockedSubject.label}` : 'Send Patient'}
         </button>
       </div>

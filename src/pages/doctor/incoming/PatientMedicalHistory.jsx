@@ -31,6 +31,7 @@ import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtil
 import toast from "react-hot-toast";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
+import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -152,35 +153,38 @@ const lockAndNavigate = async (path, options) => {
 }, [isViewingDependant, dependantId, dependantSnapshot, patient]);
 
 
+
 const summarySubject = useMemo(() => {
-  if (!isViewingDependant) return patient;
+  if (!isViewingDependant) {
+    const guardian = patient || {};
+    return {
+      id: guardian.id,
+      fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
+      gender: guardian.gender,
+      phone: guardian.phone || guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      status: guardian.status,
+      hmos: Array.isArray(guardian.hmos) ? guardian.hmos : [],
+      relationshipType: null,
+    };
+  }
 
   const dep = subject || dependantSnapshot || {};
-  const guardian = dep.patient || patient || {}; 
+  const guardian = dep.patient || patient || {};
 
   const ownHmos = Array.isArray(guardian.hmos)
     ? guardian.hmos.filter(h => h.dependantId === dep.id)
     : [];
 
   return {
-
-    phone: guardian.phone,
-    phoneNumber: guardian.phoneNumber,
-    hospitalId: guardian.hospitalId,
-    cardType: guardian.cardType,
-    familyName: guardian.familyName,
-    companyName: guardian.companyName,
-
-    
     id: dep.id || dependantId,
-    firstName: dep.firstName,
-    middleName: dep.middleName,
-    lastName: dep.lastName,
-    fullName: dep.fullName,
-    gender: dep.gender,
-    dob: dep.dob,
-    relationshipType: dep.relationshipType,
+    fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Dependant',
+    gender: dep.gender || '—',
+    phone: dep.phone || guardian.phone || guardian.phoneNumber,
+    hospitalId: guardian.hospitalId,
+    status: dep.status || dependantSnapshot?.status || 'Unknown',
     hmos: ownHmos,
+    relationshipType: dep.relationshipType,
   };
 }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 
@@ -939,7 +943,13 @@ const dependant = isDependant
             onBack={() => navigate(fromIncoming ? "/dashboard/doctor/incoming" : "/dashboard/doctor/patientVitals")}
           />
 
-          <PatientSummaryCard patient={summarySubject} loading={loading || subjectLoading} />
+           {/* Patient Info */}
+            <PatientDetailsCard
+              patientId={patientId}
+              patient={patient}
+              summarySubject={summarySubject}
+              isViewingDependant={isViewingDependant}
+            />
 
           {isViewingDependant && summarySubject?.fullName && (
             <div className="mb-4 text-sm text-base-content/70">
@@ -955,6 +965,7 @@ const dependant = isDependant
                 patient={patient}
                 defaultDependantId={dependantId}
                 defaultDependantLabel={summarySubject?.fullName}
+                lockSubject
                 onUpdated={() => navigate('/dashboard/doctor')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
