@@ -15,7 +15,6 @@ import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
-import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ranges = {
   HB: 'g/dl (11-16)',
