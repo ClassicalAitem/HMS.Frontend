@@ -668,6 +668,7 @@ useEffect(() => {
               patient={patient}
               defaultDependantId={dependantId}
               defaultDependantLabel={summarySubject?.fullName}
+              lockSubject
               onUpdated={() => navigate('/dashboard/nurse')}
               allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
               containerClass="flex flex-wrap gap-2"
