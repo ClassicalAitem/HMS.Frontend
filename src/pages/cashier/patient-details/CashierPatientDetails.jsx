@@ -9,9 +9,8 @@ import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/servi
 import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
-import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
-import { PatientCardTypeInfo } from '@/components/common';
+import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 
 
 const CashierPatientDetails = () => {
@@ -112,38 +111,9 @@ const CashierPatientDetails = () => {
   }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 
   const fullName = summarySubject.fullName;
-  const gender = summarySubject.gender || '—';
-  const phone = summarySubject.phone || '—';
-  const patientIdDisplay = summarySubject.hospitalId || '—';
-  const statusDisplay = summarySubject.status || 'Unknown';
-  const prettyStatus = String(statusDisplay).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   const hmoList = summarySubject.hmos;
 
-  const insuranceProvider = hmoList.length
-    ? hmoList.map(h => `${h.provider || '—'} (${h.plan || '—'})`).join(', ')
-    : 'None';
-
-  const isAnyExpired = hmoList.some(h => {
-    const expiresAt = h.expiresAt || h.expiryDate;
-    return expiresAt ? new Date(expiresAt) < new Date() : false;
-  });
-
-  const insuranceStatus = hmoList.length
-    ? (isAnyExpired ? 'Expired' : 'Active')
-    : 'Inactive';
-
-  const getReceiptStatus = (receipt) => {
-    if (!receipt.hmoId) return "paid"; // self-pay, cashier collected
-    const items = receipt.items || [];
-    if (items.every(i => i.hmoStatus === "approved")) return "approved";
-    if (items.some(i => i.hmoStatus === "partial")) return "partial";
-    if (items.every(i => i.hmoStatus === "rejected")) return "rejected";
-    return "pending";
-  }
-
-  // Fetch guardian patient details — always needed even for dependant view,
-  // since hospitalId/insurance/phone fall back to the guardian's record
   useEffect(() => {
     if (patientId && !location?.state?.patientSnapshot) {
       dispatch(fetchPatientById(patientId));
@@ -282,80 +252,21 @@ const CashierPatientDetails = () => {
       <div className="mb-8">
 
 
-        {isViewingDependant && (
-          <div className="mb-4 text-sm text-base-content/70">
-            Viewing billing for <strong>{fullName}</strong>
-            {summarySubject.relationshipType ? ` (${summarySubject.relationshipType})` : ''}
-            {' '}— Dependant of <strong>{`${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()}</strong>
-          </div>
-        )}
-
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-regular text-base-content mb-6">
-            {isViewingDependant ? 'Dependant Details' : 'Patient Details'}
+          
           </h2>
           <button className="btn btn-outline btn-sm" onClick={() => navigate('/cashier/incoming')}>
             ← Back to Incoming
           </button>
         </div>
 
-        {/* Patient Details Card — unchanged below, now driven by summarySubject-derived values */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex items-center gap-6">
-            <div className="w-15 h-15 2xl:w-20 2xl:h-20 rounded-full border-2 border-primary overflow-hidden">
-              {patient?.photo || patient?.profilePicture ? (
-                <img src={patient?.photo || patient?.profilePicture} alt={fullName} className="object-cover w-20 h-20" />
-              ) : (
-                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-primary">{fullName?.charAt(0)}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex-1 grid grid-cols-5 gap-6">
-              <div>
-                <p className="text-xs text-base-content/50 uppercase tracking-wide">
-                  {isViewingDependant ? 'Dependant Name' : 'Patient Name'}
-                </p>
-                <p className="text-md 2xl:text-lg font-semibold text-base-content">{fullName}</p>
-              </div>
-              <div>
-                <p className="text-xs text-base-content/50 uppercase tracking-wide">Gender</p>
-                <p className="text-md 2xl:text-lg font-semibold text-base-content">{gender}</p>
-              </div>
-              <div>
-                <p className="text-xs text-base-content/50 uppercase tracking-wide">Phone Number</p>
-                <p className="text-md 2xl:text-lg font-semibold text-base-content">{phone}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-xs text-base-content/50 uppercase tracking-wide">
-                  {isViewingDependant ? 'Parent Patient ID' : 'Patient ID'}
-                </p>
-                <p className="text-md 2xl:text-lg font-semibold text-base-content">{patientIdDisplay}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-xs text-base-content/50">Status</span>
-                <span className={`badge ${
-                  String(statusDisplay).toLowerCase().includes('cashier') ? 'badge-warning' :
-                  String(statusDisplay).toLowerCase().includes('completed') ? 'badge-success' :
-                  'badge-neutral'
-                }`}>{prettyStatus}</span>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 pt-4 border-t border-base-300 flex items-center justify-between">
-            <p className="text-sm text-base-content/70">• Insurance: <span className="font-medium text-base-content">{insuranceProvider}</span></p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-base-content/50">Status</span>
-              <span className={`badge ${
-                insuranceStatus === 'Expired' ? 'badge-error' :
-                insuranceStatus === 'Active' ? 'badge-info' :
-                'badge-neutral'
-              }`}>{insuranceStatus}</span>
-            </div>
-          </div>
-        </div>
+      <PatientDetailsCard
+        patient={patient}
+        summarySubject={summarySubject}
+        isViewingDependant={isViewingDependant}
+      />
+
 
 
 
