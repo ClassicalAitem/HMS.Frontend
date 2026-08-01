@@ -515,6 +515,7 @@ const CashierPatientDetails = () => {
                 patient={patient}
                 defaultDependantId={dependantId}
                 defaultDependantLabel={fullName}
+                lockSubject
                 onUpdated={() => navigate('/cashier/dashboard')}
                 allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo']}
               />

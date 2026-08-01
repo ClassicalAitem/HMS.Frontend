@@ -14,6 +14,8 @@ import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import SendPatientModal from '@/components/modals/SendPatientModal'
 import PatientSummaryCard from '@/components/pharmacist/dashboard/PatientSummaryCard'
+import PatientDetailsCard from '@/components/common/PatientDetailsCard'
+import dispensesAPI from '@/services/api/dispensesAPI'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -226,7 +228,19 @@ useEffect(() => {
 
 
   const summarySubject = useMemo(() => {
-    if (!isViewingDependant) return patient;
+    if (!isViewingDependant) {
+      const guardian = patient || {};
+      return {
+        id: guardian.id,
+        fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
+        gender: guardian.gender,
+        phone: guardian.phone || guardian.phoneNumber,
+        hospitalId: guardian.hospitalId,
+        status: guardian.status,
+        hmos: Array.isArray(guardian.hmos) ? guardian.hmos : [],
+        relationshipType: null,
+      };
+    }
 
     const dep = subject || dependantSnapshot || {};
     const guardian = dep.patient || patient || {};
@@ -236,33 +250,65 @@ useEffect(() => {
       : [];
 
     return {
-
-      phone: guardian.phone,
-      phoneNumber: guardian.phoneNumber,
-      hospitalId: guardian.hospitalId,
-      cardType: guardian.cardType,
-      familyName: guardian.familyName,
-      companyName: guardian.companyName,
-
-
       id: dep.id || dependantId,
-      firstName: dep.firstName,
-      middleName: dep.middleName,
-      lastName: dep.lastName,
-      fullName: dep.fullName,
-      gender: dep.gender,
-      dob: dep.dob,
-      relationshipType: dep.relationshipType,
+      fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Dependant',
+      gender: dep.gender || '—',
+      phone: dep.phone || guardian.phone || guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      status: dep.status || dependantSnapshot?.status || 'Unknown',
       hmos: ownHmos,
+      relationshipType: dep.relationshipType,
     };
   }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 
-  const handleComplete = async () => {
+
+  const buildDispenseItems = (medications = []) => {
+  const items = [];
+  const missing = [];
+
+  medications.forEach((med) => {
+    const inv = inventory.find(
+      (i) => i.name.toLowerCase() === med.drugName.toLowerCase()
+    );
+
+    if (!inv || !inv._id || !inv.batchNumber) {
+      missing.push(med.drugName);
+      return;
+    }
+
+    items.push({
+      inventoryId: inv._id,
+      drugName: med.drugName,
+      quantity: calculateQuantity(med),
+      batchNumber: inv.batchNumber,
+    });
+  });
+
+  return { items, missing };
+};
+
+    const handleComplete = async () => {
     const activePrescriptions = prescriptions.active;
     if (!activePrescriptions.length) return
 
     const pid = patient?.id || patient?._id || patient?.patientId
 
+    const dispenseCalls = [];
+    activePrescriptions.forEach((p) => {
+      const { items, missing } = buildDispenseItems(p.medications);
+      if (missing.length) {
+        toast.error(`No matching inventory for: ${missing.join(', ')} — not dispensed`);
+      }
+      if (items.length) {
+        dispenseCalls.push(
+          dispensesAPI.createDispense(p._id, {
+            items,
+            pharmacistId,
+            status: 'dispensed',
+          })
+        );
+      }
+    });
 
     const promise = Promise.all([
       ...activePrescriptions.map(p =>
@@ -283,7 +329,9 @@ useEffect(() => {
 
       ...activePrescriptions.map(p =>
         reduceInventoryStock(p.medications)
-      )
+      ),
+
+      ...dispenseCalls,
     ])
 
     toast.promise(promise, {
@@ -294,7 +342,7 @@ useEffect(() => {
 
     try {
       await promise
-
+      
       setInventory(prev =>
         prev.map(item => {
           const meds = activePrescriptions.flatMap(p => p.medications || []);
@@ -356,15 +404,13 @@ useEffect(() => {
             Back To Incoming
           </button>
           </div>
-                      <PatientSummaryCard
-                        patient={isViewingDependant
-                          ? {
-                              ...incomingDependantSnapshot,
-                              hospitalId: patient?.hospitalId || '—',
-                            }
-                          : patient}
-                        loading={loading}
-                      />
+                       {/* Patient Info */}
+            <PatientDetailsCard
+              patientId={patientId}
+              patient={patient}
+              summarySubject={summarySubject}
+              isViewingDependant={isViewingDependant}
+            />
           {isViewingDependant && incomingDependantSnapshot && (
             <div className="text-sm text-base-content/70 mb-3">
               Viewing prescriptions for <strong>{`${incomingDependantSnapshot.firstName || ''} ${incomingDependantSnapshot.lastName || ''}`.trim()}</strong>
@@ -379,6 +425,7 @@ useEffect(() => {
                 patient={patient}
                 defaultDependantId={dependantId}
                 defaultDependantLabel={summarySubject?.fullName}
+                lockSubject
                 onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo', 'doctor', 'medical-director']}
               />

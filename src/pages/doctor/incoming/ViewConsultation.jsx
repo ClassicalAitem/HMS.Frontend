@@ -1047,6 +1047,7 @@ const ViewConsultation = () => {
               patient={patient}
               defaultDependantId={dependantId}
               defaultDependantLabel={summarySubject?.fullName}
+              lockSubject
               onUpdated={() => navigate('/dashboard/doctor')}
               allowedRoles={[
                 'nurse',
