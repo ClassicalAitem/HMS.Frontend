@@ -139,7 +139,7 @@ const IncomingHmoDetails = () => {
         phone: guardian.phone || guardian.phoneNumber,
         hospitalId: guardian.hospitalId,
         status: guardian.status,
-        hmos: Array.isArray(guardian.hmos) ? guardian.hmos : [],
+        hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
       };
     }
@@ -175,9 +175,14 @@ const IncomingHmoDetails = () => {
         const res = await getConsultations({ patientId });
         const raw = res?.data?.data ?? res?.data ?? res ?? [];
         const list = Array.isArray(raw) ? raw : (raw?.consultations ?? []);
+
+         const scoped = list.filter((c) =>
+          isViewingDependant ? c.dependantId === dependantId : !c.dependantId
+        );
+
         if (mounted) {
           setConsultations(
-            [...list].sort(
+            [...scoped].sort(
               (a, b) =>
                 new Date(b.createdAt || 0).getTime() -
                 new Date(a.createdAt || 0).getTime(),
@@ -194,7 +199,7 @@ const IncomingHmoDetails = () => {
     return () => {
       mounted = false;
     };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
     setItemDecisions((prev) => ({
