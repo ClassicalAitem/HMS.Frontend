@@ -203,7 +203,7 @@ const SendPatientModal = ({
     <>
       {/* Trigger button(s) — kept same as before for backward compat */}
       <div className={containerClass}>
-        <button className="btn btn-sm btn-primary" onClick={open} disabled={isSending}>
+        <button className="btn btn-primary" onClick={open} disabled={isSending}>
           {lockedSubject ? `Send ${lockedSubject.label}` : 'Send Patient'}
         </button>
       </div>
