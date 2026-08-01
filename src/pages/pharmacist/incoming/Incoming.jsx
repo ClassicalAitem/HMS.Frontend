@@ -155,15 +155,11 @@ const Incoming = () => {
                     </span>
                   </div>
                   <div className="text-xs text-base-content/60">
-                    {p.type === 'dependant' ? `Parent: ${p.displayId}` : `ID: ${p.displayId}`}
+                    {p.type === 'dependant' ? `Patient ID: ${p.displayId}` : `Patient ID: ${p.displayId}`}
                   </div>
                 </div>
               </div>
-              <PatientCardTypeInfo
-                cardType={p.cardType}
-                familyName={p.familyName}
-                companyName={p.companyName}
-              />
+              
               <div className="flex justify-between items-center border-t pt-3">
                 <button className="text-sm text-primary hover:underline" onClick={() => handleViewDetails(p)}>View Details</button>
                 <div className="text-xs text-base-content/60">Updated: {p.updatedAt ? formatNigeriaDateTime(p.updatedAt) : '—'}</div>
