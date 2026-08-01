@@ -332,7 +332,7 @@ const IncomingLaboratory = () => {
       ).sort((a, b) => {
         const aTime = new Date(a.createdAt || 0).getTime();
         const bTime = new Date(b.createdAt || 0).getTime();
-        return aTime - bTime; 
+        return bTime - aTime; 
       });
 
       setTestRequests(uniqueRequests);
