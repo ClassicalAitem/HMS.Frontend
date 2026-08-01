@@ -344,6 +344,7 @@ const SonographerIncomingDetails = () => {
                 patient={patient}
                 defaultDependantId={dependantId}
                 // defaultDependantLabel={fullName}
+                lockSubject
                 onUpdated={() => navigate('/cashier/dashboard')}
                 allowedRoles={[ 'doctor', 'medical-director', 'labtechnician']}
               />
