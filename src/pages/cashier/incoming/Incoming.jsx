@@ -15,7 +15,7 @@ const Incoming = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
   const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     let mounted = true;
@@ -137,11 +137,11 @@ const Incoming = () => {
     const sorted = filtered.sort((a, b) => {
       if (sortField === 'name') {
         const cmp = a.name.localeCompare(b.name);
-        return sortOrder === 'asc' ? cmp : -cmp;
+        return sortOrder === 'desc' ? -cmp : cmp; // desc = Z→A, asc = A→Z
       }
       const at = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const bt = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      return sortOrder === 'asc' ? at - bt : bt - at;
+      return sortOrder === 'desc' ? bt - at : at - bt; // desc = newest first, asc = oldest first
     });
 
     return sorted;
