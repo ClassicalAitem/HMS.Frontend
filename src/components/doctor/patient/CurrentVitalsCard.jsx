@@ -1,8 +1,9 @@
 import React from "react";
-import { FiHeart, FiClock } from "react-icons/fi";
+import { FiHeart, FiClock, FiUser } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
 import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
 import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
+import { useNurseName } from "@/utils/useNurseName";
 
 
 const formatRelativeTime = (dateInput) => {
@@ -21,6 +22,7 @@ const formatRelativeTime = (dateInput) => {
 };
 
 const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidden = false }) => {
+  const nurseName = useNurseName(latest?.nurseId);
   const isStale = latest?.updatedAt && (Date.now() - new Date(latest.updatedAt).getTime() > 24 * 60 * 60 * 1000);
 
   const bmi = latest?.weight && latest?.height ? (latest.weight / Math.pow(latest.height / 100, 2)).toFixed(1) : null;
@@ -33,16 +35,25 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-base-content">Current Vitals</h2>
               {/* {isStale && <span className="badge badge-warning">Stale</span>} */}
-              <span
+              {nurseName && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <FiUser className="w-4 h-4" /> Recorded by NURSE {nurseName}
+                  </span>
+                </>
+              )}
+             
+            </div>
+            <div>
+              <span className="text-base font-medium text-base-content">{latest?.forName || patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}     </span>
+               <span
                 className={`badge ${
                   latest?.isForDependant ? 'badge-secondary' : 'badge-primary'
                 }`}
               >
                 {latest?.isForDependant ? 'Dependant' : 'Patient'}
               </span>
-            </div>
-            <div>
-              <span className="text-base font-medium text-base-content">{latest?.forName || patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || "Patient"}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-base-content/70 mt-1">
               {patient?.ward || patient?.bed ? (
