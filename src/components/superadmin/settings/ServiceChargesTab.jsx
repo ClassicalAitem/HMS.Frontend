@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
+import React, { useState, useEffect, useMemo } from 'react';
+import { FaPlus, FaEdit, FaTrash, FaSearch, FaTimes } from 'react-icons/fa';
 import { AddServiceChargeModal, EditServiceChargeModal } from '@/components/modals';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deleteServiceCharge, fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
@@ -9,6 +9,7 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedServiceCharge, setSelectedServiceCharge] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const dispatch = useAppDispatch();
   const { serviceCharges, isLoading, error } = useAppSelector(
     (state) => state.serviceCharges
@@ -84,17 +85,61 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
     }
   };
 
+  // Apply category filter (from parent tabs) then search filter (by service name or category)
+  const visibleServiceCharges = useMemo(() => {
+    if (!serviceCharges) return [];
+
+    let list = categoryFilter
+      ? serviceCharges.filter(
+          (sc) => (sc?.category || '').toLowerCase() === String(categoryFilter || '').toLowerCase()
+        )
+      : serviceCharges;
+
+    const term = searchTerm.trim().toLowerCase();
+    if (term) {
+      list = list.filter((sc) => {
+        const service = (sc?.service || '').toLowerCase();
+        const category = (sc?.category || '').toLowerCase();
+        return service.includes(term) || category.includes(term);
+      });
+    }
+
+    return list;
+  }, [serviceCharges, categoryFilter, searchTerm]);
+
   return (
     <div className="bg-base-100 rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-semibold text-base-content">Service Charges</h2>
-        <button
-          onClick={handleAddServiceCharge}
-          className="btn btn-primary"
-        >
-          <FaPlus className="w-4 h-4 mr-2" />
-          Add Service Charge
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search service charges..."
+              className="input input-bordered input-sm w-56 sm:w-64 pl-9 pr-8"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                title="Clear search"
+              >
+                <FaTimes className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={handleAddServiceCharge}
+            className="btn btn-primary"
+          >
+            <FaPlus className="w-4 h-4 mr-2" />
+            Add Service Charge
+          </button>
+        </div>
       </div>
 
       {/* Error Display */}
@@ -120,11 +165,8 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
               </tr>
             </thead>
             <tbody>
-              {serviceCharges && serviceCharges.length > 0 ? (
-                (categoryFilter
-                  ? serviceCharges.filter((sc) => (sc?.category || '').toLowerCase() === String(categoryFilter || '').toLowerCase())
-                  : serviceCharges
-                ).map((serviceCharge) => (
+              {visibleServiceCharges.length > 0 ? (
+                visibleServiceCharges.map((serviceCharge) => (
                   <tr key={serviceCharge.id}>
                     <td>
                       <div className="font-medium text-base-content">
@@ -169,7 +211,7 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
               ) : (
                 <tr>
                   <td colSpan="5" className="text-center text-base-content/50 py-8">
-                    No service charges found
+                    {searchTerm ? `No service charges match "${searchTerm}"` : 'No service charges found'}
                   </td>
                 </tr>
               )}
