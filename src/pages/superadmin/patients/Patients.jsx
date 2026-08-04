@@ -47,13 +47,87 @@ const StatusBadge = ({ status }) => {
     ? status[0]
     : status;
 
-  const getBadgeClass = (s) => {
-    switch (s?.toLowerCase()) {
+  const getBadgeClass = (statusValue) => {
+    switch (statusValue?.toLowerCase()) {
+      // Registration / active
       case 'registered':
       case 'active':
         return 'badge badge-success';
       case 'inactive':
         return 'badge badge-neutral';
+
+      // Awaiting-anything — queued, nothing happening yet
+      case 'awaiting_front_desk':
+      case 'awaiting_payment':
+      case 'awaiting_vitals':
+      case 'awaiting_consultation':
+      case 'awaiting_doctor':
+      case 'awaiting_md':
+      case 'awaiting_sampling':
+      case 'awaiting_review':
+      case 'awaiting_injection':
+      case 'awaiting_cashier':
+      case 'awaiting_hmo':
+      case 'awaiting_nurse':
+      case 'awaiting_lab':
+      case 'awaiting_sonographer':
+      case 'awaiting_radiology':
+      case 'awaiting_pharmacy':
+      case 'awaiting_admission':
+      case 'awaiting_surgery':
+      case 'awaiting_discharge_approval':
+      case 'awaiting_follow_up':
+        return 'badge badge-warning';
+
+      // In progress / milestone reached — active work happening
+      case 'vitals_completed':
+      case 'in_consultation':
+      case 'consultation_completed':
+      case 'sampling_completed':
+      case 'review_completed':
+      case 'injection_completed':
+      case 'lab_in_progress':
+      case 'lab_completed':
+      case 'sonography_completed':
+      case 'radiology_in_progress':
+      case 'radiology_completed':
+      case 'pharmacy_completed':
+      case 'discharge_in_progress':
+      case 'post_surgery_recovery':
+      case 'post_surgery_observation':
+        return 'badge badge-info';
+
+      // Admitted / under care — ongoing significant state
+      case 'admitted':
+      case 'under_observation':
+        return 'badge badge-primary';
+
+      // Positive terminal states
+      case 'hmo_approved':
+      case 'payment_completed':
+      case 'surgery_completed':
+      case 'discharged':
+      case 'follow_up_completed':
+      case 'completed':
+        return 'badge badge-success';
+
+      // Urgent / needs attention
+      case 'surgery_in_progress':
+      case 'isolated':
+        return 'badge badge-error';
+
+      // Negative / rejected outcomes
+      case 'hmo_rejected':
+      case 'no_show':
+      case 'cancelled':
+        return 'badge badge-error';
+
+      // Neutral holding states
+      case 'transferred':
+      case 'referred':
+      case 'deceased':
+        return 'badge badge-neutral';
+
       default:
         return 'badge badge-neutral';
     }
