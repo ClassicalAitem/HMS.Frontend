@@ -61,6 +61,7 @@ import AddProcedureModal from './modals/AddProcedureModal';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -772,6 +773,7 @@ const ViewConsultation = () => {
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200/50">
+         {loading && <KolakLoader fullscreen />}
         <div
           className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
