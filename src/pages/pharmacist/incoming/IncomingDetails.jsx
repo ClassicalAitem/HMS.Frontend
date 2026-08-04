@@ -1,19 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react'
+﻿import React, { useEffect, useMemo, useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
-import { getInventories, updateInventory } from '@/services/api/inventoryAPI'
-import { AddDrugModal } from '@/components/modals'
+import { getInventories } from '@/services/api/inventoryAPI'
+import { AddDrugModal, DispenseConfirmModal } from '@/components/modals'
 import { hasStatus } from '@/utils/statusUtils'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
-import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import SendPatientModal from '@/components/modals/SendPatientModal'
-import PatientSummaryCard from '@/components/pharmacist/dashboard/PatientSummaryCard'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import dispensesAPI from '@/services/api/dispensesAPI'
 
@@ -24,76 +22,67 @@ const IncomingDetails = () => {
   const incomingDependantId = location?.state?.dependantId || null
   const incomingDependantSnapshot = location?.state?.dependantSnapshot || null
   const isViewingDependant = !!incomingDependantId
-  const dependantId = location?.state?.dependantId || null;
-  const dependantSnapshot = location?.state?.dependantSnapshot || null;
-  const [subject, setSubject] = useState(null);
-  const [subjectLoading, setSubjectLoading] = useState(true);
+  const dependantId = location?.state?.dependantId || null
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  const [prescriptions, setPrescriptions] = useState({
-    active: [],
-    history: []
-  })
-
+  const [prescriptions, setPrescriptions] = useState({ active: [], history: [] })
   const [patient, setPatient] = useState(null)
   const [inventory, setInventory] = useState([])
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
+  const [dispenseModalRows, setDispenseModalRows] = useState(null)
+  const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
   const [dependants, setDependants] = useState([])
   const currentUser = useAppSelector((state) => state.auth.user)
 
   const pharmacistId = currentUser?.id || currentUser?._id
   const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
 
-useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true
 
-  const fetch = async () => {
-    setLoading(true);
-    setError(null);
+    const fetch = async () => {
+      setLoading(true)
+      setError(null)
 
-    try {
-      // inventory
-      const invRes = await getInventories();
-      const invData = invRes?.data ?? [];
-      if (mounted) setInventory(invData);
+      try {
+        const invRes = await getInventories()
+        if (mounted) setInventory(invRes?.data ?? [])
 
-      // prescriptions
-      const presRes = await getPrescriptionByPatientId(patientId);
-      const presData = presRes?.data ?? presRes;
-      const list = Array.isArray(presData) ? presData : (presData ? [presData] : []);
+        const presRes = await getPrescriptionByPatientId(patientId)
+        const presData = presRes?.data ?? presRes
+        const list = Array.isArray(presData) ? presData : presData ? [presData] : []
 
-      const filtered = isViewingDependant
-        ? list.filter(p => p.dependantId === incomingDependantId)
-        : list.filter(p => !p.dependantId);
+        const filtered = isViewingDependant
+          ? list.filter((p) => p.dependantId === incomingDependantId)
+          : list.filter((p) => !p.dependantId)
 
-      const active = filtered.filter(p => String(p.status).toLowerCase() !== 'completed');
-      const history = filtered
-        .filter(p => String(p.status).toLowerCase() === 'completed')
-        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        const active = filtered.filter((p) => String(p.status).toLowerCase() !== 'completed')
+        const history = filtered
+          .filter((p) => String(p.status).toLowerCase() === 'completed')
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
 
-      if (mounted) setPrescriptions({ active, history });
+        if (mounted) setPrescriptions({ active, history })
 
-      //  patient + dependants
-      const pRes = await getPatientById(patientId);
-      const pData = pRes?.data ?? pRes;
+        const pRes = await getPatientById(patientId)
+        const pData = pRes?.data ?? pRes
 
-      if (mounted) {
-        setPatient(pData);
-        setDependants(pData?.dependants || pData?.dependant || []);
+        if (mounted) {
+          setPatient(pData)
+          setDependants(pData?.dependants || pData?.dependant || [])
+        }
+      } catch (err) {
+        console.error(err)
+        if (mounted) setError(err)
+      } finally {
+        if (mounted) setLoading(false)
       }
-
-    } catch (err) {
-      console.error(err);
-      if (mounted) setError(err);
-    } finally {
-      if (mounted) setLoading(false);
     }
-  };
 
-  fetch();
-  return () => { mounted = false };
-}, [patientId]);
+    fetch()
+    return () => { mounted = false }
+  }, [patientId, incomingDependantId, isViewingDependant])
 
   const calculateQuantity = (med) => {
     const freqMap = {
@@ -101,77 +90,73 @@ useEffect(() => {
       'twice daily': 2,
       'three times daily': 3,
       'four times daily': 4,
-    };
+    }
 
-    const frequency = freqMap[med.frequency?.toLowerCase()] || 1;
-    const days = parseInt(med.duration) || 1;
+    const frequencyText = (med.frequency || '').toLowerCase()
+    let timesPerDay = freqMap[frequencyText]
 
-    return frequency * days;
-  };
+    if (!timesPerDay) {
+      const match = frequencyText.match(/\d+/)
+      timesPerDay = match ? parseInt(match[0], 10) : 1
+    }
 
-  //  reusable render
+    const daysMatch = (med.duration || '').match(/\d+/)
+    const days = daysMatch ? parseInt(daysMatch[0], 10) : 1
+
+    return timesPerDay * days
+  }
+
   const renderMedications = (list = [], isHistory = false) => {
     if (!list.length) {
       return <div className="text-sm text-base-content/60">No data.</div>
     }
 
-    const meds = list.flatMap(p => {
-      const isForDependant = !!p.dependantId;
-
+    const meds = list.flatMap((p) => {
+      const isForDependant = !!p.dependantId
       const dependant = isForDependant
-        ? dependants.find(d => d.id === p.dependantId || d._id === p.dependantId)
-        : null;
+        ? dependants.find((d) => d.id === p.dependantId || d._id === p.dependantId)
+        : null
 
       const forName = isForDependant
         ? dependant
           ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
-              : 'Dependant'
-            : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+          : 'Dependant'
+        : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
 
-          return (p.medications || []).map(m => {
-            const inv = inventory.find(i => i.name.toLowerCase() === m.drugName.toLowerCase());
-            return {
-              ...m,
-              form: inv?.form,
-              strength: inv?.strength,
-              status: p.status,              pharmacistName: p.pharmacistName,              _id: p._id,
-              createdAt: p.createdAt,
-              updatedAt: p.updatedAt,
+      return (p.medications || []).map((m) => {
+        const inv = inventory.find((i) => i.name.toLowerCase() === m.drugName.toLowerCase())
+        return {
+          ...m,
+          form: inv?.form,
+          strength: inv?.strength,
+          status: p.status,
+          pharmacistName: p.pharmacistName,
+          _id: p._id,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          isForDependant,
+          dependantId: p.dependantId,
+          patientId: p.patientId,
+          forName,
+        }
+      })
+    })
 
-              isForDependant,
-              dependantId: p.dependantId,
-              patientId: p.patientId,
-              forName,
-            };
-          });
-        });
-
-        return (
-          <div className="space-y-3">
-            {meds.map((m, i) => (
-              <div
-                key={i}
-                className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
-              >
+    return (
+      <div className="space-y-3">
+        {meds.map((m, i) => (
+          <div
+            key={i}
+            className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
+          >
             <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-200">
-
-
-            <span className="font-medium text-sm">
-              {m.forName || 'Unknown'}
-            </span>
-
-
-            {m.isForDependant ? (
-              <span className="badge badge-secondary badge-sm font-medium">
-                Dependant
-              </span>
-            ) : (
-              <span className="badge badge-primary badge-sm font-medium">
-                Main Patient
-              </span>
-            )}
-
-          </div>
+              <span className="font-medium text-sm">{m.forName || 'Unknown'}</span>
+              {m.isForDependant ? (
+                <span className="badge badge-secondary badge-sm font-medium">Dependant</span>
+              ) : (
+                <span className="badge badge-primary badge-sm font-medium">Main Patient</span>
+              )}
+            </div>
 
             <div className="flex justify-between">
               <div>
@@ -186,50 +171,148 @@ useEffect(() => {
               <div className="text-sm text-right space-y-1">
                 <div>Status: {m.status}</div>
                 {m.pharmacistName && (
-                  <div className="text-xs text-base-content/70">
-                    Pharmacist: {m.pharmacistName}
-                  </div>
+                  <div className="text-xs text-base-content/70">Pharmacist: {m.pharmacistName}</div>
                 )}
                 <div className="text-xs text-base-content/60">
-                  Created: {m.createdAt
-                    ? formatNigeriaDateTime(m.createdAt)
-                    : '—'}
+                  Created: {m.createdAt ? formatNigeriaDateTime(m.createdAt) : '—'}
                 </div>
-                {m.instructions && (
-                  <div className="text-xs mt-1">Instruction: {m.instructions}</div>
-                )}
+                {m.instructions && <div className="text-xs mt-1">Instruction: {m.instructions}</div>}
               </div>
             </div>
           </div>
         ))}
       </div>
-    );
-  };
+    )
+  }
 
-  const reduceInventoryStock = async (medications = []) => {
-    const updates = medications.map(async (med) => {
-      const inv = inventory.find(
-        i => i.name.toLowerCase() === med.drugName.toLowerCase()
-      );
+  const buildDispenseRows = () => {
+    return prescriptions.active.flatMap((p) => {
+      const isForDependant = !!p.dependantId
+      const dependant = isForDependant
+        ? dependants.find((d) => d.id === p.dependantId || d._id === p.dependantId)
+        : null
 
-      if (!inv) return;
+      const forName = isForDependant
+        ? dependant
+          ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+          : 'Dependant'
+        : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
 
-      const qtyToRemove = calculateQuantity(med);
-      const newStock = Math.max((inv.stock || 0) - qtyToRemove, 0);
+      return (p.medications || []).map((m) => {
+        const inv = inventory.find((i) => i.name.toLowerCase() === m.drugName.toLowerCase())
 
-      return updateInventory(inv._id, {
-        stock: newStock
-      });
-    });
+        return {
+          key: `${p._id}-${m.drugName}`,
+          prescriptionId: p._id,
+          drugName: m.drugName,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: m.duration,
+          forName,
+          suggestedQty: calculateQuantity(m),
+          formStrength: inv ? `${inv.form || ''} ${inv.strength ? '• ' + inv.strength : ''}`.trim() : '',
+        }
+      })
+    })
+  }
 
-    return Promise.all(updates);
-  };
+  const submitDispense = async (finalRows, action) => {
+    setDispenseSubmitting(true)
 
+    const activePrescriptions = prescriptions.active
+    const pid = patient?.id || patient?._id || patient?.patientId
+    const validRows = (finalRows || []).filter((row) => row && Number(row.quantity) > 0)
 
+    if (!validRows.length) {
+      toast.error('Please set a quantity before confirming dispense.')
+      setDispenseSubmitting(false)
+      return
+    }
+
+    const byPrescription = validRows.reduce((acc, row) => {
+      if (!acc[row.prescriptionId]) acc[row.prescriptionId] = []
+      acc[row.prescriptionId].push({
+        drugName: row.drugName,
+        quantity: Number(row.quantity) || 0,
+      })
+      return acc
+    }, {})
+
+    const dispenseCalls = Object.entries(byPrescription).map(([prescriptionId, items]) =>
+      dispensesAPI.createDispense(prescriptionId, {
+        items,
+        pharmacistId,
+        status: 'dispensed',
+      })
+    )
+
+    const statusUpdate = action === 'sendToNurse'
+      ? isViewingDependant
+        ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_INJECTION })
+        : updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_INJECTION })
+      : isViewingDependant
+        ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+        : updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+
+    const promise = Promise.all([
+      ...activePrescriptions.map((p) =>
+        updatePrescription(p._id, {
+          status: 'completed',
+          pharmacistId,
+          pharmacistName,
+        })
+      ),
+      statusUpdate,
+      ...dispenseCalls,
+    ])
+
+    toast.promise(promise, {
+      loading: action === 'sendToNurse' ? 'Dispensing & sending to nurse...' : 'Dispensing...',
+      success: action === 'sendToNurse' ? 'Sent to nurse' : 'Completed',
+      error: 'Failed — check stock levels',
+    })
+
+    try {
+      await promise
+
+      const invRes = await getInventories()
+      setInventory(invRes?.data ?? [])
+
+      setPrescriptions((prev) => {
+        const updatedHistory = [
+          ...activePrescriptions.map((p) => ({ ...p, status: 'completed', pharmacistId, pharmacistName })),
+          ...prev.history,
+        ]
+
+        return { active: [], history: updatedHistory }
+      })
+
+      setPatient((prev) =>
+        isViewingDependant
+          ? prev
+          : {
+              ...(prev || {}),
+              status: action === 'sendToNurse' ? PATIENT_STATUS.AWAITING_INJECTION : PATIENT_STATUS.PHARMACY_COMPLETED,
+            }
+      )
+
+      setDispenseModalRows(null)
+    } catch (err) {
+      console.error('Dispense submission failed:', err)
+    } finally {
+      setDispenseSubmitting(false)
+    }
+  }
+
+  const handleComplete = () => {
+    if (!prescriptions.active.length) return
+    setPendingAction('complete')
+    setDispenseModalRows(buildDispenseRows())
+  }
 
   const summarySubject = useMemo(() => {
     if (!isViewingDependant) {
-      const guardian = patient || {};
+      const guardian = patient || {}
       return {
         id: guardian.id,
         fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
@@ -239,15 +322,14 @@ useEffect(() => {
         status: guardian.status,
         hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
-      };
+      }
     }
 
-    const dep = subject || dependantSnapshot || {};
-    const guardian = dep.patient || patient || {};
-
+    const dep = patient?.dependants?.find((d) => d.id === dependantId || d._id === dependantId) || incomingDependantSnapshot || {}
+    const guardian = dep.patient || patient || {}
     const ownHmos = Array.isArray(guardian.hmos)
-      ? guardian.hmos.filter(h => h.dependantId === dep.id)
-      : [];
+      ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+      : []
 
     return {
       id: dep.id || dependantId,
@@ -255,162 +337,30 @@ useEffect(() => {
       gender: dep.gender || '—',
       phone: dep.phone || guardian.phone || guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
-      status: dep.status || dependantSnapshot?.status || 'Unknown',
+      status: dep.status || incomingDependantSnapshot?.status || 'Unknown',
       hmos: ownHmos,
       relationshipType: dep.relationshipType,
-    };
-  }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
-
-
-  const buildDispenseItems = (medications = []) => {
-  const items = [];
-  const missing = [];
-
-  medications.forEach((med) => {
-    const inv = inventory.find(
-      (i) => i.name.toLowerCase() === med.drugName.toLowerCase()
-    );
-
-    if (!inv || !inv._id || !inv.batchNumber) {
-      missing.push(med.drugName);
-      return;
     }
-
-    items.push({
-      inventoryId: inv._id,
-      drugName: med.drugName,
-      quantity: calculateQuantity(med),
-      batchNumber: inv.batchNumber,
-    });
-  });
-
-  return { items, missing };
-};
-
-    const handleComplete = async () => {
-    const activePrescriptions = prescriptions.active;
-    if (!activePrescriptions.length) return
-
-    const pid = patient?.id || patient?._id || patient?.patientId
-
-    const dispenseCalls = [];
-    activePrescriptions.forEach((p) => {
-      const { items, missing } = buildDispenseItems(p.medications);
-      if (missing.length) {
-        toast.error(`No matching inventory for: ${missing.join(', ')} — not dispensed`);
-      }
-      if (items.length) {
-        dispenseCalls.push(
-          dispensesAPI.createDispense(p._id, {
-            items,
-            pharmacistId,
-            status: 'dispensed',
-          })
-        );
-      }
-    });
-
-    const promise = Promise.all([
-      ...activePrescriptions.map(p =>
-        updatePrescription(p._id, {
-          status: 'completed',
-          pharmacistId,
-          pharmacistName
-        })
-      ),
-
-      isViewingDependant
-        ? updateDependantStatus(incomingDependantId, {
-            status: PATIENT_STATUS.PHARMACY_COMPLETED
-          })
-        : updatePatientStatus(pid, {
-            status: PATIENT_STATUS.PHARMACY_COMPLETED
-          }),
-
-      ...activePrescriptions.map(p =>
-        reduceInventoryStock(p.medications)
-      ),
-
-      ...dispenseCalls,
-    ])
-
-    toast.promise(promise, {
-      loading: 'Completing...',
-      success: 'Completed',
-      error: 'Failed'
-    })
-
-    try {
-      await promise
-      
-      setInventory(prev =>
-        prev.map(item => {
-          const meds = activePrescriptions.flatMap(p => p.medications || []);
-
-          const totalQtyToRemove = meds
-            .filter(m => m.drugName.toLowerCase() === item.name.toLowerCase())
-            .reduce((sum, m) => sum + calculateQuantity(m), 0);
-
-          if (!totalQtyToRemove) return item;
-
-          return {
-            ...item,
-            stock: Math.max((item.stock || 0) - totalQtyToRemove, 0)
-          };
-        })
-      );
-
-      setPrescriptions(prev => {
-        const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
-        const updatedHistory = [
-          ...activePrescriptions.map(p => ({ ...p, status: 'completed', pharmacistId: currentUser?.id, pharmacistName })),
-          ...prev.history
-        ];
-
-        return {
-          active: [],
-          history: updatedHistory
-        };
-      });
-
-      setPatient(prev => (
-        isViewingDependant
-          ? prev
-          : {
-              ...(prev || {}),
-              status: PATIENT_STATUS.PHARMACY_COMPLETED
-            }
-      ))
-
-
-
-    } catch (e) {
-      toast.error('Failed to complete')
-    }
-  }
+  }, [isViewingDependant, patient, incomingDependantSnapshot, dependantId])
 
   return (
     <PharmacistLayout>
       <div className="p-6">
-
-        {/* header */}
-        <div className="mb-4  justify-between">
-          <div className='mb-4 flex justify-between'>
-
-            <h1 className="text-2xl font-semibold text-primary">
-              Prescription Details
-            </h1>
+        <div className="mb-4 justify-between">
+          <div className="mb-4 flex justify-between">
+            <h1 className="text-2xl font-semibold text-primary">Prescription Details</h1>
             <button className="btn btn-primary btn-sm" onClick={() => navigate(-1)}>
-            Back To Incoming
-          </button>
+              Back To Incoming
+            </button>
           </div>
-                       {/* Patient Info */}
-            <PatientDetailsCard
-              patientId={patientId}
-              patient={patient}
-              summarySubject={summarySubject}
-              isViewingDependant={isViewingDependant}
-            />
+
+          <PatientDetailsCard
+            patientId={patientId}
+            patient={patient}
+            summarySubject={summarySubject}
+            isViewingDependant={isViewingDependant}
+          />
+
           {isViewingDependant && incomingDependantSnapshot && (
             <div className="text-sm text-base-content/70 mb-3">
               Viewing prescriptions for <strong>{`${incomingDependantSnapshot.firstName || ''} ${incomingDependantSnapshot.lastName || ''}`.trim()}</strong>
@@ -418,33 +368,30 @@ useEffect(() => {
               {' '}· dependant of <strong>{patient?.firstName} {patient?.lastName}</strong>
             </div>
           )}
-          <div>
 
-           <SendPatientModal
-                patientId={patientId}
-                patient={patient}
-                defaultDependantId={dependantId}
-                defaultDependantLabel={summarySubject?.fullName}
-                lockSubject
-                onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
-                allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo', 'doctor', 'medical-director']}
-              />
+          <div>
+            <SendPatientModal
+              patientId={patientId}
+              patient={patient}
+              defaultDependantId={dependantId}
+              defaultDependantLabel={summarySubject?.fullName}
+              lockSubject
+              onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
+              allowedRoles={['nurse', 'labtechnician', 'pharmacist', 'cashier', 'hmo', 'doctor', 'medical-director']}
+            />
           </div>
         </div>
 
         <div className="p-6 border rounded-xl bg-base-100">
-
           {loading ? (
             <div className="h-20 bg-base-200 animate-pulse" />
           ) : error ? (
             <div className="text-error">Error loading</div>
           ) : (
             <>
-              {/* ACTIVE */}
               <h3 className="font-medium mb-3">Active</h3>
               {renderMedications(prescriptions.active)}
 
-              {/* BUTTONS */}
               {prescriptions.active.length > 0 && (
                 <div className="mt-4 flex gap-3">
                   <button className="btn btn-primary btn-sm" onClick={handleComplete}>
@@ -458,105 +405,26 @@ useEffect(() => {
                       prescriptions.active.length === 0 ||
                       hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
                     }
-                    onClick={async () => {
-                      const activePrescriptions = prescriptions.active;
-                      if (!activePrescriptions.length) return;
+                    onClick={() => {
+                      const activePrescriptions = prescriptions.active
+                      if (!activePrescriptions.length) return
 
-                      const pid = patient?.id || patient?._id || patient?.patientId;
-                      if (!pid) return;
+                      const pid = patient?.id || patient?._id || patient?.patientId
+                      if (!pid) return
 
-                      const promise = Promise.all([
-                        //  complete ALL prescriptions
-                        ...activePrescriptions.map(p =>
-                          updatePrescription(p._id, {
-                            status: 'completed',
-                            pharmacistId,
-                            pharmacistName
-                          })
-                        ),
-
-                            isViewingDependant
-                              ? updateDependantStatus(incomingDependantId, {
-                                  status: PATIENT_STATUS.AWAITING_INJECTION
-                                })
-                              : updatePatientStatus(pid, {
-                                  status: PATIENT_STATUS.AWAITING_INJECTION
-                                }),
-
-                            ...activePrescriptions.map(p =>
-                              reduceInventoryStock(p.medications)
-                            )
-                          ])
-
-                          toast.promise(promise, {
-                            loading: 'Completing & sending to nurse...',
-                            success: 'Sent to nurse',
-                            error: 'Failed'
-                          });
-
-                      try {
-                        await promise;
-
-                        // update inventory UI instantly (correct aggregation)
-                        setInventory(prev =>
-                          prev.map(item => {
-                            const meds = activePrescriptions.flatMap(p => p.medications || []);
-
-                            const totalQtyToRemove = meds
-                              .filter(m => m.drugName.toLowerCase() === item.name.toLowerCase())
-                              .reduce((sum, m) => sum + calculateQuantity(m), 0);
-
-                            if (!totalQtyToRemove) return item;
-
-                            return {
-                              ...item,
-                              stock: Math.max((item.stock || 0) - totalQtyToRemove, 0)
-                            };
-                          })
-                        );
-
-                        //  move ALL to history
-                        setPrescriptions(prev => {
-                          const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
-                          const updatedHistory = [
-                            ...activePrescriptions.map(p => ({ ...p, status: 'completed', pharmacistId: currentUser?.id, pharmacistName })),
-                            ...prev.history
-                          ];
-
-                          return {
-                            active: [],
-                            history: updatedHistory
-                          };
-                        });
-
-                        //  update patient status
-                        setPatient(prev => (
-                          isViewingDependant
-                            ? prev
-                            : {
-                                ...(prev || {}),
-                                status: PATIENT_STATUS.AWAITING_INJECTION
-                              }
-                        ));
-
-                      } catch (e) {
-                        toast.error('Failed to send to nurse');
-                      }
+                      setPendingAction('sendToNurse')
+                      setDispenseModalRows(buildDispenseRows())
                     }}
                   >
                     Complete & Send to Nurse
                   </button>
-
                 </div>
               )}
 
-              {/* HISTORY */}
               <h3 className="font-medium mt-6 mb-3">History</h3>
-
               {renderMedications(prescriptions.history, true)}
             </>
           )}
-
         </div>
 
         {isSelectModalOpen && (
@@ -566,6 +434,14 @@ useEffect(() => {
           />
         )}
 
+        {dispenseModalRows && (
+          <DispenseConfirmModal
+            rows={dispenseModalRows}
+            submitting={dispenseSubmitting}
+            onCancel={() => setDispenseModalRows(null)}
+            onConfirm={(finalRows) => submitDispense(finalRows, pendingAction)}
+          />
+        )}
       </div>
     </PharmacistLayout>
   )
