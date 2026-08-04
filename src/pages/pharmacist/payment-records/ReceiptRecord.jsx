@@ -5,13 +5,16 @@ import { Header, DataTable } from '@/components/common';
 import { Sidebar } from '@/components/pharmacist/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const PharmacistPaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(false);
+
 
 
   const handleClose = () => {
@@ -281,6 +284,8 @@ const handlePrintReceipt = (payment) => {
 
   return (
     <div className="flex h-screen">
+            {loading && <KolakLoader fullscreen />}
+
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div

@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -179,6 +180,8 @@ const StatusBadge = ({ status }) => {
 
   return (
     <div className="flex h-screen">
+            {isLoading && <KolakLoader fullscreen />}
+
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 

@@ -3,6 +3,7 @@ import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdAdd, MdInventory2 } from 'react-icons/md'
 import toast from 'react-hot-toast'
 import { getInventories, createInventory, updateInventory, restockInventory, getAllInventoryTransactions } from '@/services/api/inventoryAPI'
+import KolakLoader from '@/components/common/KolakLoader'
 
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
@@ -145,6 +146,7 @@ const InventoryStocks = () => {
 
   return (
     <PharmacistLayout>
+      {loading && <KolakLoader fullscreen />}
       <div className="p-6">
         <div className="mb-4 flex items-center justify-between">
           <div>
