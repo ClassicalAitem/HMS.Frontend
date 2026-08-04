@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { getPatients } from '@/services/api/patientsAPI';
 import { getDependants } from '@/services/api/dependantAPI';
 import { formatNigeriaDateTime, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const Incoming = () => {
   const [incomingPatients, setIncomingPatients] = useState([]);
@@ -171,6 +172,7 @@ const Incoming = () => {
 
   return (
     <CashierLayout>
+      {loading && <KolakLoader fullscreen />}
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center mb-4 space-x-3">
@@ -255,7 +257,7 @@ const Incoming = () => {
               </div>
               <div className="grid grid-cols-2 gap-2 2xl:gap-4 w-full">
                 <p className="text-sm text-base-content/70">Name: {patient.name}</p>
-                <p className="text-sm text-base-content/70">Insurance: {patient.insurance}</p>
+                {/* <p className="text-sm text-base-content/70">Insurance: {patient.insurance}</p> */}
                 <p className="text-sm text-base-content/70">Patient ID: {patient.displayId}</p>
                 {/* <p className="text-sm text-base-content/70">Registered: {patient.registeredTime}</p> */}
               </div>
