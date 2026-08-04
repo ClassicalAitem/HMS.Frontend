@@ -5,6 +5,7 @@ import { useAppSelector } from "@/store/hooks";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 import { getVitalsByNurse } from "@/services/api/vitalsAPI";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const NurseDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -169,6 +170,7 @@ const NurseDashboard = () => {
 
   return (
     <div className="flex h-screen bg-base-200">
+       {tasksLoading && <KolakLoader fullscreen />}
       <Sidebar />
 
       <div className="flex overflow-hidden flex-col flex-1">
