@@ -9,6 +9,7 @@ import { getDependants } from '@/services/api/dependantAPI';
 import toast from 'react-hot-toast';
 import { hasAnyStatus } from '@/utils/statusUtils';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const CashierPatients = () => {
   const navigate = useNavigate();
@@ -185,6 +186,7 @@ const CashierPatients = () => {
 
   return (
     <CashierLayout>
+      {loading && <KolakLoader fullscreen />}
       <div className="flex items-center mb-8 space-x-3">
         <FaUsers className="w-8 h-8 text-primary" />
         <div>

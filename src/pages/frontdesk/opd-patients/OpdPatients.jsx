@@ -8,6 +8,7 @@ import { getAllOpdPatients, deleteOpdPatient } from '@/services/api/opdPatientAP
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaTrash } from 'react-icons/fa';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const OpdPatients = () => {
   const navigate = useNavigate();
@@ -145,6 +146,8 @@ const OpdPatients = () => {
 
   return (
     <div className="flex h-screen">
+            {isLoading && <KolakLoader fullscreen />}
+
       {isSidebarOpen && (
         <div 
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"

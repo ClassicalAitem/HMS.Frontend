@@ -6,6 +6,7 @@ import { getAllBillings } from '@/services/api/billingAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const PatientHmoHistoryFull = () => {
   const { patientId } = useParams();
@@ -162,6 +163,7 @@ const PatientHmoHistoryFull = () => {
 
   return (
     <div className="flex h-screen">
+      {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}

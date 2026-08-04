@@ -7,6 +7,7 @@ import { getAllBillings } from '@/services/api/billingAPI';
 import { getPatients } from '@/services/api/patientsAPI';
 import { getDependants } from '@/services/api/dependantAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const HMOPatients = () => {
   const navigate = useNavigate();
@@ -237,6 +238,7 @@ const filteredRecords = useMemo(() => {
 
   return (
     <div className="flex h-screen">
+      {loading && <KolakLoader fullscreen />}
       <Sidebar />
       <div className="flex overflow-hidden flex-col flex-1">
         <Header />

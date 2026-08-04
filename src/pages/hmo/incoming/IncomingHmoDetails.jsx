@@ -25,6 +25,7 @@ import SendPatientModal from '@/components/modals/SendPatientModal';
 import { getConsultations } from '@/services/api/consultationAPI';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import PatientHmoHistory from './PatientHmoHistory';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const IncomingHmoDetails = () => {
   const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
@@ -343,10 +344,11 @@ const IncomingHmoDetails = () => {
 
   return (
     <div className="flex h-screen">
+      {loading && <KolakLoader fullscreen />}
       <Sidebar />
       <div className="flex overflow-hidden flex-col flex-1">
         <Header />
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-6">
           <div className="flex-1 overflow-y-auto p-6">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
@@ -753,124 +755,85 @@ const IncomingHmoDetails = () => {
 
                      
 
-          <aside className="w-[360px] max-w-[32vw] border-l border-base-200 bg-base-100/80 p-4 overflow-y-auto">
-            <div className="card bg-base-100 shadow-sm border border-base-200 h-full">
-              <div className="card-body p-5">
-                <h3 className="font-semibold text-base-content text-base mb-4">
-                  Consultations
-                  {!consultationsLoading && (
-                    <span className="text-base-content/40 font-normal text-sm ml-2">
-                      ({consultations.length})
+         {/* Consultations — moved from aside to a full-width section below */}
+  <div className="card bg-base-100 shadow-sm border border-base-200 mt-6">
+    <div className="card-body p-5">
+      <h3 className="font-semibold text-base-content text-base mb-4">
+        Consultations
+        {!consultationsLoading && (
+          <span className="text-base-content/40 font-normal text-sm ml-2">
+            ({consultations.length})
+          </span>
+        )}
+      </h3>
+
+      {consultationsLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="skeleton h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : consultations.length === 0 ? (
+        <p className="text-sm text-base-content/50 py-4 text-center">
+          No consultations on record
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {consultations.map((c) => {
+            const isDependant = !!c.dependantId;
+            const subjectName = isDependant
+              ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
+              : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
+            const complaints = Array.isArray(c.complaint)
+              ? c.complaint.map((cp) => cp.symptom).filter(Boolean).join(', ')
+              : null;
+
+            return (
+              <div
+                key={c.id}
+                className={`p-4 rounded-lg border ${
+                  isDependant ? 'border-secondary/30 bg-secondary/5' : 'border-base-300 bg-base-200/30'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`badge badge-sm shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
+                      {isDependant ? c.dependant?.relationshipType || 'Dependant' : 'Patient'}
                     </span>
-                  )}
-                </h3>
-
-                {consultationsLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="skeleton h-20 w-full rounded-lg"
-                      />
-                    ))}
+                    {isDependant && (
+                      <span className="text-xs text-base-content/60 truncate">{subjectName}</span>
+                    )}
                   </div>
-                ) : consultations.length === 0 ? (
-                  <p className="text-sm text-base-content/50 py-4 text-center">
-                    No consultations on record
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {consultations.map((c) => {
-                      const isDependant = !!c.dependantId;
-                      const subjectName = isDependant
-                        ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
-                        : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
-                      const complaints = Array.isArray(c.complaint)
-                        ? c.complaint
-                            .map((cp) => cp.symptom)
-                            .filter(Boolean)
-                            .join(', ')
-                        : null;
+                  <span className="text-xs text-base-content/40 shrink-0">
+                    {c.createdAt ? formatNigeriaDate(c.createdAt) : '—'}
+                  </span>
+                </div>
 
-                      return (
-                        <div
-                          key={c.id}
-                          className={`p-4 rounded-lg border ${
-                            isDependant
-                              ? 'border-secondary/30 bg-secondary/5'
-                              : 'border-base-300 bg-base-200/30'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-2 mb-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`badge badge-sm shrink-0 ${
-                                  isDependant
-                                    ? 'badge-secondary'
-                                    : 'badge-primary'
-                                }`}
-                              >
-                                {isDependant
-                                  ? c.dependant?.relationshipType || 'Dependant'
-                                  : 'Patient'}
-                              </span>
-                              {isDependant && (
-                                <span className="text-xs text-base-content/60 truncate">
-                                  {subjectName}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-xs text-base-content/40 shrink-0">
-                              {c.createdAt
-                                ? formatNigeriaDate(c.createdAt)
-                                : '—'}
-                            </span>
-                          </div>
+                <div className="mb-1">
+                  <span className="text-xs text-base-content/50">Diagnosis: </span>
+                  <span className="text-sm font-medium text-base-content">{c.diagnosis || 'Pending'}</span>
+                </div>
 
-                          <div className="mb-1">
-                            <span className="text-xs text-base-content/50">
-                              Diagnosis:{' '}
-                            </span>
-                            <span className="text-sm font-medium text-base-content">
-                              {c.diagnosis || 'Pending'}
-                            </span>
-                          </div>
+                <div>
+                  <span className="text-xs text-base-content/50">Complaint: </span>
+                  <span className={complaints ? 'text-sm text-base-content/80' : 'text-sm text-base-content/40'}>
+                    {complaints || 'None recorded'}
+                  </span>
+                </div>
 
-                          {complaints ? (
-                            <div>
-                              <span className="text-xs text-base-content/50">
-                                Complaint:{' '}
-                              </span>
-                              <span className="text-sm text-base-content/80">
-                                {complaints}
-                              </span>
-                            </div>
-                          ) : (
-                            <div>
-                              <span className="text-xs text-base-content/50">
-                                Complaint:{' '}
-                              </span>
-                              <span className="text-sm text-base-content/40">
-                                None recorded
-                              </span>
-                            </div>
-                          )}
-
-                          {c.visitReason && (
-                            <div className="mt-2">
-                              <span className="badge badge-ghost badge-xs capitalize">
-                                {c.visitReason}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                {c.visitReason && (
+                  <div className="mt-2">
+                    <span className="badge badge-ghost badge-xs capitalize">{c.visitReason}</span>
                   </div>
                 )}
               </div>
-            </div>
-          </aside>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  </div>
+
         </div>
       </div>
     </div>

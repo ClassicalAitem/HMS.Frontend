@@ -8,6 +8,7 @@ import { getDependantById } from '@/services/api/dependantAPI'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import { useNavigate } from 'react-router-dom'
+import KolakLoader from '@/components/common/KolakLoader'
 
 const StatCard = ({ title, value, hint, color }) => (
   <div className="rounded-lg border border-base-300 bg-base-100 p-4">
@@ -226,6 +227,7 @@ const DrugDispensation = () => {
 
   return (
     <PharmacistLayout>
+      {loading && <KolakLoader fullscreen />}
       <div className="p-6">
         <div className="mb-4 flex items-start justify-between">
           <div>
@@ -294,7 +296,7 @@ const DrugDispensation = () => {
                       <th>Batch ID</th>
                       <th>Patient Name</th>
                       <th>Pharmacist</th>
-                      <th>Medication Name</th>
+                      <th>Item Name</th>
                       <th>Quantity Dispensed</th>
                       <th>Dispensed At</th>
                       <th>Status</th>
