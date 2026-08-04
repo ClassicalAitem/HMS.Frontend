@@ -8,6 +8,7 @@ import { getMetrics } from '@/services/api/metricsAPI'
 import { getPrescriptions } from '@/services/api/prescriptionsAPI'
 import PrescriptionDetailsModal from '@/components/modals/PrescriptionDetailsModal'
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
+import KolakLoader from '@/components/common/KolakLoader'
 
 const PharmacistDashboard = () => {
   const today = new Date()
@@ -162,6 +163,8 @@ const PharmacistDashboard = () => {
 
   return (
     <PharmacistLayout>
+            {loading && <KolakLoader fullscreen />}
+
         <div className="p-6">
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-primary">Pharmacist Dashboard</h1>
