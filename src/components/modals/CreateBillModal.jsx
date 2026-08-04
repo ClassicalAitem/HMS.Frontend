@@ -9,6 +9,7 @@ import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { updatePatientStatus } from '@/services/api/patientsAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { updateSubjectStatus } from '@/utils/statusHelper';
+import { SERVICE_CHARGE_CATEGORY } from '@/constants/cardTypes';
 
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
@@ -176,7 +177,12 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
           if (Array.isArray(res.data)) list = res.data;
           else if (Array.isArray(res.data.data)) list = res.data.data;
         }
-        setServices(Array.isArray(list) ? list : []);
+        const filtered = (Array.isArray(list) ? list : []).filter(
+        (s) => s.category !== SERVICE_CHARGE_CATEGORY.LABORATORY
+      );
+
+ 
+        setServices(filtered);
       } catch {
         toast.error("Could not load service list");
         setServices([]);
