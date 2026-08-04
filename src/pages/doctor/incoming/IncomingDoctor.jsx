@@ -6,6 +6,7 @@ import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const DOCTOR_STATUSES = new Set([
   "awaiting_consultation",
@@ -224,6 +225,7 @@ const IncomingDoctor = () => {
 
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}

@@ -9,6 +9,7 @@ import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
 import { mergePatientStatus, hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const PatientVitals = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -131,6 +132,7 @@ const statusBadgeClass = (status) => {
   };
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div

@@ -32,6 +32,7 @@ import toast from "react-hot-toast";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -919,6 +920,7 @@ const dependant = isDependant
 
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
