@@ -11,6 +11,7 @@ import { FaArrowLeft, FaPlus, FaTrash } from 'react-icons/fa';
 import ReceiptModal from '@/components/modals/ReceiptModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const TestSearchInput = ({ serviceCharges, onSelect, placeholder = 'Search lab test...' }) => {
   const [search, setSearch] = useState('');
@@ -245,6 +246,7 @@ const CashierOpdPatientDetails = () => {
   if (isLoading) {
     return (
       <CashierLayout>
+         {isLoading && <KolakLoader fullscreen />}
         <div className="flex justify-center items-center h-64">
           <div className="loading loading-spinner loading-lg text-primary"></div>
         </div>
@@ -254,6 +256,7 @@ const CashierOpdPatientDetails = () => {
 
   return (
     <CashierLayout>
+       {isLoading && <KolakLoader fullscreen />}
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => navigate('/cashier/opd-patients')} className="btn btn-ghost btn-sm">
           <FaArrowLeft />

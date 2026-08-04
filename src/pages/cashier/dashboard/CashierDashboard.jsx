@@ -13,6 +13,7 @@ import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI';
 import { hasAnyStatus } from '@/utils/statusUtils';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const CashierDashboard = () => {
   console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
@@ -142,6 +143,7 @@ const CashierDashboard = () => {
 
   return (
     <CashierLayout>
+      {billingLoading && <KolakLoader fullscreen />}
       {/* Page Header: actions */}
       <div className="flex items-center justify-between mb-2 2xl:mb-6">
         <div className="mb-2">
