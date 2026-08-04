@@ -22,3 +22,17 @@ export const CARD_TYPE_STYLES = {
   emergency: 'badge badge-error',
   antenatal: 'badge badge-warning',
 };
+export const SERVICE_CHARGE_CATEGORY = {
+  LABORATORY:  "laboratory",
+  ADMISSION : "admission",
+  GENERAL : "general",
+  PHARMACY : "pharmacy",
+  RADIOLOGY : "radiology",
+  CONSULTATION : "consultation",
+  THERAPY : "therapy",
+  SURGICAL : "surgical",
+  EMERGENCY : "emergency",
+  
+}
+
+
