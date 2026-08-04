@@ -4,6 +4,7 @@ import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getAllHmos } from "@/services/api/hmoAPI";
 import { useAppSelector } from "@/store/hooks";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const HmoDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -54,6 +55,7 @@ const HmoDashboard = () => {
 
   return (
     <div className="flex h-screen">
+      {loading && <KolakLoader fullscreen />}
       <Sidebar />
 
       <div className="flex overflow-hidden flex-col flex-1">
