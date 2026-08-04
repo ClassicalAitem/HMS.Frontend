@@ -4,6 +4,7 @@ import { FiSearch, FiDownload } from 'react-icons/fi'
 import inventoryAPI from '@/services/api/inventoryAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
+import KolakLoader from '@/components/common/KolakLoader'
 
 const StatCard = ({ title, value, hint }) => (
   <div className="p-4 rounded-xl bg-base-100 border border-base-300">
@@ -136,6 +137,8 @@ const Transactions = () => {
 
   return (
     <PharmacistLayout>
+            {loading && <KolakLoader fullscreen />}
+
       <div className="p-6">
         <div className="mb-4 flex items-start justify-between">
           <div>
