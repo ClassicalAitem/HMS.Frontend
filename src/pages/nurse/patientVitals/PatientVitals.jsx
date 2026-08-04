@@ -1,127 +1,35 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/nurse/dashboard/Sidebar";
-import { PiUsersThree } from "react-icons/pi";
-import { getPatients } from "@/services/api/patientsAPI";
-import { updatePatientStatus } from "@/services/api/patientsAPI";
-import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
-import { toast } from "react-hot-toast";
-import { mergePatientStatus, hasStatus } from "@/utils/statusUtils";
-import { PATIENT_STATUS } from "@/constants/patientStatus";
-import KolakLoader from "@/components/common/KolakLoader";
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Header } from '@/components/common';
+import { Sidebar } from "@/components/nurse";
+import { DataTable } from '@/components/common';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
+import toast from 'react-hot-toast';
+import PatientsDebug from '@/components/common/PatientsDebug';
+import { Skeleton } from '@heroui/skeleton';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
-const PatientVitals = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState([]);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [genderFilter, setGenderFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+const PatientsVitals = () => {
   const navigate = useNavigate();
-  const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
-  const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
-  const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const dispatch = useAppDispatch();
+  const { patients, isLoading, error } = useAppSelector((state) => state.patients);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const onRefresh = () => setRefreshKey((k) => k + 1);
-
-  const calculateAge = (dob) => {
-    if (!dob) return "—";
-    const d = new Date(dob);
-    if (Number.isNaN(d.getTime())) return "—";
-    const diff = Date.now() - d.getTime();
-    const ageDate = new Date(diff);
-    return Math.abs(ageDate.getUTCFullYear() - 1970);
-  };
-  const normalizeStatus = (status) => {
-  if (Array.isArray(status)) return status[status.length - 1] || "";
-  return status || "";
-};
-
-const statusBadgeClass = (status) => {
-  const s = normalizeStatus(status).toLowerCase();
-
-  if (s.includes("active")) return "badge badge-success";
-  if (s.includes("pass") || s.includes("deceased")) return "badge badge-neutral";
-  if (s.includes("pending") || s.includes("wait")) return "badge badge-warning";
-  return "badge badge-ghost";
-};
-
+  // Fetch patients from backend
   useEffect(() => {
-    let mounted = true;
-    const fetchAll = async () => {
-      try {
-        setLoading(true);
-        const res = await getPatients();
-        const patients = Array.isArray(res?.data) ? res.data : [];
-        const allow = new Set(["awaiting_injection", "awaiting_sampling", "awaiting_vitals"]);
-       const filtered = patients.filter((p) =>
-  allow.has(normalizeStatus(p?.status).toLowerCase())
-);
-        const mapped = filtered.map((p, idx) => ({
-          sn: idx + 1,
-          name: `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.fullName || "Unknown",
-          gender: p?.gender || "—",
-          age: calculateAge(p?.dob),
-          blood: p?.bloodGroup || p?.blood || "—",
-          status: p?.status || "",
-          id: p?.patientId || p?.id || p?.uuid,
-          phone: p?.phone || p?.phoneNumber || "—",
-          hospitalId: p?.hospitalId || p?.patientId || p?.id || p?.uuid,
-          hmos: p?.hmos || [],
-          firstName: p?.firstName,
-          lastName: p?.lastName,
-        }));
-        if (mounted) setItems(mapped);
-      } catch (err) {
-        console.error("PatientVitals: patients fetch error", err);
-        if (mounted) setItems([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    fetchAll();
-    return () => {
-      mounted = false;
-    };
-  }, [refreshKey]);
-  
-  // Derived filtering & pagination
-  const filteredItems = useMemo(() => {
-    let data = items;
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      data = data.filter((p) =>
-        (p.name || "").toLowerCase().includes(q) ||
-        String(p.sn).includes(q) ||
-        (p.blood || "").toLowerCase().includes(q)
-      );
-    }
-    if (genderFilter !== "all") {
-      data = data.filter((p) => (p.gender || "").toLowerCase() === genderFilter);
-    }
-    if (statusFilter !== "all") {
-      data = data.filter((p) => Array.isArray(p.status)
-  ? p.status.some((s) => s.toLowerCase().includes(statusFilter))
-  : (p.status || "").toLowerCase().includes(statusFilter));
-    }
-    return data;
-  }, [items, searchQuery, genderFilter, statusFilter]);
+    console.log('🔄 Patients: Component mounted, fetching patients');
+    dispatch(fetchPatients());
+  }, [dispatch]);
 
-  const pages = Math.max(1, Math.ceil(filteredItems.length / perPage));
-  const shown = useMemo(() => {
-    const start = (page - 1) * perPage;
-    return filteredItems.slice(start, start + perPage);
-  }, [filteredItems, page, perPage]);
-
+  // Show error toast if there's an error
   useEffect(() => {
-    // Reset to first page when query or filters change
-    setPage(1);
-  }, [searchQuery, genderFilter, statusFilter, perPage]);
+    if (error) {
+      toast.error(error);
+      dispatch(clearPatientsError());
+    }
+  }, [error, dispatch]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -130,317 +38,304 @@ const statusBadgeClass = (status) => {
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+
+const StatusBadge = ({ status }) => {
+  const currentStatus = Array.isArray(status)
+    ? status[status.length - 1]
+    : status;
+
+  const getBadgeClass = (statusValue) => {
+    switch (statusValue?.toLowerCase()) {
+      // Registration / active
+      case 'registered':
+      case 'active':
+        return 'badge badge-success';
+      case 'inactive':
+        return 'badge badge-neutral';
+
+      // Awaiting-anything — queued, nothing happening yet
+      case 'awaiting_front_desk':
+      case 'awaiting_payment':
+      case 'awaiting_vitals':
+      case 'awaiting_consultation':
+      case 'awaiting_doctor':
+      case 'awaiting_md':
+      case 'awaiting_sampling':
+      case 'awaiting_review':
+      case 'awaiting_injection':
+      case 'awaiting_cashier':
+      case 'awaiting_hmo':
+      case 'awaiting_nurse':
+      case 'awaiting_lab':
+      case 'awaiting_sonographer':
+      case 'awaiting_radiology':
+      case 'awaiting_pharmacy':
+      case 'awaiting_admission':
+      case 'awaiting_surgery':
+      case 'awaiting_discharge_approval':
+      case 'awaiting_follow_up':
+        return 'badge badge-warning';
+
+      // In progress / milestone reached — active work happening
+      case 'vitals_completed':
+      case 'in_consultation':
+      case 'consultation_completed':
+      case 'sampling_completed':
+      case 'review_completed':
+      case 'injection_completed':
+      case 'lab_in_progress':
+      case 'lab_completed':
+      case 'sonography_completed':
+      case 'radiology_in_progress':
+      case 'radiology_completed':
+      case 'pharmacy_completed':
+      case 'discharge_in_progress':
+      case 'post_surgery_recovery':
+      case 'post_surgery_observation':
+        return 'badge badge-info';
+
+      // Admitted / under care — ongoing significant state
+      case 'admitted':
+      case 'under_observation':
+        return 'badge badge-primary';
+
+      // Positive terminal states
+      case 'hmo_approved':
+      case 'payment_completed':
+      case 'surgery_completed':
+      case 'discharged':
+      case 'follow_up_completed':
+      case 'completed':
+        return 'badge badge-success';
+
+      // Urgent / needs attention
+      case 'surgery_in_progress':
+      case 'isolated':
+        return 'badge badge-error';
+
+      // Negative / rejected outcomes
+      case 'hmo_rejected':
+      case 'no_show':
+      case 'cancelled':
+        return 'badge badge-error';
+
+      // Neutral holding states
+      case 'transferred':
+      case 'referred':
+      case 'deceased':
+        return 'badge badge-neutral';
+
+      default:
+        return 'badge badge-neutral';
+    }
+  };
+
+  return (
+    <span className={getBadgeClass(currentStatus)}>
+      {currentStatus || 'Unknown'}
+    </span>
+  );
+};
+
+  // Calculate age from date of birth
+  const calculateAge = (dob) => {
+    if (!dob) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  // Process patients data to match frontend expectations
+  const processedPatients = useMemo(() => patients.map((patient, index) => ({
+    ...patient,
+    serialNumber: index + 1, // Serial number for display
+    name: `${patient.firstName} ${patient.lastName}`.trim(),
+    age: calculateAge(patient.dob),
+    fullName: `${patient.firstName} ${patient.middleName || ''} ${patient.lastName}`.trim(),
+    nextOfKinName: patient.nextOfKin?.name || 'N/A',
+    nextOfKinPhone: patient.nextOfKin?.phone || 'N/A',
+    nextOfKinRelationship: patient.nextOfKin?.relationship || 'N/A',
+    hmoCount: patient.hmos?.length || 0,
+    dependantsCount: patient.dependants?.length || 0,
+    createdAtFormatted: formatNigeriaDate(patient.createdAt),
+    updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
+    cardType: patient.cardType || 'N/A',
+  })), [patients]);
+
+  // Define table columns
+  const columns = useMemo(() => [
+    {
+      key: 'serialNumber',
+      title: 'S/n',
+      sortable: true,
+      className: 'text-base-content font-medium'
+    },
+    {
+      key: 'hospitalId',
+      title: 'Hospital ID',
+      sortable: true,
+      className: 'text-base-content font-medium'
+    },
+    {
+      key: 'name',
+      title: 'Patient Name',
+      sortable: true,
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(`/dashboard/nurse/patient/${row.id}`);
+          }}
+          className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+        >
+          {value}
+        </button>
+      )
+    },
+    {
+      key: 'gender',
+      title: 'Gender',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (
+        <span className="capitalize">{value || 'N/A'}</span>
+      )
+    },
+    {
+      key: 'age',
+      title: 'Age',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'phone',
+      title: 'Phone Number',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'email',
+      title: 'Email',
+      sortable: true,
+      className: 'text-base-content/70',
+      truncate: true
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      className: 'text-base-content/70',
+      render: (value, row) => <StatusBadge status={value} />
+    },
+    {
+      key: 'cardType',
+      title: 'Card Type',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (
+        <span className="capitalize">{value || 'N/A'}</span>
+      )
+    }
+  ], [navigate]);
+
   return (
     <div className="flex h-screen">
-       {loading && <KolakLoader fullscreen />}
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div
+        <div 
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
-
+      
       {/* Sidebar */}
-      <div
-        className={`
+      <div className={`
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
-
+      
+      {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+        {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
-
+        
+        {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <section>
+          {/* Page Header */}
+          <div className="flex justify-between items-center mb-6">
             <div>
-              <div>
-                <div className="flex items-center gap-5 ">
-                  <h1 className="text-[32px] text-base-content">All Patients</h1>
-                  <PiUsersThree size={25} className="text-base-content/80" />
-                </div>
-                <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
-              </div>
+              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
+              <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
             </div>
-            {/* Search & Filters */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, S/N, blood group"
-                className="input input-bordered w-full"
-              />
-              <select
-                className="select select-bordered w-full"
-                value={genderFilter}
-                onChange={(e) => setGenderFilter(e.target.value)}
-              >
-                <option value="all">All genders</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-              <select
-                className="select select-bordered w-full"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All status</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="deceased">Deceased</option>
-              </select>
-              <select
-                className="select select-bordered w-full"
-                value={perPage}
-                onChange={(e) => setPerPage(Number(e.target.value))}
-              >
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
-              </select>
-            </div>
+               
+          </div>
 
-            <div className="overflow-x-auto rounded-lg shadow mt-6">
-              <div className="max-h-[60vh] overflow-y-auto">
-              <table className="w-full text-[16px] rounded-lg overflow-hidden">
-                <thead className="bg-base-200">
-                  <tr>
-                    <th className="p-3 ">S/n</th>
-                    <th className="p-3">Patient Name</th>
-                    <th className="p-3">Gender</th>
-                    <th className="p-3">Age</th>
-                    <th className="p-3">Blood/Gp</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody className="bg-base-100">
-                  {loading ? (
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <tr key={index} className="border-b last:border-b-0">
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-8" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-32" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-16" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-10" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-4 w-16" />
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="skeleton h-6 w-20" />
-                        </td>
-                      </tr>
-                    ))
-                  ) : items.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No patient records"
-                          description="Try refreshing to fetch the latest patients."
-                          actionLabel="Refresh"
-                          onAction={onRefresh}
-                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
-                        />
-                      </td>
-                    </tr>
-                  ) : filteredItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8">
-                        <EmptyState
-                          title="No matches"
-                          description="Try adjusting search or filters, or refresh to fetch latest."
-                          actionLabel="Clear Filters"
-                          onAction={() => { setSearchQuery(""); setGenderFilter("all"); setStatusFilter("all"); }}
-                          icon={<PiUsersThree className="text-base-content/60" size={40} />}
-                        />
-                      </td>
-                    </tr>
-                  ) : (
-                    shown.map((p, index) => (
-                      <tr
-                        key={index}
-                        className="border-b last:border-b-0 hover:bg-base-200/40"
-                      >
-                        <td className="px-4 py-4">{String(p.sn).padStart(2, "0")}</td>
-                        <td className="text-center">
-                          <button
-                            className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              p?.id && navigate(`/dashboard/nurse/patient/${p.id}`, { state: { patientSnapshot: p } });
-                            }}
-                          >
-                            {p.name}
-                          </button>
-                        </td>
-                        <td className="text-center">{p.gender}</td>
-                        <td className="text-center">{p.age}</td>
-                        <td className="text-center">{p.blood}</td>
-                        <td className="text-center">
-                          <span className={statusBadgeClass(p.status)}>
-  {Array.isArray(p.status) ? p.status.join(", ") : p.status}
-</span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex gap-2 justify-center">
-                            <button
-                              className="btn btn-primary btn-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPatient(p);
-                                setIsSendDoctorOpen(true);
-                              }}
-                            >
-                              Send to Doctor
-                            </button>
-                            <button
-                              className="btn btn-outline btn-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPatient(p);
-                                setIsSendPharmacyOpen(true);
-                              }}
-                            >
-                              Send to Pharmacy
-                            </button>
-                            <button
-                              className="btn btn-outline btn-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedPatient(p);
-                                setIsSendCashierOpen(true);
-                              }}
-                            >
-                              Send to Cashier
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-              </div>
-            </div>
-
-            {/* Pagination footer */}
-            {!loading && items.length > 0 && (
-              <div className="flex items-center justify-between mt-4">
-                <div className="text-sm text-base-content/70">
-                  Showing {filteredItems.length ? (Math.min((page - 1) * perPage + 1, filteredItems.length)) : 0}–{Math.min(page * perPage, filteredItems.length)} of {filteredItems.length}
-                </div>
-                <div className="join">
-                  <button
-                    className="join-item btn btn-sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </button>
-                  <span className="join-item btn btn-sm no-animation">
-                    Page {page} / {pages}
-                  </span>
-                  <button
-                    className="join-item btn btn-sm"
-                    disabled={page >= pages}
-                    onClick={() => setPage((p) => Math.min(pages, p + 1))}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Send to Doctor Modal */}
-            {isSendDoctorOpen && selectedPatient && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
-                <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
-                  <div className="p-6 card-body">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-bold text-base-content">Confirm Send to Doctor</h2>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setIsSendDoctorOpen(false)}>Close</button>
-                    </div>
-                    <p className="mb-4 text-sm text-base-content/70">
-                      Are you sure you want to send this patient to the doctor for consultation? This will update the status to <span className="font-medium">awaiting_consultation</span> for {selectedPatient?.name || 'Unknown'} ({selectedPatient?.hospitalId || selectedPatient?.id || '—'}).
-                    </p>
-                    <div className="flex justify-end gap-3 mt-6">
-                      <button className="btn" onClick={() => setIsSendDoctorOpen(false)}>Cancel</button>
-                      <button
-                        className="btn btn-success"
-                        onClick={async () => {
-                          try {
-                            const pid = selectedPatient?.id || selectedPatient?.hospitalId;
-                            const newStatus = PATIENT_STATUS.AWAITING_CONSULTATION;
-                            const promise = updatePatientStatus(pid, newStatus);
-                            toast.promise(promise, {
-                              loading: 'Sending to doctor...',
-                              success: 'Patient sent to doctor successfully',
-                              error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
-                            });
-                            await promise;
-                            setIsSendDoctorOpen(false);
-                          } catch (e) {
-                            console.error('All Patients: send to doctor failed', e);
-                          }
-                        }}
-                      >
-                        Confirm & Send
-                      </button>
+          {/* Patients Table */}
+          <div className="flex flex-1 w-full min-h-0">
+            <div className="w-full shadow-xl card bg-base-100">
+              <div className="p-4 card-body 2xl:p-6">
+                {isLoading ? (
+                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+                    <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
+                      <table className="table w-full table-zebra">
+                        <thead className="sticky top-0 z-10 bg-base-200">
+                          <tr>
+                            {columns.map((column) => (
+                              <th key={column.key} className="border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider">
+                                {column.title || column.key}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from({ length: 10 }).map((_, idx) => (
+                            <tr key={idx} className="text-xs">
+                              {columns.map((col) => (
+                                <td key={`${idx}-${col.key}`} className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${col.className || 'text-base-content/70'}`}>
+                                  <Skeleton>
+                                    <div className="h-3 w-24 rounded bg-base-300"></div>
+                                  </Skeleton>
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <DataTable
+                    data={processedPatients}
+                    columns={columns}
+                    searchable={true}
+                    sortable={true}
+                    paginated={true}
+                    initialEntriesPerPage={10}
+                    maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                    showEntries={true}
+                    searchPlaceholder="Search patients..."
+                  />
+                )}
               </div>
-            )}
-
-            {/* Send to Pharmacy Modal */}
-            {isSendPharmacyOpen && selectedPatient && (
-              <PharmacyActionModal
-                isOpen={isSendPharmacyOpen}
-                onClose={() => setIsSendPharmacyOpen(false)}
-                patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                currentStatus={selectedPatient?.status || ''}
-                defaultStatus={PATIENT_STATUS.AWAITING_PHARMACY}
-                itemsCount={0}
-                medicationNames={[]}
-                patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
-                onUpdated={() => setIsSendPharmacyOpen(false)}
-              />
-            )}
-
-            {/* Send to Cashier Modal */}
-            {isSendCashierOpen && selectedPatient && (
-              <CashierActionModal
-                isOpen={isSendCashierOpen}
-                onClose={() => setIsSendCashierOpen(false)}
-                patientId={selectedPatient?.id || selectedPatient?.hospitalId}
-                currentStatus={selectedPatient?.status || ''}
-                defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
-                mode={"confirm"}
-                patientLabel={`${selectedPatient?.name || 'Unknown'} (${selectedPatient?.hospitalId || selectedPatient?.id || '—'})`}
-                onUpdated={() => setIsSendCashierOpen(false)}
-              />
-            )}
-
-          
-          </section>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
 
-export default PatientVitals;
+          {/* Debug Component - Remove in production */}
+          {/* <PatientsDebug /> */}
+        </div>
+      );
+    };
+
+    export default PatientsVitals;
