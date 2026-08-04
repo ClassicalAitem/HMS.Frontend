@@ -9,6 +9,7 @@ import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import { getDependants } from "@/services/api/dependantAPI";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const Incoming = () => {
   const navigate = useNavigate();
@@ -143,6 +144,7 @@ const normalizeStatus = (status) => {
 
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div

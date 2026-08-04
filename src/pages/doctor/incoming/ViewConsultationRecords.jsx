@@ -5,6 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const ViewConsultationRecords = () => {
   const { patientId } = useParams();
@@ -177,6 +178,7 @@ const ViewConsultationRecords = () => {
 
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
