@@ -5,10 +5,14 @@ import {
   OverallDischarge, 
   RecentlyAddedPatients 
 } from '@/components/frontdesk';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const FrontdeskDashboard = () => {
+  const [loading, setLoading] = React.useState(false);
   return (
     <FrontdeskLayout>
+            {loading && <KolakLoader fullscreen />}
+
           {/* Cards Grid - Responsive */}
           <div className="grid grid-cols-1 gap-3 mb-3 sm:gap-4 sm:mb-4 lg:grid-cols-2 2xl:gap-6">
             {/* Upcoming Surgeries */}
