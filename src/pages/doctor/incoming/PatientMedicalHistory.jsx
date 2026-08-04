@@ -806,15 +806,7 @@ const latestLab = useMemo(() => {
         }).filter(Boolean);
       });
     };
-  // Helper function to check if item is within last 48 hours
-  const isWithin48Hours = (createdAt) => {
-    if (!createdAt) return false;
-    const itemTime = new Date(createdAt).getTime();
-    const now = Date.now();
-    const hours48Ms = 48 * 60 * 60 * 1000;
-    return now - itemTime < hours48Ms;
-  };
-
+ 
   const investigations = useMemo(() => 
     Array.isArray(labInvestigations)
       ? labInvestigations.filter(inv => {
