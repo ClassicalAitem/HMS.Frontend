@@ -6,6 +6,7 @@ import { getPatients } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import { getDependants } from '@/services/api/dependantAPI';
+import KolakLoader from '@/components/common/KolakLoader'
 
 const Incoming = () => {
   const [patients, setPatients] = useState([])
@@ -109,6 +110,8 @@ const Incoming = () => {
 
   return (
     <PharmacistLayout>
+            {loading && <KolakLoader fullscreen />}
+
       <div className="p-6">
         <div className="mb-4">
           <div className="flex items-center gap-3 mb-2">
