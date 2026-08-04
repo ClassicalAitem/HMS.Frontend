@@ -8,6 +8,7 @@ import { normalizeStatus, getStatusBadgeClass, getStatusDisplayText } from "@/ut
 import toast from "react-hot-toast";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import { getDependants } from "@/services/api/dependantAPI";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const IncomingHmo = () => {
   const navigate = useNavigate();
@@ -106,6 +107,7 @@ const viewPatient = (item) => {
 
   return (
     <div className="flex h-screen">
+      {loading && <KolakLoader fullscreen />}
       <Sidebar />
 
       <div className="flex overflow-hidden flex-col flex-1">
