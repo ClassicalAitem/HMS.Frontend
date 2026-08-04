@@ -9,6 +9,7 @@ import { addPatient } from '../../../store/slices/patientsSlice';
 import { getUniqueFamilyNames, getUniqueCompanyNames } from '@/services/api/patientsAPI';
 import SearchableNameDropdown from '@/components/common/SearchableNameDropdown';
 import toast from 'react-hot-toast';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const Registration = () => {
   const navigate = useNavigate();
@@ -358,6 +359,8 @@ const Registration = () => {
 
   return (
     <div className="flex h-screen">
+            {(isLoading || loadingNames) && <KolakLoader fullscreen />}
+
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 

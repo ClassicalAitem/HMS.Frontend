@@ -5,6 +5,7 @@ import { FaArrowLeft, FaFileInvoice, FaSearch } from 'react-icons/fa';
 import { getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const PaymentReceiptHistory = () => {
   const { patientId } = useParams();
@@ -93,6 +94,7 @@ const PaymentReceiptHistory = () => {
   if (isLoading) {
     return (
       <CashierLayout>
+        {isLoading && <KolakLoader fullscreen />}
         <div className="flex justify-center items-center h-64">
           <div className="loading loading-spinner loading-lg text-primary"></div>
         </div>
@@ -103,6 +105,7 @@ const PaymentReceiptHistory = () => {
   if (error) {
     return (
       <CashierLayout>
+         {isLoading && <KolakLoader fullscreen />}
         <div className="flex flex-col justify-center items-center h-64 text-center">
           <div className="text-error text-lg font-semibold mb-2">Error Loading Receipts</div>
           <div className="text-base-content/70 mb-4">{error}</div>
@@ -119,6 +122,7 @@ const PaymentReceiptHistory = () => {
 
   return (
     <CashierLayout>
+       {isLoading && <KolakLoader fullscreen />}
       <div className="mb-8">
         {/* Back Button */}
         <button

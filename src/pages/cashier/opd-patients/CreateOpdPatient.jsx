@@ -10,6 +10,7 @@ import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { createBillForOpd } from '@/services/api/billingAPI';
 import { FaArrowLeft, FaTrash } from 'react-icons/fa';
 import { createInvestigationRequestForCashier } from '@/services/api/investigationRequestAPI';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const opdPatientSchema = yup.object().shape({
   fullName: yup.string().required('Full name is required').min(2),
@@ -220,6 +221,7 @@ const CreateOpdPatient = () => {
 
   return (
     <CashierLayout>
+       {isLoading && <KolakLoader fullscreen />}
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => navigate('/cashier/opd-patients')} className="btn btn-ghost btn-sm">
           <FaArrowLeft />

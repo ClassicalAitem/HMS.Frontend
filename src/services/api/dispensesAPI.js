@@ -23,11 +23,16 @@ export const getDispense = async (id) => {
 
 export const createDispense = async (prescriptionId, payload) => {
   try {
-    const data = payload?.items?.[0] || [];
-    const requiredFields = ['inventoryId', 'drugName', 'quantity', 'batchNumber'];
-    for (const field of requiredFields) {
-    if (!data?.[field]) throw new Error(`${field} is required`);
-  }
+    if (!prescriptionId) throw new Error('Prescription ID is required')
+    if (!payload || !Array.isArray(payload.items) || payload.items.length === 0) {
+      throw new Error('At least one dispense item is required')
+    }
+
+    const invalidItem = payload.items.find((item) => !item?.drugName || !(item?.quantity !== undefined && item?.quantity !== null && Number(item.quantity) > 0))
+    if (invalidItem) {
+      throw new Error('Each dispense item must include a drugName and a positive quantity')
+    }
+
     const response = await apiClient.post(`/dispense/${prescriptionId}`, payload)
     return response.data ?? response
   } catch (err) {

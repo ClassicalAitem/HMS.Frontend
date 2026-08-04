@@ -18,6 +18,7 @@ export { default as FrontDeskActionModal } from './frontdeskActionModal';
 export { default as LabActionModal } from './labActionModal';
 export { default as ConfirmationModal } from './ConfirmationModal';
 export { default as AddDrugModal } from './addDrugModal';
+export { default as DispenseConfirmModal } from './DispenseConfirmModal';
 export { default as SendLabResultsModal } from './SendLabResultsModal';
 export { default as SendToHmoModal } from './SendToHmoModal';
 export { default as SendToSonographerModal } from './SendToSonographerModal';

@@ -22,6 +22,7 @@ import HmoDependantsSection from '@/components/frontdesk/patients/HmoDependantsS
 import AdditionalInformationCard from '@/components/frontdesk/patients/AdditionalInformationCard';
 import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -116,6 +117,8 @@ const PatientDetails = () => {
 
   return (
     <div className="flex h-screen">
+            {isLoading && <KolakLoader fullscreen />}
+
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div

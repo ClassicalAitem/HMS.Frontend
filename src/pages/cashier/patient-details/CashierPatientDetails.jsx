@@ -11,6 +11,7 @@ import { ReceiptModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
+import KolakLoader from '@/components/common/KolakLoader';
 
 
 const CashierPatientDetails = () => {
@@ -207,6 +208,7 @@ const CashierPatientDetails = () => {
   if (isLoading && !snapshot) {
     return (
       <CashierLayout>
+         {isLoading && <KolakLoader fullscreen />}
         <div className="flex justify-center items-center h-64">
           <div className="loading loading-spinner loading-lg text-primary"></div>
         </div>
@@ -217,6 +219,7 @@ const CashierPatientDetails = () => {
   if (error && !snapshot && !currentPatient) {
     return (
       <CashierLayout>
+        {isLoading && <KolakLoader fullscreen />}
         <div className="flex flex-col justify-center items-center h-64 text-center">
           <div className="text-error text-lg font-semibold mb-2">Error Loading Patient</div>
           <div className="text-base-content/70 mb-4">{error}</div>
@@ -236,6 +239,7 @@ const CashierPatientDetails = () => {
   if (!patient) {
     return (
       <CashierLayout>
+         {isLoading && <KolakLoader fullscreen />}
         <div className="flex flex-col justify-center items-center h-64 text-center">
           <div className="text-base-content text-lg font-semibold mb-2">Patient Not Found</div>
           <div className="text-base-content/70 mb-4">The patient you're looking for doesn't exist.</div>
@@ -249,6 +253,7 @@ const CashierPatientDetails = () => {
 
   return (
     <CashierLayout>
+      {isLoading && <KolakLoader fullscreen />}
       <div className="mb-8">
 
 
