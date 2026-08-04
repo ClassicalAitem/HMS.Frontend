@@ -7,6 +7,7 @@ import { deleteOpdPatient, getAllOpdPatients } from '@/services/api/opdPatientAP
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const CashierOpdPatients = () => {
   const navigate = useNavigate();
@@ -142,6 +143,7 @@ const CashierOpdPatients = () => {
 
   return (
     <CashierLayout>
+       {isLoading && <KolakLoader fullscreen />}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-base-content">OPD Patients</h1>
