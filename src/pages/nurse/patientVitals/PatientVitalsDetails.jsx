@@ -37,6 +37,7 @@ import { getInvestigationByPatientId } from "@/services/api/investigationAPI";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -536,6 +537,7 @@ useEffect(() => {
 
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
