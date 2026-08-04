@@ -42,7 +42,7 @@ const Sidebar = () => {
       { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/doctor/attended-today" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
     { icon: GoChecklist, label: "Patients", path: "/dashboard/doctor/patientshistory" },
-    { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
+    // { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/doctor/payment-records" },
   ];
 
