@@ -4,6 +4,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import UpcomingAppointments from "./UpcomingAppointments";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { useAppSelector } from "@/store/hooks";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const DoctorDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -46,6 +47,7 @@ const DoctorDashboard = () => {
 
   return (
     <div className="flex h-screen ">
+       {loading && <KolakLoader fullscreen />}
       <Sidebar />
 
       <div className="flex overflow-hidden flex-col flex-1 ">

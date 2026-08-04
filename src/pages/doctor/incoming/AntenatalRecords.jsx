@@ -14,6 +14,7 @@ import {
 } from "@/services/api/anteNatalAPI";
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI"; 
+import KolakLoader from "@/components/common/KolakLoader";
 
 
 
@@ -474,6 +475,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 
   return (
     <div className="flex h-screen bg-base-200/50">
+       {loadingData && <KolakLoader fullscreen />}
       <Toaster position="top-right" />
 
       {isSidebarOpen && (
