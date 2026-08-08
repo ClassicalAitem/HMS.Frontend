@@ -168,7 +168,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCancel} />
+      <div className="fixed inset-0 bg-opacity-50" onClick={handleCancel} />
       
       {/* Modal */}
       <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl card bg-base-100">

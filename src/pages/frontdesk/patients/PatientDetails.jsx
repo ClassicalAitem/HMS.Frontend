@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
@@ -18,10 +18,11 @@ import PatientPageHeader from '@/components/frontdesk/patients/PatientPageHeader
 import PatientIdentificationCard from '@/components/frontdesk/patients/PatientIdentificationCard';
 import GeneralInfoCard from '@/components/frontdesk/patients/GeneralInfoCard';
 import AdditionalInfoCard from '@/components/frontdesk/patients/AdditionalInfoCard';
-import HmoDependantsSection from '@/components/frontdesk/patients/HmoDependantsSection';
+import HmoDependantsSection  from '@/components/frontdesk/patients/HmoDependantsSection';
 import AdditionalInformationCard from '@/components/frontdesk/patients/AdditionalInformationCard';
 import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
 
 const PatientDetails = () => {
@@ -39,6 +40,87 @@ const PatientDetails = () => {
   const [isSendToCashierOpen, setIsSendToCashierOpen] = useState(false);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+
+
+
+    // Prefer snapshot passed from Incoming; fallback to store
+    const snapshot = location?.state?.patientSnapshot || null;
+    const patient = currentPatient || snapshot || null;
+  
+     const filterSubjectRecords = (items) => {
+      if (!Array.isArray(items)) return [];
+      return items.filter((item) => (
+        isViewingDependant && dependantId ? item?.dependantId === dependantId : !item?.dependantId
+      ));
+    };
+  
+    const [subject, setSubject] = useState(null);
+    const [subjectLoading, setSubjectLoading] = useState(true);
+  
+    useEffect(() => {
+      let mounted = true;
+      const loadSubject = async () => {
+        try {
+          setSubjectLoading(true);
+          if (isViewingDependant && dependantId) {
+            try {
+              const res = await getDependantById(dependantId);
+              const dep = res?.data?.data?.dependant || res?.data?.dependant || dependantSnapshot;
+              if (mounted) setSubject(dep || dependantSnapshot);
+            } catch {
+              if (mounted) setSubject(dependantSnapshot);
+            }
+          } else {
+            if (mounted) setSubject(patient);
+          }
+        } finally {
+          if (mounted) setSubjectLoading(false);
+        }
+      };
+      loadSubject();
+      return () => { mounted = false; };
+    }, [isViewingDependant, dependantId, dependantSnapshot, patient]);
+  
+     const summarySubject = useMemo(() => {
+      const guardian = patient || {};
+  
+      if (!isViewingDependant) {
+        return {
+          id: guardian.id,
+          fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
+          gender: guardian.gender,
+          phone: guardian.phone || guardian.phoneNumber,
+          hospitalId: guardian.hospitalId,
+          status: guardian.status,
+          hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
+          relationshipType: null,
+        };
+      }
+  
+      const dep = subject || dependantSnapshot || {};
+  
+      // Dependants don't carry their own hmos — pull them out of the guardian's list
+      const ownHmos = Array.isArray(guardian.hmos)
+        ? guardian.hmos.filter(h => h.dependantId === (dep.id || dependantId))
+        : [];
+  
+      return {
+        id: dep.id || dependantId,
+        fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || 'Dependant',
+        gender: dep.gender || '—',
+        // Dependants don't carry their own phone in this schema — fall back to guardian's
+        phone: dep.phone || guardian.phone || guardian.phoneNumber,
+        // Hospital ID always belongs to the parent/guardian patient record
+        hospitalId: guardian.hospitalId,
+        status: dep.status || dependantSnapshot?.status || 'Unknown',
+        hmos: ownHmos,
+        relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
+      };
+    }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+  
 
   // Fetch patient data from backend
   useEffect(() => {
@@ -112,8 +194,6 @@ const PatientDetails = () => {
     );
   }
 
-  // Use currentPatient as patient for the rest of the component
-  const patient = (!isTransitionLoading && currentPatient) ? currentPatient : {};
 
   return (
     <div className="flex h-screen">
@@ -122,7 +202,7 @@ const PatientDetails = () => {
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -141,25 +221,30 @@ const PatientDetails = () => {
         <Header onToggleSidebar={toggleSidebar} />
 
         {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-4 lg:p-6">
           {/* Page Header */}
           <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
 
           {/* Patient Information */}
-          <div className="grid grid-cols-1 gap-6">
-            {/* Left Column - Patient Info */}
-            <div className="space-y-6 lg:col-span-2">
+          <div className="space-y-6">
+            <div className="space-y-6">
               {/* Patient Identification */}
-              <PatientIdentificationCard patient={patient} isTransitionLoading={isTransitionLoading} />
-                  <div className="flex gap-4 items-center mt-3">
-            <SendPatientModal
-              patientId={patient?.id || patientId}
-              patient={patient}
-              onUpdated={() => navigate('/frontdesk/dashboard')}
-              allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
-            />
-           
-          </div>
+              {/* <PatientIdentificationCard patient={patient} isTransitionLoading={isTransitionLoading} /> */}
+              <PatientDetailsCard
+                      patient={patient}
+                      summarySubject={summarySubject}
+                      isViewingDependant={isViewingDependant}
+                    />
+              
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
+                <SendPatientModal
+                  patientId={patient?.id || patientId}
+                  patient={patient}
+                  onUpdated={() => navigate('/frontdesk/dashboard')}
+                  allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+                />
+              </div>
 
               {/* General Info */}
               <GeneralInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
@@ -185,19 +270,16 @@ const PatientDetails = () => {
               />
             </div>
 
-
-          </div>
-
             {/* Additional Information */}
             <AdditionalInformationCard patient={patient} isLoading={isLoading} />
 
-          <div className="flex gap-4 items-center mt-3">
-            
-            {/* Action Buttons */}
-            <ActionButtons
-              onSendToCashier={() => setIsCreateBillOpen(true)}
-              onSendToHmo={() => setIsSendToHmoOpen(true)}
-            />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              {/* Action Buttons */}
+              <ActionButtons
+                onSendToCashier={() => setIsCreateBillOpen(true)}
+                onSendToHmo={() => setIsSendToHmoOpen(true)}
+              />
+            </div>
           </div>
         </div>
       </div>

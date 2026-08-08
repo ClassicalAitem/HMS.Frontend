@@ -170,7 +170,7 @@ const Surgeries = () => {
 
   return (
     <FrontdeskLayout>
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-base-content mb-2">Surgery Management</h1>
@@ -178,8 +178,8 @@ const Surgeries = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="mb-6">
-          <div className="tabs tabs-boxed">
+        <div className="mb-6 overflow-x-auto">
+          <div className="tabs tabs-boxed flex-nowrap whitespace-nowrap">
             <button 
               className={`tab ${filter === 'all' ? 'tab-active' : ''}`}
               onClick={() => setFilter('all')}

@@ -306,7 +306,7 @@ const SonographerIncomingDetails = () => {
   return (
     <div className="flex h-screen">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
 
       <div
@@ -599,7 +599,7 @@ const SonographerIncomingDetails = () => {
 
       {/* Preview Modal */}
       {showPreview && previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50 p-4">
           <div className="bg-base-100 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-auto">
             <div className="p-4 border-b border-base-200 flex items-center justify-between sticky top-0 bg-base-100">
               <h3 className="text-lg font-semibold">{previewFile.name}</h3>

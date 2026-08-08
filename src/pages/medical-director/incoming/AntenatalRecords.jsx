@@ -477,7 +477,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
       <Toaster position="top-right" />
 
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>

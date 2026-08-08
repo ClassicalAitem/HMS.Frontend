@@ -161,7 +161,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 }}>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }} onClick={onClose} />
+      <div className="fixed inset-0 bg-opacity-50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }} onClick={onClose} />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-2xl mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col" style={{ zIndex: 10000 }}>
