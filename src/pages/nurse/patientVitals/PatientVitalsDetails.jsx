@@ -540,7 +540,7 @@ useEffect(() => {
        {loading && <KolakLoader fullscreen />}
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
 
       {/* Sidebar */}
@@ -1151,7 +1151,7 @@ useEffect(() => {
           {/* Send to Doctor Modal */}
           {isSendDoctorOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
+              <div className="fixed inset-0 bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
               <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
                 <div className="p-6 card-body">
                   <div className="flex justify-between items-center mb-4">

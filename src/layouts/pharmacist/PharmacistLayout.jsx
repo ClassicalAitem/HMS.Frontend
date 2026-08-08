@@ -9,21 +9,22 @@ const PharmacistLayout = ({ children }) => {
   const closeSidebar = () => setIsSidebarOpen(false)
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen w-full overflow-hidden bg-base-300/5">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-52 2xl:w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[260px] transform transition-transform duration-300 ease-in-out lg:static lg:w-52 lg:translate-x-0 2xl:w-64 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/5">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/5">
         <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex overflow-y-auto flex-col p-2 2xl:p-4 py-1 h-full sm:p-2 2xl:py-4">
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-2 py-1 sm:p-3 2xl:p-4">
           {children}
         </div>
       </div>

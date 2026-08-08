@@ -8,7 +8,7 @@ import { LogoutModal } from "@/components/modals";
 import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg";
 
-const Sidebar = () => {
+const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
@@ -38,6 +38,7 @@ const Sidebar = () => {
   const MenuItem = ({ icon: Icon, label, path, active }) => (
     <Link
       to={path}
+      onClick={onCloseSidebar}
       className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
@@ -50,7 +51,7 @@ const Sidebar = () => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
+    <div className="flex h-full w-[82vw] max-w-[280px] flex-col border-r-2 bg-base-100 border-neutral/20 lg:w-64">
       <div className="p-6 border-b border-base-300">
         <div className="flex justify-center items-center">
           <div className="flex items-center space-x-2">
@@ -86,6 +87,7 @@ const Sidebar = () => {
       <div className="p-4 space-y-2 border-t border-base-300">
         <Link
           to="/change-password"
+          onClick={onCloseSidebar}
           className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
           <MdLockOutline className="w-5 h-5" />
