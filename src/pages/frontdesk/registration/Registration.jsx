@@ -364,7 +364,7 @@ const Registration = () => {
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -385,15 +385,15 @@ const Registration = () => {
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
-          <div className="mb-6">
-            <h1 className="pl-6 text-2xl font-normal text-primary 2xl:text-3xl">Add Patients Information</h1>
+          <div className="mb-6 px-2 sm:px-0">
+            <h1 className="text-2xl font-normal text-primary sm:pl-6 2xl:text-3xl">Add Patients Information</h1>
           </div>
 
           {/* Registration Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="w-full space-y-6">
             {/* First Section */}
             <div className="shadow-xl card bg-base-100">
-              <div className="p-6 card-body">
+              <div className="p-4 card-body sm:p-6">
                 <h2 className="mb-4 text-lg font-semibold text-base-content">First Section</h2>
                 
                 {/* Names Row */}

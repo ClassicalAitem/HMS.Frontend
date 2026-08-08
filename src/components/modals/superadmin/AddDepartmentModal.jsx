@@ -53,7 +53,7 @@ const AddDepartmentModal = ({ isOpen, onClose, onDepartmentAdded }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center bg-black bg-opacity-50">
+    <div className="flex fixed inset-0 z-50 justify-center items-center bg-opacity-50">
       <div className="mx-4 w-full max-w-md rounded-lg shadow-xl bg-base-100">
         {/* Modal Header */}
         <div className="flex justify-between items-center p-6 border-b border-base-300">

@@ -150,7 +150,7 @@ const OpdPatients = () => {
 
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -165,14 +165,14 @@ const OpdPatients = () => {
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         <Header onToggleSidebar={toggleSidebar} />
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="flex justify-between items-center mb-6">
-            <div>
+          <div className="flex flex-col gap-3 items-start justify-between mb-6 sm:flex-row sm:items-center">
+            <div className="w-full sm:w-auto">
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">OPD Patients</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Patients without hospital cards needing attention</p>
             </div>
             <button 
               onClick={() => navigate('/frontdesk/opd-patients/new')}
-              className="btn btn-primary btn-sm 2xl:btn-md"
+              className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
             >
               <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

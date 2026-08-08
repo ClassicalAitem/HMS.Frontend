@@ -89,9 +89,9 @@ const AddOpdPatient = () => {
             </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-2xl space-y-6">
         <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
+          <div className="card-body p-4 sm:p-6">
             <h2 className="card-title text-lg">Patient Information</h2>
             <div className="form-control">
               <label className="label"><span className="label-text font-medium">Full Name *</span></label>

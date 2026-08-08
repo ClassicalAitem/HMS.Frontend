@@ -343,32 +343,54 @@ const LaboratoryDashboard = () => {
     setCompletedTests(allCompletedTests.slice(startIndex, endIndex));
   }, [allCompletedTests, completedPage, itemsPerPage]);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   if (loading) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
-          <div className="flex items-center justify-center flex-1">
+      <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" />
+        <div className="fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0">
+          <LaboratorySidebar onCloseSidebar={closeSidebar} />
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <Header onToggleSidebar={toggleSidebar} />
+          <div className="flex flex-1 items-center justify-center">
             <p className="text-lg text-gray-600">Loading laboratory data...</p>
           </div>
         </div>
       </div>
     );
   }
+
   return (
-    <div className="flex h-screen bg-base-200">
-      <LaboratorySidebar />
+    <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
+      )}
 
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <LaboratorySidebar onCloseSidebar={closeSidebar} />
+      </div>
 
-        <div className="overflow-y-auto flex-1 ">
-          <section className="p-7">            {error && (
-              <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header onToggleSidebar={toggleSidebar} />
+
+        <div className="flex-1 overflow-y-auto">
+          <section className="p-4 sm:p-6 lg:p-7">
+            {error && (
+              <div className="mb-4 rounded bg-red-100 p-4 text-red-700">
                 {error}
               </div>
-            )}            <h4 className="text-[32px] text-[#00943C]">
+            )}
+            <h4 className="text-2xl font-semibold text-[#00943C] sm:text-[32px]">
               Welcome Back, Lab Technician!
             </h4>
             <p className="text-[12px]">
@@ -376,13 +398,13 @@ const LaboratoryDashboard = () => {
               2025
             </p>
 
-            <div className="flex gap-[20px] justify-between mt-10">
+            <div className="mt-10 grid grid-cols-1 gap-[20px] md:grid-cols-2 xl:grid-cols-4">
               {testStats.map((test, index) => {
                 const isFourthCard = index === 3;
                 return (
                   <div
                     key={index}
-                    className={`w-[300px] h-[150px] bg-[#FFFFFF] shadow p-5 text-[12px] rounded-[8px] ${
+                    className={`h-[150px] rounded-[8px] bg-[#FFFFFF] p-5 text-[12px] shadow ${
                       isFourthCard ? "text-[#DC362E]" : ""
                     }`}
                   >
@@ -393,9 +415,9 @@ const LaboratoryDashboard = () => {
                     >
                       {test.header}
                     </h1>
-                    <p className="py-2 text-[30px] ">{test.value}</p>
+                    <p className="py-2 text-[30px]">{test.value}</p>
                     <p
-                      className={`text-[#605D66] text-[12px] ${
+                      className={`text-[12px] text-[#605D66] ${
                         isFourthCard ? "text-[#DC362E]" : ""
                       }`}
                     >
@@ -405,11 +427,10 @@ const LaboratoryDashboard = () => {
                 );
               })}
             </div>
-            {/* Pending test results and Completed Today */}
 
             <section className="mt-10">
-              <div className="flex justify-between">
-                <div className="w-[670px] h-[458px] rounded-[6px] border border-[#AEAAAE] p-5">
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+                <div className="rounded-[6px] border border-[#AEAAAE] p-5">
                   <h4 className="text-[24px] text-[#00943C]">
                     Pending Test Requests
                   </h4>
@@ -417,27 +438,25 @@ const LaboratoryDashboard = () => {
                     Overview of tests awaiting processing.
                   </p>
 
-                  <div className="mt-5 flex flex-col gap-5 ">
+                  <div className="mt-5 flex flex-col gap-5">
                     {pendingRequests.length > 0 ? (
                       pendingRequests.map((result, index) => (
                         <div
                           key={index}
-                          className="w-full h-[70px] border border-[#AEAAAE] rounded-[6px]"
+                          className="w-full rounded-[6px] border border-[#AEAAAE] p-3"
                         >
-                          <div className="flex justify-between items-center px-3 mt-2">
-                            <div className="flex gap-3 items-center flex-1">
-                              <span className="w-[10px] h-[10px] rounded-full bg-[#3498DB] inline-block"></span>
-                              <div className="flex-1">
-                                <p className="text-[16px] font-[500]">
-                                  {result.name}
-                                </p>
+                          <div className="mt-2 flex items-center justify-between gap-3">
+                            <div className="flex flex-1 items-center gap-3">
+                              <span className="inline-block h-[10px] w-[10px] rounded-full bg-[#3498DB]"></span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[16px] font-[500]">{result.name}</p>
                                 <p className="text-[12px] text-gray-600">
                                   <span className="badge badge-xs badge-outline mr-2">{result.personType}</span>
                                   {result.testName}
                                 </p>
                               </div>
                             </div>
-                            <div className="bg-[#3498DB] px-3 h-[32px] flex items-center justify-center rounded-[6px] text-white text-sm">
+                            <div className="flex h-[32px] items-center justify-center rounded-[6px] bg-[#3498DB] px-3 text-sm text-white">
                               {result.status}
                             </div>
                           </div>
@@ -446,10 +465,11 @@ const LaboratoryDashboard = () => {
                     ) : (
                       <p className="text-gray-500">No pending requests</p>
                     )}
-                    <div className="flex gap-3">
-                      <button 
+                    <div className="flex flex-wrap gap-3">
+                      <button
                         onClick={() => navigate('/dashboard/laboratory/incoming')}
-                        className="text-[#3498DB] underline font-semibold cursor-pointer">
+                        className="cursor-pointer font-semibold text-[#3498DB] underline"
+                      >
                         View All
                       </button>
                       <button
@@ -459,13 +479,12 @@ const LaboratoryDashboard = () => {
                         Scan Upload
                       </button>
                     </div>
-                    {/* Pagination for pending requests */}
                     {allPendingRequests.length > itemsPerPage && (
-                      <div className="flex justify-center items-center mt-4 space-x-2">
+                      <div className="mt-4 flex items-center justify-center space-x-2">
                         <button
                           onClick={() => setPendingPage(Math.max(1, pendingPage - 1))}
                           disabled={pendingPage === 1}
-                          className="px-3 py-1 border border-[#AEAAAE] rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
+                          className="rounded border border-[#AEAAAE] px-3 py-1 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Previous
                         </button>
@@ -475,7 +494,7 @@ const LaboratoryDashboard = () => {
                         <button
                           onClick={() => setPendingPage(Math.min(Math.ceil(allPendingRequests.length / itemsPerPage), pendingPage + 1))}
                           disabled={pendingPage === Math.ceil(allPendingRequests.length / itemsPerPage)}
-                          className="px-3 py-1 border border-[#AEAAAE] rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
+                          className="rounded border border-[#AEAAAE] px-3 py-1 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Next
                         </button>
@@ -484,7 +503,7 @@ const LaboratoryDashboard = () => {
                   </div>
                 </div>
 
-                <div className="w-[670px] h-[458px] rounded-[6px] border border-[#AEAAAE] p-5">
+                <div className="rounded-[6px] border border-[#AEAAAE] p-5">
                   <h4 className="text-[24px] text-[#00943C]">
                     Completed Tests
                   </h4>
@@ -492,20 +511,18 @@ const LaboratoryDashboard = () => {
                     Here is an overview of all your completed requests.
                   </p>
 
-                  <div className="mt-5 flex flex-col gap-5 ">
+                  <div className="mt-5 flex flex-col gap-5">
                     {completedTests.length > 0 ? (
                       completedTests.map((result, index) => (
                         <div
                           key={index}
-                          className="w-full h-[70px] border border-[#AEAAAE] rounded-[6px]"
+                          className="w-full rounded-[6px] border border-[#AEAAAE] p-3"
                         >
-                          <div className="flex justify-between items-center px-3 mt-2">
-                            <div className="flex gap-3 items-center flex-1">
-                              <span className="w-[10px] h-[10px] rounded-full bg-[#71B908] inline-block"></span>
-                              <div className="flex-1">
-                                <p className="text-[16px] font-[500]">
-                                  {result.name}
-                                </p>
+                          <div className="mt-2 flex items-center justify-between gap-3">
+                            <div className="flex flex-1 items-center gap-3">
+                              <span className="inline-block h-[10px] w-[10px] rounded-full bg-[#71B908]"></span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[16px] font-[500]">{result.name}</p>
                                 <p className="text-[12px] text-gray-600">
                                   <span className="badge badge-xs badge-outline mr-2">{result.personType}</span>
                                   {result.testType}
@@ -521,18 +538,18 @@ const LaboratoryDashboard = () => {
                     ) : (
                       <p className="text-gray-500">No completed tests</p>
                     )}
-                    <button 
+                    <button
                       onClick={() => navigate('/dashboard/laboratory/completed')}
-                      className="text-[#3498DB] underline font-semibold cursor-pointer">
+                      className="cursor-pointer font-semibold text-[#3498DB] underline"
+                    >
                       View All
                     </button>
-                    {/* Pagination for completed tests */}
                     {allCompletedTests.length > itemsPerPage && (
-                      <div className="flex justify-center items-center mt-4 space-x-2">
+                      <div className="mt-4 flex items-center justify-center space-x-2">
                         <button
                           onClick={() => setCompletedPage(Math.max(1, completedPage - 1))}
                           disabled={completedPage === 1}
-                          className="px-3 py-1 border border-[#AEAAAE] rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
+                          className="rounded border border-[#AEAAAE] px-3 py-1 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Previous
                         </button>
@@ -542,7 +559,7 @@ const LaboratoryDashboard = () => {
                         <button
                           onClick={() => setCompletedPage(Math.min(Math.ceil(allCompletedTests.length / itemsPerPage), completedPage + 1))}
                           disabled={completedPage === Math.ceil(allCompletedTests.length / itemsPerPage)}
-                          className="px-3 py-1 border border-[#AEAAAE] rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 text-sm"
+                          className="rounded border border-[#AEAAAE] px-3 py-1 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           Next
                         </button>
