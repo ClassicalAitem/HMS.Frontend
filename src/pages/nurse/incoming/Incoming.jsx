@@ -143,51 +143,46 @@ const normalizeStatus = (status) => {
   }, [query, items]);
 
   return (
-    <div className="flex h-screen">
-       {loading && <KolakLoader fullscreen />}
-      {/* Mobile Backdrop */}
+    <div className="flex min-h-screen w-full">
+      {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
       <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-100">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <section>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
+          <section className="space-y-4 sm:space-y-5">
             <div>
-              <div>
-                <div className="flex items-center gap-5 ">
-                  <RiArrowLeftRightFill size={25} className="text-primary" />
-                  <h1 className="text-[32px] text-primary ">Incoming</h1>
-                </div>
-                <p className="text-[12px] text-base-content/70">
-                  Check out the patient sent to you.
-                </p>
+              <div className="flex items-center gap-3 sm:gap-5">
+                <RiArrowLeftRightFill size={24} className="text-primary sm:w-[25px]" />
+                <h1 className="text-2xl font-bold text-primary sm:text-[32px]">Incoming</h1>
               </div>
+              <p className="mt-1 text-xs text-base-content/70 sm:text-sm">
+                Check out the patient sent to you.
+              </p>
             </div>
-            {/* Minimal search */}
-            <div className="flex items-center gap-3 mb-5">
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative w-full max-w-sm">
                 <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search patients"
-                  className="input input-bordered input-sm pl-9 w-full"
+                  className="input input-bordered input-sm w-full pl-9"
                 />
               </div>
               {query && (
@@ -198,15 +193,14 @@ const normalizeStatus = (status) => {
                   Clear
                 </button>
               )}
-              <button onClick={onRefresh} className="btn btn-outline btn-sm ml-auto">
+              <button onClick={onRefresh} className="btn btn-outline btn-sm sm:ml-auto">
                 Refresh
               </button>
             </div>
-            <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
-              
-              {/* Column Headers */}
+
+            <div className="card overflow-hidden border border-base-200 bg-base-100 shadow-sm">
               {!loading && items.length > 0 && (
-                <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
+                <div className="hidden grid-cols-12 gap-2 border-b border-base-200 bg-base-200/60 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-base-content/50 md:grid">
                   <div className="col-span-3">Patient</div>
                   <div className="col-span-2">Patient ID</div>
                   <div className="col-span-2">Status</div>
@@ -214,8 +208,7 @@ const normalizeStatus = (status) => {
                   <div className="col-span-1 text-right">Action</div>
                 </div>
               )}
-                
-              {/* Rows */}
+
               <div className="divide-y divide-base-200">
               {loading ? (
                 Array.from({ length: 8 }).map((_, idx) => (
@@ -296,23 +289,24 @@ const normalizeStatus = (status) => {
                     return (
                       <div
                         key={index}
-                        className="grid grid-cols-12 gap-2 px-5 py-4 items-center hover:bg-base-200/40 transition-colors"
+                        className="grid gap-3 px-4 py-4 transition-colors hover:bg-base-200/40 md:grid-cols-12 md:items-center md:gap-2 md:px-5"
                       >
-                        {/* Patient Name */}
-                        <div className="col-span-3 min-w-0">
-                          <p className="font-bold text-base-content truncate">
+                        <div className="md:col-span-3 md:min-w-0">
+                          <p className="text-sm font-bold text-base-content md:text-base">
                             {data.name}
+                          </p>
+                          <p className="mt-1 text-xs text-base-content/60 md:hidden">
+                            {data.type === 'dependant' ? 'Dependant' : 'Patient'}
                           </p>
                         </div>
 
-                        {/* Patient ID */}
-                        <div className="col-span-2">
-                          <span className="text-sm font-mono text-base-content/70">
+                        <div className="md:col-span-2">
+                          <span className="text-xs font-mono text-base-content/70 md:text-sm">
                             {data.hospitalId || data.patientId || '—'}
                           </span>
                         </div>
 
-                        <div className="col-span-2">
+                        <div className="md:col-span-2">
                           {data.type === 'dependant' ? (
                             <span className="badge badge-sm badge-secondary">{data.badge}</span>
                           ) : (
@@ -320,26 +314,21 @@ const normalizeStatus = (status) => {
                           )}
                         </div>
 
-                        {/* Status */}
-                        <div className="col-span-2">
+                        <div className="md:col-span-2">
                           <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
                             {data.illness}
                           </span>
                         </div>
 
-                        {/* Registered */}
-                        <div className="col-span-2">
-                          <span className="text-sm text-base-content/60">
+                        <div className="md:col-span-2">
+                          <span className="text-xs text-base-content/60 md:text-sm">
                             {data.updatedAt}
                           </span>
                         </div>
 
-                     
-
-                        {/* Action */}
-                        <div className="col-span-1 flex justify-end">
+                        <div className="md:col-span-1 md:flex md:justify-end">
                           <button
-                            className="btn btn-sm btn-primary"
+                            className="btn btn-sm btn-primary w-full md:w-auto"
                             onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
                               state: {
                                 from: 'incoming',

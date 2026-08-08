@@ -228,13 +228,12 @@ const PatientDetails = () => {
           {/* Patient Information */}
           <div className="space-y-6">
             <div className="space-y-6">
-              {/* Patient Identification */}
-              {/* <PatientIdentificationCard patient={patient} isTransitionLoading={isTransitionLoading} /> */}
-              <PatientDetailsCard
-                      patient={patient}
-                      summarySubject={summarySubject}
-                      isViewingDependant={isViewingDependant}
-                    />
+           
+            <PatientDetailsCard
+              patient={patient}
+              summarySubject={summarySubject}
+              isViewingDependant={isViewingDependant}
+            />
               
 
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
