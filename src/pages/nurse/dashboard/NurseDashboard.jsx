@@ -168,15 +168,33 @@ const NurseDashboard = () => {
   const refreshIncoming = () => setRefreshIncomingKey((k) => k + 1);
   const refreshActivity = () => setRefreshActivityKey((k) => k + 1);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
-    <div className="flex h-screen bg-base-200">
-       {tasksLoading && <KolakLoader fullscreen />}
-      <Sidebar />
+    <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
+      {tasksLoading && <KolakLoader fullscreen />}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
 
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <Sidebar onCloseSidebar={closeSidebar} />
+      </div>
 
-        <div className="overflow-y-auto flex flex-col gap-4 sm:gap-6 2xl:gap-8 p-4 sm:p-6 2xl:p-8 h-full">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header onToggleSidebar={toggleSidebar} />
+
+        <div className="flex h-full min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3 sm:gap-6 sm:p-5 lg:p-6 2xl:gap-8">
           <TaskAssigned
             tasksCount={tasksCount}
             incoming={incomingItems}
