@@ -180,39 +180,33 @@ const NursePaymentRecords = () => {
   ], []);
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
+    <div className="flex min-h-screen w-full">
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
         <Header onToggleSidebar={toggleSidebar} />
 
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-primary 2xl:text-4xl">Payment Receipt Records</h1>
-            <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-primary sm:text-3xl 2xl:text-4xl">Payment Receipt Records</h1>
+            <p className="mt-1 text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-4 mb-6">
-            <select className="select select-bordered">
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <select className="select select-bordered w-full">
               <option>All Status</option>
               <option>Pending</option>
               <option>Paid</option>
@@ -221,14 +215,14 @@ const NursePaymentRecords = () => {
               <option>declined</option>
               <option>refunded</option>
             </select>
-            <select className="select select-bordered">
+            <select className="select select-bordered w-full">
               <option>All Methods</option>
               <option>Cash</option>
               <option>Transfer</option>
               <option>Hmo</option>
               <option>Pos</option>
             </select>
-            <select className="select select-bordered">
+            <select className="select select-bordered w-full">
               <option>All Time</option>
               <option>Today</option>
               <option>This Week</option>
@@ -236,10 +230,9 @@ const NursePaymentRecords = () => {
             </select>
           </div>
 
-          {/* Payment Records Table */}
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
+          <div className="flex min-h-0 w-full flex-1">
+            <div className="card w-full bg-base-100 shadow-xl">
+              <div className="card-body p-3 sm:p-4 2xl:p-6">
                 {isLoading ? (
                   <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
                     <div className="overflow-auto max-h-96 p-4 space-y-3">
