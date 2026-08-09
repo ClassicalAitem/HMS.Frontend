@@ -34,36 +34,36 @@ const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => 
           )}
         </div>
 
-        {/* Info grid */}
-      <div className="flex-1 min-w-0 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {/* Name + Gender — paired row on mobile, separate grid cols on desktop */}
-        <div className="col-span-2 flex items-baseline justify-between gap-3 sm:contents">
-          <div className="min-w-0 sm:col-span-1">
-            <p className="text-xs uppercase tracking-wide text-base-content/50">
-              {isViewingDependant ? 'Dependant Name' : 'Patient Name'}
-            </p>
-            <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{fullName}</p>
-          </div>
-          <div className="shrink-0 sm:min-w-0">
-            <p className="text-xs uppercase tracking-wide text-base-content/50">Gender</p>
-            <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{gender}</p>
-          </div>
+     {/* Info grid */}
+    <div className="flex flex-col flex-1 gap-4 sm:grid sm:grid-cols-3 sm:gap-6 md:gap-8">
+      {/* Name + Gender — paired row on mobile, separate grid cols on desktop */}
+      <div className="flex items-baseline justify-between gap-5 sm:contents">
+        <div className="min-w-0 sm:col-span-1">
+          <p className="text-xs uppercase tracking-wide text-base-content/50">
+            {isViewingDependant ? 'Dependant Name' : 'Patient Name'}
+          </p>
+          <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{fullName}</p>
         </div>
-
-        {/* Phone + ID — paired row on mobile, separate grid cols on desktop */}
-        <div className="col-span-2 flex items-baseline justify-between gap-3 sm:contents">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-base-content/50">Phone Number</p>
-            <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{phone}</p>
-          </div>
-          <div className="shrink-0 sm:min-w-0 sm:col-span-2">
-            <p className="text-xs uppercase tracking-wide text-base-content/50">
-              {isViewingDependant ? 'Parent Patient ID' : 'Patient ID'}
-            </p>
-            <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{patientIdDisplay}</p>
-          </div>
+        <div className="shrink-0 sm:min-w-0">
+          <p className="text-xs uppercase tracking-wide text-base-content/50">Gender</p>
+          <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{gender}</p>
         </div>
       </div>
+
+      {/* Phone + ID — paired row on mobile, separate grid cols on desktop */}
+      <div className="flex items-baseline justify-between gap-5 sm:contents">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-base-content/50">Phone Number</p>
+          <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{phone}</p>
+        </div>
+        <div className="shrink-0 sm:min-w-0 sm:col-span-2">
+          <p className="text-xs uppercase tracking-wide text-base-content/50">
+            {isViewingDependant ? 'Parent Patient ID' : 'Patient ID'}
+          </p>
+          <p className="text-sm font-semibold text-base-content truncate sm:text-md 2xl:text-lg">{patientIdDisplay}</p>
+        </div>
+      </div>
+    </div>
 
         {/* Status + card type */}
         <div className="flex flex-row items-center justify-between gap-3 pt-2 border-t border-base-300 sm:flex-col sm:items-end sm:border-t-0 sm:pt-0 sm:gap-2">
