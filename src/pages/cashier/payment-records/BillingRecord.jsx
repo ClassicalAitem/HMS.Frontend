@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
-import { Header, DataTable } from '@/components/common';
-import { Sidebar } from '@/components/cashier/dashboard';
+import { DataTable } from '@/components/common';
+import { CashierLayout } from '@/layouts/cashier';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import cashierData from '@/data/cashierData.json';
 import { getAllBillings, getBillingsByOpdPatientId } from '@/services/api/billingAPI';
@@ -313,95 +313,69 @@ const handlePrintReceipt = (billing) => {
   ], []);
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
+    <CashierLayout>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-base-content">Billing Records</h1>
+        <p className="text-sm text-base-content/70">View and manage all billing transactions</p>
       </div>
 
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
+      <div className="mb-4 flex flex-col gap-3">
+        <div className="flex gap-2 flex-col sm:flex-row">
+          <select className="select select-bordered w-full sm:w-auto">
+            <option>All Status</option>
+            <option>Completed</option>
+            <option>Pending</option>
+            <option>Failed</option>
+          </select>
+          <select className="select select-bordered w-full sm:w-auto">
+            <option>All Methods</option>
+            <option>Bank Transfer</option>
+            <option>Cash</option>
+            <option>Debit Card</option>
+          </select>
+          <select className="select select-bordered w-full sm:w-auto">
+            <option>All Time</option>
+            <option>Today</option>
+            <option>This Week</option>
+            <option>This Month</option>
+          </select>
+        </div>
+      </div>
 
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-primary 2xl:text-4xl">Billing Records</h1>
-            <p className="text-sm text-base-content/70 2xl:text-base">View and manage all billing transactions</p>
-          </div>
-
-          {/* Filters */}
-          <div className="flex gap-4 mb-6">
-            <select className="select select-bordered">
-              <option>All Status</option>
-              <option>Completed</option>
-              <option>Pending</option>
-              <option>Failed</option>
-            </select>
-            <select className="select select-bordered">
-              <option>All Methods</option>
-              <option>Bank Transfer</option>
-              <option>Cash</option>
-              <option>Debit Card</option>
-            </select>
-            <select className="select select-bordered">
-              <option>All Time</option>
-              <option>Today</option>
-              <option>This Week</option>
-              <option>This Month</option>
-            </select>
-          </div>
-
-          {/* Payment Records Table */}
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                {isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-96 p-4 space-y-3">
-                      <div className="skeleton h-6 w-52" />
-                      {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="skeleton h-8 w-full" />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <DataTable
-                    data={paymentRecords}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={7}
-                    maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                    showEntries={true}
-                    searchPlaceholder="Search payment records..."
-                  />
-                )}
+      <div className="card bg-base-100 shadow-xl w-full">
+        <div className="card-body p-2 sm:p-4">
+          {isLoading ? (
+            <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+              <div className="overflow-auto max-h-96 p-4 space-y-3">
+                <div className="skeleton h-6 w-52" />
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="skeleton h-8 w-full" />
+                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <DataTable
+                data={paymentRecords}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={7}
+                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
+                showEntries={true}
+                searchPlaceholder="Search payment records..."
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Payment Details Modal */}
       {isModalOpen && selectedBilling && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50">
-          <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col">
-            <div className="p-6 card-body overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg mx-auto shadow-xl card bg-base-100 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 card-body overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-base-content">Billing Details - {selectedBilling.billingId}</h2>
                 <button
@@ -455,47 +429,47 @@ const handlePrintReceipt = (billing) => {
                 {/* Item Details */}
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Item Details</label>
-                  <table className="table w-full mt-2">
-                    <thead>
-                      <tr className="text-xs text-base-content/60 uppercase tracking-wide">
-                        <th>Code</th>
-                        <th>Description</th>
-                        <th>Qty</th>
-                        <th>Price</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedBilling.itemDetails?.map((item, idx) => (
-                        <tr key={idx} className="text-sm">
-                          <td>{item.code}</td>
-                          <td>{item.description}</td>
-                          <td>{item.quantity}</td>
-                          <td>₦ {Number(item.price).toLocaleString()}</td>
-                          <td>₦ {Number(item.total).toLocaleString()}</td>
+                  <div className="overflow-x-auto mt-2">
+                    <table className="table w-full">
+                      <thead>
+                        <tr className="text-xs text-base-content/60 uppercase tracking-wide">
+                          <th>Code</th>
+                          <th>Description</th>
+                          <th>Qty</th>
+                          <th>Price</th>
+                          <th>Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {selectedBilling.itemDetails?.map((item, idx) => (
+                          <tr key={idx} className="text-sm">
+                            <td>{item.code}</td>
+                            <td>{item.description}</td>
+                            <td>{item.quantity}</td>
+                            <td>₦ {Number(item.price).toLocaleString()}</td>
+                            <td>₦ {Number(item.total).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
               <div className="flex gap-3 mt-6">
-              
-
-<button
-  onClick={() => handlePrintReceipt(selectedBilling)}
-  className="btn btn-primary flex-1"
->
-  <FaPrint className="w-4 h-4 mr-2" />
-  Print Receipt
-</button>
+                <button
+                  onClick={() => handlePrintReceipt(selectedBilling)}
+                  className="btn btn-primary flex-1"
+                >
+                  <FaPrint className="w-4 h-4 mr-2" />
+                  Print Receipt
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </CashierLayout>
   );
 };
 
