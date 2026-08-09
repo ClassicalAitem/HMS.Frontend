@@ -203,6 +203,7 @@ const normalizeStatus = (status) => {
                 <div className="hidden grid-cols-12 gap-2 border-b border-base-200 bg-base-200/60 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-base-content/50 md:grid">
                   <div className="col-span-3">Patient</div>
                   <div className="col-span-2">Patient ID</div>
+                  <div className="col-span-2">Type</div>
                   <div className="col-span-2">Status</div>
                   <div className="col-span-2">Updated</div>
                   <div className="col-span-1 text-right">Action</div>
@@ -276,74 +277,75 @@ const normalizeStatus = (status) => {
                   const end = start + pageSize;
                   const visible = filtered.slice(start, end);
 
-                  return visible.map((data, index) => {
-                    const statusBadgeClass = (status) => {
-                      const s = status?.toLowerCase() || '';
-                      if (s.includes('vitals')) return 'badge-info';
-                      if (s.includes('sampling')) return 'badge-warning';
-                      if (s.includes('injection')) return 'badge-success';
-                      if (s.includes('nurse')) return 'badge-warning';
-                      return 'badge-neutral';
-                    };
+                 return visible.map((data, index) => {
+  const statusBadgeClass = (status) => {
+    const s = status?.toLowerCase() || '';
+    if (s.includes('vitals')) return 'badge-info';
+    if (s.includes('sampling')) return 'badge-warning';
+    if (s.includes('injection')) return 'badge-success';
+    if (s.includes('nurse')) return 'badge-warning';
+    return 'badge-neutral';
+  };
 
-                    return (
-                      <div
-                        key={index}
-                        className="grid gap-3 px-4 py-4 transition-colors hover:bg-base-200/40 md:grid-cols-12 md:items-center md:gap-2 md:px-5"
-                      >
-                        <div className="md:col-span-3 md:min-w-0">
-                          <p className="text-sm font-bold text-base-content md:text-base">
-                            {data.name}
-                          </p>
-                          <p className="mt-1 text-xs text-base-content/60 md:hidden">
-                            {data.type === 'dependant' ? 'Dependant' : 'Patient'}
-                          </p>
-                        </div>
+  return (
+    <div
+      key={index}
+      className="grid gap-2.5 px-4 py-3.5 transition-colors hover:bg-base-200/40 md:grid-cols-12 md:items-center md:gap-2 md:px-5 md:py-4"
+    >
+      {/* Name + ID — paired row on mobile, separate grid cols on desktop */}
+      <div className="flex items-baseline justify-between gap-3 md:contents">
+        <div className="min-w-0 md:col-span-3">
+          <p className="text-sm font-bold text-base-content truncate md:text-base">
+            {data.name}
+          </p>
+        </div>
+        <div className="shrink-0 md:col-span-2">
+          <span className="text-xs font-mono text-base-content/70 md:text-sm">
+            {data.hospitalId || data.patientId || '—'}
+          </span>
+        </div>
+      </div>
 
-                        <div className="md:col-span-2">
-                          <span className="text-xs font-mono text-base-content/70 md:text-sm">
-                            {data.hospitalId || data.patientId || '—'}
-                          </span>
-                        </div>
+      {/* Type badge + Status badge — paired row on mobile, separate grid cols on desktop */}
+      <div className="flex items-center justify-between gap-2 md:contents">
+        <div className="md:col-span-2">
+          {data.type === 'dependant' ? (
+            <span className="badge badge-sm badge-secondary">{data.badge}</span>
+          ) : (
+            <span className="badge badge-sm badge-primary">Patient</span>
+          )}
+        </div>
+        <div className="md:col-span-2">
+          <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
+            {data.illness}
+          </span>
+        </div>
+      </div>
 
-                        <div className="md:col-span-2">
-                          {data.type === 'dependant' ? (
-                            <span className="badge badge-sm badge-secondary">{data.badge}</span>
-                          ) : (
-                            <span className="badge badge-sm badge-primary">Patient</span>
-                          )}
-                        </div>
+      <div className="md:col-span-2">
+        <span className="text-xs text-base-content/60 md:text-sm">
+          {data.updatedAt}
+        </span>
+      </div>
 
-                        <div className="md:col-span-2">
-                          <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
-                            {data.illness}
-                          </span>
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <span className="text-xs text-base-content/60 md:text-sm">
-                            {data.updatedAt}
-                          </span>
-                        </div>
-
-                        <div className="md:col-span-1 md:flex md:justify-end">
-                          <button
-                            className="btn btn-sm btn-primary w-full md:w-auto"
-                            onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
-                              state: {
-                                from: 'incoming',
-                                patientSnapshot: data.type === 'dependant' ? items.find(p => p.id === data.patientId && p.type === 'patient') : data.snapshot,
-                                dependantId: data.dependantId,
-                                dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
-                              }
-                            })}
-                          >
-                            View
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  });
+      <div className="md:col-span-1 md:flex md:justify-end">
+        <button
+          className="btn btn-sm btn-primary w-full md:w-auto"
+          onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
+            state: {
+              from: 'incoming',
+              patientSnapshot: data.type === 'dependant' ? items.find(p => p.id === data.patientId && p.type === 'patient') : data.snapshot,
+              dependantId: data.dependantId,
+              dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
+            }
+          })}
+        >
+          View
+        </button>
+      </div>
+    </div>
+  );
+});
                 })()
               )}
             </div>
