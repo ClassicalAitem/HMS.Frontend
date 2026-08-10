@@ -29,94 +29,76 @@ const AssignedTask = () => {
     );
   };
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
+    <div className="flex min-h-screen w-full">
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
       <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <section>
-            <div className="w-[225px]">
-              <h1 className="text-[24px] text-base-content">Assigned Task</h1>
-              <p className="text-[12px] text-base-content/70">Tuesday, September 9, 2025</p>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
+          <section className="space-y-5">
+            <div className="max-w-fit">
+              <h1 className="text-2xl font-bold text-base-content sm:text-3xl">Assigned Task</h1>
+              <p className="text-xs text-base-content/70 sm:text-sm">Tuesday, September 9, 2025</p>
             </div>
 
-            <div className="flex h-[773px] gap-10 bg-base-200 p-6 mt-6">
-              {/* Task list */}
-
-              <div className=" w-[1108px] bg-base-100 shadow p-10">
-                <div className="">
-                  <div className="flex  justify-between items-center mb-4">
-                    <h2 className="font-[400] text-[24px] text-base-content">Registered Tasks</h2>
-                    <p className="text-[12px] text-base-content/70">
-                      Last Updated 1/1/01 12:00AM
-                    </p>
-                  </div>
-
-                  {/* Task Items */}
-
-                  <div>
-                    <ul className="flex flex-col gap-10">
-                      {tasks.map((task) => (
-                        <li
-                          key={task.id}
-                          className="flex justify-between items-center"
-                        >
-                          <div className="flex items-center gap-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={task.completed}
-                              onChange={() => toggleTask(task.id)}
-                              className="w-4 h-4 rounded accent-primary focus:ring-primary"
-                            />
-                            
-                            <span>{task.title}</span>
-                          </div>
-                          <span className="text-sm text-base-content/70">
-                            {task.time}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+            <div className="grid gap-5 rounded-box bg-base-200 p-3 sm:p-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(260px,0.7fr)] xl:gap-6">
+              <div className="w-full rounded-box bg-base-100 p-4 shadow-sm sm:p-6">
+                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-xl font-semibold text-base-content sm:text-2xl">Registered Tasks</h2>
+                  <p className="text-xs text-base-content/70 sm:text-sm">
+                    Last Updated 1/1/01 12:00AM
+                  </p>
                 </div>
+
+                <ul className="flex flex-col gap-4 sm:gap-6">
+                  {tasks.map((task) => (
+                    <li
+                      key={task.id}
+                      className="flex flex-col gap-2 border-b border-base-200 pb-3 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => toggleTask(task.id)}
+                          className="h-4 w-4 rounded accent-primary focus:ring-primary"
+                        />
+                        <span className="text-sm sm:text-base">{task.title}</span>
+                      </div>
+                      <span className="text-xs text-base-content/70 sm:text-sm">{task.time}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
 
-              <div className="flex flex-col gap-7">
-                <div className="bg-base-100 w-[350px] h-[176px]  rounded-[6px] shadow p-4">
+              <div className="flex flex-col gap-4 xl:gap-5">
+                <div className="rounded-box bg-base-100 p-4 shadow-sm sm:p-5">
                   <h3 className="text-sm text-base-content">Total Tasks</h3>
-                  <p className="text-[40px] font-bold py-5">{totalTasks}</p>
-                  <p className="text-xs text-base-content/70">
-                    Active under your care
-                  </p>
+                  <p className="py-4 text-3xl font-bold sm:text-4xl">{totalTasks}</p>
+                  <p className="text-xs text-base-content/70">Active under your care</p>
                 </div>
 
-                <div className="bg-base-100 w-[350px] h-[176px]  rounded-[6px] shadow p-4">
+                <div className="rounded-box bg-base-100 p-4 shadow-sm sm:p-5">
                   <h3 className="text-sm text-base-content">Completed Task</h3>
-                  <p className="text-[40px] font-bold py-5">{completedTasks}</p>
-                  <p className="text-xs text-base-content/70">
-                    {completedTasks} Completed
-                  </p>
+                  <p className="py-4 text-3xl font-bold sm:text-4xl">{completedTasks}</p>
+                  <p className="text-xs text-base-content/70">{completedTasks} Completed</p>
                 </div>
 
-                <button className="w-full border rounded-lg py-2 text-base-content">
+                <button className="w-full rounded-lg border border-base-300 bg-base-100 py-2.5 text-base-content transition hover:bg-base-200">
                   + Create Task
                 </button>
               </div>

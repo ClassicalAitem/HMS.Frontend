@@ -28,6 +28,17 @@ const HmoDependantsSection = ({
   onEditDependant,
   onAddHmoForDependant,
 }) => {
+
+   if (!patient) {
+    return (
+      <div className="shadow-xl card bg-base-100">
+        <div className="p-6 card-body">
+          <div className="w-full h-40 rounded-lg skeleton" />
+        </div>
+      </div>
+    );
+  }
+
   const allHmos = patient.hmos || [];
   const patientHmos = allHmos.filter((h) => !h.dependantId);
   const hmosByDependantId = allHmos.reduce((acc, h) => {
