@@ -1,66 +1,89 @@
-import React, { useState } from "react";
-import { FaClipboardList, FaThLarge } from "react-icons/fa";
-import { FaSuitcaseMedical } from "react-icons/fa6";
-import { MdLockOutline } from "react-icons/md";
-import { FaSignOutAlt } from "react-icons/fa";
-import { Link, useLocation } from "react-router-dom";
-import { LogoutModal } from "@/components/modals";
-import { useAppSelector } from "@/store/hooks";
-import HospitalFavicon from "@/assets/images/favicon.svg";
+/* eslint-disable no-unused-vars */
+import React, { useState } from 'react';
+import { SlCalender } from "react-icons/sl";
+import { IoReceiptOutline } from "react-icons/io5";
+import { MdOutlineDashboard, MdFormatListBulletedAdd } from "react-icons/md";
+import { GoPerson } from "react-icons/go";
+import { CiLock, CiLogout } from "react-icons/ci";
+import { Link, useLocation } from 'react-router-dom';
+import { LogoutModal } from '@/components/modals';
+import { useAppSelector } from '@/store/hooks';
+import HospitalFavicon from "@/assets/images/favicon.svg"
+import { FaClipboardCheck, FaThLarge } from 'react-icons/fa';
+import { FaSuitcaseMedical } from 'react-icons/fa6';
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
 
+  // Function to generate initials from first and last name
   const generateInitials = (firstName, lastName) => {
-    if (!firstName && !lastName) return "U";
-    const fi = firstName ? firstName.charAt(0).toUpperCase() : "";
-    const li = lastName ? lastName.charAt(0).toUpperCase() : "";
-    return fi + li;
+    if (!firstName && !lastName) return 'U';
+    const firstInitial = firstName ? firstName.charAt(0).toUpperCase() : '';
+    const lastInitial = lastName ? lastName.charAt(0).toUpperCase() : '';
+    return firstInitial + lastInitial;
   };
 
+  // Function to format role for display
   const formatRole = (role) => {
     switch (role) {
-      case "hmo":
-        return "HMO";
+      case 'super-admin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'doctor':
+        return 'Doctor';
+      case 'nurse':
+        return 'Nurse';
+      case 'frontdesk':
+      case 'front-desk':
+        return 'Front Desk';
+      case 'cashier':
+        return 'Cashier';
+      case 'hmo':
+        return 'Hmo';
       default:
-        return role || "User";
+        return role || 'User';
     }
   };
 
-  const menuItems = [
-    { icon: FaThLarge, label: "Dashboard", path: "/dashboard/hmo" },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming" },
-    { icon: FaClipboardList, label: "Hmo Patients", path: '/dashboard/hmo/patients' }
-  ];
 
+ const menuItems = [
+    { icon: FaThLarge, label: "Dashboard", path: "/dashboard/hmo",  active: location.pathname === '/dashboard/hmo' },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming", active: location.pathname.startsWith('/dashboard/hmo/incoming') },
+    { icon: FaClipboardCheck, label: "Hmo Patients", path: '/dashboard/hmo/patients', active: location.pathname === '/dashboard/hmo/patients' }
+  ];
   const MenuItem = ({ icon: Icon, label, path, active }) => (
     <Link
       to={path}
       onClick={onCloseSidebar}
-      className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+      className={`flex items-center space-x-3 px-4 2xl:py-3 py-2 text-sm font-medium rounded-lg transition-colors ${
         active
-          ? "bg-primary text-primary-content"
-          : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          ? 'bg-primary text-primary-content'
+          : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
       }`}
     >
-      <Icon className="w-5 h-5" />
-      <span>{label}</span>
+      <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
+      <span className="text-xs 2xl:text-sm">{label}</span>
     </Link>
   );
 
   return (
-    <div className="flex h-full w-[82vw] max-w-[280px] flex-col border-r-2 bg-base-100 border-neutral/20 lg:w-64">
-      <div className="p-6 border-b border-base-300">
+    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
+      {/* Logo */}
+      <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
+          <img src="/src/assets/images/logo.png" alt="Kolak" className="hidden w-auto h-10" />
+
+          {/* Kolak logo adaptive*/}
           <div className="flex items-center space-x-2">
             <div className="">
-              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-12" />
+              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-10 lg:h-8 2xl:h-12" />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold">Kolak</span>
-              <span className="text-sm text-base-content/70">- HMO -</span>
+              <span className="text-lg font-bold lg:text-md 2xl:text-3xl">Kolak</span>
+              <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">- Hospital -</span>
             </div>
           </div>
         </div>
@@ -74,11 +97,7 @@ const Sidebar = ({ onCloseSidebar }) => {
             icon={item.icon}
             label={item.label}
             path={item.path}
-            active={
-              item.path === "/dashboard/hmo"
-                ? location.pathname === item.path
-                : location.pathname.startsWith(item.path)
-            }
+            active={item.active}
           />
         ))}
       </nav>
@@ -88,29 +107,33 @@ const Sidebar = ({ onCloseSidebar }) => {
         <Link
           to="/change-password"
           onClick={onCloseSidebar}
-          className="flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          className={`flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors ${
+            location.pathname === '/change-password'
+              ? 'bg-primary text-primary-content'
+              : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+          }`}
         >
-          <MdLockOutline className="w-5 h-5" />
-          <span>Change Password</span>
+          <CiLock className="w-4 h-4 2xl:w-5 2xl:h-5" />
+          <span className="text-xs 2xl:text-sm">Change Password</span>
         </Link>
 
         <button
           onClick={() => setIsLogoutModalOpen(true)}
           className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
-          <FaSignOutAlt className="w-5 h-5" />
-          <span>Log Out</span>
+          <CiLogout  className="w-4 h-4 2xl:w-5 2xl:h-5" />
+          <span className="text-xs 2xl:text-sm">Log Out</span>
         </button>
       </div>
 
       {/* User Profile */}
       <div className="p-4 border-t border-base-300">
-        <div className="flex items-center space-x-3 h-[58px]">
+        <div className="flex items-center space-x-3">
           <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
             {user?.profileImage ? (
               <img
                 src={user.profileImage}
-                alt={`${user?.firstName || ""} ${user?.lastName || ""}`}
+                alt={`${user.firstName} ${user.lastName}`}
                 className="object-cover w-10 h-10 rounded-full"
               />
             ) : (
@@ -121,13 +144,20 @@ const Sidebar = ({ onCloseSidebar }) => {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-base-content">
-              {user ? `${user.firstName} ${user.lastName}` : "User"}
+              {user ? `${user.firstName} ${user.lastName}` : 'User'}
             </p>
-            <p className="text-xs text-primary">{formatRole(user?.role)}</p>
+            <p className="text-xs text-primary">
+              {formatRole(user?.role)}
+            </p>
           </div>
         </div>
       </div>
-      <LogoutModal isOpen={isLogoutModalOpen} onClose={() => setIsLogoutModalOpen(false)} />
+
+      {/* Logout Modal */}
+      <LogoutModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+      />
     </div>
   );
 };
