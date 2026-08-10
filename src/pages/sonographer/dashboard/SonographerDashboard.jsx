@@ -103,7 +103,7 @@ const SonographerDashboard = () => {
     <div className="flex h-screen">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
 
       {/* Sidebar */}

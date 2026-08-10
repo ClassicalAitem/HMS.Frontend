@@ -114,9 +114,9 @@ const DataTable = ({
     <div className={`w-full ${className}`}>
       {/* Search Controls */}
       {searchable && (
-        <div className="flex gap-4 justify-between items-center mb-4">
+        <div className="flex flex-col gap-3 items-stretch mb-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative w-full max-w-md sm:flex-1">
             <div className="flex absolute inset-y-0 left-0 items-center pl-3 pointer-events-none">
               <FaSearch className="w-4 h-4 text-base-content/50" />
             </div>

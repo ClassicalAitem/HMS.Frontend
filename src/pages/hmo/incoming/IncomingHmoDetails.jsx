@@ -37,6 +37,8 @@ const IncomingHmoDetails = () => {
   const dependantId = location.state?.dependantId || null;
   const dependantSnapshot = location.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
   const [patient, setPatient] = useState(snapshot || null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +54,8 @@ const IncomingHmoDetails = () => {
 
   const [subject, setSubject] = useState(null);
   const currentUser = useAppSelector((state) => state.auth.user);
+    const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+  const closeSidebar = () => setIsSidebarOpen(false);
   const hmoUserId = currentUser?.id || currentUser?._id;
   const hmoUserName =
     `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
@@ -344,12 +348,26 @@ const IncomingHmoDetails = () => {
 
   return (
     <div className="flex h-screen">
-      {loading && <KolakLoader fullscreen />}
-      <Sidebar />
+          {loading && <KolakLoader fullscreen />}
+    
+          {isSidebarOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              onClick={closeSidebar}
+            />
+          )}
+    
+          <div
+            className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+              isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          >
+      <Sidebar onCloseSidebar={closeSidebar} />
+          </div>
       <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="flex-1 overflow-y-auto p-6">
+        <Header onToggleSidebar={toggleSidebar} />
+        <div className="flex-1 overflow-y-auto ">
+          <div className="flex-1 overflow-y-auto p-3">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
               <div>

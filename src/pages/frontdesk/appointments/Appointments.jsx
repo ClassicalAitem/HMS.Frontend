@@ -252,7 +252,7 @@ const Appointments = () => {
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -278,7 +278,7 @@ const Appointments = () => {
               <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
             </div>
              <button
-               className="btn btn-primary btn-sm 2xl:btn-md"
+               className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
                onClick={() => setIsBookModalOpen(true)}
              >
                <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,10 +289,10 @@ const Appointments = () => {
           </div>
 
           {/* Filter Bar */}
-          <div className="flex gap-4 justify-between items-center mb-6">
+          <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:justify-between sm:items-center">
             <div className="flex gap-3 items-center">
               <button
-                className="flex gap-2 items-center btn btn-sm"
+                className="flex gap-2 items-center btn btn-sm w-full sm:w-auto"
                 onClick={() => setFilterOpen(!filterOpen)}
               >
                 <PiSlidersLight className="w-4 h-4 rotate-90" />
@@ -300,9 +300,9 @@ const Appointments = () => {
               </button>
             </div>
 
-            <div className="flex gap-3 items-center">
-              <div className="dropdown dropdown-end">
-                <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm">
+            <div className="flex gap-3 items-center w-full sm:w-auto justify-end">
+              <div className="dropdown dropdown-end w-full sm:w-auto">
+                <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm w-full sm:w-auto justify-between">
                   <FaCalendarAlt className="w-3 h-3" />
                   <span className="text-xs">{selectedDate}</span>
                   <FaChevronDown className="w-3 h-3" />
