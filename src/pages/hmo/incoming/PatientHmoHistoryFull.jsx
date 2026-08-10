@@ -162,28 +162,28 @@ const PatientHmoHistoryFull = () => {
     : patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient';
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full overflow-hidden">
       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <Sidebar />
+        <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-base-content">HMO Approval History</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-sm text-base-content/70">{subjectName}</p>
+        <div className="flex flex-1 overflow-y-auto flex-col p-3 sm:p-6 space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-xl font-semibold text-base-content sm:text-2xl">HMO Approval History</h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <p className="text-sm text-base-content/70 truncate">{subjectName}</p>
                 {isViewingDependant && (
                   <span className="badge badge-secondary badge-sm">
                     {subject?.relationshipType || dependantSnapshot?.relationshipType || 'Dependant'}
@@ -192,13 +192,13 @@ const PatientHmoHistoryFull = () => {
               </div>
               <p className="text-xs text-base-content/50">{patient?.hospitalId || patientId}</p>
             </div>
-            <button className="btn btn-sm btn-outline" onClick={() => navigate(-1)}>
+            <button className="btn btn-sm btn-outline self-start" onClick={() => navigate(-1)}>
               ← Back
             </button>
           </div>
 
           {/* Filter tabs */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {['all', 'approved', 'partial', 'rejected'].map((s) => (
               <button
                 key={s}

@@ -53,60 +53,76 @@ const HmoDashboard = () => {
     ];
   }, [hmos]);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
       {loading && <KolakLoader fullscreen />}
-      <Sidebar />
 
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
+      )}
 
-        <div className="overflow-y-auto flex-1">
-          <section className="p-7">
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <Sidebar onCloseSidebar={closeSidebar} />
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header onToggleSidebar={toggleSidebar} />
+
+        <div className="flex-1 overflow-y-auto">
+          <section className="p-4 sm:p-6 lg:p-7">
             <div className="w-full md:w-[687px]">
-              <h1 className="text-4xl font-regular">
+              <h1 className="text-3xl font-regular sm:text-4xl">
                 Welcome, HMO <span className="font-bold text-primary">{`${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</span>
               </h1>
               <p className="text-sm">This dashboard provides a quick summary of your HMO claims and approvals.</p>
             </div>
 
-            <div className="flex flex-col lg:flex-row justify-between mt-5 gap-4">
+            <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:justify-between">
               {cards.map((c, idx) => (
-                <div key={idx} className="w-full lg:w-[30%] h-[152px] bg-base-100 shadow shadow-lg border p-5 rounded-[10px]">
+                <div key={idx} className="h-[152px] w-full rounded-[10px] border bg-base-100 p-5 shadow shadow-lg lg:w-[30%]">
                   <div className="flex justify-between">
                     <p className="text-lg font-semibold">{c.label}</p>
                     <img src="/src/assets/images/users.png" alt="..." />
                   </div>
                   {loading ? (
-                    <div className="skeleton h-8 w-24 mt-3" />
+                    <div className="skeleton mt-3 h-8 w-24" />
                   ) : (
-                    <h1 className="text-6xl font-semibold mt-3">{c.value}</h1>
+                    <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">{c.value}</h1>
                   )}
                 </div>
               ))}
             </div>
 
-            <div className="mt-10 p-6 bg-base-100 border border-base-200 rounded-xl">
-              <h2 className="text-xl font-semibold mb-3">Recent Entries</h2>
+            <div className="mt-10 rounded-xl border border-base-200 bg-base-100 p-4 sm:p-6">
+              <h2 className="mb-3 text-xl font-semibold">Recent Entries</h2>
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="loading loading-spinner loading-lg" />
                 </div>
               ) : hmos.length === 0 ? (
-                <div className="text-center py-12 text-base-content/60">
+                <div className="py-12 text-center text-base-content/60">
                   <p className="text-lg">No HMO plans found</p>
-                  <p className="text-sm mt-2">Once HMO plans are created, they will appear here.</p>
+                  <p className="mt-2 text-sm">Once HMO plans are created, they will appear here.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {hmos.slice(0, 6).map((hmo) => {
                     const expiresAt = hmo.expiresAt ? new Date(hmo.expiresAt) : null;
                     const isExpired = expiresAt ? expiresAt.getTime() < Date.now() : false;
                     const expiresLabel = hmo.expiresAt ? formatNigeriaDate(hmo.expiresAt) : "—";
 
                     return (
-                      <div key={hmo.id || hmo._id} className="bg-base-200 border border-base-300 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
+                      <div key={hmo.id || hmo._id} className="rounded-xl border border-base-300 bg-base-200 p-4">
+                        <div className="mb-2 flex items-center justify-between">
                           <p className="text-sm font-medium">{hmo.provider || "Unknown Provider"}</p>
                           <span className={`badge badge-sm ${isExpired ? "badge-error" : "badge-secondary"}`}>
                             {isExpired ? "Expired" : "Active"}
