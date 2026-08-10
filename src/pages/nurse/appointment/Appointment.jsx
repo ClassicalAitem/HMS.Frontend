@@ -147,37 +147,34 @@ const Appointment = () => {
   };
   return (
     <>
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
+    <div className="flex min-h-screen w-full">
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
       <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <section>
-            <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
+          <section className="space-y-4 sm:space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
                 <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
               </div>
                <button
-                 className="btn btn-primary btn-sm 2xl:btn-md"
+                 className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
                  onClick={() => setIsBookModalOpen(true)}
                >
                  <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,10 +184,10 @@ const Appointment = () => {
                </button>
             </div>
 
-            <div className="flex gap-4 justify-between items-center mb-6">
-              <div className="flex gap-3 items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
                 <button
-                  className="flex gap-2 items-center btn btn-sm"
+                  className="btn btn-sm flex items-center gap-2"
                   onClick={() => setFilterOpen(!filterOpen)}
                 >
                   <svg className="w-4 h-4 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M7 12h10M10 18h4" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -198,14 +195,14 @@ const Appointment = () => {
                 </button>
               </div>
 
-              <div className="flex gap-3 items-center">
+              <div className="flex items-center gap-3">
                 <div className="dropdown dropdown-end">
-                  <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm">
+                  <label tabIndex={0} className="btn btn-outline btn-sm flex items-center gap-2">
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 7V3m8 4V3M3 11h18M5 19h14" strokeWidth="2" strokeLinecap="round"/></svg>
                     <span className="text-xs">{selectedDate}</span>
                     <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round"/></svg>
                   </label>
-                  <ul tabIndex={0} className="p-2 mt-1 w-52 shadow dropdown-content menu bg-base-100 rounded-box">
+                  <ul tabIndex={0} className="menu dropdown-content mt-1 w-52 rounded-box bg-base-100 p-2 shadow">
                     <li><a onClick={() => setSelectedDate('7/18/17')}>7/18/17</a></li>
                     <li><a onClick={() => setSelectedDate('7/19/17')}>7/19/17</a></li>
                     <li><a onClick={() => setSelectedDate('7/20/17')}>7/20/17</a></li>
@@ -214,9 +211,9 @@ const Appointment = () => {
               </div>
             </div>
 
-            <div className="flex flex-1 w-full min-h-0">
-              <div className="w-full shadow-xl card bg-base-100">
-                <div className="p-4 card-body 2xl:p-6">
+            <div className="flex min-h-0 w-full flex-1">
+              <div className="card w-full bg-base-100 shadow-xl">
+                <div className="card-body p-3 sm:p-4 2xl:p-6">
                   <DataTable
                     data={processedAppointments}
                     columns={columns}

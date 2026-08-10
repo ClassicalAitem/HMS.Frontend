@@ -1,6 +1,7 @@
 // src/pages/hmo/history/HMOPatients.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RiFilterLine, RiCloseLine } from 'react-icons/ri';
 import { Header, DataTable } from '@/components/common';
 import Sidebar from '@/components/hmo/dashboard/Sidebar';
 import { getAllBillings } from '@/services/api/billingAPI';
@@ -11,12 +12,22 @@ import KolakLoader from '@/components/common/KolakLoader';
 
 const HMOPatients = () => {
   const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
   const [dateFilter, setDateFilter] = useState('all');
   const [decisionFilter, setDecisionFilter] = useState('all');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+
+  const activeFilterCount =
+    (dateFilter !== 'all' ? 1 : 0) +
+    (decisionFilter !== 'all' ? 1 : 0) +
+    (customFrom || customTo ? 1 : 0);
+
+  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   const loadHistory = async () => {
     try {
@@ -189,24 +200,11 @@ const filteredRecords = useMemo(() => {
     },
     {
       key: 'decision',
-      title: 'Decision',
+      title: 'Status',
       sortable: true,
       render: (value) => <DecisionBadge decision={value} />,
     },
-    {
-      key: 'hmoCovered',
-      title: 'HMO Covered',
-      sortable: true,
-      className: 'text-success',
-      render: (value) => `₦${Number(value).toLocaleString()}`,
-    },
-    {
-      key: 'patientOwes',
-      title: 'Patient Owes',
-      sortable: true,
-      className: 'text-error',
-      render: (value) => `₦${Number(value).toLocaleString()}`,
-    },
+  
     {
       key: 'approvedBy',
       title: 'Decided By',
@@ -237,16 +235,32 @@ const filteredRecords = useMemo(() => {
   ], []);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen w-full overflow-hidden">
       {loading && <KolakLoader fullscreen />}
-      <Sidebar />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
-        <div className="overflow-y-auto flex-1 p-6">
-          <div className="flex items-start justify-between mb-6">
+
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <Sidebar onCloseSidebar={closeSidebar} />
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
+        <Header onToggleSidebar={toggleSidebar} />
+
+        <div className="overflow-y-auto flex-1 p-3 sm:p-6">
+          <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold">Approval History</h1>
-              <p className="text-base-content/70">Patients whose billing items have been reviewed.</p>
+              <h1 className="text-2xl font-semibold sm:text-3xl">Approval History</h1>
+              <p className="text-sm text-base-content/70 sm:text-base">Patients whose billing items have been reviewed.</p>
             </div>
             <div className="flex gap-2">
               <button className="btn btn-sm" onClick={loadHistory} disabled={loading}>
@@ -258,64 +272,106 @@ const filteredRecords = useMemo(() => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <select
-                className="select select-bordered select-sm"
-                value={dateFilter}
-                onChange={(e) => {
-                setDateFilter(e.target.value);
-                setCustomFrom('');
-                setCustomTo('');
-                }}
-                disabled={!!(customFrom || customTo)}
+          <div className="mb-6">
+            {/* Filter toggle — mobile only */}
+            <button
+              className="btn btn-sm btn-outline gap-2 mb-3 sm:hidden"
+              onClick={() => setShowFilters((v) => !v)}
             >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-            </select>
+              <RiFilterLine size={16} />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="badge badge-primary badge-xs">{activeFilterCount}</span>
+              )}
+            </button>
 
-            <div className="flex items-center gap-2">
-                <span className="text-sm text-base-content/60">From</span>
-                <input
-                type="date"
-                className="input input-bordered input-sm"
-                value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                max={customTo || undefined}
-                />
-                <span className="text-sm text-base-content/60">To</span>
-                <input
-                type="date"
-                className="input input-bordered input-sm"
-                value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                min={customFrom || undefined}
-                />
-                {(customFrom || customTo) && (
-                <button
-                    className="btn btn-ghost btn-xs"
+            {/* Filter panel — collapsible on mobile, always visible from sm: up */}
+            <div
+              className={`card border border-base-200 bg-base-100 p-4 ${
+                showFilters ? 'block' : 'hidden'
+              } sm:block`}
+            >
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <label className="block text-xs font-medium text-base-content/60 mb-1">
+                    Date Range
+                  </label>
+                  <select
+                    className="select select-bordered select-sm w-full"
+                    value={dateFilter}
+                    onChange={(e) => {
+                      setDateFilter(e.target.value);
+                      setCustomFrom('');
+                      setCustomTo('');
+                    }}
+                    disabled={!!(customFrom || customTo)}
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-base-content/60 mb-1">
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    className="input input-bordered input-sm w-full"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    max={customTo || undefined}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-base-content/60 mb-1">
+                    To
+                  </label>
+                  <input
+                    type="date"
+                    className="input input-bordered input-sm w-full"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    min={customFrom || undefined}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-base-content/60 mb-1">
+                    Decision
+                  </label>
+                  <select
+                    className="select select-bordered select-sm w-full"
+                    value={decisionFilter}
+                    onChange={(e) => setDecisionFilter(e.target.value)}
+                  >
+                    <option value="all">All Decisions</option>
+                    <option value="approved">Approved</option>
+                    <option value="partial">Partial</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="mixed">Mixed</option>
+                  </select>
+                </div>
+              </div>
+
+              {(customFrom || customTo) && (
+                <div className="mt-3">
+                  <button
+                    className="btn btn-ghost btn-xs gap-1"
                     onClick={() => { setCustomFrom(''); setCustomTo(''); }}
-                >
-                    Clear
-                </button>
-                )}
+                  >
+                    <RiCloseLine size={14} />
+                    Clear custom range
+                  </button>
+                </div>
+              )}
             </div>
-
-            <select
-                className="select select-bordered select-sm"
-                value={decisionFilter}
-                onChange={(e) => setDecisionFilter(e.target.value)}
-            >
-                <option value="all">All Decisions</option>
-                <option value="approved">Approved</option>
-                <option value="partial">Partial</option>
-                <option value="rejected">Rejected</option>
-                <option value="mixed">Mixed</option>
-            </select>
-            </div>
+          </div>
           <div className="w-full shadow-xl card bg-base-100">
-            <div className="p-4 card-body 2xl:p-6">
+            <div className="p-3 card-body sm:p-4 2xl:p-6">
               {loading ? (
                 <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
                   <div className="overflow-auto max-h-96 p-4 space-y-3">
