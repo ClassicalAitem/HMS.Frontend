@@ -143,51 +143,46 @@ const normalizeStatus = (status) => {
   }, [query, items]);
 
   return (
-    <div className="flex h-screen">
-       {loading && <KolakLoader fullscreen />}
-      {/* Mobile Backdrop */}
+    <div className="flex min-h-screen w-full">
+      {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
       <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-100">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <section>
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
+          <section className="space-y-4 sm:space-y-5">
             <div>
-              <div>
-                <div className="flex items-center gap-5 ">
-                  <RiArrowLeftRightFill size={25} className="text-primary" />
-                  <h1 className="text-[32px] text-primary ">Incoming</h1>
-                </div>
-                <p className="text-[12px] text-base-content/70">
-                  Check out the patient sent to you.
-                </p>
+              <div className="flex items-center gap-3 sm:gap-5">
+                <RiArrowLeftRightFill size={24} className="text-primary sm:w-[25px]" />
+                <h1 className="text-2xl font-bold text-primary sm:text-[32px]">Incoming</h1>
               </div>
+              <p className="mt-1 text-xs text-base-content/70 sm:text-sm">
+                Check out the patient sent to you.
+              </p>
             </div>
-            {/* Minimal search */}
-            <div className="flex items-center gap-3 mb-5">
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative w-full max-w-sm">
                 <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search patients"
-                  className="input input-bordered input-sm pl-9 w-full"
+                  className="input input-bordered input-sm w-full pl-9"
                 />
               </div>
               {query && (
@@ -198,24 +193,23 @@ const normalizeStatus = (status) => {
                   Clear
                 </button>
               )}
-              <button onClick={onRefresh} className="btn btn-outline btn-sm ml-auto">
+              <button onClick={onRefresh} className="btn btn-outline btn-sm sm:ml-auto">
                 Refresh
               </button>
             </div>
-            <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
-              
-              {/* Column Headers */}
+
+            <div className="card overflow-hidden border border-base-200 bg-base-100 shadow-sm">
               {!loading && items.length > 0 && (
-                <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
+                <div className="hidden grid-cols-12 gap-2 border-b border-base-200 bg-base-200/60 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-base-content/50 md:grid">
                   <div className="col-span-3">Patient</div>
                   <div className="col-span-2">Patient ID</div>
+                  <div className="col-span-2">Type</div>
                   <div className="col-span-2">Status</div>
                   <div className="col-span-2">Updated</div>
                   <div className="col-span-1 text-right">Action</div>
                 </div>
               )}
-                
-              {/* Rows */}
+
               <div className="divide-y divide-base-200">
               {loading ? (
                 Array.from({ length: 8 }).map((_, idx) => (
@@ -283,78 +277,75 @@ const normalizeStatus = (status) => {
                   const end = start + pageSize;
                   const visible = filtered.slice(start, end);
 
-                  return visible.map((data, index) => {
-                    const statusBadgeClass = (status) => {
-                      const s = status?.toLowerCase() || '';
-                      if (s.includes('vitals')) return 'badge-info';
-                      if (s.includes('sampling')) return 'badge-warning';
-                      if (s.includes('injection')) return 'badge-success';
-                      if (s.includes('nurse')) return 'badge-warning';
-                      return 'badge-neutral';
-                    };
+                 return visible.map((data, index) => {
+  const statusBadgeClass = (status) => {
+    const s = status?.toLowerCase() || '';
+    if (s.includes('vitals')) return 'badge-info';
+    if (s.includes('sampling')) return 'badge-warning';
+    if (s.includes('injection')) return 'badge-success';
+    if (s.includes('nurse')) return 'badge-warning';
+    return 'badge-neutral';
+  };
 
-                    return (
-                      <div
-                        key={index}
-                        className="grid grid-cols-12 gap-2 px-5 py-4 items-center hover:bg-base-200/40 transition-colors"
-                      >
-                        {/* Patient Name */}
-                        <div className="col-span-3 min-w-0">
-                          <p className="font-bold text-base-content truncate">
-                            {data.name}
-                          </p>
-                        </div>
+  return (
+    <div
+      key={index}
+      className="grid gap-2.5 px-4 py-3.5 transition-colors hover:bg-base-200/40 md:grid-cols-12 md:items-center md:gap-2 md:px-5 md:py-4"
+    >
+      {/* Name + ID — paired row on mobile, separate grid cols on desktop */}
+      <div className="flex items-baseline justify-between gap-3 md:contents">
+        <div className="min-w-0 md:col-span-3">
+          <p className="text-sm font-bold text-base-content truncate md:text-base">
+            {data.name}
+          </p>
+        </div>
+        <div className="shrink-0 md:col-span-2">
+          <span className="text-xs font-mono text-base-content/70 md:text-sm">
+            {data.hospitalId || data.patientId || '—'}
+          </span>
+        </div>
+      </div>
 
-                        {/* Patient ID */}
-                        <div className="col-span-2">
-                          <span className="text-sm font-mono text-base-content/70">
-                            {data.hospitalId || data.patientId || '—'}
-                          </span>
-                        </div>
+      {/* Type badge + Status badge — paired row on mobile, separate grid cols on desktop */}
+      <div className="flex items-center justify-between gap-2 md:contents">
+        <div className="md:col-span-2">
+          {data.type === 'dependant' ? (
+            <span className="badge badge-sm badge-secondary">{data.badge}</span>
+          ) : (
+            <span className="badge badge-sm badge-primary">Patient</span>
+          )}
+        </div>
+        <div className="md:col-span-2">
+          <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
+            {data.illness}
+          </span>
+        </div>
+      </div>
 
-                        <div className="col-span-2">
-                          {data.type === 'dependant' ? (
-                            <span className="badge badge-sm badge-secondary">{data.badge}</span>
-                          ) : (
-                            <span className="badge badge-sm badge-primary">Patient</span>
-                          )}
-                        </div>
+      <div className="md:col-span-2">
+        <span className="text-xs text-base-content/60 md:text-sm">
+          {data.updatedAt}
+        </span>
+      </div>
 
-                        {/* Status */}
-                        <div className="col-span-2">
-                          <span className={`badge badge-sm ${statusBadgeClass(data.illness)}`}>
-                            {data.illness}
-                          </span>
-                        </div>
-
-                        {/* Registered */}
-                        <div className="col-span-2">
-                          <span className="text-sm text-base-content/60">
-                            {data.updatedAt}
-                          </span>
-                        </div>
-
-                     
-
-                        {/* Action */}
-                        <div className="col-span-1 flex justify-end">
-                          <button
-                            className="btn btn-sm btn-primary"
-                            onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
-                              state: {
-                                from: 'incoming',
-                                patientSnapshot: data.type === 'dependant' ? items.find(p => p.id === data.patientId && p.type === 'patient') : data.snapshot,
-                                dependantId: data.dependantId,
-                                dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
-                              }
-                            })}
-                          >
-                            View
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  });
+      <div className="md:col-span-1 md:flex md:justify-end">
+        <button
+          className="btn btn-sm btn-primary w-full md:w-auto"
+          onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
+            state: {
+              from: 'incoming',
+              patientSnapshot: data.type === 'dependant' ? items.find(p => p.id === data.patientId && p.type === 'patient') : data.snapshot,
+              dependantId: data.dependantId,
+              dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
+            }
+          })}
+        >
+          View
+        </button>
+      </div>
+    </div>
+  );
+});
                 })()
               )}
             </div>

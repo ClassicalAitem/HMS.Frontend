@@ -289,7 +289,7 @@ const handlePrintReceipt = (payment) => {
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -375,7 +375,7 @@ const handlePrintReceipt = (payment) => {
 
       {/* Payment Details Modal */}
       {isModalOpen && selectedPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50">
             <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100 max-h-[90vh] flex flex-col">
           <div className="p-6 card-body overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
