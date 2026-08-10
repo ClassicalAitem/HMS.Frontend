@@ -184,13 +184,13 @@ const SurgeryDetails = () => {
 
   return (
     <FrontdeskLayout>
-      <div className="p-6">
+      <div className="p-3 sm:p-6">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-center mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
             <button 
               onClick={() => navigate('/frontdesk/surgeries')}
-              className="btn btn-ghost btn-sm mr-3"
+              className="btn btn-ghost btn-sm mr-0 sm:mr-3 self-start"
             >
               <FaArrowLeft />
             </button>
@@ -340,16 +340,16 @@ const SurgeryDetails = () => {
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-4 mt-6">
+          <div className="flex flex-col-reverse gap-3 mt-6 sm:flex-row sm:justify-end">
             <button 
               onClick={() => navigate('/frontdesk/surgeries')}
-              className="btn btn-ghost"
+              className="btn btn-ghost w-full sm:w-auto"
             >
               Back to Surgeries
             </button>
             <button 
               onClick={() => navigate(`/frontdesk/patients/${surgery.patientId}`)}
-              className="btn btn-primary"
+              className="btn btn-primary w-full sm:w-auto"
               disabled={!surgery.patientId}
             >
               View Patient Details

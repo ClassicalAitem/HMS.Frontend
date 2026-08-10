@@ -16,9 +16,9 @@ import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import KolakLoader from '@/components/common/KolakLoader';
 
 const CashierDashboard = () => {
-  console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
-  console.log("🎯 CashierDashboard: Component rendering - LOG level!");
-  console.warn("🎯 CashierDashboard: Component rendering - WARN level!");
+  // console.error("🎯 CashierDashboard: Component rendering - ERROR level!");
+  // console.log("🎯 CashierDashboard: Component rendering - LOG level!");
+  // console.warn("🎯 CashierDashboard: Component rendering - WARN level!");
   const [dashboardData, setDashboardData] = useState([]);
   const { user } = useAppSelector((state) => state.auth);
   const [metricsLoading, setMetricsLoading] = useState(false);
@@ -50,7 +50,7 @@ const CashierDashboard = () => {
           hasAnyStatus(p.status, {status:PATIENT_STATUS.AWAITING_CASHIER})
         );
 
-        console.log({filteredPatient, patients});
+        // console.log({filteredPatient, patients});
         const countPatient = filteredPatient.length || 0;
         if (mounted) setTotalPatients(countPatient);
       } catch (e) {
@@ -118,7 +118,7 @@ const CashierDashboard = () => {
           setLastUpdated(formatNigeriaDateTime());
         }
       } catch (error) {
-        console.error('Error fetching billing data:', error);
+        // console.error('Error fetching billing data:', error);
         // if (mounted) {
         //   // Fallback to mock data if API fails
         //   setBillingData(dashboardData?.recentActivity || []);
@@ -138,7 +138,7 @@ const CashierDashboard = () => {
     };
   }, [user]);
 
-  console.log(dashboardData);
+  // console.log(dashboardData);
 
 
   return (

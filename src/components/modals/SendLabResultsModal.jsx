@@ -53,7 +53,7 @@ const SendLabResultsModal = ({ isOpen, onClose, labResultId, investigationReques
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black bg-opacity-50" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-opacity-50" onClick={onClose} />
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
         <h2 className="text-xl font-bold text-[#00943C] mb-4">Send Lab Results to Doctor</h2>
 

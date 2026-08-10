@@ -292,7 +292,7 @@ const handlePrintReceipt = (payment) => {
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -314,13 +314,13 @@ const handlePrintReceipt = (payment) => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-primary 2xl:text-4xl">Payment Receipt Records</h1>
+            <h1 className="text-2xl font-bold text-primary sm:text-3xl 2xl:text-4xl">Payment Receipt Records</h1>
             <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
           </div>
 
           {/* Filters */}
-          <div className="flex gap-4 mb-6">
-            <select className="select select-bordered">
+          <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2 xl:grid-cols-3">
+            <select className="select select-bordered w-full">
               <option>All Status</option>
               <option>Pending</option>
               <option>Paid</option>
@@ -329,14 +329,14 @@ const handlePrintReceipt = (payment) => {
               <option>declined</option>
               <option>refunded</option>
             </select>
-            <select className="select select-bordered">
+            <select className="select select-bordered w-full">
               <option>All Methods</option>
               <option>Cash</option>
               <option>Transfer</option>
               <option>Hmo</option>
               <option>Pos</option>
             </select>
-            <select className="select select-bordered">
+            <select className="select select-bordered w-full">
               <option>All Time</option>
               <option>Today</option>
               <option>This Week</option>
@@ -378,7 +378,7 @@ const handlePrintReceipt = (payment) => {
 
       {/* Payment Details Modal */}
       {isModalOpen && selectedPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-50">
           <div className="w-full max-w-md mx-4 shadow-xl card bg-base-100">
             <div className="p-6 card-body">
               <div className="flex justify-between items-center mb-4">

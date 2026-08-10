@@ -38,6 +38,7 @@ import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
 import KolakLoader from "@/components/common/KolakLoader";
+import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -84,6 +85,9 @@ const PatientVitalsDetails = () => {
   // Track if prescription/investigation failed to load
   const [prescriptionError, setPrescriptionError] = useState(false);
   const [investigationError, setInvestigationError] = useState(false);
+
+
+
   // Vitals pagination
   const [vitalsPage, setVitalsPage] = useState(1);
   const vitalsPerPage = 8;
@@ -100,6 +104,7 @@ const PatientVitalsDetails = () => {
 
     console.log('PatientVitalsDetails: patientId from params:', patientId);
   }, [location?.state, patientId]);
+  
 
   useEffect(() => {
   let mounted = true;
@@ -540,7 +545,7 @@ useEffect(() => {
        {loading && <KolakLoader fullscreen />}
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
 
       {/* Sidebar */}
@@ -580,84 +585,13 @@ useEffect(() => {
           </div>
 
           {/* Patient card */}
-          <div className="shadow-xl card bg-base-100 mb-4">
-            <div className="p-4 card-body">
-              {loading ? (
-                <div className="flex gap-4 flex-wrap items-center">
-                  <div className="skeleton w-14 h-14 rounded-full" />
-                  <div className="flex-1">
-                    <div className="skeleton h-4 w-48 mb-2" />
-                    <div className="skeleton h-3 w-32" />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col flex-wrap sm:flex-row items-start sm:items-center gap-4">
-                  <div className="ml-4 avatar">
-                    <div className="w-20 h-20 rounded-full border-3 border-primary/80 flex items-center justify-center overflow-hidden p-[2px]">
-                      {loading ? (
-                        <div className="skeleton w-full h-full rounded-full" />
-                      ) : (
-                        <div className="w-full h-full grid place-items-center bg-primary text-primary-content text-2xl font-bold">
-                          {getInitials(summarySubject?.firstName, summarySubject?.lastName)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-1 flex-wrap">
-                    {/* Top row items mimicking frontdesk style */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Patient Name</span>
-                        <span className="text-base font-medium text-base-content">{summarySubject?.fullName || 'Unknown'}</span>
-                      </div>
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Gender</span>
-                        <span className="text-base font-medium text-base-content capitalize">{summarySubject?.gender || '—'}</span>
-                      </div>
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base-content/70">Phone Number</span>
-                        <span className="text-base font-medium text-base-content">{summarySubject?.phone || summarySubject?.phoneNumber || '—'}</span>
-                      </div>
-                      <div className="flex flex-col space-y-1">
-                        <span className="text-sm text-base font-medium text-base-content/70">Hospital ID: {summarySubject?.hospitalId || '—'}</span>
-                      </div>
-                </div>
-              </div>
+            <PatientDetailsCard
+              patient={patient}
+              summarySubject={summarySubject}
+              isViewingDependant={isViewingDependant}
+            />
+              
 
-              {/* Insurance / HMO list */}
-              <div className=" justify-between items-center px-1 pt-4 mt-4 space-y-1 border-t-2 border-base-content/70">
-                <div className="space-y-1">
-                  <span className="block text-sm font-semibold text-base-content">Insurance / HMO:</span>
-                  {Array.isArray(summarySubject?.hmos) && summarySubject.hmos.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {summarySubject.hmos.map((h, i) => (
-                        <span key={i} className="badge badge-outline font-normal text-sm">
-                          {`${h?.memberId || '—'} - ${h?.provider || '—'} - ${h?.plan || '—'} (${h?.expiresAt ? formatNigeriaDate(h.expiresAt) : '—'})`}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-sm text-base-content/70">None</span>
-                  )}
-                </div>
-                
-                
-              </div>
-
-             
-            </div>
-    
-              )}
-            </div>
-          </div>
-
-
-                <PatientCardTypeInfo
-                  cardType={summarySubject?.cardType}
-                  familyName={summarySubject?.familyName}
-                  companyName={summarySubject?.companyName}
-                />
-                
           {isViewingDependant && summarySubject?.fullName && (
               <div className="mb-4 text-sm text-base-content/70">
                 Viewing records for <strong>{summarySubject.fullName}</strong>
@@ -1151,7 +1085,7 @@ useEffect(() => {
           {/* Send to Doctor Modal */}
           {isSendDoctorOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
+              <div className="fixed inset-0 bg-opacity-50" onClick={() => setIsSendDoctorOpen(false)} />
               <div className="relative z-10 w-full max-w-lg shadow-xl card bg-base-100">
                 <div className="p-6 card-body">
                   <div className="flex justify-between items-center mb-4">

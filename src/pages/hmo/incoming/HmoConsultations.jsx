@@ -20,6 +20,8 @@ const HmoConsultations = () => {
   const [page, setPage] = useState(0);
   const [filterType, setFilterType] = useState("all"); // all | patient | dependant
 
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   useEffect(() => {
     let mounted = true;
     const fetchData = async () => {
@@ -105,30 +107,34 @@ const HmoConsultations = () => {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen w-full">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar />
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex flex-col flex-1 overflow-hidden bg-base-100">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
         <Header onToggleSidebar={() => setIsSidebarOpen(v => !v)} />
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
-            <FaClipboardList size={24} className="text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold text-primary">Consultations</h1>
-              <p className="text-sm text-base-content/60">HMO-covered patient and dependant consultations</p>
+            <FaClipboardList size={22} className="text-primary shrink-0 sm:size-6" />
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-primary sm:text-2xl">Consultations</h1>
+              <p className="text-xs text-base-content/60 sm:text-sm">HMO-covered patient and dependant consultations</p>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="flex flex-wrap items-center gap-3 mb-5">
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="relative w-full sm:flex-1 sm:min-w-[200px] sm:max-w-sm">
               <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
               <input
                 value={query}
@@ -138,25 +144,27 @@ const HmoConsultations = () => {
               />
             </div>
 
-            <div className="flex gap-1">
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'patient', label: 'Patient' },
-                { key: 'dependant', label: 'Dependant' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilterType(key)}
-                  className={`btn btn-sm ${filterType === key ? 'btn-primary' : 'btn-ghost'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <div className="flex items-center justify-between gap-2 sm:justify-start">
+              <div className="flex gap-1">
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'patient', label: 'Patient' },
+                  { key: 'dependant', label: 'Dependant' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilterType(key)}
+                    className={`btn btn-sm ${filterType === key ? 'btn-primary' : 'btn-ghost'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
 
-            <span className="ml-auto text-sm text-base-content/50">
-              {filtered.length} consultation{filtered.length !== 1 ? 's' : ''}
-            </span>
+              <span className="text-xs text-base-content/50 sm:ml-auto sm:text-sm">
+                {filtered.length} consultation{filtered.length !== 1 ? 's' : ''}
+              </span>
+            </div>
           </div>
 
           {/* Grid */}
@@ -231,11 +239,11 @@ const HmoConsultations = () => {
                       )}
 
                       {/* Visit reason + date */}
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="badge badge-ghost badge-sm capitalize">
+                      <div className="flex items-center justify-between mt-1 gap-2">
+                        <span className="badge badge-ghost badge-sm capitalize truncate">
                           {c.visitReason || '—'}
                         </span>
-                        <span className="text-xs text-base-content/40">
+                        <span className="text-xs text-base-content/40 shrink-0">
                           {c.createdAt ? formatNigeriaDate(c.createdAt) : '—'}
                         </span>
                       </div>
@@ -248,11 +256,11 @@ const HmoConsultations = () => {
 
           {/* Pagination */}
           {!loading && filtered.length > PAGE_SIZE && (
-            <div className="mt-6 flex items-center justify-between">
-              <span className="text-sm text-base-content/50">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-xs text-base-content/50 sm:text-sm">
                 Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>
                   <RiArrowLeftSLine size={18} />
                 </button>

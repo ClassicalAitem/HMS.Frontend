@@ -334,7 +334,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={handleCancel} />
+      <div className="fixed inset-0 bg-opacity-50" onClick={handleCancel} />
 
       {/* Modal */}
       <div className="relative z-10 w-full max-w-lg mx-4 shadow-xl card bg-base-100 max-h-[90vh] overflow-y-auto">

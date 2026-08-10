@@ -142,14 +142,27 @@ const heading = useMemo(() => {
     return routine[field] || routine[field.toLowerCase?.()] || routine[field.toUpperCase?.()] || '—';
   };
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
-    <div className="flex h-screen">
-      <div className="fixed inset-y-0 left-0 z-50 w-64 bg-base-200 lg:static lg:inset-0">
-        <NurseSidebar />
+    <div className="flex min-h-screen w-full">
+      {isSidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
+      )}
+
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <NurseSidebar onCloseSidebar={closeSidebar} />
       </div>
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={() => {}} />
-        <div className="flex overflow-y-auto flex-col p-4 h-full">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
+        <Header onToggleSidebar={toggleSidebar} />
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-2xl font-bold text-base-content">{heading}</h1>
