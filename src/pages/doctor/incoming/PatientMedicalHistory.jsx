@@ -969,14 +969,14 @@ const dependant = isDependant
           <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
           {/* Antenatal Records Section */}
-          {isEligibleForAntenatal && (
+            {isEligibleForAntenatal && (
             <div className="card bg-base-100 shadow-sm mb-4">
               <div className="card-body p-4">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="card-title text-lg font-semibold text-base-content">Antenatal Records</h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button
-                      className="btn btn-outline btn-sm"
+                      className="btn btn-outline btn-sm w-full sm:w-auto"
                       onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
                           state: {
                             from: fromIncoming ? "incoming" : "patients",
@@ -990,8 +990,8 @@ const dependant = isDependant
                       View Records
                     </button>
                     <button
-                      className="btn btn-secondary btn-sm gap-2"
-                     onClick={() => lockAndNavigate(
+                      className="btn btn-secondary btn-sm gap-2 w-full sm:w-auto"
+                    onClick={() => lockAndNavigate(
                         `/dashboard/doctor/antenatal-records/${patientId}`,
                         {
                           state: {
@@ -1017,15 +1017,15 @@ const dependant = isDependant
                     {/* Summary Stats */}
                     <div className="space-y-3">
                       <h4 className="font-medium text-base-content text-sm">Summary</h4>
-                      <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-base-content/70">Latest Remarks:</span>
-                          <span className="font-medium max-w-xs text-right">
+                      <div className="bg-base-200/50 rounded-lg p-3 space-y-3">
+                        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:justify-between sm:gap-3">
+                          <span className="text-base-content/70 shrink-0">Latest Remarks:</span>
+                          <span className="font-medium sm:max-w-xs sm:text-right">
                             {(() => {
                               const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
                               const latestExam = latest?.anteNatalExamination?.slice().sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
                               const remark = latestExam?.remark;
-                               return remark ? (
+                              return remark ? (
                                 <div className="text-xs text-base-content/80 bg-base-100/50 p-2 rounded whitespace-pre-wrap max-h-16 overflow-y-auto">
                                   {remark}
                                 </div>
@@ -1033,7 +1033,7 @@ const dependant = isDependant
                             })()}
                           </span>
                         </div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex items-center justify-between text-sm">
                           <span className="text-base-content/70">Total Examinations:</span>
                           <span className="font-medium">
                             {antenatalRecords.reduce((sum, r) => sum + (r.anteNatalExamination?.length || 0), 0)}
@@ -1051,15 +1051,15 @@ const dependant = isDependant
                           const pregnancy = latest?.presentPregnancyHistories?.[0];
                           return pregnancy ? (
                             <>
-                              <div className="flex justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm">
                                 <span className="text-base-content/70">EDD:</span>
                                 <span className="font-medium">{pregnancy.EDD ? formatNigeriaDate(pregnancy.EDD) : '-'}</span>
                               </div>
-                              <div className="flex justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm">
                                 <span className="text-base-content/70">LMP:</span>
                                 <span className="font-medium">{pregnancy.LMP ? formatNigeriaDate(pregnancy.LMP) : '-'}</span>
                               </div>
-                              <div className="flex justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm">
                                 <span className="text-base-content/70">Gestational Age:</span>
                                 <span className="font-medium">{pregnancy.durationOfPregnancyInWeek || 0} weeks</span>
                               </div>
