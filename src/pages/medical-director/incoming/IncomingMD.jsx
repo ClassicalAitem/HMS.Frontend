@@ -6,7 +6,7 @@ import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
-import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import KolakLoader from "@/components/common/KolakLoader";
 
 const DOCTOR_STATUSES = new Set([
   "awaiting_consultation",
@@ -15,9 +15,8 @@ const DOCTOR_STATUSES = new Set([
   "consultation_completed",
   "awaiting_surgery",
   "lab_completed",
+  "awaiting_md"
 ]);
-
-
 
 const prettifyStatus = (status) =>
   (Array.isArray(status) ? status : [status])
@@ -140,7 +139,7 @@ const IncomingDoctor = () => {
 
         if (mounted) setItems(merged);
       } catch (err) {
-        console.error("IncomingDoctor: fetch error", err);
+        console.error("IncomingMD: fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -226,16 +225,17 @@ const IncomingDoctor = () => {
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen flex-col lg:flex-row bg-base-100">
+       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
       </div>
 
-      <div className="flex flex-col flex-1 bg-base-100">
+      <div className="flex flex-1 flex-col overflow-hidden">
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="overflow-y-auto flex-1 p-4 sm:p-6">
@@ -249,8 +249,8 @@ const IncomingDoctor = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-3 mb-5">
-            <div className="relative w-full max-w-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-5">
+            <div className="relative w-full sm:max-w-sm">
               <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
               <input
                 value={query}
@@ -259,10 +259,12 @@ const IncomingDoctor = () => {
                 className="input input-bordered input-sm pl-9 w-full"
               />
             </div>
-            {query && (
-              <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm">Clear</button>
-            )}
-            <button onClick={onRefresh} className="btn btn-outline btn-sm ml-auto">Refresh</button>
+            <div className="flex flex-wrap gap-2 sm:ml-auto">
+              {query && (
+                <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm">Clear</button>
+              )}
+              <button onClick={onRefresh} className="btn btn-outline btn-sm">Refresh</button>
+            </div>
           </div>
 
           <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
@@ -303,48 +305,49 @@ const IncomingDoctor = () => {
                 visible.map((data) => {
                   const isInConsultation = ['in_consultation', 'in consultation'].some((v) => data.rawStatus?.includes(v));
                   return (
-                    <div key={`${data.type}-${data.id}`} className="grid grid-cols-12 gap-2 px-5 py-4 items-center hover:bg-base-200/40 transition-colors">
-                      
-                      {/* Name */}
-                      <div className="col-span-3 min-w-0">
-                        <p className="font-bold text-base-content truncate">{data.name}</p>
-                        {(data.age !== null || data.gender) && (
-                          <p className="text-xs text-base-content/50 mt-0.5">
-                            {[data.age !== null ? `Age: ${data.age}y` : null, data.gender ? `Gender: ${data.gender}` : null]
-                              .filter(Boolean).join(" · ")}
-                          </p>
-                        )}
+                    <div key={`${data.type}-${data.id}`} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-base-200/40 transition-colors rounded-xl md:rounded-none">
+
+                      {/* Name + Type badge — flex together on mobile, separate grid cols on desktop */}
+                      <div className="col-span-full flex items-start justify-between gap-3 md:contents">
+                        <div className="min-w-0 md:col-span-3">
+                          <p className="font-bold text-base-content truncate">{data.name}</p>
+                          {(data.age !== null || data.gender) && (
+                            <p className="text-xs text-base-content/50 mt-0.5">
+                              {[data.age !== null ? `Age: ${data.age}y` : null, data.gender ? `Gender: ${data.gender}` : null]
+                                .filter(Boolean).join(" · ")}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex-shrink-0 md:col-span-2">
+                          {data.type === 'dependant' ? (
+                            <div className="flex flex-col gap-1 items-end md:items-start">
+                              <span className="badge badge-sm badge-secondary capitalize">{data.badge || 'Dependant'}</span>
+                              <span className="text-xs text-base-content/40 font-mono truncate">{data.displayId}</span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1 items-end md:items-start">
+                              <span className="badge badge-sm badge-primary">Patient</span>
+                              <span className="text-xs text-base-content/40 font-mono">{data.displayId}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Type badge */}
-                      <div className="col-span-2">
-                        {data.type === 'dependant' ? (
-                          <div className="flex flex-col gap-1">
-                            <span className="badge badge-sm badge-secondary capitalize">{data.badge || 'Dependant'}</span>
-                            <span className="text-xs text-base-content/40 font-mono truncate">{data.displayId}</span>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            <span className="badge badge-sm badge-primary">Patient</span>
-                            <span className="text-xs text-base-content/40 font-mono">{data.displayId}</span>
-                          </div>
-                        )}
+                      {/* Status + Updated At — flex together on mobile, separate grid cols on desktop */}
+                      <div className="col-span-full flex items-center justify-between gap-3 md:contents">
+                        <div className="md:col-span-2">
+                          <span className={`badge badge-sm ${statusBadgeClass(data.reason)}`}>{data.reason}</span>
+                        </div>
+                        <div className="md:col-span-2">
+                          <span className="text-sm text-base-content/60">{data.updatedAt}</span>
+                        </div>
                       </div>
 
-                      {/* Status */}
-                      <div className="col-span-2">
-                        <span className={`badge badge-sm ${statusBadgeClass(data.reason)}`}>{data.reason}</span>
-                      </div>
-
-                      {/* Updated at */}
-                      <div className="col-span-2">
-                        <span className="text-sm text-base-content/60">{data.updatedAt}</span>
-                      </div>
-
-                      {/* Action */}
-                      <div className="col-span-2 flex justify-end">
+                      {/* Action — full width below on mobile */}
+                      <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
                         {isInConsultation ? (
-                          <div className="flex flex-col items-end gap-2">
+                          <div className="flex flex-col items-end gap-2 w-full">
                             <button
                               className="btn btn-xs btn-outline btn-warning w-full"
                               onClick={() => handleReset(data)}
@@ -355,7 +358,7 @@ const IncomingDoctor = () => {
                           </div>
                         ) : (
                           <button
-                            className="btn btn-sm btn-primary"
+                            className="btn btn-sm btn-primary w-full md:w-auto"
                             disabled={navigatingId === data.id}
                             onClick={() => handleView(data)}
                           >

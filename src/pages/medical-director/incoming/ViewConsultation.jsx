@@ -61,6 +61,7 @@ import AddProcedureModal from './modals/AddProcedureModal';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -772,6 +773,7 @@ const ViewConsultation = () => {
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200/50">
+         {loading && <KolakLoader fullscreen />}
         <div
           className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
@@ -1006,131 +1008,142 @@ const ViewConsultation = () => {
 
         <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
           {/* Header Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-xl shadow-sm border border-base-200">
-            <div className="flex items-center gap-4">
-              <div className="bg-primary/10 p-3 rounded-full text-primary hidden sm:flex">
-                <FaUserMd className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-base-content">
-                  Consultation Details
-                </h1>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-base-content/70 mt-1">
-                  <span className="flex items-center gap-1">
-                    <FaUserMd className="w-3 h-3" /> Dr. {doctorName}
-                  </span>
-                  <span className="hidden sm:inline">•</span>
-                  <span className="flex items-center gap-1">
-                    <FaCalendarAlt className="w-3 h-3" /> {consultationDate}
-                  </span>
-                  <span className="hidden sm:inline">•</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-primary">
-                      {consultationSubject}
-                    </span>
-                    <span
-                      className={`badge badge-sm ${isForDependant ? 'badge-secondary' : 'badge-primary'}`}
-                    >
-                      {subjectRelation}
-                    </span>
-                    {isForDependant && (
-                      <span className="text-xs text-base-content/50">
-                        (of {patientName})
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            <SendPatientModal
-              patientId={patientId}
-              patient={patient}
-              defaultDependantId={dependantId}
-              defaultDependantLabel={summarySubject?.fullName}
-              lockSubject
-              onUpdated={() => navigate('/dashboard/medical-director')}
-              allowedRoles={[
-                'nurse',
-                'labtechnician',
-                'pharmacist',
-                'cashier',
-                'hmo',
-              ]}
-            />
-            <div className="flex items-center gap-2">
-              {canEdit && (
-                <>
-                  {isEditMode ? (
-                    <>
-                      <button
-                        className="btn btn-sm btn-success gap-2"
-                        onClick={handleSaveEdit}
-                        disabled={isSavingEdit}
-                      >
-                        {isSavingEdit ? (
-                          <span className="loading loading-spinner loading-xs" />
-                        ) : (
-                          'Save Changes'
-                        )}
-                      </button>
-                      <button
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => setIsEditMode(false)}
-                        disabled={isSavingEdit}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      className="btn btn-sm btn-outline btn-primary gap-2"
-                      onClick={() => setIsEditMode(true)}
-                    >
-                      <FaEdit className="w-3 h-3" /> Edit Consultation
-                    </button>
-                  )}
-                </>
-              )}
-              <button
-                className="btn btn-ghost btn-circle text-base-content/70 hover:bg-base-200"
-                onClick={() =>
-                  navigate(
-                    `/dashboard/medical-director/medical-history/${consultation?.patientId || patientId}`,
-                    {
-                      state: {
-                        from: 'incoming',
-                        patientSnapshot: consultation?.snapshot || patient,
-                        // key prop — PatientMedicalHistory reads this to scope to dependant
-                        dependantId: consultation?.dependantId,
-                        dependantSnapshot:
-                          consultation?.type === 'dependant'
-                            ? consultation?.snapshot
-                            : null,
-                      },
-                    },
-                  )
-                }
-              >
-                <IoIosCloseCircleOutline className="w-8 h-8" />
-              </button>
-            </div>
-          </div>
+         <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-base-100 p-4 sm:p-6 rounded-xl shadow-sm border border-base-200">
+  
+  {/* Left / Top Section: Title & Details */}
+  <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0 pr-10 sm:pr-0">
+    <div className="bg-primary/10 p-2 sm:p-3 rounded-full text-primary hidden sm:flex flex-shrink-0">
+      <FaUserMd className="w-5 sm:w-6 h-5 sm:h-6" />
+    </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div className="min-w-0 flex-1">
+      <h1 className="text-lg sm:text-2xl font-bold text-base-content truncate">
+        Consultation Details
+      </h1>
+
+      <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-base-content/70 mt-1">
+        <span className="flex items-center gap-1 whitespace-nowrap">
+          <FaUserMd className="w-3 h-3 text-primary" /> Dr. {doctorName}
+        </span>
+        <span className="hidden sm:inline text-base-content/30">•</span>
+        <span className="flex items-center gap-1 whitespace-nowrap">
+          <FaCalendarAlt className="w-3 h-3 text-primary" /> {consultationDate}
+        </span>
+        <span className="hidden sm:inline text-base-content/30">•</span>
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+          <span className="font-medium text-primary truncate">
+            {consultationSubject}
+          </span>
+          <span
+            className={`badge badge-xs sm:badge-sm ${
+              isForDependant ? 'badge-secondary' : 'badge-primary'
+            }`}
+          >
+            {subjectRelation}
+          </span>
+          {isForDependant && (
+            <span className="text-xs text-base-content/50">
+              (of {patientName})
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* Close Button - Absolutely positioned on Mobile top-right, regular flex item on Desktop */}
+  <button
+    className="absolute top-3 right-3 sm:static btn btn-ghost btn-circle btn-sm sm:btn-md text-base-content/60 hover:text-error hover:bg-base-200 transition-colors flex-shrink-0 order-first sm:order-last"
+    aria-label="Close"
+    onClick={() =>
+      navigate(
+        `/dashboard/medical-director/medical-history/${consultation?.patientId || patientId}`,
+        {
+          state: {
+            from: 'incoming',
+            patientSnapshot: consultation?.snapshot || patient,
+            dependantId: consultation?.dependantId,
+            dependantSnapshot:
+              consultation?.type === 'dependant'
+                ? consultation?.snapshot
+                : null,
+          },
+        }
+      )
+    }
+  >
+    <IoIosCloseCircleOutline className="w-6 sm:w-7 h-6 sm:h-7" />
+  </button>
+
+  {/* Action Controls (Send Patient Modal & Edit Buttons) */}
+  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-base-200 sm:border-none">
+    <SendPatientModal
+      patientId={patientId}
+      patient={patient}
+      defaultDependantId={dependantId}
+      defaultDependantLabel={summarySubject?.fullName}
+      lockSubject
+      onUpdated={() => navigate('/dashboard/doctor')}
+      allowedRoles={[
+        'nurse',
+        'labtechnician',
+        'pharmacist',
+        'cashier',
+        'hmo',
+      ]}
+    />
+
+    {canEdit && (
+      <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-none">
+        {isEditMode ? (
+          <>
+            <button
+              className="btn btn-sm btn-success flex-1 sm:flex-initial gap-2"
+              onClick={handleSaveEdit}
+              disabled={isSavingEdit}
+            >
+              {isSavingEdit ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+            <button
+              className="btn btn-sm btn-ghost flex-1 sm:flex-initial"
+              onClick={() => setIsEditMode(false)}
+              disabled={isSavingEdit}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn btn-sm btn-outline btn-primary flex-1 sm:flex-initial gap-2"
+            onClick={() => setIsEditMode(true)}
+          >
+            <FaEdit className="w-3 h-3" /> Edit Consultation
+          </button>
+        )}
+      </div>
+    )}
+  </div>
+
+</div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Column - Key Clinical Info */}
-            <div className="xl:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
               {/* Consultation Summary Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-0">
-                  <div className="p-4 border-b border-base-200 bg-base-50/50 flex items-center justify-between">
+                  <div className="p-3 sm:p-4 border-b border-base-200 bg-base-50/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                     <div className="flex items-center gap-2">
-                      <FaNotesMedical className="text-primary w-5 h-5" />
-                      <h3 className="font-bold text-lg text-base-content">
+                      <FaNotesMedical className="text-primary w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" />
+                      <h3 className="font-bold text-base sm:text-lg text-base-content">
                         Consultation Overview
                       </h3>
                     </div>
                     <button
-                      className="btn btn-sm btn-outline btn-success gap-2"
+                      className="btn btn-sm btn-outline btn-success gap-2 w-full sm:w-auto"
                       onClick={() => setIsDiagnosisModalOpen(true)}
                     >
                       <FaPlus className="w-3 h-3" />
@@ -1140,9 +1153,9 @@ const ViewConsultation = () => {
                     </button>
                   </div>
 
-                  <div className="p-6 grid gap-6">
+                  <div className="p-3 sm:p-6 grid gap-3 sm:gap-6">
                     {/* Reason & Diagnosis Row */}
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">
                           Visit Reason
@@ -1406,22 +1419,22 @@ const ViewConsultation = () => {
               {/* Treatment Plan Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-0">
-                  <div className="p-4 border-b border-base-200 bg-base-50/50  items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <FaPrescriptionBottleAlt className="text-success w-5 h-5" />
-                      <h3 className="font-bold text-lg text-base-content p-2 m-2">
+                  <div className="p-3 sm:p-4 border-b border-base-200 bg-base-50/50 flex flex-col gap-3 sm:gap-0 sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <FaPrescriptionBottleAlt className="text-success w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" />
+                      <h3 className="font-bold text-base sm:text-lg text-base-content">
                         Treatment Plan & Orders
                       </h3>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                       <button
-                        className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2"
+                        className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2 flex-1 sm:flex-none min-w-[120px]"
                         onClick={() => setIsInvestigationModalOpen(true)}
                       >
-                        <FaFlask /> Order Labs
+                        <FaFlask className="hidden sm:inline" /> Order Labs
                       </button>
                       <button
-                        className="btn btn-sm btn-primary gap-2"
+                        className="btn btn-sm btn-primary gap-2 flex-1 sm:flex-none min-w-[120px]"
                         onClick={() =>
                           navigate(
                             `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}/prescription`,
@@ -1436,30 +1449,24 @@ const ViewConsultation = () => {
                           )
                         }
                       >
-                        <FaPrescriptionBottleAlt /> Prescribe
+                        <FaPrescriptionBottleAlt className="hidden sm:inline" /> Prescribe
                       </button>
-                      {/* <button
-                        className="btn btn-sm btn-info gap-2"
-                        onClick={() => setIsSendToNurseModalOpen(true)}
-                      >
-                        <FaUserMd /> Send to Nurse
-                      </button> */}
                       <button
-                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200"
+                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200 gap-2 flex-1 sm:flex-none min-w-[120px]"
                         onClick={() => setIsAdmissionModalOpen(true)}
                       >
-                        <FaHospital /> Admit Patient
+                        <FaHospital className="hidden sm:inline" /> Admit
                       </button>
                       <button
-                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200"
+                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200 gap-2 flex-1 sm:flex-none min-w-[120px]"
                         onClick={handleAddProcedureClick}
                       >
-                        <FaHospital /> Add Procedure
+                        <FaHospital className="hidden sm:inline" /> Procedure
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-6 space-y-8">
+                  <div className="p-3 sm:p-6 space-y-6 sm:space-y-8">
                     {/* Lab Requests (Placeholder) */}
                     <div>
                       <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
@@ -1467,11 +1474,11 @@ const ViewConsultation = () => {
                         Lab Investigations
                       </h4>
                       {labRequests.length > 0 ? (
-                        <div className="grid gap-3">
+                        <div className="grid gap-2 sm:gap-3">
                           {labRequests.map((lab, idx) => (
                             <div
                               key={idx}
-                              className="flex justify-between items-start mb-2"
+                              className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2"
                             >
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-2">
@@ -1498,6 +1505,7 @@ const ViewConsultation = () => {
                                 </div>
                               </div>
 
+                              {/* ACTION BUTTONS */}
                               {/* ACTION BUTTONS */}
                               {!lab.isBilled && (
                                 <div className="flex gap-2">
@@ -1694,6 +1702,7 @@ const ViewConsultation = () => {
                                 </div>
 
                                 {/* ACTION BUTTONS */}
+                                {/* ACTION BUTTONS */}
                                 {!pres.isBilled && (
                                   <div className="flex gap-2">
                                     <button
@@ -1884,21 +1893,21 @@ const ViewConsultation = () => {
 
                     {/* Additional Notes for Nurse */}
                     <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-warning"></span>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                        <h4 className="text-sm font-bold text-base-content flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-warning flex-shrink-0"></span>
                           Additional Note for Nurse
                         </h4>
                         <button
                           type="submit"
-                          className="btn btn-sm btn-primary"
+                          className="btn btn-sm btn-primary w-full sm:w-auto"
                           onClick={handleSaveAdditionalNotes}
                         >
                           Save Note
                         </button>
                       </div>
                       <textarea
-                        className="textarea textarea-bordered w-full"
+                        className="textarea textarea-bordered w-full text-sm"
                         required
                         placeholder="Enter any additional instructions or notes for the nurse..."
                         rows={3}
@@ -1982,14 +1991,14 @@ const ViewConsultation = () => {
             </div>
 
             {/* Right Column - History & Background */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Medical History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-primary">
-                      <FaHistory />
-                      <h3 className="font-bold uppercase text-sm tracking-wider">
+                <div className="card-body p-3 sm:p-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <div className="flex items-center gap-2 text-primary min-w-0">
+                      <FaHistory className="flex-shrink-0" />
+                      <h3 className="font-bold uppercase text-xs sm:text-sm tracking-wider truncate">
                         Medical History
                       </h3>
                     </div>
@@ -2060,11 +2069,11 @@ const ViewConsultation = () => {
 
               {/* Surgical History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-secondary">
-                      <FaSyringe />
-                      <h3 className="font-bold uppercase text-sm tracking-wider">
+                <div className="card-body p-3 sm:p-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <div className="flex items-center gap-2 text-secondary min-w-0">
+                      <FaSyringe className="flex-shrink-0" />
+                      <h3 className="font-bold uppercase text-xs sm:text-sm tracking-wider truncate">
                         Surgical History
                       </h3>
                     </div>
@@ -2140,11 +2149,11 @@ const ViewConsultation = () => {
 
               {/* Allergies */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-error">
-                      <FaAllergies />
-                      <h3 className="font-bold uppercase text-sm tracking-wider">
+                <div className="card-body p-3 sm:p-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <div className="flex items-center gap-2 text-error min-w-0">
+                      <FaAllergies className="flex-shrink-0" />
+                      <h3 className="font-bold uppercase text-xs sm:text-sm tracking-wider truncate">
                         Allergies
                       </h3>
                     </div>
@@ -2237,11 +2246,11 @@ const ViewConsultation = () => {
 
               {/* Family History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-info">
-                      <FaUsers />
-                      <h3 className="font-bold uppercase text-sm tracking-wider">
+                <div className="card-body p-3 sm:p-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <div className="flex items-center gap-2 text-info min-w-0">
+                      <FaUsers className="flex-shrink-0" />
+                      <h3 className="font-bold uppercase text-xs sm:text-sm tracking-wider truncate">
                         Family History
                       </h3>
                     </div>
@@ -2319,11 +2328,11 @@ const ViewConsultation = () => {
 
               {/* Social History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-success">
-                      <FaUsers />
-                      <h3 className="font-bold uppercase text-sm tracking-wider">
+                <div className="card-body p-3 sm:p-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2">
+                    <div className="flex items-center gap-2 text-success min-w-0">
+                      <FaUsers className="flex-shrink-0" />
+                      <h3 className="font-bold uppercase text-xs sm:text-sm tracking-wider truncate">
                         Social History
                       </h3>
                     </div>
