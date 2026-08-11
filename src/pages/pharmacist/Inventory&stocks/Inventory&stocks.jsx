@@ -147,14 +147,14 @@ const InventoryStocks = () => {
   return (
     <PharmacistLayout>
       {loading && <KolakLoader fullscreen />}
-      <div className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="p-0 sm:p-2 lg:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Inventory & Stocks</h1>
             <p className="text-xs text-base-content/70">Manage medicines, restock and view transactions</p>
           </div>
-          <div className="flex items-center gap-3">
-            <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <input className="input input-sm input-bordered w-full" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
           </div>
         </div>
 
@@ -168,7 +168,7 @@ const InventoryStocks = () => {
           ) : (
             <>
               {/* Top stat cards */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
                 <div className="p-4 rounded-xl bg-base-100 border border-base-300">
                   <div className="text-sm text-base-content/70">Total Items</div>
                   <div className="text-3xl font-bold">{totalItems}</div>
@@ -197,8 +197,8 @@ const InventoryStocks = () => {
               </div>
 
               {/* Tabs and controls */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-4">
+                <div className="flex flex-wrap items-center gap-2">
                   <button className={`px-3 py-1 rounded ${activeTab==='all'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('all'); setCurrentPage(1)}}>All Items</button>
                   <button className={`px-3 py-1 rounded ${activeTab==='low'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('low'); setCurrentPage(1)}}>Low Stock</button>
                   <button className={`px-3 py-1 rounded ${activeTab==='out'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('out'); setCurrentPage(1)}}>Out of Stock</button>
@@ -206,9 +206,9 @@ const InventoryStocks = () => {
                   <button className={`px-3 py-1 rounded ${activeTab==='expired'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expired'); setCurrentPage(1)}}>Expired</button>
                   <button className={`px-3 py-1 rounded ${activeTab==='recent'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('recent'); setCurrentPage(1)}}>Recent Activity</button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input className="input input-sm input-bordered" placeholder="Search Medications..." value={search} onChange={(e)=>{setSearch(e.target.value); setCurrentPage(1)}} />
-                  <select className="select select-sm select-bordered">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                  <input className="input input-sm input-bordered w-full sm:w-auto" placeholder="Search Medications..." value={search} onChange={(e)=>{setSearch(e.target.value); setCurrentPage(1)}} />
+                  <select className="select select-sm select-bordered w-full sm:w-auto">
                     <option>All Categories</option>
                   </select>
                   <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
