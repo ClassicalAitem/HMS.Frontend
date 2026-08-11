@@ -139,8 +139,8 @@ const Transactions = () => {
     <PharmacistLayout>
             {loading && <KolakLoader fullscreen />}
 
-      <div className="p-6">
-        <div className="mb-4 flex items-start justify-between">
+      <div className="p-0 sm:p-2 lg:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Stock Transaction</h1>
             <p className="text-xs text-base-content/70">Track and manage stock movements (in/out)</p>
@@ -152,7 +152,7 @@ const Transactions = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <StatCard title="Total Stock" value={totals.total} hint="All Stock" />
           <StatCard title="Stock in" value={totals.inCount} hint="units received" />
           <StatCard title="Stock Out" value={totals.outCount} hint="units dispatched" />
@@ -160,19 +160,19 @@ const Transactions = () => {
         </div>
 
         <div className="rounded-xl bg-base-100 border border-base-300 p-4">
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <button className={`px-3 py-1 rounded ${activeTab==='in' ? 'bg-primary text-primary-content' : 'bg-base-200'}`} onClick={()=>setActiveTab('in')}>Stock in</button>
             <button className={`px-3 py-1 rounded ${activeTab==='out' ? 'bg-primary text-primary-content' : 'bg-base-200'}`} onClick={()=>setActiveTab('out')}>Stock out</button>
           </div>
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div />
-            <div className="flex items-center space-x-2">
-              <label className="relative">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
+              <label className="relative w-full sm:w-64">
                 <FiSearch className="absolute left-3 top-2 text-base-content/50" />
-                <input type="text" placeholder="Search Medications..." value={query} onChange={e=>setQuery(e.target.value)} className="input input-bordered input-sm pl-10 w-64" />
+                <input type="text" placeholder="Search Medications..." value={query} onChange={e=>setQuery(e.target.value)} className="input input-bordered input-sm pl-10 w-full" />
               </label>
-              <select value={category} onChange={e=>setCategory(e.target.value)} className="select select-bordered select-sm">
+              <select value={category} onChange={e=>setCategory(e.target.value)} className="select select-bordered select-sm w-full sm:w-auto">
                 <option>All Categories</option>
                 <option>Tablets</option>
                 <option>Syrup</option>
