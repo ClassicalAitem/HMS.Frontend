@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header, EmptyState  } from "@/components/common";
-import PatientDetailsCard from '@/components/common/PatientDetailsCard';
+import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/medical-director/patient/PatientHeaderActions";
+import PatientSummaryCard from "@/components/medical-director/patient/PatientSummaryCard";
 import MedicalHistoryTable from "@/components/medical-director/patient/MedicalHistoryTable";
 import CurrentVitalsCard from "@/components/medical-director/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/medical-director/patient/VitalsHistoryTable";
@@ -26,11 +26,13 @@ import { FaUserMd } from "react-icons/fa";
 import { SendToHmoModal } from "@/components/modals";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
-import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
+import AdmissionHistoryTable from "@/components/medical-director/patient/AdmissionHistoryTable";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
+import PatientDetailsCard from "@/components/common/PatientDetailsCard";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -152,6 +154,7 @@ const lockAndNavigate = async (path, options) => {
 }, [isViewingDependant, dependantId, dependantSnapshot, patient]);
 
 
+
 const summarySubject = useMemo(() => {
   if (!isViewingDependant) {
     const guardian = patient || {};
@@ -185,7 +188,6 @@ const summarySubject = useMemo(() => {
     relationshipType: dep.relationshipType,
   };
 }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
-
 
   useEffect(() => {
     let mounted = true;
@@ -804,15 +806,7 @@ const latestLab = useMemo(() => {
         }).filter(Boolean);
       });
     };
-  // Helper function to check if item is within last 48 hours
-  const isWithin48Hours = (createdAt) => {
-    if (!createdAt) return false;
-    const itemTime = new Date(createdAt).getTime();
-    const now = Date.now();
-    const hours48Ms = 48 * 60 * 60 * 1000;
-    return now - itemTime < hours48Ms;
-  };
-
+ 
   const investigations = useMemo(() => 
     Array.isArray(labInvestigations)
       ? labInvestigations.filter(inv => {
@@ -918,6 +912,7 @@ const dependant = isDependant
 
   return (
     <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
@@ -942,13 +937,14 @@ const dependant = isDependant
             onBack={() => navigate(fromIncoming ? "/dashboard/medical-director/incoming" : "/dashboard/medical-director/patientVitals")}
           />
 
-            {/* Patient Info */}
+           {/* Patient Info */}
             <PatientDetailsCard
               patientId={patientId}
               patient={patient}
               summarySubject={summarySubject}
               isViewingDependant={isViewingDependant}
             />
+
           {isViewingDependant && summarySubject?.fullName && (
             <div className="mb-4 text-sm text-base-content/70">
               Viewing records for <strong>{summarySubject.fullName}</strong>
@@ -964,7 +960,7 @@ const dependant = isDependant
                 defaultDependantId={dependantId}
                 defaultDependantLabel={summarySubject?.fullName}
                 lockSubject
-                onUpdated={() => navigate('/dashboard/medical-director')}
+                onUpdated={() => navigate('/dashboard/doctor')}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
              
@@ -973,14 +969,14 @@ const dependant = isDependant
           <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
 
           {/* Antenatal Records Section */}
-          {isEligibleForAntenatal && (
+            {isEligibleForAntenatal && (
             <div className="card bg-base-100 shadow-sm mb-4">
               <div className="card-body p-4">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="card-title text-lg font-semibold text-base-content">Antenatal Records</h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button
-                      className="btn btn-outline btn-sm"
+                      className="btn btn-outline btn-sm w-full sm:w-auto"
                       onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}/view`, {
                           state: {
                             from: fromIncoming ? "incoming" : "patients",
@@ -994,8 +990,8 @@ const dependant = isDependant
                       View Records
                     </button>
                     <button
-                      className="btn btn-secondary btn-sm gap-2"
-                     onClick={() => lockAndNavigate(
+                      className="btn btn-secondary btn-sm gap-2 w-full sm:w-auto"
+                    onClick={() => lockAndNavigate(
                         `/dashboard/medical-director/antenatal-records/${patientId}`,
                         {
                           state: {
@@ -1021,15 +1017,15 @@ const dependant = isDependant
                     {/* Summary Stats */}
                     <div className="space-y-3">
                       <h4 className="font-medium text-base-content text-sm">Summary</h4>
-                      <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-base-content/70">Latest Remarks:</span>
-                          <span className="font-medium max-w-xs text-right">
+                      <div className="bg-base-200/50 rounded-lg p-3 space-y-3">
+                        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:justify-between sm:gap-3">
+                          <span className="text-base-content/70 shrink-0">Latest Remarks:</span>
+                          <span className="font-medium sm:max-w-xs sm:text-right">
                             {(() => {
                               const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
                               const latestExam = latest?.anteNatalExamination?.slice().sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
                               const remark = latestExam?.remark;
-                               return remark ? (
+                              return remark ? (
                                 <div className="text-xs text-base-content/80 bg-base-100/50 p-2 rounded whitespace-pre-wrap max-h-16 overflow-y-auto">
                                   {remark}
                                 </div>
@@ -1037,7 +1033,7 @@ const dependant = isDependant
                             })()}
                           </span>
                         </div>
-                        <div className="flex justify-between text-sm">
+                        <div className="flex items-center justify-between text-sm">
                           <span className="text-base-content/70">Total Examinations:</span>
                           <span className="font-medium">
                             {antenatalRecords.reduce((sum, r) => sum + (r.anteNatalExamination?.length || 0), 0)}
@@ -1055,15 +1051,15 @@ const dependant = isDependant
                           const pregnancy = latest?.presentPregnancyHistories?.[0];
                           return pregnancy ? (
                             <>
-                              <div className="flex justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm">
                                 <span className="text-base-content/70">EDD:</span>
                                 <span className="font-medium">{pregnancy.EDD ? formatNigeriaDate(pregnancy.EDD) : '-'}</span>
                               </div>
-                              <div className="flex justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm">
                                 <span className="text-base-content/70">LMP:</span>
                                 <span className="font-medium">{pregnancy.LMP ? formatNigeriaDate(pregnancy.LMP) : '-'}</span>
                               </div>
-                              <div className="flex justify-between text-sm">
+                              <div className="flex items-center justify-between text-sm">
                                 <span className="text-base-content/70">Gestational Age:</span>
                                 <span className="font-medium">{pregnancy.durationOfPregnancyInWeek || 0} weeks</span>
                               </div>
@@ -1465,7 +1461,7 @@ const dependant = isDependant
   defaultItems={billDefaults}  
   onSentSuccessfully={() => {
     refreshBillableItems();
-    navigate('/dashboard/hmo/incoming');
+    navigate('/dashboard/medical-director/incoming');
   }}
 />
 
