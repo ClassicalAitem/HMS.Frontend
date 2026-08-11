@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
+import Sidebar from '@/components/medical-director/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getInventories } from '@/services/api/inventoryAPI';
@@ -152,11 +152,16 @@ const ViewAllPrescriptions = () => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen bg-base-300/20">
+      {/* Mobile Backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div 
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden" 
+          onClick={closeSidebar} 
+        />
       )}
 
+      {/* Sidebar Container */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -165,21 +170,22 @@ const ViewAllPrescriptions = () => {
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      {/* Main Content Viewport */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Header */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Header Section */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-2xl font-bold text-base-content">Prescription History</h1>
-                <p className="text-base-content/70 mt-1">
-                  Patient: {patientName}
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content">Prescription History</h1>
+                <p className="text-sm text-base-content/70 mt-1">
+                  Patient: <span className="font-semibold text-base-content">{patientName || 'Loading...'}</span>
                 </p>
               </div>
               <button
-                className="btn btn-outline"
+                className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
                 onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
               >
                 Back
@@ -193,8 +199,58 @@ const ViewAllPrescriptions = () => {
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-6">
-                <div className="overflow-x-auto">
+              <div className="card-body p-4 sm:p-6">
+                
+                {/* Mobile View: Cards */}
+                <div className="block md:hidden space-y-4">
+                  {paginationData.paginatedItems.length > 0 ? (
+                    paginationData.paginatedItems.map((row, idx) => (
+                      <div key={idx} className="border border-base-200 rounded-lg p-4 space-y-3 bg-base-100 shadow-xs">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-base text-base-content">{row.forName}</p>
+                            <span className={`badge badge-sm mt-1 ${row.isForDependant ? 'badge-secondary' : 'badge-primary'}`}>
+                              {row.isForDependant ? 'Dependant' : 'Patient'}
+                            </span>
+                          </div>
+                          <span className={`badge font-semibold ${
+                            row.status === 'Pending' ? 'badge-warning' : row.status === 'Dispensed' ? 'badge-success' : 'badge-ghost'
+                          }`}>
+                            {row.status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y border-base-200/60">
+                          <div>
+                            <span className="text-base-content/60 block">Medications Count</span>
+                            <span className="font-bold text-sm text-base-content">{row.medicationsCount}</span>
+                          </div>
+                          <div>
+                            <span className="text-base-content/60 block">Created At</span>
+                            <span className="font-semibold text-sm text-base-content">{row.date}</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-semibold text-base-content/70 mb-1">Medications Preview:</p>
+                          <ul className="list-disc list-inside text-xs font-medium space-y-1">
+                            {row.medicationsSummary.map((med, i) => (
+                              <li key={i} className="text-base-content truncate">{med}</li>
+                            ))}
+                            {row.medicationsCount > 2 && <li className="text-base-content/60">...</li>}
+                          </ul>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-base-content/70">
+                      No prescriptions found
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="table w-full text-center text-sm">
                     <thead>
                       <tr>
@@ -202,7 +258,7 @@ const ViewAllPrescriptions = () => {
                         <th className="font-bold text-base">Status</th>
                         <th className="font-bold text-base">Medications Count</th>
                         <th className="font-bold text-base">Created At</th>
-                        <th className="font-bold text-base">Medications</th>
+                        <th className="font-bold text-base text-left">Medications</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -250,7 +306,7 @@ const ViewAllPrescriptions = () => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={6} className="py-6 text-base-content/70">
+                          <td colSpan={5} className="py-6 text-base-content/70">
                             No prescriptions found
                           </td>
                         </tr>
@@ -259,20 +315,19 @@ const ViewAllPrescriptions = () => {
                   </table>
                 </div>
 
-                {/* Pagination */}
+                {/* Pagination Controls */}
                 {paginationData.totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-base-200">
-                    <span className="text-sm text-base-content/70">
-                      Page {currentPage} of {paginationData.totalPages} (
-                      {paginationData.totalItems} total)
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-base-200">
+                    <span className="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
+                      Page {currentPage} of {paginationData.totalPages} ({paginationData.totalItems} total)
                     </span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap justify-center gap-1 sm:gap-2">
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       >
-                        Previous
+                        Prev
                       </button>
                       {Array.from({
                         length: Math.min(paginationData.totalPages, 5),
@@ -281,7 +336,7 @@ const ViewAllPrescriptions = () => {
                         return (
                           <button
                             key={page}
-                            className={`btn btn-sm ${
+                            className={`btn btn-xs sm:btn-sm ${
                               currentPage === page ? 'btn-active' : 'btn-outline'
                             }`}
                             onClick={() => setCurrentPage(page)}
@@ -291,7 +346,7 @@ const ViewAllPrescriptions = () => {
                         );
                       })}
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === paginationData.totalPages}
                         onClick={() =>
                           setCurrentPage(p =>
@@ -304,6 +359,7 @@ const ViewAllPrescriptions = () => {
                     </div>
                   </div>
                 )}
+
               </div>
             </div>
           )}
