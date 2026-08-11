@@ -14,6 +14,7 @@ import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import SendPatientModal from '@/components/modals/SendPatientModal'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import dispensesAPI from '@/services/api/dispensesAPI'
+import KolakLoader from '@/components/common/KolakLoader'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -144,6 +145,8 @@ const IncomingDetails = () => {
 
     return (
       <div className="space-y-3">
+                    {loading && <KolakLoader fullscreen />}
+        
         {meds.map((m, i) => (
           <div
             key={i}
@@ -158,7 +161,7 @@ const IncomingDetails = () => {
               )}
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
               <div>
                 <div className="font-semibold">{m.drugName}</div>
                 <div className="text-sm text-base-content/70">
@@ -168,7 +171,7 @@ const IncomingDetails = () => {
                 <div className="text-sm">Frequency: {m.frequency}</div>
                 <div className="text-sm">Duration: {m.duration}</div>
               </div>
-              <div className="text-sm text-right space-y-1">
+              <div className="text-sm sm:text-right space-y-1">
                 <div>Status: {m.status}</div>
                 {m.pharmacistName && (
                   <div className="text-xs text-base-content/70">Pharmacist: {m.pharmacistName}</div>
@@ -345,11 +348,13 @@ const IncomingDetails = () => {
 
   return (
     <PharmacistLayout>
-      <div className="p-6">
+                  {loading && <KolakLoader fullscreen />}
+      
+      <div className="p-0 sm:p-2 lg:p-6">
         <div className="mb-4 justify-between">
-          <div className="mb-4 flex justify-between">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-2xl font-semibold text-primary">Prescription Details</h1>
-            <button className="btn btn-primary btn-sm" onClick={() => navigate(-1)}>
+            <button className="btn btn-primary btn-sm w-fit" onClick={() => navigate(-1)}>
               Back To Incoming
             </button>
           </div>
@@ -393,7 +398,7 @@ const IncomingDetails = () => {
               {renderMedications(prescriptions.active)}
 
               {prescriptions.active.length > 0 && (
-                <div className="mt-4 flex gap-3">
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                   <button className="btn btn-primary btn-sm" onClick={handleComplete}>
                     Complete Pharmacy
                   </button>
