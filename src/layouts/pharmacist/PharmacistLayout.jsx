@@ -24,7 +24,7 @@ const PharmacistLayout = ({ children }) => {
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/5">
         <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-2 py-1 sm:p-3 2xl:p-4">
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 py-2 sm:p-4 lg:p-6">
           {children}
         </div>
       </div>
