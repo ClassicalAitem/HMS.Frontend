@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
+import Sidebar from '@/components/medical-director/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getInvestigationByPatientId } from '@/services/api/investigationAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
-import { FaFlask } from 'react-icons/fa';
+import { FaFlask, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 const ViewAllInvestigations = () => {
   const { patientId } = useParams();
@@ -29,7 +29,6 @@ const ViewAllInvestigations = () => {
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  // Fetch patient data
   useEffect(() => {
     let mounted = true;
     const loadPatient = async () => {
@@ -46,7 +45,6 @@ const ViewAllInvestigations = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch dependants
   useEffect(() => {
     let mounted = true;
     const loadDependants = async () => {
@@ -67,7 +65,6 @@ const ViewAllInvestigations = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch investigations
   useEffect(() => {
     let mounted = true;
     const loadInvestigations = async () => {
@@ -88,7 +85,6 @@ const ViewAllInvestigations = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch service charges
   useEffect(() => {
     let mounted = true;
     const loadServiceCharges = async () => {
@@ -99,36 +95,35 @@ const ViewAllInvestigations = () => {
         if (mounted) setServiceCharges(list);
       } catch (err) {
         console.error('Failed to load service charges:', err);
+        toast.error(err?.message || 'Failed to load service charges');
       }
     };
     loadServiceCharges();
     return () => { mounted = false; };
   }, []);
 
-  // Helper to get lab investigation price
   const getLabInvestigationPrice = (testName) => {
     if (!testName) return 0;
-    
+
     const testNameLower = testName.toLowerCase().trim();
-    
+
     const exactMatch = serviceCharges.find(charge => {
       const chargeService = (charge?.service || '').toLowerCase().trim();
       const chargeName = (charge?.name || '').toLowerCase().trim();
-      
-      return chargeService === testNameLower || 
+
+      return chargeService === testNameLower ||
              chargeName === testNameLower ||
              chargeService.includes(testNameLower) ||
              chargeName.includes(testNameLower);
     });
-    
+
     if (exactMatch) {
       return Number(exactMatch?.amount || exactMatch?.price || 0);
     }
-    
+
     return 0;
   };
 
-  // Format investigation rows
   const investigationRows = useMemo(() => (
     Array.isArray(investigations)
       ? investigations.map((inv) => {
@@ -167,7 +162,6 @@ const ViewAllInvestigations = () => {
       : []
   ), [investigations, dependants, patientName, serviceCharges]);
 
-  // Pagination
   const paginationData = useMemo(() => {
     const totalItems = investigationRows.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -205,6 +199,17 @@ const ViewAllInvestigations = () => {
     }
   };
 
+  // Compact page-number list so pagination doesn't overflow small screens
+  const getVisiblePages = () => {
+    const total = paginationData.totalPages;
+    const maxVisible = 3; // fewer buttons shown on mobile
+    if (total <= maxVisible) return Array.from({ length: total }, (_, i) => i + 1);
+    let start = Math.max(1, currentPage - 1);
+    let end = Math.min(total, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
   return (
     <div className="flex h-screen">
       {isSidebarOpen && (
@@ -219,26 +224,28 @@ const ViewAllInvestigations = () => {
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20 min-w-0">
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-info/10 p-3 rounded-full text-info">
-                    <FaFlask className="w-6 h-6" />
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                  <div className="bg-info/10 p-2 sm:p-3 rounded-full text-info shrink-0">
+                    <FaFlask className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <h1 className="text-2xl font-bold text-base-content">Lab Investigations</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-base-content">
+                    Lab Investigations
+                  </h1>
                 </div>
-                <p className="text-base-content/70">
+                <p className="text-sm sm:text-base text-base-content/70 truncate">
                   Patient: {patientName}
                 </p>
               </div>
               <button
-                className="btn btn-outline"
+                className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
                 onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
               >
                 Back
@@ -252,8 +259,69 @@ const ViewAllInvestigations = () => {
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-6">
-                <div className="overflow-x-auto">
+              <div className="card-body p-3 sm:p-6">
+
+                {/* ---------- Mobile: stacked cards (below sm) ---------- */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {paginationData.paginatedItems.length > 0 ? (
+                    paginationData.paginatedItems.map((row, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-base-200 p-3 bg-base-100"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-base-content truncate">
+                              {row.forName}
+                            </p>
+                            <span
+                              className={`badge badge-xs mt-1 ${
+                                row.isForDependant ? 'badge-secondary' : 'badge-primary'
+                              }`}
+                            >
+                              {row.isForDependant ? 'Dependant' : 'Patient'}
+                            </span>
+                          </div>
+                          <span className={`badge badge-sm shrink-0 ${getStatusBadge(row.status)}`}>
+                            {row.status?.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-base-content/70 mb-2">
+                          <span className="font-semibold text-base-content">{row.type}</span>
+                          <span>{row.date}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-base-content">
+                            {row.testsCount} test{row.testsCount !== 1 ? 's' : ''}
+                          </span>
+                          {row.priority && (
+                            <span className={`badge badge-xs ${getPriorityBadge(row.priority)}`}>
+                              {row.priority}
+                            </span>
+                          )}
+                        </div>
+
+                        {row.testsSummary.length > 0 && (
+                          <ul className="list-disc list-inside text-xs font-medium mt-2 text-base-content/80">
+                            {row.testsSummary.map((test, i) => (
+                              <li key={i}>{test}</li>
+                            ))}
+                            {row.testsCount > 2 && <li className="text-base-content/50">...</li>}
+                          </ul>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-6 text-center text-base-content/70 text-sm">
+                      No investigations found
+                    </p>
+                  )}
+                </div>
+
+                {/* ---------- Desktop/tablet: table (sm and up) ---------- */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="table w-full text-center text-sm">
                     <thead>
                       <tr>
@@ -329,47 +397,46 @@ const ViewAllInvestigations = () => {
                   </table>
                 </div>
 
-                {/* Pagination */}
+                {/* ---------- Pagination ---------- */}
                 {paginationData.totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-base-200">
-                    <span className="text-sm text-base-content/70">
+                  <div className="flex flex-col gap-3 mt-6 pt-4 border-t border-base-200 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
                       Page {currentPage} of {paginationData.totalPages} (
                       {paginationData.totalItems} total)
                     </span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center justify-center gap-1 sm:gap-2">
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        aria-label="Previous page"
                       >
-                        Previous
+                        <FaChevronLeft className="sm:hidden w-3 h-3" />
+                        <span className="hidden sm:inline">Previous</span>
                       </button>
-                      {Array.from({
-                        length: Math.min(paginationData.totalPages, 5),
-                      }).map((_, i) => {
-                        const page = i + 1;
-                        return (
-                          <button
-                            key={page}
-                            className={`btn btn-sm ${
-                              currentPage === page ? 'btn-active' : 'btn-outline'
-                            }`}
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
+                      {getVisiblePages().map((page) => (
+                        <button
+                          key={page}
+                          className={`btn btn-xs sm:btn-sm ${
+                            currentPage === page ? 'btn-active' : 'btn-outline'
+                          }`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      ))}
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === paginationData.totalPages}
                         onClick={() =>
                           setCurrentPage(p =>
                             Math.min(paginationData.totalPages, p + 1)
                           )
                         }
+                        aria-label="Next page"
                       >
-                        Next
+                        <FaChevronRight className="sm:hidden w-3 h-3" />
+                        <span className="hidden sm:inline">Next</span>
                       </button>
                     </div>
                   </div>

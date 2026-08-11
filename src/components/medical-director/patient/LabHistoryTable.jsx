@@ -44,7 +44,7 @@ const LabHistoryTable = ({ rows = [], loading = false, onViewResult }) => {
   return (
     <div className="shadow-xl card bg-base-100 mb-4">
       <div className="p-4 card-body">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:justify-between sm:items-center">
           <div className="flex items-center gap-2">
             <FaFlask className="text-info w-5 h-5" />
             <h2 className="text-lg font-semibold text-base-content">Lab Results History</h2>
@@ -60,7 +60,8 @@ const LabHistoryTable = ({ rows = [], loading = false, onViewResult }) => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            {/* Desktop / tablet table */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="table w-full text-sm">
                 <thead>
                   <tr>
@@ -134,36 +135,79 @@ const LabHistoryTable = ({ rows = [], loading = false, onViewResult }) => {
               </table>
             </div>
 
+            {/* Mobile card list */}
+            <div className="sm:hidden space-y-3">
+              {paginationData.paginatedItems.length > 0 ? (
+                paginationData.paginatedItems.map((row, idx) => (
+                  <div key={idx} className="border border-base-200 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(row.status)}
+                        <span className={`badge ${getStatusBadgeClass(row.status)} badge-sm`}>
+                          {row.status ? row.status.replace('_', ' ') : '—'}
+                        </span>
+                      </div>
+                      {row.priority === 'urgent' ? (
+                        <span className="badge badge-error badge-xs">Urgent</span>
+                      ) : (
+                        <span className="badge badge-ghost badge-xs">Normal</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-base-content/70">
+                      <span className="font-medium">{row.type || 'Lab'}</span>
+                      <span>{row.date || '—'}</span>
+                    </div>
+
+                    {Array.isArray(row.tests) && row.tests.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {row.tests.slice(0, 2).map((test, tIdx) => (
+                          <span key={tIdx} className="badge badge-outline badge-xs">
+                            {typeof test === 'string' ? test : test.name || '—'}
+                          </span>
+                        ))}
+                        {row.tests.length > 2 && (
+                          <span className="badge badge-outline badge-xs">+{row.tests.length - 2}</span>
+                        )}
+                      </div>
+                    )}
+
+                    {row.status?.toLowerCase() === 'completed' && (
+                      <button
+                        className="btn btn-xs btn-primary w-full"
+                        onClick={() => onViewResult && onViewResult(row)}
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-base-content/70 py-6">No lab results found</div>
+              )}
+            </div>
+
             {paginationData.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="flex flex-col gap-3 mt-4 pt-4 border-t sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm opacity-70">
-                  Page {currentPage} of {paginationData.totalPages} (
-                  {paginationData.totalItems} items)
+                  Page {currentPage} of {paginationData.totalPages} ({paginationData.totalItems} items)
                 </span>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     className="btn btn-sm btn-outline"
                     disabled={currentPage === 1}
-                    onClick={() =>
-                      setCurrentPage((p) => Math.max(1, p - 1))
-                    }
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   >
                     Previous
                   </button>
 
-                  {Array.from({
-                    length: Math.min(paginationData.totalPages, 5),
-                  }).map((_, i) => {
+                  {Array.from({ length: Math.min(paginationData.totalPages, 5) }).map((_, i) => {
                     const page = i + 1;
                     return (
                       <button
                         key={page}
-                        className={`btn btn-sm ${
-                          currentPage === page
-                            ? "btn-active"
-                            : "btn-outline"
-                        }`}
+                        className={`btn btn-sm ${currentPage === page ? "btn-active" : "btn-outline"}`}
                         onClick={() => setCurrentPage(page)}
                       >
                         {page}
@@ -173,14 +217,8 @@ const LabHistoryTable = ({ rows = [], loading = false, onViewResult }) => {
 
                   <button
                     className="btn btn-sm btn-outline"
-                    disabled={
-                      currentPage === paginationData.totalPages
-                    }
-                    onClick={() =>
-                      setCurrentPage((p) =>
-                        Math.min(paginationData.totalPages, p + 1)
-                      )
-                    }
+                    disabled={currentPage === paginationData.totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(paginationData.totalPages, p + 1))}
                   >
                     Next
                   </button>
