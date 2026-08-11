@@ -34,7 +34,6 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
-  // ✅ Resolve display label from selected value
   const selectedService = services.find(s => (s._id || s.id) === value);
   const availabilityText = selectedService ? (selectedService.isBillable !== false ? 'Available' : 'Unavailable') : '';
   const displayValue = open
@@ -43,7 +42,6 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
       ? `${selectedService.service || selectedService.name}`
       : '';
 
-  // Filter services: show all but filter search for billable items
   const filtered = services.filter(s => {
     if (!search) return true;
     const name = (s.service || s.name || '').toLowerCase();
@@ -51,7 +49,6 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
     return name.includes(search.toLowerCase()) || cat.includes(search.toLowerCase());
   });
 
-  // ✅ Position dropdown using getBoundingClientRect so it always floats on top
   const openDropdown = () => {
     if (!inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
@@ -66,7 +63,6 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
     setSearch('');
   };
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
@@ -140,7 +136,7 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
 };
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
-const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess, defaultItems = [] }) => {
+const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, defaultItems = [] }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -160,11 +156,8 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
     }
   });
 
-  
-
   const { fields, append, remove } = useFieldArray({ control, name: "items" });
 
-  // Load service charges
   useEffect(() => {
     if (!isOpen) return;
     const loadServices = async () => {
@@ -178,10 +171,8 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
           else if (Array.isArray(res.data.data)) list = res.data.data;
         }
         const filtered = (Array.isArray(list) ? list : []).filter(
-        (s) => s.category !== SERVICE_CHARGE_CATEGORY.LABORATORY
-      );
-
- 
+          (s) => s.category !== SERVICE_CHARGE_CATEGORY.LABORATORY
+        );
         setServices(filtered);
       } catch {
         toast.error("Could not load service list");
@@ -193,7 +184,6 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
     loadServices();
   }, [isOpen]);
 
-  // Pre-fill default items
   useEffect(() => {
     if (!isOpen) return;
     if (defaultItems?.length > 0) {
@@ -211,18 +201,16 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
         }))
       });
     } else {
-      reset({ items: [{ serviceChargeId: null,investigationId: null, prescriptionId: null, admissionId: null, code: '', description: '', quantity: 1, price: 0 }] });
+      reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, code: '', description: '', quantity: 1, price: 0 }] });
     }
   }, [isOpen, defaultItems, reset]);
 
   const items = watch("items");
 
-  
   const grandTotal = items?.reduce((sum, item) => {
     return sum + (Number(item.quantity) || 0) * (Number(item.price) || 0);
   }, 0) || 0;
 
-  // ✅ Called when user picks a service from searchable dropdown
   const handleServiceSelect = (index, serviceId, service) => {
     setValue(`items.${index}.serviceChargeId`, serviceId);
     setValue(`items.${index}.code`, service.category || service.code || 'SVC');
@@ -233,7 +221,6 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
 
   const onSubmit = async (data) => {
     if (!patientId) { toast.error("Patient ID is missing"); return; }
-    console.log('🔍 dependantId at submit time:', dependantId, typeof dependantId);
     setIsLoading(true);
     try {
       const payload = {
@@ -251,18 +238,18 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
         ...(dependantId && { dependantId }),
       };
 
-    await createBilling(patientId, payload);
-    toast.success('Bill created successfully!');
+      await createBilling(patientId, payload);
+      toast.success('Bill created successfully!');
 
-    try {
-          await toast.promise(
-            updateSubjectStatus(patientId, dependantId, PATIENT_STATUS.AWAITING_CASHIER),
-            {
-              loading: 'Updating status...',
-              success: dependantId ? 'Dependant sent to cashier' : 'Patient sent to cashier',
-              error: (err) => err?.response?.data?.message || 'Failed to update status',
-            }
-          );
+      try {
+        await toast.promise(
+          updateSubjectStatus(patientId, dependantId, PATIENT_STATUS.AWAITING_CASHIER),
+          {
+            loading: 'Updating status...',
+            success: dependantId ? 'Dependant sent to cashier' : 'Patient sent to cashier',
+            error: (err) => err?.response?.data?.message || 'Failed to update status',
+          }
+        );
       } catch (err) {
         console.error('Failed updating status', err);
       }
@@ -279,27 +266,27 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-4xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="w-full h-full sm:h-auto sm:max-w-4xl bg-base-100 sm:rounded-xl shadow-2xl overflow-hidden border-0 sm:border border-base-200 flex flex-col max-h-full sm:max-h-[90vh]">
 
         {/* Header */}
-        <div className="p-5 border-b border-base-200 flex justify-between items-center bg-base-50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-full text-primary">
+        <div className="p-4 sm:p-5 border-b border-base-200 flex justify-between items-center bg-base-50 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-primary/10 p-2 rounded-full text-primary shrink-0">
               <FaMoneyBillWave className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-base-content">Create Bill</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold text-base-content truncate">Create Bill</h2>
               <p className="text-xs text-base-content/60">Select services to bill the patient</p>
             </div>
           </div>
-          <button onClick={onClose} className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:bg-base-200">
+          <button onClick={onClose} className="btn btn-ghost btn-circle btn-sm text-base-content/60 hover:bg-base-200 shrink-0">
             <FaTimes className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
             {Object.keys(errors).length > 0 && (
@@ -308,8 +295,8 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
               </div>
             )}
 
-            {/* Items Table */}
-            <div className="border border-base-200 rounded-lg overflow-visible">
+            {/* Desktop / tablet table */}
+            <div className="hidden sm:block border border-base-200 rounded-lg overflow-visible">
               <table className="table table-sm w-full">
                 <thead className="bg-base-200/50">
                   <tr>
@@ -334,7 +321,6 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
                           {items[index]?.isAuto ? (
                             <div className="text-sm font-medium pt-1">{items[index]?.description}</div>
                           ) : (
-                            // ✅ Replaced <select> with searchable input
                             <ServiceSearchInput
                               index={index}
                               services={services}
@@ -381,6 +367,78 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
               </table>
             </div>
 
+            {/* Mobile item cards */}
+            <div className="sm:hidden space-y-3">
+              {fields.map((item, index) => {
+                const qty = Number(items[index]?.quantity) || 0;
+                const price = Number(items[index]?.price) || 0;
+                const lineTotal = qty * price;
+
+                return (
+                  <div key={item.id} className="border border-base-200 rounded-lg p-3 space-y-3 relative">
+                    {fields.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="btn btn-ghost btn-xs text-error hover:bg-error/10 absolute top-2 right-2"
+                      >
+                        <FaTrash />
+                      </button>
+                    )}
+
+                    <div className="pr-8">
+                      <label className="text-xs text-base-content/60 mb-1 block">Service Item</label>
+                      {items[index]?.isAuto ? (
+                        <div className="text-sm font-medium">{items[index]?.description}</div>
+                      ) : (
+                        <ServiceSearchInput
+                          index={index}
+                          services={services}
+                          loadingServices={loadingServices}
+                          value={items[index]?.serviceChargeId || ''}
+                          onSelect={(id, svc) => handleServiceSelect(index, id, svc)}
+                          error={errors.items?.[index]?.serviceChargeId}
+                        />
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-base-content/60 mb-1 block">Code</label>
+                        <input type="text" readOnly
+                          className="input input-bordered input-sm w-full bg-base-200/50"
+                          {...register(`items.${index}.code`)} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-base-content/60 mb-1 block">Qty</label>
+                        <input type="number" min="1"
+                          className={`input input-bordered input-sm w-full text-center ${errors.items?.[index]?.quantity ? 'input-error' : ''}`}
+                          {...register(`items.${index}.quantity`)} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-base-content/60 mb-1 block">Description</label>
+                      <input type="text" readOnly
+                        className="input input-bordered input-sm w-full bg-base-200/50"
+                        {...register(`items.${index}.description`)} />
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm pt-1">
+                      <div>
+                        <span className="text-xs text-base-content/60 block">Price</span>
+                        <span className="font-medium">₦{price.toLocaleString()}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-base-content/60 block">Total</span>
+                        <span className="font-semibold">₦{lineTotal.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             {/* Add item button */}
             <button
               type="button"
@@ -391,14 +449,14 @@ const CreateBillModal = ({ isOpen, onClose, patientId,dependantId  ,  onSuccess,
             </button>
 
             {/* Footer */}
-            <div className="pt-4 border-t border-base-200 flex justify-between items-center">
+            <div className="pt-4 border-t border-base-200 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
               <div>
                 <span className="text-sm text-base-content/60 block">Grand Total</span>
                 <span className="text-2xl font-bold text-primary">₦{grandTotal.toLocaleString()}</span>
               </div>
               <div className="flex gap-3">
-                <button type="button" className="btn btn-ghost" onClick={onClose} disabled={isLoading}>Cancel</button>
-                <button type="submit" className="btn btn-primary px-8" disabled={isLoading}>
+                <button type="button" className="btn btn-ghost flex-1 sm:flex-none" onClick={onClose} disabled={isLoading}>Cancel</button>
+                <button type="submit" className="btn btn-primary flex-1 sm:flex-none px-8" disabled={isLoading}>
                   {isLoading ? <span className="loading loading-spinner loading-sm"></span> : 'Submit Bill'}
                 </button>
               </div>

@@ -210,16 +210,16 @@ const Appointment = () => {
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20 min-w-0">
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
             <div>
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
+              <h1 className="text-xl font-bold text-base-content sm:text-2xl 2xl:text-3xl">Appointments</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
             </div>
-            <button className="btn btn-primary btn-sm 2xl:btn-md" onClick={() => setIsBookModalOpen(true)}>
+            <button className="btn btn-primary btn-sm 2xl:btn-md w-full sm:w-auto" onClick={() => setIsBookModalOpen(true)}>
               <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
@@ -227,30 +227,30 @@ const Appointment = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-sm text-base-content">Today's Appointment</div>
-              <div className="mt-2 text-3xl font-semibold text-base-content">{todayStats.todayTotal}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
+              <div className="text-xs sm:text-sm text-base-content">Today's Appointment</div>
+              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.todayTotal}</div>
               <div className="text-xs text-base-content/70">{todayStats.todayConfirmed} confirmed</div>
             </div>
-            <div className="p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-sm text-base-content">Pending</div>
-              <div className="mt-2 text-3xl font-semibold text-base-content">{todayStats.pending}</div>
+            <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
+              <div className="text-xs sm:text-sm text-base-content">Pending</div>
+              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.pending}</div>
               <div className="text-xs text-base-content/70">Awaiting confirmation</div>
             </div>
-            <div className="p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-sm text-base-content">Confirmed</div>
-              <div className="mt-2 text-3xl font-semibold text-base-content">{todayStats.confirmed}</div>
+            <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
+              <div className="text-xs sm:text-sm text-base-content">Confirmed</div>
+              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.confirmed}</div>
               <div className="text-xs text-base-content/70">Ready to proceed</div>
             </div>
-            <div className="p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-sm text-base-content">Cancelled</div>
-              <div className="mt-2 text-3xl font-semibold text-base-content">{todayStats.cancelled}</div>
+            <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
+              <div className="text-xs sm:text-sm text-base-content">Cancelled</div>
+              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.cancelled}</div>
               <div className="text-xs text-base-content/70">Cancelled Today</div>
             </div>
           </div>
 
-          <div className="flex gap-4 justify-between items-center mb-6">
+          <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
             <div className="flex gap-3 items-center">
               <button className="flex gap-2 items-center btn btn-sm" onClick={() => setFilterOpen(!filterOpen)}>
                 <PiSlidersLight className="w-4 h-4 rotate-90" />
@@ -275,7 +275,7 @@ const Appointment = () => {
 
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
+              <div className="p-3 card-body sm:p-4 2xl:p-6">
                 <DataTable
                   data={processedAppointments}
                   columns={columns}

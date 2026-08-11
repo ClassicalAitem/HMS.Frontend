@@ -3,11 +3,11 @@ import React, { useState, useMemo } from 'react';
 import { FaSearch, FaSort, FaSortUp, FaSortDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
 
-const DataTable = ({ 
-  data = [], 
-  columns = [], 
-  searchable = true, 
-  sortable = true, 
+const DataTable = ({
+  data = [],
+  columns = [],
+  searchable = true,
+  sortable = true,
   paginated = true,
   initialEntriesPerPage = 5,
   className = "",
@@ -45,16 +45,16 @@ const DataTable = ({
       filtered.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
-        
+
         // Handle numeric sorting
         if (typeof aValue === 'number' && typeof bValue === 'number') {
           return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue;
         }
-        
+
         // Handle string sorting
         const aString = String(aValue || '').toLowerCase();
         const bString = String(bValue || '').toLowerCase();
-        
+
         if (sortConfig.direction === 'asc') {
           return aString < bString ? -1 : aString > bString ? 1 : 0;
         } else {
@@ -97,7 +97,7 @@ const DataTable = ({
     if (sortConfig.key !== columnKey) {
       return <FaSort className="w-3 h-3 opacity-50" />;
     }
-    return sortConfig.direction === 'asc' 
+    return sortConfig.direction === 'asc'
       ? <FaSortUp className="w-3 h-3 text-primary" />
       : <FaSortDown className="w-3 h-3 text-primary" />;
   };
@@ -108,6 +108,21 @@ const DataTable = ({
       return column.render(item[column.key], item);
     }
     return item[column.key];
+  };
+
+  // Compact page-number list so pagination doesn't overflow small screens
+  const getVisiblePages = () => {
+    const maxVisible = 5;
+    if (totalPages <= maxVisible) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    let start, end;
+    if (currentPage <= 3) {
+      start = 1; end = maxVisible;
+    } else if (currentPage >= totalPages - 2) {
+      start = totalPages - maxVisible + 1; end = totalPages;
+    } else {
+      start = currentPage - 2; end = currentPage + 2;
+    }
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
 
   return (
@@ -139,9 +154,42 @@ const DataTable = ({
         </div>
       )}
 
-      {/* Scrollable Table */}
       <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-        <div className={`overflow-auto ${maxHeight}`}>
+
+        {/* ---------- Mobile: stacked label/value cards (below sm) ---------- */}
+        <div className={`sm:hidden overflow-auto ${maxHeight}`}>
+          {currentData.length > 0 ? (
+            <div className="divide-y divide-base-300/40">
+              {currentData.map((item, index) => (
+                <div
+                  key={item.id || index}
+                  className={`p-3 ${onRowClick ? 'cursor-pointer active:bg-base-200/60' : ''}`}
+                  onClick={() => onRowClick && onRowClick(item)}
+                >
+                  <div className="flex flex-col gap-1.5">
+                    {columns.map((column) => (
+                      <div key={column.key} className="flex items-start justify-between gap-3">
+                        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-base-content/50 pt-0.5">
+                          {column.title || column.key}
+                        </span>
+                        <span className={`text-right text-xs ${column.className || 'text-base-content/80'}`}>
+                          {renderCell(item, column)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-8 text-center text-sm text-base-content/50">
+              No data found
+            </div>
+          )}
+        </div>
+
+        {/* ---------- Desktop/tablet: table (sm and up) ---------- */}
+        <div className={`hidden sm:block overflow-auto ${maxHeight}`}>
           <table className="table w-full table-zebra">
             <thead className="sticky top-0 z-10 bg-base-200">
               <tr className="">
@@ -149,8 +197,8 @@ const DataTable = ({
                   <th
                     key={column.key}
                     className={`border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider ${
-                      sortable && column.sortable !== false 
-                        ? 'cursor-pointer hover:bg-base-300 transition-colors' 
+                      sortable && column.sortable !== false
+                        ? 'cursor-pointer hover:bg-base-300 transition-colors'
                         : ''
                     }`}
                     onClick={() => column.sortable !== false && handleSort(column.key)}
@@ -166,8 +214,8 @@ const DataTable = ({
             <tbody>
               {currentData.length > 0 ? (
                 currentData.map((item, index) => (
-                  <tr 
-                    key={item.id || index} 
+                  <tr
+                    key={item.id || index}
                     className={`text-xs transition-colors hover:bg-base-200/50 ${
                       onRowClick ? 'cursor-pointer hover:shadow-md' : ''
                     }`}
@@ -199,20 +247,20 @@ const DataTable = ({
 
       {/* Pagination and Info - Always show when paginated */}
       {paginated && (
-        <div className="flex flex-col justify-between items-center px-2 mt-4 lg:flex-row">
-          <div className="py-2 text-sm text-base-content/70">
+        <div className="flex flex-col gap-3 justify-between items-center px-2 mt-4 lg:flex-row">
+          <div className="py-1 text-xs sm:text-sm text-base-content/70 text-center lg:text-left">
             Showing {startIndex + 1} to {Math.min(endIndex, filteredAndSortedData.length)} of {filteredAndSortedData.length} entries
           </div>
-          
-          <div className="flex gap-4 justify-center items-center">
+
+          <div className="flex flex-col gap-3 items-center w-full sm:w-auto sm:flex-row sm:gap-4">
             {/* Show Entries - Always visible when paginated */}
             {showEntries && (
               <div className="flex flex-shrink-0 gap-1 items-center lg:gap-2">
-                <span className="text-sm text-base-content/70">Show</span>
+                <span className="text-xs sm:text-sm text-base-content/70">Show</span>
                 <select
                   value={entriesPerPage}
                   onChange={(e) => handleEntriesChange(Number(e.target.value))}
-                  className="w-20 select select-bordered select-sm"
+                  className="w-16 sm:w-20 select select-bordered select-xs sm:select-sm"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
@@ -220,55 +268,41 @@ const DataTable = ({
                   <option value={25}>25</option>
                   <option value={50}>50</option>
                 </select>
-                <span className="text-sm text-base-content/70">entries</span>
+                <span className="text-xs sm:text-sm text-base-content/70">entries</span>
               </div>
             )}
-            
+
             {/* Pagination Controls - Only show when multiple pages */}
             {totalPages > 1 && (
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-1 sm:gap-2 items-center flex-wrap justify-center">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="btn btn-sm btn-circle btn-ghost disabled:opacity-50"
+                  className="btn btn-xs sm:btn-sm btn-circle btn-ghost disabled:opacity-50"
                 >
                   <FaChevronLeft className="w-3 h-3" />
                 </button>
-                
+
                 <div className="flex gap-1 items-center">
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                    // Show first 5 pages, or pages around current page
-                    let page;
-                    if (totalPages <= 5) {
-                      page = i + 1;
-                    } else if (currentPage <= 3) {
-                      page = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      page = totalPages - 4 + i;
-                    } else {
-                      page = currentPage - 2 + i;
-                    }
-                    
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`btn btn-sm ${
-                          currentPage === page 
-                            ? 'btn-primary' 
-                            : 'btn-ghost'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
+                  {getVisiblePages().map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`btn btn-xs sm:btn-sm ${
+                        currentPage === page
+                          ? 'btn-primary'
+                          : 'btn-ghost'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
                 </div>
-                
+
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="btn btn-sm btn-circle btn-ghost disabled:opacity-50"
+                  className="btn btn-xs sm:btn-sm btn-circle btn-ghost disabled:opacity-50"
                 >
                   <FaChevronRight className="w-3 h-3" />
                 </button>

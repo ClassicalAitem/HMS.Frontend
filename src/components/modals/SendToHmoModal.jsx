@@ -157,7 +157,6 @@ const SendToHmoModal = ({
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' });
 
-  // Load service charges
   useEffect(() => {
     if (!isOpen) return;
     let mounted = true;
@@ -177,8 +176,6 @@ const SendToHmoModal = ({
     load();
     return () => { mounted = false; };
   }, [isOpen]);
-
-  // Pre-fill default items when modal opens
 
   useEffect(() => {
     if (!isOpen) return;
@@ -258,32 +255,33 @@ const SendToHmoModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-4xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="w-full h-full sm:h-auto sm:max-w-4xl bg-base-100 sm:rounded-xl shadow-2xl overflow-hidden border-0 sm:border border-base-200 flex flex-col max-h-full sm:max-h-[90vh]">
 
         {/* Header */}
-        <div className="p-5 border-b border-base-200 flex justify-between items-center bg-base-50">
-          <div className="flex items-center gap-3">
-            <div className="bg-secondary/10 p-2 rounded-full text-secondary">
+        <div className="p-4 sm:p-5 border-b border-base-200 flex justify-between items-center bg-base-50">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="bg-secondary/10 p-2 rounded-full text-secondary shrink-0">
               <FaUserMd className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-base-content">Send to HMO</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-bold text-base-content truncate">Send to HMO</h2>
               <p className="text-xs text-base-content/60">
                  {consultationDate}
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="btn btn-ghost btn-circle btn-sm">
+          <button onClick={onClose} className="btn btn-ghost btn-circle btn-sm shrink-0">
             <IoIosCloseCircleOutline className="w-5 h-5" />
           </button>
         </div>
 
-
         {/* Form Body */}
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="overflow-x-auto border border-base-200 rounded-lg">
+
+            {/* Desktop / tablet table */}
+            <div className="hidden sm:block overflow-x-auto border border-base-200 rounded-lg">
               <table className="table table-sm w-full">
                 <thead className="bg-base-200/50">
                   <tr>
@@ -336,6 +334,71 @@ const SendToHmoModal = ({
               </table>
             </div>
 
+            {/* Mobile item cards */}
+            <div className="sm:hidden space-y-3">
+              {fields.map((field, index) => {
+                const qty = Number(items[index]?.quantity) || 0;
+                const price = Number(items[index]?.price) || 0;
+                const lineTotal = qty * price;
+                return (
+                  <div key={field.id} className="border border-base-200 rounded-lg p-3 space-y-3 relative">
+                    {fields.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="btn btn-ghost btn-xs text-error absolute top-2 right-2"
+                      >
+                        <FaTrash />
+                      </button>
+                    )}
+
+                    <div className="pr-8">
+                      <label className="text-xs text-base-content/60 mb-1 block">Service Item</label>
+                      {items[index]?.isAuto ? (
+                        <div className="text-sm font-medium">{items[index]?.description}</div>
+                      ) : (
+                        <ServiceSearchInput
+                          index={index}
+                          services={services}
+                          loadingServices={loadingServices}
+                          value={items[index]?.serviceChargeId || ''}
+                          onSelect={(serviceId, service) => handleServiceSelect(index, serviceId, service)}
+                          error={errors.items?.[index]?.serviceChargeId}
+                        />
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-base-content/60 mb-1 block">Code</label>
+                        <input type="text" readOnly className="input input-bordered input-sm w-full bg-base-200/50" {...register(`items.${index}.code`)} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-base-content/60 mb-1 block">Qty</label>
+                        <input type="number" min="1" className="input input-bordered input-sm w-full text-center" {...register(`items.${index}.quantity`)} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-base-content/60 mb-1 block">Description</label>
+                      <input type="text" readOnly className="input input-bordered input-sm w-full bg-base-200/50" {...register(`items.${index}.description`)} />
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm pt-1">
+                      <div>
+                        <span className="text-xs text-base-content/60 block">Price</span>
+                        <span className="font-medium">₦{price.toLocaleString()}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs text-base-content/60 block">Total</span>
+                        <span className="font-semibold">₦{lineTotal.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             <button
               type="button"
               className="btn btn-outline btn-secondary btn-sm w-full border-dashed gap-2"
@@ -345,14 +408,14 @@ const SendToHmoModal = ({
             </button>
 
             {/* Footer */}
-            <div className="pt-4 border-t border-base-200 flex justify-between items-center">
+            <div className="pt-4 border-t border-base-200 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
               <div>
                 <span className="text-sm text-base-content/60 block">Grand Total</span>
                 <span className="text-2xl font-bold text-secondary">₦{grandTotal.toLocaleString()}</span>
               </div>
               <div className="flex gap-3">
-                <button type="button" className="btn btn-ghost" onClick={onClose} disabled={isLoading}>Cancel</button>
-                <button type="submit" className="btn btn-secondary px-8" disabled={isLoading}>
+                <button type="button" className="btn btn-ghost flex-1 sm:flex-none" onClick={onClose} disabled={isLoading}>Cancel</button>
+                <button type="submit" className="btn btn-secondary flex-1 sm:flex-none px-8" disabled={isLoading}>
                   {isLoading ? <span className="loading loading-spinner loading-sm" /> : 'Send to HMO'}
                 </button>
               </div>

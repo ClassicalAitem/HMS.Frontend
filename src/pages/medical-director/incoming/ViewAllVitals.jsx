@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
+import Sidebar from '@/components/medical-director/dashboard/Sidebar';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { usersAPI } from '@/services/api/usersAPI';
 import { getVitalsByPatient } from '@/services/api/vitalsAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
-import { FaHeartbeat } from 'react-icons/fa';
+import { FaHeartbeat, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 const ViewAllVitals = () => {
   const { patientId } = useParams();
@@ -70,13 +70,14 @@ const ViewAllVitals = () => {
   }, [patientId]);
 
   const subjectName = useMemo(() => {
-  if (isViewingDependant) {
-    return dependantSnapshot?.fullName
-      || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
-      || 'Dependant';
-  }
-  return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
-}, [patient, isViewingDependant, dependantSnapshot]);
+    if (isViewingDependant) {
+      return dependantSnapshot?.fullName
+        || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
+        || 'Dependant';
+    }
+    return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim();
+  }, [patient, isViewingDependant, dependantSnapshot]);
+
   // Fetch vitals
   useEffect(() => {
     let mounted = true;
@@ -87,7 +88,7 @@ const ViewAllVitals = () => {
         const rawData = res?.data ?? res ?? [];
         const vitalsList = Array.isArray(rawData) ? rawData : [];
         // Sort by date descending (newest first)
-        const sorted = vitalsList.sort((a, b) => 
+        const sorted = vitalsList.sort((a, b) =>
           new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
         );
         const scoped = isViewingDependant
@@ -114,6 +115,7 @@ const ViewAllVitals = () => {
           return {
             _id: vital._id || vital.id,
             forName: subjectName,
+            isForDependant: isViewingDependant,
             nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
             bp: vital.bp || '—',
             pulse: vital.pulse || '—',
@@ -127,7 +129,7 @@ const ViewAllVitals = () => {
           };
         })
       : []
-  ), [vitals, subjectName, nurseNameById]);
+  ), [vitals, subjectName, isViewingDependant, nurseNameById]);
 
   // Helper: normalize user API response
   const normalizeUserResponse = (response) => {
@@ -178,6 +180,17 @@ const ViewAllVitals = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
+  // Compact page-number list so pagination doesn't overflow small screens
+  const getVisiblePages = () => {
+    const total = paginationData.totalPages;
+    const maxVisible = 3;
+    if (total <= maxVisible) return Array.from({ length: total }, (_, i) => i + 1);
+    let start = Math.max(1, currentPage - 1);
+    let end = Math.min(total, start + maxVisible - 1);
+    start = Math.max(1, end - maxVisible + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
+
   return (
     <div className="flex h-screen">
       {isSidebarOpen && (
@@ -192,31 +205,31 @@ const ViewAllVitals = () => {
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20 min-w-0">
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-success/10 p-3 rounded-full text-success">
-                    <FaHeartbeat className="w-6 h-6" />
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                  <div className="bg-success/10 p-2 sm:p-3 rounded-full text-success shrink-0">
+                    <FaHeartbeat className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <h1 className="text-2xl font-bold text-base-content">Vitals History</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-base-content">Vitals History</h1>
                 </div>
-             <p className="text-base-content/70">
-                {isViewingDependant ? 'Dependant' : 'Patient'}: {subjectName}
-                {isViewingDependant && (
-                  <span className="text-sm ml-1">
-                    (of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()})
-                  </span>
-                )}
-              </p>
+                <p className="text-sm sm:text-base text-base-content/70">
+                  {isViewingDependant ? 'Dependant' : 'Patient'}: {subjectName}
+                  {isViewingDependant && (
+                    <span className="text-xs sm:text-sm ml-1">
+                      (of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()})
+                    </span>
+                  )}
+                </p>
               </div>
               <button
-                className="btn btn-outline"
+                className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
                 onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
                   state: { dependantId, dependantSnapshot }
                 })}
@@ -232,21 +245,86 @@ const ViewAllVitals = () => {
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-6">
-                <div className="overflow-x-auto">
+              <div className="card-body p-3 sm:p-6">
+
+                {/* ---------- Mobile: stacked cards (below sm) ---------- */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  {paginationData.paginatedItems.length > 0 ? (
+                    paginationData.paginatedItems.map((row, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-base-200 p-3 bg-base-100"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm text-base-content truncate">
+                              {row.forName}
+                            </p>
+                            <span
+                              className={`badge badge-xs mt-1 ${
+                                row.isForDependant ? 'badge-secondary' : 'badge-primary'
+                              }`}
+                            >
+                              {row.isForDependant ? 'Dependant' : 'Patient'}
+                            </span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-medium">{row.date}</p>
+                            <p className="text-xs text-base-content/70">{row.time}</p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-base-content/70 mb-2">
+                          Recorded by <span className="font-medium text-base-content">{row.nurseName}</span>
+                        </p>
+
+                        <div className="grid grid-cols-3 gap-x-2 gap-y-2 text-xs">
+                          <div>
+                            <p className="text-base-content/60">BP</p>
+                            <p className="font-semibold">{row.bp} <span className="text-base-content/50">mmHg</span></p>
+                          </div>
+                          <div>
+                            <p className="text-base-content/60">Pulse</p>
+                            <p className="font-semibold">{row.pulse} <span className="text-base-content/50">bpm</span></p>
+                          </div>
+                          <div>
+                            <p className="text-base-content/60">Temp</p>
+                            <p className="font-semibold">{row.temperature} <span className="text-base-content/50">°F</span></p>
+                          </div>
+                          <div>
+                            <p className="text-base-content/60">Weight</p>
+                            <p className="font-semibold">{row.weight} <span className="text-base-content/50">kg</span></p>
+                          </div>
+                          <div>
+                            <p className="text-base-content/60">Height</p>
+                            <p className="font-semibold">{row.height} <span className="text-base-content/50">cm</span></p>
+                          </div>
+                          <div>
+                            <p className="text-base-content/60">Resp. Rate</p>
+                            <p className="font-semibold">{row.respiratoryRate} <span className="text-base-content/50">bpm</span></p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-6 text-center text-base-content/70 text-sm">No vitals found</p>
+                  )}
+                </div>
+
+                {/* ---------- Desktop/tablet: table (sm and up) ---------- */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="table w-full text-center">
                     <thead>
                       <tr>
-                      <th>Patient Type</th>
-                      <th>Recorded by</th>
-                      <th>Date & Time</th>
-                      <th>Blood Pressure</th>
-                      <th>Heart Rate</th>
-                      <th>Temperature</th>
-                      <th>Weight</th>
-                      <th>Height</th>
-                      {/* <th>O2 Saturation</th> */}
-                      <th>Respiratory Rate</th>
+                        <th>Patient Type</th>
+                        <th>Recorded by</th>
+                        <th>Date & Time</th>
+                        <th>Blood Pressure</th>
+                        <th>Heart Rate</th>
+                        <th>Temperature</th>
+                        <th>Weight</th>
+                        <th>Height</th>
+                        <th>Respiratory Rate</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -300,47 +378,46 @@ const ViewAllVitals = () => {
                   </table>
                 </div>
 
-                {/* Pagination */}
+                {/* ---------- Pagination ---------- */}
                 {paginationData.totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-base-200">
-                    <span className="text-sm text-base-content/70">
+                  <div className="flex flex-col gap-3 mt-6 pt-4 border-t border-base-200 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
                       Page {currentPage} of {paginationData.totalPages} (
                       {paginationData.totalItems} total)
                     </span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center justify-center gap-1 sm:gap-2">
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        aria-label="Previous page"
                       >
-                        Previous
+                        <FaChevronLeft className="sm:hidden w-3 h-3" />
+                        <span className="hidden sm:inline">Previous</span>
                       </button>
-                      {Array.from({
-                        length: Math.min(paginationData.totalPages, 5),
-                      }).map((_, i) => {
-                        const page = i + 1;
-                        return (
-                          <button
-                            key={page}
-                            className={`btn btn-sm ${
-                              currentPage === page ? 'btn-active' : 'btn-outline'
-                            }`}
-                            onClick={() => setCurrentPage(page)}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
+                      {getVisiblePages().map((page) => (
+                        <button
+                          key={page}
+                          className={`btn btn-xs sm:btn-sm ${
+                            currentPage === page ? 'btn-active' : 'btn-outline'
+                          }`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      ))}
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === paginationData.totalPages}
                         onClick={() =>
                           setCurrentPage(p =>
                             Math.min(paginationData.totalPages, p + 1)
                           )
                         }
+                        aria-label="Next page"
                       >
-                        Next
+                        <FaChevronRight className="sm:hidden w-3 h-3" />
+                        <span className="hidden sm:inline">Next</span>
                       </button>
                     </div>
                   </div>
