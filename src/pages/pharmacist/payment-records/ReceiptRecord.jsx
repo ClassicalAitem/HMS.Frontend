@@ -308,16 +308,16 @@ const handlePrintReceipt = (payment) => {
         <Header onToggleSidebar={toggleSidebar} />
 
         {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+        <div className="flex overflow-y-auto flex-col p-3 py-2 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-primary 2xl:text-4xl">Payment Receipt Records</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary 2xl:text-4xl">Payment Receipt Records</h1>
             <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
           </div>
 
           {/* Filters */}
-          <div className="flex gap-4 mb-6">
-            <select className="select select-bordered">
+          <div className="flex flex-col gap-3 mb-6 md:flex-row md:flex-wrap">
+            <select className="select select-bordered w-full md:w-auto">
               <option>All Status</option>
               <option>Pending</option>
               <option>Paid</option>
