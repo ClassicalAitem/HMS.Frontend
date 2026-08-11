@@ -112,7 +112,7 @@ const Incoming = () => {
     <PharmacistLayout>
             {loading && <KolakLoader fullscreen />}
 
-      <div className="p-6">
+      <div className="p-0 sm:p-2 lg:p-6">
         <div className="mb-4">
           <div className="flex items-center gap-3 mb-2">
             <MdInventory className="w-5 h-5 text-primary" />
@@ -121,8 +121,8 @@ const Incoming = () => {
           <p className="text-xs text-base-content/70">Patients awaiting or completed in pharmacy.</p>
         </div>
 
-        <div className="flex gap-3 items-center mb-4">
-          <input type="text" placeholder="Search by name or ID" className="input input-bordered max-w-xs" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
+          <input type="text" placeholder="Search by name or ID" className="input input-bordered w-full sm:max-w-xs" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} />
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
@@ -174,7 +174,7 @@ const Incoming = () => {
         {/* Pagination controls */}
         {totalPages > 1 && (
           <div className="flex justify-center mt-6">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               {Array.from({ length: totalPages }).map((_, i) => (
                 <button key={i} onClick={() => setCurrentPage(i+1)} className={`w-8 h-8 rounded ${i+1===currentPage ? 'bg-primary text-white' : 'bg-base-200'}`}>{i+1}</button>
               ))}

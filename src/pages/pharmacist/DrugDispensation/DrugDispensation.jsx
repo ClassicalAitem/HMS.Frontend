@@ -228,8 +228,8 @@ const DrugDispensation = () => {
   return (
     <PharmacistLayout>
       {loading && <KolakLoader fullscreen />}
-      <div className="p-6">
-        <div className="mb-4 flex items-start justify-between">
+      <div className="p-0 sm:p-2 lg:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Drug Dispensation</h1>
             <p className="text-xs text-base-content/70">Manage pharmacy dispensation records</p>
@@ -240,7 +240,7 @@ const DrugDispensation = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <StatCard title="Today's Dispensations" value={stats.today} hint="Dispensed today" />
           <StatCard title="Total Dispensed" value={stats.dispensed} hint="Completed records" color="green" />
           <StatCard title="Pending" value={stats.pending} hint="Awaiting dispensation" color="red" />
@@ -259,24 +259,24 @@ const DrugDispensation = () => {
           )}
           {!loading && !error && (
           <>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
             <div className="flex items-center space-x-3">
               <button className="btn btn-sm btn-success">All Activity</button>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <label className="relative">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
+              <label className="relative w-full sm:w-64">
                 <FiSearch className="absolute left-3 top-2 text-base-content/50" />
                 <input
                   type="text"
                   placeholder="Search patient, medication, batch..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  className="input input-bordered input-sm pl-10 w-64"
+                  className="input input-bordered input-sm pl-10 w-full"
                 />
               </label>
 
-              <select value={category} onChange={e => setCategory(e.target.value)} className="select select-bordered select-sm">
+              <select value={category} onChange={e => setCategory(e.target.value)} className="select select-bordered select-sm w-full sm:w-auto">
                 <option>All Categories</option>
                 <option>Tablets</option>
                 <option>Syrup</option>

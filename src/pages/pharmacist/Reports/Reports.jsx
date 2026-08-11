@@ -98,20 +98,20 @@ const Reports = () => {
   return (
     <PharmacistLayout>
       {loading && <KolakLoader fullscreen />}
-      <div className="p-6">
-        <div className="mb-4 flex items-start justify-between">
+      <div className="p-0 sm:p-2 lg:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Reports</h1>
             <p className="text-xs text-base-content/70">View and analyze pharmacy performance metrics</p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-wrap items-center gap-2">
             <button className="btn btn-outline btn-sm">Date Range</button>
             <button className="btn btn-success btn-sm">Export Report</button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <MetricCard title="Total Sales" value={totalSales ?? '—'} hint="" />
           <MetricCard title="Prescriptions filled" value={prescriptionsFilled ?? '—'} hint="" />
           <MetricCard title="Inventory Value" value={inventoryValue ?? '—'} hint="" />
@@ -119,7 +119,7 @@ const Reports = () => {
         </div>
 
         <div className="rounded-xl bg-base-100 border border-base-300 p-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
             <h3 className="text-base font-semibold text-primary">Recent Sales Transactions</h3>
             <div className="text-sm text-base-content/60">Latest medication sales and dispensing records</div>
           </div>
@@ -161,7 +161,7 @@ const Reports = () => {
                   <div className="font-medium">{item.name}</div>
                   <div className="text-xs text-base-content/60">Minimum stock: {item.minStock ?? 0} units</div>
                 </div>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-4">
                   <div className="text-sm text-error">{item.remaining} units remaining</div>
                   <Link to="/dashboard/pharmacist/Inventory&stocks" className="btn btn-sm btn-success">Reorder</Link>
                 </div>
