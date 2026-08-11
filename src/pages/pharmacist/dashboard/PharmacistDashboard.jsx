@@ -165,18 +165,18 @@ const PharmacistDashboard = () => {
     <PharmacistLayout>
             {loading && <KolakLoader fullscreen />}
 
-        <div className="p-6">
-          <div className="mb-6 flex items-center justify-between">
+        <div className="p-0 sm:p-2 lg:p-6">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-2xl font-semibold text-primary">Pharmacist Dashboard</h1>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Link to="/dashboard/pharmacist/DrugDispensation" className="btn btn-primary btn-sm">Dispensation</Link>
               <Link to="/dashboard/pharmacist/incoming" className="btn btn-outline btn-sm">Incoming</Link>
             </div>
           </div>
           <p className="text-sm text-base-content/70 mb-6">Overview of today’s pharmacy operations. {dateText}</p>
 
-          <div className="grid grid-cols-1 md:flex gap-4 mb-6">
-            <div className="p-6 rounded-xl bg-base-100 border border-base-300 w-3/5 flex gap-6 lg:gap-20">
+          <div className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.75fr] gap-4 mb-6">
+            <div className="p-4 sm:p-6 rounded-xl bg-base-100 border border-base-300 flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-8">
               <div className='w-full'>
                 <div className="text-base font-medium text-base-content mb-4 flex items-center justify-between">
                   <span>Stock Update <button onClick={fetchMetrics} className="btn btn-ghost btn-sm" disabled={loading}>
@@ -229,7 +229,7 @@ const PharmacistDashboard = () => {
                   )}
               </div>
             </div>
-            <div className="p-6 rounded-xl bg-base-100 border border-base-300 w-full flex flex-col justify-center ">
+            <div className="p-4 sm:p-6 rounded-xl bg-base-100 border border-base-300 w-full flex flex-col justify-center ">
                 <div className="text-base font-medium text-base-content mb-4 flex items-center gap-2 justify-between">
                   <div className="flex items-center gap-2">
                     <FaPills className="text-primary" />
@@ -247,7 +247,7 @@ const PharmacistDashboard = () => {
                   )}
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-4 text-sm text-base-content/70">
+                <div className="mt-4 grid grid-cols-1 gap-3 text-sm text-base-content/70 sm:grid-cols-3">
                   <div className="flex flex-col items-start">
                     <div className="text-xs">Completed</div>
                     <div className="font-medium text-base-content mt-1">{loading ? '—' : prescriptionStats.completed}</div>
@@ -265,9 +265,9 @@ const PharmacistDashboard = () => {
           </div>
 
           <div className="p-4 2xl:p-6 rounded-xl bg-base-100 border border-base-300">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
               <h2 className="text-lg font-medium text-base-content">Recent Activity</h2>
-              <Link to="/dashboard/pharmacist/Transactions" className="btn btn-ghost btn-xs">View All</Link>
+              <Link to="/dashboard/pharmacist/Transactions" className="btn btn-ghost btn-xs w-fit">View All</Link>
             </div>
             <div className="overflow-x-auto">
               <table className="table">
