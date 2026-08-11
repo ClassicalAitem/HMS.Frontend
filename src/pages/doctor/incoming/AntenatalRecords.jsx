@@ -15,6 +15,7 @@ import {
 import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI"; 
 import KolakLoader from "@/components/common/KolakLoader";
+import { IoIosCloseCircleOutline } from "react-icons/io";
 
 
 
@@ -486,26 +487,26 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1">
+      <div className="flex min-w-0 overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
 
-        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
+        <div className="flex min-w-0 overflow-y-auto flex-col p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3 w-full justify-between">
-              <div className="flex items-center gap-3">
+          <div className="flex items-start sm:items-center justify-between mb-4 gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full justify-between min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div>
-                  <h1 className="text-2xl font-semibold text-base-content">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-base-content break-words">
                     {isEditing ? "Edit Ante-Natal Record" : "New Ante-Natal Record"}
                   </h1>
                 </div>
-                <div className="flex items-center gap-1 flex-col">
-                 <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
-                  <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
+                <div className="flex items-start sm:items-center gap-3 flex-col sm:flex-row min-w-0">
+                 <p className="text-xs sm:text-sm text-base-content/70 break-words">{summarySubjectName || ""}</p>
+                  <p className="text-xs sm:text-sm text-base-content/70 break-words">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
                 </div>
               </div>
               <button
-                className="btn btn-ghost text-error btn-md btn-circle"
+                className="btn btn-ghost  btn-sm sm:btn-md btn-circle shrink-0"
                 onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
                   state: {
                     from: fromIncoming ? "incoming" : "patients",
@@ -514,16 +515,17 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
                     dependantSnapshot: selectedDependant || incomingDependantSnapshot,
                   },
                 })}
-              >✕</button>
+              >    <IoIosCloseCircleOutline className="w-6 sm:w-7 h-6 sm:h-7" />
+              </button>
             </div>
           </div>
 
           {/* Previous Medical History */}
          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
+            <div className="card-body p-3 sm:p-4">
               <SectionHeader title="PREVIOUS MEDICAL HISTORY" sectionKey="medical" />
               {openSections.medical && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {[
                     ['heartDisease', 'Heart Disease'],
                     ['yawsOrSyphilis', 'Yaws or Syphilis'],
@@ -550,10 +552,10 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 
           {/* Family History */}
           <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
+            <div className="card-body p-3 sm:p-4">
               <SectionHeader title="FAMILY HISTORY" sectionKey="family" />
               {openSections.family && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {[['twins', 'Twins'], ['malformation', 'Malformation'], ['tuberculosis', 'Tuberculosis']].map(([field, label]) => (
                   <div key={field}>
                     <label className="label"><span className="label-text">{label}</span></label>
@@ -573,10 +575,10 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 
           {/* Previous Obstetric History */}
           <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">PREVIOUS OBSTETRIC HISTORY</h3>
-              <div className="overflow-x-auto">
-                <table className="table w-full">
+            <div className="card-body p-3 sm:p-4">
+              <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">PREVIOUS OBSTETRIC HISTORY</h3>
+              <div className="overflow-x-auto -mx-1 px-1">
+                <table className="table w-full min-w-[900px]">
                   <thead>
                     <tr className="border-b border-base-200">
                       {['Date', 'Duration Of Pregnancy', 'Birth Weight', 'Complication', 'Alive or Dead', 'Age of Death', 'Cause Of Death', ''].map(h => (
@@ -605,17 +607,17 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
                     ))}
                   </tbody>
                 </table>
-                <button className="btn btn-sm btn-outline mt-4" onClick={addObstetric}>+ Add Previous Obstetric History</button>
+                <button className="btn btn-sm btn-outline mt-3 sm:mt-4 w-full sm:w-auto" onClick={addObstetric}>+ Add Previous Obstetric History</button>
               </div>
             </div>
           </div>
 
           {/* Present Pregnancy */}
           <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
+            <div className="card-body p-3 sm:p-4">
               <SectionHeader title="HISTORY OF PRESENT PREGNANCY" sectionKey="pregnancy" />
               {openSections.pregnancy && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {[
                   { field: 'dateOfBooking', label: 'Date of Booking', type: 'date' },
                   { field: 'lmp', label: 'LMP', type: 'date' },
@@ -655,9 +657,9 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 
          {/* Routine Tests Section */}
           <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-4">
-              <h3 className="card-title text-lg font-semibold mb-4">ROUTINE TESTS</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="card-body p-3 sm:p-4">
+              <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">ROUTINE TESTS</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {[
                   { field: 'rvs', label: 'RVS', type: 'text', placeholder: 'Negative/Positive' },
                   { field: 'vdrl', label: 'VDRL', type: 'text', placeholder: 'Negative/Positive' },
@@ -683,15 +685,15 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 
         {/* Antenatal Examinations */}
 <div className="card bg-base-100 shadow-sm">
-  <div className="card-body p-4">
-    <h3 className="card-title text-lg font-semibold mb-4">ANTE-NATAL EXAMINATIONS</h3>
-    <div className="space-y-6">
+  <div className="card-body p-3 sm:p-4">
+    <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">ANTE-NATAL EXAMINATIONS</h3>
+    <div className="space-y-4 sm:space-y-6">
       {formData.antenatalExaminations.map((item, idx) => (
         <div key={idx} className="border border-base-200 rounded-lg overflow-hidden">
           
           {/* Row header */}
-          <div className="flex items-center justify-between px-4 py-2 bg-base-200/40 border-b border-base-200">
-            <span className="text-sm font-semibold text-base-content/70">
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-base-200/40 border-b border-base-200">
+            <span className="text-xs sm:text-sm font-semibold text-base-content/70">
               Examination #{idx + 1}
             </span>
             <button
@@ -704,7 +706,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 
           {/* Main fields — scrollable row */}
           <div className="overflow-x-auto">
-            <table className="table w-full">
+            <table className="table w-full min-w-[1050px]">
               <thead>
                 <tr className="border-b border-base-200">
                   <th className="font-medium text-base-content/70 py-2 text-xs">Date</th>
@@ -841,12 +843,12 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
           </div>
 
           {/* ✅ Remark — full width below the table row */}
-          <div className="px-4 pb-4 pt-3 border-t border-base-200">
+          <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-3 border-t border-base-200">
             <label className="label pb-1">
               <span className="label-text font-medium text-base-content/70 text-sm">Remark</span>
             </label>
             <textarea
-              className="textarea textarea-bordered w-full resize-y min-h-[80px]"
+              className="textarea textarea-bordered w-full resize-y min-h-[80px] text-sm sm:text-base"
               placeholder="Enter remark, observations, or additional notes for this examination..."
               value={item.remark}
               onChange={(e) => updateExamination(idx, 'remark', e.target.value)}
@@ -856,7 +858,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
       ))}
 
       <button
-        className="btn btn-sm btn-outline"
+        className="btn btn-sm btn-outline w-full sm:w-auto"
         onClick={addExamination}
       >
         + Add Ante-Natal Examination
@@ -867,9 +869,9 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
   </div>
 </div>
           {/* Action Buttons */}
-          <div className="flex justify-center gap-4 pt-4 pb-12">
+          <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 pt-4 pb-8 sm:pb-12 w-full">
             <button
-              className={`btn btn-primary text-white px-12 h-12 text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
+              className={`btn btn-primary text-white w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
               onClick={handleSave}
               disabled={saving}
             >
@@ -877,7 +879,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
             </button>
             {savedRecord && (
               <button
-                className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
+                className="btn btn-outline border-base-300 text-base-content w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
                 onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
                 state: {
                             from: fromIncoming ? "incoming" : "patients",
@@ -892,7 +894,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
               </button>
             )}
             <button
-              className="btn btn-outline px-12 h-12 text-lg font-normal normal-case rounded-md"
+              className="btn btn-outline w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
               onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
               disabled={saving}
             >

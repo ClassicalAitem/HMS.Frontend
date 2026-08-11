@@ -66,42 +66,44 @@ const ViewAllLabResults = () => {
   }, [patientId]);
 
   // Fetch dependants on-demand as we encounter them in lab results
-useEffect(() => {
-  if (!labResults.length) return;
+  useEffect(() => {
+    if (!labResults.length) return;
 
-  const dependantIdsNeeded = [
-    ...new Set(
-      labResults
-        .map(r => r?.dependantId)
-        .filter(Boolean)
-    )
-  ];
+    const dependantIdsNeeded = [
+      ...new Set(
+        labResults
+          .map(r => r?.dependantId)
+          .filter(Boolean)
+      )
+    ];
 
-  const fetchDependants = async () => {
-    try {
-      const results = await Promise.all(
-        dependantIdsNeeded.map(id => getDependantById(id))
-      );
+    if (!dependantIdsNeeded.length) return;
 
-      const newCache = {};
+    const fetchDependants = async () => {
+      try {
+        const results = await Promise.all(
+          dependantIdsNeeded.map(id => getDependantById(id))
+        );
 
-      results.forEach((res, index) => {
-        const id = dependantIdsNeeded[index];
-        const data = res?.data?.dependant ?? res?.dependant ?? res;
-        newCache[id] = data;
-      });
+        const newCache = {};
 
-      setDependantCache(prev => ({
-        ...prev,
-        ...newCache
-      }));
-    } catch (err) {
-      console.error("Dependant fetch error:", err);
-    }
-  };
+        results.forEach((res, index) => {
+          const id = dependantIdsNeeded[index];
+          const data = res?.data?.dependant ?? res?.dependant ?? res;
+          newCache[id] = data;
+        });
 
-  fetchDependants();
-}, [labResults]);
+        setDependantCache(prev => ({
+          ...prev,
+          ...newCache
+        }));
+      } catch (err) {
+        console.error("Dependant fetch error:", err);
+      }
+    };
+
+    fetchDependants();
+  }, [labResults]);
 
   // Format lab result rows
   const resultRows = useMemo(() => (
@@ -109,7 +111,6 @@ useEffect(() => {
       ? labResults.map((result) => {
           const form = result?.form || {};
           
-          // Collect non-empty test results from the form
           const testCategories = [
             { name: 'Haematology', data: form.haematology },
             { name: 'WBC Differential', data: form.wbcDifferential },
@@ -126,17 +127,16 @@ useEffect(() => {
             .filter(cat => cat.data && Object.values(cat.data).some(v => v !== ''))
             .map(cat => cat.name);
 
-          // Check if this result is for a dependant
           const isDependant = !!result?.dependantId;
           const dependant = patient?.dependants?.find(
             d => d.id === result.dependantId
           );
 
-         const forName = isDependant
-          ? dependant
-            ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
-            : 'Loading...'
-          : patientName;
+          const forName = isDependant
+            ? dependant
+              ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
+              : 'Loading...'
+            : patientName;
 
           const forType = isDependant ? 'Dependant' : 'Patient';
 
@@ -154,7 +154,7 @@ useEffect(() => {
           };
         })
       : []
-  ), [labResults, dependantCache, patientName]);
+  ), [labResults, dependantCache, patientName, patient]);
 
   // Pagination
   const paginationData = useMemo(() => {
@@ -169,11 +169,13 @@ useEffect(() => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-screen bg-base-300/20">
+      {/* Mobile Drawer Overlay */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
+      {/* Sidebar Container */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -182,27 +184,28 @@ useEffect(() => {
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      {/* Content Body */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Header */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          {/* Header Section */}
           <div className="mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-info/10 p-3 rounded-full text-info">
-                    <FaFlask className="w-6 h-6" />
+                <div className="flex items-center gap-2 sm:gap-3 mb-1">
+                  <div className="bg-info/10 p-2 sm:p-3 rounded-full text-info shrink-0">
+                    <FaFlask className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <h1 className="text-2xl font-bold text-base-content">Lab Results</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold text-base-content">Lab Results</h1>
                 </div>
-                <p className="text-base-content/70">
-                  Patient: {patientName}
+                <p className="text-sm text-base-content/70">
+                  Patient: <span className="font-semibold text-base-content">{patientName || 'Loading...'}</span>
                 </p>
               </div>
               <button
-                className="btn btn-outline"
-                onClick={() => navigate( `/dashboard/doctor/medical-history/${patientId}`)}
+                className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
+                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
               >
                 Back
               </button>
@@ -215,14 +218,46 @@ useEffect(() => {
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-6">
-                <div className="overflow-x-auto">
+              <div className="card-body p-4 sm:p-6">
+                
+                {/* Mobile View: Cards */}
+                <div className="block md:hidden space-y-3">
+                  {paginationData.paginatedItems.length > 0 ? (
+                    paginationData.paginatedItems.map((row, idx) => (
+                      <div key={idx} className="border border-base-200 rounded-lg p-4 space-y-3 bg-base-100 shadow-xs">
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <span className="badge badge-sm badge-outline mb-1">
+                              {row.forType}
+                            </span>
+                            <p className="font-semibold text-base text-base-content">{row.forName}</p>
+                          </div>
+                          <span className="text-xs text-base-content/60 font-medium">{row.date}</span>
+                        </div>
+
+                        <div className="pt-2 border-t border-base-200/60 flex justify-end">
+                          <button
+                            className="btn btn-sm btn-ghost text-primary w-full sm:w-auto"
+                            onClick={() => navigate(`/dashboard/doctor/labResults/${row._id}`)}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-base-content/70">
+                      No lab results found
+                    </div>
+                  )}
+                </div>
+
+                {/* Desktop View: Table */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="table w-full text-center">
                     <thead>
                       <tr>
                         <th>For</th>
-                        {/* <th>Specimen Type</th> */}
-                        {/* <th>Test Categories</th> */}
                         <th>Date</th>
                         <th>Action</th>
                       </tr>
@@ -231,7 +266,6 @@ useEffect(() => {
                       {paginationData.paginatedItems.length > 0 ? (
                         paginationData.paginatedItems.map((row, idx) => (
                           <tr key={idx} className="hover">
-                          
                             <td>
                               <div className="flex items-center justify-center gap-2 flex-wrap">
                                 <span className="badge badge-sm badge-outline">
@@ -240,24 +274,7 @@ useEffect(() => {
                                 <span className="text-sm font-semibold text-base-content">{row.forName}</span>
                               </div>
                             </td>
-                            {/* <td className="capitalize">{row.specimen}</td> */}
-                            {/* <td className="text-left">
-                              {row.completedTestsCount > 0 ? (
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-xs badge badge-sm">{row.completedTestsCount} test{row.completedTestsCount !== 1 ? 's' : ''}</span>
-                                  <ul className="list-disc list-inside text-xs">
-                                    {row.completedTests.slice(0, 2).map((test, i) => (
-                                      <li key={i}>{test}</li>
-                                    ))}
-                                    {row.completedTestsCount > 2 && <li>...</li>}
-                                  </ul>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-base-content/50">No tests completed</span>
-                              )}
-                            </td> */}
                             <td>{row.date}</td>
-                           
                             <td>
                               <button
                                 className="btn btn-sm btn-ghost"
@@ -270,7 +287,7 @@ useEffect(() => {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={7} className="py-6 text-base-content/70">
+                          <td colSpan={3} className="py-6 text-base-content/70">
                             No lab results found
                           </td>
                         </tr>
@@ -281,18 +298,17 @@ useEffect(() => {
 
                 {/* Pagination */}
                 {paginationData.totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-base-200">
-                    <span className="text-sm text-base-content/70">
-                      Page {currentPage} of {paginationData.totalPages} (
-                      {paginationData.totalItems} total)
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-base-200">
+                    <span className="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">
+                      Page {currentPage} of {paginationData.totalPages} ({paginationData.totalItems} total)
                     </span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap justify-center gap-1 sm:gap-2">
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       >
-                        Previous
+                        Prev
                       </button>
                       {Array.from({
                         length: Math.min(paginationData.totalPages, 5),
@@ -301,7 +317,7 @@ useEffect(() => {
                         return (
                           <button
                             key={page}
-                            className={`btn btn-sm ${
+                            className={`btn btn-xs sm:btn-sm ${
                               currentPage === page ? 'btn-active' : 'btn-outline'
                             }`}
                             onClick={() => setCurrentPage(page)}
@@ -311,7 +327,7 @@ useEffect(() => {
                         );
                       })}
                       <button
-                        className="btn btn-sm btn-outline"
+                        className="btn btn-xs sm:btn-sm btn-outline"
                         disabled={currentPage === paginationData.totalPages}
                         onClick={() =>
                           setCurrentPage(p =>
@@ -324,6 +340,7 @@ useEffect(() => {
                     </div>
                   </div>
                 )}
+
               </div>
             </div>
           )}

@@ -448,7 +448,7 @@ const handleOrderCreated = () => {
   if (error) {
     return (
       <div className="flex h-screen bg-base-200/50">
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 flex items-center justify-center p-4">
           <div className="alert alert-error max-w-md">
             <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -477,20 +477,21 @@ const handleOrderCreated = () => {
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="flex items-center justify-between mb-6">
+        <div className="flex overflow-y-auto flex-col p-3 py-2 h-full sm:p-6 sm:py-4">
+          {/* ─── Page Header ─── */}
+          <div className="flex flex-col gap-3 mb-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div>
-                <h1 className="text-2xl font-bold text-base-content">Antenatal Record Details</h1>
-                <div className="flex items-center gap-1 flex-col">
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content">Antenatal Record Details</h1>
+                <div className="flex items-center gap-0.5 flex-col items-start sm:items-center">
                   <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
                   <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
               <button
-                className="btn btn-outline"
+                className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
                 onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
                   state: {
                     from: fromIncoming ? "incoming" : "patients",
@@ -503,7 +504,7 @@ const handleOrderCreated = () => {
                 Back to Patient
               </button>
               <button
-                className="btn btn-secondary gap-2"
+                className="btn btn-secondary btn-sm sm:btn-md gap-2 w-full sm:w-auto"
                 onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, {
                   state: {
                     dependantId: dependantId || null,
@@ -517,30 +518,30 @@ const handleOrderCreated = () => {
           </div>
 
           {antenatalRecords.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* List of Records */}
               <div className="card bg-base-100 shadow-sm">
-                <div className="card-body p-6">
-                  <h3 className="card-title text-lg font-semibold text-base-content mb-4">Antenatal Records</h3>
+                <div className="card-body p-4 sm:p-6">
+                  <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Antenatal Records</h3>
                   <div className="space-y-4">
                     {antenatalRecords.map((record, index) => {
                     const dependantName = getDependantName(record.dependantId);
                     return (
                       <div
                           key={record._id || record.id || index}
-                          className={`border rounded-lg p-4 ${
+                          className={`border rounded-lg p-3 sm:p-4 ${
                             isViewingDependant && record.dependantId === dependantId
                               ? 'border-secondary bg-secondary/5'
                               : 'border-base-300'
                           }`}
                         >
-                          <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-base-content">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h4 className="font-medium text-base-content text-sm sm:text-base">
                                 Pregnancy #{antenatalRecords.length - index}
                                 {record.presentPregnancyHistories?.[0]?.EDD && (
-                                  <span className="text-sm text-base-content/70 ml-2">
+                                  <span className="text-xs sm:text-sm text-base-content/70 ml-2">
                                     (EDD: {formatNigeriaDate(record.presentPregnancyHistories[0].EDD)})
                                   </span>
                                 )}
@@ -548,7 +549,7 @@ const handleOrderCreated = () => {
                             </div>
 
                             {/* ✅ Show who this record is for */}
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="text-xs text-base-content/50">Record for:</span>
                               {dependantName ? (
                                 <span className="badge badge-secondary badge-sm">{dependantName}</span>
@@ -559,20 +560,20 @@ const handleOrderCreated = () => {
                               )}
                             </div>
 
-                            <p className="text-sm text-base-content/70">
+                            <p className="text-xs sm:text-sm text-base-content/70">
                               Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
                             </p>
                             
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 shrink-0">
                             <button
-                              className="btn btn-sm btn-outline"
+                              className="btn btn-sm btn-outline flex-1 sm:flex-none"
                               onClick={() => setSelectedRecord(selectedRecord?._id === record._id ? null : record)}
                             >
                               {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
                             </button>
                            <button
-                            className="btn btn-sm btn-primary"
+                            className="btn btn-sm btn-primary flex-1 sm:flex-none"
                             onClick={() => navigate(
                               `/dashboard/doctor/antenatal-records/${patientId}/edit/${record.__originalIndex ?? index}`,
                               {
@@ -596,31 +597,31 @@ const handleOrderCreated = () => {
 
               {/* Selected Record Details */}
               {selectedRecord && (
-                <div className="space-y-6">
-                  <div className="px-6">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="px-2 sm:px-6">
                     <p className="text-sm text-base-content/70">Created by: Dr  {getRecordDoctorName(selectedRecord)}</p>
                   </div>
                   {/* Present Pregnancy */}
                   {selectedRecord.presentPregnancyHistories && selectedRecord.presentPregnancyHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-6">
-                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Present Pregnancy</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">Expected Date of Delivery</div>
-                            <div className="stat-value text-lg">
+                      <div className="card-body p-4 sm:p-6">
+                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Present Pregnancy</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">Expected Date of Delivery</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {selectedRecord.presentPregnancyHistories[0].EDD ? formatNigeriaDate(selectedRecord.presentPregnancyHistories[0].EDD) : '-'}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">Last Menstrual Period</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">Last Menstrual Period</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {selectedRecord.presentPregnancyHistories[0].LMP ? formatNigeriaDate(selectedRecord.presentPregnancyHistories[0].LMP) : '-'}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">Gestational Age</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">Gestational Age</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {selectedRecord.presentPregnancyHistories[0].durationOfPregnancyInWeek || 0} weeks
                             </div>
                           </div>
@@ -628,10 +629,10 @@ const handleOrderCreated = () => {
 
                         <div className="divider"></div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                           <div>
-                            <h4 className="font-medium text-base-content mb-3">Symptoms</h4>
-                            <div className="space-y-2">
+                            <h4 className="font-medium text-base-content mb-3 text-sm sm:text-base">Symptoms</h4>
+                            <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Bleeding:</span>
                                 <span className={selectedRecord.presentPregnancyHistories[0].bleeding === 'yes' ? 'text-error font-medium' : 'text-base-content/70'}>
@@ -656,8 +657,8 @@ const handleOrderCreated = () => {
                           </div>
 
                           <div>
-                            <h4 className="font-medium text-base-content mb-3">Other Conditions</h4>
-                            <div className="space-y-2">
+                            <h4 className="font-medium text-base-content mb-3 text-sm sm:text-base">Other Conditions</h4>
+                            <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Constipation:</span>
                                 <span className="text-base-content/70">{selectedRecord.presentPregnancyHistories[0].constipation || 'No'}</span>
@@ -680,8 +681,8 @@ const handleOrderCreated = () => {
 
                         {selectedRecord.presentPregnancyHistories[0].otherSymptoms && (
                           <div className="mt-4">
-                            <h4 className="font-medium text-base-content mb-2">Other Symptoms</h4>
-                            <p className="text-base-content/80 bg-base-200/50 p-3 rounded-lg">
+                            <h4 className="font-medium text-base-content mb-2 text-sm sm:text-base">Other Symptoms</h4>
+                            <p className="text-sm text-base-content/80 bg-base-200/50 p-3 rounded-lg">
                               {selectedRecord.presentPregnancyHistories[0].otherSymptoms}
                             </p>
                           </div>
@@ -693,42 +694,42 @@ const handleOrderCreated = () => {
                   {/* Routine Tests */}
                   {selectedRecord.routineTest && (Array.isArray(selectedRecord.routineTest) ? selectedRecord.routineTest.length > 0 : true) && (
                     <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-6">
-                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Routine Tests</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">RVS</div>
-                            <div className="stat-value text-lg">
+                      <div className="card-body p-4 sm:p-6">
+                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Routine Tests</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">RVS</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {getRoutineTestField(selectedRecord, 'RVS')}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">VDRL</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">VDRL</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {getRoutineTestField(selectedRecord, 'VDRL')}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">PCV</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">PCV</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {getRoutineTestField(selectedRecord, 'PCV')}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">HBV</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">HBV</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {getRoutineTestField(selectedRecord, 'HBV')}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">ABO</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">ABO</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {getRoutineTestField(selectedRecord, 'ABO')}
                             </div>
                           </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-4">
-                            <div className="stat-title text-sm">GENOTYPE</div>
-                            <div className="stat-value text-lg">
+                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
+                            <div className="stat-title text-xs sm:text-sm">GENOTYPE</div>
+                            <div className="stat-value text-base sm:text-lg">
                               {getRoutineTestField(selectedRecord, 'GENOTYPE')}
                             </div>
                           </div>
@@ -740,17 +741,17 @@ const handleOrderCreated = () => {
                   {/* Previous Medical History */}
                   {selectedRecord.medicalHistories && selectedRecord.medicalHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-6">
-                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Previous Medical History</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="card-body p-4 sm:p-6">
+                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Previous Medical History</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                           {selectedRecord.medicalHistories[0].heartDisease && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Heart Disease:</span>
                               <span>{selectedRecord.medicalHistories[0].heartDisease}</span>
                             </div>
                           )}
                           {selectedRecord.medicalHistories[0].hypertension && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Hypertension:</span>
                               <span className={selectedRecord.medicalHistories[0].hypertension === 'yes' ? 'text-error font-medium' : ''}>
                                 {selectedRecord.medicalHistories[0].hypertension}
@@ -758,25 +759,25 @@ const handleOrderCreated = () => {
                             </div>
                           )}
                           {selectedRecord.medicalHistories[0].kidney && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Kidney:</span>
                               <span>{selectedRecord.medicalHistories[0].kidney}</span>
                             </div>
                           )}
                           {selectedRecord.medicalHistories[0].yawnOrSyphilis && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Yaws/Syphilis:</span>
                               <span>{selectedRecord.medicalHistories[0].yawnOrSyphilis}</span>
                             </div>
                           )}
                           {selectedRecord.medicalHistories[0].previousOperation && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Previous Operation:</span>
                               <span>{selectedRecord.medicalHistories[0].previousOperation}</span>
                             </div>
                           )}
                           {selectedRecord.medicalHistories[0].other && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Others:</span>
                               <span>{selectedRecord.medicalHistories[0].other}</span>
                             </div>
@@ -789,11 +790,11 @@ const handleOrderCreated = () => {
                   {/* Family History */}
                   {selectedRecord.familyHistories && selectedRecord.familyHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-6">
-                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Family History</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="card-body p-4 sm:p-6">
+                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Family History</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                           {selectedRecord.familyHistories[0].twins && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Twins:</span>
                               <span className={selectedRecord.familyHistories[0].twins === 'yes' ? 'text-info font-medium' : ''}>
                                 {selectedRecord.familyHistories[0].twins}
@@ -801,13 +802,13 @@ const handleOrderCreated = () => {
                             </div>
                           )}
                           {selectedRecord.familyHistories[0].malformation && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Malformation:</span>
                               <span>{selectedRecord.familyHistories[0].malformation}</span>
                             </div>
                           )}
                           {selectedRecord.familyHistories[0].tuberculosis && (
-                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg">
+                            <div className="flex justify-between p-3 bg-base-200/50 rounded-lg text-sm">
                               <span className="font-medium">Tuberculosis:</span>
                               <span className={selectedRecord.familyHistories[0].tuberculosis === 'yes' ? 'text-warning font-medium' : ''}>
                                 {selectedRecord.familyHistories[0].tuberculosis}
@@ -822,9 +823,11 @@ const handleOrderCreated = () => {
                   {/* Previous Obstetric History */}
                   {selectedRecord.obstetricHistories && selectedRecord.obstetricHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-6">
-                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Previous Obstetric History</h3>
-                        <div className="overflow-x-auto">
+                      <div className="card-body p-4 sm:p-6">
+                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Previous Obstetric History</h3>
+
+                        {/* Desktop table */}
+                        <div className="hidden sm:block overflow-x-auto">
                           <table className="table table-zebra w-full">
                             <thead>
                               <tr className="bg-base-200">
@@ -856,6 +859,35 @@ const handleOrderCreated = () => {
                             </tbody>
                           </table>
                         </div>
+
+                        {/* Mobile cards */}
+                        <div className="sm:hidden space-y-3">
+                          {selectedRecord.obstetricHistories.map((item, idx) => (
+                            <div key={idx} className="border border-base-200 rounded-lg p-3 space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-sm">{item.Date ? formatNigeriaDate(item.Date) : '-'}</span>
+                                <span className={`badge badge-sm ${item.aliveOrDead === 'Alive' ? 'badge-success' : 'badge-error'}`}>
+                                  {item.aliveOrDead || '-'}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-xs text-base-content/60">
+                                <span>Duration of Pregnancy</span><span className="text-base-content text-right">{item.durationOfPregnancy || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-xs text-base-content/60">
+                                <span>Birth Weight</span><span className="text-base-content text-right">{item.birthWeight || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-xs text-base-content/60">
+                                <span>Complication</span><span className="text-base-content text-right">{item.complicationInPregnancy || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-xs text-base-content/60">
+                                <span>Age of Death</span><span className="text-base-content text-right">{item.ageAtDeath || '-'}</span>
+                              </div>
+                              <div className="flex justify-between text-xs text-base-content/60">
+                                <span>Cause of Death</span><span className="text-base-content text-right">{item.causeOfDeath || '-'}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -863,13 +895,13 @@ const handleOrderCreated = () => {
                   {/* Antenatal Examinations */}
                   {selectedRecord.anteNatalExamination && selectedRecord.anteNatalExamination.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-6">
-                        <h3 className="card-title text-lg font-semibold text-base-content mb-4">Antenatal Examinations</h3>
-                        <div className="space-y-6">
+                      <div className="card-body p-4 sm:p-6">
+                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Antenatal Examinations</h3>
+                        <div className="space-y-4 sm:space-y-6">
                           {selectedRecord.anteNatalExamination.map((exam, idx) => (
                             <div key={idx} className="border border-base-200 rounded-lg overflow-hidden">
                               <div className="flex items-center justify-between px-4 py-2 bg-base-200/40 border-b border-base-200">
-                                <span className="text-sm font-semibold text-base-content/70">
+                                <span className="text-xs sm:text-sm font-semibold text-base-content/70">
                                   Examination #{idx + 1}
                                 </span>
                                 <span className="text-xs text-base-content/50">
@@ -877,7 +909,8 @@ const handleOrderCreated = () => {
                                 </span>
                               </div>
 
-                             <div className="overflow-x-auto">
+                              {/* Desktop table */}
+                              <div className="hidden sm:block overflow-x-auto">
                                 <table className="table table-zebra w-full">
                                   <thead>
                                     <tr className="bg-base-200">
@@ -908,9 +941,22 @@ const handleOrderCreated = () => {
                                 </table>
                               </div>
 
+                              {/* Mobile card grid */}
+                              <div className="sm:hidden grid grid-cols-2 gap-x-3 gap-y-2 p-3 text-xs">
+                                <div><span className="text-base-content/50 block">EGA</span><span className="font-medium">{exam.EGA || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Fundal Height</span><span className="font-medium">{exam.heightOfFundus || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Presentation & Lie</span><span className="font-medium">{exam.presentationAndLife || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">P.P to Brim</span><span className="font-medium">{exam.relationOfPPToBrim || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Foetal Heart</span><span className="font-medium">{exam.foetalHeart || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Urine</span><span className="font-medium">{exam.urine || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Weight (kg)</span><span className="font-medium">{exam.weight || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Blood Pressure</span><span className="font-medium">{exam.bloodPressure || '-'}</span></div>
+                                <div className="col-span-2"><span className="text-base-content/50 block">Next Visit</span><span className="font-medium">{exam.nextVisit || '-'}</span></div>
+                              </div>
+
                               {/* Remark display - full width below the table */}
                               {(exam.remark) && (
-                                <div className="px-4 pb-4 pt-3 border-t border-base-200">
+                                <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-3 border-t border-base-200">
                                   <label className="label pb-1">
                                     <span className="label-text font-medium text-base-content/70 text-sm">Remark</span>
                                   </label>
@@ -931,16 +977,16 @@ const handleOrderCreated = () => {
                   {/* Treatment Plan Section */}
                   <div className="card bg-base-100 shadow-sm border border-base-200">
                     <div className="card-body p-0">
-                      <div className="p-4 border-b border-base-200 bg-base-50/50 flex items-center justify-between">
+                      <div className="p-3 sm:p-4 border-b border-base-200 bg-base-50/50 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                          <span className="w-5 h-5 rounded-full bg-success flex items-center justify-center shrink-0">
                             <span className="text-white text-xs">✓</span>
                           </span>
-                          <h3 className="font-bold text-lg text-base-content">Treatment Plan & Orders</h3>
+                          <h3 className="font-bold text-base sm:text-lg text-base-content">Treatment Plan & Orders</h3>
                         </div>
                         <div className="flex gap-2">
                           <button
-                            className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2"
+                            className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2 flex-1 sm:flex-none"
                             disabled={!selectedRecord}
                             onClick={() => {
                               setIsInvestigationModalOpen(true);
@@ -949,7 +995,7 @@ const handleOrderCreated = () => {
                             <span className="text-sm">📋</span> Order Labs
                           </button>
                           <button
-                            className="btn btn-sm btn-primary gap-2"
+                            className="btn btn-sm btn-primary gap-2 flex-1 sm:flex-none"
                             disabled={!selectedRecord}
                             onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord?._id || selectedRecord?.id}/prescription`, { state: { antenatalId: selectedRecord?._id || selectedRecord?.id } })}
                           >
@@ -959,7 +1005,7 @@ const handleOrderCreated = () => {
                         </div>
                       </div>
 
-                      <div className="p-6 space-y-8">
+                      <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
                       
                         {/* Lab Requests */}
                         <div>
@@ -976,12 +1022,12 @@ const handleOrderCreated = () => {
                               {labRequests.map((lab) => (
                                 <div
                                   key={lab._id}
-                                  className="border border-base-300 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                  className="border border-base-300 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
                                 >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-2">
-                                        <span className={`badge ${lab.status === 'completed'
+                                        <span className={`badge badge-sm sm:badge-md ${lab.status === 'completed'
                                           ? 'badge-success'
                                           : lab.status === 'pending' || lab.status === 'in_progress'
                                             ? 'badge-warning'
@@ -992,15 +1038,15 @@ const handleOrderCreated = () => {
                                       </div>
                                       <div className="space-y-1">
                                         {lab.tests?.map((test, idx) => (
-                                          <p key={idx} className="font-medium text-base-content">
+                                          <p key={idx} className="font-medium text-base-content text-sm sm:text-base">
                                             {test.name || 'Lab Test'}
                                           </p>
                                         ))}
                                         {!lab.tests && (
-                                          <p className="font-medium text-base-content">Lab Test</p>
+                                          <p className="font-medium text-base-content text-sm sm:text-base">Lab Test</p>
                                         )}
                                       </div>
-                                      <p className="text-sm text-base-content/70 mt-1">
+                                      <p className="text-xs sm:text-sm text-base-content/70 mt-1">
                                         Ordered: {lab.createdAt ? formatNigeriaDate(lab.createdAt) : 'N/A'}
                                       </p>
                                       {lab.priority && (
@@ -1016,7 +1062,7 @@ const handleOrderCreated = () => {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1 sm:gap-2 shrink-0">
                                       <button
                                         className="btn btn-xs btn-ghost text-info"
                                         onClick={() => handleEditLab(lab)}
@@ -1060,12 +1106,12 @@ const handleOrderCreated = () => {
                               {prescriptions.map((prescription) => (
                                 <div
                                   key={prescription._id}
-                                  className="border border-base-300 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                  className="border border-base-300 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
                                 >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-2">
-                                        <span className={`badge ${prescription.status === 'dispensed'
+                                        <span className={`badge badge-sm sm:badge-md ${prescription.status === 'dispensed'
                                           ? 'badge-success'
                                           : prescription.status === 'pending'
                                             ? 'badge-warning'
@@ -1076,19 +1122,19 @@ const handleOrderCreated = () => {
                                       </div>
                                       <div className="space-y-1">
                                         {prescription.medications?.map((med, idx) => (
-                                          <p key={idx} className="font-medium text-base-content">
+                                          <p key={idx} className="font-medium text-base-content text-sm sm:text-base">
                                             {med.drugName || med.medicationName || med.name || 'Medication'} - {med.dosage || 'N/A'}
                                           </p>
                                         ))}
                                         {!prescription.medications && (
-                                          <p className="font-medium text-base-content">Medication</p>
+                                          <p className="font-medium text-base-content text-sm sm:text-base">Medication</p>
                                         )}
                                       </div>
-                                      <p className="text-sm text-base-content/70 mt-2">
+                                      <p className="text-xs sm:text-sm text-base-content/70 mt-2">
                                         Prescribed: {prescription.createdAt ? formatNigeriaDate(prescription.createdAt) : 'N/A'}
                                       </p>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1 sm:gap-2 shrink-0">
                                       <button
                                         className="btn btn-xs btn-ghost text-info"
                                         onClick={() => handleEditPrescription(prescription)}
@@ -1123,9 +1169,9 @@ const handleOrderCreated = () => {
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm">
-              <div className="card-body p-8 text-center">
+              <div className="card-body p-6 sm:p-8 text-center">
                 <div className="text-base-content/70">
-                  <p className="text-lg mb-2">No antenatal records found</p>
+                  <p className="text-base sm:text-lg mb-2">No antenatal records found</p>
                   <p className="text-sm">This patient doesn't have any antenatal records yet.</p>
                 </div>
                 <div className="mt-4">

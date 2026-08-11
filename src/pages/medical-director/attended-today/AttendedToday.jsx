@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { FaUserCheck } from "react-icons/fa";
 import { RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getConsultations } from "@/services/api/consultationAPI";
@@ -203,36 +203,40 @@ const AttendedToday = () => {
   const visible = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleView = (row) => {
-    navigate(`/dashboard/doctor/medical-history/${row.patientId}`, {
+    navigate(`/dashboard/medical-director/medical-history/${row.patientId}`, {
       state: { from: "attended-today", dependantId: row.dependantId },
     });
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
+      {/* Mobile Drawer Backdrop */}
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
+
+      {/* Sidebar Navigation */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
       </div>
 
-      <div className="flex flex-col flex-1 bg-base-100">
+      <div className="flex flex-col flex-1 bg-base-100 min-w-0">
         <Header onToggleSidebar={toggleSidebar} />
 
         <div className="overflow-y-auto flex-1 p-4 sm:p-6">
           <div className="mb-6">
             <div className="flex items-center gap-3">
-              <FaUserCheck size={22} className="text-primary" />
-              <h1 className="text-2xl font-bold text-primary">Attended Today</h1>
+              <FaUserCheck size={22} className="text-primary flex-shrink-0" />
+              <h1 className="text-xl sm:text-2xl font-bold text-primary">Attended Today</h1>
             </div>
-            <p className="text-sm text-base-content/60 mt-1">
+            <p className="text-xs sm:text-sm text-base-content/60 mt-1">
               Patients and dependants you've seen today (consultations & antenatal).
             </p>
           </div>
 
-          <div className="flex items-center gap-3 mb-5">
-            <div className="relative w-full max-w-sm">
+          {/* Search and Action Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
+            <div className="relative w-full sm:max-w-sm">
               <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
               <input
                 value={query}
@@ -241,11 +245,21 @@ const AttendedToday = () => {
                 className="input input-bordered input-sm pl-9 w-full"
               />
             </div>
-            {query && <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm">Clear</button>}
-            <button onClick={onRefresh} className="btn btn-outline btn-sm ml-auto">Refresh</button>
+            <div className="flex items-center gap-2 justify-between sm:justify-start">
+              {query && (
+                <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm flex-1 sm:flex-none">
+                  Clear
+                </button>
+              )}
+              <button onClick={onRefresh} className="btn btn-outline btn-sm sm:ml-auto w-full sm:w-auto">
+                Refresh
+              </button>
+            </div>
           </div>
 
+          {/* Card Container for Data */}
           <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+            {/* Desktop Table Header */}
             {!loading && filteredItems.length > 0 && (
               <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
                 <div className="col-span-3">Name</div>
@@ -260,13 +274,26 @@ const AttendedToday = () => {
             <div className="divide-y divide-base-200">
               {loading ? (
                 Array.from({ length: 6 }).map((_, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 px-5 py-4 items-center">
-                    <div className="col-span-3"><div className="skeleton h-4 w-36 rounded" /></div>
-                    <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
-                    <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
-                    <div className="col-span-2"><div className="skeleton h-4 w-28 rounded" /></div>
-                    <div className="col-span-1"><div className="skeleton h-4 w-16 rounded" /></div>
-                    <div className="col-span-2 flex justify-end"><div className="skeleton h-8 w-16 rounded" /></div>
+                  <div key={idx} className="p-4 md:px-5 md:py-4">
+                    {/* Mobile Skeleton */}
+                    <div className="block md:hidden space-y-2">
+                      <div className="flex justify-between">
+                        <div className="skeleton h-4 w-32 rounded" />
+                        <div className="skeleton h-4 w-12 rounded" />
+                      </div>
+                      <div className="skeleton h-3 w-20 rounded" />
+                      <div className="skeleton h-8 w-full rounded mt-2" />
+                    </div>
+
+                    {/* Desktop Skeleton */}
+                    <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-3"><div className="skeleton h-4 w-36 rounded" /></div>
+                      <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
+                      <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
+                      <div className="col-span-2"><div className="skeleton h-4 w-28 rounded" /></div>
+                      <div className="col-span-1"><div className="skeleton h-4 w-16 rounded" /></div>
+                      <div className="col-span-2 flex justify-end"><div className="skeleton h-8 w-16 rounded" /></div>
+                    </div>
                   </div>
                 ))
               ) : filteredItems.length === 0 ? (
@@ -280,31 +307,68 @@ const AttendedToday = () => {
                 </div>
               ) : (
                 visible.map((row) => (
-                  <div key={row.id} className="grid grid-cols-12 gap-2 px-5 py-4 items-center hover:bg-base-200/40 transition-colors">
-                    <div className="col-span-3 min-w-0">
-                      <p className="font-bold text-base-content truncate">{row.name}</p>
-                      <span className="text-xs text-base-content/40 font-mono">{row.displayId}</span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className={`badge badge-sm ${row.type === "Dependant" ? "badge-secondary" : "badge-primary"}`}>
-                        {row.type}
-                      </span>
-                    </div>
-                    <div className="col-span-2 flex flex-wrap gap-1">
-                      {row.sources.map((s) => (
-                        <span key={s} className={`badge badge-xs ${s === "Antenatal" ? "badge-accent" : "badge-info"}`}>
-                          {s}
+                  <div key={row.id} className="p-4 md:px-5 md:py-4 hover:bg-base-200/40 transition-colors">
+                    {/* Mobile View Card Layout */}
+                    <div className="block md:hidden space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-base-content truncate text-base">{row.name}</p>
+                          <span className="text-xs text-base-content/50 font-mono block">{row.displayId}</span>
+                        </div>
+                        <span className="text-xs text-base-content/60 whitespace-nowrap bg-base-200 px-2 py-0.5 rounded">
+                          {row.time}
                         </span>
-                      ))}
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`badge badge-sm ${row.type === "Dependant" ? "badge-secondary" : "badge-primary"}`}>
+                          {row.type}
+                        </span>
+                        {row.sources.map((s) => (
+                          <span key={s} className={`badge badge-xs ${s === "Antenatal" ? "badge-accent" : "badge-info"}`}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+
+                      <p className="text-xs text-base-content/70 line-clamp-2">
+                        <span className="font-semibold">Diagnosis:</span> {row.diagnosis}
+                      </p>
+
+                      <button className="btn btn-sm btn-primary w-full mt-2" onClick={() => handleView(row)}>
+                        View Record
+                      </button>
                     </div>
-                    <div className="col-span-2">
-                      <span className="text-sm text-base-content/70 truncate">{row.diagnosis}</span>
-                    </div>
-                    <div className="col-span-1">
-                      <span className="text-sm text-base-content/60">{row.time}</span>
-                    </div>
-                    <div className="col-span-2 flex justify-end">
-                      <button className="btn btn-sm btn-primary" onClick={() => handleView(row)}>View</button>
+
+                    {/* Desktop View Table Grid Layout */}
+                    <div className="hidden md:grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-3 min-w-0">
+                        <p className="font-bold text-base-content truncate">{row.name}</p>
+                        <span className="text-xs text-base-content/40 font-mono">{row.displayId}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`badge badge-sm ${row.type === "Dependant" ? "badge-secondary" : "badge-primary"}`}>
+                          {row.type}
+                        </span>
+                      </div>
+                      <div className="col-span-2 flex flex-wrap gap-1">
+                        {row.sources.map((s) => (
+                          <span key={s} className={`badge badge-xs ${s === "Antenatal" ? "badge-accent" : "badge-info"}`}>
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-sm text-base-content/70 truncate">{row.diagnosis}</span>
+                      </div>
+                      <div className="col-span-1">
+                        <span className="text-sm text-base-content/60">{row.time}</span>
+                      </div>
+                      <div className="col-span-2 flex justify-end">
+                        <button className="btn btn-sm btn-primary" onClick={() => handleView(row)}>
+                          View
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -312,17 +376,28 @@ const AttendedToday = () => {
             </div>
           </div>
 
+          {/* Pagination Controls */}
           {!loading && filteredItems.length > pageSize && (
-            <div className="mt-5 flex items-center justify-between">
-              <span className="text-sm text-base-content/50">
+            <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs sm:text-sm text-base-content/50 text-center sm:text-left">
                 Showing {page * pageSize + 1}–{Math.min((page + 1) * pageSize, filteredItems.length)} of {filteredItems.length}
               </span>
               <div className="flex items-center gap-2">
-                <button className="btn btn-ghost btn-sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                >
                   <RiArrowLeftSLine size={18} />
                 </button>
-                <span className="text-sm font-medium">{page + 1} / {totalPages}</span>
-                <button className="btn btn-ghost btn-sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}>
+                <span className="text-xs sm:text-sm font-medium">
+                  {page + 1} / {totalPages}
+                </span>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page === totalPages - 1}
+                >
                   <RiArrowRightSLine size={18} />
                 </button>
               </div>
