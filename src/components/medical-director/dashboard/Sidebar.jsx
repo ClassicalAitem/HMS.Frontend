@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck } from "react-icons/fa";
-import { GoChecklist, GoPerson } from "react-icons/go";
+import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck  } from "react-icons/fa";
+import { GoChecklist } from "react-icons/go";
 import { FaSuitcaseMedical } from "react-icons/fa6";
 import { IoReceiptOutline } from "react-icons/io5";
 import { SlCalender } from "react-icons/sl";
@@ -9,11 +9,15 @@ import { MdLockOutline } from "react-icons/md";
 import { LogoutModal } from "@/components/modals";
 import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg"
+// import NotificationBadge from "@/components/common/NotificationBadge";
+import { useNotifications } from "@/contexts/NotificationContext";
+import NotificationBadge from "@/components/common/NotificationBadge";
 
 const Sidebar = () => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const { incomingCount, resetIncomingCount } = useNotifications();
 
   const generateInitials = (firstName, lastName) => {
     if (!firstName && !lastName) return 'U';
@@ -38,17 +42,18 @@ const Sidebar = () => {
 
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/medical-director" },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/medical-director/incoming" },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/medical-director/incoming", badge: location.pathname.startsWith("/dashboard/medical-director/incoming") ? 0 : incomingCount },
     { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/medical-director/attended-today" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/medical-director/appointments" },
-    {icon: GoPerson, label: 'Patients', path: '/dashboard/medical-director/patients'},
-    { icon: FaUsers, label: "All Patients", path: "/dashboard/medical-director/allPatients" },
+    { icon: GoChecklist, label: "Patients", path: "/dashboard/medical-director/patientshistory" },
+    // { icon: FaUsers, label: "All Patients", path: "/dashboard/medical-director/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/medical-director/payment-records" },
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge, onClick }) => (
     <Link
       to={path}
+      onClick={onClick}
       className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
@@ -57,6 +62,7 @@ const Sidebar = () => {
     >
       <Icon className="w-5 h-5" />
       <span>{label}</span>
+      <NotificationBadge count={badge} />
     </Link>
   );
   return <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
@@ -94,6 +100,8 @@ const Sidebar = () => {
               label={item.label}
               path={item.path}
               active={item.path === "/dashboard/medical-director" ? (location.pathname === item.path) : location.pathname.startsWith(item.path)}
+              badge={item.badge}
+              onClick={item.onClick}
             />
           ))}
         </nav>
