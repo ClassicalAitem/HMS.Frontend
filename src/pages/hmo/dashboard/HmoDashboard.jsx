@@ -59,7 +59,7 @@ const HmoDashboard = () => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
+    <div className="flex h-screen w-full overflow-hidden bg-base-200">
       {loading && <KolakLoader fullscreen />}
 
       {isSidebarOpen && (

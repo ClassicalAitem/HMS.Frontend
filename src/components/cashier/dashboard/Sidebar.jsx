@@ -8,11 +8,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
+import { useNotifications } from '@/contexts/NotificationContext';
+import NotificationBadge from '@/components/common/NotificationBadge';
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const { incomingCount } = useNotifications();
 
   // Function to generate initials from first and last name
   const generateInitials = (firstName, lastName) => {
@@ -43,6 +46,8 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   };
 
+  const isOnIncoming = location.pathname === '/cashier/incoming' || location.pathname.startsWith('/cashier/patient-details');
+
   const menuItems = [
     {
       icon: MdOutlineDashboard,
@@ -54,7 +59,8 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: GoArrowDownLeft,
       label: 'Incoming',
       path: '/cashier/incoming',
-      active: location.pathname === '/cashier/incoming' || location.pathname.startsWith('/cashier/patient-details')
+      active: isOnIncoming,
+      badge: isOnIncoming ? 0 : incomingCount,
     },
     {
       icon: GoPerson,
@@ -82,7 +88,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
     <Link
       to={path}
       onClick={onCloseSidebar}
@@ -94,6 +100,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     >
       <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
       <span className="text-xs 2xl:text-sm">{label}</span>
+      <NotificationBadge count={badge} />
     </Link>
   );
 
@@ -123,6 +130,7 @@ const Sidebar = ({ onCloseSidebar }) => {
             label={item.label}
             path={item.path}
             active={item.active}
+            badge={item.badge}
           />
         ))}
       </nav>

@@ -114,6 +114,13 @@ const ViewLabResult = () => {
   const [patientId, setPatientId] = useState(null);
   const [investigation, setInvestigation] = useState(null);
   const [technicianName, setTechnicianName] = useState('Unknown Technician');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMounted, setSidebarMounted] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSidebarMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
 const effectiveInvestigationId = 
   labResult?.investigationRequestId || 
@@ -432,13 +439,31 @@ const loadDependantDetails = async (dependantId) => {
     }
   };
 
+  const SidebarDrawer = () => (
+    <>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
+          sidebarMounted ? "transition-transform duration-200 ease-in-out" : ""
+        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
+      </div>
+    </>
+  );
+
   const displayField = (label, value) => {
     if (!value) return null;
     const rangeText = ranges[label] ? ` ${ranges[label]}` : '';
     return (
-      <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 border-b border-gray-200">
         <div className="font-semibold text-[#00943C]">{label}</div>
-        <div className="col-span-2 text-gray-700 whitespace-normal break-words">{value}   {rangeText}</div>
+        <div className="sm:col-span-2 text-gray-700 whitespace-normal break-words">{value}   {rangeText}</div>
       </div>
     );
   };
@@ -457,9 +482,9 @@ const loadDependantDetails = async (dependantId) => {
             if (typeof value === "object") return null;
             const rangeText = ranges[key] ? ` ${ranges[key]}` : ' ';
             return (
-              <div key={key} className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200 last:border-b-0">
+              <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 border-b border-gray-200 last:border-b-0">
                 <div className="font-semibold text-gray-700">{key}</div>
-                <div className="col-span-2 text-gray-600">
+                <div className="sm:col-span-2 text-gray-600">
                   {typeof value === "string" || typeof value === "number"
                     ? `${value}${rangeText}`
                     : JSON.stringify(value)}
@@ -562,11 +587,11 @@ const loadDependantDetails = async (dependantId) => {
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
+        <SidebarDrawer />
         <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
-          <div className="flex items-center justify-center flex-1">
-            <p className="text-lg text-gray-600">Loading lab result...</p>
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
+          <div className="flex items-center justify-center flex-1 px-4">
+            <p className="text-base lg:text-lg text-gray-600 text-center">Loading lab result...</p>
           </div>
         </div>
       </div>
@@ -576,10 +601,10 @@ const loadDependantDetails = async (dependantId) => {
   if (error) {
     return (
       <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
+        <SidebarDrawer />
         <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
-          <div className="flex items-center justify-center flex-1">
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
+          <div className="flex items-center justify-center flex-1 px-4">
             <div className="text-center">
               <p className="text-lg text-red-600 mb-4">{error}</p>
               <button
@@ -724,20 +749,20 @@ const patientName =
   return (
     <div className="lab-container flex h-screen bg-base-200">
       <div className="lab-sidebar no-print">
-        <LaboratorySidebar />
+        <SidebarDrawer />
       </div>
 
       <div className="lab-main flex overflow-hidden flex-col flex-1">
         <div className="no-print">
-          <Header />
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
         </div>
 
         <div className="overflow-y-auto flex-1">
-          <section className="p-7">
-            <div className="mb-6 flex justify-between items-center no-print">
+          <section className="p-4 lg:p-7">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center no-print">
               <div>
-                <h1 className="text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
-                <p className="text-[12px] text-[#605D66]">
+                <h1 className="text-2xl lg:text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
+                <p className="text-xs lg:text-[12px] text-[#605D66]">
                   Complete laboratory test results for {patientName}
                 </p>
               </div>
@@ -745,13 +770,13 @@ const patientName =
               <div className="flex gap-2 no-print">
                 <button
                   onClick={() => navigate(-1)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
                 >
                   ← Back
                 </button>
                 <button
                   onClick={() => navigate(`/dashboard/laboratory/results/edit/${labResultId}`)}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                  className="px-4 py-2 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600"
                 >
                   Edit
                 </button>
@@ -760,7 +785,7 @@ const patientName =
 
             <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
               {/* Patient Information Header */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 pb-8 border-b-2 border-gray-200">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 lg:mb-8 pb-6 lg:pb-8 border-b-2 border-gray-200">
                 <div>
                   <p className="text-xs text-gray-600 uppercase font-semibold">Patient Name</p>
                   <p className="text-lg font-bold text-[#00943C]">{patientName}</p>
@@ -780,7 +805,7 @@ const patientName =
               </div>
 
               {/* Test Information */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 lg:gap-6 mb-4">
                 {displayField("Age", patientInfo?.age || labResult?.form?.age)}
                 {displayField("Sex", patientInfo?.sex || labResult?.form?.sex)}
                 {displayField("Clinical Diagnosis", labResult?.form?.clinicalDiagnosis)}
@@ -874,13 +899,13 @@ const patientName =
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
                
                 {canSendToDoctor && (
                   <button
                     onClick={handleSendToDoctor}
                     disabled={sendingToDoctor}
-                    className="flex-1 px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
                   >
                     {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
                   </button>
@@ -890,7 +915,7 @@ const patientName =
                   <button
                     onClick={handleSendToSonographer}
                     disabled={sendingToSonographer}
-                    className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
                   >
                     {sendingToSonographer ? "Sending to Sonographer..." : "Send to Sonographer"}
                   </button>
@@ -899,7 +924,7 @@ const patientName =
                 {canComplete && (
                   <button
                     onClick={handleComplete}
-                    className="flex-1 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all"
+                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all"
                   >
                     Complete
                   </button>
@@ -909,13 +934,13 @@ const patientName =
               
                 <button
                   onClick={handlePrint}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
+                  className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
                 >
                   Print Results
                 </button>
                 <button
                   onClick={() => navigate(-1)}
-                  className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all"
+                  className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all"
                 >
                   Close
                 </button>
