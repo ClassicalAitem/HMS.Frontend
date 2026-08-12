@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 
 const LabResultsHistory = () => {
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [allLabResults, setAllLabResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -119,47 +120,42 @@ const LabResultsHistory = () => {
     }
   }, [allLabResults, technicianNameById]);
 
-  // Load technician names when results change
   useEffect(() => {
     loadTechnicianNames();
   }, [loadTechnicianNames]);
 
-const filteredLabResults = useMemo(() => {
-  const query = search.trim().toLowerCase();
-  const baseList = Array.isArray(allLabResults) ? allLabResults : [];
+  const filteredLabResults = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const baseList = Array.isArray(allLabResults) ? allLabResults : [];
 
-  return !query
-    ? baseList
-    : baseList.filter((inv) => {
-        const cacheKey =
-          inv.dependantId ||
-          inv.opdPatientId ||
-          inv.patientId ||
-          inv._id ||
-          inv.id;
+    return !query
+      ? baseList
+      : baseList.filter((inv) => {
+          const cacheKey =
+            inv.dependantId ||
+            inv.opdPatientId ||
+            inv.patientId ||
+            inv._id ||
+            inv.id;
 
-        const cached = patientCache[cacheKey];
+          const cached = patientCache[cacheKey];
 
-const patientName =
-  (typeof cached === "string" ? cached.toLowerCase() : "") ||
-  `${inv.patient?.firstName || ""} ${inv.patient?.lastName || ""}`.toLowerCase();
+          const patientName =
+            (typeof cached === "string" ? cached.toLowerCase() : "") ||
+            `${inv.patient?.firstName || ""} ${inv.patient?.lastName || ""}`.toLowerCase();
 
-        return patientName.includes(query);
-      });
-}, [allLabResults, search, patientCache]);
+          return patientName.includes(query);
+        });
+  }, [allLabResults, search, patientCache]);
 
-
-useEffect(() => {
-  const preloadNames = async () => {
-    if (!allLabResults.length) return;
-
-    await Promise.all(
-      allLabResults.map((result) => getPatientName(result))
-    );
-  };
-
-  preloadNames();
-}, [allLabResults]);
+  useEffect(() => {
+    const preloadNames = async () => {
+      if (!allLabResults.length) return;
+      await Promise.all(allLabResults.map((result) => getPatientName(result)));
+    };
+    preloadNames();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allLabResults]);
 
   const totalResults = filteredLabResults.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / resultsPerPage));
@@ -223,14 +219,33 @@ useEffect(() => {
     setCurrentPage(page);
   };
 
+  // Shared sidebar drawer, matches OrderedLab pattern
+  const SidebarDrawer = () => (
+    <>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 lg:z-auto ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
+      </div>
+    </>
+  );
+
   if (loading && allLabResults.length === 0) {
     return (
       <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
+        <SidebarDrawer />
         <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
-          <div className="flex items-center justify-center flex-1">
-            <p className="text-lg text-gray-600">Loading lab results history...</p>
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
+          <div className="flex items-center justify-center flex-1 px-4">
+            <p className="text-base lg:text-lg text-gray-600 text-center">Loading lab results history...</p>
           </div>
         </div>
       </div>
@@ -240,12 +255,12 @@ useEffect(() => {
   if (error) {
     return (
       <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
+        <SidebarDrawer />
         <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
-          <div className="flex items-center justify-center flex-1">
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
+          <div className="flex items-center justify-center flex-1 px-4">
             <div className="text-center">
-              <p className="text-lg text-red-600 mb-4">{error}</p>
+              <p className="text-base lg:text-lg text-red-600 mb-4">{error}</p>
               <button
                 onClick={() => navigate("/dashboard/laboratory")}
                 className="px-6 py-2 bg-[#00943C] text-white font-semibold rounded-lg"
@@ -261,20 +276,20 @@ useEffect(() => {
 
   return (
     <div className="flex h-screen bg-base-200">
-      <LaboratorySidebar />
+      <SidebarDrawer />
       <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
+        <Header onToggleSidebar={() => setSidebarOpen(true)} />
         <div className="overflow-y-auto flex-1">
-          <section className="p-7">
-            <div className="mb-6">
-              <h1 className="text-[32px] text-[#00943C] font-bold">Lab Results History</h1>
-              <p className="text-[12px] text-[#605D66]">
+          <section className="p-4 lg:p-7">
+            <div className="mb-4 lg:mb-6">
+              <h1 className="text-2xl lg:text-[32px] text-[#00943C] font-bold">Lab Results History</h1>
+              <p className="text-xs lg:text-[12px] text-[#605D66]">
                 View and search all laboratory test results
               </p>
             </div>
 
             {/* Search Bar */}
-            <div className="mb-6">
+            <div className="mb-4 lg:mb-6">
               <input
                 type="text"
                 placeholder="Search by patient name, ID, test type, or status..."
@@ -284,53 +299,69 @@ useEffect(() => {
                   setCurrentPage(1);
                 }}
                 disabled={loading}
-                className="input input-bordered w-full"
+                className="input input-bordered w-full text-sm lg:text-base"
               />
             </div>
 
-            {/* Results Table */}
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-[#00943C] text-white">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Date</th>
-                    <th className="px-4 py-3 text-left">Patient Name</th>
-                    <th className="px-4 py-3 text-left">Patient Type</th>
-                    <th className="px-4 py-3 text-left">Technician</th>
-                     <th className="px-4 py-3 text-left">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedLabResults.map((result) => (
-                    <LabResultRow
-                      key={result._id || result.id}
-                      result={result}
-                      getPatientName={getPatientName}
-                      getPatientType={getPatientType}
-                      getTechnicianName={getTechnicianName}
-                      navigate={navigate}
-                    />
-                  ))}
-                </tbody>
-              </table>
+            {/* Mobile / tablet: card list */}
+            <div className="flex flex-col gap-3 lg:hidden">
+              {paginatedLabResults.map((result) => (
+                <LabResultCard
+                  key={result._id || result.id}
+                  result={result}
+                  getPatientName={getPatientName}
+                  getPatientType={getPatientType}
+                  getTechnicianName={getTechnicianName}
+                  navigate={navigate}
+                />
+              ))}
+            </div>
+
+            {/* Desktop: table */}
+            <div className="hidden lg:block bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-[#00943C] text-white">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Date</th>
+                      <th className="px-4 py-3 text-left">Patient Name</th>
+                      <th className="px-4 py-3 text-left">Patient Type</th>
+                      <th className="px-4 py-3 text-left">Technician</th>
+                      <th className="px-4 py-3 text-left">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedLabResults.map((result) => (
+                      <LabResultRow
+                        key={result._id || result.id}
+                        result={result}
+                        getPatientName={getPatientName}
+                        getPatientType={getPatientType}
+                        getTechnicianName={getTechnicianName}
+                        navigate={navigate}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center mt-6">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-center gap-2">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Previous
+                    Prev
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <button
                       key={page}
                       onClick={() => handlePageChange(page)}
-                      className={`px-3 py-2 rounded ${
+                      className={`px-3 py-2 text-sm rounded ${
                         page === currentPage
                           ? "bg-[#00943C] text-white"
                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
@@ -342,7 +373,7 @@ useEffect(() => {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
@@ -352,7 +383,7 @@ useEffect(() => {
 
             {paginatedLabResults.length === 0 && !loading && (
               <div className="text-center py-8">
-                <p className="text-gray-600">No lab results found.</p>
+                <p className="text-sm lg:text-base text-gray-600">No lab results found.</p>
               </div>
             )}
           </section>
@@ -362,7 +393,12 @@ useEffect(() => {
   );
 };
 
-// Separate component for table rows to handle async patient name fetching
+const formatDate = (dateString) => {
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleDateString();
+};
+
+// Desktop table row
 const LabResultRow = ({ result, getPatientName, getPatientType, getTechnicianName, navigate }) => {
   const [patientName, setPatientName] = useState("Loading...");
 
@@ -373,13 +409,6 @@ const LabResultRow = ({ result, getPatientName, getPatientType, getTechnicianNam
     };
     fetchName();
   }, [result, getPatientName]);
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString();
-  };
-
-
 
   return (
     <tr className="border-b border-gray-200 hover:bg-gray-50">
@@ -395,7 +424,6 @@ const LabResultRow = ({ result, getPatientName, getPatientType, getTechnicianNam
         </span>
       </td>
       <td className="px-4 py-3 text-sm">{getTechnicianName(result)}</td>
-    
       <td className="px-4 py-3">
         <button
           onClick={() => navigate(`/dashboard/laboratory/results/${result._id || result.id}`)}
@@ -405,6 +433,48 @@ const LabResultRow = ({ result, getPatientName, getPatientType, getTechnicianNam
         </button>
       </td>
     </tr>
+  );
+};
+
+// Mobile/tablet card
+const LabResultCard = ({ result, getPatientName, getPatientType, getTechnicianName, navigate }) => {
+  const [patientName, setPatientName] = useState("Loading...");
+
+  useEffect(() => {
+    const fetchName = async () => {
+      const name = await getPatientName(result);
+      setPatientName(name);
+    };
+    fetchName();
+  }, [result, getPatientName]);
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="min-w-0">
+          <p className="font-medium text-sm truncate">{patientName}</p>
+          <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+            getPatientType(result) === "Dependant" ? "bg-blue-100 text-blue-800" :
+            getPatientType(result) === "OPD Patient" ? "bg-green-100 text-green-800" :
+            "bg-gray-100 text-gray-800"
+          }`}>
+            {getPatientType(result)}
+          </span>
+        </div>
+        <span className="text-xs text-gray-500 shrink-0">{formatDate(result.createdAt)}</span>
+      </div>
+
+      <div className="text-xs text-gray-600 mb-3">
+        <p><span className="font-semibold">Technician:</span> {getTechnicianName(result)}</p>
+      </div>
+
+      <button
+        onClick={() => navigate(`/dashboard/laboratory/results/${result._id || result.id}`)}
+        className="w-full px-3 py-2 bg-[#00943C] text-white text-xs rounded hover:bg-[#007a31] transition-all"
+      >
+        View
+      </button>
+    </div>
   );
 };
 

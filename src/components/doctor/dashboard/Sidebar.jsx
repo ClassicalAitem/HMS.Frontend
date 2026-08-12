@@ -9,11 +9,15 @@ import { MdLockOutline } from "react-icons/md";
 import { LogoutModal } from "@/components/modals";
 import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg"
+// import NotificationBadge from "@/components/common/NotificationBadge";
+import { useNotifications } from "@/contexts/NotificationContext";
+import NotificationBadge from "@/components/common/NotificationBadge";
 
 const Sidebar = () => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const { incomingCount, resetIncomingCount } = useNotifications();
 
   const generateInitials = (firstName, lastName) => {
     if (!firstName && !lastName) return 'U';
@@ -38,17 +42,18 @@ const Sidebar = () => {
 
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor" },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming" },
-      { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/doctor/attended-today" },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming", badge: location.pathname.startsWith("/dashboard/doctor/incoming") ? 0 : incomingCount },
+    { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/doctor/attended-today" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
     { icon: GoChecklist, label: "Patients", path: "/dashboard/doctor/patientshistory" },
     // { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/doctor/payment-records" },
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge, onClick }) => (
     <Link
       to={path}
+      onClick={onClick}
       className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
@@ -57,6 +62,7 @@ const Sidebar = () => {
     >
       <Icon className="w-5 h-5" />
       <span>{label}</span>
+      <NotificationBadge count={badge} />
     </Link>
   );
   return <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
@@ -94,6 +100,8 @@ const Sidebar = () => {
               label={item.label}
               path={item.path}
               active={item.path === "/dashboard/doctor" ? (location.pathname === item.path) : location.pathname.startsWith(item.path)}
+              badge={item.badge}
+              onClick={item.onClick}
             />
           ))}
         </nav>

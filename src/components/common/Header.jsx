@@ -49,7 +49,7 @@ const Header = ({ onToggleSidebar }) => {
 
         {/* Right Side Actions */}
        {/* Right Side Actions */}
-<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 2xl:gap-4">
+<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 2xl:gap-4 p-2">
   <ThemeSwitcher className="2xl:h-5 2xl:w-5" />
 
   <button
@@ -60,14 +60,14 @@ const Header = ({ onToggleSidebar }) => {
     <SlRefresh className="h-3 w-3 sm:h-4 sm:w-4 2xl:h-5 2xl:w-5" />
   </button>
 
-  <button
+  {/* <button
     onClick={handleNotifications}
     className="relative btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md"
     title="Notifications"
   >
     <BsBell className="h-3 w-3 sm:h-4 sm:w-4 2xl:h-5 2xl:w-5" />
     <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-error sm:h-2.5 sm:w-2.5 2xl:h-3 2xl:w-3"></span>
-  </button>
+  </button> */}
 </div>
       </div>
     </header>

@@ -26,6 +26,7 @@ import { getConsultations } from '@/services/api/consultationAPI';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import PatientHmoHistory from './PatientHmoHistory';
 import KolakLoader from '@/components/common/KolakLoader';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 const IncomingHmoDetails = () => {
   const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
@@ -42,6 +43,7 @@ const IncomingHmoDetails = () => {
   const [patient, setPatient] = useState(snapshot || null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const { refreshQueueCount } = useNotifications();
   const [sendingStatuses, setSendingStatuses] = useState({
     Lab: false,
     Pharmacy: false,
@@ -395,7 +397,10 @@ const IncomingHmoDetails = () => {
                 defaultDependantId={dependantId}
                 defaultDependantLabel={fullName}
                 lockSubject
-                onUpdated={() => navigate('/dashboard/hmo')}
+                onUpdated={() => {
+                refreshQueueCount();
+                  navigate('/dashboard/hmo');
+                }}
                 allowedRoles={[
                   'nurse',
                   'doctor',
