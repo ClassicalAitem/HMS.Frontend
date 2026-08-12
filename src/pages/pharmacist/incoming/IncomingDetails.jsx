@@ -15,6 +15,7 @@ import SendPatientModal from '@/components/modals/SendPatientModal'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import KolakLoader from '@/components/common/KolakLoader'
+import { useNotifications } from '@/contexts/NotificationContext'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -35,6 +36,7 @@ const IncomingDetails = () => {
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [dependants, setDependants] = useState([])
+  const { refreshQueueCount } = useNotifications();
   const currentUser = useAppSelector((state) => state.auth.user)
 
   const pharmacistId = currentUser?.id || currentUser?._id
@@ -381,7 +383,10 @@ const IncomingDetails = () => {
               defaultDependantId={dependantId}
               defaultDependantLabel={summarySubject?.fullName}
               lockSubject
-              onUpdated={() => navigate('/dashboard/pharmacist/incoming')}
+              onUpdated={() => {
+              refreshQueueCount();
+              navigate('/dashboard/pharmacist/incoming');
+            }}
               allowedRoles={['nurse', 'labtechnician', 'pharmacist', 'cashier', 'hmo', 'doctor', 'medical-director']}
             />
           </div>

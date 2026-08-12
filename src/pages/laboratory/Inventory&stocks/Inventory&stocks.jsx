@@ -5,6 +5,7 @@ import LaboratorySidebar from '@/components/laboratory/dashboard/LaboratorySideb
 import { Header } from '@/components/common'
 
 const LaboratoryInventoryStocks = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -113,9 +114,9 @@ const LaboratoryInventoryStocks = () => {
       await p
       fetch()
       setShowAdd(false)
-        } catch (e) {
-          console.error('Error creating inventory:', e)
-        }
+    } catch (e) {
+      console.error('Error creating inventory:', e)
+    }
   }
 
   const handleEdit = async (id, payload) => {
@@ -125,9 +126,9 @@ const LaboratoryInventoryStocks = () => {
       await p
       fetch()
       setEditing(null)
-        } catch (e) {
-          console.error('Error updating inventory:', e)
-        }
+    } catch (e) {
+      console.error('Error updating inventory:', e)
+    }
   }
 
   const handleRestock = async (id, payload) => {
@@ -137,176 +138,187 @@ const LaboratoryInventoryStocks = () => {
       await p
       fetch()
       setRestockingFor(null)
-        } catch (e) {
-          console.error('Error restocking inventory:', e)
-        }
+    } catch (e) {
+      console.error('Error restocking inventory:', e)
+    }
   }
 
-    if (loading) {
-      return (
-        <div className="flex h-screen bg-base-200">
-          <LaboratorySidebar />
-          <div className="flex overflow-hidden flex-col flex-1">
-            <Header />
-            <div className="flex items-center justify-center flex-1">
-              <p className="text-lg text-gray-600">Loading inventory data...</p>
-            </div>
+  // Shared sidebar drawer, matches OrderedLab / LabResultsHistory pattern
+  const SidebarDrawer = () => (
+    <>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 lg:z-auto ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
+      </div>
+    </>
+  )
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-base-200">
+        <SidebarDrawer />
+        <div className="flex overflow-hidden flex-col flex-1">
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
+          <div className="flex items-center justify-center flex-1 px-4">
+            <p className="text-base lg:text-lg text-gray-600 text-center">Loading inventory data...</p>
           </div>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
   return (
+    <div className="flex h-screen bg-base-200">
+      <SidebarDrawer />
 
-        <div className="flex h-screen bg-base-200">
-          <LaboratorySidebar />
-    
-          <div className="flex overflow-hidden flex-col flex-1">
-            <Header />
-    
-      <div className="p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-primary">Laboratory Inventory & Supplies</h1>
-            <p className="text-xs text-base-content/70">Manage lab equipment, reagents, and supplies</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
-          </div>
-        </div>
+      <div className="flex overflow-hidden flex-col flex-1">
+        <Header onToggleSidebar={() => setSidebarOpen(true)} />
 
-        <div className="rounded-xl bg-base-100 border border-base-300 p-4">
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({length:6}).map((_,i)=>(<div key={i} className="h-40 rounded-xl bg-base-200 animate-pulse"/>))}
+        <div className="overflow-y-auto flex-1 p-4 lg:p-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-xl lg:text-2xl font-semibold text-primary">Laboratory Inventory & Supplies</h1>
+              <p className="text-xs text-base-content/70">Manage lab equipment, reagents, and supplies</p>
             </div>
-          ) : error ? (
-            <div className="text-sm text-error">Failed to load inventory.</div>
-          ) : (
-            <>
-              {/* Top stat cards */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Total Items</div>
-                  <div className="text-3xl font-bold">{totalItems}</div>
-                  <div className="text-xs text-base-content/60">Unique supplies</div>
-                </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">In Stock</div>
-                  <div className="text-3xl font-bold">{inStockCount}</div>
-                  <div className="text-xs text-success/70">{totalItems ? Math.round((inStockCount/totalItems)*100) : 0}% availability</div>
-                </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Low Stock</div>
-                  <div className="text-3xl font-bold">{lowStockCount}</div>
-                  <div className="text-xs text-warning/70">Needs reordering</div>
-                </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Expiring Soon</div>
-                  <div className="text-3xl font-bold">{expiringSoonCount}</div>
-                  <div className="text-xs text-error/70">Within 90 days</div>
-                </div>
-                <div className="p-4 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Expired</div>
-                  <div className="text-3xl font-bold">{expiredCount}</div>
-                  <div className="text-xs text-error/70">Past expiry</div>
-                </div>
-              </div>
+          </div>
 
-              {/* Tabs and controls */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <button className={`px-3 py-1 rounded ${activeTab==='all'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('all'); setCurrentPage(1)}}>All Items</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='low'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('low'); setCurrentPage(1)}}>Low Stock</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='out'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('out'); setCurrentPage(1)}}>Out of Stock</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='expiring'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expiring'); setCurrentPage(1)}}>Expiring Soon</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='expired'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expired'); setCurrentPage(1)}}>Expired</button>
-                  <button className={`px-3 py-1 rounded ${activeTab==='recent'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('recent'); setCurrentPage(1)}}>Recent Activity</button>
+          <div className="rounded-xl bg-base-100 border border-base-300 p-3 lg:p-4">
+            {error ? (
+              <div className="text-sm text-error">Failed to load inventory.</div>
+            ) : (
+              <>
+                {/* Top stat cards - horizontal scroll on mobile, grid on larger screens */}
+                <div className="flex gap-3 overflow-x-auto pb-2 mb-4 md:grid md:grid-cols-3 lg:grid-cols-5 md:overflow-visible md:pb-0 -mx-1 px-1">
+                  <div className="p-3 lg:p-4 rounded-xl bg-base-100 border border-base-300 min-w-[140px] shrink-0 md:min-w-0">
+                    <div className="text-xs lg:text-sm text-base-content/70">Total Items</div>
+                    <div className="text-2xl lg:text-3xl font-bold">{totalItems}</div>
+                    <div className="text-xs text-base-content/60">Unique supplies</div>
+                  </div>
+                  <div className="p-3 lg:p-4 rounded-xl bg-base-100 border border-base-300 min-w-[140px] shrink-0 md:min-w-0">
+                    <div className="text-xs lg:text-sm text-base-content/70">In Stock</div>
+                    <div className="text-2xl lg:text-3xl font-bold">{inStockCount}</div>
+                    <div className="text-xs text-success/70">{totalItems ? Math.round((inStockCount/totalItems)*100) : 0}% availability</div>
+                  </div>
+                  <div className="p-3 lg:p-4 rounded-xl bg-base-100 border border-base-300 min-w-[140px] shrink-0 md:min-w-0">
+                    <div className="text-xs lg:text-sm text-base-content/70">Low Stock</div>
+                    <div className="text-2xl lg:text-3xl font-bold">{lowStockCount}</div>
+                    <div className="text-xs text-warning/70">Needs reordering</div>
+                  </div>
+                  <div className="p-3 lg:p-4 rounded-xl bg-base-100 border border-base-300 min-w-[140px] shrink-0 md:min-w-0">
+                    <div className="text-xs lg:text-sm text-base-content/70">Expiring Soon</div>
+                    <div className="text-2xl lg:text-3xl font-bold">{expiringSoonCount}</div>
+                    <div className="text-xs text-error/70">Within 90 days</div>
+                  </div>
+                  <div className="p-3 lg:p-4 rounded-xl bg-base-100 border border-base-300 min-w-[140px] shrink-0 md:min-w-0">
+                    <div className="text-xs lg:text-sm text-base-content/70">Expired</div>
+                    <div className="text-2xl lg:text-3xl font-bold">{expiredCount}</div>
+                    <div className="text-xs text-error/70">Past expiry</div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <input className="input input-sm input-bordered" placeholder="Search Supplies..." value={search} onChange={(e)=>{setSearch(e.target.value); setCurrentPage(1)}} />
-                  <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
-                </div>
-              </div>
 
-              {/* Cards for narrow; table for wide */}
-              <div className="block md:hidden">
-                <div className="grid grid-cols-1 gap-4">
-                  {pageItems.map(item => (
-                    <div key={item._id} className="p-4 rounded-xl border flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{item.name}</div>
-                        <div className={`text-xs px-2 py-1 rounded ${lowStock(item)==='out' ? 'bg-error/10 text-error' : lowStock(item)==='low' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>{lowStock(item)==='out' ? 'Out of stock' : lowStock(item)==='low' ? 'Low stock' : 'In stock'}</div>
-                      </div>
-                      <div className="text-sm text-base-content/70">{item.form} {item.strength}</div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div>Stock: <span className="font-medium">{item.stock ?? 0}</span></div>
-                        <div>Price: <span className="font-medium">{item.sellingPrice ?? '—'}</span></div>
-                      </div>
-                      <div className="flex justify-end gap-2 mt-2">
-                        <button className="btn btn-ghost btn-sm" onClick={() => setEditing(item)}>Edit</button>
-                        <button className="btn btn-outline btn-sm" onClick={() => setRestockingFor(item)}>Restock</button>
-                      </div>
-                    </div>
-                  ))}
+                {/* Tabs - horizontal scroll on mobile */}
+                <div className="flex flex-col gap-3 mb-4">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                    <button className={`px-3 py-1 rounded text-sm whitespace-nowrap shrink-0 ${activeTab==='all'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('all'); setCurrentPage(1)}}>All Items</button>
+                    <button className={`px-3 py-1 rounded text-sm whitespace-nowrap shrink-0 ${activeTab==='low'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('low'); setCurrentPage(1)}}>Low Stock</button>
+                    <button className={`px-3 py-1 rounded text-sm whitespace-nowrap shrink-0 ${activeTab==='out'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('out'); setCurrentPage(1)}}>Out of Stock</button>
+                    <button className={`px-3 py-1 rounded text-sm whitespace-nowrap shrink-0 ${activeTab==='expiring'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expiring'); setCurrentPage(1)}}>Expiring Soon</button>
+                    <button className={`px-3 py-1 rounded text-sm whitespace-nowrap shrink-0 ${activeTab==='expired'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expired'); setCurrentPage(1)}}>Expired</button>
+                    <button className={`px-3 py-1 rounded text-sm whitespace-nowrap shrink-0 ${activeTab==='recent'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('recent'); setCurrentPage(1)}}>Recent Activity</button>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input className="input input-sm input-bordered w-full sm:flex-1" placeholder="Search Supplies..." value={search} onChange={(e)=>{setSearch(e.target.value); setCurrentPage(1)}} />
+                    <button className="btn btn-outline btn-sm shrink-0" onClick={() => exportCsv(filtered)}>Export</button>
+                  </div>
                 </div>
-              </div>
 
-              <div className="hidden md:block">
-                <table className="table w-full">
-                  <thead>
-                    <tr className="bg-base-200">
-                      <th>Item</th>
-                      <th>Form / Strength</th>
-                      <th>Stock</th>
-                      <th>Reorder Level</th>
-                      <th>Price</th>
-                      <th>Expiry Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                {/* Cards for narrow; table for wide */}
+                <div className="block md:hidden">
+                  <div className="grid grid-cols-1 gap-3">
                     {pageItems.map(item => (
-                      <tr key={item._id}>
-                        <td>{item.name}</td>
-                        <td>{item.form} {item.strength}</td>
-                        <td>{item.stock ?? 0}</td>
-                        <td>{item.reorderLevel ?? 0}</td>
-                        <td>{item.sellingPrice ?? '—'}</td>
-                        <td>{item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0]: '—'}</td>
-                      </tr>
+                      <div key={item._id} className="p-4 rounded-xl border flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="font-medium text-sm">{item.name}</div>
+                          <div className={`text-xs px-2 py-1 rounded shrink-0 ${lowStock(item)==='out' ? 'bg-error/10 text-error' : lowStock(item)==='low' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>{lowStock(item)==='out' ? 'Out of stock' : lowStock(item)==='low' ? 'Low stock' : 'In stock'}</div>
+                        </div>
+                        <div className="text-sm text-base-content/70">{item.form} {item.strength}</div>
+                        <div className="flex items-center justify-between text-sm">
+                          <div>Stock: <span className="font-medium">{item.stock ?? 0}</span></div>
+                          <div>Price: <span className="font-medium">{item.sellingPrice ?? '—'}</span></div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-2">
+                          <button className="btn btn-ghost btn-sm" onClick={() => setEditing(item)}>Edit</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setRestockingFor(item)}>Restock</button>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination footer */}
-              <div className="mt-4 flex items-center justify-between text-xs text-base-content/60">
-                <div>Showing Result for {activeTab==='all'?'All Items': activeTab==='low'?'Low Stock': activeTab==='out'?'Out of Stock': activeTab==='expiring'?'Expiring Soon': activeTab==='expired'?'Expired Items':'Recent Activity'} ({filtered.length} Total)</div>
-                <div className="join">
-                  {Array.from({ length: Math.max(1, Math.ceil(filtered.length / itemsPerPage)) }).map((_, idx) => (
-                    <button key={idx} onClick={() => setCurrentPage(idx+1)} className={`join-item btn btn-ghost btn-xs ${currentPage===idx+1?'bg-primary text-white':''}`}>{idx+1}</button>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            </>
+
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="table w-full">
+                    <thead>
+                      <tr className="bg-base-200">
+                        <th>Item</th>
+                        <th>Form / Strength</th>
+                        <th>Stock</th>
+                        <th>Reorder Level</th>
+                        <th>Price</th>
+                        <th>Expiry Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageItems.map(item => (
+                        <tr key={item._id}>
+                          <td>{item.name}</td>
+                          <td>{item.form} {item.strength}</td>
+                          <td>{item.stock ?? 0}</td>
+                          <td>{item.reorderLevel ?? 0}</td>
+                          <td>{item.sellingPrice ?? '—'}</td>
+                          <td>{item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0]: '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination footer */}
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs text-base-content/60">
+                  <div>Showing Result for {activeTab==='all'?'All Items': activeTab==='low'?'Low Stock': activeTab==='out'?'Out of Stock': activeTab==='expiring'?'Expiring Soon': activeTab==='expired'?'Expired Items':'Recent Activity'} ({filtered.length} Total)</div>
+                  <div className="join overflow-x-auto">
+                    {Array.from({ length: Math.max(1, Math.ceil(filtered.length / itemsPerPage)) }).map((_, idx) => (
+                      <button key={idx} onClick={() => setCurrentPage(idx+1)} className={`join-item btn btn-ghost btn-xs ${currentPage===idx+1?'bg-primary text-white':''}`}>{idx+1}</button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Add/Edit Modal */}
+          {showAdd && (
+            <InventoryFormModal onClose={() => setShowAdd(false)} onSubmit={handleAdd} />
+          )}
+
+          {editing && (
+            <InventoryFormModal item={editing} onClose={() => setEditing(null)} onSubmit={(payload) => handleEdit(editing._id, payload)} />
+          )}
+
+          {restockingFor && (
+            <RestockModal item={restockingFor} onClose={() => setRestockingFor(null)} onSubmit={(payload) => handleRestock(restockingFor._id, payload)} />
           )}
         </div>
-
-        {/* Add/Edit Modal */}
-        {showAdd && (
-          <InventoryFormModal onClose={() => setShowAdd(false)} onSubmit={handleAdd} />
-        )}
-
-        {editing && (
-          <InventoryFormModal item={editing} onClose={() => setEditing(null)} onSubmit={(payload) => handleEdit(editing._id, payload)} />
-        )}
-
-        {restockingFor && (
-          <RestockModal item={restockingFor} onClose={() => setRestockingFor(null)} onSubmit={(payload) => handleRestock(restockingFor._id, payload)} />
-        )}
       </div>
-   </div>
-   </div>
+    </div>
   )
 }
 
@@ -320,7 +332,6 @@ function InventoryFormModal({ item, onClose, onSubmit }){
   const [submitting, setSubmitting] = useState(false)
 
   const handle = async () => {
-    // basic validation
     if (!form.name) return toast.error('Name required')
     if (!form.sellingPrice) return toast.error('Selling price required')
     setSubmitting(true)
@@ -330,28 +341,28 @@ function InventoryFormModal({ item, onClose, onSubmit }){
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-opacity-50" onClick={onClose} />
-      <div className="z-10 w-full max-w-lg card bg-base-100 p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="z-10 w-full max-w-lg card bg-base-100 p-4 rounded-b-none sm:rounded-b-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-medium">{item?._id ? 'Edit Item' : 'Add Item'}</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
         <div className="space-y-2">
           <input className="input input-bordered w-full" placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input className="input input-bordered flex-1" placeholder="Form" value={form.form} onChange={(e)=>setForm({...form,form:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Strength" value={form.strength} onChange={(e)=>setForm({...form,strength:e.target.value})} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input className="input input-bordered flex-1" placeholder="Cost Price" value={form.costPrice} onChange={(e)=>setForm({...form,costPrice:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Selling Price" value={form.sellingPrice} onChange={(e)=>setForm({...form,sellingPrice:e.target.value})} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input className="input input-bordered flex-1" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e)=>setForm({...form,reorderLevel:e.target.value})} />
             <input className="input input-bordered flex-1" placeholder="Supplier" value={form.supplier} onChange={(e)=>setForm({...form,supplier:e.target.value})} />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-2">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting? 'Saving...' : 'Save'}</button>
           </div>
@@ -375,9 +386,9 @@ function RestockModal({ item, onClose, onSubmit }){
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-opacity-50" onClick={onClose} />
-      <div className="z-10 w-full max-w-md card bg-base-100 p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="z-10 w-full max-w-md card bg-base-100 p-4 rounded-b-none sm:rounded-b-2xl rounded-t-2xl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="font-medium">Restock {item.name}</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
@@ -385,7 +396,7 @@ function RestockModal({ item, onClose, onSubmit }){
         <div className="space-y-2">
           <input className="input input-bordered w-full" placeholder="Quantity" value={qty} onChange={(e)=>setQty(e.target.value)} />
           <input className="input input-bordered w-full" placeholder="Batch number (optional)" value={batch} onChange={(e)=>setBatch(e.target.value)} />
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 pt-2">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting? 'Restocking...' : 'Restock'}</button>
           </div>

@@ -14,7 +14,7 @@ const CashierLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-base-300/5">
+    <div className="flex h-screen w-full overflow-hidden bg-base-300/5">
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"

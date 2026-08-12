@@ -30,9 +30,7 @@ const IncomingHmo = () => {
         setLoading(true);
 
         const hmoStatuses = [
-          PATIENT_STATUS.AWAITING_HMO,
-          PATIENT_STATUS.HMO_APPROVED,
-          PATIENT_STATUS.HMO_REJECTED,
+          PATIENT_STATUS.AWAITING_HMO
         ];
 
         const [patientsRes, dependantsRes] = await Promise.allSettled([
@@ -133,7 +131,7 @@ const IncomingHmo = () => {
   const visible = filtered.slice(start, start + pageSize);
 
   return (
-    <div className="flex min-h-screen w-full">
+    <div className="flex h-screen w-full">
       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div
