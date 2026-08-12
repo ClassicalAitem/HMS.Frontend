@@ -39,7 +39,7 @@ const Incoming = () => {
             })()
           : []
 
-        const PHARMACY_STATUSES = new Set(['awaiting_pharmacy', 'pharmacy_completed'])
+        const PHARMACY_STATUSES = new Set(['awaiting_pharmacy'])
 
         const mappedPatients = patientList
           .filter(p => PHARMACY_STATUSES.has(String(p?.status).toLowerCase()))

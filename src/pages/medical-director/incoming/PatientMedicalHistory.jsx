@@ -33,6 +33,7 @@ import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import KolakLoader from "@/components/common/KolakLoader";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -55,6 +56,8 @@ const [latest, setLatest] = useState(null);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [inventoryData, setInventoryData] = useState([]);
   const [serviceCharges, setServiceCharges] = useState([]);
+  
+  const { refreshQueueCount } = useNotifications();
     const [consultation, setConsultation] = useState(null);
   const [labRequests, setLabRequests] = useState([]);
   const [labInvestigations, setLabInvestigations] = useState([]);
@@ -960,7 +963,10 @@ const dependant = isDependant
                 defaultDependantId={dependantId}
                 defaultDependantLabel={summarySubject?.fullName}
                 lockSubject
-                onUpdated={() => navigate('/dashboard/doctor')}
+                 onUpdated={() => {
+                  refreshQueueCount();
+                  navigate('/dashboard/medical-director');
+                }}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
              

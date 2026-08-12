@@ -62,6 +62,7 @@ import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import KolakLoader from '@/components/common/KolakLoader';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -127,6 +128,9 @@ const ViewConsultation = () => {
   // Picker for choosing which investigation the surgical note attaches to,
   // shown only when the consultation has more than one lab request
   const [isProcedurePickerOpen, setIsProcedurePickerOpen] = useState(false);
+
+  
+  const { refreshQueueCount } = useNotifications();
 
   const summarySubject = useMemo(() => {
     if (!isViewingDependant) return patient;
@@ -1083,7 +1087,10 @@ const ViewConsultation = () => {
       defaultDependantId={dependantId}
       defaultDependantLabel={summarySubject?.fullName}
       lockSubject
-      onUpdated={() => navigate('/dashboard/doctor')}
+       onUpdated={() => {
+                  refreshQueueCount();
+                  navigate('/dashboard/doctor');
+                }}
       allowedRoles={[
         'nurse',
         'labtechnician',
