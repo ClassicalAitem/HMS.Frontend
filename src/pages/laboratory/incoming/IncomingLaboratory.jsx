@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [incomingStats, setIncomingStats] = useState([]);
   const [testRequests, setTestRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,9 @@ const IncomingLaboratory = () => {
   const [selectedCard, setSelectedCard] = useState(null);
   const [existingLabResults, setExistingLabResults] = useState({});
   const [sendingToSonographer, setSendingToSonographer] = useState(null);
+
+  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   const fetchTestRequests = async () => {
     console.log("fetchTestRequests called");
@@ -337,12 +341,6 @@ const IncomingLaboratory = () => {
 
       setTestRequests(uniqueRequests);
 
-
-      // After setTestRequests(uniqueRequests) — fetch existing lab results
-          
-       
-
-
       setIncomingStats([
         {
           header: "New Request",
@@ -456,12 +454,30 @@ const IncomingLaboratory = () => {
     }
   };
 
+  const sidebarWrapper = (
+    <>
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <LaboratorySidebar onCloseSidebar={closeSidebar} />
+      </div>
+    </>
+  );
+
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
+        {sidebarWrapper}
+        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
+          <Header onToggleSidebar={toggleSidebar} />
           <div className="flex items-center justify-center flex-1">
             <p className="text-lg text-gray-600">Loading test requests...</p>
           </div>
@@ -471,42 +487,42 @@ const IncomingLaboratory = () => {
   }
   return (
     <div className="flex h-screen bg-base-200">
-      <LaboratorySidebar />
+      {sidebarWrapper}
 
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
+      <div className="flex overflow-hidden flex-col flex-1 min-w-0">
+        <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="overflow-y-auto flex-1 ">
-          <section className="p-4">
+        <div className="overflow-y-auto flex-1">
+          <section className="p-3 sm:p-4">
             {error && (
               <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">
                 {error}
               </div>
             )}
-            <h4 className="text-[32px] text-[#00943C]">
+            <h4 className="text-xl sm:text-2xl lg:text-[32px] text-[#00943C]">
               Incoming Test Results
             </h4>
-            <p className="text-[12px]">
+            <p className="text-xs sm:text-[12px]">
               Review and process new test requests from doctors
             </p>
 
-            <div className="flex gap-4 justify-between mt-6 flex-wrap">
+            <div className="grid grid-cols-2 lg:flex gap-3 sm:gap-4 lg:justify-between mt-6">
               {incomingStats.map((test, index) => {
                 return (
                   <div
                     key={index}
-                    className={`w-[220px] h-[110px] bg-white shadow p-3 text-sm rounded-md ${index === 1 ? "text-[#DC362E]" : ""}`}>
-                    <h1 className="text-sm text-[#605D66]">{test.header}</h1>
-                    <p className="mt-2 text-2xl font-semibold">{test.value}</p>
+                    className={`w-full lg:w-[220px] h-auto lg:h-[110px] bg-white shadow p-3 text-sm rounded-md ${index === 1 ? "text-[#DC362E]" : ""}`}>
+                    <h1 className="text-xs sm:text-sm text-[#605D66]">{test.header}</h1>
+                    <p className="mt-2 text-xl sm:text-2xl font-semibold">{test.value}</p>
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex justify-between mt-5">
-              <h4 className="text-[24px] font-normal">Patients Test Results</h4>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center mt-5">
+              <h4 className="text-lg sm:text-[24px] font-normal">Patients Test Results</h4>
               <div className="flex items-center gap-3">
-                <button className="text-[#3498DB] font-semibold cursor-pointer">
+                <button className="text-sm sm:text-base text-[#3498DB] font-semibold cursor-pointer">
                   See All
                 </button>
                 <button
@@ -522,10 +538,10 @@ const IncomingLaboratory = () => {
               {testRequests.length > 0 ? (
                 testRequests.map((testCard, index) => {
                   return (
-                    <div key={index} className="w-full h-[130px] border rounded-md p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
+                    <div key={index} className="w-full h-auto border rounded-md p-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold text-sm">{testCard.name}</p>
                             {testCard.patientType === 'dependant' && (
                               <span className="badge badge-secondary badge-xs">Dependant</span>
@@ -552,7 +568,7 @@ const IncomingLaboratory = () => {
                               {testCard.status}
                             </div>
                           </div>
-                          <div className="mt-1 text-xs text-[#605D66]">
+                          <div className="mt-1 text-xs text-[#605D66] space-y-0.5">
                             <div>Test: {testCard.test}</div>
                             <div>Date: {testCard.date} | Time: {testCard.time} </div>
                             <div>Investigation Status: {testCard.investigationStatus}</div>
@@ -560,7 +576,7 @@ const IncomingLaboratory = () => {
                           </div>
                         </div>
 
-                        <div className="w-44 flex flex-col gap-2">
+                        <div className="w-full sm:w-44 flex flex-col gap-2 shrink-0">
                           <button
                             onClick={() => { setSelectedCard(testCard); setShowModal2(true); }}
                             className="btn btn-sm btn-success w-full"
@@ -586,9 +602,6 @@ const IncomingLaboratory = () => {
                         </div>
                       </div>
 
-                      {/* <div className="mt-3 bg-[#EFEFEF] p-2 rounded text-sm">
-                        // // <strong>Symptoms/Notes:</strong> <span className="ml-2">{testCard.symptoms}</span>
-                      </div> */}
                       {showModal && (
                         <AcceptTestRequestModal data={selectedCard} setShowModal={setShowModal} onAcceptSuccess={fetchTestRequests} />
                       )}

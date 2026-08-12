@@ -13,11 +13,14 @@ import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg"
 import { IoReceiptOutline } from "react-icons/io5";
 import { path } from "slate";
+import NotificationBadge from "@/components/common/NotificationBadge";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const { incomingCount, resetIncomingCount } = useNotifications();
 
   // Function to generate initials from first and last name
   const generateInitials = (firstName, lastName) => {
@@ -62,6 +65,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Incoming",
       path: "/dashboard/nurse/incoming",
       active: fromIncoming || location.pathname.startsWith("/dashboard/nurse/incoming"),
+      badge: (fromIncoming || location.pathname.startsWith("/dashboard/nurse/incoming")) ? 0 : incomingCount,
     },
     {
       icon: FiUser,
@@ -89,10 +93,13 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge, onClick }) => (
     <Link
       to={path}
-      onClick={onCloseSidebar}
+      onClick={() => {
+        onCloseSidebar && onCloseSidebar();
+        onClick && onClick();
+      }}
       className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
@@ -101,6 +108,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     >
       <Icon className="w-5 h-5" />
       <span>{label}</span>
+      <NotificationBadge count={badge} />
     </Link>
   );
 
@@ -140,6 +148,8 @@ const Sidebar = ({ onCloseSidebar }) => {
             label={item.label}
             path={item.path}
             active={item.active}
+            badge={item.badge}
+            onClick={item.onClick}
           />
         ))}
       </nav>

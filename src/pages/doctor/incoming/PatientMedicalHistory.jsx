@@ -33,6 +33,7 @@ import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import KolakLoader from "@/components/common/KolakLoader";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -88,11 +89,9 @@ const [proceduresLoading, setProceduresLoading] = useState(false);
     ));
   };
 
-// Helper to navigate with loading
-const safeNavigate = (path, options) => {
-  setIsNavigating(true);
-  navigate(path, options);
-};
+
+  
+  const { refreshQueueCount } = useNotifications();
 
 // Lock the patient record for this doctor before navigation
 const lockPatientForConsultation = async () => {
@@ -960,7 +959,10 @@ const dependant = isDependant
                 defaultDependantId={dependantId}
                 defaultDependantLabel={summarySubject?.fullName}
                 lockSubject
-                onUpdated={() => navigate('/dashboard/doctor')}
+                 onUpdated={() => {
+                  refreshQueueCount();
+                  navigate('/dashboard/doctor');
+                }}
                 allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
              
