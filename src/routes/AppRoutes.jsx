@@ -178,6 +178,7 @@ import PatientsHistory from "@/pages/doctor/patients/PatientsHistory";
 import PatientHmoHistory from "@/pages/hmo/incoming/PatientHmoHistory";
 import HMOPatients from "@/pages/hmo/HmoPatients/HmoPatients";
 import PatientHmoHistoryFull from "@/pages/hmo/incoming/PatientHmoHistoryFull";
+import PharmacyPatients from "@/pages/pharmacist/PharmacyPatients/PharmacyPatients";
 
 
 const AppRoutes = () => {
@@ -900,6 +901,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/pharmacist/incoming" element={
         <ProtectedRoute allowedRoles={['pharmacist']}>
           <PharmacistIncoming />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/patients" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacyPatients />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/pharmacist/incoming/:patientId" element={

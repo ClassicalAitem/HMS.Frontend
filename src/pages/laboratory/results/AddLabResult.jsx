@@ -136,7 +136,7 @@ const InputField = ({ label, value, onChange, placeholder = "", type = "text", d
 };
 
 const SectionContent = ({ children }) => (
-  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-[#FFFFFF] border border-[#AEAAAE] border-t-0 rounded-b-lg">
+  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-3 lg:p-4 bg-[#FFFFFF] border border-[#AEAAAE] border-t-0 rounded-b-lg">
     {children}
   </div>
 );
@@ -152,70 +152,17 @@ const AddLabResult = () => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState(null);
   const [expandedSection, setExpandedSection] = useState("patientInfo");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDependant, setIsDependant] = useState(false);
     const [mainPatientId, setMainPatientId] = useState(null);
 
+
   const currentUser = useAppSelector((state) => state.auth.user);
 
-  const getPatientName = (patientData) => {
-    if (!patientData) return "Unknown Patient";
-    if (patientData.firstName || patientData.lastName) {
-      return `${patientData.firstName || ""} ${patientData.lastName || ""}`.trim();
-    }
-    return patientData.fullName || patientData.name || patientData.patientName || "Unknown Patient";
-  };
 
-const loadDependant = async (dependantId) => {
-  try {
-    const res = await getDependantById(dependantId);
-    
-    // Handle multiple possible response structures
-    const dependant = res?.data?.dependant || res?.dependant || res?.data || res;
-
-    // Validate dependant data has required fields
-    if (!dependant || typeof dependant !== 'object' || (!dependant.firstName && !dependant.lastName && !dependant.fullName)) {
-      console.warn("Dependant data incomplete:", dependant);
-      return;
-    }
-
-    setPatient(dependant);
-    setIsDependant(true);
-
-    // Get name: firstName + lastName, or fallback to fullName
-    const fullName = dependant.fullName ||
-      `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() ||
-      "Unknown Patient";
-
-      console.log("Loaded dependant data:", dependant, "Computed full name:", fullName);
-    // Calculate age from DOB
-    let age = dependant.age || '';
-    if (dependant.dob) {
-      const dob = new Date(dependant.dob);
-      if (!isNaN(dob.getTime())) {
-        age = (new Date().getFullYear() - dob.getFullYear()).toString();
-      }
-    }
-
-    console.log("Computed age:", age);
-
-    // Map gender to M/F
-    const genderMap = { male: 'M', female: 'F', Male: 'M', Female: 'F', M: 'M', F: 'F' };
-    const sex = genderMap[dependant.gender] || dependant.gender || '';
-
-    console.log(genderMap)
-    setFormData(prev => ({
-      ...prev,
-      patientNames: fullName,
-      age: age.toString(),
-      sex,
-    }));
-  } catch (err) {
-    console.warn("Failed to load dependant:", err);
-  }
-};
 
   const loadPatientData = async (patientId) => {
     if (!patientId) return null;
@@ -883,15 +830,40 @@ const handleComplete = async () => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
+  const [sidebarMounted, setSidebarMounted] = useState(false);
+
+useEffect(() => {
+  // enable transitions only after first paint, so initial state doesn't animate in
+  const id = requestAnimationFrame(() => setSidebarMounted(true));
+  return () => cancelAnimationFrame(id);
+}, []);
+
+const SidebarDrawer = () => (
+  <>
+    {sidebarOpen && (
+      <div
+        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+        onClick={() => setSidebarOpen(false)}
+      />
+    )}
+    <div
+      className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
+        sidebarMounted ? "transition-transform duration-200 ease-in-out" : ""
+      } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+    >
+      <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
+    </div>
+  </>
+);
 
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200">
-        <LaboratorySidebar />
+        <SidebarDrawer />
         <div className="flex overflow-hidden flex-col flex-1">
-          <Header />
-          <div className="flex items-center justify-center flex-1">
-            <p className="text-lg text-gray-600">Loading investigation details...</p>
+          <Header onToggleSidebar={() => setSidebarOpen(true)} />
+          <div className="flex items-center justify-center flex-1 px-4">
+            <p className="text-base lg:text-lg text-gray-600 text-center">Loading investigation details...</p>
           </div>
         </div>
       </div>
@@ -900,13 +872,11 @@ const handleComplete = async () => {
 
   return (
     <div className="flex h-screen bg-base-200">
-      <LaboratorySidebar />
-
+      <SidebarDrawer />
       <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
-
+        <Header onToggleSidebar={() => setSidebarOpen(true)} />
         <div className="overflow-y-auto flex-1">
-          <section className="p-7">
+          <section className="p-4 lg:p-7">
             {error && (
               <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg border border-red-300">
                 {error}
@@ -914,7 +884,7 @@ const handleComplete = async () => {
             )}
 
             <div className="mb-6">
-              <h1 className="text-[32px] text-[#00943C] font-bold">
+              <h1 className="text-2xl lg:text-[32px] text-[#00943C] font-bold">
                 {editing ? "Edit Lab Result" : "Laboratory Result Form"}
               </h1>
               <p className="text-[12px] text-[#605D66]">
@@ -1231,8 +1201,7 @@ const handleComplete = async () => {
               <div className="bg-white rounded-lg shadow">
                 <SectionHeader title="Widal Report" id="widalReport" count={8} expandedSection={expandedSection} toggleSection={toggleSection} />
                 {expandedSection === "widalReport" && (
-                  <div className="p-4 bg-[#FFFFFF] border border-[#AEAAAE] border-t-0 rounded-b-lg overflow-x-auto">
-                    <table className="w-full border-collapse">
+                  <div className="p-3 lg:p-4 bg-[#FFFFFF] border border-[#AEAAAE] border-t-0 rounded-b-lg overflow-x-auto">  <table className="w-full border-collapse">
                       <thead>
                         <tr className="bg-gradient-to-r from-[#00943C]/20 to-[#00943C]/10">
                           <th className="border border-[#AEAAAE] px-4 py-3 text-left font-semibold text-[#00943C]">Organism</th>
@@ -1405,23 +1374,23 @@ const handleComplete = async () => {
               </div>
 
               {/* ACTION BUTTONS */}
-              <div className="flex gap-4 mb-10">
-                  <button
-              className={`btn btn-primary text-white px-12 h-12 text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
-              onClick={onSave}
-              disabled={saving}
-            >
-              {editing ? "Update" : "Save Draft"}
-            </button>
-               
-                <button
-                  onClick={() => navigate(-1)}
-                  disabled={saving}
-                  className="flex-1 px-6 py-3 border border-[#AEAAAE] text-[#605D66] font-semibold rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-all"
-                >
-                  Cancel
-                </button>
-              </div>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-10">
+              <button
+                className={`btn btn-primary text-white h-12 text-base lg:text-lg font-normal normal-case rounded-md w-full sm:w-auto sm:px-12 ${saving ? "loading" : ""}`}
+                onClick={onSave}
+                disabled={saving}
+              >
+                {editing ? "Update" : "Save Draft"}
+              </button>
+
+              <button
+                onClick={() => navigate(-1)}
+                disabled={saving}
+                className="flex-1 px-6 py-3 border border-[#AEAAAE] text-[#605D66] font-semibold rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
             </div>
           </section>
         </div>

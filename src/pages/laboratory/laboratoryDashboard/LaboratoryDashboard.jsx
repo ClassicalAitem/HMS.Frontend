@@ -344,6 +344,12 @@ const LaboratoryDashboard = () => {
   }, [allCompletedTests, completedPage, itemsPerPage]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sidebarMounted, setSidebarMounted] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSidebarMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   const toggleSidebar = () => setIsSidebarOpen((value) => !value);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -351,15 +357,21 @@ const LaboratoryDashboard = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" />
-        <div className="fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0">
+        {isSidebarOpen && (
+          <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
+        )}
+        <div
+          className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 ${
+            sidebarMounted ? "transition-transform duration-300 ease-in-out" : ""
+          } ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        >
           <LaboratorySidebar onCloseSidebar={closeSidebar} />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Header onToggleSidebar={toggleSidebar} />
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-lg text-gray-600">Loading laboratory data...</p>
+          <div className="flex flex-1 items-center justify-center px-4">
+            <p className="text-base lg:text-lg text-gray-600 text-center">Loading laboratory data...</p>
           </div>
         </div>
       </div>
@@ -367,15 +379,15 @@ const LaboratoryDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-base-200">
+    <div className="flex h-screen w-full overflow-hidden bg-base-200">
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 ${
+          sidebarMounted ? "transition-transform duration-300 ease-in-out" : ""
+        } ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <LaboratorySidebar onCloseSidebar={closeSidebar} />
       </div>
@@ -445,8 +457,8 @@ const LaboratoryDashboard = () => {
                           key={index}
                           className="w-full rounded-[6px] border border-[#AEAAAE] p-3"
                         >
-                          <div className="mt-2 flex items-center justify-between gap-3">
-                            <div className="flex flex-1 items-center gap-3">
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-1 min-w-0 items-center gap-3">
                               <span className="inline-block h-[10px] w-[10px] rounded-full bg-[#3498DB]"></span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-[16px] font-[500]">{result.name}</p>
@@ -456,7 +468,7 @@ const LaboratoryDashboard = () => {
                                 </p>
                               </div>
                             </div>
-                            <div className="flex h-[32px] items-center justify-center rounded-[6px] bg-[#3498DB] px-3 text-sm text-white">
+                            <div className="flex h-[32px] shrink-0 items-center justify-center rounded-[6px] bg-[#3498DB] px-3 text-sm text-white">
                               {result.status}
                             </div>
                           </div>
@@ -518,8 +530,8 @@ const LaboratoryDashboard = () => {
                           key={index}
                           className="w-full rounded-[6px] border border-[#AEAAAE] p-3"
                         >
-                          <div className="mt-2 flex items-center justify-between gap-3">
-                            <div className="flex flex-1 items-center gap-3">
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-1 min-w-0 items-center gap-3">
                               <span className="inline-block h-[10px] w-[10px] rounded-full bg-[#71B908]"></span>
                               <div className="min-w-0 flex-1">
                                 <p className="text-[16px] font-[500]">{result.name}</p>
@@ -529,7 +541,7 @@ const LaboratoryDashboard = () => {
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center justify-center text-sm text-gray-600">
+                            <div className="flex shrink-0 items-center justify-center text-sm text-gray-600">
                               {result.date}
                             </div>
                           </div>
