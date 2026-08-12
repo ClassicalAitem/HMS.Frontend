@@ -4,18 +4,21 @@ import { MdOutlineDashboard } from "react-icons/md";
 import { GoArrowDownLeft } from "react-icons/go";
 import { GiMedicines } from "react-icons/gi";
 import { PiWarehouseLight } from "react-icons/pi";
-import { IoReceiptOutline } from "react-icons/io5";
+import { IoPauseCircleSharp, IoReceiptOutline } from "react-icons/io5";
 import { TbReportAnalytics } from "react-icons/tb";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg";
 import { path } from 'slate';
+import { useNotifications } from "@/contexts/NotificationContext";
+import NotificationBadge from '@/components/common/NotificationBadge';
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const { incomingCount } = useNotifications();
 
   const generateInitials = (firstName, lastName) => {
     if (!firstName && !lastName) return 'U';
@@ -46,6 +49,8 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   };
 
+  const isOnIncoming = location.pathname === '/dashboard/pharmacist/incoming' || location.pathname.startsWith('/dashboard/pharmacist/incoming/');
+
   const menuItems = [
     {
       icon: MdOutlineDashboard,
@@ -57,7 +62,14 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: GoArrowDownLeft,
       label: 'Incoming',
       path: '/dashboard/pharmacist/incoming',
-      active: location.pathname === '/dashboard/pharmacist/incoming'
+      active: isOnIncoming,
+      badge: isOnIncoming ? 0 : incomingCount,
+    },
+    {
+      icon: IoPauseCircleSharp,
+      label: 'Patients',
+      path: '/dashboard/pharmacist/patients',
+      active: location.pathname === '/dashboard/pharmacist/patients'
     },
     {
       icon: PiWarehouseLight,
@@ -91,7 +103,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
     <Link
       to={path}
       onClick={onCloseSidebar}
@@ -103,6 +115,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     >
       <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
       <span className="text-xs 2xl:text-sm">{label}</span>
+      <NotificationBadge count={badge} />
     </Link>
   );
 
@@ -122,7 +135,7 @@ const Sidebar = ({ onCloseSidebar }) => {
 
       <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
         {menuItems.map((item, index) => (
-          <MenuItem key={index} icon={item.icon} label={item.label} path={item.path} active={item.active} />
+          <MenuItem key={index} icon={item.icon} label={item.label} path={item.path} active={item.active} badge={item.badge} />
         ))}
       </nav>
 

@@ -50,7 +50,7 @@ const DoctorDashboard = () => {
   }, [metrics]);
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-base-100">
+    <div className="flex h-screen flex-col lg:flex-row bg-base-100">
       {loading && <KolakLoader fullscreen />}
 
       {isSidebarOpen && (
