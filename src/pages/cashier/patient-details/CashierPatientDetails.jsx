@@ -12,6 +12,7 @@ import SendPatientModal from '@/components/modals/SendPatientModal';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 
 const CashierPatientDetails = () => {
@@ -27,6 +28,7 @@ const CashierPatientDetails = () => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedPatientId] = useState(patientId || (currentPatient ? currentPatient.id : null));
+  const { refreshQueueCount } = useNotifications();
 
   const toggleRow = (id) => {
     setOpenRow(openRow === id ? null : id);
@@ -521,7 +523,10 @@ const CashierPatientDetails = () => {
                 defaultDependantId={dependantId}
                 defaultDependantLabel={fullName}
                 lockSubject
-                onUpdated={() => navigate('/cashier/dashboard')}
+                onUpdated={() => {
+                  refreshQueueCount();
+                  navigate('/cashier/dashboard');
+                }}
                 allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo']}
               />
             </div>

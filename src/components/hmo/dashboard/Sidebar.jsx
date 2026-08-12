@@ -11,11 +11,14 @@ import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
 import { FaClipboardCheck, FaThLarge } from 'react-icons/fa';
 import { FaSuitcaseMedical } from 'react-icons/fa6';
+import { useNotifications } from '@/contexts/NotificationContext';
+import NotificationBadge from '@/components/common/NotificationBadge';
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
+  const { incomingCount } = useNotifications();
 
   // Function to generate initials from first and last name
   const generateInitials = (firstName, lastName) => {
@@ -48,13 +51,14 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   };
 
+  const isOnIncoming = location.pathname.startsWith('/dashboard/hmo/incoming');
 
- const menuItems = [
+  const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/hmo",  active: location.pathname === '/dashboard/hmo' },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming", active: location.pathname.startsWith('/dashboard/hmo/incoming') },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming", active: isOnIncoming, badge: isOnIncoming ? 0 : incomingCount },
     { icon: FaClipboardCheck, label: "Hmo Patients", path: '/dashboard/hmo/patients', active: location.pathname === '/dashboard/hmo/patients' }
   ];
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
     <Link
       to={path}
       onClick={onCloseSidebar}
@@ -66,6 +70,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     >
       <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
       <span className="text-xs 2xl:text-sm">{label}</span>
+      <NotificationBadge count={badge} />
     </Link>
   );
 
@@ -98,6 +103,7 @@ const Sidebar = ({ onCloseSidebar }) => {
             label={item.label}
             path={item.path}
             active={item.active}
+            badge={item.badge}
           />
         ))}
       </nav>
