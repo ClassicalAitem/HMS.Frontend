@@ -49,6 +49,12 @@ const roleConfig = {
     icon: '🏢',
     color: 'btn-primary',
   },
+  sonographer: {
+    label: 'Sonographer',
+    status: PATIENT_STATUS.AWAITING_SONOGRAPHER,
+    icon: '👩‍⚕️',
+    color: 'btn-primary',
+  },
 };
 
 const initials = (firstName = '', lastName = '') =>
@@ -59,7 +65,7 @@ const SendPatientModal = ({
   patient = null,
   currentStatus = '',
   onUpdated,
-  allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo'],
+  allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo' , 'sonographer', 'radiologist'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
   isOpdPatient = false,
     defaultDependantId = null,       

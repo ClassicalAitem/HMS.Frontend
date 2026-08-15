@@ -15,7 +15,9 @@ const HMOPatients = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('reviewed'); // 'reviewed' | 'all'
   const [records, setRecords] = useState([]);
+  const [allPeople, setAllPeople] = useState([]);
   const [dateFilter, setDateFilter] = useState('all');
   const [decisionFilter, setDecisionFilter] = useState('all');
   const [customFrom, setCustomFrom] = useState('');
@@ -74,7 +76,6 @@ const HMOPatients = () => {
         const hasPartial = items.some(i => i.hmoStatus === 'partial');
         const hasRejected = items.some(i => i.hmoStatus === 'rejected');
 
-        // Overall decision label for the row — mixed if more than one type present
         let overallDecision = 'approved';
         const flags = [hasApproved, hasPartial, hasRejected].filter(Boolean).length;
         if (flags > 1) overallDecision = 'mixed';
@@ -108,9 +109,45 @@ const HMOPatients = () => {
       mapped.sort((a, b) => new Date(b.approvedAt || 0).getTime() - new Date(a.approvedAt || 0).getTime());
 
       setRecords(mapped);
+
+      // All patients + dependants in the hospital, for the "All Patients" tab —
+      // independent of billing/HMO review status.
+      const mappedAllPatients = patients.map((p) => ({
+        id: `patient-${p.id || p._id}`,
+        patientId: p.id || p._id,
+        dependantId: null,
+        type: 'patient',
+        relationshipType: null,
+        name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+        displayId: p?.hospitalId || p?.id || '—',
+        insurance: Array.isArray(p?.hmos) && p.hmos.length > 0
+          ? p.hmos.map(h => h.provider).filter(Boolean).join(', ')
+          : 'Self-pay',
+        createdAt: p?.createdAt || null,
+      }));
+
+      const mappedAllDependants = dependants.map((d) => {
+        const parentPatient = patientMap.get(d?.patientId);
+        return {
+          id: `dependant-${d.id}`,
+          patientId: d.patientId,
+          dependantId: d.id,
+          type: 'dependant',
+          relationshipType: d?.relationshipType || null,
+          name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
+          displayId: parentPatient?.hospitalId || d?.patientId || '—',
+          insurance: Array.isArray(parentPatient?.hmos) && parentPatient.hmos.length > 0
+            ? parentPatient.hmos.map(h => h.provider).filter(Boolean).join(', ')
+            : 'Self-pay',
+          createdAt: d?.createdAt || null,
+        };
+      });
+
+      setAllPeople([...mappedAllPatients, ...mappedAllDependants]);
     } catch (err) {
       console.error('HmoApprovalHistory: failed to load', err);
       setRecords([]);
+      setAllPeople([]);
     } finally {
       setLoading(false);
     }
@@ -120,40 +157,40 @@ const HMOPatients = () => {
     loadHistory();
   }, []);
 
-const filteredRecords = useMemo(() => {
-  const now = new Date();
+  const filteredRecords = useMemo(() => {
+    const now = new Date();
 
-  // Custom range takes priority if either date is set
-  if (customFrom || customTo) {
-    const fromTs = customFrom ? new Date(customFrom).setUTCHours(0, 0, 0, 0) : 0;
-    const toTs = customTo ? new Date(customTo).setUTCHours(23, 59, 59, 999) : Infinity;
+    if (customFrom || customTo) {
+      const fromTs = customFrom ? new Date(customFrom).setUTCHours(0, 0, 0, 0) : 0;
+      const toTs = customTo ? new Date(customTo).setUTCHours(23, 59, 59, 999) : Infinity;
+
+      return records.filter((r) => {
+        const ts = r.approvedAt ? new Date(r.approvedAt).getTime() : 0;
+        const inRange = ts >= fromTs && ts <= toTs;
+        const matchesDecision = decisionFilter === 'all' ? true : r.decision === decisionFilter;
+        return inRange && matchesDecision;
+      });
+    }
+
+    const start = (() => {
+      if (dateFilter === 'today') {
+        const nowNigeria = new Date(now.getTime() + 60 * 60 * 1000);
+        nowNigeria.setUTCHours(0, 0, 0, 0);
+        return nowNigeria.getTime() - 60 * 60 * 1000;
+      }
+      if (dateFilter === 'week') return now.getTime() - 7 * 24 * 60 * 60 * 1000;
+      if (dateFilter === 'month') return now.getTime() - 30 * 24 * 60 * 60 * 1000;
+      return 0;
+    })();
 
     return records.filter((r) => {
       const ts = r.approvedAt ? new Date(r.approvedAt).getTime() : 0;
-      const inRange = ts >= fromTs && ts <= toTs;
+      const inRange = dateFilter === 'all' ? true : ts >= start;
       const matchesDecision = decisionFilter === 'all' ? true : r.decision === decisionFilter;
       return inRange && matchesDecision;
     });
-  }
+  }, [records, dateFilter, decisionFilter, customFrom, customTo]);
 
-  const start = (() => {
-    if (dateFilter === 'today') {
-      const nowNigeria = new Date(now.getTime() + 60 * 60 * 1000);
-      nowNigeria.setUTCHours(0, 0, 0, 0);
-      return nowNigeria.getTime() - 60 * 60 * 1000;
-    }
-    if (dateFilter === 'week') return now.getTime() - 7 * 24 * 60 * 60 * 1000;
-    if (dateFilter === 'month') return now.getTime() - 30 * 24 * 60 * 60 * 1000;
-    return 0;
-  })();
-
-  return records.filter((r) => {
-    const ts = r.approvedAt ? new Date(r.approvedAt).getTime() : 0;
-    const inRange = dateFilter === 'all' ? true : ts >= start;
-    const matchesDecision = decisionFilter === 'all' ? true : r.decision === decisionFilter;
-    return inRange && matchesDecision;
-  });
-}, [records, dateFilter, decisionFilter, customFrom, customTo]);
   const DecisionBadge = ({ decision }) => {
     const map = {
       approved: 'badge-success',
@@ -179,7 +216,7 @@ const filteredRecords = useMemo(() => {
     });
   };
 
-  const columns = useMemo(() => [
+  const reviewedColumns = useMemo(() => [
     {
       key: 'displayId',
       title: 'Patient ID',
@@ -204,7 +241,6 @@ const filteredRecords = useMemo(() => {
       sortable: true,
       render: (value) => <DecisionBadge decision={value} />,
     },
-  
     {
       key: 'approvedBy',
       title: 'Decided By',
@@ -214,6 +250,54 @@ const filteredRecords = useMemo(() => {
     {
       key: 'approvedAt',
       title: 'Date',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => (value ? formatNigeriaDateTime(value) : '—'),
+    },
+    {
+      key: 'actions',
+      title: 'Actions',
+      sortable: false,
+      className: 'text-center',
+      render: (value, row) => (
+        <button
+          onClick={() => handleViewDetails(row)}
+          className="text-primary hover:text-primary/80 hover:underline text-sm font-medium"
+        >
+          View Details
+        </button>
+      ),
+    },
+  ], []);
+
+  const allPeopleColumns = useMemo(() => [
+    {
+      key: 'displayId',
+      title: 'Patient ID',
+      sortable: true,
+      className: 'text-base-content font-medium',
+    },
+    {
+      key: 'name',
+      title: 'Name',
+      sortable: true,
+      className: 'text-base-content font-medium',
+    },
+    {
+      key: 'type',
+      title: 'Type',
+      sortable: true,
+      render: (value, row) => <TypeBadge type={row.type} relationshipType={row.relationshipType} />,
+    },
+    {
+      key: 'insurance',
+      title: 'Insurance',
+      sortable: true,
+      className: 'text-base-content/70',
+    },
+    {
+      key: 'createdAt',
+      title: 'Registered',
       sortable: true,
       className: 'text-base-content/70',
       render: (value) => (value ? formatNigeriaDateTime(value) : '—'),
@@ -259,8 +343,12 @@ const filteredRecords = useMemo(() => {
         <div className="overflow-y-auto flex-1 p-3 sm:p-6">
           <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h1 className="text-2xl font-semibold sm:text-3xl">Approval History</h1>
-              <p className="text-sm text-base-content/70 sm:text-base">Patients whose billing items have been reviewed.</p>
+              <h1 className="text-2xl font-semibold sm:text-3xl">Patients</h1>
+              <p className="text-sm text-base-content/70 sm:text-base">
+                {activeTab === 'reviewed'
+                  ? 'Patients whose billing items have been reviewed.'
+                  : 'All patients and dependants registered at the hospital.'}
+              </p>
             </div>
             <div className="flex gap-2">
               <button className="btn btn-sm" onClick={loadHistory} disabled={loading}>
@@ -272,104 +360,130 @@ const filteredRecords = useMemo(() => {
             </div>
           </div>
 
-          <div className="mb-6">
-            {/* Filter toggle — mobile only */}
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6">
             <button
-              className="btn btn-sm btn-outline gap-2 mb-3 sm:hidden"
-              onClick={() => setShowFilters((v) => !v)}
+              onClick={() => setActiveTab('reviewed')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'reviewed'
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
+              }`}
             >
-              <RiFilterLine size={16} />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="badge badge-primary badge-xs">{activeFilterCount}</span>
-              )}
+              Reviewed Patients {records.length > 0 && `(${records.length})`}
             </button>
-
-            {/* Filter panel — collapsible on mobile, always visible from sm: up */}
-            <div
-              className={`card border border-base-200 bg-base-100 p-4 ${
-                showFilters ? 'block' : 'hidden'
-              } sm:block`}
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'all'
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
+              }`}
             >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <label className="block text-xs font-medium text-base-content/60 mb-1">
-                    Date Range
-                  </label>
-                  <select
-                    className="select select-bordered select-sm w-full"
-                    value={dateFilter}
-                    onChange={(e) => {
-                      setDateFilter(e.target.value);
-                      setCustomFrom('');
-                      setCustomTo('');
-                    }}
-                    disabled={!!(customFrom || customTo)}
-                  >
-                    <option value="all">All Time</option>
-                    <option value="today">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-base-content/60 mb-1">
-                    From
-                  </label>
-                  <input
-                    type="date"
-                    className="input input-bordered input-sm w-full"
-                    value={customFrom}
-                    onChange={(e) => setCustomFrom(e.target.value)}
-                    max={customTo || undefined}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-base-content/60 mb-1">
-                    To
-                  </label>
-                  <input
-                    type="date"
-                    className="input input-bordered input-sm w-full"
-                    value={customTo}
-                    onChange={(e) => setCustomTo(e.target.value)}
-                    min={customFrom || undefined}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-base-content/60 mb-1">
-                    Decision
-                  </label>
-                  <select
-                    className="select select-bordered select-sm w-full"
-                    value={decisionFilter}
-                    onChange={(e) => setDecisionFilter(e.target.value)}
-                  >
-                    <option value="all">All Decisions</option>
-                    <option value="approved">Approved</option>
-                    <option value="partial">Partial</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="mixed">Mixed</option>
-                  </select>
-                </div>
-              </div>
-
-              {(customFrom || customTo) && (
-                <div className="mt-3">
-                  <button
-                    className="btn btn-ghost btn-xs gap-1"
-                    onClick={() => { setCustomFrom(''); setCustomTo(''); }}
-                  >
-                    <RiCloseLine size={14} />
-                    Clear custom range
-                  </button>
-                </div>
-              )}
-            </div>
+              All Patients {allPeople.length > 0 && `(${allPeople.length})`}
+            </button>
           </div>
+
+          {/* Filters — only meaningful for the Reviewed tab (date/decision are billing-review fields) */}
+          {activeTab === 'reviewed' && (
+            <div className="mb-6">
+              <button
+                className="btn btn-sm btn-outline gap-2 mb-3 sm:hidden"
+                onClick={() => setShowFilters((v) => !v)}
+              >
+                <RiFilterLine size={16} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="badge badge-primary badge-xs">{activeFilterCount}</span>
+                )}
+              </button>
+
+              <div
+                className={`card border border-base-200 bg-base-100 p-4 ${
+                  showFilters ? 'block' : 'hidden'
+                } sm:block`}
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <label className="block text-xs font-medium text-base-content/60 mb-1">
+                      Date Range
+                    </label>
+                    <select
+                      className="select select-bordered select-sm w-full"
+                      value={dateFilter}
+                      onChange={(e) => {
+                        setDateFilter(e.target.value);
+                        setCustomFrom('');
+                        setCustomTo('');
+                      }}
+                      disabled={!!(customFrom || customTo)}
+                    >
+                      <option value="all">All Time</option>
+                      <option value="today">Today</option>
+                      <option value="week">This Week</option>
+                      <option value="month">This Month</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-base-content/60 mb-1">
+                      From
+                    </label>
+                    <input
+                      type="date"
+                      className="input input-bordered input-sm w-full"
+                      value={customFrom}
+                      onChange={(e) => setCustomFrom(e.target.value)}
+                      max={customTo || undefined}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-base-content/60 mb-1">
+                      To
+                    </label>
+                    <input
+                      type="date"
+                      className="input input-bordered input-sm w-full"
+                      value={customTo}
+                      onChange={(e) => setCustomTo(e.target.value)}
+                      min={customFrom || undefined}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-base-content/60 mb-1">
+                      Decision
+                    </label>
+                    <select
+                      className="select select-bordered select-sm w-full"
+                      value={decisionFilter}
+                      onChange={(e) => setDecisionFilter(e.target.value)}
+                    >
+                      <option value="all">All Decisions</option>
+                      <option value="approved">Approved</option>
+                      <option value="partial">Partial</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="mixed">Mixed</option>
+                    </select>
+                  </div>
+                </div>
+
+                {(customFrom || customTo) && (
+                  <div className="mt-3">
+                    <button
+                      className="btn btn-ghost btn-xs gap-1"
+                      onClick={() => { setCustomFrom(''); setCustomTo(''); }}
+                    >
+                      <RiCloseLine size={14} />
+                      Clear custom range
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="w-full shadow-xl card bg-base-100">
             <div className="p-3 card-body sm:p-4 2xl:p-6">
               {loading ? (
@@ -381,10 +495,22 @@ const filteredRecords = useMemo(() => {
                     ))}
                   </div>
                 </div>
-              ) : (
+              ) : activeTab === 'reviewed' ? (
                 <DataTable
                   data={filteredRecords}
-                  columns={columns}
+                  columns={reviewedColumns}
+                  searchable={true}
+                  sortable={true}
+                  paginated={true}
+                  initialEntriesPerPage={14}
+                  maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
+                  showEntries={true}
+                  searchPlaceholder="Search by name or ID..."
+                />
+              ) : (
+                <DataTable
+                  data={allPeople}
+                  columns={allPeopleColumns}
                   searchable={true}
                   sortable={true}
                   paginated={true}
