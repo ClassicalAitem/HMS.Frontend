@@ -4,12 +4,14 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import womanLogo from "../../../assets/images/incomingLogo.jpg";
-import { getPatients } from "@/services/api/patientsAPI";
+import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
 import { hasAnyStatus, hasStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
-import { getDependants } from "@/services/api/dependantAPI";
+import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import KolakLoader from "@/components/common/KolakLoader";
+import ClearItemButton from "@/components/common/ClearIncomingButton";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const Incoming = () => {
   const navigate = useNavigate();
@@ -134,6 +136,20 @@ const normalizeStatus = (status) => {
     fetchIncoming();
     return () => { mounted = false; };
   }, [refreshKey]);
+
+    const { refreshQueueCount } = useNotifications();
+  
+
+  
+  const handleClear = async (data) => {
+  if (data.type === 'dependant') {
+    await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.CANCELLED });
+  } else {
+    await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.CANCELLED });
+  }
+  localStorage.setItem('refreshIncoming', Date.now().toString());
+    refreshQueueCount();
+};
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -329,6 +345,8 @@ const normalizeStatus = (status) => {
       </div>
 
       <div className="md:col-span-1 md:flex md:justify-end">
+        <div className="flex block w-full gap-2 md:flex-col md:items-end">
+
         <button
           className="btn btn-sm btn-primary w-full md:w-auto"
           onClick={() => data.id && navigate(`/dashboard/nurse/patient/${data.patientId}`, {
@@ -342,6 +360,13 @@ const normalizeStatus = (status) => {
         >
           View
         </button>
+         <div className="flex flex-col items-end gap-2 w-full">
+
+                           
+                          <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                        
+                        </div>
+        </div>
       </div>
     </div>
   );

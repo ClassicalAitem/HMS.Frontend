@@ -6,7 +6,7 @@ import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
 import TestRequestModal from "./modals/TestRequestModal";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById, getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getAllDependantsForPatient, updateDependantStatus } from "@/services/api/dependantAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
 import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
@@ -14,6 +14,8 @@ import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getAllOpdPatients } from "@/services/api/opdPatientAPI";
 import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
+import ClearItemButton from "@/components/common/ClearIncomingButton";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
@@ -275,6 +277,7 @@ const IncomingLaboratory = () => {
             requestedBy,
             time: inv.createdAt ? formatNigeriaTime(inv.createdAt) : "N/A",
             createdAt: inv.createdAt,
+            sortTimestamp: patient?.updatedAt || inv.createdAt,
             updatedAt: patient?.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : "N/A",
             // symptoms: testNotes,
             patientType,
@@ -312,8 +315,8 @@ const IncomingLaboratory = () => {
             ? formatNigeriaTime(opdPatient.createdAt)
             : "N/A",
           createdAt: opdPatient.createdAt,
+          sortTimestamp: opdPatient.updatedAt || opdPatient.createdAt,
           updatedAt: opdPatient.updatedAt ? formatNigeriaDateTime(opdPatient.updatedAt) : "N/A",
-          // symptoms: "Direct lab request",
           patientType: "opd",
           patientStatus: opdPatient.status || "unknown",
         }));
@@ -334,9 +337,9 @@ const IncomingLaboratory = () => {
         t.date === item.date
     )
       ).sort((a, b) => {
-        const aTime = new Date(a.createdAt || 0).getTime();
-        const bTime = new Date(b.createdAt || 0).getTime();
-        return bTime - aTime; 
+        const aTime = new Date(a.sortTimestamp || a.createdAt || 0).getTime();
+        const bTime = new Date(b.sortTimestamp || b.createdAt || 0).getTime();
+        return bTime - aTime;
       });
 
       setTestRequests(uniqueRequests);
@@ -453,6 +456,20 @@ const IncomingLaboratory = () => {
       setSendingToSonographer(null);
     }
   };
+
+    const { refreshQueueCount } = useNotifications();
+
+
+     const handleClear = async (testCard) => {
+      if (testCard.patientType === 'dependant') {
+        await updateDependantStatus(testCard.dependantId, { status: PATIENT_STATUS.CANCELLED });
+      } else {
+        await updatePatientStatus(testCard.patientId, { status: PATIENT_STATUS.CANCELLED });
+      }
+      localStorage.setItem('refreshIncoming', Date.now().toString());
+      refreshQueueCount();
+    };
+
 
   const sidebarWrapper = (
     <>
@@ -577,6 +594,7 @@ const IncomingLaboratory = () => {
                         </div>
 
                         <div className="w-full sm:w-44 flex flex-col gap-2 shrink-0">
+                         
                           <button
                             onClick={() => { setSelectedCard(testCard); setShowModal2(true); }}
                             className="btn btn-sm btn-success w-full"
@@ -599,6 +617,15 @@ const IncomingLaboratory = () => {
                           >
                             {sendingToSonographer === testCard.id ? "Sending..." : "Send to Scanner"}
                           </button>
+                           <div
+                            className="flex justify-center w-full "
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                           
+
+                            <ClearItemButton  item={testCard} onClear={handleClear} onCleared={fetchTestRequests} />
+                         
+                          </div>
                         </div>
                       </div>
 
