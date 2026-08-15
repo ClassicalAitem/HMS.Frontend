@@ -275,7 +275,19 @@ const CashierPatientDetails = () => {
       />
 
 
-
+<SendPatientModal
+                patientId={patient?.id || patientId}
+                patient={patient}
+                defaultDependantId={dependantId}
+                defaultDependantLabel={fullName}
+                lockSubject
+                onUpdated={() => {
+                  refreshQueueCount();
+                  navigate('/cashier/dashboard');
+                }}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo', 'sonographer']}
+              />
+            
 
         {/* Outstanding Bills */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
@@ -527,7 +539,7 @@ const CashierPatientDetails = () => {
                   refreshQueueCount();
                   navigate('/cashier/dashboard');
                 }}
-                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo']}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo', 'sonographer']}
               />
             </div>
           </div>

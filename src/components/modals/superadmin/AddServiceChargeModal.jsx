@@ -6,6 +6,7 @@ import { FaTimes, FaCreditCard } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAppDispatch } from '@/store/hooks';
 import { createServiceCharge } from '@/store/slices/serviceChargesSlice';
+import { SERVICE_CHARGE_CATEGORY, SERVICE_CHARGE_CATEGORY_LABELS } from '@/constants/cardTypes';
 
 const addServiceChargeSchema = yup.object({
   service: yup
@@ -64,8 +65,8 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
 
   const isBillable = formWatch('isBillable');
   const watchedCategory = formWatch('category');
-  const isAdmission = watchedCategory === 'Admission';
-
+  const isAdmission = watchedCategory === SERVICE_CHARGE_CATEGORY.ADMISSION;
+  
   const handleAddAdmissionItem = () => {
     const trimmed = admissionInput.trim();
     if (!trimmed) {
@@ -176,15 +177,11 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
               <label className="block text-sm font-medium text-base-content/70 mb-2">
                 Category
               </label>
-              <select
-                {...register('category')}
-                className={`select select-bordered w-full ${errors.category ? 'select-error' : ''}`}
-                disabled={isLoading}
-              >
+              <select {...register('category')} className={`select select-bordered w-full ${errors.category ? 'select-error' : ''}`} disabled={isLoading}>
                 <option value="">Select category</option>
-                {categories.map((category) => (
+                {Object.values(SERVICE_CHARGE_CATEGORY).map((category) => (
                   <option key={category} value={category}>
-                    {category}
+                    {SERVICE_CHARGE_CATEGORY_LABELS?.[category] ?? category}
                   </option>
                 ))}
               </select>
