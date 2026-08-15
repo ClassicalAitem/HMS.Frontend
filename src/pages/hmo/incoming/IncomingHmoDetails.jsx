@@ -408,6 +408,8 @@ const IncomingHmoDetails = () => {
                   'pharmacist',
                   'cashier',
                   'labtechnician',
+                  'sonographer',
+                  'nurse',
                 ]}
               />
          </div>

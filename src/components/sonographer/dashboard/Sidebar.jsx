@@ -8,9 +8,12 @@ import { Link, useLocation } from "react-router-dom";
 import { LogoutModal } from "@/components/modals";
 import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg";
+import NotificationBadge from "@/components/common/NotificationBadge";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const Sidebar = () => {
   const location = useLocation();
+    const { incomingCount } = useNotifications();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
 
@@ -30,23 +33,28 @@ const Sidebar = () => {
     }
   };
 
+  const isOnIncoming = location.pathname === '/dashboard/pharmacist/incoming' || location.pathname.startsWith('/dashboard/pharmacist/incoming/');
+
+
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/sonographer" },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/sonographer/incoming" },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
+      badge: isOnIncoming ? 0 : incomingCount, },
     { icon: FaHistory, label: "Scan History", path: "/dashboard/sonographer/scan-history" },
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
     <Link
       to={path}
       className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
           : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
-      }`}
-    >
+          }`}
+          >
       <Icon className="w-5 h-5" />
       <span>{label}</span>
+          <NotificationBadge count={badge} />
     </Link>
   );
 

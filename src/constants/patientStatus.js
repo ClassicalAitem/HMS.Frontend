@@ -20,19 +20,21 @@ export const PATIENT_STATUS = {
   AWAITING_INJECTION: "awaiting_injection",
   INJECTION_COMPLETED: "injection_completed",
   AWAITING_CASHIER: "awaiting_cashier",
+  AWAITING_HMO: "awaiting_hmo",
+  HMO_APPROVED: "hmo_approved",
+  HMO_REJECTED: "hmo_rejected",
   PAYMENT_COMPLETED: "payment_completed",
   AWAITING_NURSE: "awaiting_nurse",
   AWAITING_LAB: "awaiting_lab",
   LAB_IN_PROGRESS: "lab_in_progress",
   LAB_COMPLETED: "lab_completed",
+  AWAITING_SONOGRAPHER: "awaiting_sonographer",
+  SONOGRAPHY: "sonography_completed",
   AWAITING_RADIOLOGY: "awaiting_radiology",
   RADIOLOGY_IN_PROGRESS: "radiology_in_progress",
   RADIOLOGY_COMPLETED: "radiology_completed",
   AWAITING_PHARMACY: "awaiting_pharmacy",
   PHARMACY_COMPLETED: "pharmacy_completed",
-  AWAITING_HMO: "awaiting_hmo",
-  HMO_APPROVED: "hmo_approved",
-  HMO_REJECTED: "hmo_rejected",
   AWAITING_ADMISSION: "awaiting_admission",
   ADMITTED: "admitted",
   UNDER_OBSERVATION: "under_observation",
@@ -53,4 +55,12 @@ export const PATIENT_STATUS = {
   NO_SHOW: "no_show",
   CANCELLED: "cancelled",
   COMPLETED: "completed",
-};
+}
+
+
+
+export const PATIENT_ADMISSION_STATUS = {
+  PENDING_ADMISSION: 'pending_admission',
+  ADMITTED: 'admitted',
+  DISCHARGED: 'discharged',
+}
