@@ -1,13 +1,15 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdInventory } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
-import { getPatients } from '@/services/api/patientsAPI'
+import { getPatients, updatePatientStatus } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
-import { getDependants } from '@/services/api/dependantAPI';
 import KolakLoader from '@/components/common/KolakLoader'
-
+import { useNotifications } from '@/contexts/NotificationContext'
+import { getDependants, updateDependantStatus } from '@/services/api/dependantAPI'
+import { PATIENT_STATUS } from '@/constants/patientStatus'
+import ClearItemButton from '@/components/common/ClearIncomingButton'
 const Incoming = () => {
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -17,76 +19,83 @@ const Incoming = () => {
   const patientsPerPage = 9
   const navigate = useNavigate()
 
-  useEffect(() => {
-    let mounted = true
-    const fetchIncoming = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const [patientsRes, dependantsRes] = await Promise.allSettled([
-          getPatients(),
-          getDependants(),
-        ])
+  const { refreshQueueCount } = useNotifications()
 
-        const patientList = patientsRes.status === 'fulfilled'
-          ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
-          : []
+  const fetchIncoming = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [patientsRes, dependantsRes] = await Promise.allSettled([
+        getPatients(),
+        getDependants(),
+      ])
 
-        const dependantList = dependantsRes.status === 'fulfilled'
-          ? (() => {
-              const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? []
-              return Array.isArray(raw) ? raw : (raw?.dependants ?? [])
-            })()
-          : []
+      const patientList = patientsRes.status === 'fulfilled'
+        ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
+        : []
 
-        const PHARMACY_STATUSES = new Set(['awaiting_pharmacy'])
+      const dependantList = dependantsRes.status === 'fulfilled'
+        ? (() => {
+            const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? []
+            return Array.isArray(raw) ? raw : (raw?.dependants ?? [])
+          })()
+        : []
 
-        const mappedPatients = patientList
-          .filter(p => PHARMACY_STATUSES.has(String(p?.status).toLowerCase()))
-          .map(p => ({
-            type: 'patient',
-            id: p?.id || p?._id,
-            patientId: p?.id || p?._id,
-            dependantId: null,
-            name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
-            displayId: p?.hospitalId || p?.id || '—',
-            status: p?.status || '—',
-            updatedAt: p?.updatedAt || p?.createdAt,
-            cardType: p?.cardType || 'personal',
-            familyName: p?.familyName || '',
-            companyName: p?.companyName || '',
-            snapshot: p,
-          }))
+      const PHARMACY_STATUSES = new Set(['awaiting_pharmacy'])
 
+      const mappedPatients = patientList
+        .filter(p => PHARMACY_STATUSES.has(String(p?.status).toLowerCase()))
+        .map(p => ({
+          type: 'patient',
+          id: p?.id || p?._id,
+          patientId: p?.id || p?._id,
+          dependantId: null,
+          name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+          displayId: p?.hospitalId || p?.id || '—',
+          status: p?.status || '—',
+          updatedAt: p?.updatedAt || p?.createdAt,
+          cardType: p?.cardType || 'personal',
+          familyName: p?.familyName || '',
+          companyName: p?.companyName || '',
+          snapshot: p,
+        }))
+
+        
         const mappedDependants = dependantList
-          .filter(d => PHARMACY_STATUSES.has(String(d?.status).toLowerCase()))
-          .map(d => ({
-            type: 'dependant',
-            id: d?.id,
-            patientId: d?.patientId,
-            dependantId: d?.id,
-            name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
-            displayId: d?.patient?.hospitalId || d?.patientId || '—',
-            badge: d?.relationshipType || 'Dependant',
-            status: d?.status || '—',
-            updatedAt: d?.updatedAt || d?.createdAt,
-            cardType: null,
-            familyName: '',
-            companyName: '',
-            snapshot: d,
-          }))
+        .filter(d => PHARMACY_STATUSES.has(String(d?.status).toLowerCase()))
+        .map(d => ({
+          type: 'dependant',
+          id: d?.id,
+          patientId: d?.patientId,
+          dependantId: d?.id,
+          name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
+          displayId: d?.patient?.hospitalId || d?.patientId || '—',
+          badge: d?.relationshipType || 'Dependant',
+          status: d?.status || '—',
+          updatedAt: d?.updatedAt || d?.createdAt,
+          cardType: null,
+          familyName: '',
+          companyName: '',
+          snapshot: d,
+        }))
+        const combined = [...mappedPatients, ...mappedDependants].sort((a, b) => {
+          const aTime = new Date(a.updatedAt || 0).getTime()
+          const bTime = new Date(b.updatedAt || 0).getTime()
+          return bTime - aTime // newest first
+        })
 
-        if (mounted) setPatients([...mappedPatients, ...mappedDependants])
-      } catch (err) {
-        console.error('Incoming (pharmacist) failed to fetch patients', err)
-        if (mounted) setError(err)
-      } finally {
-        if (mounted) setLoading(false)
-      }
+      setPatients(combined)
+    } catch (err) {
+      console.error('Incoming (pharmacist) failed to fetch patients', err)
+      setError(err)
+    } finally {
+      setLoading(false)
     }
-    fetchIncoming()
-    return () => { mounted = false }
   }, [])
+
+  useEffect(() => {
+    fetchIncoming()
+  }, [fetchIncoming])
 
   const processed = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -108,9 +117,19 @@ const Incoming = () => {
     })
   }
 
+  const handleClear = async (p) => {
+    if (p.type === 'dependant') {
+      await updateDependantStatus(p.dependantId, { status: PATIENT_STATUS.CANCELLED })
+    } else {
+      await updatePatientStatus(p.patientId, { status: PATIENT_STATUS.CANCELLED })
+    }
+    localStorage.setItem('refreshIncoming', Date.now().toString())
+    refreshQueueCount()
+  }
+
   return (
     <PharmacistLayout>
-            {loading && <KolakLoader fullscreen />}
+      {loading && <KolakLoader fullscreen />}
 
       <div className="p-0 sm:p-2 lg:p-6">
         <div className="mb-4">
@@ -139,7 +158,7 @@ const Incoming = () => {
                 <h3 className="text-lg font-semibold mb-2">No incoming patients</h3>
                 <p className="text-sm text-base-content/60 mb-4">There are currently no patients awaiting pharmacy or recently completed. They'll appear here once sent by clinicians.</p>
                 <div className="flex justify-center gap-2">
-                  <button className="btn btn-ghost btn-sm" onClick={() => window.location.reload()}>Refresh</button>
+                  <button className="btn btn-ghost btn-sm" onClick={fetchIncoming}>Refresh</button>
                 </div>
               </div>
             </div>
@@ -162,16 +181,18 @@ const Incoming = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-between items-center border-t pt-3">
                 <button className="text-sm text-primary hover:underline" onClick={() => handleViewDetails(p)}>View Details</button>
                 <div className="text-xs text-base-content/60">Updated: {p.updatedAt ? formatNigeriaDateTime(p.updatedAt) : '—'}</div>
+              </div>
+              <div className="flex justify-end mt-2" onClick={(e) => e.stopPropagation()}>
+                <ClearItemButton item={p} onClear={handleClear} onCleared={fetchIncoming} />
               </div>
             </div>
           ))}
         </div>
 
-        {/* Pagination controls */}
         {totalPages > 1 && (
           <div className="flex justify-center mt-6">
             <div className="flex flex-wrap items-center justify-center gap-2">

@@ -3,15 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { RiSuitcaseLine, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
-import { getPatients } from "@/services/api/patientsAPI";
+import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { normalizeStatus, getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
-import { getDependants } from "@/services/api/dependantAPI";
+import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import KolakLoader from "@/components/common/KolakLoader";
+import ClearItemButton from "@/components/common/ClearIncomingButton";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const IncomingHmo = () => {
   const navigate = useNavigate();
+  const [patient, setPatient] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -129,6 +132,21 @@ const IncomingHmo = () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const start = page * pageSize;
   const visible = filtered.slice(start, start + pageSize);
+  
+
+    const { refreshQueueCount } = useNotifications();
+
+
+
+    const handleClear = async (patient) => {
+    if (patient.type === 'dependant') {
+      await updateDependantStatus(patient.dependantId, { status: PATIENT_STATUS.CANCELLED });
+    } else {
+      await updatePatientStatus(patient.patientId, { status: PATIENT_STATUS.CANCELLED });
+    }
+    localStorage.setItem('refreshIncoming', Date.now().toString());
+    refreshQueueCount();
+  };
 
   return (
     <div className="flex h-screen w-full">
@@ -270,15 +288,23 @@ const IncomingHmo = () => {
                         </div>
 
                         <div className="md:col-span-1 md:flex md:justify-end">
-                          <button
-                            className="btn btn-sm btn-primary w-full md:w-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              viewPatient(item);
-                            }}
-                          >
-                            View
-                          </button>
+                        <div className="md:col-span-1 md:flex md:flex-col md:items-end md:gap-2">
+                        <button
+                          className="btn btn-sm btn-primary w-full md:w-auto"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewPatient(item);
+                          }}
+                        >
+                          View
+                        </button>
+                        <div
+                          className="flex justify-end w-full"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ClearItemButton item={item} onClear={handleClear} onCleared={onRefresh} />
+                        </div>
+                      </div>
                         </div>
                       </div>
                     );
