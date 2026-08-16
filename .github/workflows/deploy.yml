@@ -15,33 +15,44 @@ jobs:
         uses: actions/checkout@v3
 
       # =========================================
-      # 🚀 DEVELOP → VERCEL
+      # 🧪 DEVELOP → VPS (TEST)
       # =========================================
-      - name: Setup Node.js
+      - name: Deploy Frontend to VPS (Test)
         if: github.ref == 'refs/heads/develop'
-        uses: actions/setup-node@v4
+        uses: appleboy/ssh-action@v0.1.7
         with:
-          node-version: '20'
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            echo "🚀 Starting TEST deployment..."
 
-      - name: Install dependencies
-        if: github.ref == 'refs/heads/develop'
-        run: npm ci
+            cd /root/HMS.Frontend-Test
 
-      - name: Build (with full output)
-        if: github.ref == 'refs/heads/develop'
-        run: npm run build 2>&1 | tee build.log || (echo "❌ Build failed. Full output:" && cat build.log && exit 1)
+            git fetch https://${{ secrets.GH_TOKEN }}@github.com/ClassicalAitem/HMS.Frontend.git develop
+            git reset --hard FETCH_HEAD
 
-      - name: Deploy to Vercel (Develop)
-        if: github.ref == 'refs/heads/develop'
-        run: npx vercel@latest --token=${{ secrets.VERCEL_TOKEN }} --debug 2>&1 | tee vercel.log || (echo "❌ Vercel deploy failed:" && cat vercel.log && exit 1)
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+            rm -rf .env
+            cp /root/.env.test .env
+
+            npm install
+            npm run build 2>&1 | tee /tmp/hms-test-build.log || (echo "❌ Build failed:" && cat /tmp/hms-test-build.log && exit 1)
+
+            rm -rf /var/www/hms-frontend-test/*
+            cp -r dist/* /var/www/hms-frontend-test/
+
+            chown -R www-data:www-data /var/www/hms-frontend-test
+            chmod -R 755 /var/www/hms-frontend-test
+
+            systemctl reload nginx
+
+            echo "✅ TEST deployed successfully"
 
       # =========================================
-      # 🖥️ MAIN → VPS (NGINX)
+      # 🖥️ MAIN → VPS (PROD)
       # =========================================
-      - name: Deploy Frontend to VPS
+      - name: Deploy Frontend to VPS (Prod)
         if: github.ref == 'refs/heads/main'
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -50,7 +61,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            echo "🚀 Starting frontend deployment..."
+            echo "🚀 Starting PROD deployment..."
 
             cd /root/HMS.Frontend
 
@@ -71,4 +82,4 @@ jobs:
 
             systemctl reload nginx
 
-            echo "✅ Frontend deployed successfully"
+            echo "✅ PROD deployed successfully"
