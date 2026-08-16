@@ -69,7 +69,7 @@ jobs:
             git reset --hard FETCH_HEAD
 
             rm -rf .env
-            cp ../.env .env
+            cp /root/.env.prod .env
 
             npm install
             npm run build 2>&1 | tee /tmp/hms-build.log || (echo "❌ Build failed:" && cat /tmp/hms-build.log && exit 1)
