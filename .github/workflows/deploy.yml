@@ -34,7 +34,7 @@ jobs:
             git reset --hard FETCH_HEAD
 
             rm -rf .env
-            cp ../.env.test .env
+            cp /root/.env.test .env
 
             npm install
             npm run build 2>&1 | tee /tmp/hms-test-build.log || (echo "❌ Build failed:" && cat /tmp/hms-test-build.log && exit 1)
