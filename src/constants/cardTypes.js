@@ -1,3 +1,5 @@
+import admissionApi from "@/services/api/admissionApi";
+
 // Centralized card type constants matching backend enum values
 export const CARD_TYPE = {
   PERSONAL: "personal",
@@ -33,6 +35,18 @@ export const SERVICE_CHARGE_CATEGORY = {
   SURGICAL : "surgical",
   EMERGENCY : "emergency",
   
+}
+
+export const SERVICE_CHARGE_CATEGORY_LABELS = {
+  laboratory: "laboratory",
+  admission: "admission",
+  general: "general",
+  pharmacy: "pharmacy",
+  radiology: "radiology",
+  consultation: "consultation",
+  therapy: "therapy",
+  surgical: "surgical",
+  emergency: "emergency"
 }
 
 
