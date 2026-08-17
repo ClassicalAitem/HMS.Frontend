@@ -4,8 +4,10 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { getConsultationById } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
 import { RiArrowLeftLine } from "react-icons/ri";
-import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { FaPrescriptionBottleAlt } from "react-icons/fa";
+import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import { FaClipboardList } from "react-icons/fa";
 
 const Section = ({ title, children }) => (
@@ -31,6 +33,8 @@ const HmoConsultationDetail = () => {
   const [loading, setLoading] = useState(true);
   const [consultation, setConsultation] = useState(location.state?.consultation || null);
   const [patient, setPatient] = useState(null);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -57,6 +61,27 @@ const HmoConsultationDetail = () => {
     };
 
     fetchConsultation();
+    return () => { mounted = false; };
+  }, [id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchPrescriptions = async () => {
+      try {
+        setPrescriptionsLoading(true);
+        const res = await getPrescriptionsForConsultation(id);
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+        if (mounted) setPrescriptions(list);
+      } catch (err) {
+        console.error("Failed to load prescriptions for consultation:", err);
+        if (mounted) setPrescriptions([]);
+      } finally {
+        if (mounted) setPrescriptionsLoading(false);
+      }
+    };
+
+    if (id) fetchPrescriptions();
     return () => { mounted = false; };
   }, [id]);
 
@@ -171,6 +196,63 @@ const HmoConsultationDetail = () => {
                     className="col-span-2 sm:col-span-3"
                   />
                 </div>
+              </Section>
+
+              {/* Prescriptions for this consultation */}
+              <Section title="">
+                <div className="flex items-center gap-2 mb-3 -mt-1">
+                  <FaPrescriptionBottleAlt className="text-success w-4 h-4 shrink-0" />
+                  <h3 className="font-semibold text-base-content text-base">Prescriptions</h3>
+                </div>
+
+                {prescriptionsLoading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="skeleton h-16 rounded-lg w-full" />
+                    ))}
+                  </div>
+                ) : prescriptions.length === 0 ? (
+                  <div className="text-center py-6 bg-base-200/30 rounded-lg border border-dashed border-base-300">
+                    <p className="text-sm text-base-content/50">No prescriptions for this consultation yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {prescriptions.map((p) => (
+                      <div key={p._id || p.id} className="border border-base-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <span className={`badge badge-sm ${
+                            String(p.status).toLowerCase() === 'completed' ? 'badge-success' : 'badge-warning'
+                          }`}>
+                            {p.status || '—'}
+                          </span>
+                          <span className="text-xs text-base-content/50">
+                            {p.createdAt ? formatNigeriaDateTime(p.createdAt) : '—'}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {(p.medications || []).map((med, mIdx) => (
+                            <div key={mIdx} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+                              <span className="font-medium text-base-content">{med.drugName}</span>
+                              <span className="text-base-content/40">•</span>
+                              <span className="text-base-content/70">{med.dosage}</span>
+                              <span className="text-base-content/40">•</span>
+                              <span className="text-base-content/70">{med.frequency}</span>
+                              {med.duration && (
+                                <>
+                                  <span className="text-base-content/40">•</span>
+                                  <span className="text-base-content/70">{med.duration}</span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {p.pharmacistName && (
+                          <p className="text-xs text-base-content/50 mt-2">Dispensed by {p.pharmacistName}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Section>
 
               {/* Complaints */}
