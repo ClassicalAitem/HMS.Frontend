@@ -62,19 +62,13 @@ const IncomingLaboratory = () => {
       const awaitingLabOpdPatients = allOpdPatients.filter((p) => 
         hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
       );
-      console.log("OpD patients with awaiting_lab or sonography_completed status:", awaitingLabOpdPatients.length);
-
+   
       // Step 2: Fetch all investigation requests
       console.log("📥 Fetching investigation requests...");
       const investigationsResponse = await getInvestigations();
       const allInvestigations = Array.isArray(investigationsResponse) 
         ? investigationsResponse 
         : (investigationsResponse?.data || []);
-      
-      console.log("Total investigation requests:", allInvestigations.length);
-      console.log("Awaiting lab patients:", awaitingLabPatients.length);
-      console.log("Awaiting lab OPD patients:", awaitingLabOpdPatients.length);
-
       // Step 3: Match investigation requests with awaiting_lab patients, OpD patients, or dependant requests
       const dependantCache = {};
 
@@ -277,9 +271,9 @@ const IncomingLaboratory = () => {
             requestedBy,
             time: inv.createdAt ? formatNigeriaTime(inv.createdAt) : "N/A",
             createdAt: inv.createdAt,
-            sortTimestamp: patient?.updatedAt || inv.createdAt,
-            updatedAt: patient?.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : "N/A",
-            // symptoms: testNotes,
+            sortTimestamp: inv.updatedAt || inv.createdAt, // use the investigation's own timestamp, not patient.updatedAt
+            updatedAt: inv.updatedAt ? formatNigeriaDateTime(inv.updatedAt) : (patient?.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : "N/A"),
+          // symptoms: testNotes,
             patientType,
             investigationStatus: inv.status, // Add investigation status
             patientStatus, // Add patient status
@@ -323,26 +317,23 @@ const IncomingLaboratory = () => {
 
       const formattedRequests = [...investigationCards, ...opdPatientCards];
 
-      const newRequests = formattedRequests.length;
-      const urgentCount = formattedRequests.filter((card) => card.status === "Urgent").length;
-      const highPriorityCount = formattedRequests.filter((card) => card.status === "High").length;
+     const sortedRequests = [...formattedRequests].sort((a, b) => {
+      const aTime = new Date(a.sortTimestamp || a.createdAt || 0).getTime();
+      const bTime = new Date(b.sortTimestamp || b.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
 
-      const uniqueRequests = formattedRequests.filter(
-  (item, index, self) =>
-    index ===
-    self.findIndex(
-      (t) =>
-        t.userId === item.userId &&
-        t.test === item.test &&
-        t.date === item.date
-    )
-      ).sort((a, b) => {
-        const aTime = new Date(a.sortTimestamp || a.createdAt || 0).getTime();
-        const bTime = new Date(b.sortTimestamp || b.createdAt || 0).getTime();
-        return bTime - aTime;
-      });
+    const newRequests = sortedRequests.length;
+    const urgentCount = sortedRequests.filter((card) => card.status === "Urgent").length;
+    const highPriorityCount = sortedRequests.filter((card) => card.status === "High").length;
 
-      setTestRequests(uniqueRequests);
+
+      // dedupe AFTER sort → keeps the newest of any duplicate group
+      const uniqueRequests = sortedRequests.filter(
+        (item, index, self) => index === self.findIndex((t) => t.id === item.id)
+      );
+
+      setTestRequests(uniqueRequests)
 
       setIncomingStats([
         {
@@ -593,37 +584,36 @@ const IncomingLaboratory = () => {
                           </div>
                         </div>
 
-                        <div className="w-full sm:w-44 flex flex-col gap-2 shrink-0">
-                         
+                          <div className="w-full sm:w-64 grid grid-cols-2 gap-2 shrink-0">
                           <button
                             onClick={() => { setSelectedCard(testCard); setShowModal2(true); }}
-                            className="btn btn-sm btn-success w-full"
-                          >
+                              className="btn btn-sm btn-success w-full text-xs whitespace-nowrap"
+                             >
                             View Details
                           </button>
                           {/* ✅ Edit button — only shows if lab result already exists */}
                             {testCard.id && existingLabResults[testCard.id] && (
                               <button
                                 onClick={() => navigate(`/dashboard/laboratory/results/edit/${existingLabResults[testCard.id]}`)}
-                                className="btn btn-sm btn-warning w-full"
+                                 className="btn btn-sm btn-warning w-full text-xs whitespace-nowrap"
                               >
                                 Edit Lab Result
                               </button>
-                            )}
+                                 )}
                           <button
                             onClick={() => handleSendToSonographer(testCard)}
                             disabled={sendingToSonographer === testCard.id}
-                            className="btn btn-sm btn-outline w-full"
-                          >
+                             className="btn btn-sm btn-outline w-full text-xs whitespace-nowrap"
+                            >
                             {sendingToSonographer === testCard.id ? "Sending..." : "Send to Scanner"}
                           </button>
                            <div
-                            className="flex justify-center w-full "
-                            onClick={(e) => e.stopPropagation()}
+                            className="w-full [&_button]:w-full [&_button]:text-xs [&_button]:whitespace-nowrap flex"
+                              onClick={(e) => e.stopPropagation()}
                           >
                            
 
-                            <ClearItemButton  item={testCard} onClear={handleClear} onCleared={fetchTestRequests} />
+                            <ClearItemButton  item={testCard} onClear={handleClear} onCleared={fetchTestRequests}   />
                          
                           </div>
                         </div>
