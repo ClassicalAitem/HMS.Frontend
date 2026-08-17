@@ -323,15 +323,18 @@ const OrderedLab = () => {
             {/* Desktop: table */}
             <div className="hidden lg:block bg-white rounded-lg shadow-lg overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-[#00943C] text-white">
+               
++                <table className="w-full table-fixed">
+                  
+                 <thead className="bg-[#00943C] text-white text-sm">
                     <tr>
-                      <th className="px-4 py-3 text-left">Patient Name</th>
-                      <th className="px-4 py-3 text-left">Patient Type</th>
-                      <th className="px-4 py-3 text-left">Test Names</th>
-                      <th className="px-4 py-3 text-left">Status</th>
-                      <th className="px-4 py-3 text-left">Date</th>
-                      <th className="px-4 py-3 text-left">Actions</th>
+                      
+                       <th className="px-3 py-2 text-left w-[16%]">Patient Name</th>
+                      <th className="px-3 py-2 text-left w-[10%]">Type</th>
+                      <th className="px-3 py-2 text-left w-[26%]">Test Names</th>
+                      <th className="px-3 py-2 text-left w-[12%]">Status</th>
+                      <th className="px-3 py-2 text-left w-[12%]">Date</th>
+                      <th className="px-3 py-2 text-left w-[24%]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -488,10 +491,11 @@ const InvestigationRow = ({
           {investigation.status?.toLowerCase() === "completed" ? (
             <>
               {hasExistingLabResult && (
-                <button
-                  onClick={() => window.open(`/dashboard/laboratory/results/${hasExistingLabResult}`, '_blank')}
-                  className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition-all"
-                >
+                  <button
+                onClick={() => (`/dashboard/laboratory/results/${hasExistingLabResult}`, '_blank')}
+               
+                className="px-2.5 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-all"
+              >
                   View Result
                 </button>
               )}
