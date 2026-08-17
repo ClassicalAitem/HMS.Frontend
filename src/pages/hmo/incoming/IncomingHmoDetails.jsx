@@ -27,6 +27,126 @@ import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import PatientHmoHistory from './PatientHmoHistory';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI';
+
+
+// Detect injection-route medications defensively across possible field names,
+// since the medication schema shape wasn't confirmed — narrow this down once known.
+const isInjectionMed = (med) => {
+  const route = String(med?.route || med?.form || med?.type || '').toLowerCase();
+  if (route.includes('injection') || route.includes('iv') || route.includes('im') || route.includes('sc')) {
+    return true;
+  }
+  const name = String(med?.drugName || '').toLowerCase();
+  return name.includes('inj');
+};
+
+const consultationHasInjection = (prescriptions = []) =>
+  prescriptions.some((p) => (p.medications || []).some(isInjectionMed));
+
+
+const ConsultationDetailModal = ({ consultation, onClose }) => {
+  const c = consultation;
+  const isDependant = !!c.dependantId;
+  const subjectName = isDependant
+    ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
+    : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
+  const complaints = Array.isArray(c.complaint)
+    ? c.complaint.map((cp) => cp.symptom).filter(Boolean).join(', ')
+    : null;
+  const prescriptions = c.prescriptions || [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-base-100 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-base-100 border-b border-base-200 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`badge badge-sm shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
+              {isDependant ? c.dependant?.relationshipType || 'Dependant' : 'Patient'}
+            </span>
+            {isDependant && (
+              <span className="text-sm text-base-content/70 truncate">{subjectName}</span>
+            )}
+          </div>
+          <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle shrink-0">✕</button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between text-xs text-base-content/50">
+            <span>{c.createdAt ? formatNigeriaDate(c.createdAt) : '—'}</span>
+            {c.visitReason && (
+              <span className="badge badge-ghost badge-xs capitalize">{c.visitReason}</span>
+            )}
+          </div>
+
+          <div>
+            <span className="text-xs text-base-content/50 block mb-1">Diagnosis</span>
+            <p className="text-sm font-medium text-base-content">{c.diagnosis || 'Pending'}</p>
+          </div>
+
+          <div>
+            <span className="text-xs text-base-content/50 block mb-1">Complaint</span>
+            <p className={complaints ? 'text-sm text-base-content/80' : 'text-sm text-base-content/40'}>
+              {complaints || 'None recorded'}
+            </p>
+          </div>
+
+          {/* Prescriptions */}
+        <div>
+          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-success"></span>
+            Active Prescriptions
+          </h4>
+          {prescriptions.length > 0 ? (
+            <div className="border border-base-200 rounded-lg overflow-hidden divide-y divide-base-200">
+              {prescriptions.map((pres, idx) => (
+                <div key={idx} className="p-4">
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                  Prescription Status:   <span
+                      className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}
+                    >
+                      {pres.status}
+                    </span>
+                    <span className="text-xs text-base-content/50">
+                      Ordered {formatNigeriaDate(pres.createdAt)}
+                      {pres.doctorName && ` by Dr. ${pres.doctorName}`}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {pres.medications?.map((med, mIdx) => (
+                      <div
+                        key={mIdx}
+                        className="flex flex-col gap-0.5 border-l-2 border-success/40 pl-3"
+                      >
+                        <span className="text-sm font-medium text-base-content">
+                          {med.drugName}
+                        </span>
+                        <span className="text-xs text-base-content/60">Dosage:    {med.dosage}</span>
+                        <span className="text-xs text-base-content/60">Frequency:    {med.frequency}</span>
+                        <span className="text-xs text-base-content/60">Duration:     {med.duration}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+              <p className="text-sm text-base-content/50">
+                No prescriptions ordered yet
+              </p>
+            </div>
+          )}
+        </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
 
 const IncomingHmoDetails = () => {
   const [hasSavedDecisions, setHasSavedDecisions] = useState(false);
@@ -44,6 +164,7 @@ const IncomingHmoDetails = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { refreshQueueCount } = useNotifications();
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
   const [sendingStatuses, setSendingStatuses] = useState({
     Lab: false,
     Pharmacy: false,
@@ -54,6 +175,7 @@ const IncomingHmoDetails = () => {
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(true);
 
+  const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
   const [subject, setSubject] = useState(null);
   const currentUser = useAppSelector((state) => state.auth.user);
     const toggleSidebar = () => setIsSidebarOpen((v) => !v);
@@ -207,6 +329,42 @@ const IncomingHmoDetails = () => {
       mounted = false;
     };
   }, [patientId, isViewingDependant, dependantId]);
+
+  useEffect(() => {
+  let mounted = true;
+  const fetchPrescriptions = async () => {
+    if (!consultations.length) {
+      if (mounted) setPrescriptionsByConsultation({});
+      return;
+    }
+
+    try {
+      const results = await Promise.all(
+        consultations.map(async (c) => {
+          try {
+            const res = await getPrescriptionsForConsultation(c.id);
+            const raw = res?.data ?? res ?? [];
+            const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+            return [c.id, list];
+          } catch {
+            return [c.id, []];
+          }
+        })
+      );
+
+      if (mounted) {
+        setPrescriptionsByConsultation(Object.fromEntries(results));
+      }
+    } catch (err) {
+      console.error('Failed to load consultation prescriptions', err);
+    }
+  };
+
+  fetchPrescriptions();
+  return () => { mounted = false; };
+}, [consultations]);
+
+
 
   const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
     setItemDecisions((prev) => ({
@@ -781,42 +939,21 @@ const IncomingHmoDetails = () => {
                      
 
          {/* Consultations — moved from aside to a full-width section below */}
-  <div className="card bg-base-100 shadow-sm border border-base-200 mt-6">
-    <div className="card-body p-5">
-      <h3 className="font-semibold text-base-content text-base mb-4">
-        Consultations
-        {!consultationsLoading && (
-          <span className="text-base-content/40 font-normal text-sm ml-2">
-            ({consultations.length})
-          </span>
-        )}
-      </h3>
-
-      {consultationsLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="skeleton h-20 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : consultations.length === 0 ? (
-        <p className="text-sm text-base-content/50 py-4 text-center">
-          No consultations on record
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {consultations.map((c) => {
             const isDependant = !!c.dependantId;
             const subjectName = isDependant
               ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
               : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
-            const complaints = Array.isArray(c.complaint)
-              ? c.complaint.map((cp) => cp.symptom).filter(Boolean).join(', ')
-              : null;
+            const prescriptions = prescriptionsByConsultation[c.id] || [];
+            const hasInjection = consultationHasInjection(prescriptions);
 
             return (
-              <div
+              <button
                 key={c.id}
-                className={`p-4 rounded-lg border ${
+                type="button"
+                onClick={() => setSelectedConsultation({ ...c, prescriptions })}
+                className={`text-left p-4 rounded-lg border transition-colors hover:border-primary/50 hover:bg-base-200/60 ${
                   isDependant ? 'border-secondary/30 bg-secondary/5' : 'border-base-300 bg-base-200/30'
                 }`}
               >
@@ -834,31 +971,36 @@ const IncomingHmoDetails = () => {
                   </span>
                 </div>
 
-                <div className="mb-1">
-                  <span className="text-xs text-base-content/50">Diagnosis: </span>
-                  <span className="text-sm font-medium text-base-content">{c.diagnosis || 'Pending'}</span>
-                </div>
-
-                <div>
-                  <span className="text-xs text-base-content/50">Complaint: </span>
-                  <span className={complaints ? 'text-sm text-base-content/80' : 'text-sm text-base-content/40'}>
-                    {complaints || 'None recorded'}
+                <div className="mb-2">
+                  <span className="text-sm font-medium text-base-content line-clamp-1">
+                    {c.diagnosis || 'Pending diagnosis'}
                   </span>
                 </div>
 
-                {c.visitReason && (
-                  <div className="mt-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {c.visitReason && (
                     <span className="badge badge-ghost badge-xs capitalize">{c.visitReason}</span>
-                  </div>
-                )}
-              </div>
+                  )}
+                  {prescriptions.length > 0 && (
+                    <span className="badge badge-outline badge-xs">
+                      {prescriptions.reduce((s, p) => s + (p.medications || []).length, 0)} med{prescriptions.reduce((s, p) => s + (p.medications || []).length, 0) === 1 ? '' : 's'}
+                    </span>
+                  )}
+                  {hasInjection && (
+                    <span className="badge badge-warning badge-xs">Injection</span>
+                  )}
+                </div>
+              </button>
             );
           })}
         </div>
-      )}
-    </div>
-  </div>
 
+        {selectedConsultation && (
+          <ConsultationDetailModal
+            consultation={selectedConsultation}
+            onClose={() => setSelectedConsultation(null)}
+          />
+        )}
         </div>
       </div>
     </div>
