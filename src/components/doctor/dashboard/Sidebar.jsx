@@ -61,7 +61,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor" },
     { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming", badge: location.pathname.startsWith("/dashboard/doctor/incoming") ? 0 : incomingCount },
-    { icon: FaUserCheck, label: "Admitted Patients", path: "/dashboard/doctor/admitted", badge: admittedCount },
+    // { icon: FaUserCheck, label: "Admitted Patients", path: "/dashboard/doctor/admitted", badge: admittedCount },
     { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/doctor/attended-today" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
     { icon: FaUsers, label: "Patients", path: "/dashboard/doctor/patientshistory" },
