@@ -44,7 +44,7 @@ const IncomingDoctor = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [navigatingId, setNavigatingId] = useState(null);
-  const pageSize = 10;
+  const pageSize = 4;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -135,8 +135,8 @@ const IncomingDoctor = () => {
 
         const merged = [...mappedPatients, ...mappedDependants].sort(
           (a, b) =>
-            new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime() -
-            new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime()
+            new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime() -
+            new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime() 
         );
 
         if (mounted) setItems(merged);
