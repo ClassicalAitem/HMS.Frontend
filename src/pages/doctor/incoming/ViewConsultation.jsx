@@ -86,8 +86,7 @@ const ViewConsultation = () => {
   });
   const [labRequests, setLabRequests] = useState([]);
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
-  const [isInvestigationModalOpen, setIsInvestigationModalOpen] =
-    useState(false);
+  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
   const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [isAttachmentViewerOpen, setIsAttachmentViewerOpen] = useState(false);
@@ -527,19 +526,6 @@ const ViewConsultation = () => {
     }
   };
 
-  const handleEditLab = async (lab, e) => {
-    e?.preventDefault();
-    try {
-      const updatedData = {
-        status: lab.status === 'pending' ? 'in_progress' : 'pending',
-      };
-
-      await updateInvestigation(lab._id, updatedData);
-      await loadData();
-    } catch (error) {
-      console.error('Error updating investigation', error);
-    }
-  };
 
   // ================= PRESCRIPTION =================
 
@@ -547,6 +533,7 @@ const ViewConsultation = () => {
     if (!window.confirm('Delete this prescription?')) return;
 
     try {
+      
       await deletePrescription(id);
       await loadData();
     } catch (error) {
