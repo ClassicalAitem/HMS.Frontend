@@ -41,7 +41,7 @@ const ClearItemButton = ({ item, onClear, onCleared, label = 'Clear' }) => {
       <button
         onClick={() => setIsConfirmOpen(true)}
         disabled={isClearing}
-        className="btn btn-xs btn-ghost text-error"
+        className="btn btn-sm btn-outline text-error"
         title="Remove from queue"
       >
         {isClearing ? <span className="loading loading-spinner loading-xs" /> : (
