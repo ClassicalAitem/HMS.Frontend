@@ -283,7 +283,7 @@ const CashierPatientDetails = () => {
                 lockSubject
                 onUpdated={() => {
                   refreshQueueCount();
-                  navigate('/cashier/dashboard');
+                  navigate('/cashier/incoming');
                 }}
                 allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo', 'sonographer']}
               />

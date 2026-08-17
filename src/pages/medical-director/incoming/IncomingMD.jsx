@@ -7,6 +7,9 @@ import { getPatients, getPatientById, updatePatientStatus } from "@/services/api
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
+import ClearItemButton from "@/components/common/ClearIncomingButton";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const DOCTOR_STATUSES = new Set([
   "awaiting_consultation",
@@ -33,7 +36,7 @@ const statusBadgeClass = (reason = "") => {
   return "badge-neutral";
 };
 
-const IncomingDoctor = () => {
+const IncomingMD = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,7 +45,7 @@ const IncomingDoctor = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [navigatingId, setNavigatingId] = useState(null);
-  const pageSize = 10;
+  const pageSize = 4;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -133,13 +136,13 @@ const IncomingDoctor = () => {
 
         const merged = [...mappedPatients, ...mappedDependants].sort(
           (a, b) =>
-            new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime() -
-            new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime()
+            new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime() -
+            new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime() 
         );
 
         if (mounted) setItems(merged);
       } catch (err) {
-        console.error("IncomingMD: fetch error", err);
+        console.error("IncomingDoctor: fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -224,6 +227,19 @@ const IncomingDoctor = () => {
     }
   };
 
+    const { refreshQueueCount } = useNotifications();
+  
+
+
+  const handleClear = async (data) => {
+  if (data.type === 'dependant') {
+    await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.CANCELLED });
+  } else {
+    await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.CANCELLED });
+  }
+  localStorage.setItem('refreshIncoming', Date.now().toString());
+    refreshQueueCount();
+};
   return (
     <div className="flex min-h-screen flex-col lg:flex-row bg-base-100">
        {loading && <KolakLoader fullscreen />}
@@ -344,19 +360,21 @@ const IncomingDoctor = () => {
                         </div>
                       </div>
 
-                      {/* Action — full width below on mobile */}
-                      <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
-                        {isInConsultation ? (
-                          <div className="flex flex-col items-end gap-2 w-full">
-                            <button
-                              className="btn btn-xs btn-outline btn-warning w-full"
-                              onClick={() => handleReset(data)}
-                            >
-                              ↺ Reset
-                            </button>
-                            <button className="btn btn-xs btn-disabled w-full" disabled>View</button>
-                          </div>
-                        ) : (
+                    {/* Action — full width below on mobile */}
+                    <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
+                      {isInConsultation ? (
+                        <div className="flex flex-col items-end gap-2 w-full">
+                          <button
+                            className="btn btn-xs btn-outline btn-warning w-full"
+                            onClick={() => handleReset(data)}
+                          >
+                            ↺ Reset
+                          </button>
+                          <button className="btn btn-xs btn-disabled w-full" disabled>View</button>
+                          <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-end gap-2 w-full">
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto"
                             disabled={navigatingId === data.id}
@@ -366,8 +384,10 @@ const IncomingDoctor = () => {
                               ? <span className="loading loading-spinner loading-xs" />
                               : 'View'}
                           </button>
-                        )}
-                      </div>
+                          <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                        </div>
+                      )}
+                    </div>
                     </div>
                   );
                 })
@@ -397,4 +417,4 @@ const IncomingDoctor = () => {
   );
 };
 
-export default IncomingDoctor;
+export default IncomingMD;

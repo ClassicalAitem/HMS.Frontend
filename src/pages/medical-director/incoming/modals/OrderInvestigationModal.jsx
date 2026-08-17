@@ -70,7 +70,7 @@ const OrderInvestigationModal = ({
         const data = res?.data ?? res ?? [];
 
         const labCharges = data.filter(
-          (item) => (item.category || '').toLowerCase() === 'laboratory'
+          (item) => (item.category || '').toLowerCase() === 'laboratory' || (item.category || '').toLowerCase() === 'radiology'
         );
 
         setServiceCharges(labCharges);
