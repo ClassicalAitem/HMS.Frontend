@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck  } from "react-icons/fa";
 import { GoChecklist } from "react-icons/go";
 import { FaSuitcaseMedical } from "react-icons/fa6";
@@ -12,12 +12,30 @@ import HospitalFavicon from "@/assets/images/favicon.svg"
 // import NotificationBadge from "@/components/common/NotificationBadge";
 import { useNotifications } from "@/contexts/NotificationContext";
 import NotificationBadge from "@/components/common/NotificationBadge";
+import { getAdmissions } from '@/services/api/admissionApi'
 
 const Sidebar = () => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
   const { incomingCount, resetIncomingCount } = useNotifications();
+  const [admittedCount, setAdmittedCount] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await getAdmissions();
+        const list = res?.data ?? res ?? [];
+        const count = Array.isArray(list) ? list.filter(a => a.isAdmitted).length : 0;
+        if (mounted) setAdmittedCount(count);
+      } catch (err) {
+        console.warn('Failed to load admitted count', err);
+      }
+    };
+    load();
+    return () => { mounted = false };
+  }, []);
 
   const generateInitials = (firstName, lastName) => {
     if (!firstName && !lastName) return 'U';
@@ -43,9 +61,10 @@ const Sidebar = () => {
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor" },
     { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/doctor/incoming", badge: location.pathname.startsWith("/dashboard/doctor/incoming") ? 0 : incomingCount },
+    { icon: FaUserCheck, label: "Admitted Patients", path: "/dashboard/doctor/admitted", badge: admittedCount },
     { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/doctor/attended-today" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments" },
-    { icon: GoChecklist, label: "Patients", path: "/dashboard/doctor/patientshistory" },
+    { icon: FaUsers, label: "Patients", path: "/dashboard/doctor/patientshistory" },
     // { icon: FaUsers, label: "All Patients", path: "/dashboard/doctor/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/doctor/payment-records" },
   ];
@@ -93,14 +112,14 @@ const Sidebar = () => {
 
         {/* Navigation Menu */}
         <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
-          {menuItems.map((item, index) => (
+            {menuItems.map((item, index) => (
             <MenuItem
               key={index}
               icon={item.icon}
               label={item.label}
               path={item.path}
               active={item.path === "/dashboard/doctor" ? (location.pathname === item.path) : location.pathname.startsWith(item.path)}
-              badge={item.badge}
+                badge={item.badge}
               onClick={item.onClick}
             />
           ))}

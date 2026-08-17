@@ -45,7 +45,7 @@ const Sidebar = () => {
     { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/medical-director/incoming", badge: location.pathname.startsWith("/dashboard/medical-director/incoming") ? 0 : incomingCount },
     { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/medical-director/attended-today" },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/medical-director/appointments" },
-    { icon: GoChecklist, label: "Patients", path: "/dashboard/medical-director/patientshistory" },
+    { icon: FaUsers, label: "Patients", path: "/dashboard/medical-director/patients" },
     // { icon: FaUsers, label: "All Patients", path: "/dashboard/medical-director/allPatients" },
     { icon: IoReceiptOutline, label: "Payment Records", path: "/dashboard/medical-director/payment-records" },
   ];
