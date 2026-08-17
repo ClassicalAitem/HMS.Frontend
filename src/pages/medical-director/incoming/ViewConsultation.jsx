@@ -80,16 +80,13 @@ const ViewConsultation = () => {
   const isViewingDependant = !!dependantId;
   const [subject, setSubject] = useState(null);
   const [subjectLoading, setSubjectLoading] = useState(true);
-  
-  const { refreshQueueCount } = useNotifications();
   const [prescriptions, setPrescriptions] = useState(() => {
     const saved = localStorage.getItem('currentPrescriptions');
     return saved ? JSON.parse(saved) : [];
   });
   const [labRequests, setLabRequests] = useState([]);
   const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
-  const [isInvestigationModalOpen, setIsInvestigationModalOpen] =
-    useState(false);
+  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
   const [isSendToNurseModalOpen, setIsSendToNurseModalOpen] = useState(false);
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [isAttachmentViewerOpen, setIsAttachmentViewerOpen] = useState(false);
@@ -130,6 +127,9 @@ const ViewConsultation = () => {
   // Picker for choosing which investigation the surgical note attaches to,
   // shown only when the consultation has more than one lab request
   const [isProcedurePickerOpen, setIsProcedurePickerOpen] = useState(false);
+
+  
+  const { refreshQueueCount } = useNotifications();
 
   const summarySubject = useMemo(() => {
     if (!isViewingDependant) return patient;
@@ -526,19 +526,6 @@ const ViewConsultation = () => {
     }
   };
 
-  const handleEditLab = async (lab, e) => {
-    e?.preventDefault();
-    try {
-      const updatedData = {
-        status: lab.status === 'pending' ? 'in_progress' : 'pending',
-      };
-
-      await updateInvestigation(lab._id, updatedData);
-      await loadData();
-    } catch (error) {
-      console.error('Error updating investigation', error);
-    }
-  };
 
   // ================= PRESCRIPTION =================
 
@@ -546,6 +533,7 @@ const ViewConsultation = () => {
     if (!window.confirm('Delete this prescription?')) return;
 
     try {
+      
       await deletePrescription(id);
       await loadData();
     } catch (error) {
