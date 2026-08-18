@@ -12,12 +12,6 @@ import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
 
 const DOCTOR_STATUSES = new Set([
-  "awaiting_consultation",
-  "awaiting_doctor",
-  "in_consultation",
-  "consultation_completed",
-  "awaiting_surgery",
-  "lab_completed",
   "awaiting_md"
 ]);
 
