@@ -6,6 +6,7 @@ import { RiSearchLine } from 'react-icons/ri';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { getDependants } from '@/services/api/dependantAPI';
+import { DoctorLayout } from '@/components/doctor/doctor';
 
 const AllPatients = () => {
   const navigate = useNavigate();
@@ -125,7 +126,7 @@ const AllPatients = () => {
     { key: 'name', title: 'Patient Name', className: 'font-medium text-base-content', render: (value, row) => (
       <button className="text-primary hover:underline text-sm" onClick={(e) => {
         e.preventDefault(); e.stopPropagation();
-        row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+        row.id && navigate(`/dashboard/doctor/medical-history/${row.id}`, {
           state: {
             from: 'patients',
             patientSnapshot: row.type === 'dependant' ? null : row.snapshot,
@@ -159,18 +160,11 @@ const AllPatients = () => {
   ]), [navigate]);
 
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
+   <DoctorLayout>
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar />
-      </div>
-
+   
       <div className="flex overflow-hidden flex-col flex-1 bg-base-100">
-        <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           <section>
             <div>
               <div>
@@ -236,7 +230,7 @@ const AllPatients = () => {
           </section>
         </div>
       </div>
-    </div>
+    </DoctorLayout>
   );
 };
 

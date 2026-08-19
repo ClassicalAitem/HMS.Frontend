@@ -10,6 +10,7 @@ import { getPatientById } from "@/services/api/patientsAPI";
 import { getDependantById } from "@/services/api/dependantAPI";
 import { useAppSelector } from "@/store/hooks";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { DoctorLayout } from "@/components/doctor/doctor";
 
 const isToday = (dateValue) => {
   if (!dateValue) return false;
@@ -131,64 +132,79 @@ const AttendedToday = () => {
     if (!events.length) return;
     let mounted = true;
 
-    const resolveNames = async () => {
-      const updates = {};
-      for (const e of events) {
-        const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
-        if (resolved[key]) continue;
+ const resolveNames = async () => {
+  const updates = {};
+  for (const e of events) {
+    const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
+    if (resolved[key]) continue;
 
-        try {
-          if (e.dependantId) {
-            const res = await getDependantById(e.dependantId);
-            const dep = res?.data?.data?.dependant || res?.data?.dependant || res?.data || {};
-            updates[key] = {
-              name: `${dep?.firstName || ""} ${dep?.lastName || ""}`.trim() || "Unknown",
-              type: "Dependant",
-              displayId: dep?.hospitalId || e.patientId,
-            };
-          } else {
-            const res = await getPatientById(e.patientId);
-            const p = res?.data ?? res;
-            updates[key] = {
-              name: p?.fullName || `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
-              type: "Patient",
-              displayId: p?.hospitalId || e.patientId,
-            };
-          }
-        } catch {
-          updates[key] = { name: "Unknown", type: e.dependantId ? "Dependant" : "Patient", displayId: e.patientId };
-        }
+    try {
+      if (e.dependantId) {
+        // Fetch both dependant and guardian patient in parallel
+        const [depRes, patientRes] = await Promise.allSettled([
+          getDependantById(e.dependantId),
+          getPatientById(e.patientId),
+        ]);
+
+        const dep = depRes.status === "fulfilled"
+          ? (depRes.value?.data?.data?.dependant || depRes.value?.data?.dependant || depRes.value?.data || {})
+          : {};
+
+        const guardian = patientRes.status === "fulfilled"
+          ? (patientRes.value?.data ?? patientRes.value ?? {})
+          : {};
+
+        updates[key] = {
+          name: `${dep?.firstName || ""} ${dep?.lastName || ""}`.trim() || "Unknown",
+          type: "Dependant",
+          displayId: dep?.hospitalId || guardian?.hospitalId || e.patientId,
+          guardianName: `${guardian?.firstName || ""} ${guardian?.lastName || ""}`.trim() || null,
+          guardianHospitalId: guardian?.hospitalId || null,
+        };
+      } else {
+        const res = await getPatientById(e.patientId);
+        const p = res?.data ?? res;
+        updates[key] = {
+          name: p?.fullName || `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
+          type: "Patient",
+          displayId: p?.hospitalId || e.patientId,
+        };
       }
-      if (mounted && Object.keys(updates).length) {
-        setResolved((prev) => ({ ...prev, ...updates }));
-      }
-    };
+    } catch {
+      updates[key] = { name: "Unknown", type: e.dependantId ? "Dependant" : "Patient", displayId: e.patientId };
+    }
+  }
+  if (mounted && Object.keys(updates).length) {
+    setResolved((prev) => ({ ...prev, ...updates }));
+  }
+};
 
     resolveNames();
     return () => { mounted = false; };
   }, [events]);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
-
-  const enriched = useMemo(
-    () =>
-      events.map((e) => {
-        const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
-        const info = resolved[key] || {};
-        return {
-          id: key,
-          patientId: e.patientId,
-          dependantId: e.dependantId,
-          name: info.name || "Loading…",
-          type: info.type || (e.dependantId ? "Dependant" : "Patient"),
-          displayId: info.displayId || e.patientId,
-          diagnosis: e.diagnosis,
-          sources: e.sources,
-          time: e.createdAt ? formatNigeriaTime(e.createdAt) : "—",
-        };
-      }),
-    [events, resolved]
-  );
+const enriched = useMemo(
+  () =>
+    events.map((e) => {
+      const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
+      const info = resolved[key] || {};
+      return {
+        id: key,
+        patientId: e.patientId,
+        dependantId: e.dependantId,
+        name: info.name || "Loading…",
+        type: info.type || (e.dependantId ? "Dependant" : "Patient"),
+        displayId: info.displayId || e.patientId,
+        guardianName: info.guardianName || null,
+        guardianHospitalId: info.guardianHospitalId || null,
+        diagnosis: e.diagnosis,
+        sources: e.sources,
+        time: e.createdAt ? formatNigeriaTime(e.createdAt) : "—",
+      };
+    }),
+  [events, resolved]
+);
 
   useEffect(() => { setPage(0); }, [query, enriched.length]);
 
@@ -209,20 +225,9 @@ const AttendedToday = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Mobile Drawer Backdrop */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      {/* Sidebar Navigation */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar />
-      </div>
-
+ <DoctorLayout>
       <div className="flex flex-col flex-1 bg-base-100 min-w-0">
-        <Header onToggleSidebar={toggleSidebar} />
-
+     
         <div className="overflow-y-auto flex-1 p-4 sm:p-6">
           <div className="mb-6">
             <div className="flex items-center gap-3">
@@ -311,9 +316,14 @@ const AttendedToday = () => {
                     {/* Mobile View Card Layout */}
                     <div className="block md:hidden space-y-3">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-bold text-base-content truncate text-base">{row.name}</p>
-                          <span className="text-xs text-base-content/50 font-mono block">{row.displayId}</span>
+                        <div className="col-span-3 min-w-0">
+                          <p className="font-bold text-base-content truncate">{row.name}</p>
+                          <span className="text-xs text-base-content/40 font-mono">{row.displayId}</span>
+                          {row.type === "Dependant" && row.guardianHospitalId && (
+                            <span className="text-[10px] text-base-content/40 block">
+                              Guardian: {row.guardianName} ({row.guardianHospitalId})
+                            </span>
+                          )}
                         </div>
                         <span className="text-xs text-base-content/60 whitespace-nowrap bg-base-200 px-2 py-0.5 rounded">
                           {row.time}
@@ -405,7 +415,7 @@ const AttendedToday = () => {
           )}
         </div>
       </div>
-    </div>
+   </DoctorLayout>
   );
 };
 
