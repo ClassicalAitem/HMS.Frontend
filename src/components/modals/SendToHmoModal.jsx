@@ -181,14 +181,25 @@ const SendToHmoModal = ({
     if (!isOpen) return;
     if (defaultItems && defaultItems.length > 0) {
       reset({
-        items: defaultItems.map(d => ({
-          serviceChargeId: d.serviceChargeId || null,
-          code: d.code || '',
-          description: d.description || '',
-          quantity: d.quantity || 1,
-          price: d.price || 0,
-          isAuto: true,
-        }))
+        items: defaultItems.map(d => {
+          const isUnavailable = d.availability === 'unavailable';
+          const isOutOfStock = d.availability === 'available' && Number(d.stock) <= 0;
+          const isUnbillable = isUnavailable || isOutOfStock;
+
+          return {
+            serviceChargeId: d.serviceChargeId || null,
+            investigationId: d.investigationId || null,
+            prescriptionId: d.prescriptionId || null,
+            admissionId: d.admissionId || null,
+            code: d.code || '',
+            description: d.description || '',
+            quantity: d.quantity || 1,
+            price: isUnbillable ? 0 : (d.price || 0),
+            isAuto: true,
+            isUnavailable,
+            isOutOfStock,
+          };
+        })
       });
     } else {
       reset({
@@ -223,6 +234,9 @@ const SendToHmoModal = ({
           price: Number(item.price),
           total: Number(item.quantity) * Number(item.price),
           serviceChargeId: item.serviceChargeId,
+          investigationId: item.investigationId,
+          prescriptionId: item.prescriptionId,
+          admissionId: item.admissionId,
         })),
         ...(dependantId && { dependantId }),
       };
@@ -299,11 +313,21 @@ const SendToHmoModal = ({
                     const qty = Number(items[index]?.quantity) || 0;
                     const price = Number(items[index]?.price) || 0;
                     const lineTotal = qty * price;
+                    const isUnavailable = items[index]?.isUnavailable;
+                    const isOutOfStock = items[index]?.isOutOfStock;
                     return (
                       <tr key={field.id} className="hover:bg-base-50/50">
                         <td className="align-top p-2">
                           {items[index]?.isAuto ? (
-                            <div className="text-sm font-medium pt-1">{items[index]?.description}</div>
+                             <div className="pt-1">
+                              <div className="text-sm font-medium">{items[index]?.description}</div>
+                              {isUnavailable && (
+                                <span className="badge badge-warning badge-xs mt-1">Unavailable — sourced externally</span>
+                              )}
+                              {isOutOfStock && (
+                                <span className="badge badge-error badge-xs mt-1">Out of stock</span>
+                              )}
+                            </div>
                           ) : (
                             <ServiceSearchInput
                               index={index}
@@ -319,7 +343,20 @@ const SendToHmoModal = ({
                         <td><input type="text" readOnly className="input input-bordered input-sm w-full bg-base-200/50" {...register(`items.${index}.description`)} /></td>
                         <td><input type="number" min="1" className="input input-bordered input-sm w-full text-center" {...register(`items.${index}.quantity`)} /></td>
                         <td><input type="number" readOnly className="input input-bordered input-sm w-full text-right bg-base-200/50" {...register(`items.${index}.price`)} /></td>
-                        <td className="text-right font-medium">₦{lineTotal.toLocaleString()}</td>
+                        <td>
+                           <input type="number" min="1"
+                             readOnly={isUnavailable || isOutOfStock}
+                             className={`input input-bordered input-sm w-full text-center ${errors.items?.[index]?.quantity ? 'input-error' : ''} ${isUnavailable || isOutOfStock ? 'bg-base-200/50' : ''}`}
+                             {...register(`items.${index}.quantity`)} />
+                         </td>
+                         <td>
+                           <input type="number" readOnly
+                             className={`input input-bordered input-sm w-full text-right bg-base-200/50 ${isUnavailable || isOutOfStock ? 'text-error' : ''}`}
+                             {...register(`items.${index}.price`)} />
+                         </td>
+                         <td className={`text-right font-medium ${isUnavailable || isOutOfStock ? 'text-error' : ''}`}>
+                           ₦{lineTotal.toLocaleString()}
+                         </td>
                         <td className="text-center">
                           {fields.length > 1 && (
                             <button type="button" onClick={() => remove(index)} className="btn btn-ghost btn-xs text-error">
@@ -340,6 +377,8 @@ const SendToHmoModal = ({
                 const qty = Number(items[index]?.quantity) || 0;
                 const price = Number(items[index]?.price) || 0;
                 const lineTotal = qty * price;
+                 const isUnavailable = items[index]?.isUnavailable;
+                const isOutOfStock = items[index]?.isOutOfStock;
                 return (
                   <div key={field.id} className="border border-base-200 rounded-lg p-3 space-y-3 relative">
                     {fields.length > 1 && (
@@ -355,7 +394,15 @@ const SendToHmoModal = ({
                     <div className="pr-8">
                       <label className="text-xs text-base-content/60 mb-1 block">Service Item</label>
                       {items[index]?.isAuto ? (
-                        <div className="text-sm font-medium">{items[index]?.description}</div>
+                        <div>
+                           <div className="text-sm font-medium">{items[index]?.description}</div>
+                           {isUnavailable && (
+                             <span className="badge badge-warning badge-xs mt-1">Unavailable — sourced externally</span>
+                           )}
+                           {isOutOfStock && (
+                             <span className="badge badge-error badge-xs mt-1">Out of stock</span>
+                           )}
+                         </div>
                       ) : (
                         <ServiceSearchInput
                           index={index}
@@ -375,8 +422,11 @@ const SendToHmoModal = ({
                       </div>
                       <div>
                         <label className="text-xs text-base-content/60 mb-1 block">Qty</label>
-                        <input type="number" min="1" className="input input-bordered input-sm w-full text-center" {...register(`items.${index}.quantity`)} />
-                      </div>
+                         <input type="number" min="1"
+                         readOnly={isUnavailable || isOutOfStock}
+                         className={`input input-bordered input-sm w-full text-center ${isUnavailable || isOutOfStock ? 'bg-base-200/50' : ''}`}
+                         {...register(`items.${index}.quantity`)} />
+                        </div>
                     </div>
 
                     <div>
@@ -387,11 +437,11 @@ const SendToHmoModal = ({
                     <div className="flex items-center justify-between text-sm pt-1">
                       <div>
                         <span className="text-xs text-base-content/60 block">Price</span>
-                        <span className="font-medium">₦{price.toLocaleString()}</span>
-                      </div>
+                        <span className={`font-medium ${isUnavailable || isOutOfStock ? 'text-error' : ''}`}>₦{price.toLocaleString()}</span>
+                    </div>
                       <div className="text-right">
                         <span className="text-xs text-base-content/60 block">Total</span>
-                        <span className="font-semibold">₦{lineTotal.toLocaleString()}</span>
+                        <span className={`font-semibold ${isUnavailable || isOutOfStock ? 'text-error' : ''}`}>₦{lineTotal.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

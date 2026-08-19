@@ -5,6 +5,7 @@ import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { MedicalDirectorLayout } from '@/layouts/medical-director';
 
 
 const MDPaymentRecords = () => {
@@ -181,28 +182,11 @@ const MDPaymentRecords = () => {
   ], []);
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
+<MedicalDirectorLayout>
       {/* Main Content */}
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
         {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-
+        
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -345,7 +329,8 @@ const MDPaymentRecords = () => {
           </div>
         </div>
       )}
-    </div>
+      </MedicalDirectorLayout>
+
   );
 };
 

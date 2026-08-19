@@ -880,7 +880,7 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
             {savedRecord && (
               <button
                 className="btn btn-outline border-base-300 text-base-content w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
-                onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}/view`, {
+                onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}/view`, {
                 state: {
                             from: fromIncoming ? "incoming" : "patients",
                             selectedRecord: savedRecord ,

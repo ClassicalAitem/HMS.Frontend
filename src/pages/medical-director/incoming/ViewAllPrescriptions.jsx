@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation }  from 'react-router-dom';
 import { Header } from '@/components/common';
 import Sidebar from '@/components/medical-director/dashboard/Sidebar';
-import { getPatientById } from '@/services/api/patientsAPI';
+import {getPatientById } from '@/services/api/patientsAPI';
 import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getInventories } from '@/services/api/inventoryAPI';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
@@ -15,8 +15,13 @@ const ViewAllPrescriptions = () => {
   const location = useLocation();
   const fromIncoming = location?.state?.from === 'incoming';
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+
   const [loading, setLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const [patient, setPatient] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
   const [dependants, setDependants] = useState([]);
@@ -28,7 +33,15 @@ const ViewAllPrescriptions = () => {
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  // Fetch patient data
+  const subjectName = useMemo(() => {
+    if (isViewingDependant) {
+      return dependantSnapshot?.fullName
+        || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
+        || 'Dependant';
+    }
+    return patientName || 'Loading...';
+  }, [isViewingDependant, dependantSnapshot, patientName]);
+
   useEffect(() => {
     let mounted = true;
     const loadPatient = async () => {
@@ -45,7 +58,6 @@ const ViewAllPrescriptions = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch dependants
   useEffect(() => {
     let mounted = true;
     const loadDependants = async () => {
@@ -66,7 +78,6 @@ const ViewAllPrescriptions = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  // Fetch prescriptions
   useEffect(() => {
     let mounted = true;
     const loadPrescriptions = async () => {
@@ -74,7 +85,11 @@ const ViewAllPrescriptions = () => {
         setLoading(true);
         const res = await getPrescriptionByPatientId(patientId);
         const presc = res?.data ?? res ?? [];
-        if (mounted) setPrescriptions(Array.isArray(presc) ? presc : []);
+        const list = Array.isArray(presc) ? presc : [];
+        const scoped = isViewingDependant
+          ? list.filter(p => p.dependantId === dependantId)
+          : list.filter(p => !p.dependantId);
+        if (mounted) setPrescriptions(scoped);
       } catch (err) {
         console.error('Failed to load prescriptions:', err);
         if (mounted) setPrescriptions([]);
@@ -85,9 +100,8 @@ const ViewAllPrescriptions = () => {
 
     if (patientId) loadPrescriptions();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
-  // Fetch inventory data
   useEffect(() => {
     const fetchInventory = async () => {
       try {
@@ -100,7 +114,6 @@ const ViewAllPrescriptions = () => {
     fetchInventory();
   }, []);
 
-  // Format prescription rows
   const prescriptionRows = useMemo(() => {
     const getDrugPrice = (drugName) => {
       const drug = inventoryData.find(d => d.name?.toLowerCase() === drugName?.toLowerCase());
@@ -111,7 +124,8 @@ const ViewAllPrescriptions = () => {
       ? prescriptions.map((p) => {
           const isDependant = !!p.dependantId;
           const targetName = isDependant
-            ? dependants.find(d => d.id === p.dependantId)?.fullName || 'Unknown'
+            ? dependants.find(d => d.id === p.dependantId)?.fullName
+              || (p.dependantId === dependantId ? subjectName : 'Unknown')
             : patientName;
 
           const medicationsCount = p.medications?.length || 0;
@@ -137,9 +151,8 @@ const ViewAllPrescriptions = () => {
           };
         })
       : [];
-  }, [prescriptions, dependants, patientName, inventoryData]);
+  }, [prescriptions, dependants, patientName, subjectName, dependantId, inventoryData]);
 
-  // Pagination
   const paginationData = useMemo(() => {
     const totalItems = prescriptionRows.length;
     const totalPages = Math.ceil(totalItems / itemsPerPage);
@@ -151,8 +164,9 @@ const ViewAllPrescriptions = () => {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
+
   return (
-    <div className="flex min-h-screen bg-base-300/20">
+     <div className="flex min-h-screen bg-base-300/20">
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
@@ -171,8 +185,7 @@ const ViewAllPrescriptions = () => {
       </div>
 
       {/* Main Content Viewport */}
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">  <Header onToggleSidebar={toggleSidebar} />
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Header Section */}
@@ -181,12 +194,19 @@ const ViewAllPrescriptions = () => {
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-base-content">Prescription History</h1>
                 <p className="text-sm text-base-content/70 mt-1">
-                  Patient: <span className="font-semibold text-base-content">{patientName || 'Loading...'}</span>
+                  {isViewingDependant ? 'Dependant' : 'Patient'}: <span className="font-semibold text-base-content">{subjectName}</span>
                 </p>
               </div>
               <button
                 className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
+                  state: {
+                    from: fromIncoming ? 'incoming' : 'patients',
+                    patientSnapshot: patient,
+                    dependantId,
+                    dependantSnapshot,
+                  }
+                })}
               >
                 Back
               </button>
@@ -200,8 +220,7 @@ const ViewAllPrescriptions = () => {
           ) : (
             <div className="card bg-base-100 shadow-sm">
               <div className="card-body p-4 sm:p-6">
-                
-                {/* Mobile View: Cards */}
+
                 <div className="block md:hidden space-y-4">
                   {paginationData.paginatedItems.length > 0 ? (
                     paginationData.paginatedItems.map((row, idx) => (
@@ -249,7 +268,6 @@ const ViewAllPrescriptions = () => {
                   )}
                 </div>
 
-                {/* Desktop View: Table */}
                 <div className="hidden md:block overflow-x-auto">
                   <table className="table w-full text-center text-sm">
                     <thead>
@@ -315,7 +333,6 @@ const ViewAllPrescriptions = () => {
                   </table>
                 </div>
 
-                {/* Pagination Controls */}
                 {paginationData.totalPages > 1 && (
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-6 border-t border-base-200">
                     <span className="text-xs sm:text-sm text-base-content/70 text-center sm:text-left">

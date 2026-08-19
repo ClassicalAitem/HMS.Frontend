@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import { DoctorLayout } from '@/components/doctor/doctor';
 
 const PatientsHistory = () => {
   const navigate = useNavigate();
@@ -247,28 +248,9 @@ const StatusBadge = ({ status }) => {
   ], [navigate]);
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
+
+      <DoctorLayout>
+
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
@@ -330,11 +312,11 @@ const StatusBadge = ({ status }) => {
             </div>
           </div>
         </div>
-      </div>
+
 
           {/* Debug Component - Remove in production */}
           {/* <PatientsDebug /> */}
-        </div>
+       </DoctorLayout>
       );
     };
 

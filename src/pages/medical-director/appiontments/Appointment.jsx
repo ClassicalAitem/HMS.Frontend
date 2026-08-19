@@ -47,7 +47,7 @@ const Appointment = () => {
         }));
         setAppointments(mapped);
       } catch (err) {
-        console.error("Doctor Appointments: load error", err);
+        console.error("Medical Director Appointments: load error", err);
       }
     };
     load();
@@ -67,7 +67,7 @@ const Appointment = () => {
         });
         setPatientsById(map);
       } catch (err) {
-        console.error("Doctor Appointments: fetch patients error", err);
+        console.error("Medical director Appointments: fetch patients error", err);
         setPatientsById({});
       }
     };
@@ -190,12 +190,12 @@ const Appointment = () => {
         patientName: a?.patientName || a?.patient?.fullName || a?.patientId || "Unknown",
         date: a?.appointmentDate || a?.date,
         time: a?.appointmentTime || a?.time,
-        appointmentType: a?.department || a?.appointmentType || "General",
+        appointmentType: a?.department || a?.appointmentType || "Medical Director",
         status: a?.status || "Active",
       }));
       setAppointments(mapped);
     } catch (err) {
-      console.error("Doctor Appointments: create error", err);
+      console.error("Medical Director Appointments: create error", err);
       toast.error(err?.message || "Failed to book appointment");
     }
   };
