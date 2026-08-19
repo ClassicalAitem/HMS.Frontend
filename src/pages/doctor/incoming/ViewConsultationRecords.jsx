@@ -6,6 +6,7 @@ import { getConsultations } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
+import { DoctorLayout } from "@/components/doctor/doctor";
 
 const ViewConsultationRecords = () => {
   const { patientId } = useParams();
@@ -177,17 +178,18 @@ const ViewConsultationRecords = () => {
   }
 
   return (
-    <div className="flex h-screen">
+    <DoctorLayout> 
+         {/* <div className="flex h-screen"> */}
        {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
+      {/* {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
-      </div>
+      </div> */}
 
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        {/* <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} /> */}
 
         <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
           {/* Header */}
@@ -439,7 +441,9 @@ const ViewConsultationRecords = () => {
           </div>
         </div>
       </div>
-    </div>
+    {/* </div> */}
+    </DoctorLayout>
+
   );
 };
 
