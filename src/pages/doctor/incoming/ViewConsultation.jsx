@@ -63,6 +63,7 @@ import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { DoctorLayout } from '@/components/doctor/doctor';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -800,7 +801,7 @@ const ViewConsultation = () => {
   }
 
   return (
-    <div className="flex h-screen bg-base-200/50">
+    <DoctorLayout>
       <AddDiagnosisModal
         isOpen={isDiagnosisModalOpen}
         onClose={() => setIsDiagnosisModalOpen(false)}
@@ -937,8 +938,8 @@ const ViewConsultation = () => {
         onSentSuccessfully={() =>
           navigate(
             fromIncoming
-              ? '/dashboard/medical-director/incoming'
-              : `/dashboard/medical-director/medical-history/${patientId}`,
+              ? '/dashboard/doctor/incoming'
+              : `/dashboard/doctor/medical-history/${patientId}`,
           )
         }
       />
@@ -981,7 +982,7 @@ const ViewConsultation = () => {
         }}
       />
 
-      {isSidebarOpen && (
+      {/* {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
@@ -992,10 +993,10 @@ const ViewConsultation = () => {
         className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <Sidebar />
-      </div>
+      </div> */}
 
       <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={toggleSidebar} />
+        {/* <Header onToggleSidebar={toggleSidebar} /> */}
 
         <div className="flex overflow-y-auto flex-col p-4 sm:p-6 space-y-6">
           {/* Header Section */}
@@ -1066,8 +1067,10 @@ const ViewConsultation = () => {
     <IoIosCloseCircleOutline className="w-6 sm:w-7 h-6 sm:h-7" />
   </button>
 
+
+</div>
   {/* Action Controls (Send Patient Modal & Edit Buttons) */}
-  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-base-200 sm:border-none">
+  <div className="flex  sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-base-200 sm:border-none">
     <SendPatientModal
       patientId={patientId}
       patient={patient}
@@ -1084,6 +1087,7 @@ const ViewConsultation = () => {
         'pharmacist',
         'cashier',
         'hmo',
+        'sonographer',
       ]}
     />
 
@@ -1115,14 +1119,12 @@ const ViewConsultation = () => {
             className="btn btn-sm btn-outline btn-primary flex-1 sm:flex-initial gap-2"
             onClick={() => setIsEditMode(true)}
           >
-            <FaEdit className="w-3 h-3" /> Edit Consultation
+            <FaEdit className="w-3 h-3" />Edit Consultation
           </button>
         )}
       </div>
     )}
   </div>
-
-</div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Column - Key Clinical Info */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -1744,6 +1746,18 @@ const ViewConsultation = () => {
                                     </span>
                                     <span className="text-base-content/70">
                                       {med.frequency}
+                                    </span>
+                                    <span className="text-base-content/40">
+                                      •
+                                    </span>
+                                    <span className="text-base-content/70">
+                                      {med.duration}
+                                    </span>
+                                    <span className="text-base-content/40">
+                                      •
+                                    </span>
+                                    <span className="text-base-content/70">
+                                      {med.availability}
                                     </span>
                                   </div>
                                 ))}
@@ -2398,7 +2412,8 @@ const ViewConsultation = () => {
           <div className="h-12"></div>
         </div>
       </div>
-    </div>
+  
+    </DoctorLayout>
   );
 };
 

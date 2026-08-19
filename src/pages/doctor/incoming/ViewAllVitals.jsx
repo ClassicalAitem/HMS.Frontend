@@ -9,6 +9,7 @@ import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import { FaHeartbeat, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { DoctorLayout } from '@/components/doctor/doctor';
 
 const ViewAllVitals = () => {
   const { patientId } = useParams();
@@ -79,33 +80,32 @@ const ViewAllVitals = () => {
   }, [patient, isViewingDependant, dependantSnapshot]);
 
   // Fetch vitals
-  useEffect(() => {
-    let mounted = true;
-    const loadVitals = async () => {
-      try {
-        setLoading(true);
-        const res = await getVitalsByPatient(patientId);
-        const rawData = res?.data ?? res ?? [];
-        const vitalsList = Array.isArray(rawData) ? rawData : [];
-        // Sort by date descending (newest first)
-        const sorted = vitalsList.sort((a, b) =>
-          new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
-        );
-        const scoped = isViewingDependant
-          ? sorted.filter(v => v.dependantId === dependantId)
-          : sorted.filter(v => !v.dependantId);
-        if (mounted) setVitals(scoped);
-      } catch (err) {
-        console.error('Failed to load vitals:', err);
-        if (mounted) setVitals([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+useEffect(() => {
+  let mounted = true;
+  const loadVitals = async () => {
+    try {
+      setLoading(true);
+      const res = await getVitalsByPatient(patientId);
+      const rawData = res?.data ?? res ?? [];
+      const vitalsList = Array.isArray(rawData) ? rawData : [];
+      const sorted = vitalsList.sort((a, b) =>
+        new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
+      );
+      const scoped = isViewingDependant
+        ? sorted.filter(v => v.dependantId === dependantId)
+        : sorted.filter(v => !v.dependantId);
+      if (mounted) setVitals(scoped);
+    } catch (err) {
+      console.error('Failed to load vitals:', err);
+      if (mounted) setVitals([]);
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  };
 
-    if (patientId) loadVitals();
-    return () => { mounted = false; };
-  }, [patientId]);
+  if (patientId) loadVitals();
+  return () => { mounted = false; };
+}, [patientId, isViewingDependant, dependantId]);
 
   // Format vital rows
   const vitalRows = useMemo(() => (
@@ -192,22 +192,11 @@ const ViewAllVitals = () => {
   };
 
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
+   <DoctorLayout>
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar />
-      </div>
 
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20 min-w-0">
-        <Header onToggleSidebar={toggleSidebar} />
-
+       
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Header */}
           <div className="mb-4 sm:mb-6">
@@ -231,7 +220,12 @@ const ViewAllVitals = () => {
               <button
                 className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
                 onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
-                  state: { dependantId, dependantSnapshot }
+                  state: {
+                    from: fromIncoming ? 'incoming' : 'patients',
+                    patientSnapshot: patient,
+                    dependantId,
+                    dependantSnapshot,
+                  }
                 })}
               >
                 Back
@@ -427,7 +421,8 @@ const ViewAllVitals = () => {
           )}
         </div>
       </div>
-    </div>
+       </DoctorLayout>
+
   );
 };
 
