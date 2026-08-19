@@ -64,3 +64,38 @@ export const PATIENT_ADMISSION_STATUS = {
   ADMITTED: 'admitted',
   DISCHARGED: 'discharged',
 }
+
+export const FREQUENCY  ={
+  STAT  : "STAT",
+  DLY  : "dly",
+  BD  : "b.d",
+  TDS  : "tds",
+  QDS  : "qds",
+  HLY  : "hly",
+  FOUR_HLY  : "4hly",
+  SIX_HLY  : "6hly",
+  EIGHT_HLY  : "8hly",
+  TWELVE_HLY : "12hly",
+  TWENTYFOUR_HLY : "24hly",
+}
+
+export const DURATION = {
+  ONE_SEVEN : "1/7",
+  TWO_SEVEN : "2/7",
+  THREE_SEVEN : "3/7",
+  FOUR_SEVEN : "4/7",
+  FIVE_SEVEN : "5/7",
+  SIX_SEVEN : "6/7",
+  ONE_FIFTYTWO : "1/52",
+  TWO_FIFTYTWO : "2/52",
+  THREE_FIFTYTWO : "3/52",
+  ONE_TWELVE : "1/12",
+  TWO_TWELVE : "2/12",
+  THREE_TWELVE : "3/12",
+  FOUR_TWELVE : "4/12",
+  FIVE_TWELVE : "5/12",
+  SIX_TWELVE : "6/12",
+  ONE_YEAR : "1yr",
+}
+
+
