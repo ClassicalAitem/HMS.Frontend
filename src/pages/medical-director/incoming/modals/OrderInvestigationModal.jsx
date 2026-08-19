@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { FaTimes, FaPlus, FaFlask, FaTrash } from 'react-icons/fa';
+import { FaTimes, FaPlus, FaFlask, FaTrash, FaXRay } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { createInvestigationRequestByConsultation, updateInvestigation } from '@/services/api/investigationRequestAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
@@ -22,7 +22,7 @@ const OrderInvestigationModal = ({
   patientId,
   dependantId,
   consultationId,
-  investigation, // <-- NEW (edit mode)
+  investigation, // <-- edit mode
   onOrderCreated
 }) => {
 
@@ -32,6 +32,7 @@ const OrderInvestigationModal = ({
   const [serviceCharges, setServiceCharges] = useState([]);
   const [testSearch, setTestSearch] = useState("");
   const [testDropdownIndex, setTestDropdownIndex] = useState(null);
+  const [investigationType, setInvestigationType] = useState("lab"); // "lab" | "radiology"
 
   const testWrapperRef = useRef(null);
 
@@ -56,11 +57,16 @@ const OrderInvestigationModal = ({
     name: "tests"
   });
 
-  const filteredTests = serviceCharges.filter((test) =>
-    testSearch
+  // Only show tests belonging to the selected category (lab -> "laboratory", radiology -> "radiology")
+  const categoryKey = investigationType === "radiology" ? "radiology" : "laboratory";
+
+  const filteredTests = serviceCharges.filter((test) => {
+    const matchesCategory = (test.category || '').toLowerCase() === categoryKey;
+    const matchesSearch = testSearch
       ? test.service?.toLowerCase().includes(testSearch.toLowerCase())
-      : true
-  );
+      : true;
+    return matchesCategory && matchesSearch;
+  });
 
   // Load service charges
   useEffect(() => {
@@ -97,13 +103,26 @@ const OrderInvestigationModal = ({
         priority: investigation.priority || "normal"
       });
 
+      setInvestigationType(investigation.type === "radiology" ? "radiology" : "lab");
+
     } else if (isOpen) {
       reset({
         tests: [{ name: "" }],
         priority: "normal"
       });
+      setInvestigationType("lab");
     }
   }, [investigation, isOpen]);
+
+  // Reset selected tests whenever the category is switched, so stale
+  // selections from the other category don't get submitted silently.
+  const handleSwitchType = (nextType) => {
+    if (nextType === investigationType) return;
+    setInvestigationType(nextType);
+    replace([{ name: "" }]);
+    setTestSearch("");
+    setTestDropdownIndex(null);
+  };
 
   // close dropdown on outside click
   useEffect(() => {
@@ -126,7 +145,7 @@ const OrderInvestigationModal = ({
       const payload = {
         patientId,
         dependantId,
-        type: "lab",
+        type: investigationType,
         tests: data.tests,
         priority: data.priority,
         status: investigation?.status || "in_progress"
@@ -175,11 +194,15 @@ const OrderInvestigationModal = ({
 
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-full text-primary">
-              <FaFlask />
+              {investigationType === "radiology" ? <FaXRay /> : <FaFlask />}
             </div>
 
             <h2 className="text-xl font-bold">
-              {isEdit ? "Edit Lab Investigation" : "Order Further Tests"}
+              {isEdit
+                ? investigationType === "radiology"
+                  ? "Edit Radiology Investigation"
+                  : "Edit Lab Investigation"
+                : "Order Further Tests"}
             </h2>
           </div>
 
@@ -191,6 +214,30 @@ const OrderInvestigationModal = ({
 
         {/* FORM */}
         <div className="p-6 overflow-y-auto flex-1">
+
+          {/* CATEGORY SWITCH */}
+          <div className="join w-full mb-6">
+            <button
+              type="button"
+              className={`btn join-item flex-1 gap-2 ${
+                investigationType === "lab" ? "btn-primary" : "btn-outline"
+              }`}
+              onClick={() => handleSwitchType("lab")}
+              disabled={isEdit}
+            >
+              <FaFlask /> Laboratory
+            </button>
+            <button
+              type="button"
+              className={`btn join-item flex-1 gap-2 ${
+                investigationType === "radiology" ? "btn-primary" : "btn-outline"
+              }`}
+              onClick={() => handleSwitchType("radiology")}
+              disabled={isEdit}
+            >
+              <FaXRay /> Radiology
+            </button>
+          </div>
 
           <form
             id="investigation-form"
@@ -223,7 +270,9 @@ const OrderInvestigationModal = ({
 
             </div>
 
-            <div className="divider">Requested Tests</div>
+            <div className="divider">
+              Requested {investigationType === "radiology" ? "Radiology" : "Lab"} Tests
+            </div>
 
             {/* TEST LIST */}
             {fields.map((item, index) => (
@@ -256,7 +305,7 @@ const OrderInvestigationModal = ({
 
                     <input
                       type="text"
-                      placeholder="Search lab test..."
+                      placeholder={`Search ${investigationType === "radiology" ? "radiology" : "lab"} test...`}
                       className="input input-bordered"
                       value={
                         testDropdownIndex === index
@@ -276,6 +325,12 @@ const OrderInvestigationModal = ({
                     {testDropdownIndex === index && (
 
                       <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow max-h-60 overflow-auto">
+
+                        {filteredTests.length === 0 && (
+                          <div className="px-4 py-3 text-sm text-base-content/60">
+                            No {investigationType === "radiology" ? "radiology" : "lab"} tests found.
+                          </div>
+                        )}
 
                         {filteredTests.map((test) => {
                           const isBillable = test.isBillable !== false;
@@ -358,7 +413,7 @@ const OrderInvestigationModal = ({
               ? "Saving..."
               : isEdit
               ? "Update Investigation"
-              : "Submit Order"}
+              : `Submit ${investigationType === "radiology" ? "Radiology" : "Lab"} Order`}
 
           </button>
 

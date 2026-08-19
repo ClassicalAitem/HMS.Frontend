@@ -34,6 +34,7 @@ import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import KolakLoader from "@/components/common/KolakLoader";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { calculateDispenseQuantity } from "@/utils/prescriptionsCalculator";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -162,12 +163,16 @@ const summarySubject = useMemo(() => {
   if (!isViewingDependant) {
     const guardian = patient || {};
     return {
-      id: guardian.id,
+      id: guardian.id || guardian._id,
       fullName: `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || guardian.name || 'Unknown',
-      gender: guardian.gender,
-      phone: guardian.phone || guardian.phoneNumber,
-      hospitalId: guardian.hospitalId,
-      status: guardian.status,
+      gender: guardian.gender || '—',
+      phone: guardian.phone || guardian.phoneNumber || '—',
+      hospitalId: guardian.hospitalId || '—',
+      status: guardian.status || 'Unknown',
+      dob: guardian.dob || guardian.dateOfBirth || guardian.birthDate,
+      cardType: guardian.cardType || 'personal',
+      familyName: guardian.familyName || guardian.lastName,
+      companyName: guardian.companyName,
       hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
       relationshipType: null,
     };
@@ -184,9 +189,13 @@ const summarySubject = useMemo(() => {
     id: dep.id || dependantId,
     fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Dependant',
     gender: dep.gender || '—',
-    phone: dep.phone || guardian.phone || guardian.phoneNumber,
-    hospitalId: guardian.hospitalId,
+    phone: dep.phone || guardian.phone || guardian.phoneNumber || '—',
+    hospitalId: guardian.hospitalId || '—',
     status: dep.status || dependantSnapshot?.status || 'Unknown',
+    dob: dep.dob || dep.dateOfBirth || dep.birthDate,
+    cardType: dep.cardType || guardian.cardType || 'personal',
+    familyName: dep.familyName || guardian.familyName || dep.lastName || guardian.lastName,
+    companyName: dep.companyName || guardian.companyName,
     hmos: ownHmos,
     relationshipType: dep.relationshipType,
   };
@@ -679,6 +688,20 @@ const latestLab = useMemo(() => {
   const refreshBillableItems = async () => {
     await Promise.all([refreshLabInvestigations(), refreshPrescriptions(), refreshAdmissions()]);
   };
+  
+    const getInventoryMatch = (med) => {
+      if (med?.inventoryId) {
+        const byId = inventoryData.find(item => (item._id || item.id) === med.inventoryId);
+        if (byId) return byId;
+      }
+      if (!med?.drugName) return null;
+      const searchName = med.drugName.toLowerCase();
+      return inventoryData.find(item => {
+        const inventoryName = item?.name?.toLowerCase() || '';
+        return inventoryName === searchName || inventoryName.includes(searchName);
+      }) || null;
+    };
+
 
   // Helper function to find drug price from inventory
   const getDrugPrice = (drugName) => {
@@ -764,14 +787,27 @@ const latestLab = useMemo(() => {
           }];
         }
 
-        return medications.map(med => ({
-          serviceChargeId: pres?.serviceChargeId || '',
-          code: 'PRESCRIPTION',
-          description: `${med.drugName} (${med.dosage})`,
-          quantity: 1,
-          price: Number(getDrugPrice(med?.drugName)) || 0,
-          prescriptionId: pres?.id || pres?._id,
-        }));
+            return medications.map(med => {
+                 const isUnavailable = med.availability === 'unavailable';
+                 const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
+                 const stock = inventoryMatch ? Number(inventoryMatch.stock) || 0 : 0;
+                 const isOutOfStock = !isUnavailable && (!inventoryMatch || stock <= 0);
+        
+                 const quantity = calculateDispenseQuantity(med.frequency, med.duration) || 1;
+                 const unbillable = isUnavailable || isOutOfStock;
+                 const unitPrice = unbillable ? 0 : (Number(inventoryMatch?.sellingPrice) || 0);
+        
+                 return {
+                   serviceChargeId: pres?.serviceChargeId || '',
+                   code: 'PRESCRIPTION',
+                   description: `${med.drugName} (${med.dosage})`,
+                   quantity,
+                   price: unitPrice,
+                   prescriptionId: pres?.id || pres?._id,
+                   availability: unbillable ? (isUnavailable ? 'unavailable' : 'available') : 'available',
+                   stock,
+                 };
+               });
       });
     };
 
@@ -1168,10 +1204,17 @@ const dependant = isDependant
             
            rows={useMemo(() => (
             Array.isArray(prescriptions) ? prescriptions.map((p) => {
-              const totalPrice = (p?.medications || []).reduce((sum, med) => {
-                const price = getDrugPrice(med?.drugName);
-                return sum + (Number(price) || 0);
-              }, 0);
+                 const totalPrice = (p?.medications || []).reduce((sum, med) => {
+                    const isUnavailable = med.availability === 'unavailable';
+                    const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
+                    const isOutOfStock = !isUnavailable && (!inventoryMatch || Number(inventoryMatch.stock) <= 0);
+      
+                    if (isUnavailable || isOutOfStock) return sum; // ₦0 for unavailable/out-of-stock, same rule as billing
+      
+                    const quantity = calculateDispenseQuantity(med.frequency, med.duration) || 1;
+                    const unitPrice = Number(inventoryMatch?.sellingPrice) || 0;
+                    return sum + (quantity * unitPrice);
+                  }, 0);
 
               //  Determine who it's for
               const isForDependant = !!p?.dependantId;
@@ -1394,13 +1437,20 @@ const dependant = isDependant
                   >
                     View Lab Result
                   </button>
-                  <button
-                    className="btn btn-outline btn-sm"
-                    disabled={!labResults || labResults.length === 0}
-                    onClick={() => navigate(`/dashboard/medical-director/view-lab-results/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients" } })}
-                  >
-                    View All
-                  </button>
+                       <button
+                  className="btn btn-outline btn-sm"
+                  disabled={!labResults || labResults.length === 0}
+                  onClick={() => navigate(`/dashboard/medical-director/view-lab-results/${patientId}`, {
+                    state: {
+                      from: fromIncoming ? "incoming" : "patients",
+                      patientSnapshot: patient,
+                      dependantId,
+                      dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                    },
+                  })}
+                >
+                  View All
+                </button>
                 </div>
               </div>
             </div>
@@ -1494,6 +1544,7 @@ const dependant = isDependant
         </div>
       </div>
     </div>
+    
   );
 };
 
