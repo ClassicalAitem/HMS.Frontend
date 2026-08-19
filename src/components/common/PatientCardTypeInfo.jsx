@@ -16,16 +16,51 @@ const PatientCardTypeInfo = ({ cardType = 'personal', familyName, companyName })
       .join(' ');
   };
 
+  const formattedFamily = formatCardName(familyName);
+  const formattedCompany = formatCardName(companyName);
+
+  // Construct tooltip message based on card type
+  const tooltipMessage =
+    normalizedCardType === 'family' && formattedFamily
+      ? `Family Surname: ${formattedFamily}`
+      : normalizedCardType === 'company' && formattedCompany
+      ? `Company: ${formattedCompany}`
+      : `${label} Account`;
+
   return (
-    <div className="rounded-lg border border-base-300 bg-base-100 p-4 mt-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={badgeClass}>{label} Card</span>
-        {normalizedCardType === 'family' && familyName ? (
-          <span className="text-sm text-base-content/80">Family Name:  <span className="font-semibold text-base-content">{formatCardName(familyName)}</span></span>
-        ) : null}
-        {normalizedCardType === 'company' && companyName ? (
-          <span className="text-sm text-base-content/80">Company Name:  <span className="font-semibold text-base-content">{formatCardName(companyName)}</span></span>
-        ) : null}
+    <div className="relative group cursor-pointer inline-block">
+      {/* Badge button */}
+      <span className={`badge whitespace-nowrap font-medium ${badgeClass}`}>
+        {label} Card
+      </span>
+
+      {/* Hover Tooltip Card */}
+      <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex flex-col items-start gap-1 rounded-lg border border-base-300 bg-base-100 p-2.5 shadow-xl text-xs z-30 min-w-[160px] animate-in fade-in zoom-in-95 duration-150">
+        <span className="font-bold text-primary uppercase text-[10px] tracking-wider">
+          {label} Details
+        </span>
+
+        {normalizedCardType === 'family' && (
+          <p className="text-base-content/80">
+            Family Surname:{' '}
+            <span className="font-semibold text-base-content">
+              {formattedFamily || 'N/A'}
+            </span>
+          </p>
+        )}
+
+        {normalizedCardType === 'company' && (
+          <p className="text-base-content/80">
+            Company Name:{' '}
+            <span className="font-semibold text-base-content">
+              {formattedCompany || 'N/A'}
+            </span>
+          </p>
+        )}
+
+        {normalizedCardType === 'personal' && (
+          <p className="text-base-content/70">Individual Patient Card</p>
+        )}
       </div>
     </div>
   );

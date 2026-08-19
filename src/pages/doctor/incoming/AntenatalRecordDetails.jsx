@@ -13,6 +13,7 @@ import { deleteInvestigation, updateInvestigation } from "@/services/api/investi
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import OrderInvestigationModalAntenatal from "./modals/OrderInvestigationModalAntenatal";
+import { DoctorLayout } from "@/components/doctor/doctor";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -461,8 +462,9 @@ const handleOrderCreated = () => {
   }
 
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
+    <DoctorLayout>
+    {/* <div className="flex h-screen"> */}
+      {/* {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
       )}
 
@@ -472,10 +474,10 @@ const handleOrderCreated = () => {
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}>
         <Sidebar />
-      </div>
+      </div> */}
 
       <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
+        {/* <Header onToggleSidebar={toggleSidebar} /> */}
 
         <div className="flex overflow-y-auto flex-col p-3 py-2 h-full sm:p-6 sm:py-4">
           {/* ─── Page Header ─── */}
@@ -1204,7 +1206,10 @@ const handleOrderCreated = () => {
         investigation={editingLab}
         onOrderCreated={handleOrderCreated}
       />
-    </div>
+    {/* 
+    </div> */}
+      </DoctorLayout>
+
   );
 };
 
