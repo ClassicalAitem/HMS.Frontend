@@ -14,14 +14,23 @@ import { FaPrescriptionBottleAlt, FaSyringe, FaPills, FaNotesMedical, FaFileMedi
 import toast from 'react-hot-toast'; 
 import { getInventories } from '@/services/api/inventoryAPI'; 
 import KolakLoader from '@/components/common/KolakLoader';
+import { DoctorLayout } from '@/components/doctor/doctor';
+
+
+ const ORAL_FREQUENCIES = ['STAT', 'dly', 'b.d', 'tds', 'qds'];
+ const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12hly', '24hly'];
+ const DURATIONS = ['1/7','2/7','3/7','4/7','5/7','6/7','1/52','2/52','3/52','1/12','2/12','3/12','4/12','5/12','6/12','1yr'];
+
  
 const medicationSchema = yup.object().shape({ 
   medicationType: yup.string().oneOf(['oral', 'injection']).required(), 
   drugName: yup.string().required('Drug name is required'), 
-  dosage: yup.string().required('Dosage is required'), 
-  frequency: yup.string().required('Frequency is required'), 
-  duration: yup.string().required('Duration is required'), 
-  instructions: yup.string(), 
+   dosage: yup.string().required('Dosage is required'),
+  frequency: yup.string().required('Frequency is required'),
+  duration: yup.string().oneOf(DURATIONS).required('Duration is required'),
+  instructions: yup.string(),
+  inventoryId: yup.string().nullable(),
+   availability: yup.string().oneOf(['available', 'unavailable']).required('Please select the drug from the list or mark it unavailable'),
    dosesGiven: yup.number().transform((value) => (isNaN(value) ? undefined : value)).when('medicationType', { 
     is: 'injection', 
     then: (schema) => schema.required('Doses given is required'), 
@@ -90,7 +99,9 @@ const isEdit = !!editingPrescription;
         duration: '', 
         instructions: '', 
         dosesGiven: 0, 
-        injectionStatus: 'pending' 
+        injectionStatus: 'pending',
+        inventoryId: null,
+        availability: undefined, 
       }] 
     } 
   }); 
@@ -110,7 +121,10 @@ const isEdit = !!editingPrescription;
       duration: med.duration || '', 
       instructions: med.instructions || '', 
       dosesGiven: med.dosesGiven || 0, 
-      injectionStatus: med.injectionStatus || 'pending' 
+      injectionStatus: med.injectionStatus || 'pending', 
+      inventoryId: med.inventoryId ?? null,
+      availability: med.availability || (med.inventoryId ? 'available' : undefined),
+    
     })); 
  
     setValue("medications", meds); 
@@ -358,17 +372,19 @@ useEffect(() => {
   } 
  
   return ( 
+    <DoctorLayout> 
+
     <div className="flex h-screen bg-base-200/50"> 
-      {isSidebarOpen && ( 
+      {/* {isSidebarOpen && ( 
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} /> 
       )} 
  
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}> 
         <Sidebar /> 
-      </div> 
+      </div>  */}
  
       <div className="flex overflow-hidden flex-col flex-1"> 
-        <Header onToggleSidebar={toggleSidebar} /> 
+        {/* <Header onToggleSidebar={toggleSidebar} />  */}
  
         <div className="flex flex-col h-full overflow-hidden"> 
           {/* Header */} 
@@ -444,7 +460,9 @@ useEffect(() => {
                                   type="radio" 
                                   value="injection" 
                                   className="radio radio-primary radio-sm" 
-                                  {...register(`medications.${index}.medicationType`)} 
+                                   {...register(`medications.${index}.medicationType`, {
+                                    onChange: () => setValue(`medications.${index}.frequency`, ''),
+                                  })}
                                 /> 
                                 <span className="label-text flex items-center gap-1"><FaSyringe /> Injection</span> 
                               </label> 
@@ -475,6 +493,10 @@ useEffect(() => {
                               onChange={(e) => { 
                                 setDrugSearch(e.target.value); 
                                 setDrugDropdownIndex(index); 
+                                 setValue(`medications.${index}.inventoryId`, null);
+                                setValue(`medications.${index}.availability`, undefined);
+                                setValue(`medications.${index}._selectedDrug`, null);
+                               
                               }} 
                               autoComplete="off" 
                             /> 
@@ -492,7 +514,7 @@ useEffect(() => {
                                     ) 
                                     .map((drug) => ( 
                                       <li 
-                                        key={drug.id} 
+                                         key={drug._id || drug.id}
                                         onClick={() => { 
                                           setValue( 
                                             `medications.${index}.drugName`, 
@@ -500,6 +522,9 @@ useEffect(() => {
                                           ); 
                                           // Store selected drug data for display 
                                           setValue(`medications.${index}._selectedDrug`, drug); 
+                                           setValue(`medications.${index}.inventoryId`, drug._id || drug.id);
+                                      setValue(`medications.${index}.availability`, 'available');
+                                        
                                           setDrugDropdownIndex(null); 
                                           setDrugSearch(""); 
                                         }} 
@@ -523,9 +548,27 @@ useEffect(() => {
                                           .includes(drugSearch.toLowerCase()) 
                                       : true 
                                   ).length === 0 && ( 
-                                    <li className="px-4 py-2 text-gray-400 text-sm"> 
-                                      No matches found 
-                                    </li> 
+                                    
+                                     <li
+                                      key="prescribe-unavailable"
+                                  onClick={() => {
+                                    setValue(`medications.${index}.drugName`, drugSearch);
+                                    setValue(`medications.${index}._selectedDrug`, null); 
+                                    setValue(`medications.${index}.inventoryId`, null);
+                                    setValue(`medications.${index}.availability`, 'unavailable'); 
+                                  
+                                    setDrugDropdownIndex(null);
+                                    setDrugSearch("");
+                                  }}
+                                  className="px-4 py-2 hover:bg-warning/10 cursor-pointer text-sm border-t"
+                                >
+                                  <span className="font-medium text-warning">
+                                    + Prescribe "{drugSearch}" (not in stock)
+                                  </span>
+                                  <p className="text-xs text-base-content/60 mt-0.5">
+                                    Patient will source this externally
+                                  </p>
+                                </li> 
                                   )} 
                                 </ul> 
                               </div> 
@@ -542,7 +585,12 @@ useEffect(() => {
                                 )} 
                               </div> 
                             )} 
-                          
+                            {watch(`medications.${index}.availability`) === 'unavailable' && (
+                              <div className="badge badge-warning badge-sm gap-1 mt-1">
+                                Unavailable — patient to source externally
+                              </div>
+                            )}
+                                                      
                             {errors.medications?.[index]?.drugName && ( 
                               <span className="text-error text-xs mt-1"> 
                                 {errors.medications[index].drugName.message} 
@@ -569,12 +617,16 @@ useEffect(() => {
                             <label className="label"> 
                               <span className="label-text">Frequency</span> 
                             </label> 
-                            <input 
-                              type="text" 
-                              placeholder="e.g. Twice daily" 
-                              className={`input input-bordered w-full ${errors.medications?.[index]?.frequency ? 'input-error' : ''}`} 
-                              {...register(`medications.${index}.frequency`)} 
-                            /> 
+                           
+                             <select
+                              className={`select select-bordered w-full ${errors.medications?.[index]?.frequency ? 'select-error' : ''}`}
+                              {...register(`medications.${index}.frequency`)}
+                            >
+                              <option value="">Select frequency</option>
+                              {(medicationType === 'injection' ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
+                                <option key={f} value={f}>{f}</option>
+                              ))}
+                            </select>
                             {errors.medications?.[index]?.frequency && ( 
                               <span className="text-error text-xs mt-1">{errors.medications[index].frequency.message}</span> 
                             )} 
@@ -584,12 +636,16 @@ useEffect(() => {
                             <label className="label"> 
                               <span className="label-text">Duration</span> 
                             </label> 
-                            <input 
-                              type="text" 
-                              placeholder="e.g. 7 days" 
-                              className={`input input-bordered w-full ${errors.medications?.[index]?.duration ? 'input-error' : ''}`} 
-                              {...register(`medications.${index}.duration`)} 
-                            /> 
+                            
+                             <select
+                              className={`select select-bordered w-full ${errors.medications?.[index]?.duration ? 'select-error' : ''}`}
+                              {...register(`medications.${index}.duration`)}
+                            >
+                              <option value="">Select duration</option>
+                              {DURATIONS.map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
                             {errors.medications?.[index]?.duration && ( 
                               <span className="text-error text-xs mt-1">{errors.medications[index].duration.message}</span> 
                             )} 
@@ -658,7 +714,9 @@ useEffect(() => {
                     duration: '', 
                     instructions: '', 
                     dosesGiven: 0, 
-                    injectionStatus: 'pending' 
+                    injectionStatus: 'pending',
+                    inventoryId: null,
+                    availability: undefined,
                   })} 
                 > 
                   <IoMdAdd className="w-5 h-5" /> Add Another Medication 
@@ -706,6 +764,8 @@ useEffect(() => {
         </div> 
       </div> 
     </div> 
+    </DoctorLayout>
+
   ); 
 }; 
  

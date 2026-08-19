@@ -10,6 +10,7 @@ import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { DoctorLayout } from "@/components/doctor/doctor";
 
 const DOCTOR_STATUSES = new Set([
   "awaiting_consultation",
@@ -18,6 +19,7 @@ const DOCTOR_STATUSES = new Set([
   "consultation_completed",
   "awaiting_surgery",
   "lab_completed",
+  "sonography_completed"
 ]);
 
 const prettifyStatus = (status) =>
@@ -240,20 +242,22 @@ const IncomingDoctor = () => {
     refreshQueueCount();
 };
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-base-100">
+    <DoctorLayout >
+
+    <div className="">
        {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
+      {/* {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
-      </div>
+      </div> */}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
+      <div className="flex flex-1 flex-col ">
+        {/* <Header onToggleSidebar={toggleSidebar} /> */}
 
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+        <div className="overflow-y-auto flex-1  ">
           <div className="mb-6">
             <div className="flex items-center gap-3">
               <RiArrowLeftRightFill size={24} className="text-primary" />
@@ -413,6 +417,8 @@ const IncomingDoctor = () => {
         </div>
       </div>
     </div>
+    </DoctorLayout>
+
   );
 };
 

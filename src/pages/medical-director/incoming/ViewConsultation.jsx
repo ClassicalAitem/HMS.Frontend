@@ -1066,6 +1066,8 @@ const ViewConsultation = () => {
     <IoIosCloseCircleOutline className="w-6 sm:w-7 h-6 sm:h-7" />
   </button>
 
+
+</div>
   {/* Action Controls (Send Patient Modal & Edit Buttons) */}
   <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-base-200 sm:border-none">
     <SendPatientModal
@@ -1121,8 +1123,6 @@ const ViewConsultation = () => {
       </div>
     )}
   </div>
-
-</div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Column - Key Clinical Info */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">

@@ -23,11 +23,11 @@ const Header = ({ onToggleSidebar }) => {
 
   return (
     <header className="w-full border-b border-base-300 bg-base-100 px-3 py-2 sm:px-4 lg:px-4 2xl:px-6 2xl:py-[22px]">
-      <div className="flex justify-between gap-2 sm:gap-3">
+      <div className="flex justify-between gap-2 sm:gap-3 min-h-0">
         {/* Mobile Menu Button */}
         <button
           onClick={onToggleSidebar}
-          className="btn btn-ghost btn-circle shrink-0 lg:hidden"
+          className="btn btn-ghost btn-circle shrink-0 lg:hidden min-h-0"
           title="Toggle Menu"
         >
           <FaBars className="h-4 w-4" />
@@ -54,7 +54,7 @@ const Header = ({ onToggleSidebar }) => {
 
   <button
     onClick={handleRefresh}
-    className="btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md"
+    className="btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md min-h-0"
     title="Refresh"
   >
     <SlRefresh className="h-3 w-3 sm:h-4 sm:w-4 2xl:h-5 2xl:w-5" />
@@ -62,7 +62,7 @@ const Header = ({ onToggleSidebar }) => {
 
   {/* <button
     onClick={handleNotifications}
-    className="relative btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md"
+    className="relative btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md min-h-0"
     title="Notifications"
   >
     <BsBell className="h-3 w-3 sm:h-4 sm:w-4 2xl:h-5 2xl:w-5" />

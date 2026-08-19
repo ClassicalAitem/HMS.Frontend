@@ -35,6 +35,11 @@ const SonographerIncoming = () => {
       const investigationsRes = await getInvestigations();
       const allInvestigations = Array.isArray(investigationsRes) ? investigationsRes : (investigationsRes?.data || []);
 
+      // Only radiology investigations belong on the sonographer's queue
+      const radiologyInvestigations = allInvestigations.filter(
+        (inv) => String(inv.type || '').toLowerCase() === 'radiology'
+      );
+
       const isAwaitingSonographer = (status) => {
         const statusList = Array.isArray(status) ? status : [status];
         return statusList.some((s) => String(s || "").toLowerCase() === "awaiting_sonographer");
@@ -43,30 +48,36 @@ const SonographerIncoming = () => {
       const incomingPatients = allPatients.filter((patient) => isAwaitingSonographer(patient?.status));
       const incomingOpdPatients = allOpdPatients.filter((patient) => isAwaitingSonographer(patient?.status));
 
-      const enrichedPatients = await Promise.all(
-        incomingPatients.map(async (patient) => {
-          const patientId = patient?.id || patient?._id;
-          const investigation = allInvestigations.find(
-            (inv) => String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId
-          );
-          return {
-            ...patient,
-            patientType: "regular",
-            dependantId: null,
-            dependantInfo: null,
-            opdPatientId: investigation?.opdPatientId,
-            opdPatientInfo: null,
-            investigationId: investigation?.id || investigation?._id,
-            investigation,
-            cardType: patient?.cardType || 'personal',
-            familyName: patient?.familyName || '',
-            companyName: patient?.companyName || '',
-          };
-        })
-      );
+      const enrichedPatients = (
+        await Promise.all(
+          incomingPatients.map(async (patient) => {
+            const patientId = patient?.id || patient?._id;
+            const investigation = radiologyInvestigations.find(
+              (inv) => String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId
+            );
+            // No matching radiology order — this patient shouldn't be on the sonographer's queue
+            if (!investigation) return null;
+
+            return {
+              ...patient,
+              patientType: "regular",
+              dependantId: null,
+              dependantInfo: null,
+              opdPatientId: investigation?.opdPatientId,
+              opdPatientInfo: null,
+              investigationId: investigation?.id || investigation?._id,
+              investigation,
+              cardType: patient?.cardType || 'personal',
+              familyName: patient?.familyName || '',
+              companyName: patient?.companyName || '',
+            };
+          })
+        )
+      ).filter(Boolean);
 
       const dependantCache = {};
-      const dependantInvestigations = allInvestigations.filter((inv) => inv.dependantId);
+      // dependantInvestigations must also be radiology-only
+      const dependantInvestigations = radiologyInvestigations.filter((inv) => inv.dependantId);
 
       const enrichedDependants = (
         await Promise.all(
@@ -115,34 +126,39 @@ const SonographerIncoming = () => {
         new Map(enrichedDependants.map(d => [d.dependantId, d])).values()
       );
 
-      const enrichedOpdPatients = incomingOpdPatients.map((patient) => {
-        const patientId = patient?.id;
-        const investigation = allInvestigations.find(
-          (inv) => String(inv.opdPatientId) === String(patientId)
-        );
-        return {
-          ...patient,
-          patientType: "opd",
-          dependantId: null,
-          dependantInfo: null,
-          opdPatientId: patientId,
-          opdPatientInfo: {
-            id: patient.id || patient._id,
-            name: patient.fullName || `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
-          },
-          investigationId: investigation?.id || investigation?._id,
-          investigation,
-          cardType: patient?.cardType || 'personal',
-          familyName: patient?.familyName || '',
-          companyName: patient?.companyName || '',
-        };
-      });
+      const enrichedOpdPatients = incomingOpdPatients
+        .map((patient) => {
+          const patientId = patient?.id;
+          const investigation = radiologyInvestigations.find(
+            (inv) => String(inv.opdPatientId) === String(patientId)
+          );
+          // No matching radiology order — skip
+          if (!investigation) return null;
+
+          return {
+            ...patient,
+            patientType: "opd",
+            dependantId: null,
+            dependantInfo: null,
+            opdPatientId: patientId,
+            opdPatientInfo: {
+              id: patient.id || patient._id,
+              name: patient.fullName || `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+            },
+            investigationId: investigation?.id || investigation?._id,
+            investigation,
+            cardType: patient?.cardType || 'personal',
+            familyName: patient?.familyName || '',
+            companyName: patient?.companyName || '',
+          };
+        })
+        .filter(Boolean);
 
       const allIncomingPatients = [...enrichedPatients, ...uniqueDependants, ...enrichedOpdPatients]
         .sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime();
           const bTime = new Date(b.updatedAt || 0).getTime();
-          return bTime - aTime; // newest first
+          return bTime - aTime;
         });
 
       setPatients(allIncomingPatients);
@@ -310,11 +326,11 @@ const SonographerIncoming = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') handleNavigate(patient);
                         }}
-                        className="w-full rounded-3xl border border-base-200 bg-base-100 p-5 text-left transition hover:border-primary hover:bg-base-200 cursor-pointer"
+                        className="w-full rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-5 text-left shadow-sm transition-all hover:border-primary hover:shadow-md cursor-pointer"
                       >
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <p className="font-semibold text-base-content truncate">{displayName}</p>
                               {patient.patientType === "dependant" && (
                                 <span className="badge badge-secondary badge-xs">Dependant</span>
@@ -323,32 +339,35 @@ const SonographerIncoming = () => {
                                 <span className="badge badge-info badge-xs">OPD</span>
                               )}
                             </div>
-                            <p className="text-sm text-base-content/70">{displayId}</p>
+                            <p className="text-xs text-base-content/60 font-mono">{displayId}</p>
                           </div>
-                          <span className="badge badge-outline badge-sm">Upload</span>
+                          <span className="badge badge-primary badge-outline badge-sm shrink-0">Upload Scan</span>
                         </div>
-                        <div className="mt-4 grid gap-2 sm:grid-cols-2 text-sm text-base-content/70">
-                          <p>Status: {statusText}</p>
-                          <p>Updated: {patient?.updatedAt ? new Date(patient.updatedAt).toLocaleString() : "—"}</p>
+
+                        <div className="mt-3 pt-3 border-t border-base-200 grid gap-2 sm:grid-cols-2 text-xs text-base-content/60">
+                          <p>Status: <span className="font-medium text-base-content/80">{statusText}</span></p>
+                          <p className="sm:text-right">Updated: {patient?.updatedAt ? new Date(patient.updatedAt).toLocaleString() : "—"}</p>
                         </div>
+
                         {patient.investigationId && patient.investigation && (
-                          <div className="mt-4 p-3 bg-base-200 rounded-lg">
-                            <p className="text-xs uppercase text-base-content/50 mb-2">Ordered Lab Tests</p>
+                          <div className="mt-3 p-3 bg-base-200/60 rounded-lg">
+                            <p className="text-xs uppercase text-base-content/50 mb-1.5 font-semibold tracking-wide">Ordered Tests</p>
                             {patient.investigation?.tests && patient.investigation.tests.length > 0 ? (
-                              <div className="space-y-1">
+                              <div className="flex flex-wrap gap-1.5">
                                 {patient.investigation.tests.map((test, idx) => (
-                                  <p key={idx} className="font-medium text-base-content">
-                                    • {test.name || test}
-                                  </p>
+                                  <span key={idx} className="badge badge-ghost badge-sm">
+                                    {test.name || test}
+                                  </span>
                                 ))}
                               </div>
                             ) : (
-                              <p className="font-medium text-base-content">
+                              <span className="badge badge-ghost badge-sm">
                                 {patient.investigation?.testName || patient.investigation?.investigationType || 'Sonography'}
-                              </p>
+                              </span>
                             )}
                           </div>
                         )}
+
                         <div
                           className="mt-3 flex justify-end"
                           onClick={(e) => e.stopPropagation()}

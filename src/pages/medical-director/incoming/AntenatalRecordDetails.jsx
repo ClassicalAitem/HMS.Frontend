@@ -407,7 +407,7 @@ const handleDeleteLab = async (labId) => {
 
 const handleEditPrescription = (prescription) => {
   setEditingPrescription(prescription);
-  navigate(`/dashboard/doctor/medical-history/${patientId}/antenatal/${selectedRecord._id}/prescription`, {
+  navigate(`/dashboard/medical-director/medical-history/${patientId}/antenatal/${selectedRecord._id}/prescription`, {
     state: { prescription, antenatalId: selectedRecord._id }
   });
 };
@@ -492,7 +492,7 @@ const handleOrderCreated = () => {
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
               <button
                 className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
                   state: {
                     from: fromIncoming ? "incoming" : "patients",
                     patientSnapshot: patient,
@@ -505,7 +505,7 @@ const handleOrderCreated = () => {
               </button>
               <button
                 className="btn btn-secondary btn-sm sm:btn-md gap-2 w-full sm:w-auto"
-                onClick={() => navigate(`/dashboard/doctor/antenatal-records/${patientId}`, {
+                onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}`, {
                   state: {
                     dependantId: dependantId || null,
                     dependantSnapshot: dependantSnapshot || null,
@@ -1204,6 +1204,7 @@ const handleOrderCreated = () => {
         investigation={editingLab}
         onOrderCreated={handleOrderCreated}
       />
+    
     </div>
   );
 };

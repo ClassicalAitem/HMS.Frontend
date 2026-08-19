@@ -5,6 +5,7 @@ import UpcomingAppointments from "./UpcomingAppointments";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { useAppSelector } from "@/store/hooks";
 import KolakLoader from "@/components/common/KolakLoader";
+import { MedicalDirectorLayout } from "@/layouts/medical-director";
 
 const MDDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -50,20 +51,13 @@ const MDDashboard = () => {
   }, [metrics]);
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-base-100">
+    <MedicalDirectorLayout>
       {loading && <KolakLoader fullscreen />}
 
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar />
-      </div>
+ 
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
-
+        
         <div className="overflow-y-auto flex-1">
           <section className="p-4 sm:p-7">
             <div className="max-w-full">
@@ -98,7 +92,7 @@ const MDDashboard = () => {
           </section>
         </div>
       </div>
-    </div>
+    </MedicalDirectorLayout>
   );
 };
 

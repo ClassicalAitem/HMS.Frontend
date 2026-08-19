@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+
+import { Header } from '@/components/common';
+import { Sidebar } from '@/components/medical-director/dashboard';
+
+import KolakLoader from "@/components/common/KolakLoader";
 
 const ViewConsultationRecords = () => {
   const { patientId } = useParams();
@@ -17,8 +19,6 @@ const ViewConsultationRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mainPatient, setMainPatient] = useState(null);
-  const [patients, setPatients] = useState([]); // main + dependants
-  const [selectedPatientId, setSelectedPatientId] = useState(patientId);
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(false);
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -54,72 +54,36 @@ const ViewConsultationRecords = () => {
         if (!mounted) return;
         const data = patientRes?.data ?? patientRes;
         if (data) setMainPatient(data);
-
-        const dependantsRes = await getAllDependantsForPatient(targetPatientId);
-        const raw = dependantsRes?.data?.data?.dependants
-          ?? dependantsRes?.data?.dependants
-          ?? dependantsRes?.data
-          ?? [];
-        const dependantsList = Array.isArray(raw) ? raw : [];
-        const allPatients = [
-          {
-            id: data?.id || data?._id,
-            name: data?.fullName || `${data?.firstName || ""} ${data?.lastName || ""}`.trim(),
-            relation: "Main Patient",
-            isMain: true,
-          },
-          ...dependantsList.map(d => ({
-            id: d.id || d._id,
-            name: d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim(),
-            relation: d.relationshipType || d.relationship || "Dependant",
-            isMain: false,
-          }))
-        ];
-
-        if (mounted) {
-          setPatients(allPatients);
-          if (incomingDependantId) {
-            setSelectedPatientId(incomingDependantId);
-          } else if (!selectedPatientId && allPatients[0]?.id) {
-            setSelectedPatientId(allPatients[0].id);
-          }
-        }
       } catch (err) {
         console.error("Failed to load patient", err);
       } finally {
         if (mounted) setLoading(false);
       }
     };
+
     load();
     return () => { mounted = false; };
-  }, [targetPatientId, incomingDependantId]);
+  }, [targetPatientId]);
 
   useEffect(() => {
-    if (!selectedPatientId) return;
     let mounted = true;
 
     const load = async () => {
       setConsultationsLoading(true);
       try {
-        const selectedInfo = patients.find(p => p.id === selectedPatientId);
         const res = await getConsultations(
           incomingDependantId
             ? { patientId: targetPatientId, dependantId: incomingDependantId }
-            : selectedInfo?.isMain
-              ? { patientId: targetPatientId }
-              : { dependantId: selectedPatientId }
+            : { patientId: targetPatientId }
         );
 
         const raw = res?.data ?? res ?? [];
         const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-        const filtered = list.filter(c => {
+        const filtered = list.filter((c) => {
           if (incomingDependantId) {
             return c.dependantId === incomingDependantId;
           }
-          if (selectedInfo?.isMain) {
-            return !c.dependantId;
-          }
-          return c.dependantId === selectedPatientId;
+          return !c.dependantId;
         });
         const sorted = [...filtered].sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -135,13 +99,10 @@ const ViewConsultationRecords = () => {
         if (mounted) setConsultationsLoading(false);
       }
     };
+
     load();
     return () => { mounted = false; };
-  }, [selectedPatientId, incomingDependantId, targetPatientId, patients]);
-  const selectedPatientInfo = useMemo(() =>
-    patients.find(p => p.id === selectedPatientId),
-    [patients, selectedPatientId]
-  );
+  }, [incomingDependantId, targetPatientId]);
 
   const toggleExpand = (id) => {
     setExpandedIds(prev => {
@@ -155,6 +116,58 @@ const ViewConsultationRecords = () => {
     });
   };
 
+  const handleNewConsultation = () => {
+    navigate(`/dashboard/medical-director/medical-history/${targetPatientId}/add`, {
+      state: {
+        ...(location?.state || {}),
+        patientId: targetPatientId,
+        dependantId: incomingDependantId,
+        dependantSnapshot: incomingDependantSnapshot,
+        patientSnapshot: mainPatient,
+        from: location?.state?.from || "incoming",
+      },
+    });
+  };
+
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history?.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate(`/dashboard/medical-director/medical-history/${targetPatientId}`, {
+      state: {
+        ...(location?.state || {}),
+        patientId: targetPatientId,
+        dependantId: incomingDependantId,
+        dependantSnapshot: incomingDependantSnapshot,
+        patientSnapshot: mainPatient,
+      },
+    });
+  };
+
+  const toDisplayText = (value) => {
+    if (value == null) return "";
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      return value.map(toDisplayText).filter(Boolean).join(", ");
+    }
+    if (typeof value === "object") {
+      if (typeof value.title === "string" && value.title) return value.title;
+      if (typeof value.name === "string" && value.name) return value.name;
+      if (typeof value.value === "string" && value.value) return value.value;
+      if (typeof value.symptom === "string" && value.symptom) return value.symptom;
+      if (typeof value.allergen === "string" && value.allergen) return value.allergen;
+      if (typeof value.reaction === "string" && value.reaction) return value.reaction;
+      if (typeof value.condition === "string" && value.condition) return value.condition;
+      if (typeof value.label === "string" && value.label) return value.label;
+      return JSON.stringify(value);
+    }
+    return "";
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200/50">
@@ -166,7 +179,9 @@ const ViewConsultationRecords = () => {
   }
 
   return (
-    <div className="flex h-screen">
+ 
+         <div className="flex h-screen">
+       {loading && <KolakLoader fullscreen />}
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
@@ -183,43 +198,27 @@ const ViewConsultationRecords = () => {
             <div>
               <h1 className="text-2xl font-bold text-base-content">Consultation Records</h1>
               <p className="text-base-content/60 text-sm mt-1">
-                {mainPatient?.fullName || `${mainPatient?.firstName || ""} ${mainPatient?.lastName || ""}`.trim()}
+                {scopeLabel}
+                {incomingDependantId && mainPatientName ? (
+                  <span className="text-base-content/40"> — dependant of {mainPatientName}</span>
+                ) : null}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
-              {/* Patient / Dependant switcher */}
-              {patients.length > 1 && (
-                <select
-                  className="select select-bordered select-sm"
-                  value={selectedPatientId}
-                  onChange={(e) => setSelectedPatientId(e.target.value)}
-                >
-                  {patients.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.relation})
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button
-                className="btn btn-outline btn-sm"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
-              >
-                ← Back
-              </button>
-            </div>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={handleBack}
+            >
+              ← Back
+            </button>
           </div>
 
-          {/* Viewing label */}
-          {selectedPatientInfo && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-base-content/60">Viewing consultations for:</span>
-              <span className={`badge ${selectedPatientInfo.isMain ? 'badge-primary' : 'badge-primary badge-outline'} badge-sm`}>
-                {selectedPatientInfo.name}
-              </span>
-              <span className="badge badge-outline badge-sm">{selectedPatientInfo.relation}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-base-content/60">Viewing consultations for:</span>
+            <span className={`badge badge-sm ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+              {scopeLabel}
+            </span>
+            <span className="badge badge-outline badge-sm">{scopeSubtitle}</span>
+          </div>
 
           {/* Consultations */}
           <div className="card bg-base-100 shadow-sm">
@@ -231,7 +230,7 @@ const ViewConsultationRecords = () => {
                 </h3>
                 <button
                   className="btn btn-success btn-sm"
-                  onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/add`)}
+                  onClick={handleNewConsultation}
                 >
                   + New Consultation
                 </button>
@@ -244,7 +243,7 @@ const ViewConsultationRecords = () => {
               ) : consultations.length === 0 ? (
                 <div className="text-center py-10 text-base-content/60">
                   <p className="text-lg">No consultations found</p>
-                  <p className="text-sm mt-1">No consultations recorded for {selectedPatientInfo?.name}.</p>
+                  <p className="text-sm mt-1">No consultations recorded for {scopeLabel}.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -285,41 +284,21 @@ const ViewConsultationRecords = () => {
   <span className="font-medium text-base-content">
     Consultation #{consultations.length - idx}
   </span>
-  {/* ✅ Show who this consultation is actually for */}
-  {c.dependantId && c.dependant ? (
-    <span className="badge badge-primary badge-sm">
-      {c.dependant.firstName} {c.dependant.lastName}
-      {/* <span className="ml-1 opacity-70">({c.dependant.relation}) </span> */}
-    </span>
-  ) : (
-    <span className="badge badge-primary badge-sm">
-      {selectedPatientInfo?.name} · Main Patient
-    </span>
-  )}
+  <span className={`badge badge-sm ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+    {scopeSubtitle}
+  </span>
 </div>
 
 
 <div>
-  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Patient</p>
+  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">
+    {incomingDependantId ? "Dependant" : "Patient"}
+  </p>
   <div className="flex items-center gap-2">
-    {c.dependantId && c.dependant ? (
-      <>
-        <span className="font-medium">
-          {c.dependant.firstName} {c.dependant.lastName}
-        </span>
-        <span className="badge badge-secondary badge-xs">
-          {c.dependant.relationshipType}
-        </span>
-        <span className="text-xs text-base-content/50">
-          of {mainPatient?.fullName || `${mainPatient?.firstName} ${mainPatient?.lastName}`}
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="font-medium">{selectedPatientInfo?.name}</span>
-        <span className="badge badge-primary badge-xs">Main Patient</span>
-      </>
-    )}
+    <span className="font-medium">{scopeLabel}</span>
+    <span className={`badge badge-xs ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+      {scopeSubtitle}
+    </span>
   </div>
 </div>
                               <div className="text-sm text-base-content/60 mt-0.5">
@@ -339,7 +318,15 @@ const ViewConsultationRecords = () => {
                               className="btn btn-outline btn-xs"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cId}`);
+                                navigate(`/dashboard/medical-director/medical-history/${targetPatientId}/consultation/${cId}`, {
+                                  state: {
+                                    ...(location?.state || {}),
+                                    patientId: targetPatientId,
+                                    dependantId: incomingDependantId,
+                                    dependantSnapshot: incomingDependantSnapshot,
+                                    patientSnapshot: mainPatient,
+                                  },
+                                });
                               }}
                             >
                               Full View
@@ -354,11 +341,13 @@ const ViewConsultationRecords = () => {
                               {/* Left column */}
                               <div className="space-y-3">
                                 <div>
-                                  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Patient</p>
+                                  <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">
+                                    {incomingDependantId ? "Dependant" : "Patient"}
+                                  </p>
                                   <div className="flex items-center gap-2">
-                                    <span className="font-medium">{selectedPatientInfo?.name}</span>
-                                    <span className={`badge badge-xs ${selectedPatientInfo?.isMain ? 'badge-primary' : 'badge-secondary'}`}>
-                                      {selectedPatientInfo?.relation}
+                                    <span className="font-medium">{scopeLabel}</span>
+                                    <span className={`badge badge-xs ${incomingDependantId ? "badge-secondary" : "badge-primary"}`}>
+                                      {scopeSubtitle}
                                     </span>
                                   </div>
                                 </div>
@@ -378,14 +367,8 @@ const ViewConsultationRecords = () => {
                                     <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Complaints</p>
                                     <div className="flex flex-wrap gap-1">
                                       {c.complaint.map((comp, i) => {
-                                        if (typeof comp === 'object' && comp !== null) {
-                                          // Render object complaint as formatted string
-                                          const symptom = comp.symptom || '';
-                                          const duration = comp.durationInDays ? ` (${comp.durationInDays} days)` : '';
-                                          return <span key={i} className="badge badge-outline badge-sm">{symptom}{duration}</span>;
-                                        }
-                                        // Render string complaint
-                                        return <span key={i} className="badge badge-outline badge-sm">{comp}</span>;
+                                        const text = toDisplayText(comp);
+                                        return <span key={i} className="badge badge-outline badge-sm">{text}</span>;
                                       })}
                                     </div>
                                   </div>
@@ -411,7 +394,7 @@ const ViewConsultationRecords = () => {
                                     <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Medical History</p>
                                     <div className="flex flex-wrap gap-1">
                                       {c.medicalHistory.map((h, i) => (
-                                        <span key={i} className="badge badge-warning badge-outline badge-sm">{h}</span>
+                                        <span key={i} className="badge badge-warning badge-outline badge-sm">{toDisplayText(h)}</span>
                                       ))}
                                     </div>
                                   </div>
@@ -421,13 +404,9 @@ const ViewConsultationRecords = () => {
                                   <div>
                                     <p className="text-xs text-base-content/50 uppercase tracking-wide mb-1">Allergies</p>
                                     <div className="flex flex-wrap gap-1">
-                                      {c.allergicHistory.map((a, i) => {
-                                        if (typeof a === 'object' && a !== null) {
-                                          // Render object allergy as formatted string
-                                          return <span key={i} className="badge badge-error badge-outline badge-sm">{a.allergen || JSON.stringify(a)}</span>;
-                                        }
-                                        return <span key={i} className="badge badge-error badge-outline badge-sm">{a}</span>;
-                                      })}
+                                      {c.allergicHistory.map((a, i) => (
+                                        <span key={i} className="badge badge-error badge-outline badge-sm">{toDisplayText(a)}</span>
+                                      ))}
                                     </div>
                                   </div>
                                 )}
@@ -438,24 +417,19 @@ const ViewConsultationRecords = () => {
                             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-base-300">
                               <button
                                 className="btn btn-outline btn-sm"
-                                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cId}`)}
+                                onClick={() => navigate(`/dashboard/medical-director/medical-history/${targetPatientId}/consultation/${cId}`, {
+                                  state: {
+                                    ...(location?.state || {}),
+                                    patientId: targetPatientId,
+                                    dependantId: incomingDependantId,
+                                    dependantSnapshot: incomingDependantSnapshot,
+                                    patientSnapshot: mainPatient,
+                                  },
+                                })}
                               >
                                 View Full Details
                               </button>
-                              {/* Only allow edit within 24h */}
-                              {(() => {
-                                const within24h = Date.now() - new Date(c.createdAt).getTime() < 24 * 60 * 60 * 1000;
-                                return within24h ? (
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cId}/edit`)}
-                                  >
-                                    Edit
-                                  </button>
-                                ) : (
-                                  <span className="text-xs text-base-content/40 self-center">Edit window expired</span>
-                                );
-                              })()}
+                             
                             </div>
                           </div>
                         )}
@@ -469,6 +443,7 @@ const ViewConsultationRecords = () => {
         </div>
       </div>
     </div>
+
   );
 };
 
