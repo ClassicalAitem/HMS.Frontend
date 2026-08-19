@@ -190,35 +190,38 @@ export const getBillingsByOpdPatientId = async (opdPatientId) => {
   return response;
 };
 
-export const createBilling = async (patientId, payload) => {
-  if (!patientId) throw new Error('Patient ID is required');
-  const data = payload?.itemDetail?.[0] || [];
-  const requiredFields = ['code', 'description', 'quantity', 'price', 'total'];
-  for (const field of requiredFields) {
-    if (!data?.[field]) throw new Error(`${field} is required`);
+export const createBilling = async (patientId, billData) => {
+  if (!patientId) throw new Error('Patient ID is required:');
+
+  if (billData.itemDetail && Array.isArray(billData.itemDetail)) {
+      const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
+      console.log('🧾 BillingAPI: Creating bill (raw payload)', { patientId, payload: billData, url });
+      const response = await apiClient.post(url, billData);
+      return response;
   }
-  if (!payload || typeof payload !== 'object') throw new Error('payload must be an object');
-  const { itemDetail = [], totalAmount, dependantId } = payload;
-  if (!Array.isArray(itemDetail) || itemDetail.length === 0) throw new Error('itemDetail must include at least one item');
-  const sanitized = itemDetail.map(({ code, description, quantity, price, total, serviceChargeId, investigationId, prescriptionId, admissionId }) => ({
-  code,
-  description,
-  quantity: Number(quantity) || 1,
-  price: Number(price) || 0,
-  total: Number(total) || ((Number(price) || 0) * (Number(quantity) || 1)),
-  serviceChargeId: serviceChargeId || null,
-  investigationId: investigationId || null,
-  prescriptionId: prescriptionId || null,
-  admissionId: admissionId || null,
-}));
-  const body = { itemDetail: sanitized };
-  if (totalAmount !== undefined) body.totalAmount = Number(totalAmount) || 0;
-  if (dependantId) body.dependantId = dependantId;   // ← added
+
+  const { items = [], paymentMethod } = billData;
+  if (!Array.isArray(items) || items.length === 0) throw new Error('At least one bill item is required');
+
+  const totalAmount = items.reduce((sum, item) => sum + (Number(item.rate) || 0), 0);
+
+  const payload = {
+    itemDetail: items.map(({ category, description, rate }) => ({
+        code: category || 'misc',
+        description,
+        quantity: 1,
+        price: Number(rate) || 0,
+        total: Number(rate) || 0
+    })),
+    totalAmount,
+  };
+
   const url = `${API_ENDPOINTS.CREATE_BILL}/${patientId}`;
-  console.log('🧾 BillingAPI: Creating billing (detailed)', { patientId, body, url });
-  const response = await apiClient.post(url, body);
+  console.log('🧾 BillingAPI: Creating bill', { patientId, payload, url });
+  const response = await apiClient.post(url, payload);
   return response;
 };
+
 export const getAllReceipts = async (params = {}) => {
   const url = API_ENDPOINTS.GET_RECEIPTS; // '/receipts'
   console.log('🧾 ReceiptAPI: Fetching all receipts', { params, url });

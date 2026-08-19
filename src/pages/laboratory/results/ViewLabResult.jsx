@@ -439,23 +439,23 @@ const loadDependantDetails = async (dependantId) => {
     }
   };
 
-  const SidebarDrawer = () => (
-    <>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? "transition-transform duration-200 ease-in-out" : ""
-        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
-      </div>
-    </>
-  );
+  // const SidebarDrawer = () => (
+  //   <>
+  //     {sidebarOpen && (
+  //       <div
+  //         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+  //         onClick={() => setSidebarOpen(false)}
+  //       />
+  //     )}
+  //     <div
+  //       className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
+  //         sidebarMounted ? "transition-transform duration-200 ease-in-out" : ""
+  //       } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+  //     >
+  //       <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
+  //     </div>
+  //   </>
+  // );
 
   const displayField = (label, value) => {
     if (!value) return null;
@@ -587,7 +587,8 @@ const loadDependantDetails = async (dependantId) => {
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
+        {/* <SidebarDrawer /> */}
+        <LaboratorySidebar />
         <div className="flex overflow-hidden flex-col flex-1">
           <Header onToggleSidebar={() => setSidebarOpen(true)} />
           <div className="flex items-center justify-center flex-1 px-4">
@@ -601,7 +602,8 @@ const loadDependantDetails = async (dependantId) => {
   if (error) {
     return (
       <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
+        {/* <LaboratorySidebar /> */}
+        <LaboratorySidebar />
         <div className="flex overflow-hidden flex-col flex-1">
           <Header onToggleSidebar={() => setSidebarOpen(true)} />
           <div className="flex items-center justify-center flex-1 px-4">
@@ -629,14 +631,6 @@ const patientName =
 
   const isDependant = Boolean(labResult?.dependantId);
   const isOpdLabResult = Boolean(labResult?.opdPatientId);
-  const canSendToDoctor = Boolean(patientId && !isOpdLabResult) || isDependant;
-  const canComplete = Boolean(isOpdLabResult) || (patientId && !isDependant) || isDependant;
-
-  // Check if this is a scan test (ultrasound or similar)
-  const isScanTest = investigation?.testName?.toLowerCase().includes('ultrasound') || 
-                     investigation?.type?.toLowerCase().includes('scan') ||
-                     labResult?.form?.natureOfSpecimen?.toLowerCase().includes('scan');
-  const canSendToSonographer = canSendToDoctor && isScanTest;
 
   const handlePrint = () => {
     document.body.classList.add('printable-lab');
@@ -646,25 +640,6 @@ const patientName =
     }, 250);
   };
 
-  const handleComplete = async () => {
-    try {
-      const investigationId = labResult?.investigationRequestId || investigation?._id;
-
-      // Set investigation status to completed
-      if (investigationId) {
-        await updateInvestigation(investigationId, {
-          status: "completed",
-          labResultId: labResultId,
-        });
-      }
-
-      toast.success("Lab result marked as completed!");
-      // navigate(`/dashboard/laboratory/results/${labResultId}`);
-    } catch (err) {
-      console.error("Failed to complete lab result:", err);
-      toast.error("Failed to complete lab result");
-    }
-  };
 
   const handleSendToDoctor = async () => {
     try {
@@ -717,42 +692,12 @@ const patientName =
     }
   };
 
-  const handleSendToSonographer = async () => {
-    try {
-      setSendingToSonographer(true);
 
-      // Update investigation status to awaiting_sonographer
-      if (effectiveInvestigationId) {
-        await updateInvestigation(effectiveInvestigationId, {
-          status: "awaiting_sonographer",
-          labResultId: labResultId,
-        });
-      }
-
-      // Update patient status for regular patients
-      if (patientId && !isDependant && !isOpdLabResult) {
-        await updatePatientStatus(patientId, "awaiting_sonographer");
-      }
-
-      // Update OPD patient status
-      if (isOpdLabResult && labResult?.opdPatientId) {
-        await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_sonographer" });
-      }
-
-      toast.success("Lab results sent to sonographer successfully!");
-      navigate("/dashboard/laboratory");
-    } catch (err) {
-      console.error("Error sending lab results:", err);
-      toast.error("Failed to send lab results to sonographer");
-    } finally {
-      setSendingToSonographer(false);
-    }
-  };
 
   return (
     <div className="lab-container flex h-screen bg-base-200">
       <div className="lab-sidebar no-print">
-        <SidebarDrawer />
+        <LaboratorySidebar />
       </div>
 
       <div className="lab-main flex overflow-hidden flex-col flex-1">
@@ -904,7 +849,7 @@ const patientName =
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
                
-                {canSendToDoctor && (
+           
                   <button
                     onClick={handleSendToDoctor}
                     disabled={sendingToDoctor}
@@ -912,26 +857,10 @@ const patientName =
                   >
                     {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
                   </button>
-                )}
-
-                {canSendToSonographer && (
-                  <button
-                    onClick={handleSendToSonographer}
-                    disabled={sendingToSonographer}
-                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
-                  >
-                    {sendingToSonographer ? "Sending to Sonographer..." : "Send to Sonographer"}
-                  </button>
-                )}
                 
-                {canComplete && (
-                  <button
-                    onClick={handleComplete}
-                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-all"
-                  >
-                    Complete
-                  </button>
-                )}
+
+              
+            
 
               
               
