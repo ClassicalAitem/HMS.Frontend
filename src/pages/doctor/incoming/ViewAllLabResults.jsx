@@ -112,6 +112,24 @@ useEffect(() => {
     fetchDependants();
   }, [labResults]);
 
+  useEffect(() => {
+  let mounted = true;
+  const loadCurrentDependant = async () => {
+    if (!isViewingDependant || !dependantId) return;
+    try {
+      const res = await getDependantById(dependantId);
+      const dep = res?.data?.data?.dependant ?? res?.data?.dependant ?? res?.data ?? res;
+      if (mounted && dep) {
+        setDependantCache(prev => ({ ...prev, [dependantId]: dep }));
+      }
+    } catch (err) {
+      console.error('Failed to load current dependant', err);
+    }
+  };
+  loadCurrentDependant();
+  return () => { mounted = false; };
+}, [isViewingDependant, dependantId]);
+
   // Format lab result rows
 const resultRows = useMemo(() => (
   Array.isArray(labResults)
@@ -196,14 +214,16 @@ const resultRows = useMemo(() => (
               </div>
                           <button
                 className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
-                  state: {
-                    from: fromIncoming ? 'incoming' : 'patients',
-                    patientSnapshot: patient,
-                    dependantId,
-                    dependantSnapshot,
-                  }
-                })}
+               onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                state: {
+                  from: fromIncoming ? 'incoming' : 'patients',
+                  patientSnapshot: patient,
+                  dependantId,
+                  dependantSnapshot: isViewingDependant
+                    ? (dependantCache[dependantId] || dependantSnapshot)
+                    : null,
+                }
+              })}
               >
                 Back
               </button>
