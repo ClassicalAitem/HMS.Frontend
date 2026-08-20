@@ -184,20 +184,20 @@ const IncomingDoctor = () => {
       const isDependent = data.type === 'dependant';
 
       // Check if already in consultation
-      if (!isDependent) {
-        const latest = await getPatientById(data.patientId);
-        const latestStatus = (latest?.data?.status ?? latest?.status ?? "").toString().toLowerCase();
-        if (['in_consultation', 'in consultation'].some((v) => latestStatus.includes(v))) {
-          alert("This patient is currently in consultation. Please pick another patient.");
-          setNavigatingId(null);
-          return;
-        }
-        await updatePatientStatus(data.patientId, { status: 'in_consultation' });
-      } else {
-        await updateDependantStatus(data.dependantId, { status: 'in_consultation' });
-      }
+      // if (!isDependent) {
+      //   const latest = await getPatientById(data.patientId);
+      //   const latestStatus = (latest?.data?.status ?? latest?.status ?? "").toString().toLowerCase();
+      //   if (['in_consultation', 'in consultation'].some((v) => latestStatus.includes(v))) {
+      //     alert("This patient is currently in consultation. Please pick another patient.");
+      //     setNavigatingId(null);
+      //     return;
+      //   }
+      //   await updatePatientStatus(data.patientId, { status: 'in_consultation' });
+      // } else {
+      //   await updateDependantStatus(data.dependantId, { status: 'in_consultation' });
+      // }
 
-      localStorage.setItem('refreshIncoming', Date.now().toString());
+      // localStorage.setItem('refreshIncoming', Date.now().toString());
 
       navigate(`/dashboard/doctor/medical-history/${data.patientId}`, {
         state: {
