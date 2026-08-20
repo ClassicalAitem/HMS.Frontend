@@ -9,7 +9,7 @@ import { getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, upd
 import { updatePatient } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import {  getDependantById, updateDependantStatus } from '@/services/api/dependantAPI';
+import {  getDependantById } from '@/services/api/dependantAPI';
 import { usersAPI } from "@/services/api/usersAPI";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
@@ -657,12 +657,9 @@ const patientName =
       }
 
       // Update patient status for regular patients and dependants
-
-      if (isDependant && labResult?.dependantId) {
-       await updateDependantStatus(labResult.dependantId, { status: PATIENT_STATUS.LAB_COMPLETED });
-      } else if (patientId && labResult) {
-         await updatePatientStatus(patientId, PATIENT_STATUS.LAB_COMPLETED);
-       }
+      if (patientId && labResult) {
+        await updatePatientStatus(patientId, PATIENT_STATUS.LAB_COMPLETED);
+      }
 
       // Update OPD patient status
       if (isOpdLabResult && labResult?.opdPatientId) {
@@ -683,7 +680,7 @@ const patientName =
       }
 
       toast.success("Lab results sent to doctor successfully!");
-      navigate("/dashboard/laboratory/results/history");
+      navigate("/dashboard/laboratory");
     } catch (err) {
       console.error("Error sending lab results:", err);
       toast.error("Failed to send lab results to doctor");
@@ -765,7 +762,7 @@ const patientName =
               {displaySection("Haematology", labResult?.form?.haematology)}
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
-              {displaySection("PT Test  ||   Malaria Parasite", labResult?.form?.ptTest)}
+              {displaySection("PT Test", labResult?.form?.ptTest)}
               {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
