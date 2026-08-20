@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
@@ -10,15 +9,10 @@ import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { MedicalDirectorLayout } from "@/layouts/medical-director";
 
 const DOCTOR_STATUSES = new Set([
-  "awaiting_consultation",
-  "awaiting_doctor",
-  "in_consultation",
-  "consultation_completed",
-  "awaiting_surgery",
-  "lab_completed",
-  "awaiting_md"
+ "awaiting_md"
 ]);
 
 const prettifyStatus = (status) =>
@@ -183,18 +177,7 @@ const IncomingMD = () => {
       const isDependent = data.type === 'dependant';
 
       // Check if already in consultation
-      if (!isDependent) {
-        const latest = await getPatientById(data.patientId);
-        const latestStatus = (latest?.data?.status ?? latest?.status ?? "").toString().toLowerCase();
-        if (['in_consultation', 'in consultation'].some((v) => latestStatus.includes(v))) {
-          alert("This patient is currently in consultation. Please pick another patient.");
-          setNavigatingId(null);
-          return;
-        }
-        await updatePatientStatus(data.patientId, { status: 'in_consultation' });
-      } else {
-        await updateDependantStatus(data.dependantId, { status: 'in_consultation' });
-      }
+
 
       localStorage.setItem('refreshIncoming', Date.now().toString());
 
@@ -241,20 +224,22 @@ const IncomingMD = () => {
     refreshQueueCount();
 };
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row bg-base-100">
+    <MedicalDirectorLayout >
+
+    <div className="">
        {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
+      {/* {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
-      </div>
+      </div> */}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
+      <div className="flex flex-1 flex-col ">
+        {/* <Header onToggleSidebar={toggleSidebar} /> */}
 
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+        <div className="overflow-y-auto flex-1  ">
           <div className="mb-6">
             <div className="flex items-center gap-3">
               <RiArrowLeftRightFill size={24} className="text-primary" />
@@ -362,18 +347,7 @@ const IncomingMD = () => {
 
                     {/* Action — full width below on mobile */}
                     <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
-                      {isInConsultation ? (
-                        <div className="flex flex-col items-end gap-2 w-full">
-                          <button
-                            className="btn btn-xs btn-outline btn-warning w-full"
-                            onClick={() => handleReset(data)}
-                          >
-                            ↺ Reset
-                          </button>
-                          <button className="btn btn-xs btn-disabled w-full" disabled>View</button>
-                          <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
-                        </div>
-                      ) : (
+                    
                         <div className="flex flex-col items-end gap-2 w-full">
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto"
@@ -386,7 +360,7 @@ const IncomingMD = () => {
                           </button>
                           <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
                         </div>
-                      )}
+                  
                     </div>
                     </div>
                   );
@@ -414,6 +388,8 @@ const IncomingMD = () => {
         </div>
       </div>
     </div>
+    </MedicalDirectorLayout>
+
   );
 };
 

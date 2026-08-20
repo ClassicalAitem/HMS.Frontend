@@ -16,6 +16,7 @@ import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI"; 
 import KolakLoader from "@/components/common/KolakLoader";
 import { IoIosCloseCircleOutline } from "react-icons/io";
+import { DoctorLayout} from "@/components/doctor/doctor";
 
 
 
@@ -473,22 +474,23 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
       </div>
     );
   }
-
+  
   return (
-    <div className="flex h-screen bg-base-200/50">
+    <DoctorLayout>
+    {/* <div className="flex h-screen bg-base-200/50"> */}
        {loadingData && <KolakLoader fullscreen />}
       <Toaster position="top-right" />
 
-      {isSidebarOpen && (
+      {/* {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <Sidebar />
-      </div>
+      </div> */}
 
       <div className="flex min-w-0 overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        {/* <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} /> */}
 
         <div className="flex min-w-0 overflow-y-auto flex-col p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
           {/* Header */}
@@ -903,7 +905,9 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
           </div>
         </div>
       </div>
-    </div>
+    {/* </div> */}
+        </DoctorLayout>
+
   );
 };
 

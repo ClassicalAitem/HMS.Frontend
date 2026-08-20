@@ -8,6 +8,7 @@ import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import { FaHospital } from 'react-icons/fa';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
+import { DoctorLayout } from '@/components/doctor/doctor';
 
 const ViewAllAdmissions = () => {
   const { patientId } = useParams();
@@ -168,25 +169,11 @@ const ViewAllAdmissions = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-base-300/20">
-      {/* Mobile Backdrop Overlay */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar />
-      </div>
+<DoctorLayout>
 
       {/* Main Container */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
-
+  
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Header Section */}
           <div className="mb-6">
@@ -389,7 +376,8 @@ const ViewAllAdmissions = () => {
           )}
         </div>
       </div>
-    </div>
+          </DoctorLayout>
+
   );
 };
 

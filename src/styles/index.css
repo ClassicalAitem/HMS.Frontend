@@ -1,4 +1,10 @@
 @import "tailwindcss";
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark, cupcake, bumblebee, emerald,
     corporate, synthwave, retro, cyberpunk, valentine, halloween, garden, forest,

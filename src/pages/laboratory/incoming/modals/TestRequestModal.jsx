@@ -2,8 +2,9 @@ import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtil
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLabResultId  }) => {
-   const navigate = useNavigate();
+const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLabResultId }) => {
+  const navigate = useNavigate();
+
   const getPriorityBgColor = (status) => {
     if (status === "Urgent") return "#FFE2E2";
     if (status === "Normal") return "#DBEAFE";
@@ -16,15 +17,21 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
     return "#111215";
   };
 
-  // Helper to get test names from investigation object
-  const getTestNames = () => {
-    if (!data) return "N/A";
-    if (data?.test) return data.test; // fallback for old format
-    if (Array.isArray(data?.tests)) {
-      return data.tests.map(t => t.name || t.code || t).join(", ");
+  // Return an array of individual test names instead of one joined string,
+  // so each test can render as its own chip and won't collide with layout.
+  const getTestList = () => {
+    if (!data) return [];
+    if (Array.isArray(data?.tests) && data.tests.length) {
+      return data.tests.map((t) => t.name || t.code || t).filter(Boolean);
     }
-    return "N/A";
+    if (data?.test) {
+      // fallback for old comma-joined string format
+      return String(data.test).split(",").map((s) => s.trim()).filter(Boolean);
+    }
+    return [];
   };
+
+  const testList = getTestList();
 
   const getDisplayDate = () => {
     if (data?.createdAt) return formatNigeriaDate(data.createdAt);
@@ -39,161 +46,115 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
   };
 
   const handleAcceptClick = () => {
-  setShowModal2(false);
-  const investigationId = data?.id || data?._id;
-  const opdPatientId = data?.opdPatientId;
+    setShowModal2(false);
+    const investigationId = data?.id || data?._id;
+    const opdPatientId = data?.opdPatientId;
 
-  if (investigationId) {
-    // ✅ Has a real investigation ID — works for both regular and OpD with investigation
-    navigate(`/dashboard/laboratory/results/add/${investigationId}`);
-  } else if (opdPatientId) {
-    // ✅ OpD patient with no investigation yet — pass opdPatientId as query param
-    navigate(`/dashboard/laboratory/results/add-opd?opdPatientId=${opdPatientId}&patientName=${encodeURIComponent(data?.name || '')}`);
-  } else if (onAcceptFromDetails) {
-    onAcceptFromDetails(data);
-  }
-};
+    if (investigationId) {
+      navigate(`/dashboard/laboratory/results/add/${investigationId}`);
+    } else if (opdPatientId) {
+      navigate(`/dashboard/laboratory/results/add-opd?opdPatientId=${opdPatientId}&patientName=${encodeURIComponent(data?.name || '')}`);
+    } else if (onAcceptFromDetails) {
+      onAcceptFromDetails(data);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-start overflow-y-auto min-h-screen">
-      <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[413px] h-[550px]  w-full">
-        <div className="w-[349px] h-[785px] mx-auto">
-          <div className="w-full h-[70px] flex flex-col gap-3 font-[400]">
-            <h5 className="text-[#00943C] text-[24px] font-[400] ">
-              Test Request Details
-            </h5>
-            <p className="text-[#605D66] text-[15px] font-[400] ">
-              Complete information about the test request
+    <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm flex justify-center items-center overflow-y-auto">
+      <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-[440px] max-h-[90vh] overflow-y-auto">
+
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h5 className="text-[#00943C] text-2xl font-normal">
+            Test Request Details
+          </h5>
+          <p className="text-[#605D66] text-sm font-normal">
+            Complete information about the test request
+          </p>
+        </div>
+
+        {/* Patient Information */}
+        <div className="w-full mt-5">
+          <h6 className="text-lg text-[#111215] font-normal">
+            Patient Information
+          </h6>
+          <div className="w-full bg-[#f2f2f3] rounded-md p-3 mt-3">
+            <p className="text-[#aeaaae] text-xs">Patient Name</p>
+            <p className="text-base text-[#111215] font-normal">
+              {data?.name || "Unknown Patient"}
             </p>
           </div>
+        </div>
 
-          <div className="w-full h-[4px] mt-[16px]">
-            {/* // Patient Information */}
-            <div className="w-full">
-              <h6 className="text-[20px] text-[#111215] font-[400]">
-                Patient Information
-              </h6>
-              <div className="w-full h-[72px] bg-[#f2f2f3] rounded-[6px] p-[12px]  mt-3 flex justify-between">
-                <div className="h-[48px]">
-                  <p className="text-[#aeaaae] text-[12px]">Patient Name</p>
-                  <p className="text-[16px] text-[#111215] font-[400]">
-                    {data?.name || "Unknown Patient"}
-                  </p>
-                </div>
-                {/* <div className="h-[48px]">
-                  <p className="text-[#aeaaae] text-[12px]">Patient ID</p>
-                  <p className="text-[16px] text-[#111215] font-[400]">
-                    {data?.userId || "N/A"}
-                  </p>
-                </div> */}
+        {/* Test Information */}
+        <div className="w-full mt-4">
+          <h6 className="text-lg text-[#111215] font-normal">
+            Test Information
+          </h6>
+          <div className="w-full bg-[#f2f2f3] p-3 rounded-md mt-3 flex flex-col gap-4">
+
+            {/* Test type chips + priority — stacked, not squeezed side by side */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-col gap-2 min-w-0">
+                <p className="text-[#AEAAAE] text-xs font-normal">Test Type</p>
+                {testList.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {testList.map((name, i) => (
+                      <span
+                        key={i}
+                        className="bg-white border border-[#e0e0e0] text-[#111215] text-xs font-medium px-2 py-1 rounded-md"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[#111215] text-sm">N/A</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 shrink-0">
+                <p className="text-[#111215] text-sm">Priority Level</p>
+                <span
+                  style={{
+                    backgroundColor: getPriorityBgColor(data?.status),
+                    color: getPriorityTextColor(data?.status),
+                  }}
+                  className="inline-flex items-center justify-center rounded-md px-2.5 py-1 text-xs font-normal w-fit"
+                >
+                  {data?.status || "N/A"}
+                </span>
               </div>
             </div>
-            {/* // Test Information */}
-            <div className="w-full mt-3">
-              <h6 className="text-[20px] text-[#111215] font-[400]">
-                Test Information
-              </h6>
-              <div className="w-full bg-[#f2f2f3] p-[12px] rounded-[6px] mt-3 flex flex-col gap-[12px]">
-                <div className="max-w-[320px] flex justify-between items-center">
-                  <div className="w-[133px] flex flex-col gap-[8px]">
-                    <p className="text-[#AEAAAE] text-[12px] font-[400]">
-                      Test Type
-                    </p>
-                    <p className="text-[#111215] text-[16px] font-[400]">
-                      {getTestNames()}
-                    </p>
-                  </div>
-                  <div className="w-[106px] flex flex-col gap-[8px]">
-                    <p className="text-[#111215] text-[16px]">Priority Level</p>
-                    <p
-                      style={{
-                        backgroundColor: getPriorityBgColor(data?.status),
-                        color: getPriorityTextColor(data?.status),
-                      }}
-                      className="w-[62px] h-[24px] rounded-[6px] px-[6px] py-[4px] text-[12px] font-[400] flex items-center justify-center"
-                    >
-                      {data?.status || "N/A"}
-                    </p>
-                  </div>
-                </div>
-                <div className="max-w-[320px] flex justify-between items-center">
-                  <div className="w-[92px] flex flex-col gap-[8px]">
-                    <p className="text-[#AEAAAE] text-[12px] font-[400]">
-                      Request Date
-                    </p>
-                    <p className="text-[#111215] text-[16px] font-[400]">
-                      {getDisplayDate()}
-                    </p>
-                  </div>
-                  <div className="w-[106px] flex flex-col gap-[8px]">
-                    <p className="text-[#AEAAAE] text-[12px] font-[400]">
-                      Request Time
-                    </p>
-                    <p className="text-[#111215] text-[16px] font-[400]">
-                      {getDisplayTime()}
-                    </p>
-                  </div>
-                </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+              <div className="flex flex-col gap-2">
+                <p className="text-[#AEAAAE] text-xs font-normal">Request Date</p>
+                <p className="text-[#111215] text-base font-normal">{getDisplayDate()}</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <p className="text-[#AEAAAE] text-xs font-normal">Request Time</p>
+                <p className="text-[#111215] text-base font-normal">{getDisplayTime()}</p>
               </div>
             </div>
-            {/* Requesting Doctor */}
-            {/* <div className="w-full mt-3">
-              <h6 className="text-[#111215] text-[20px] font-[400]">
-                Requesting Doctor
-              </h6>
-              <div className="bg-[#F2F2F3] flex justify-between items-center p-[12px] rounded-[6px] mt-3">
-                <div className="h-[48px] flex flex-col gap-[8px]">
-                  <p className="text-[#AEAAAE] text-[12px] font-[400]">
-                    Doctor Name
-                  </p>
-                  <p className="text-[#111215] text-[16px] font-[400]">
-                    {data?.requestedBy || "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div> */}
-            {/* Clinical Information */}
-            {/* <div className="w-full mt-3">
-              <h6 className="text-[#111215] text-[20px] font-[400]">
-                Clinical Information
-              </h6>
-              <div className="bg-[#F2F2F3] p-[12px] rounded-[6px] flex flex-col gap-[6px] justify-between mt-3">
-                <p className="text-[12px] text-[#aeaaae] font-[400]">
-                  Symptoms/Clinical Notes
-                </p>
-                <p className="text-[#111215] text-[16px] font-[400]">
-                  {data?.symptoms || "No notes provided"}
-                </p>
-              </div>
-            </div> */}
-            {/* Request Status */}
-            {/* <div className="w-full mt-3">
-              <h6 className="text-[#111215] text-[20px] font-[400]">
-                Request Status
-              </h6>
-              <div className="bg-[#F2F2F3] w-full h-[48px] p-[12px] rounded-[6px] mt-3">
-                <p className="w-[39px] h-[24px] bg-[#ffe2e2] px-[6px] py-[4px] text-[#E7000B] text-[12px] font-[400] rounded-[6px]">
-                  NEW
-                </p>
-              </div>
-            </div> */}
+          </div>
+        </div>
+
         {/* Buttons */}
-        <div className="w-[349px] mx-auto justify-center items-center flex gap-[16px] mt-5">
+        <div className="w-full flex flex-col-reverse sm:flex-row justify-center items-center gap-3 mt-6">
           <button
             onClick={() => setShowModal2(false)}
-            className="w-[100px] h-[52px] rounded-[6px] border-[1px] border-[#AEAAAE] px-[24px] py-[16px] text-[#111215] text-[18px] font-[600] flex justify-center items-center cursor-pointer"
+            className="w-full sm:w-auto sm:flex-1 h-[52px] rounded-md border border-[#AEAAAE] px-6 py-4 text-[#111215] text-base font-semibold flex justify-center items-center cursor-pointer"
           >
             Close
           </button>
-          
-          <button 
+
+          <button
             onClick={handleAcceptClick}
-            className="bg-[#00943C] w-[207px] h-[52px] px-[24px] py-[16px] rounded-[6px] text-[#FAFAFA] text-[18px] font-[600] flex justify-center items-center cursor-pointer "
+            className="w-full sm:w-auto sm:flex-[2] bg-[#00943C] h-[52px] px-6 py-4 rounded-md text-[#FAFAFA] text-base font-semibold flex justify-center items-center cursor-pointer"
           >
             Accept & Process
           </button>
-        </div>
-          </div>
         </div>
       </div>
     </div>
