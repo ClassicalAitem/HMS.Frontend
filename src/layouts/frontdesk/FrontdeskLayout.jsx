@@ -5,16 +5,11 @@ import { Sidebar } from '@/components/frontdesk/dashboard';
 const FrontdeskLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-base-300/20">
+    <div className="flex h-screen w-full overflow-hidden bg-base-300/20">
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -40,5 +35,4 @@ const FrontdeskLayout = ({ children }) => {
     </div>
   );
 };
-
 export default FrontdeskLayout;
