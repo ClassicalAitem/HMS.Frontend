@@ -8,6 +8,7 @@ import { getLabResults } from '@/services/api/labResultsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import { FaFlask } from 'react-icons/fa';
+import { MedicalDirectorLayout } from '@/layouts/medical-director';
 
 const ViewAllLabResults = () => {
   const { patientId } = useParams();
@@ -21,6 +22,9 @@ const ViewAllLabResults = () => {
   const [labResults, setLabResults] = useState([]);
   const [dependantCache, setDependantCache] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
+  const dependantId = location?.state?.dependantId || null;
+const dependantSnapshot = location?.state?.dependantSnapshot || null;
+const isViewingDependant = !!dependantId;
   const itemsPerPage = 10;
 
   const patientName = useMemo(() => (
@@ -45,26 +49,29 @@ const ViewAllLabResults = () => {
   }, [patientId]);
 
   // Fetch lab results
-  useEffect(() => {
-    let mounted = true;
-    const loadLabResults = async () => {
-      try {
-        setLoading(true);
-        const res = await getLabResults({ patientId });
-        const rawData = res?.data ?? res ?? [];
-        if (mounted) setLabResults(Array.isArray(rawData) ? rawData : []);
-      } catch (err) {
-        console.error('Failed to load lab results:', err);
-        if (mounted) setLabResults([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+useEffect(() => {
+  let mounted = true;
+  const loadLabResults = async () => {
+    try {
+      setLoading(true);
+      const res = await getLabResults({ patientId });
+      const rawData = res?.data ?? res ?? [];
+      const list = Array.isArray(rawData) ? rawData : [];
+      const scoped = isViewingDependant
+        ? list.filter(r => r.dependantId === dependantId)
+        : list.filter(r => !r.dependantId);
+      if (mounted) setLabResults(scoped);
+    } catch (err) {
+      console.error('Failed to load lab results:', err);
+      if (mounted) setLabResults([]);
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  };
 
-    if (patientId) loadLabResults();
-    return () => { mounted = false; };
-  }, [patientId]);
-
+  if (patientId) loadLabResults();
+  return () => { mounted = false; };
+}, [patientId, isViewingDependant, dependantId]);
   // Fetch dependants on-demand as we encounter them in lab results
   useEffect(() => {
     if (!labResults.length) return;
@@ -105,57 +112,74 @@ const ViewAllLabResults = () => {
     fetchDependants();
   }, [labResults]);
 
+  useEffect(() => {
+  let mounted = true;
+  const loadCurrentDependant = async () => {
+    if (!isViewingDependant || !dependantId) return;
+    try {
+      const res = await getDependantById(dependantId);
+      const dep = res?.data?.data?.dependant ?? res?.data?.dependant ?? res?.data ?? res;
+      if (mounted && dep) {
+        setDependantCache(prev => ({ ...prev, [dependantId]: dep }));
+      }
+    } catch (err) {
+      console.error('Failed to load current dependant', err);
+    }
+  };
+  loadCurrentDependant();
+  return () => { mounted = false; };
+}, [isViewingDependant, dependantId]);
+
   // Format lab result rows
-  const resultRows = useMemo(() => (
-    Array.isArray(labResults)
-      ? labResults.map((result) => {
-          const form = result?.form || {};
-          
-          const testCategories = [
-            { name: 'Haematology', data: form.haematology },
-            { name: 'WBC Differential', data: form.wbcDifferential },
-            { name: 'Serology', data: form.serology },
-            { name: 'Urinalysis', data: form.urinalysis },
-            { name: 'Kidney Function', data: form.kidneyFunctionTest },
-            { name: 'Liver Function', data: form.liverFunctionTest },
-            { name: 'Diabetes Screening', data: form.diabetesScreening },
-            { name: 'Lipid Profile', data: form.lipidProfile },
-            { name: 'Others', data: form.others },
-          ];
+const resultRows = useMemo(() => (
+  Array.isArray(labResults)
+    ? labResults.map((result) => {
+        const form = result?.form || {};
 
-          const completedTests = testCategories
-            .filter(cat => cat.data && Object.values(cat.data).some(v => v !== ''))
-            .map(cat => cat.name);
+        const testCategories = [
+          { name: 'Haematology', data: form.haematology },
+          { name: 'WBC Differential', data: form.wbcDifferential },
+          { name: 'Serology', data: form.serology },
+          { name: 'Urinalysis', data: form.urinalysis },
+          { name: 'Kidney Function', data: form.kidneyFunctionTest },
+          { name: 'Liver Function', data: form.liverFunctionTest },
+          { name: 'Diabetes Screening', data: form.diabetesScreening },
+          { name: 'Lipid Profile', data: form.lipidProfile },
+          { name: 'Others', data: form.others },
+        ];
 
-          const isDependant = !!result?.dependantId;
-          const dependant = patient?.dependants?.find(
-            d => d.id === result.dependantId
-          );
+        const completedTests = testCategories
+          .filter(cat => cat.data && Object.values(cat.data).some(v => v !== ''))
+          .map(cat => cat.name);
 
-          const forName = isDependant
-            ? dependant
-              ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
-              : 'Loading...'
-            : patientName;
+        const isDependant = !!result?.dependantId;
+        const dependant = isDependant
+          ? dependantCache[result.dependantId] || (result.dependantId === dependantId ? dependantSnapshot : null)
+          : null;
 
-          const forType = isDependant ? 'Dependant' : 'Patient';
+        const forName = isDependant
+          ? dependant
+            ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || dependant.fullName || 'Loading...'
+            : 'Loading...'
+          : patientName;
 
-          return {
-            _id: result._id || result.id,
-            labNo: form.labNo || '—',
-            specimen: form.natureOfSpecimen || '—',
-            date: result.createdAt ? formatNigeriaDate(result.createdAt) : '—',
-            remarks: result.remarks || '—',
-            completedTests,
-            completedTestsCount: completedTests.length,
-            isForDependant: isDependant,
-            forName,
-            forType,
-          };
-        })
-      : []
-  ), [labResults, dependantCache, patientName, patient]);
+        const forType = isDependant ? 'Dependant' : 'Patient';
 
+        return {
+          _id: result._id || result.id,
+          labNo: form.labNo || '—',
+          specimen: form.natureOfSpecimen || '—',
+          date: result.createdAt ? formatNigeriaDate(result.createdAt) : '—',
+          remarks: result.remarks || '—',
+          completedTests,
+          completedTestsCount: completedTests.length,
+          isForDependant: isDependant,
+          forName,
+          forType,
+        };
+      })
+    : []
+), [labResults, dependantCache, patientName, dependantId, dependantSnapshot]);
   // Pagination
   const paginationData = useMemo(() => {
     const totalItems = resultRows.length;
@@ -169,26 +193,11 @@ const ViewAllLabResults = () => {
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
-    <div className="flex min-h-screen bg-base-300/20">
-      {/* Mobile Drawer Overlay */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      {/* Sidebar Container */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar />
-      </div>
+<MedicalDirectorLayout>
 
       {/* Content Body */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Header Section */}
           <div className="mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -199,13 +208,22 @@ const ViewAllLabResults = () => {
                   </div>
                   <h1 className="text-xl sm:text-2xl font-bold text-base-content">Lab Results</h1>
                 </div>
-                <p className="text-sm text-base-content/70">
-                  Patient: <span className="font-semibold text-base-content">{patientName || 'Loading...'}</span>
-                </p>
+              <p className="text-sm text-base-content/70">
+  {isViewingDependant ? 'Dependant' : 'Patient'}: <span className="font-semibold text-base-content">{isViewingDependant ? (dependantSnapshot?.fullName || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim() || 'Dependant') : (patientName || 'Loading...')}</span>
+</p>
               </div>
-              <button
+                          <button
                 className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
+               onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
+                state: {
+                  from: fromIncoming ? 'incoming' : 'patients',
+                  patientSnapshot: patient,
+                  dependantId,
+                  dependantSnapshot: isViewingDependant
+                    ? (dependantCache[dependantId] || dependantSnapshot)
+                    : null,
+                }
+              })}
               >
                 Back
               </button>
@@ -346,7 +364,8 @@ const ViewAllLabResults = () => {
           )}
         </div>
       </div>
-    </div>
+          </MedicalDirectorLayout>
+
   );
 };
 

@@ -219,14 +219,20 @@ useEffect(() => {
               </div>
               <button
                 className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
-                  state: {
-                    from: fromIncoming ? 'incoming' : 'patients',
-                    patientSnapshot: patient,
-                    dependantId,
-                    dependantSnapshot,
-                  }
-                })}
+               onClick={() => {
+              const currentDependant = isViewingDependant
+                ? dependants.find(d => d.id === dependantId) || dependantSnapshot
+                : null;
+
+              navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                state: {
+                  from: fromIncoming ? 'incoming' : 'patients',
+                  patientSnapshot: patient,
+                  dependantId,
+                  dependantSnapshot: currentDependant,
+                }
+              });
+            }}
               >
                 Back
               </button>
