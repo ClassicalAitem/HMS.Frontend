@@ -691,16 +691,21 @@ const handleConfirmSave = async () => {
             >
               Save Now
             </button>
-            {cid && (
-              <button
-                className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, {
-                  state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient }
-                })}
-              >
-                Next
-              </button>
-            )}
+           {cid && (
+  <button
+    className="btn btn-outline border-base-300 text-base-content px-12 h-12 text-lg font-normal normal-case rounded-md"
+    onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, {
+      state: {
+        from: fromIncoming ? "incoming" : "patients",
+        patientSnapshot: patient,
+        dependantId: incomingDependantId,
+        dependantSnapshot: selectedDependant || fullDependantRecord || incomingDependantSnapshot,
+      },
+    })}
+  >
+    Next
+  </button>
+)}
           </div>
         </div>
       </div>

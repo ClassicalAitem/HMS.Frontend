@@ -191,7 +191,14 @@ const ViewAllAdmissions = () => {
               </div>
               <button
                 className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`)}
+               onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                state: {
+                  from: fromIncoming ? 'incoming' : 'patients',
+                  patientSnapshot: patient,
+                  dependantId,
+                  dependantSnapshot: isViewingDependant ? subject : null,
+                }
+              })}
               >
                 Back
               </button>
