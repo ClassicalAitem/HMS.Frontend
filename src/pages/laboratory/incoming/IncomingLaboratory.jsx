@@ -111,7 +111,9 @@ const IncomingLaboratory = () => {
               inv.opdPatient?.id;
           const invStatus = String(inv.status || "").toLowerCase();
           
-          if (invStatus === "awaiting_sonographer") return null;
+          // if (invStatus === "awaiting_sonographer") return null;
+          const invType = String(inv.type || "").toLowerCase();
+          if (invType && invType !== "lab") return null;
 
           
             const matchesRegularPatient = awaitingLabPatients.some((patient) =>
@@ -601,22 +603,7 @@ const IncomingLaboratory = () => {
                           >
                             View Details
                           </button>
-                          {/* ✅ Edit button — only shows if lab result already exists */}
-                            {testCard.id && existingLabResults[testCard.id] && (
-                              <button
-                                onClick={() => navigate(`/dashboard/laboratory/results/edit/${existingLabResults[testCard.id]}`)}
-                                className="btn btn-sm btn-warning w-full"
-                              >
-                                Edit Lab Result
-                              </button>
-                            )}
-                          <button
-                            onClick={() => handleSendToSonographer(testCard)}
-                            disabled={sendingToSonographer === testCard.id}
-                            className="btn btn-sm btn-outline w-full"
-                          >
-                            {sendingToSonographer === testCard.id ? "Sending..." : "Send to Scanner"}
-                          </button>
+                     
                            <div
                             className="flex justify-center w-full "
                             onClick={(e) => e.stopPropagation()}
