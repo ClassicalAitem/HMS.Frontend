@@ -29,6 +29,21 @@ const ViewAllInvestigations = () => {
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
+  // add near the top, alongside other location reads
+const dependantId = location?.state?.dependantId || null;
+const dependantSnapshot = location?.state?.dependantSnapshot || null;
+const isViewingDependant = !!dependantId;
+
+const subjectName = useMemo(() => {
+  if (isViewingDependant) {
+    return dependantSnapshot?.fullName
+      || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim()
+      || 'Dependant';
+  }
+  return patientName || 'Loading...';
+}, [isViewingDependant, dependantSnapshot, patientName]);
+
+
   useEffect(() => {
     let mounted = true;
     const loadPatient = async () => {
@@ -65,25 +80,29 @@ const ViewAllInvestigations = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  useEffect(() => {
-    let mounted = true;
-    const loadInvestigations = async () => {
-      try {
-        setLoading(true);
-        const res = await getInvestigationByPatientId(patientId);
-        const rawData = res?.data ?? res ?? [];
-        if (mounted) setInvestigations(Array.isArray(rawData) ? rawData : []);
-      } catch (err) {
-        console.error('Failed to load investigations:', err);
-        if (mounted) setInvestigations([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
+useEffect(() => {
+  let mounted = true;
+  const loadInvestigations = async () => {
+    try {
+      setLoading(true);
+      const res = await getInvestigationByPatientId(patientId);
+      const rawData = res?.data ?? res ?? [];
+      const list = Array.isArray(rawData) ? rawData : [];
+      const scoped = isViewingDependant
+        ? list.filter(inv => inv.dependantId === dependantId)
+        : list.filter(inv => !inv.dependantId);
+      if (mounted) setInvestigations(scoped);
+    } catch (err) {
+      console.error('Failed to load investigations:', err);
+      if (mounted) setInvestigations([]);
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  };
 
-    if (patientId) loadInvestigations();
-    return () => { mounted = false; };
-  }, [patientId]);
+  if (patientId) loadInvestigations();
+  return () => { mounted = false; };
+}, [patientId, isViewingDependant, dependantId]);
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +120,8 @@ const ViewAllInvestigations = () => {
     loadServiceCharges();
     return () => { mounted = false; };
   }, []);
+
+  
 
   const getLabInvestigationPrice = (testName) => {
     if (!testName) return 0;
@@ -128,9 +149,10 @@ const ViewAllInvestigations = () => {
     Array.isArray(investigations)
       ? investigations.map((inv) => {
           const isDependant = !!inv.dependantId;
-          const targetName = isDependant
-            ? dependants.find(d => d.id === inv.dependantId)?.fullName || 'Unknown'
-            : patientName;
+         const targetName = isDependant
+        ? dependants.find(d => d.id === inv.dependantId)?.fullName
+          || (inv.dependantId === dependantId ? subjectName : 'Unknown')
+        : patientName;
 
           const testsCount = inv.tests?.length || 0;
           const testsSummary = inv.tests
@@ -241,15 +263,22 @@ const ViewAllInvestigations = () => {
                   </h1>
                 </div>
                 <p className="text-sm sm:text-base text-base-content/70 truncate">
-                  Patient: {patientName}
-                </p>
+                {isViewingDependant ? 'Dependant' : 'Patient'}: {subjectName}
+              </p>
               </div>
               <button
-                className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
-                onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
-              >
-                Back
-              </button>
+              className="btn btn-outline btn-sm sm:btn-md w-full sm:w-auto"
+              onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`, {
+                state: {
+                  from: fromIncoming ? 'incoming' : 'patients',
+                  patientSnapshot: patient,
+                  dependantId,
+                  dependantSnapshot,
+                }
+              })}
+            >
+              Back
+            </button>
             </div>
           </div>
 
