@@ -448,7 +448,7 @@ const displayAttachments = () => {
               {displaySection("Haematology", labResult?.form?.haematology)}
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
-              {displaySection("PT Test  || Malaria Parasite", labResult?.form?.ptTest)}
+              
               {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
