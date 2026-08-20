@@ -177,18 +177,7 @@ const IncomingMD = () => {
       const isDependent = data.type === 'dependant';
 
       // Check if already in consultation
-      if (!isDependent) {
-        const latest = await getPatientById(data.patientId);
-        const latestStatus = (latest?.data?.status ?? latest?.status ?? "").toString().toLowerCase();
-        if (['in_consultation', 'in consultation'].some((v) => latestStatus.includes(v))) {
-          alert("This patient is currently in consultation. Please pick another patient.");
-          setNavigatingId(null);
-          return;
-        }
-        await updatePatientStatus(data.patientId, { status: 'in_consultation' });
-      } else {
-        await updateDependantStatus(data.dependantId, { status: 'in_consultation' });
-      }
+
 
       localStorage.setItem('refreshIncoming', Date.now().toString());
 
@@ -358,18 +347,7 @@ const IncomingMD = () => {
 
                     {/* Action — full width below on mobile */}
                     <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
-                      {isInConsultation ? (
-                        <div className="flex flex-col items-end gap-2 w-full">
-                          <button
-                            className="btn btn-xs btn-outline btn-warning w-full"
-                            onClick={() => handleReset(data)}
-                          >
-                            ↺ Reset
-                          </button>
-                          <button className="btn btn-xs btn-disabled w-full" disabled>View</button>
-                          <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
-                        </div>
-                      ) : (
+                    
                         <div className="flex flex-col items-end gap-2 w-full">
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto"
@@ -382,7 +360,7 @@ const IncomingMD = () => {
                           </button>
                           <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
                         </div>
-                      )}
+                  
                     </div>
                     </div>
                   );
