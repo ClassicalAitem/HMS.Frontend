@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Header } from '@/components/common';
-import { Sidebar } from '@/components/doctor/dashboard';
+import { Sidebar } from '@/components/medical-director/dashboard';
 
 const MedicalDirectorLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -18,7 +18,8 @@ const MedicalDirectorLayout = ({ children }) => {
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
+          // MedicalDirectorLayout.jsx
+className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 `}
           onClick={closeSidebar}
         />
       )}

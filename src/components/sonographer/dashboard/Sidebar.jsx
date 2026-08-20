@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaThLarge } from "react-icons/fa";
+import { FaInbox, FaThLarge } from "react-icons/fa";
 import { FaSuitcaseMedical } from "react-icons/fa6";
 import { MdLockOutline } from "react-icons/md";
 import { FaSignOutAlt } from "react-icons/fa";
@@ -38,7 +38,7 @@ const Sidebar = () => {
 
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/sonographer" },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
+    { icon: FaInbox, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
       badge: isOnIncoming ? 0 : incomingCount, },
     { icon: FaHistory, label: "Scan History", path: "/dashboard/sonographer/scan-history" },
   ];

@@ -53,7 +53,7 @@ const roleConfig = {
     label: 'Sonographer',
     status: PATIENT_STATUS.AWAITING_SONOGRAPHER,
     icon: '👩‍⚕️',
-    color: 'btn-primary',
+    color: 'btn-accent',
   },
 };
 
