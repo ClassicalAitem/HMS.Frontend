@@ -172,14 +172,20 @@ const ViewAllPrescriptions = () => {
               </div>
               <button
                 className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
-                onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+               onClick={() => {
+                const currentDependant = isViewingDependant
+                  ? dependants.find(d => d.id === dependantId) || dependantSnapshot
+                  : null;
+
+                navigate(`/dashboard/doctor/medical-history/${patientId}`, {
                   state: {
                     from: fromIncoming ? 'incoming' : 'patients',
                     patientSnapshot: patient,
                     dependantId,
-                    dependantSnapshot,
+                    dependantSnapshot: currentDependant,
                   }
-                })}
+                });
+              }}
               >
                 Back
               </button>
