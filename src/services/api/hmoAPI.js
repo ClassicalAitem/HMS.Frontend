@@ -21,10 +21,36 @@ export const addHmoForPatient = async (patientId, hmos, dependantId = null) => {
   return apiClient.post('/hmo', payload);
 };
 
-export const updateHmoExpiry = async (hmoId, expiresAt) => {
+/**
+ * Update HMO details (provider, memberId, plan, expiresAt) — partial update.
+ * PATCH /hmo/:hmoId
+ * Only fields you pass in `updates` are sent, so this works for
+ * full edits or single-field edits (e.g. just expiry) alike.
+ */
+export const updateHmo = async (hmoId, updates = {}) => {
   if (!hmoId) throw new Error('HMO ID is required');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) throw new Error('expiresAt must be YYYY-MM-DD');
-  return apiClient.patch(`/hmo/${hmoId}`, { expiresAt });
+
+  const payload = {};
+  if (updates.provider !== undefined) payload.provider = updates.provider;
+  if (updates.memberId !== undefined) payload.memberId = updates.memberId;
+  if (updates.plan !== undefined) payload.plan = updates.plan;
+  if (updates.expiresAt !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(updates.expiresAt)) {
+      throw new Error('expiresAt must be YYYY-MM-DD');
+    }
+    payload.expiresAt = updates.expiresAt;
+  }
+
+  if (Object.keys(payload).length === 0) {
+    throw new Error('At least one field must be provided to update');
+  }
+
+  return apiClient.patch(`/hmo/${hmoId}`, payload);
+};
+
+// Kept for backward compatibility with existing callers of updateHmoExpiry.
+export const updateHmoExpiry = async (hmoId, expiresAt) => {
+  return updateHmo(hmoId, { expiresAt });
 };
 
 export const getAllHmos = async (params = {}) => {
@@ -36,6 +62,7 @@ export const getAllHmos = async (params = {}) => {
 
 export default {
   addHmoForPatient,
+  updateHmo,
   updateHmoExpiry,
   getAllHmos,
 };
