@@ -95,19 +95,7 @@ const [proceduresLoading, setProceduresLoading] = useState(false);
   
   const { refreshQueueCount } = useNotifications();
 
-// Lock the patient record for this doctor before navigation
-const lockPatientForConsultation = async () => {
-  try {
-    if (isViewingDependant && dependantId) {
-      const { updateDependantStatus } = await import('@/services/api/dependantAPI');
-      await updateDependantStatus(dependantId, { status: 'in_consultation' });
-    } else if (patientId) {
-      await updatePatientStatus(patientId, { status: 'in_consultation' });
-    }
-  } catch {
-    toast.error("Failed to lock patient record for consultation. Please try again.");
-  }
-};
+
 
 const lockAndNavigate = async (path, options) => {
   setIsNavigating(true);
@@ -351,35 +339,7 @@ useEffect(() => {
 }, [patientId]);
 
 
-useEffect(() => {
-  return () => {
-    if (isViewingDependant && dependantId) {
-      import('@/services/api/dependantAPI').then(({ getDependantById, updateDependantStatus }) => {
-        getDependantById(dependantId)
-          .then((res) => {
-            const currentStatus = (
-              res?.data?.data?.dependant?.status ??
-              res?.data?.dependant?.status ??
-              res?.data?.status ??
-              ''
-            ).toString().toLowerCase();
-            if (currentStatus === 'in_consultation') {
-              updateDependantStatus(dependantId, { status: 'awaiting_doctor' }).catch(() => {});
-            }
-          })
-          .catch(() => {});
-      });
-    } else if (patientId) {
-      getPatientById(patientId).then((res) => {
-        const currentStatus = res?.data?.status ?? '';
-        if (currentStatus.toLowerCase() === 'in_consultation') {
-          updatePatientStatus(patientId, { status: 'awaiting_doctor' }).catch(() => {});
-        }
-      }).catch(() => {});
-    }
-    localStorage.setItem('refreshIncoming', Date.now().toString());
-  };
-}, [patientId, dependantId, isViewingDependant]);
+
 
   // Fetch inventory data to match drug prices
   useEffect(() => {
