@@ -117,6 +117,7 @@ const ViewConsultation = () => {
     visitReason: '',
     notes: '',
     complaints: [],
+     complaintHistory: '',
     medicalHistory: [],
     surgicalHistory: [],
     familyHistory: [],
@@ -518,6 +519,8 @@ const ViewConsultation = () => {
       const payload = {
         visitReason: editForm.visitReason,
         notes: editForm.notes,
+        complaintHistory: editForm.complaintHistory,
+        
         complaint: editForm.complaints.map((c) => {
           let days = parseInt(c.duration) || 1;
           if (c.unit === 'Week(s)') days *= 7;
@@ -1272,6 +1275,33 @@ const ViewConsultation = () => {
                               </span>
                             ))}
                           </div>
+                        )}
+                      </div>
+                    </div>
+
+                    
+                    {/* History of Presenting Complaint */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">
+                        History of Presenting Complaint
+                      </h4>
+                      <div className="p-4 bg-base-200/30 rounded-xl border border-base-200 min-h-[100px] min-w-0 overflow-hidden">
+                        {isEditMode ? (
+                          <textarea
+                            className="textarea textarea-bordered w-full min-h-[100px] break-all"
+                            value={editForm.complaintHistory}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                complaintHistory: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          <p className="whitespace-pre-wrap break-all text-sm leading-relaxed text-base-content/80">
+                            {consultation?.complaintHistory ||
+                              'No history of presenting complaint recorded.'}
+                          </p>
                         )}
                       </div>
                     </div>
