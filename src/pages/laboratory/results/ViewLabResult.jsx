@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
@@ -15,6 +15,7 @@ import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import SendPatientModal from "@/components/modals/SendPatientModal";
 
 const ranges = {
   HB: 'g/dl (11-16)',
@@ -112,10 +113,16 @@ const ViewLabResult = () => {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [patientId, setPatientId] = useState(null);
+    const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  
+    const [subject, setSubject] = useState(null);
+  const isViewingDependant = !!dependantId;
   const [investigation, setInvestigation] = useState(null);
   const [technicianName, setTechnicianName] = useState('Unknown Technician');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarMounted, setSidebarMounted] = useState(false);
+  const [completing, setCompleting] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setSidebarMounted(true));
@@ -193,152 +200,175 @@ const loadDependantDetails = async (dependantId) => {
     }
   }, [location]);
 
-  useEffect(() => {
-  const fetchData = async () => {
-    try {
-      setLoading(true);
+    const summarySubject = useMemo(() => {
+      if (!isViewingDependant) return patient;
+  
+      const dep = subject || dependantSnapshot || {};
+      const guardian = dep.patient || patient || {};
+  
+      const ownHmos = Array.isArray(guardian.hmos)
+        ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+        : [];
+  
+      return {
+        phone: guardian.phone,
+        phoneNumber: guardian.phoneNumber,
+        hospitalId: guardian.hospitalId,
+        cardType: guardian.cardType,
+        familyName: guardian.familyName,
+        companyName: guardian.companyName,
+  
+        id: dep.id || dependantId,
+        firstName: dep.firstName,
+        middleName: dep.middleName,
+        lastName: dep.lastName,
+        fullName: dep.fullName,
+        gender: dep.gender,
+        dob: dep.dob,
+        relationshipType: dep.relationshipType,
+        hmos: ownHmos,
+      };
+    }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 
-      const labRes = await getLabResultById(labResultId);
-      const labData = labRes?.data || labRes;
-      setLabResult(labData);
+const fetchData = useCallback(async () => {
+  if (!labResultId) return;
 
-      const patientIdToUse =
-        labData?.opdPatientId ||
-        labData?.patientId ||
-        labData?.patient?._id ||
-        labData?.patient?.id ||
-        labData?.opdPatient?.id ||
-        labData?.opdPatient?._id;
-      setPatientId(patientIdToUse);
+  try {
+    setLoading(true);
 
-      // Load nested patient data first if available
-      if (labData?.opdPatient) {
-        setPatient(labData.opdPatient);
-        // Also extract patientInfo for OPD patients
-        const opdName = `${labData.opdPatient.firstName || ""} ${labData.opdPatient.lastName || ""}`.trim();
-        const opdAge = labData.opdPatient.age || "";
-        const opdSex = labData.opdPatient.gender?.charAt(0).toUpperCase() || "";
-        setPatientInfo({
-          name: opdName,
-          age: opdAge,
-          sex: opdSex,
-        });
-      } else if (labData?.patient) {
-        setPatient(labData.patient);
-        // Also extract patientInfo for regular patients
-        const patientName = `${labData.patient.firstName || ""} ${labData.patient.lastName || ""}`.trim();
-        const patientAge = labData.patient.age || "";
-        const patientSex = labData.patient.gender?.charAt(0).toUpperCase() || "";
-        setPatientInfo({
-          name: patientName,
-          age: patientAge,
-          sex: patientSex,
-        });
-      }
+    const labRes = await getLabResultById(labResultId);
+    const labData = labRes?.data || labRes;
+    setLabResult(labData);
 
-      // If no nested patient object, fetch by ID
-      if (!labData?.opdPatient && !labData?.patient && patientIdToUse) {
-        // Explicitly check if it's an OPD patient ID
-        if (labData?.opdPatientId) {
-          try {
-            const opdRes = await getOpdPatientById(labData.opdPatientId);
-            const opdPatient = opdRes?.data || opdRes;
-            if (opdPatient) {
-              setPatient(opdPatient);
-              const opdName = `${opdPatient.firstName || ""} ${opdPatient.lastName || ""}`.trim();
-              const opdAge = opdPatient.age || "";
-              const opdSex = opdPatient.gender?.charAt(0).toUpperCase() || "";
-              setPatientInfo({
-                name: opdName,
-                age: opdAge,
-                sex: opdSex,
-              });
-            }
-          } catch (err) {
-            console.warn("Failed to load OPD patient:", err);
-          }
-        } else {
-          // Regular patient
-          const patientData = await loadPatientRecord(patientIdToUse);
-          if (patientData) {
-            setPatient(patientData);
-            const name = `${patientData.firstName || ""} ${patientData.lastName || ""}`.trim() || patientData.fullName || patientData.name;
-            const age = patientData.age || "";
-            const sex = patientData.gender?.charAt(0).toUpperCase() || "";
+    const patientIdToUse =
+      labData?.opdPatientId ||
+      labData?.patientId ||
+      labData?.patient?._id ||
+      labData?.patient?.id ||
+      labData?.opdPatient?.id ||
+      labData?.opdPatient?._id;
+    setPatientId(patientIdToUse);
+
+    // Load nested patient data first if available
+    if (labData?.opdPatient) {
+      setPatient(labData.opdPatient);
+      const opdName = `${labData.opdPatient.firstName || ""} ${labData.opdPatient.lastName || ""}`.trim();
+      const opdAge = labData.opdPatient.age || "";
+      const opdSex = labData.opdPatient.gender?.charAt(0).toUpperCase() || "";
+      setPatientInfo({
+        name: opdName,
+        age: opdAge,
+        sex: opdSex,
+      });
+    } else if (labData?.patient) {
+      setPatient(labData.patient);
+      const patientName = `${labData.patient.firstName || ""} ${labData.patient.lastName || ""}`.trim();
+      const patientAge = labData.patient.age || "";
+      const patientSex = labData.patient.gender?.charAt(0).toUpperCase() || "";
+      setPatientInfo({
+        name: patientName,
+        age: patientAge,
+        sex: patientSex,
+      });
+    }
+
+    // If no nested patient object, fetch by ID
+    if (!labData?.opdPatient && !labData?.patient && patientIdToUse) {
+      if (labData?.opdPatientId) {
+        try {
+          const opdRes = await getOpdPatientById(labData.opdPatientId);
+          const opdPatient = opdRes?.data || opdRes;
+          if (opdPatient) {
+            setPatient(opdPatient);
+            const opdName = `${opdPatient.firstName || ""} ${opdPatient.lastName || ""}`.trim();
+            const opdAge = opdPatient.age || "";
+            const opdSex = opdPatient.gender?.charAt(0).toUpperCase() || "";
             setPatientInfo({
-              name,
-              age,
-              sex,
+              name: opdName,
+              age: opdAge,
+              sex: opdSex,
             });
           }
+        } catch (err) {
+          console.warn("Failed to load OPD patient:", err);
         }
-      }
-
-      // ✅ Load dependant if dependantId exists
-      if (labData?.dependantId) {
-        const dep = await loadDependantDetails(labData.dependantId);
-
-        if (dep) {
+      } else {
+        const patientData = await loadPatientRecord(patientIdToUse);
+        if (patientData) {
+          setPatient(patientData);
+          const name = `${patientData.firstName || ""} ${patientData.lastName || ""}`.trim() || patientData.fullName || patientData.name;
+          const age = patientData.age || "";
+          const sex = patientData.gender?.charAt(0).toUpperCase() || "";
           setPatientInfo({
-            name: dep.name,
-            age: dep.age,
-            sex: dep.sex,
+            name,
+            age,
+            sex,
           });
         }
       }
-
-      // ✅ Load investigation — try all strategies
-      let foundInvestigation = null;
-
-      // Strategy 1: lab result already has investigationRequestId
-      if (labData?.investigationRequestId) {
-        try {
-          const res = await getInvestigationRequestByOpdPatientId(labData.investigationRequestId);
-          foundInvestigation = res?.data || res;
-        } catch { /* silent */ }
-      }
-
-      // Strategy 2: OpD patient — fetch by opdPatientId
-      if (!foundInvestigation && labData?.opdPatientId) {
-        try {
-          const res = await getInvestigationRequestByOpdPatientId(labData.opdPatientId);
-          const list = Array.isArray(res) ? res : (res?.data ?? []);
-          foundInvestigation = list[0] || null;
-        } catch { /* silent */ }
-      }
-
-      // ✅ Strategy 3: Regular patient — fetch by patientId
-      if (!foundInvestigation && labData?.patientId) {
-        try {
-          const res = await getInvestigationByPatientId(labData.patientId);
-          const list = Array.isArray(res) ? res : (res?.data ?? []);
-          // Pick the most recent non-completed one
-          foundInvestigation = list
-            .filter(inv => inv.status !== 'completed')
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
-            || list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
-            || null;
-        } catch { /* silent */ }
-      }
-
-      if (foundInvestigation) {
-        setInvestigation(foundInvestigation);
-        // ✅ Also set investigationIdState so effectiveInvestigationId resolves
-        const invId = foundInvestigation._id || foundInvestigation.id;
-        if (invId) setInvestigationIdState(invId);
-      }
-
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching lab result:", err);
-      setError("Failed to load lab result details");
-    } finally {
-      setLoading(false);
     }
-  };
 
-  if (labResultId) fetchData();
+    // Load dependant if dependantId exists
+    if (labData?.dependantId) {
+      const dep = await loadDependantDetails(labData.dependantId);
+
+      if (dep) {
+        setPatientInfo({
+          name: dep.name,
+          age: dep.age,
+          sex: dep.sex,
+        });
+      }
+    }
+
+    // Load investigation — try all strategies
+    let foundInvestigation = null;
+
+    if (labData?.investigationRequestId) {
+      try {
+        const res = await getInvestigationRequestByOpdPatientId(labData.investigationRequestId);
+        foundInvestigation = res?.data || res;
+      } catch { /* silent */ }
+    }
+
+    if (!foundInvestigation && labData?.opdPatientId) {
+      try {
+        const res = await getInvestigationRequestByOpdPatientId(labData.opdPatientId);
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        foundInvestigation = list[0] || null;
+      } catch { /* silent */ }
+    }
+
+    if (!foundInvestigation && labData?.patientId) {
+      try {
+        const res = await getInvestigationByPatientId(labData.patientId);
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        foundInvestigation = list
+          .filter(inv => inv.status !== 'completed')
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+          || list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
+          || null;
+      } catch { /* silent */ }
+    }
+
+    if (foundInvestigation) {
+      setInvestigation(foundInvestigation);
+      const invId = foundInvestigation._id || foundInvestigation.id;
+      if (invId) setInvestigationIdState(invId);
+    }
+
+    setError(null);
+  } catch (err) {
+    console.error("Error fetching lab result:", err);
+    setError("Failed to load lab result details");
+  } finally {
+    setLoading(false);
+  }
 }, [labResultId]);
+
+useEffect(() => {
+  fetchData();
+}, [fetchData]);
 
   // Load technician name when lab result is fetched
   useEffect(() => {
@@ -689,6 +719,24 @@ const patientName =
     }
   };
 
+const handleComplete = async () => {
+  if (!effectiveInvestigationId) {
+    toast.error("No investigation found to complete");
+    return;
+  }
+
+  try {
+    setCompleting(true);
+    await updateInvestigation(effectiveInvestigationId, { status: "completed" });
+    toast.success("Investigation marked as completed");
+    await fetchData(); 
+  } catch (err) {
+    console.error("Error completing investigation:", err);
+    toast.error("Failed to complete investigation");
+  } finally {
+    setCompleting(false); 
+  }
+};
 
 
   return (
@@ -726,6 +774,26 @@ const patientName =
                   Edit
                 </button>
               </div>
+                <SendPatientModal
+                    patientId={patientId}
+                    patient={patient}
+                    defaultDependantId={dependantId}
+                    defaultDependantLabel={summarySubject?.fullName}
+                    lockSubject
+                     onUpdated={() => {
+                                refreshQueueCount();
+                                navigate('/dashboard/laboratory/incoming');
+                              }}
+                    allowedRoles={[
+                      'nurse',
+                      'labtechnician',
+                      'pharmacist',
+                      'cashier',
+                      'doctor',
+                      'medical-director',
+                      'sonographer',
+                    ]}
+                  />
             </div>
 
             <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
@@ -847,13 +915,21 @@ const patientName =
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
                
            
-                  <button
-                    onClick={handleSendToDoctor}
-                    disabled={sendingToDoctor}
-                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
-                  >
-                    {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
-                  </button>
+                 <button
+                  onClick={handleSendToDoctor}
+                  disabled={sendingToDoctor}
+                  className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                >
+                  {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
+                </button>
+
+                <button
+                  onClick={handleComplete}
+                  disabled={completing || !effectiveInvestigationId}
+                  className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                >
+                  {completing ? "Completing..." : "Complete"}
+                </button>
                 
 
               
