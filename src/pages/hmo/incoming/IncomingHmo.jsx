@@ -33,7 +33,8 @@ const IncomingHmo = () => {
         setLoading(true);
 
         const hmoStatuses = [
-          PATIENT_STATUS.AWAITING_HMO
+          PATIENT_STATUS.AWAITING_HMO,
+          PATIENT_STATUS.LAB_COMPLETED
         ];
 
         const [patientsRes, dependantsRes] = await Promise.allSettled([
