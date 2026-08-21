@@ -26,6 +26,7 @@ import {
   FaStickyNote,
   FaTimes,
   FaHospital,
+  FaStethoscope
 } from 'react-icons/fa';
 import AddDiagnosisModal from './modals/AddDiagnosisModal';
 import OrderInvestigationModal from './modals/OrderInvestigationModal';
@@ -63,6 +64,11 @@ import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
+
+import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
+import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
+import AddExaminationModal from './modals/AddExaminationModal';
+import AddReviewOfSystemsModal from './modals/AddReviewOfSystemsModal';
 
 const ViewConsultation = () => {
   const { patientId, consultationId } = useParams();
@@ -102,6 +108,12 @@ const ViewConsultation = () => {
   const [selectedProcedureId, setSelectedProcedureId] = useState(null);
   const [isProcedureDetailsOpen, setIsProcedureDetailsOpen] = useState(false);
   const [doctorNamesById, setDoctorNamesById] = useState({});
+  
+  const [examination, setExamination] = useState(null);
+  const [reviewOfSystems, setReviewOfSystems] = useState([]);
+  const [clinicalAssessmentVersion, setClinicalAssessmentVersion] = useState(0);
+  const [editingExamination, setEditingExamination] = useState(false);
+  const [editingReview, setEditingReview] = useState(null);
   const [editForm, setEditForm] = useState({
     visitReason: '',
     notes: '',
@@ -408,6 +420,42 @@ const ViewConsultation = () => {
   //     toast.error(error?.response?.data?.message || 'Failed to delete procedure');
   //   }
   // };
+
+  
+  useEffect(() => {
+    if (!consultationId) return undefined;
+    let mounted = true;
+
+    const loadClinicalAssessment = async () => {
+      const [examinationResult, reviewResult] = await Promise.allSettled([
+        getExaminationByConsultationId(consultationId),
+        getReviewOfSystemsByConsultationId(consultationId),
+      ]);
+
+      if (!mounted) return;
+
+      if (examinationResult.status === 'fulfilled') {
+        const response = examinationResult.value;
+        const data = response?.data?.examination ?? response?.data ?? response;
+        setExamination(data && !Array.isArray(data) ? data : null);
+      } else {
+        setExamination(null);
+      }
+
+      if (reviewResult.status === 'fulfilled') {
+        const response = reviewResult.value;
+        const data = response?.data?.data ?? response?.data ?? response;
+        setReviewOfSystems(Array.isArray(data) ? data : []);
+      } else {
+        setReviewOfSystems([]);
+      }
+    };
+
+    loadClinicalAssessment();
+    return () => {
+      mounted = false;
+    };
+  }, [consultationId, clinicalAssessmentVersion]);
 
   useEffect(() => {
     if (!consultation) return;
@@ -965,6 +1013,28 @@ const ViewConsultation = () => {
           setProcedures((prev) => [...prev, appointment]);
         }}
       />
+        <AddExaminationModal
+        isOpen={editingExamination}
+        consultationId={consultationId}
+        examination={examination}
+        onSkip={() => setEditingExamination(false)}
+        onSaved={() => {
+          setEditingExamination(false);
+          setClinicalAssessmentVersion((version) => version + 1);
+        }}
+      />
+      <AddReviewOfSystemsModal
+        isOpen={!!editingReview}
+        consultationId={consultationId}
+        patientId={patientId}
+        dependantId={consultation?.dependantId || null}
+        review={editingReview}
+        onClose={() => setEditingReview(null)}
+        onReviewAdded={() => {
+          setEditingReview(null);
+          setClinicalAssessmentVersion((version) => version + 1);
+        }}
+      />
 
       <AppointmentDetailsModal
         isOpen={isProcedureDetailsOpen}
@@ -1409,6 +1479,130 @@ const ViewConsultation = () => {
                   </div>
                 </div>
               </div>
+
+                 <div className="card bg-base-100 shadow-sm border border-base-200">
+                <div className="card-body p-0">
+                  <div className="p-3 sm:p-4 border-b border-base-200 bg-base-50/50 flex items-center gap-2">
+                    <FaStethoscope className="text-primary w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" />
+                    <h3 className="font-bold text-base sm:text-lg text-base-content">
+                      Clinical Assessment
+                    </h3>
+                  </div>
+
+                  <div className="p-2 sm:p-3 space-y-2">
+                    <div className="collapse collapse-arrow bg-base-200/30 border border-base-200 rounded-lg">
+                      <input type="checkbox" />
+                      <div className="collapse-title text-sm font-semibold">
+                        <span>
+                          Review of Systems
+                          {reviewOfSystems.length > 0 && ` (${reviewOfSystems.length})`}
+                        </span>
+                      </div>
+                      <div className="collapse-content">
+                        {reviewOfSystems.length > 0 ? (
+                          <ul className="space-y-2 text-sm">
+                            {reviewOfSystems.map((review, index) => (
+                              <li
+                                key={review.id || index}
+                                className="flex justify-between gap-3 border-b border-base-200 last:border-0 pb-2 last:pb-0"
+                              >
+                                <span className="font-medium">{review.system}</span>
+                                <span className="flex items-center gap-2 text-base-content/70 text-right">
+                                  {review.findings || (review.isNormal ? 'Normal' : '—')}
+                                  {canEdit && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-ghost text-primary"
+                                      onClick={() => setEditingReview(review)}
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-base-content/50 italic">
+                            No review of systems recorded
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="collapse collapse-arrow bg-base-200/30 border border-base-200 rounded-lg">
+                      <input type="checkbox" />
+                      <div className="collapse-title text-sm font-semibold">
+                        <span>
+                        Physical Examination
+                        {examination?.findings?.length > 0 && ` (${examination.findings.length})`}
+                      </span>
+                        {canEdit && examination && (
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-ghost text-primary absolute right-9 top-2 z-20"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setEditingExamination(true);
+                            }}
+                          >
+                            <FaEdit /> Edit
+                          </button>
+                        )}
+                      </div>
+                      <div className="collapse-content space-y-4">
+                        {examination ? (
+                          <div className="text-sm space-y-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                              {[
+                                ['Appearance', examination.generalAppearance],
+                               
+                              ].map(([label, value]) =>
+                                value ? (
+                                  <span key={label}>
+                                    <span className="text-base-content/50">{label}:</span>{' '}
+                                    {value}
+                                  </span>
+                                ) : null
+                              )}
+                            </div>
+
+                            {examination.generalNotes && (
+                              <p className="text-base-content/80 bg-base-200/40 rounded p-2">
+                                {examination.generalNotes}
+                              </p>
+                            )}
+
+                            {examination.findings?.length > 0 && (
+                              <ul className="space-y-1">
+                                {examination.findings.map((finding, index) => (
+                                  <li
+                                    key={finding.id || index}
+                                    className="flex justify-between gap-3 border-b border-base-200 last:border-0 pb-1 last:pb-0"
+                                  >
+                                    <span className="font-medium">{finding.system}</span>
+                                    <span className="text-base-content/70 text-right">
+                                      {finding.findings || '—'}{' '}
+                                      {finding.isNormal && (
+                                        <span className="text-success">(Normal)</span>
+                                      )}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-base-content/50 italic">
+                            No examination recorded
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
 
               {/* Treatment Plan Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">

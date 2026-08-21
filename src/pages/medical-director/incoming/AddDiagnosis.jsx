@@ -21,6 +21,9 @@ import { getInventories } from "@/services/api/inventoryAPI";
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import KolakLoader from "@/components/common/KolakLoader";
 
+import AddExaminationModal from "./modals/AddExaminationModal";
+import AddReviewOfSystemsModal from "./modals/AddReviewOfSystemsModal";
+
 const AddDiagnosis = () => {
   const { patientId } = useParams();
   const location = useLocation();
@@ -63,6 +66,10 @@ const AddDiagnosis = () => {
   const [cid, setCid] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const { user } = useAppSelector((state) => state.auth);
+  
+const [clinicalStep, setClinicalStep] = useState(null);
+const [createdConsultationId, setCreatedConsultationId] = useState(null);
+
   const [activeModal, setActiveModal] = useState(null);
     const [isRecordOpen, setIsRecordOpen] = useState(false);
   const [sortedVitals, setSortedVitals] = useState([]);
@@ -263,9 +270,9 @@ const summarySubjectName = summarySubject?.fullName
         if (!mounted) return;
 
         const allVitals = Array.isArray(list) ? list : [];
-        const filteredVitals = incomingDependantId
-          ? allVitals.filter((v) => v.dependantId === incomingDependantId)
-          : allVitals;
+       const filteredVitals = allVitals.filter((v) =>
+          incomingDependantId ? v.dependantId === incomingDependantId : !v.dependantId
+        );
 
         const sorted = [...filteredVitals].sort(
           (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
@@ -365,7 +372,10 @@ const handleConfirmSave = async () => {
       loading: "Saving consultation...",
       success: (res) => {
         const data = res?.data ?? res;
-        setCid(data.id || data._id);
+        const newConsultationId = data.id || data._id;
+        setCid(newConsultationId);
+        setCreatedConsultationId(newConsultationId);   
+        setClinicalStep('reviewOfSystems'); 
 
 
         return "Consultation saved successfully";
@@ -734,6 +744,38 @@ const handleConfirmSave = async () => {
         message="Are you sure you want to save this consultation? This action cannot be undone."
         confirmText="Save Consultation"
         cancelText="Cancel"
+      />
+          <AddReviewOfSystemsModal
+        isOpen={clinicalStep === 'reviewOfSystems'}
+        consultationId={createdConsultationId}
+        patientId={patientId}
+        dependantId={selectedDependantId || null}
+        onReviewAdded={() => {}}
+        onClose={() => setClinicalStep('examination')}
+      />
+      <AddExaminationModal
+        isOpen={clinicalStep === 'examination'}
+        consultationId={createdConsultationId}
+        onSkip={() => {
+          setClinicalStep(null);
+          navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cid}`, {
+            state: {
+              from: 'incoming',
+              dependantId: selectedDependantId || null,
+              dependantSnapshot: selectedDependant || null,
+            },
+          });
+        }}
+        onSaved={() => {
+          setClinicalStep(null);
+          navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cid}`, {
+            state: {
+              from: 'incoming',
+              dependantId: selectedDependantId || null,
+              dependantSnapshot: selectedDependant || null,
+            },
+          });
+        }}
       />
          </div>
 
