@@ -117,6 +117,7 @@ const ViewConsultation = () => {
   const [editForm, setEditForm] = useState({
     visitReason: '',
     notes: '',
+    complaintHistory: '',
     complaints: [],
     medicalHistory: [],
     surgicalHistory: [],
@@ -462,6 +463,7 @@ const ViewConsultation = () => {
     setEditForm({
       visitReason: consultation.visitReason || '',
       notes: consultation.notes || '',
+      complaintHistory: consultation.complaintHistory || '',
       complaints: (consultation.complaint || []).map((c) => ({
         name: c.symptom,
         duration: (c.durationInDays || 0).toString(),
@@ -520,6 +522,7 @@ const ViewConsultation = () => {
       const payload = {
         visitReason: editForm.visitReason,
         notes: editForm.notes,
+        complaintHistory: editForm.complaintHistory,
         complaint: editForm.complaints.map((c) => {
           let days = parseInt(c.duration) || 1;
           if (c.unit === 'Week(s)') days *= 7;
@@ -1195,7 +1198,7 @@ const ViewConsultation = () => {
   </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Left Column - Key Clinical Info */}
-            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
               {/* Consultation Summary Section */}
               <div className="card bg-base-100 shadow-sm border border-base-200">
                 <div className="card-body p-0">
@@ -1217,7 +1220,7 @@ const ViewConsultation = () => {
                     </button>
                   </div>
 
-                  <div className="p-3 sm:p-6 grid gap-3 sm:gap-6">
+                  <div className="p-3 sm:p-6 grid gap-3 sm:gap-6 min-w-0">
                     {/* Reason & Diagnosis Row */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                       <div>
@@ -1273,6 +1276,32 @@ const ViewConsultation = () => {
                               </span>
                             ))}
                           </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* History of Presenting Complaint */}
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">
+                        History of Presenting Complaint
+                      </h4>
+                      <div className="p-4 bg-base-200/30 rounded-xl border border-base-200 min-h-[100px] min-w-0 overflow-hidden">
+                        {isEditMode ? (
+                          <textarea
+                            className="textarea textarea-bordered w-full min-h-[100px] break-all"
+                            value={editForm.complaintHistory}
+                            onChange={(e) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                complaintHistory: e.target.value,
+                              }))
+                            }
+                          />
+                        ) : (
+                          <p className="whitespace-pre-wrap break-all text-sm leading-relaxed text-base-content/80">
+                            {consultation?.complaintHistory ||
+                              'No history of presenting complaint recorded.'}
+                          </p>
                         )}
                       </div>
                     </div>
