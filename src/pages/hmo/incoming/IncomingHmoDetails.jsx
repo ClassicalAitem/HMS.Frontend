@@ -18,16 +18,24 @@ import { getStatusBadgeClass, getStatusDisplayText } from '@/utils/statusUtils';
 import {
   formatNigeriaDate,
   formatNigeriaDateShort,
+  formatNigeriaDateTime,
 } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import apiClient from '@/services/api/apiClient';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { getConsultations } from '@/services/api/consultationAPI';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
+import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
 import PatientHmoHistory from './PatientHmoHistory';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI';
+import {
+  getVitalsByPatient,
+  getLatestVital,
+  normalizeVitalsResponse,
+} from '@/services/api/vitalsAPI';
+import { getLabResults } from '@/services/api/labResultsAPI';
 
 
 // Detect injection-route medications defensively across possible field names,
@@ -174,6 +182,12 @@ const IncomingHmoDetails = () => {
   const [itemDecisions, setItemDecisions] = useState({});
   const [consultations, setConsultations] = useState([]);
   const [consultationsLoading, setConsultationsLoading] = useState(true);
+  const [latestVital, setLatestVital] = useState(null);
+  const [vitalsLoading, setVitalsLoading] = useState(true);
+  const [latestLab, setLatestLab] = useState(null);
+  const [labLoading, setLabLoading] = useState(true);
+  
+    const [labResults, setLabResults] = useState([]);
 
   const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
   const [subject, setSubject] = useState(null);
@@ -189,11 +203,13 @@ const IncomingHmoDetails = () => {
     const loadAll = async () => {
       setLoading(true);
       try {
-        const [patientRes, billingsRes] = await Promise.allSettled([
+        const [patientRes, billingsRes, vitalsRes, labRes] = await Promise.allSettled([
           snapshot
             ? Promise.resolve({ data: snapshot })
             : getPatientById(patientId),
           getAllBillings({ patientId }),
+          getVitalsByPatient(patientId),
+          getLabResults({ patientId }),
         ]);
 
         // ✅ fetch HMO records FIRST, declare hmoRaw before using it
@@ -242,8 +258,46 @@ const IncomingHmoDetails = () => {
           });
           setBillings(unreviewedBills);
         }
+
+        if (vitalsRes.status === 'fulfilled') {
+          const vitals = normalizeVitalsResponse(vitalsRes.value).filter(
+            (vital) =>
+              isViewingDependant
+                ? vital?.dependantId === dependantId
+                : !vital?.dependantId,
+          );
+          setLatestVital(getLatestVital(vitals));
+        } else {
+          setLatestVital(null);
+        }
+        setVitalsLoading(false);
+
+        if (labRes.status === 'fulfilled') {
+          const rawLabResults =
+            labRes.value?.data ?? labRes.value ?? [];
+          const labResults = (Array.isArray(rawLabResults) ? rawLabResults : []).filter(
+            (result) =>
+              isViewingDependant
+                ? result?.dependantId === dependantId
+                : !result?.dependantId,
+          );
+          setLatestLab(
+            labResults.sort(
+              (a, b) =>
+                new Date(b?.createdAt || 0).getTime() -
+                new Date(a?.createdAt || 0).getTime(),
+            )[0] || null,
+          );
+        } else {
+          setLatestLab(null);
+        }
+        setLabLoading(false);
       } catch (err) {
         console.error('IncomingHmoDetails: load error', err);
+        setLatestVital(null);
+        setLatestLab(null);
+        setVitalsLoading(false);
+        setLabLoading(false);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -548,6 +602,62 @@ const IncomingHmoDetails = () => {
               isViewingDependant={isViewingDependant}
             />
 
+            <CurrentVitalsCard
+              patient={summarySubject}
+              latest={latestVital}
+              loading={vitalsLoading}
+              buttonHidden
+            />
+
+             <div className="shadow-xl card bg-base-100 mb-4">
+            <div className="p-4 card-body">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-medium text-base-content">Latest Lab Result</h3>
+                  {labLoading ? (
+                    <div className="skeleton h-4 w-48 mt-2" />
+                  ) : latestLab ? (
+                    <div className="text-sm text-base-content/70 space-y-2">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="badge badge-sm badge-outline">
+                          {latestLab?.forType}
+                        </span>
+                        <span className="font-semibold text-base-content">{latestLab?.forName}</span>
+                      </div>
+                      <div>
+                        {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-base-content/70">No lab results</div>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={!latestLab}
+                    onClick={() => latestLab && navigate(`/dashboard/hmo/labResults/${latestLab?._id || latestLab?.id}`)}
+                  >
+                    View Lab Result
+                  </button>
+                       <button
+                  className="btn btn-outline btn-sm"
+                  disabled={!labResults || labResults.length === 0}
+                  onClick={() => navigate(`/dashboard/hmo/view-lab-results/${patientId}`, {
+                    state: {
+                      from: fromIncoming ? "incoming" : "patients",
+                      patientSnapshot: patient,
+                      dependantId,
+                      dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                    },
+                  })}
+                >
+                  View All
+                </button>
+                </div>
+              </div>
+            </div>
+          </div>
             <div className="flex gap-10 items-center mt-4">
               <SendPatientModal
                 patientId={patient?.id || patientId}
