@@ -31,9 +31,16 @@ const Sidebar = ({ onCloseSidebar }) => {
   // Function to format role for display
   const formatRole = (role) => {
     switch (role) {
-     
-      case 'doctor':
-        return 'Doctor';
+      case 'super-admin':
+        return 'Super Admin';
+      case 'admin':
+        return 'Admin';
+      case 'frontdesk':
+        return 'Front Desk';
+      case 'nurse':
+        return 'Nurse';
+      case 'cashier':
+        return 'Cashier';
       case 'doctor':
         return 'Doctor';
       default:

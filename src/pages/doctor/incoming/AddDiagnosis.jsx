@@ -20,6 +20,8 @@ import { ConfirmationModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";
 import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import { DoctorLayout } from "@/components/doctor/doctor";
+import AddExaminationModal from "./modals/AddExaminationModal";
+import AddReviewOfSystemsModal from "./modals/AddReviewOfSystemsModal";
 
 const AddDiagnosis = () => {
   const { patientId } = useParams();
@@ -38,6 +40,9 @@ const AddDiagnosis = () => {
   const [dependants, setDependants] = useState([]);
   const [fullDependantRecord, setFullDependantRecord] = useState(null);
   const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
+  
+const [clinicalStep, setClinicalStep] = useState(null);
+const [createdConsultationId, setCreatedConsultationId] = useState(null);
 
   const selectedDependant = useMemo(() => {
     if (!selectedDependantId) return null;
@@ -365,9 +370,11 @@ const handleConfirmSave = async () => {
       loading: "Saving consultation...",
       success: (res) => {
         const data = res?.data ?? res;
-        setCid(data.id || data._id);
-
-
+        const newConsultationId = data.id || data._id;
+        setCid(newConsultationId);
+        setCreatedConsultationId(newConsultationId);   
+        setClinicalStep('reviewOfSystems');             
+        
         return "Consultation saved successfully";
       },
       error: (err) =>
@@ -726,6 +733,38 @@ const handleConfirmSave = async () => {
         message="Are you sure you want to save this consultation? This action cannot be undone."
         confirmText="Save Consultation"
         cancelText="Cancel"
+      />
+      <AddReviewOfSystemsModal
+        isOpen={clinicalStep === 'reviewOfSystems'}
+        consultationId={createdConsultationId}
+        patientId={patientId}
+        dependantId={selectedDependantId || null}
+        onReviewAdded={() => {}}
+        onClose={() => setClinicalStep('examination')}
+      />
+      <AddExaminationModal
+        isOpen={clinicalStep === 'examination'}
+        consultationId={createdConsultationId}
+        onSkip={() => {
+          setClinicalStep(null);
+          navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, {
+            state: {
+              from: 'incoming',
+              dependantId: selectedDependantId || null,
+              dependantSnapshot: selectedDependant || null,
+            },
+          });
+        }}
+        onSaved={() => {
+          setClinicalStep(null);
+          navigate(`/dashboard/doctor/medical-history/${patientId}/consultation/${cid}`, {
+            state: {
+              from: 'incoming',
+              dependantId: selectedDependantId || null,
+              dependantSnapshot: selectedDependant || null,
+            },
+          });
+        }}
       />
     {/* </div> */}
         </DoctorLayout>
