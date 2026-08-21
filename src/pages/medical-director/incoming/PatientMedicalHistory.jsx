@@ -112,11 +112,6 @@ const lockPatientForConsultation = async () => {
   }
 };
 
-const lockAndNavigate = async (path, options) => {
-  setIsNavigating(true);
-  await lockPatientForConsultation();
-  navigate(path, options);
-};
 
     const normalizeStatus = (status) => {
   if (!status) return 'Pending';
@@ -1033,7 +1028,7 @@ const dependant = isDependant
                     </button>
                     <button
                       className="btn btn-secondary btn-sm gap-2 w-full sm:w-auto"
-                    onClick={() => lockAndNavigate(
+                    onClick={() => navigate(
                         `/dashboard/medical-director/antenatal-records/${patientId}`,
                         {
                           state: {
@@ -1159,7 +1154,7 @@ const dependant = isDependant
               // eslint-disable-next-line react-hooks/exhaustive-deps
               ), [consultations, patientName])}
               loading={loading}
-            onAdd={() => lockAndNavigate(
+            onAdd={() => navigate(
               `/dashboard/medical-director/medical-history/${patientId}/add`,
               {
                 state: {
@@ -1171,7 +1166,7 @@ const dependant = isDependant
               }
             )} onViewDetails={(row) => {
                 const cid = row?.id;
-                if (cid) lockAndNavigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, dependantId,                                         // NEW
+                if (cid) navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${cid}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient, dependantId,                                         // NEW
                   dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
               } });
               }}
@@ -1318,7 +1313,7 @@ const dependant = isDependant
                               <button
                                 className="btn btn-sm btn-ghost"
                                 disabled={!consultationIdForProc}
-                                onClick={() => consultationIdForProc && lockAndNavigate(
+                                onClick={() => consultationIdForProc && navigate(
                                   `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationIdForProc}`,
                                   {
                                     state: {
