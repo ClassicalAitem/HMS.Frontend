@@ -16,6 +16,7 @@ import { FaFileImage } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import SendPatientModal from "@/components/modals/SendPatientModal";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const ranges = {
   HB: 'g/dl (11-16)',
@@ -123,6 +124,7 @@ const ViewLabResult = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarMounted, setSidebarMounted] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const { refreshQueueCount } = useNotifications();
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setSidebarMounted(true));
@@ -469,23 +471,23 @@ useEffect(() => {
     }
   };
 
-  // const SidebarDrawer = () => (
-  //   <>
-  //     {sidebarOpen && (
-  //       <div
-  //         className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-  //         onClick={() => setSidebarOpen(false)}
-  //       />
-  //     )}
-  //     <div
-  //       className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-  //         sidebarMounted ? "transition-transform duration-200 ease-in-out" : ""
-  //       } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-  //     >
-  //       <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
-  //     </div>
-  //   </>
-  // );
+  const SidebarDrawer = () => (
+    <>
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <div
+        className={`lab-sidebar fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform lg:static lg:w-64 lg:translate-x-0 lg:z-auto ${
+          sidebarMounted ? "transition-transform duration-300 ease-in-out" : ""
+        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
+      </div>
+    </>
+  );
 
   const displayField = (label, value) => {
     if (!value) return null;
@@ -506,7 +508,7 @@ useEffect(() => {
         <h3 className="text-lg font-bold text-[#00943C] mb-3 pb-2 border-b-2 border-[#00943C]">
           {title}
         </h3>
-        <div className="bg-gray-50 p-4 rounded-lg">
+        <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
           {Object.entries(data).map(([key, value]) => {
             if (!value) return null;
             if (typeof value === "object") return null;
@@ -617,9 +619,8 @@ useEffect(() => {
   if (loading) {
     return (
       <div className="flex h-screen bg-base-200">
-        {/* <SidebarDrawer /> */}
-        <LaboratorySidebar />
-        <div className="flex overflow-hidden flex-col flex-1">
+        <SidebarDrawer />
+        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
           <Header onToggleSidebar={() => setSidebarOpen(true)} />
           <div className="flex items-center justify-center flex-1 px-4">
             <p className="text-base lg:text-lg text-gray-600 text-center">Loading lab result...</p>
@@ -632,9 +633,8 @@ useEffect(() => {
   if (error) {
     return (
       <div className="flex h-screen bg-base-200">
-        {/* <LaboratorySidebar /> */}
-        <LaboratorySidebar />
-        <div className="flex overflow-hidden flex-col flex-1">
+        <SidebarDrawer />
+        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
           <Header onToggleSidebar={() => setSidebarOpen(true)} />
           <div className="flex items-center justify-center flex-1 px-4">
             <div className="text-center">
@@ -741,17 +741,15 @@ const handleComplete = async () => {
 
   return (
     <div className="lab-container flex h-screen bg-base-200">
-      <div className="lab-sidebar no-print">
-        <LaboratorySidebar />
-      </div>
+      <SidebarDrawer />
 
-      <div className="lab-main flex overflow-hidden flex-col flex-1">
+      <div className="lab-main flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="no-print">
           <Header onToggleSidebar={() => setSidebarOpen(true)} />
         </div>
 
         <div className="overflow-y-auto flex-1">
-          <section className="p-4 lg:p-7">
+          <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center no-print">
               <div>
                 <h1 className="text-2xl lg:text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
@@ -796,22 +794,22 @@ const handleComplete = async () => {
                   />
             </div>
 
-            <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+            <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 lg:p-8 mb-6 min-w-0">
               {/* Patient Information Header */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 lg:mb-8 pb-6 lg:pb-8 border-b-2 border-gray-200">
-                <div>
+              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 mb-6 lg:mb-8 pb-6 lg:pb-8 border-b-2 border-gray-200">
+                <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Patient Name</p>
-                  <p className="text-lg font-bold text-[#00943C]">{patientName}</p>
+                  <p className="text-base sm:text-lg font-bold text-[#00943C] break-words">{patientName}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Hospital ID</p>
                   <p className="text-lg font-bold">{patient?.hospitalId || "__"}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
                   <p className="text-lg font-bold">{technicianName}</p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Date</p>
                   <p className="text-lg font-bold">{formatNigeriaDate(labResult?.form?.createdAt || labResult?.updatedAt || "__")}</p>
                 </div>
@@ -853,7 +851,7 @@ const handleComplete = async () => {
                       Widal Report
                     </h3>
                     <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
+                      <table className="w-full min-w-[480px] border-collapse">
                         <thead>
                           <tr className="bg-gradient-to-r from-[#00943C]/20 to-[#00943C]/10">
                             <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
