@@ -170,9 +170,9 @@ const LabResultDetails = () => {
   const displayField = (label, value) => {
     if (!value) return null;
     return (
-      <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 border-b border-gray-200">
         <div className="font-semibold text-[#00943C]">{label}</div>
-        <div className="col-span-2 text-gray-700 whitespace-normal break-words">{value}</div>
+        <div className="sm:col-span-2 text-gray-700 whitespace-normal break-words">{value}</div>
       </div>
     );
   };
@@ -190,9 +190,9 @@ const LabResultDetails = () => {
             if (!value) return null;
             if (typeof value === "object") return null;
             return (
-              <div key={key} className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200 last:border-b-0">
+              <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 border-b border-gray-200 last:border-b-0">
                 <div className="font-semibold text-gray-700">{key}</div>
-                <div className="col-span-2 text-gray-600">
+                <div className="sm:col-span-2 text-gray-600 break-words">
                   {typeof value === "string" || typeof value === "number"
                     ? value
                     : JSON.stringify(value)}
@@ -358,12 +358,12 @@ const LabResultDetails = () => {
           </div>
         </div>
       ) : (
-        <section className="p-7">
+        <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden">
           {/* Page header */}
-          <div className="mb-6 flex justify-between items-center">
+          <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
             <div>
-              <h1 className="text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
-              <p className="text-[12px] text-[#605D66]">
+              <h1 className="text-xl sm:text-2xl lg:text-[32px] text-[#00943C] font-bold break-words">Lab Result Details</h1>
+              <p className="text-xs lg:text-[12px] text-[#605D66] break-words">
                 Complete laboratory test results for <span className="font-semibold">{displayName}</span>
                 <span className="badge badge-sm badge-outline ml-2">{personType}</span>
               </p>
@@ -378,31 +378,31 @@ const LabResultDetails = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
+          <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 lg:p-8 mb-6 min-w-0">
             {/* Patient Information Header */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 pb-8 border-b-2 border-gray-200">
-              <div>
+            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 mb-6 lg:mb-8 pb-6 lg:pb-8 border-b-2 border-gray-200">
+              <div className="min-w-0">
                 <p className="text-xs text-gray-600 uppercase font-semibold">{personType} Name</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <p className="text-lg font-bold text-[#00943C]">{displayName}</p>
+                  <p className="text-base sm:text-lg font-bold text-[#00943C] break-words">{displayName}</p>
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-gray-600 uppercase font-semibold">Hospital ID</p>
                 <p className="text-lg font-bold">{patient?.hospitalId || "N/A"}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
                 <p className="text-lg font-bold">{labResult?.form?.labNo || "N/A"}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-gray-600 uppercase font-semibold">Date</p>
                 <p className="text-lg font-bold">{formatNigeriaDate(labResult?.form?.createdAt || labResult?.updatedAt || "__")}</p>
               </div>
             </div>
 
             {/* Test Information */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-4">
               {displayField("Age", labResult?.form?.age)}
               {displayField("Sex", labResult?.form?.sex)}
               {displayField("Clinical Diagnosis", labResult?.form?.clinicalDiagnosis)}
@@ -437,7 +437,7 @@ const LabResultDetails = () => {
                     Widal Report
                   </h3>
                   <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full min-w-[480px] border-collapse">
                       <thead>
                         <tr className="bg-gradient-to-r from-[#00943C]/20 to-[#00943C]/10">
                           <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
@@ -496,16 +496,16 @@ const LabResultDetails = () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
               <button
                 onClick={handlePrint}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
+                className="w-full sm:flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-all"
               >
                 Print Results
               </button>
               <button
                 onClick={() => navigate(-1)}
-                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all"
+                className="w-full sm:flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all"
               >
                 Close
               </button>
