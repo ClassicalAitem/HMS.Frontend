@@ -115,6 +115,7 @@ import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
 import MedicalData from "@/pages/superadmin/settings/MedicalData";
 import PharmacyInventory from "@/pages/superadmin/settings/PharmacyInventory";
 import LaboratoryInventory from "@/pages/superadmin/settings/LaboratoryInventory";
+import PharmacyReview from "@/pages/superadmin/settings/PharmacyReview";
 
 // Cashier
 import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
@@ -811,6 +812,11 @@ const AppRoutes = () => {
       <Route path="/superadmin/settings/laboratory-inventory" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <LaboratoryInventory />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/settings/pharmacy-reviews" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <PharmacyReview />
         </ProtectedRoute>
       } />
 

@@ -4,6 +4,7 @@ import { PharmacistLayout } from '@/layouts/pharmacist'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
+import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
 import { getInventories } from '@/services/api/inventoryAPI'
 import { AddDrugModal, DispenseConfirmModal } from '@/components/modals'
@@ -37,8 +38,10 @@ const IncomingDetails = () => {
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [dependants, setDependants] = useState([])
+  const [billings, setBillings] = useState([])
   const { refreshQueueCount } = useNotifications()
   const currentUser = useAppSelector((state) => state.auth.user)
+  const isSuperAdmin = currentUser?.role === 'super-admin'
 
   const pharmacistId = currentUser?.id || currentUser?._id
   const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
@@ -90,6 +93,32 @@ const IncomingDetails = () => {
     }
   }, [patientId, incomingDependantId, isViewingDependant])
 
+  useEffect(() => {
+    let mounted = true
+
+    const loadBillings = async () => {
+      if (!patientId || !patient?.hmos?.length) {
+        setBillings([])
+        return
+      }
+
+      try {
+        const res = await getAllBillings({ patientId })
+        const raw = res?.data?.data ?? res?.data ?? res ?? []
+        const list = Array.isArray(raw) ? raw : []
+        if (mounted) setBillings(list)
+      } catch (err) {
+        console.error('Failed to load billings for HMO status', err)
+        if (mounted) setBillings([])
+      }
+    }
+
+    loadBillings()
+    return () => {
+      mounted = false
+    }
+  }, [patientId, patient?.hmos])
+
   const calculateQuantity = (med) => calculateDispenseQuantity(med.frequency, med.duration)
 
   // Determine stock & billing availability state
@@ -132,6 +161,28 @@ const IncomingDetails = () => {
     }
   }
 
+  const getHmoStatusForMed = (prescriptionId, drugName) => {
+    if (!billings.length) return null
+
+    for (const bill of billings) {
+      const matchesSubject = isViewingDependant
+        ? bill.dependantId === incomingDependantId
+        : !bill.dependantId
+      if (!matchesSubject) continue
+
+      const match = (bill.itemDetails || []).find(
+        (item) =>
+          item.prescriptionId === prescriptionId &&
+          String(item.description || '')
+            .toLowerCase()
+            .includes(String(drugName || '').toLowerCase())
+      )
+      if (match) return match.hmoStatus || 'pending'
+    }
+
+    return null
+  }
+
   const renderMedications = (list = [], isHistory = false) => {
     if (!list.length) {
       return <div className="text-sm text-base-content/60">No data.</div>
@@ -155,6 +206,7 @@ const IncomingDetails = () => {
         )
         const suggestedQty = calculateQuantity(m)
         const availabilityInfo = getDrugAvailabilityStatus(m, suggestedQty)
+        const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
 
         return {
           ...m,
@@ -171,6 +223,7 @@ const IncomingDetails = () => {
           forName,
           suggestedQty,
           availabilityInfo,
+          hmoStatus,
         }
       })
     })
@@ -191,9 +244,20 @@ const IncomingDetails = () => {
                   <span className="badge badge-primary badge-sm font-medium">Main Patient</span>
                 )}
               </div> */}
-              <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
-                {m.availabilityInfo.label}
-              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
+                  {m.availabilityInfo.label}
+                </span>
+                {m.hmoStatus === 'approved' && (
+                  <span className="badge badge-sm badge-success font-medium">HMO: Covered</span>
+                )}
+                {m.hmoStatus === 'partial' && (
+                  <span className="badge badge-sm badge-warning font-medium">HMO: Partial</span>
+                )}
+                {m.hmoStatus === 'rejected' && (
+                  <span className="badge badge-sm badge-error font-medium">HMO: Not Covered</span>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
@@ -249,6 +313,7 @@ const IncomingDetails = () => {
         )
         const suggestedQty = calculateQuantity(m)
         const availabilityInfo = getDrugAvailabilityStatus(m, suggestedQty)
+        const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
 
         return {
           key: `${p._id}-${m.drugName}`,
@@ -261,6 +326,7 @@ const IncomingDetails = () => {
           suggestedQty,
           formStrength: inv ? `${inv.form || ''} ${inv.strength ? '• ' + inv.strength : ''}`.trim() : '',
           availabilityInfo,
+          hmoStatus,
         }
       })
     })
@@ -271,6 +337,22 @@ const submitDispense = async (finalRows, action) => {
 
   const activePrescriptions = prescriptions.active
   const pid = patient?.id || patient?._id || patient?.patientId
+
+  const unavailableRows = (finalRows || []).filter(
+    (row) => !row?.availabilityInfo?.inStock
+  )
+
+  unavailableRows.forEach((row) => {
+    const requestedQty = Number(row.suggestedQty) || 0
+    const stockQty = Number(row.availabilityInfo?.stockQty) || 0
+    const shortage = Math.max(requestedQty - stockQty, 0)
+
+    if (row.availabilityInfo?.label === 'Not Stocked by Hospital') {
+      toast.error(`${row.drugName} is not available in the hospital inventory.`)
+    } else if (shortage > 0) {
+      toast.error(`Insufficient stock for ${row.drugName}, short by ${shortage} unit(s).`)
+    }
+  })
 
   // Only rows that are actually in stock get deducted — nothing to deduct
   // for "unavailable" or "out of stock" medications.
@@ -491,6 +573,7 @@ const submitDispense = async (finalRows, action) => {
           <DispenseConfirmModal
             rows={dispenseModalRows}
             submitting={dispenseSubmitting}
+            isSuperAdmin={isSuperAdmin}
             onCancel={() => setDispenseModalRows(null)}
             onConfirm={(finalRows) => submitDispense(finalRows, pendingAction)}
           />

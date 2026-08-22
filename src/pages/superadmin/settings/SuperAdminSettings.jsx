@@ -101,6 +101,12 @@ const SuperAdminSettings = () => {
     },
     {
       icon: FaCog,
+      title: 'Pharmacy Reviews',
+      description: 'Setup  pharmacy review for patients approval',
+      onClick: () => navigate('/superadmin/settings/pharmacy-reviews')
+    },
+    {
+      icon: FaCog,
       title: 'Laboratory Inventory',
       description: 'Setup  laboratory inventory data, etc.',
       onClick: () => navigate('/superadmin/settings/laboratory-inventory')
