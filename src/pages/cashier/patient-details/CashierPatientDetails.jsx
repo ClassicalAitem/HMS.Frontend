@@ -115,8 +115,6 @@ const CashierPatientDetails = () => {
 
   const fullName = summarySubject.fullName;
 
-  const hmoList = summarySubject.hmos;
-
   useEffect(() => {
     if (patientId && !location?.state?.patientSnapshot) {
       dispatch(fetchPatientById(patientId));
@@ -129,13 +127,6 @@ const CashierPatientDetails = () => {
       dispatch(clearPatientsError());
     }
   }, [error, dispatch, snapshot, currentPatient]);
-
-  const getHmoCoveredAmount = (bill) => {
-    return (bill.itemDetails || []).reduce(
-      (sum, item) => sum + Number(item.hmoCovered || 0),
-      0
-    );
-  };
 
   useEffect(() => {
     const fetchBillings = async () => {
@@ -366,10 +357,6 @@ const CashierPatientDetails = () => {
                           <div className="p-3">
                             <div className="mb-3 text-sm space-y-1">
                               <p>Total:  ₦{Number(bill.totalAmount).toLocaleString()}</p>
-                              <p className="text-success">
-                                HMO:  ₦{getHmoCoveredAmount(bill).toLocaleString()}
-                              </p>
-
                             </div>
                             <h4 className="font-semibold mb-2">Item Details</h4>
                             <table className="table w-full">
@@ -380,8 +367,6 @@ const CashierPatientDetails = () => {
                                   <th>Price</th>
                                   <th>Qty</th>
                                   <th>Total</th>
-                                  <th>HMO Covers</th>
-                                  <th>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -392,23 +377,6 @@ const CashierPatientDetails = () => {
                                     <td> ₦ {Number(item.price).toLocaleString()}</td>
                                     <td>{item.quantity}</td>
                                     <td>₦ {Number(item.total).toLocaleString()}</td>
-
-                                    <td className="text-success">
-                                      ₦ {Number(item.hmoCovered || 0).toLocaleString()}
-                                    </td>
-
-
-
-                                    <td>
-                                      <span className={`badge badge-sm ${
-                                        item.hmoStatus === 'approved' ? 'badge-success' :
-                                        item.hmoStatus === 'partial' ? 'badge-warning' :
-                                        item.hmoStatus === 'rejected' ? 'badge-error' :
-                                        'badge-neutral'
-                                      }`}>
-                                        {item.hmoStatus || 'self-pay'}
-                                      </span>
-                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
