@@ -97,6 +97,7 @@ const DispenseConfirmModal = ({
                   </div>
                   <div className="text-xs text-base-content/70">
                     {row.forName || 'Patient'} · {row.dosage || '—'} · {row.frequency || '—'} · {row.duration || '—'}
+                    {row.doctorName && <> · Dr. {row.doctorName}</>}
                   </div>
                   {row.formStrength && (
                     <div className="text-xs text-base-content/60 mt-1">
