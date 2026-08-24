@@ -264,6 +264,30 @@ const PatientDetails = () => {
         relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
       };
     }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+
+    const displayPatient = useMemo(() => {
+  if (!isViewingDependant) return patient;
+
+  const guardian = patient || {};
+  const dep = subject || dependantSnapshot || {};
+
+  return {
+    ...guardian, // fallback for fields dependants don't own: phone, email, address, nextOfKin, bloodGroup, maritalStatus, occupation, etc.
+    id: dep.id || dependantId,
+    firstName: dep.firstName,
+    lastName: dep.lastName,
+    middleName: dep.middleName,
+    dob: dep.dob,
+    gender: dep.gender,
+    status: dep.status || dependantSnapshot?.status,
+    relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
+    hospitalId: guardian.hospitalId, // ← stays the guardian's, as you asked
+    hmos: Array.isArray(guardian.hmos)
+      ? guardian.hmos.filter((h) => h.dependantId === (dep.id || dependantId))
+      : [],
+    dependants: [], // avoid showing the guardian's other dependants while viewing one specific dependant
+  };
+}, [isViewingDependant, patient, subject, dependantSnapshot, dependantId]);
   
 
   // Fetch patient data from backend
@@ -374,7 +398,7 @@ const PatientDetails = () => {
             <div className="space-y-6">
            
             <PatientDetailsCard
-              patient={patient}
+              patient={displayPatient}
               summarySubject={summarySubject}
               isViewingDependant={isViewingDependant}
             />
@@ -389,7 +413,7 @@ const PatientDetails = () => {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
             <SendPatientModal
               patientId={patient?.id || patientId}
-              patient={patient}
+              patient={displayPatient}
               onUpdated={() => navigate('/frontdesk/dashboard')}
               allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
             />
@@ -462,14 +486,14 @@ const PatientDetails = () => {
            
 
               {/* General Info */}
-              <GeneralInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
+              <GeneralInfoCard patient={displayPatient} isTransitionLoading={isTransitionLoading} />
 
               {/* Additional Info */}
-              <AdditionalInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
+              <AdditionalInfoCard patient={displayPatient} isTransitionLoading={isTransitionLoading} />
 
               {/* HMO & Dependants Info */}
               <HmoDependantsSection
-                patient={patient}
+                patient={displayPatient}
                 isTransitionLoading={isTransitionLoading}
                 onAddHmo={() => {
                   setHmoTargetDependantId(null); // patient-level HMO
@@ -486,7 +510,7 @@ const PatientDetails = () => {
             </div>
 
             {/* Additional Information */}
-            <AdditionalInformationCard patient={patient} isLoading={isLoading} />
+            <AdditionalInformationCard patient={displayPatient} isLoading={isLoading} />
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {/* Action Buttons */}
@@ -503,7 +527,7 @@ const PatientDetails = () => {
       <EditPatientModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        patient={patient}
+        patient={displayPatient}
         onSave={handleEditPatient}
       />
       <AddHmoModal
@@ -512,7 +536,7 @@ const PatientDetails = () => {
           setIsAddHmoOpen(false);
           setHmoTargetDependantId(null);
         }}
-        patient={patient}
+        patient={displayPatient}
         dependantId={hmoTargetDependantId}
         onSuccess={() => {
           if (patientId) {
@@ -525,7 +549,7 @@ const PatientDetails = () => {
       <EditHmoModal
         isOpen={isEditHmoOpen}
         onClose={() => setIsEditHmoOpen(false)}
-        patient={patient}
+        patient={displayPatient}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
@@ -536,7 +560,7 @@ const PatientDetails = () => {
       <AddDependantModal
         isOpen={isAddDependantOpen}
         onClose={() => setIsAddDependantOpen(false)}
-        patient={patient}
+        patient={displayPatient}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
@@ -547,7 +571,7 @@ const PatientDetails = () => {
       <EditDependantModal
         isOpen={isEditDependantOpen}
         onClose={() => setIsEditDependantOpen(false)}
-        patient={patient}
+        patient={displayPatient}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
