@@ -568,35 +568,26 @@ const PatientDetails = () => {
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       /> */}
 
-      {/* Send to Cashier Modal (Status Update) - Triggered AFTER Bill Creation */}
-      <CashierActionModal
-        isOpen={isSendToCashierOpen}
-        onClose={() => setIsSendToCashierOpen(false)}
-        patientId={patient?.id || patientId}
-        currentStatus={patient?.status || ''}
-        defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
-        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-      />
+   
 
       {/* Create Bill Modal - Intercepts "Send to Cashier" */}
       <CreateBillModal
         isOpen={isCreateBillOpen}
         onClose={() => setIsCreateBillOpen(false)}
         patientId={patientId}
+        dependantId={isViewingDependant ? dependantId : null}
         onSuccess={() => {
-          // After bill is created, proceed to status update modal
           setIsSendToCashierOpen(true);
         }}
         defaultItems={[]}
-        // defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
-
       {/* Send to HMO Modal */}
       <SendToHmoModal
         isOpen={isSendToHmoOpen}
         onClose={() => setIsSendToHmoOpen(false)}
         patientId={patient?.id || patientId}
-        patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()}
+        dependantId={isViewingDependant ? dependantId : null}
+        patientName={summarySubject?.fullName}
         doctorName="Doctor"
         consultationDate={new Date().toLocaleDateString()}
         visitReason=""
