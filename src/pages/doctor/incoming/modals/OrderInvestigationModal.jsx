@@ -47,7 +47,7 @@ const OrderInvestigationModal = ({
   } = useForm({
     resolver: yupResolver(investigationSchema),
     defaultValues: {
-      tests: [{ name: "" }],
+      tests: [{ name: "", isCustom: false }],
       priority: "normal"
     }
   });
@@ -93,15 +93,12 @@ const OrderInvestigationModal = ({
     if (investigation && isOpen) {
 
       const tests = investigation.tests?.length
-        ? investigation.tests
-        : [{ name: "" }];
+      ? investigation.tests.map(t => ({ ...t, isCustom: t.isCustom || false }))
+      : [{ name: "", isCustom: false }];
 
       replace(tests);
 
-      reset({
-        tests,
-        priority: investigation.priority || "normal"
-      });
+      reset({ tests: [{ name: "", isCustom: false }], priority: "normal" });
 
       setInvestigationType(investigation.type === "radiology" ? "radiology" : "lab");
 
@@ -119,7 +116,7 @@ const OrderInvestigationModal = ({
   const handleSwitchType = (nextType) => {
     if (nextType === investigationType) return;
     setInvestigationType(nextType);
-    replace([{ name: "" }]);
+    replace([{ name: "", isCustom: false }]);
     setTestSearch("");
     setTestDropdownIndex(null);
   };
@@ -144,7 +141,7 @@ const OrderInvestigationModal = ({
 
       const payload = {
         patientId,
-        dependantId,
+        ...(dependantId ? { dependantId } : {}),
         type: investigationType,
         tests: data.tests,
         priority: data.priority,
@@ -305,7 +302,7 @@ const OrderInvestigationModal = ({
 
                     <input
                       type="text"
-                      placeholder={`Search ${investigationType === "radiology" ? "radiology" : "lab"} test...`}
+                      placeholder={`Search or type a new ${investigationType === "radiology" ? "radiology" : "lab"} test...`}
                       className="input input-bordered"
                       value={
                         testDropdownIndex === index
@@ -314,11 +311,19 @@ const OrderInvestigationModal = ({
                       }
                       onFocus={() => {
                         setTestDropdownIndex(index);
-                        setTestSearch("");
+                        setTestSearch(watch(`tests.${index}.name`) || "");
                       }}
                       onChange={(e) => {
                         setTestSearch(e.target.value);
                         setTestDropdownIndex(index);
+                        // Free-typed text becomes the value directly — treated as custom
+                        // until/unless they click a real match below.
+                        setValue(`tests.${index}.name`, e.target.value);
+                        setValue(`tests.${index}.isCustom`, true);
+                      }}
+                      onBlur={() => {
+                        // Give the dropdown-item onClick time to fire first
+                        setTimeout(() => setTestDropdownIndex(null), 150);
                       }}
                     />
 
@@ -339,8 +344,9 @@ const OrderInvestigationModal = ({
                             <div
                               key={test.id}
                               className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
-                              onClick={() => {
+                             onClick={() => {
                                 setValue(`tests.${index}.name`, test.service);
+                                setValue(`tests.${index}.isCustom`, false);
                                 setTestDropdownIndex(null);
                                 setTestSearch('');
                               }}
@@ -369,6 +375,11 @@ const OrderInvestigationModal = ({
                         {errors.tests[index].name.message}
                       </span>
                     )}
+                    {watch(`tests.${index}.isCustom`) && watch(`tests.${index}.name`) && (
+                      <span className="text-xs text-warning">
+                        Custom test — not in service charges, won't be added to patient's bill
+                      </span>
+                    )}
 
                   </div>
 
@@ -382,7 +393,7 @@ const OrderInvestigationModal = ({
             <button
               type="button"
               className="btn btn-outline btn-primary w-full"
-              onClick={() => append({ name: "" })}
+              onClick={() => append({ name: "", isCustom: false })}
             >
               <FaPlus /> Add Another Test
             </button>
