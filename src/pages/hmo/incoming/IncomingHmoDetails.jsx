@@ -36,6 +36,8 @@ import {
   normalizeVitalsResponse,
 } from '@/services/api/vitalsAPI';
 import { getLabResults } from '@/services/api/labResultsAPI';
+import { getAllAppointments } from '@/services/api/appointmentsAPI';
+import { AppointmentDetailsModal } from '@/components/modals';
 
 
 // Detect injection-route medications defensively across possible field names,
@@ -53,22 +55,33 @@ const consultationHasInjection = (prescriptions = []) =>
   prescriptions.some((p) => (p.medications || []).some(isInjectionMed));
 
 
+// Small reusable "empty" line so every section renders consistently
+const EmptyNote = ({ children = 'None recorded' }) => (
+  <p className="text-sm text-base-content/40">{children}</p>
+);
+
+const SectionHeading = ({ children }) => (
+  <h4 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 mb-2">
+    {children}
+  </h4>
+);
+
 const ConsultationDetailModal = ({ consultation, onClose }) => {
   const c = consultation;
   const isDependant = !!c.dependantId;
   const subjectName = isDependant
     ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
     : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
-  const complaints = Array.isArray(c.complaint)
-    ? c.complaint.map((cp) => cp.symptom).filter(Boolean).join(', ')
-    : null;
+  const doctorName = `${c.doctor?.firstName || ''} ${c.doctor?.lastName || ''}`.trim();
   const prescriptions = c.prescriptions || [];
+
+  const hasArray = (arr) => Array.isArray(arr) && arr.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg bg-base-100 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-base-100 border-b border-base-200 p-4 flex items-center justify-between">
+      <div className="relative z-10 w-full max-w-2xl bg-base-100 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-base-100 border-b border-base-200 p-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-2 min-w-0">
             <span className={`badge badge-sm shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
               {isDependant ? c.dependant?.relationshipType || 'Dependant' : 'Patient'}
@@ -80,80 +93,192 @@ const ConsultationDetailModal = ({ consultation, onClose }) => {
           <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle shrink-0">✕</button>
         </div>
 
-        <div className="p-4 space-y-4">
-          <div className="flex items-center justify-between text-xs text-base-content/50">
-            <span>{c.createdAt ? formatNigeriaDate(c.createdAt) : '—'}</span>
+        <div className="p-4 space-y-5">
+          {/* Meta row */}
+          <div className="flex items-center justify-between text-xs text-base-content/50 flex-wrap gap-1">
+            <span>
+              {c.createdAt ? formatNigeriaDateTime(c.createdAt) : '—'}
+              {c.updatedAt && c.updatedAt !== c.createdAt && (
+                <span className="text-base-content/30"> · updated {formatNigeriaDateTime(c.updatedAt)}</span>
+              )}
+            </span>
             {c.visitReason && (
               <span className="badge badge-ghost badge-xs capitalize">{c.visitReason}</span>
             )}
           </div>
 
+          {doctorName && (
+            <div>
+              <SectionHeading>Doctor</SectionHeading>
+              <p className="text-sm text-base-content">Dr. {doctorName}</p>
+            </div>
+          )}
+
           <div>
-            <span className="text-xs text-base-content/50 block mb-1">Diagnosis</span>
+            <SectionHeading>Diagnosis</SectionHeading>
             <p className="text-sm font-medium text-base-content">{c.diagnosis || 'Pending'}</p>
           </div>
 
+          {/* Complaint */}
           <div>
-            <span className="text-xs text-base-content/50 block mb-1">Complaint</span>
-            <p className={complaints ? 'text-sm text-base-content/80' : 'text-sm text-base-content/40'}>
-              {complaints || 'None recorded'}
-            </p>
+            <SectionHeading>Complaint</SectionHeading>
+            {hasArray(c.complaint) ? (
+              <ul className="space-y-1">
+                {c.complaint.map((cp, idx) => (
+                  <li key={idx} className="text-sm text-base-content/80 flex justify-between border-l-2 border-primary/30 pl-2">
+                    <span>{cp.symptom}</span>
+                    {cp.durationInDays != null && (
+                      <span className="text-xs text-base-content/50 shrink-0">{cp.durationInDays} day{cp.durationInDays === 1 ? '' : 's'}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyNote />
+            )}
           </div>
 
-          {/* Prescriptions */}
-        <div>
-          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-success"></span>
-            Active Prescriptions
-          </h4>
-          {prescriptions.length > 0 ? (
-            <div className="border border-base-200 rounded-lg overflow-hidden divide-y divide-base-200">
-              {prescriptions.map((pres, idx) => (
-                <div key={idx} className="p-4">
-                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                  Prescription Status:   <span
-                      className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}
-                    >
-                      {pres.status}
-                    </span>
-                    <span className="text-xs text-base-content/50">
-                      Ordered {formatNigeriaDate(pres.createdAt)}
-                      {pres.doctorName && ` by Dr. ${pres.doctorName}`}
-                    </span>
-                  </div>
+          {/* Complaint History */}
+          <div>
+            <SectionHeading>Complaint History</SectionHeading>
+            {c.complaintHistory ? (
+              <p className="text-sm text-base-content/80 whitespace-pre-wrap break-words">{c.complaintHistory}</p>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
 
-                  <div className="space-y-3">
-                    {pres.medications?.map((med, mIdx) => (
-                      <div
-                        key={mIdx}
-                        className="flex flex-col gap-0.5 border-l-2 border-success/40 pl-3"
-                      >
-                        <span className="text-sm font-medium text-base-content">
-                          {med.drugName}
-                        </span>
-                        <span className="text-xs text-base-content/60">Dosage:    {med.dosage}</span>
-                        <span className="text-xs text-base-content/60">Frequency:    {med.frequency}</span>
-                        <span className="text-xs text-base-content/60">Duration:     {med.duration}</span>
-                      </div>
-                    ))}
+          {/* Allergic History */}
+          <div>
+            <SectionHeading>Allergic History</SectionHeading>
+            {hasArray(c.allergicHistory) ? (
+              <div className="flex flex-wrap gap-1.5">
+                {c.allergicHistory.map((a, idx) => (
+                  <span key={idx} className="badge badge-outline badge-sm">{a.allergen}</span>
+                ))}
+              </div>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
+
+          {/* Family History */}
+          <div>
+            <SectionHeading>Family History</SectionHeading>
+            {hasArray(c.familyHistory) ? (
+              <ul className="space-y-1">
+                {c.familyHistory.map((f, idx) => (
+                  <li key={idx} className="text-sm text-base-content/80 border-l-2 border-secondary/30 pl-2">
+                    {f.relation}{f.condition ? ` — ${f.condition}` : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
+
+          {/* Medical History */}
+          <div>
+            <SectionHeading>Medical History</SectionHeading>
+            {hasArray(c.medicalHistory) ? (
+              <div className="flex flex-wrap gap-1.5">
+                {c.medicalHistory.map((m, idx) => (
+                  <span key={idx} className="badge badge-ghost badge-sm">{m.title}</span>
+                ))}
+              </div>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
+
+          {/* Social History */}
+          <div>
+            <SectionHeading>Social History</SectionHeading>
+            {hasArray(c.socialHistory) ? (
+              <div className="flex flex-wrap gap-1.5">
+                {c.socialHistory.map((s, idx) => (
+                  <span key={idx} className="badge badge-ghost badge-sm">{s.title}</span>
+                ))}
+              </div>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
+
+          {/* Surgical History */}
+          <div>
+            <SectionHeading>Surgical History</SectionHeading>
+            {hasArray(c.surgicalHistory) ? (
+              <ul className="space-y-1">
+                {c.surgicalHistory.map((s, idx) => (
+                  <li key={idx} className="text-sm text-base-content/80 flex justify-between border-l-2 border-warning/30 pl-2">
+                    <span>{s.procedureName}</span>
+                    {s.dateOfSurgery && (
+                      <span className="text-xs text-base-content/50 shrink-0">{formatNigeriaDate(s.dateOfSurgery)}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
+
+          {/* Notes */}
+          <div>
+            <SectionHeading>Notes</SectionHeading>
+            {c.notes ? (
+              <p className="text-sm text-base-content/80 whitespace-pre-wrap break-words">{c.notes}</p>
+            ) : (
+              <EmptyNote />
+            )}
+          </div>
+
+        
+
+          {/* Prescriptions */}
+          <div>
+            <SectionHeading>Active Prescriptions</SectionHeading>
+            {prescriptions.length > 0 ? (
+              <div className="border border-base-200 rounded-lg overflow-hidden divide-y divide-base-200">
+                {prescriptions.map((pres, idx) => (
+                  <div key={idx} className="p-4">
+                    <div className="flex items-center gap-2 flex-wrap mb-3">
+                      Prescription Status:{' '}
+                      <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}>
+                        {pres.status}
+                      </span>
+                      <span className="text-xs text-base-content/50">
+                        Ordered {formatNigeriaDate(pres.createdAt)}
+                        {pres.doctorName && ` by Dr. ${pres.doctorName}`}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {pres.medications?.map((med, mIdx) => (
+                        <div key={mIdx} className="flex flex-col gap-0.5 border-l-2 border-success/40 pl-3">
+                          <span className="text-sm font-medium text-base-content">{med.drugName}</span>
+                          <span className="text-xs text-base-content/60">Dosage:    {med.dosage}</span>
+                          <span className="text-xs text-base-content/60">Frequency:    {med.frequency}</span>
+                          <span className="text-xs text-base-content/60">Duration:     {med.duration}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
-              <p className="text-sm text-base-content/50">
-                No prescriptions ordered yet
-              </p>
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
+                <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 };
-
 
 
 const IncomingHmoDetails = () => {
@@ -185,6 +310,10 @@ const IncomingHmoDetails = () => {
   const [latestVital, setLatestVital] = useState(null);
   const [vitalsLoading, setVitalsLoading] = useState(true);
   const [latestLab, setLatestLab] = useState(null);
+  const [appointments, setAppointments] = useState([]);
+const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [labLoading, setLabLoading] = useState(true);
   
     const [labResults, setLabResults] = useState([]);
@@ -418,6 +547,37 @@ const IncomingHmoDetails = () => {
   return () => { mounted = false; };
 }, [consultations]);
 
+useEffect(() => {
+  let mounted = true;
+  const fetchAppointments = async () => {
+    try {
+      setAppointmentsLoading(true);
+      const res = await getAllAppointments({ patientId });
+      const raw = res?.data?.data ?? res?.data ?? res ?? [];
+      const list = Array.isArray(raw) ? raw : (raw?.appointments ?? []);
+
+      const scoped = list.filter((a) =>
+        isViewingDependant ? a.dependantId === dependantId : !a.dependantId
+      );
+
+      if (mounted) {
+        setAppointments(
+          [...scoped].sort(
+            (a, b) =>
+              new Date(`${b.appointmentDate || ''} ${b.appointmentTime || ''}`).getTime() -
+              new Date(`${a.appointmentDate || ''} ${a.appointmentTime || ''}`).getTime(),
+          ),
+        );
+      }
+    } catch {
+      if (mounted) setAppointments([]);
+    } finally {
+      if (mounted) setAppointmentsLoading(false);
+    }
+  };
+  if (patientId) fetchAppointments();
+  return () => { mounted = false; };
+}, [patientId, isViewingDependant, dependantId]);
 
 
   const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
@@ -1049,7 +1209,9 @@ const IncomingHmoDetails = () => {
                      
 
          {/* Consultations — moved from aside to a full-width section below */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+         <div className="mt-6 p-4 card bg-base-100 border border-base-200">
+  <h3 className="text-lg font-semibold mb-3">Consultations</h3>
+<div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {consultations.map((c) => {
             const isDependant = !!c.dependantId;
             const subjectName = isDependant
@@ -1104,6 +1266,70 @@ const IncomingHmoDetails = () => {
             );
           })}
         </div>
+        </div>
+
+        {/* Appointments */}
+<div className="mt-6 p-4 card bg-base-100 border border-base-200">
+  <h3 className="text-lg font-semibold mb-3">Appointments</h3>
+  {appointmentsLoading ? (
+    <div className="flex justify-center py-8">
+      <div className="loading loading-spinner loading-md" />
+    </div>
+  ) : appointments.length === 0 ? (
+    <div className="card bg-base-100 border border-base-200">
+      <div className="card-body py-8 text-center text-base-content/50">
+        No appointments found for this patient.
+      </div>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {appointments.map((a) => {
+  const statusClass =
+    (a.status || '').toLowerCase() === 'completed'
+      ? 'badge-primary'
+      : (a.status || '').toLowerCase() === 'scheduled'
+        ? 'badge-info'
+        : (a.status || '').toLowerCase() === 'cancelled'
+          ? 'badge-error'
+          : 'badge-neutral';
+
+  return (
+    <button
+      key={a.id || a._id}
+      type="button"
+      onClick={() => {
+        const appointmentId = a.id || a._id || a.appointmentId;
+        if (appointmentId) {
+          setSelectedAppointmentId(appointmentId);
+          setIsAppointmentModalOpen(true);
+        }
+      }}
+      className="text-left p-4 rounded-lg border border-base-300 bg-base-200/30 transition-colors hover:border-primary/50 hover:bg-base-200/60"
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className={`badge badge-sm ${statusClass}`}>
+          {a.status || 'Unknown'}
+        </span>
+        <span className="text-xs text-base-content/40">
+          {a.appointmentDate ? formatNigeriaDate(a.appointmentDate) : '—'}
+          {a.appointmentTime ? ` · ${a.appointmentTime}` : ''}
+        </span>
+      </div>
+      <p className="text-sm font-medium text-base-content line-clamp-1">
+        {a.procedureName || a.appointmentType || 'General appointment'}
+      </p>
+      {a.department && (
+        <p className="text-xs text-base-content/60 mt-1 capitalize">{a.department}</p>
+      )}
+      {a.notes && (
+        <p className="text-xs text-base-content/50 mt-1 line-clamp-2">{a.notes}</p>
+      )}
+    </button>
+  );
+})}
+    </div>
+  )}
+</div>
 
         {selectedConsultation && (
           <ConsultationDetailModal
@@ -1111,6 +1337,21 @@ const IncomingHmoDetails = () => {
             onClose={() => setSelectedConsultation(null)}
           />
         )}
+
+        <AppointmentDetailsModal
+  isOpen={isAppointmentModalOpen}
+  onClose={() => setIsAppointmentModalOpen(false)}
+  appointmentId={selectedAppointmentId}
+  onUpdated={(updated) => {
+    setAppointments((prev) =>
+      prev.map((a) =>
+        (a.id || a._id) === (updated?.id || updated?._id || updated?.appointmentId)
+          ? { ...a, status: updated?.status }
+          : a,
+      ),
+    );
+  }}
+/>
         </div>
       </div>
     </div>
