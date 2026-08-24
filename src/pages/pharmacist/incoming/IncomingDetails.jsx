@@ -18,6 +18,7 @@ import KolakLoader from '@/components/common/KolakLoader'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator'
 import dispensesAPI from '@/services/api/dispensesAPI'
+import { usersAPI } from '@/services/api/usersAPI'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -37,6 +38,7 @@ const IncomingDetails = () => {
   const [dispenseModalRows, setDispenseModalRows] = useState(null)
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
+  const [doctors, setDoctors] = useState({}) 
   const [dependants, setDependants] = useState([])
   const [billings, setBillings] = useState([])
   const { refreshQueueCount } = useNotifications()
@@ -119,6 +121,44 @@ const IncomingDetails = () => {
     }
   }, [patientId, patient?.hmos])
 
+  useEffect(() => {
+  let mounted = true
+
+  const loadDoctors = async () => {
+    const allPrescriptions = [...prescriptions.active, ...prescriptions.history]
+    const doctorIds = [...new Set(allPrescriptions.map((p) => p.doctorId).filter(Boolean))]
+    const missingIds = doctorIds.filter((id) => !doctors[id])
+
+    if (!missingIds.length) return
+
+    try {
+      const entries = await Promise.all(
+        missingIds.map((id) =>
+          usersAPI.getUserById(id)
+            .then((res) => {
+              const user = res?.data?.data ?? res?.data ?? res
+              const name = user
+                ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown Doctor'
+                : 'Unknown Doctor'
+              return [id, name]
+            })
+            .catch(() => [id, 'Unknown Doctor'])
+        )
+      )
+      if (mounted) {
+        setDoctors((prev) => ({ ...prev, ...Object.fromEntries(entries) }))
+      }
+    } catch (err) {
+      console.error('Failed to load doctor names', err)
+    }
+  }
+
+  loadDoctors()
+  return () => {
+    mounted = false
+  }
+}, [prescriptions])
+
   const calculateQuantity = (med) => calculateDispenseQuantity(med.frequency, med.duration)
 
   // Determine stock & billing availability state
@@ -200,7 +240,7 @@ const IncomingDetails = () => {
           : 'Dependant'
         : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
 
-      return (p.medications || []).map((m) => {
+     return (p.medications || []).map((m) => {
         const inv = inventory.find(
           (i) => (i._id || i.id) === m.inventoryId || i.name.toLowerCase() === m.drugName.toLowerCase()
         )
@@ -214,6 +254,7 @@ const IncomingDetails = () => {
           strength: inv?.strength,
           status: p.status,
           pharmacistName: p.pharmacistName,
+          doctorName: doctors[p.doctorId] || null, 
           _id: p._id,
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
@@ -275,6 +316,9 @@ const IncomingDetails = () => {
               </div>
               <div className="text-sm sm:text-right space-y-1">
                 <div>Status: <span className="capitalize font-medium">{m.status}</span></div>
+                 {m.doctorName && (
+                  <div className="text-xs text-base-content/70">Prescribed by: Dr. {m.doctorName}</div>
+                )}
                 {m.pharmacistName && (
                   <div className="text-xs text-base-content/70">Pharmacist: {m.pharmacistName}</div>
                 )}
@@ -315,7 +359,7 @@ const IncomingDetails = () => {
         const availabilityInfo = getDrugAvailabilityStatus(m, suggestedQty)
         const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
 
-        return {
+       return {
           key: `${p._id}-${m.drugName}`,
           prescriptionId: p._id,
           drugName: m.drugName,
@@ -323,6 +367,7 @@ const IncomingDetails = () => {
           frequency: m.frequency,
           duration: m.duration,
           forName,
+          doctorName: doctors[p.doctorId] || null, 
           suggestedQty,
           formStrength: inv ? `${inv.form || ''} ${inv.strength ? '• ' + inv.strength : ''}`.trim() : '',
           availabilityInfo,
