@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
 import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
@@ -24,6 +24,82 @@ import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
+import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
+import { AppointmentDetailsModal } from '@/components/modals';
+import { getConsultations } from '@/services/api/consultationAPI';
+import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI';
+import { getAllAppointments } from '@/services/api/appointmentsAPI';
+import {
+  getVitalsByPatient,
+  getLatestVital,
+  normalizeVitalsResponse,
+} from '@/services/api/vitalsAPI';
+import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { getDependantById } from '@/services/api/dependantAPI';
+import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
+
+const ConsultationDetailModal = ({ consultation, onClose }) => {
+  const prescriptions = consultation.prescriptions || [];
+  const isDependant = !!consultation.dependantId;
+  const subjectName = isDependant
+    ? `${consultation.dependant?.firstName || ''} ${consultation.dependant?.lastName || ''}`.trim()
+    : `${consultation.patient?.firstName || ''} ${consultation.patient?.lastName || ''}`.trim();
+  const doctorName = `${consultation.doctor?.firstName || ''} ${consultation.doctor?.lastName || ''}`.trim();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-base-100 shadow-xl sm:rounded-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-base-200 bg-base-100 p-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={`badge badge-sm shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
+              {isDependant ? consultation.dependant?.relationshipType || 'Dependant' : 'Patient'}
+            </span>
+            {isDependant && <span className="truncate text-sm text-base-content/70">{subjectName}</span>}
+          </div>
+          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm btn-circle">✕</button>
+        </div>
+
+        <div className="space-y-5 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/50">
+            <span>{consultation.createdAt ? formatNigeriaDateTime(consultation.createdAt) : '—'}</span>
+            {consultation.visitReason && <span className="badge badge-ghost badge-xs capitalize">{consultation.visitReason}</span>}
+          </div>
+          {doctorName && <div><h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Doctor</h4><p className="text-sm">Dr. {doctorName}</p></div>}
+          <div><h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Diagnosis</h4><p className="text-sm font-medium">{consultation.diagnosis || 'Pending'}</p></div>
+          <div>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Notes</h4>
+            <p className="whitespace-pre-wrap break-words text-sm text-base-content/80">{consultation.notes || 'None recorded'}</p>
+          </div>
+          <div>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Active Prescriptions</h4>
+            {prescriptions.length ? (
+              <div className="divide-y divide-base-200 overflow-hidden rounded-lg border border-base-200">
+                {prescriptions.map((prescription, index) => (
+                  <div key={prescription.id || index} className="space-y-2 p-4">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span>Prescription Status:</span>
+                      <span className={`badge badge-sm ${prescription.status === 'pending' ? 'badge-warning' : 'badge-success'}`}>{prescription.status || '—'}</span>
+                      <span className="text-xs text-base-content/50">Ordered {prescription.createdAt ? formatNigeriaDate(prescription.createdAt) : '—'}</span>
+                    </div>
+                    {(prescription.medications || []).map((medication, medicationIndex) => (
+                      <div key={medication.id || medicationIndex} className="flex flex-col gap-0.5 border-l-2 border-success/40 pl-3">
+                        <span className="text-sm font-medium">{medication.drugName}</span>
+                        <span className="text-xs text-base-content/60">Dosage: {medication.dosage}</span>
+                        <span className="text-xs text-base-content/60">Frequency: {medication.frequency}</span>
+                        <span className="text-xs text-base-content/60">Duration: {medication.duration}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -40,9 +116,20 @@ const PatientDetails = () => {
   const [isSendToCashierOpen, setIsSendToCashierOpen] = useState(false);
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false);
+  const location = useLocation();
   const dependantId = location?.state?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
+  const [consultations, setConsultations] = useState([]);
+  const [consultationsLoading, setConsultationsLoading] = useState(true);
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [latestVital, setLatestVital] = useState(null);
+  const [vitalsLoading, setVitalsLoading] = useState(true);
 
 
 
@@ -59,6 +146,63 @@ const PatientDetails = () => {
   
     const [subject, setSubject] = useState(null);
     const [subjectLoading, setSubjectLoading] = useState(true);
+
+    useEffect(() => {
+      let mounted = true;
+      const loadClinicalData = async () => {
+        if (!patientId) return;
+        setConsultationsLoading(true);
+        setAppointmentsLoading(true);
+        setVitalsLoading(true);
+        const [consultationResult, appointmentResult, vitalResult] = await Promise.allSettled([
+          getConsultations({ patientId }),
+          getAllAppointments({ patientId }),
+          getVitalsByPatient(patientId),
+        ]);
+
+        if (!mounted) return;
+        if (consultationResult.status === 'fulfilled') {
+          const raw = consultationResult.value?.data?.data ?? consultationResult.value?.data ?? consultationResult.value ?? [];
+          const list = Array.isArray(raw) ? raw : raw?.consultations ?? [];
+          const scoped = list.filter((item) => (isViewingDependant ? item.dependantId === dependantId : !item.dependantId));
+          setConsultations([...scoped].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+        } else setConsultations([]);
+        setConsultationsLoading(false);
+
+        if (appointmentResult.status === 'fulfilled') {
+          const raw = appointmentResult.value?.data?.data ?? appointmentResult.value?.data ?? appointmentResult.value ?? [];
+          const list = Array.isArray(raw) ? raw : raw?.appointments ?? [];
+          const scoped = list.filter((item) => (isViewingDependant ? item.dependantId === dependantId : !item.dependantId));
+          setAppointments([...scoped].sort((a, b) => new Date(`${b.appointmentDate || ''} ${b.appointmentTime || ''}`) - new Date(`${a.appointmentDate || ''} ${a.appointmentTime || ''}`)));
+        } else setAppointments([]);
+        setAppointmentsLoading(false);
+
+        if (vitalResult.status === 'fulfilled') {
+          const vitals = normalizeVitalsResponse(vitalResult.value).filter((item) => (isViewingDependant ? item.dependantId === dependantId : !item.dependantId));
+          setLatestVital(getLatestVital(vitals));
+        } else setLatestVital(null);
+        setVitalsLoading(false);
+      };
+      loadClinicalData();
+      return () => { mounted = false; };
+    }, [patientId, isViewingDependant, dependantId]);
+
+    useEffect(() => {
+      let mounted = true;
+      const loadPrescriptions = async () => {
+        const results = await Promise.all(consultations.map(async (consultation) => {
+          try {
+            const response = await getPrescriptionsForConsultation(consultation.id);
+            const raw = response?.data ?? response ?? [];
+            return [consultation.id, Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? [raw] : []];
+          } catch { return [consultation.id, []]; }
+        }));
+        if (mounted) setPrescriptionsByConsultation(Object.fromEntries(results));
+      };
+      if (consultations.length) loadPrescriptions();
+      else setPrescriptionsByConsultation({});
+      return () => { mounted = false; };
+    }, [consultations]);
   
     useEffect(() => {
       let mounted = true;
@@ -234,16 +378,88 @@ const PatientDetails = () => {
               summarySubject={summarySubject}
               isViewingDependant={isViewingDependant}
             />
+
+            <CurrentVitalsCard
+              patient={summarySubject}
+              latest={latestVital}
+              loading={vitalsLoading}
+              buttonHidden
+            />
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
+            <SendPatientModal
+              patientId={patient?.id || patientId}
+              patient={patient}
+              onUpdated={() => navigate('/frontdesk/dashboard')}
+              allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+            />
+            <ViewPatientModal patientId={patient?.id || patientId} patient={patient} />
+          </div>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-base-content">Consultations</h2>
+              {consultationsLoading ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
+                </div>
+              ) : consultations.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">No consultations found.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {consultations.map((consultation) => (
+                    <button
+                      key={consultation.id}
+                      type="button"
+                      onClick={() => setSelectedConsultation({ ...consultation, prescriptions: prescriptionsByConsultation[consultation.id] || [] })}
+                      className="rounded-lg border border-base-300 bg-base-100 p-4 text-left transition-colors hover:border-primary/50 hover:bg-base-200/60"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="badge badge-primary badge-sm">Consultation</span>
+                        <span className="text-xs text-base-content/40">{consultation.createdAt ? formatNigeriaDate(consultation.createdAt) : '—'}</span>
+                      </div>
+                      <p className="line-clamp-1 text-sm font-medium">{consultation.diagnosis || 'Pending diagnosis'}</p>
+                      {consultation.visitReason && <span className="badge badge-ghost badge-xs mt-2 capitalize">{consultation.visitReason}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold text-base-content">Appointments</h2>
+              {appointmentsLoading ? (
+                <div className="flex justify-center py-8"><span className="loading loading-spinner loading-md" /></div>
+              ) : appointments.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">No appointments found.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {appointments.map((appointment) => {
+                    const appointmentId = appointment.id || appointment._id || appointment.appointmentId;
+                    const status = String(appointment.status || '').toLowerCase();
+                    const statusClass = status === 'completed' ? 'badge-primary' : status === 'scheduled' ? 'badge-info' : status === 'cancelled' ? 'badge-error' : 'badge-neutral';
+                    return (
+                      <button
+                        key={appointmentId}
+                        type="button"
+                        onClick={() => { if (appointmentId) { setSelectedAppointmentId(appointmentId); setIsAppointmentModalOpen(true); } }}
+                        className="rounded-lg border border-base-300 bg-base-100 p-4 text-left transition-colors hover:border-primary/50 hover:bg-base-200/60"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className={`badge badge-sm ${statusClass}`}>{appointment.status || 'Unknown'}</span>
+                          <span className="text-xs text-base-content/40">{appointment.appointmentDate ? formatNigeriaDate(appointment.appointmentDate) : '—'}{appointment.appointmentTime ? ` · ${appointment.appointmentTime}` : ''}</span>
+                        </div>
+                        <p className="line-clamp-1 text-sm font-medium">{appointment.procedureName || appointment.appointmentType || 'General appointment'}</p>
+                        {appointment.department && <p className="mt-1 text-xs capitalize text-base-content/60">{appointment.department}</p>}
+                        {appointment.notes && <p className="mt-1 line-clamp-2 text-xs text-base-content/50">{appointment.notes}</p>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
               
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-                <SendPatientModal
-                  patientId={patient?.id || patientId}
-                  patient={patient}
-                  onUpdated={() => navigate('/frontdesk/dashboard')}
-                  allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
-                />
-              </div>
+           
 
               {/* General Info */}
               <GeneralInfoCard patient={patient} isTransitionLoading={isTransitionLoading} />
@@ -352,35 +568,26 @@ const PatientDetails = () => {
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       /> */}
 
-      {/* Send to Cashier Modal (Status Update) - Triggered AFTER Bill Creation */}
-      <CashierActionModal
-        isOpen={isSendToCashierOpen}
-        onClose={() => setIsSendToCashierOpen(false)}
-        patientId={patient?.id || patientId}
-        currentStatus={patient?.status || ''}
-        defaultStatus={PATIENT_STATUS.AWAITING_CASHIER}
-        onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
-      />
+   
 
       {/* Create Bill Modal - Intercepts "Send to Cashier" */}
       <CreateBillModal
         isOpen={isCreateBillOpen}
         onClose={() => setIsCreateBillOpen(false)}
         patientId={patientId}
+        dependantId={isViewingDependant ? dependantId : null}
         onSuccess={() => {
-          // After bill is created, proceed to status update modal
           setIsSendToCashierOpen(true);
         }}
         defaultItems={[]}
-        // defaultItems={[{ code: 'registered', description: 'Registration Fee', quantity: 1, price: 5000 }]} // Example default
       />
-
       {/* Send to HMO Modal */}
       <SendToHmoModal
         isOpen={isSendToHmoOpen}
         onClose={() => setIsSendToHmoOpen(false)}
         patientId={patient?.id || patientId}
-        patientName={patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()}
+        dependantId={isViewingDependant ? dependantId : null}
+        patientName={summarySubject?.fullName}
         doctorName="Doctor"
         consultationDate={new Date().toLocaleDateString()}
         visitReason=""
@@ -389,6 +596,27 @@ const PatientDetails = () => {
         onSentSuccessfully={() => {
           setIsSendToHmoOpen(false);
           patientId && dispatch(fetchPatientById(patientId));
+        }}
+      />
+
+      {selectedConsultation && (
+        <ConsultationDetailModal
+          consultation={selectedConsultation}
+          onClose={() => setSelectedConsultation(null)}
+        />
+      )}
+
+      <AppointmentDetailsModal
+        isOpen={isAppointmentModalOpen}
+        onClose={() => setIsAppointmentModalOpen(false)}
+        appointmentId={selectedAppointmentId}
+        onUpdated={(updated) => {
+          const updatedId = updated?.id || updated?._id || updated?.appointmentId;
+          setAppointments((previous) => previous.map((appointment) => (
+            (appointment.id || appointment._id || appointment.appointmentId) === updatedId
+              ? { ...appointment, status: updated?.status }
+              : appointment
+          )));
         }}
       />
 

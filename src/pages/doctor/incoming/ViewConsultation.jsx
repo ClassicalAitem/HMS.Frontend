@@ -135,6 +135,7 @@ const ViewConsultation = () => {
 
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [activeAdmissions, setActiveAdmissions] = useState([]);
+  const [selectedAdmission, setSelectedAdmission] = useState(null);
 
   // Picker for choosing which investigation the surgical note attaches to,
   // shown only when the consultation has more than one lab request
@@ -1887,6 +1888,99 @@ const ViewConsultation = () => {
                       </div>
                     )}
 
+                    {selectedAdmission && (
+                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                        <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl max-h-[85vh] overflow-y-auto">
+                          <div className="flex items-center justify-between border-b border-base-200 p-5 sticky top-0 bg-base-100 z-10">
+                            <h2 className="text-lg font-bold">Admission Details</h2>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-circle btn-ghost"
+                              onClick={() => setSelectedAdmission(null)}
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+
+                          <div className="p-6 space-y-6">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`badge ${selectedAdmission.status === 'discharged' ? 'badge-ghost' : 'badge-success'}`}>
+                                {selectedAdmission.status || 'active'}
+                              </span>
+                              {selectedAdmission.confirmedAt ? (
+                                <span className="badge badge-info">Confirmed</span>
+                              ) : (
+                                <span className="badge badge-warning">Awaiting Confirmation</span>
+                              )}
+                              {selectedAdmission.doctorId && (
+                                <span className="text-sm text-base-content/60">
+                                  by Dr. {getDoctorName(selectedAdmission.doctorId)}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Ward</h4>
+                                <p className="font-medium">{selectedAdmission.ward || '—'}</p>
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Bed Number</h4>
+                                <p className="font-medium">{selectedAdmission.bedNumber || '—'}</p>
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Admitted At</h4>
+                                <p className="font-medium">
+                                  {selectedAdmission.admittedAt ? formatNigeriaDate(selectedAdmission.admittedAt) : '—'}
+                                </p>
+                              </div>
+                              {selectedAdmission.reason && (
+                                <div>
+                                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-1">Reason</h4>
+                                  <p className="font-medium">{selectedAdmission.reason}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/60 mb-2">Admission Items &amp; Covered Charges</h4>
+                              <div className="space-y-3">
+                                {selectedAdmission.admissions?.map((item, itemIndex) => (
+                                  <div key={item._id || itemIndex} className="border border-base-200 rounded-lg p-3">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span className="font-medium">{item.name}</span>
+                                      <span className="text-base-content/70">
+                                        ₦{Number(item.amount || 0).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    {Array.isArray(item.admissionCovered) && item.admissionCovered.length > 0 ? (
+                                      <ul className="list-disc list-inside mt-2 ml-1 text-sm text-base-content/70 space-y-0.5">
+                                        {item.admissionCovered.map((cond, ci) => (
+                                          <li key={ci}>{cond}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs text-base-content/40 italic mt-1">No covered items listed</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-2 p-5 border-t border-base-200 sticky bottom-0 bg-base-100">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => setSelectedAdmission(null)}
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Prescriptions */}
                     <div>
                       <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
@@ -2029,17 +2123,20 @@ const ViewConsultation = () => {
                           {activeAdmissions.map((admission, idx) => (
                             <div
                               key={admission._id || idx}
-                              className="border border-base-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                              className="border border-base-200 rounded-lg p-4 hover:shadow-sm hover:border-primary transition-all cursor-pointer"
+                              onClick={() => setSelectedAdmission(admission)}
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-base-content/50">
                                     Admission
                                   </span>
+                                  {admission.wardId && (
+                                    <span className="badge badge-outline badge-sm">Ward assigned</span>
+                                  )}
                                   {admission.doctorId && (
                                     <span className="text-xs text-base-content/50">
-                                      • by Dr.{' '}
-                                      {getDoctorName(admission.doctorId)}
+                                      • by Dr. {getDoctorName(admission.doctorId)}
                                     </span>
                                   )}
                                 </div>
@@ -2048,7 +2145,8 @@ const ViewConsultation = () => {
                                   <button
                                     type="button"
                                     className="btn btn-xs btn-ghost text-error"
-                                    onClick={async () => {
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
                                       if (admission._id) {
                                         try {
                                           await deleteAdmission(admission._id);
@@ -2077,36 +2175,17 @@ const ViewConsultation = () => {
                                 )}
                               </div>
 
-                              <div className="mt-3 space-y-3">
-                                {admission.admissions?.map(
-                                  (item, itemIndex) => (
-                                    <div key={item._id || itemIndex}>
-                                      <div className="flex items-center justify-between text-sm">
-                                        <span className="font-medium">
-                                          {item.name}
-                                        </span>
-
-                                        <span className="text-base-content/70">
-                                          ₦
-                                          {Number(
-                                            item.amount || 0,
-                                          ).toLocaleString()}
-                                        </span>
-                                      </div>
-                                      {Array.isArray(item.admissionCovered) &&
-                                        item.admissionCovered.length > 0 && (
-                                          <ul className="list-disc list-inside mt-1 ml-1 text-xs text-base-content/60">
-                                            {item.admissionCovered.map(
-                                              (cond, ci) => (
-                                                <li key={ci}>{cond}</li>
-                                              ),
-                                            )}
-                                          </ul>
-                                        )}
-                                    </div>
-                                  ),
-                                )}
+                              <div className="mt-3 space-y-2">
+                                {admission.admissions?.map((item, itemIndex) => (
+                                  <div key={item._id || itemIndex} className="flex items-center justify-between text-sm">
+                                    <span className="font-medium">{item.name}</span>
+                                    <span className="text-base-content/70">
+                                      ₦{Number(item.amount || 0).toLocaleString()}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
+                              <p className="text-xs text-primary mt-2">Click to view covered items →</p>
                             </div>
                           ))}
                         </div>
