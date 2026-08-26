@@ -870,36 +870,39 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
 </div>
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 pt-4 pb-8 sm:pb-12 w-full">
-            <button
-              className={`btn btn-primary text-white w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? (isEditing ? "Updating..." : "Saving...") : (isEditing ? "Update" : "Save Now")}
-            </button>
-            {savedRecord && (
+            {savedRecord ? (
               <button
-                className="btn btn-outline border-base-300 text-base-content w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
+                className="btn btn-primary text-white w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
                 onClick={() => navigate(`/dashboard/medical-director/antenatal-records/${patientId}/view`, {
-                state: {
-                            from: fromIncoming ? "incoming" : "patients",
-                            selectedRecord: savedRecord ,
-                            patientSnapshot: patient,
-                            dependantId: dependantId || null,
-                            dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
-                          }
+                  state: {
+                    from: fromIncoming ? "incoming" : "patients",
+                    selectedRecord: savedRecord,
+                    patientSnapshot: patient,
+                    dependantId: dependantId || null,
+                    dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                  }
                 })}
               >
                 Next
               </button>
+            ) : (
+              <>
+                <button
+                  className={`btn btn-primary text-white w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? (isEditing ? "Updating..." : "Saving...") : (isEditing ? "Update" : "Save Now")}
+                </button>
+                <button
+                  className="btn btn-outline w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
+                  onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </>
             )}
-            <button
-              className="btn btn-outline w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
-              onClick={() => navigate(`/dashboard/medical-director/medical-history/${patientId}`)}
-              disabled={saving}
-            >
-              Cancel
-            </button>
           </div>
         </div>
       </div>
