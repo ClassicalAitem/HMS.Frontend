@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import { FaTimes, FaPlus, FaFlask, FaTrash } from 'react-icons/fa';
+import { FaTimes, FaPlus, FaFlask, FaTrash, FaXRay } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { createInvestigationRequestByAntenatal, updateInvestigation } from '@/services/api/investigationRequestAPI';
+import { createInvestigationRequestByAntenatal, createInvestigationRequestByConsultation, updateInvestigation } from '@/services/api/investigationRequestAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
 const testSchema = yup.object({
@@ -22,7 +22,7 @@ const OrderInvestigationModalAntenatal = ({
   patientId,
   dependantId,
   antenatalId,
-  investigation, // <-- NEW (edit mode)
+  investigation, // <-- edit mode  
   onOrderCreated
 }) => {
 
@@ -32,6 +32,8 @@ const OrderInvestigationModalAntenatal = ({
   const [serviceCharges, setServiceCharges] = useState([]);
   const [testSearch, setTestSearch] = useState("");
   const [testDropdownIndex, setTestDropdownIndex] = useState(null);
+
+  const [investigationType, setInvestigationType] = useState("lab"); // "lab" | "radiology"
 
   const testWrapperRef = useRef(null);
 
@@ -46,7 +48,7 @@ const OrderInvestigationModalAntenatal = ({
   } = useForm({
     resolver: yupResolver(investigationSchema),
     defaultValues: {
-      tests: [{ name: "" }],
+      tests: [{ name: "", isCustom: false }],
       priority: "normal"
     }
   });
@@ -56,11 +58,16 @@ const OrderInvestigationModalAntenatal = ({
     name: "tests"
   });
 
-  const filteredTests = serviceCharges.filter((test) =>
-    testSearch
+  // Only show tests belonging to the selected category (lab -> "laboratory", radiology -> "radiology")
+  const categoryKey = investigationType === "radiology" ? "radiology" : "laboratory";
+
+  const filteredTests = serviceCharges.filter((test) => {
+    const matchesCategory = (test.category || '').toLowerCase() === categoryKey;
+    const matchesSearch = testSearch
       ? test.service?.toLowerCase().includes(testSearch.toLowerCase())
-      : true
-  );
+      : true;
+    return matchesCategory && matchesSearch;
+  });
 
   // Load service charges
   useEffect(() => {
@@ -70,7 +77,7 @@ const OrderInvestigationModalAntenatal = ({
         const data = res?.data ?? res ?? [];
 
         const labCharges = data.filter(
-          (item) => (item.category || '').toLowerCase() === 'laboratory'
+          (item) => (item.category || '').toLowerCase() === 'laboratory' || (item.category || '').toLowerCase() === 'radiology'
         );
 
         setServiceCharges(labCharges);
@@ -87,23 +94,33 @@ const OrderInvestigationModalAntenatal = ({
     if (investigation && isOpen) {
 
       const tests = investigation.tests?.length
-        ? investigation.tests
-        : [{ name: "" }];
+      ? investigation.tests.map(t => ({ ...t, isCustom: t.isCustom || false }))
+      : [{ name: "", isCustom: false }];
 
       replace(tests);
 
-      reset({
-        tests,
-        priority: investigation.priority || "normal"
-      });
+      reset({ tests: [{ name: "", isCustom: false }], priority: "normal" });
+
+      setInvestigationType(investigation.type === "radiology" ? "radiology" : "lab");
 
     } else if (isOpen) {
       reset({
         tests: [{ name: "" }],
         priority: "normal"
       });
+      setInvestigationType("lab");
     }
   }, [investigation, isOpen]);
+
+  // Reset selected tests whenever the category is switched, so stale
+  // selections from the other category don't get submitted silently.
+  const handleSwitchType = (nextType) => {
+    if (nextType === investigationType) return;
+    setInvestigationType(nextType);
+    replace([{ name: "", isCustom: false }]);
+    setTestSearch("");
+    setTestDropdownIndex(null);
+  };
 
   // close dropdown on outside click
   useEffect(() => {
@@ -118,15 +135,15 @@ const OrderInvestigationModalAntenatal = ({
   }, []);
 
   const onSubmit = async (data) => {
-
+    
     setIsLoading(true);
 
     try {
 
       const payload = {
         patientId,
-        dependantId,
-        type: "lab",
+        ...(dependantId ? { dependantId } : {}),
+        type: investigationType,
         tests: data.tests,
         priority: data.priority,
         status: investigation?.status || "in_progress"
@@ -175,11 +192,15 @@ const OrderInvestigationModalAntenatal = ({
 
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-full text-primary">
-              <FaFlask />
+              {investigationType === "radiology" ? <FaXRay /> : <FaFlask />}
             </div>
 
             <h2 className="text-xl font-bold">
-              {isEdit ? "Edit Lab Investigation" : "Order Further Tests"}
+              {isEdit
+                ? investigationType === "radiology"
+                  ? "Edit Radiology Investigation"
+                  : "Edit Lab Investigation"
+                : "Order Further Tests"}
             </h2>
           </div>
 
@@ -191,6 +212,30 @@ const OrderInvestigationModalAntenatal = ({
 
         {/* FORM */}
         <div className="p-6 overflow-y-auto flex-1">
+
+          {/* CATEGORY SWITCH */}
+          <div className="join w-full mb-6">
+            <button
+              type="button"
+              className={`btn join-item flex-1 gap-2 ${
+                investigationType === "lab" ? "btn-primary" : "btn-outline"
+              }`}
+              onClick={() => handleSwitchType("lab")}
+              disabled={isEdit}
+            >
+              <FaFlask /> Laboratory
+            </button>
+            <button
+              type="button"
+              className={`btn join-item flex-1 gap-2 ${
+                investigationType === "radiology" ? "btn-primary" : "btn-outline"
+              }`}
+              onClick={() => handleSwitchType("radiology")}
+              disabled={isEdit}
+            >
+              <FaXRay /> Radiology
+            </button>
+          </div>
 
           <form
             id="investigation-form"
@@ -223,7 +268,9 @@ const OrderInvestigationModalAntenatal = ({
 
             </div>
 
-            <div className="divider">Requested Tests</div>
+            <div className="divider">
+              Requested {investigationType === "radiology" ? "Radiology" : "Lab"} Tests
+            </div>
 
             {/* TEST LIST */}
             {fields.map((item, index) => (
@@ -256,7 +303,7 @@ const OrderInvestigationModalAntenatal = ({
 
                     <input
                       type="text"
-                      placeholder="Search lab test..."
+                      placeholder={`Search or type a new ${investigationType === "radiology" ? "radiology" : "lab"} test...`}
                       className="input input-bordered"
                       value={
                         testDropdownIndex === index
@@ -265,11 +312,19 @@ const OrderInvestigationModalAntenatal = ({
                       }
                       onFocus={() => {
                         setTestDropdownIndex(index);
-                        setTestSearch("");
+                        setTestSearch(watch(`tests.${index}.name`) || "");
                       }}
                       onChange={(e) => {
                         setTestSearch(e.target.value);
                         setTestDropdownIndex(index);
+                        // Free-typed text becomes the value directly — treated as custom
+                        // until/unless they click a real match below.
+                        setValue(`tests.${index}.name`, e.target.value);
+                        setValue(`tests.${index}.isCustom`, true);
+                      }}
+                      onBlur={() => {
+                        // Give the dropdown-item onClick time to fire first
+                        setTimeout(() => setTestDropdownIndex(null), 150);
                       }}
                     />
 
@@ -277,27 +332,40 @@ const OrderInvestigationModalAntenatal = ({
 
                       <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow max-h-60 overflow-auto">
 
-                        {filteredTests.map((test) => (
-
-                          <div
-                            key={test.id}
-                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between"
-                            onClick={() => {
-                              setValue(`tests.${index}.name`, test.service);
-                              setTestDropdownIndex(null);
-                              setTestSearch("");
-                            }}
-                          >
-
-                            <span>{test.service}</span>
-
-                            <span className="text-xs text-gray-500">
-                              ₦{Number(test.amount).toLocaleString()}
-                            </span>
-
+                        {filteredTests.length === 0 && (
+                          <div className="px-4 py-3 text-sm text-base-content/60">
+                            No {investigationType === "radiology" ? "radiology" : "lab"} tests found.
                           </div>
+                        )}
 
-                        ))}
+                        {filteredTests.map((test) => {
+                          const isBillable = test.isBillable !== false;
+                          const availabilityBadge = isBillable ? 'Available' : 'Unavailable';
+                          return (
+                            <div
+                              key={test.id}
+                              className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
+                             onClick={() => {
+                                setValue(`tests.${index}.name`, test.service);
+                                setValue(`tests.${index}.isCustom`, false);
+                                setTestDropdownIndex(null);
+                                setTestSearch('');
+                              }}
+                            >
+                              <div className="flex flex-col">
+                                <span>{test.service}</span>
+                                <span className={`text-xs ${ isBillable ? 'text-green-600' : 'text-error' }`}>
+                                  {availabilityBadge}
+                                </span>
+                              </div>
+
+                              <span className="text-xs text-gray-500">
+                                ₦{Number(test.amount).toLocaleString()}
+                              </span>
+
+                            </div>
+                          );
+                        })}
 
                       </div>
 
@@ -306,6 +374,11 @@ const OrderInvestigationModalAntenatal = ({
                     {errors.tests?.[index]?.name && (
                       <span className="text-error text-xs">
                         {errors.tests[index].name.message}
+                      </span>
+                    )}
+                    {watch(`tests.${index}.isCustom`) && watch(`tests.${index}.name`) && (
+                      <span className="text-xs text-warning">
+                        Custom test — not in service charges, won't be added to patient's bill
                       </span>
                     )}
 
@@ -321,7 +394,7 @@ const OrderInvestigationModalAntenatal = ({
             <button
               type="button"
               className="btn btn-outline btn-primary w-full"
-              onClick={() => append({ name: "" })}
+              onClick={() => append({ name: "", isCustom: false })}
             >
               <FaPlus /> Add Another Test
             </button>
@@ -352,7 +425,7 @@ const OrderInvestigationModalAntenatal = ({
               ? "Saving..."
               : isEdit
               ? "Update Investigation"
-              : "Submit Order"}
+              : `Submit ${investigationType === "radiology" ? "Radiology" : "Lab"} Order`}
 
           </button>
 
