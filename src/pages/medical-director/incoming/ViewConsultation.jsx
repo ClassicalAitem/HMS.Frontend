@@ -2095,8 +2095,20 @@ const ViewConsultation = () => {
                                     <span className="text-base-content/40">
                                       •
                                     </span>
-                                    <span className="text-base-content/70">
+                                      <span className="text-base-content/70">
                                       {med.frequency}
+                                    </span>
+                                    <span className="text-base-content/40">
+                                      •
+                                    </span>
+                                    <span className="text-base-content/70">
+                                      {med.duration}
+                                    </span>
+                                    <span className="text-base-content/40">
+                                      •
+                                    </span>
+                                    <span className="text-base-content/70">
+                                      {med.availability}
                                     </span>
                                   </div>
                                 ))}
