@@ -252,22 +252,10 @@ const payload = {
       toast.success("Prescription created successfully"); 
     } 
 
-    if (isAntenatal) {
-      navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}`, {
-        state: {
-          from: fromIncoming ? "incoming" : "patients",
-          dependantId: consultation?.dependantId || null,
-          dependantSnapshot: consultation?.dependant || null,
-        }
-      });
+          if (isAntenatal) {
+      navigate(-1);
     } else {
-      navigate(`/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}`, {
-        state: {
-          from: fromIncoming ? "incoming" : "patients",
-          dependantId: consultation?.dependantId || null,
-          dependantSnapshot: consultation?.dependant || null,
-        }
-      });
+      navigate(-1);
     }
  
  

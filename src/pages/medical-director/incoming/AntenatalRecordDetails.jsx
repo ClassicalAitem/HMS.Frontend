@@ -13,6 +13,11 @@ import { deleteInvestigation, updateInvestigation } from "@/services/api/investi
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import OrderInvestigationModalAntenatal from "./modals/OrderInvestigationModalAntenatal";
+import CreateBillModal from "@/components/modals/CreateBillModal";
+import { SendToHmoModal } from "@/components/modals";
+import { getInventories } from "@/services/api/inventoryAPI";
+import { getServiceCharges } from "@/services/api/serviceChargesAPI";
+import { calculateDispenseQuantity } from "@/utils/prescriptionsCalculator";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -43,6 +48,11 @@ const AntenatalRecordDetails = () => {
   const [editingLab, setEditingLab] = useState(null);
   const [fullDependantRecord, setFullDependantRecord] = useState(null);
   const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
+  const [inventoryData, setInventoryData] = useState([]);
+  const [serviceCharges, setServiceCharges] = useState([]);
+  const [billDefaults, setBillDefaults] = useState([]);
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [isSendToHmoModalOpen, setIsSendToHmoModalOpen] = useState(false);
 
     const selectedDependant = useMemo(() => {
       if (!selectedDependantId) return null;
@@ -53,6 +63,9 @@ const AntenatalRecordDetails = () => {
         null
       );
     }, [selectedDependantId, dependants, fullDependantRecord, incomingDependantSnapshot]);
+
+    const getAntenatalRecordId = (record) =>
+      record?._id || record?.id || record?.antenatalId || record?.recordId || record?.__wrapperId || null;
 
   useEffect(() => {
     console.log('AntenatalRecordDetails: Component mounted with patientId:', patientId);
@@ -291,7 +304,8 @@ const AntenatalRecordDetails = () => {
 useEffect(() => {
   let mounted = true;
   const loadTreatmentData = async () => {
-    if (!selectedRecord?._id) {
+    const antenatalRecordId = getAntenatalRecordId(selectedRecord);
+    if (!antenatalRecordId) {
       setPrescriptions([]);
       setLabRequests([]);
       return;
@@ -302,7 +316,7 @@ useEffect(() => {
       
       // Fetch prescriptions for antenatal
       try {
-        const presRes = await getPrescriptionsByAntenatalId(selectedRecord._id);
+        const presRes = await getPrescriptionsByAntenatalId(antenatalRecordId);
         const presList = presRes?.data ?? presRes ?? [];
         if (mounted) setPrescriptions(Array.isArray(presList) ? presList : []);
       } catch (err) {
@@ -312,7 +326,7 @@ useEffect(() => {
       
       // Fetch investigations for antenatal
       try {
-        const invRes = await getInvestigationsByAntenatalId(selectedRecord._id);
+        const invRes = await getInvestigationsByAntenatalId(antenatalRecordId);
         const invList = invRes?.data ?? invRes ?? [];
         if (mounted) setLabRequests(Array.isArray(invList) ? invList : []);
       } catch (err) {
@@ -326,7 +340,7 @@ useEffect(() => {
   
   loadTreatmentData();
   return () => { mounted = false; };
-}, [selectedRecord?._id]);
+}, [selectedRecord]);
 
 const getDependantName = (dependantId) => {
   if (!dependantId) return null;
@@ -432,6 +446,83 @@ const handleOrderCreated = () => {
   }
 };
 
+  useEffect(() => {
+    let mounted = true;
+    const loadBillingData = async () => {
+      const [inventoryResult, chargesResult] = await Promise.allSettled([
+        getInventories(),
+        getServiceCharges(),
+      ]);
+      if (!mounted) return;
+      if (inventoryResult.status === 'fulfilled') {
+        const raw = inventoryResult.value?.data ?? inventoryResult.value ?? [];
+        setInventoryData(Array.isArray(raw) ? raw : raw?.data ?? []);
+      }
+      if (chargesResult.status === 'fulfilled') {
+        const raw = chargesResult.value?.data ?? chargesResult.value ?? [];
+        setServiceCharges(Array.isArray(raw) ? raw : raw?.data ?? []);
+      }
+    };
+    loadBillingData();
+    return () => { mounted = false; };
+  }, []);
+
+  const getInventoryMatch = (medication) => {
+    if (medication?.inventoryId) {
+      const match = inventoryData.find((item) => (item._id || item.id) === medication.inventoryId);
+      if (match) return match;
+    }
+    const name = String(medication?.drugName || '').toLowerCase();
+    return name
+      ? inventoryData.find((item) => String(item?.name || '').toLowerCase().includes(name))
+      : null;
+  };
+
+  const getBillItems = () => {
+    const labItems = labRequests
+      .filter((lab) => !lab.isBilled && !lab.billId)
+      .flatMap((lab) => (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
+        const name = typeof test === 'string' ? test : test?.name || test?.code || 'Lab Test';
+        const charge = serviceCharges.find((item) => String(item?.service || item?.name || '').toLowerCase().includes(String(name).toLowerCase()));
+        return {
+          serviceChargeId: lab.serviceChargeId || charge?._id || charge?.id || '',
+          code: 'LAB',
+          description: name,
+          quantity: 1,
+          price: Number(charge?.amount || charge?.price || 0),
+          investigationId: lab._id || lab.id,
+        };
+      }));
+    const prescriptionItems = prescriptions
+      .filter((prescription) => !prescription.isBilled && !prescription.billId)
+      .flatMap((prescription) => (Array.isArray(prescription.medications) ? prescription.medications : []).map((medication) => {
+        const inventory = getInventoryMatch(medication);
+        const unavailable = medication.availability === 'unavailable';
+        const stock = Number(inventory?.stock) || 0;
+        return {
+          serviceChargeId: prescription.serviceChargeId || '',
+          code: 'PRESCRIPTION',
+          description: `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
+          quantity: calculateDispenseQuantity(medication.frequency, medication.duration) || 1,
+          price: unavailable || !inventory || stock <= 0 ? 0 : Number(inventory.sellingPrice) || 0,
+          prescriptionId: prescription._id || prescription.id,
+          availability: unavailable ? 'unavailable' : 'available',
+          stock,
+        };
+      }));
+    return [...labItems, ...prescriptionItems];
+  };
+
+  const openBillModal = () => {
+    setBillDefaults(getBillItems());
+    setIsBillModalOpen(true);
+  };
+
+  const openHmoModal = () => {
+    setBillDefaults(getBillItems());
+    setIsSendToHmoModalOpen(true);
+  };
+
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -522,7 +613,27 @@ const handleOrderCreated = () => {
               {/* List of Records */}
               <div className="card bg-base-100 shadow-sm">
                 <div className="card-body p-4 sm:p-6">
-                  <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Antenatal Records</h3>
+                  <div className="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
+                    <h3 className="card-title text-base sm:text-lg font-semibold text-base-content">Antenatal Records</h3>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={!selectedRecord}
+                        onClick={openBillModal}
+                      >
+                        Send to cashier
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={!selectedRecord}
+                        onClick={openHmoModal}
+                      >
+                        Send to HMO
+                      </button>
+                    </div>
+                  </div>
                   <div className="space-y-4">
                     {antenatalRecords.map((record, index) => {
                     const dependantName = getDependantName(record.dependantId);
@@ -1199,10 +1310,35 @@ const handleOrderCreated = () => {
           setEditingLab(null);
         }}
         patientId={patientId}
-        antenatalId={selectedRecord?._id || selectedRecord?.id}
+        antenatalId={getAntenatalRecordId(selectedRecord)}
         dependantId={selectedRecord?.dependantId || selectedRecord?.dependant?._id || selectedRecord?.dependant?.id}
         investigation={editingLab}
         onOrderCreated={handleOrderCreated}
+      />
+      <CreateBillModal
+        isOpen={isBillModalOpen}
+        onClose={() => setIsBillModalOpen(false)}
+        patientId={patientId}
+        dependantId={selectedRecord?.dependantId || dependantId}
+        defaultItems={billDefaults}
+        onSuccess={() => {
+          setIsBillModalOpen(false);
+          setBillDefaults([]);
+          setSelectedRecord((prev) => (prev ? { ...prev } : prev));
+        }}
+      />
+      <SendToHmoModal
+        isOpen={isSendToHmoModalOpen}
+        onClose={() => setIsSendToHmoModalOpen(false)}
+        patientId={patientId}
+        patientName={summarySubjectName}
+        dependantId={selectedRecord?.dependantId || dependantId}
+        doctorName={getRecordDoctorName(selectedRecord)}
+        consultationDate={selectedRecord?.createdAt ? formatNigeriaDate(selectedRecord.createdAt) : ''}
+        visitReason="Antenatal care"
+        diagnosis="Antenatal care"
+        defaultItems={billDefaults}
+        onSentSuccessfully={() => setIsSendToHmoModalOpen(false)}
       />
     
     </div>
