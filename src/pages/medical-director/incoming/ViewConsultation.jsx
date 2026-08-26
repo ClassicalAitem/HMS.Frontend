@@ -62,8 +62,11 @@ import AddProcedureModal from './modals/AddProcedureModal';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import CreateBillModal from '@/components/modals/CreateBillModal';
+import { SendToHmoModal } from '@/components/modals';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator';
 
 import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
 import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
@@ -136,6 +139,11 @@ const ViewConsultation = () => {
 
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
   const [activeAdmissions, setActiveAdmissions] = useState([]);
+  const [inventoryData, setInventoryData] = useState([]);
+  const [serviceCharges, setServiceCharges] = useState([]);
+  const [billDefaults, setBillDefaults] = useState([]);
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [isSendToHmoModalOpen, setIsSendToHmoModalOpen] = useState(false);
 
   // Picker for choosing which investigation the surgical note attaches to,
   // shown only when the consultation has more than one lab request
@@ -213,9 +221,19 @@ const ViewConsultation = () => {
           getInvestigationByConsultationId(consultationId),
           getAdmissionsForConsultation(consultationId),
           getServiceCharges(),
+          getInventories(),
         ];
 
         const results = await Promise.allSettled(promises);
+
+        if (results[4].status === 'fulfilled') {
+          const rawCharges = results[4].value?.data ?? results[4].value ?? [];
+          setServiceCharges(Array.isArray(rawCharges) ? rawCharges : rawCharges?.data ?? []);
+        }
+        if (results[5].status === 'fulfilled') {
+          const rawInventory = results[5].value?.data ?? results[5].value ?? [];
+          setInventoryData(Array.isArray(rawInventory) ? rawInventory : rawInventory?.data ?? []);
+        }
 
         // 1. Patient Details
         if (results[0].status === 'fulfilled') {
@@ -680,6 +698,79 @@ const ViewConsultation = () => {
     }
   };
 
+  const getInventoryMatch = (medication) => {
+    if (medication?.inventoryId) {
+      const match = inventoryData.find(
+        (item) => (item._id || item.id) === medication.inventoryId,
+      );
+      if (match) return match;
+    }
+    const name = medication?.drugName?.toLowerCase();
+    return name
+      ? inventoryData.find((item) =>
+          String(item?.name || '').toLowerCase().includes(name),
+        )
+      : null;
+  };
+
+  const getBillItems = () => {
+    const labItems = labRequests
+      .filter((lab) => !lab.isBilled && !lab.billId)
+      .flatMap((lab) =>
+        (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
+          const testName = typeof test === 'string' ? test : test?.name || test?.code;
+          const charge = serviceCharges.find((item) =>
+            String(item?.service || item?.name || '').toLowerCase().includes(String(testName || '').toLowerCase()),
+          );
+          return {
+            serviceChargeId: lab.serviceChargeId || charge?._id || charge?.id || '',
+            code: 'LAB',
+            description: testName || lab.type || 'Lab Test',
+            quantity: 1,
+            price: Number(charge?.amount || charge?.price || 0),
+            investigationId: lab._id || lab.id,
+          };
+        }),
+      );
+    const prescriptionItems = prescriptions
+      .filter((prescription) => !prescription.isBilled && !prescription.billId)
+      .flatMap((prescription) =>
+        (Array.isArray(prescription.medications) ? prescription.medications : []).map((medication) => {
+          const inventory = getInventoryMatch(medication);
+          const unavailable = medication.availability === 'unavailable';
+          const stock = Number(inventory?.stock) || 0;
+          return {
+            serviceChargeId: prescription.serviceChargeId || '',
+            code: 'PRESCRIPTION',
+            description: `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
+            quantity: calculateDispenseQuantity(medication.frequency, medication.duration) || 1,
+            price: unavailable || !inventory || stock <= 0 ? 0 : Number(inventory.sellingPrice) || 0,
+            prescriptionId: prescription._id || prescription.id,
+            availability: unavailable ? 'unavailable' : 'available',
+            stock,
+          };
+        }),
+      );
+    const admissionItems = activeAdmissions
+      .filter((admission) => !admission.isBilled && !admission.billId)
+      .flatMap((admission) =>
+        (Array.isArray(admission.admissions) ? admission.admissions : []).map((item) => ({
+          serviceChargeId: item.serviceChargeId || '',
+          code: 'ADMISSION',
+          description: item.name || admission.ward || 'Admission',
+          quantity: 1,
+          price: Number(item.amount) || 0,
+          admissionId: admission._id || admission.id,
+        })),
+      );
+    return [...labItems, ...prescriptionItems, ...admissionItems];
+  };
+
+  const openBillModal = (setModalOpen) => {
+    setBillDefaults(getBillItems());
+    setModalOpen(true);
+  };
+
   const handleEditAdditionalNote = async (noteId, currentNote) => {
     const newNote = window.prompt('Edit additional note:', currentNote);
     if (newNote === null) return;
@@ -859,6 +950,31 @@ const ViewConsultation = () => {
         existingDiagnosis={consultation?.diagnosis || ''}
         onDiagnosisAdded={(newDiagnosis) => {
           setConsultation((prev) => ({ ...prev, diagnosis: newDiagnosis }));
+        }}
+        onOrderCreated={loadData}
+      />
+      <CreateBillModal
+        isOpen={isBillModalOpen}
+        onClose={() => setIsBillModalOpen(false)}
+        patientId={patientId}
+        dependantId={consultation?.dependantId || dependantId}
+        defaultItems={billDefaults}
+        onSuccess={loadData}
+      />
+      <SendToHmoModal
+        isOpen={isSendToHmoModalOpen}
+        onClose={() => setIsSendToHmoModalOpen(false)}
+        patientId={patientId}
+        patientName={consultationSubject}
+        dependantId={consultation?.dependantId || dependantId}
+        doctorName={doctorName}
+        consultationDate={consultationDate}
+        visitReason={visitReason}
+        diagnosis={diagnosis}
+        defaultItems={billDefaults}
+        onSentSuccessfully={() => {
+          setIsSendToHmoModalOpen(false);
+          loadData();
         }}
       />
       <AddComplaintModal
@@ -1161,6 +1277,20 @@ const ViewConsultation = () => {
         'hmo',
       ]}
     />
+    <button
+      type="button"
+      className="btn btn-sm btn-outline btn-primary"
+      onClick={() => openBillModal(setIsBillModalOpen)}
+    >
+      Send to cashier
+    </button>
+    <button
+      type="button"
+      className="btn btn-sm btn-outline btn-secondary"
+      onClick={() => openBillModal(setIsSendToHmoModalOpen)}
+    >
+      Send to HMO
+    </button>
 
     {canEdit && (
       <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-none">
