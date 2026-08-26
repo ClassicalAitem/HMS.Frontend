@@ -1233,16 +1233,42 @@ const handleOrderCreated = () => {
                                           {prescription.status || 'pending'}
                                         </span>
                                       </div>
-                                      <div className="space-y-1">
-                                        {prescription.medications?.map((med, idx) => (
-                                          <p key={idx} className="font-medium text-base-content text-sm sm:text-base">
-                                            {med.drugName || med.medicationName || med.name || 'Medication'} - {med.dosage || 'N/A'}
-                                          </p>
-                                        ))}
-                                        {!prescription.medications && (
-                                          <p className="font-medium text-base-content text-sm sm:text-base">Medication</p>
-                                        )}
-                                      </div>
+                                        <div className="space-y-1">
+                                      {prescription.medications?.map((med, mIdx) => (
+                                        <div
+                                          key={mIdx}
+                                          className="flex items-center gap-2 text-sm"
+                                        >
+                                          <span className="font-medium text-base-content">
+                                            {med.drugName}
+                                          </span>
+                                          <span className="text-base-content/40">
+                                            •
+                                          </span>
+                                          <span className="text-base-content/70">
+                                            {med.dosage}
+                                          </span>
+                                          <span className="text-base-content/40">
+                                            •
+                                          </span>
+                                          <span className="text-base-content/70">
+                                            {med.frequency}
+                                          </span>
+                                          <span className="text-base-content/40">
+                                            •
+                                          </span>
+                                          <span className="text-base-content/70">
+                                            {med.duration}
+                                          </span>
+                                          <span className="text-base-content/40">
+                                            •
+                                          </span>
+                                          <span className="text-base-content/70">
+                                            {med.availability}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
                                       <p className="text-xs sm:text-sm text-base-content/70 mt-2">
                                         Prescribed: {prescription.createdAt ? formatNigeriaDate(prescription.createdAt) : 'N/A'}
                                       </p>
