@@ -8,6 +8,8 @@ import { getOpdPatientById } from "@/services/api/opdPatientAPI";
 import { usersAPI } from "@/services/api/usersAPI";
 import toast from "react-hot-toast";
 import { FaSearch, FaEye, FaDownload, FaTimes } from "react-icons/fa";
+import mammoth from "mammoth";
+import { FaFileWord } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
 // ✅ Convert any file.data format → base64 data URL (safe for img src + print)
@@ -35,6 +37,27 @@ const toDataUrl = (file) => {
   return null;
 };
 
+const toArrayBuffer = (file) => {
+  if (!file?.data) return null;
+
+  if (file.data instanceof ArrayBuffer) return file.data;
+  if (file.data instanceof Uint8Array) return file.data.buffer;
+
+  if (file.data?.type === "Buffer" && Array.isArray(file.data.data)) {
+    return new Uint8Array(file.data.data).buffer;
+  }
+
+  if (typeof file.data === "string") {
+    const base64 = file.data.startsWith("data:") ? file.data.split(",")[1] : file.data;
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  return null;
+};
+
 // ✅ Trigger browser download from a data URL
 const downloadFile = (file, index) => {
   const url = toDataUrl(file);
@@ -57,6 +80,8 @@ const SonographerScanHistory = () => {
   // previewFiles = array of file objects (with .data, .mimetype, .name)
   const [previewFiles, setPreviewFiles] = useState([]);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [docPreviewHtml, setDocPreviewHtml] = useState(null);
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
   const [sonographerNameById, setSonographerNameById] = useState({});
 
   // Helper: Normalize API response
@@ -279,6 +304,39 @@ const SonographerScanHistory = () => {
     loadSonographerNames();
   }, [scanResults, sonographerNameById]);
 
+  useEffect(() => {
+    if (!showPreview || previewFiles.length === 0) {
+      setDocPreviewHtml(null);
+      return;
+    }
+
+    const file = previewFiles[previewIndex];
+    const isWord =
+      /\.docx?$/i.test(file?.name || file?.filename || "") ||
+      file?.mimetype === "application/msword" ||
+      file?.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+    if (!isWord) {
+      setDocPreviewHtml(null);
+      return;
+    }
+
+    const arrayBuffer = toArrayBuffer(file);
+    if (!arrayBuffer) {
+      setDocPreviewHtml(null);
+      return;
+    }
+
+    setDocPreviewLoading(true);
+    mammoth.convertToHtml({ arrayBuffer })
+      .then((result) => setDocPreviewHtml(result.value))
+      .catch((err) => {
+        console.error("Word preview failed:", err);
+        setDocPreviewHtml(null);
+      })
+      .finally(() => setDocPreviewLoading(false));
+  }, [showPreview, previewIndex, previewFiles]);
+
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
@@ -498,6 +556,44 @@ const SonographerScanHistory = () => {
                       alt={file.name || `Scan ${previewIndex + 1}`}
                       className="max-w-full h-auto rounded"
                     />
+                  );
+                }
+
+                const isWord =
+                  /\.docx?$/i.test(file?.name || file?.filename || "") ||
+                  file?.mimetype === "application/msword" ||
+                  file?.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+                if (isWord) {
+                  if (docPreviewLoading) {
+                    return (
+                      <div className="flex flex-col items-center gap-3">
+                        <span className="loading loading-spinner loading-lg text-primary" />
+                        <p className="text-sm text-base-content/60">Rendering document...</p>
+                      </div>
+                    );
+                  }
+                  if (docPreviewHtml) {
+                    return (
+                      <div className="w-full max-h-[60vh] overflow-y-auto bg-white rounded-lg border border-base-200 p-6">
+                        <div
+                          className="prose prose-sm max-w-none text-left"
+                          dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col items-center gap-4 text-base-content/60">
+                      <FaFileWord className="w-12 h-12 text-[#2b579a]" />
+                      <p className="text-lg font-medium">{file?.name || file?.filename || "File"}</p>
+                      <button
+                        onClick={() => downloadFile(file, previewIndex)}
+                        className="btn btn-primary btn-sm gap-2"
+                      >
+                        <FaDownload className="w-4 h-4" /> Download instead
+                      </button>
+                    </div>
                   );
                 }
 

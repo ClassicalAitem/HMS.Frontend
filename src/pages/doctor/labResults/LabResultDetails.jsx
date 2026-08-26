@@ -287,41 +287,47 @@ const displayAttachments = () => {
   document.body.removeChild(a);
 };
 
-            return (
-              <div
-                key={idx}
-                className="relative group rounded-lg overflow-hidden border border-gray-300 hover:border-[#00943C] transition-all cursor-pointer"
-              >
-                {isImage && getImageUrl() ? (
-                  <>
-                    <img
-                      src={getImageUrl()}
-                      alt={file.name}
-                      className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
-                      onClick={() => setCurrentFileIndex(idx) || setIsAttachmentViewerOpen(true)}
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
-                        className="px-2 py-1 bg-white text-gray-700 text-xs font-semibold rounded"
-                      >
-                        Download
-                      </button>
-                      <span className="text-white text-sm font-semibold">View</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="w-full h-32 bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-all">
-                    <FaFileImage className="w-10 h-10 text-gray-400" />
+           return (
+            <div
+              key={idx}
+              onClick={() => {
+                setCurrentFileIndex(idx);
+                setIsAttachmentViewerOpen(true);
+              }}
+              className="relative group rounded-lg overflow-hidden border border-gray-300 hover:border-[#00943C] transition-all cursor-pointer"
+            >
+              {isImage && getImageUrl(file) ? (
+                <>
+                  <img
+                    src={getImageUrl(file)}
+                    alt={file.name}
+                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDownload(file); }}
+                      className="px-2 py-1 bg-white text-gray-700 text-xs font-semibold rounded"
+                    >
+                      Download
+                    </button>
+                    <span className="text-white text-sm font-semibold">View</span>
                   </div>
-                )}
-                <div className="p-2 bg-white border-t border-gray-300">
-                  <p className="text-xs font-medium text-gray-600 truncate" title={file.name}>
-                    {file.name || `File ${idx + 1}`}
-                  </p>
+                </>
+              ) : (
+                <div className="w-full h-32 bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-all">
+                  <FaFileImage className="w-10 h-10 text-gray-400" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <span className="text-white text-sm font-semibold">View</span>
+                  </div>
                 </div>
+              )}
+              <div className="p-2 bg-white border-t border-gray-300">
+                <p className="text-xs font-medium text-gray-600 truncate" title={file.name}>
+                  {file.name || `File ${idx + 1}`}
+                </p>
               </div>
-            );
+            </div>
+          );
           })}
         </div>
       )}

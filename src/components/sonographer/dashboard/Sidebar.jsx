@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaInbox, FaThLarge } from "react-icons/fa";
+import { FaInbox, FaThLarge, FaUsers } from "react-icons/fa";
 import { FaSuitcaseMedical } from "react-icons/fa6";
 import { MdLockOutline } from "react-icons/md";
 import { FaSignOutAlt } from "react-icons/fa";
@@ -34,12 +34,14 @@ const Sidebar = () => {
   };
 
   const isOnIncoming = location.pathname === '/dashboard/pharmacist/incoming' || location.pathname.startsWith('/dashboard/pharmacist/incoming/');
+  const isOnPatients = location.pathname === '/dashboard/sonographer/patients';
 
 
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/sonographer" },
     { icon: FaInbox, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
       badge: isOnIncoming ? 0 : incomingCount, },
+    { icon: FaUsers, label: "Patients", path: "/dashboard/sonographer/patients", active: isOnPatients },
     { icon: FaHistory, label: "Scan History", path: "/dashboard/sonographer/scan-history" },
   ];
 
