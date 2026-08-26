@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { IoClose, IoChevronBack, IoChevronForward, IoDownload, IoImage } from 'react-icons/io5';
-import { FaFilePdf, FaFile } from 'react-icons/fa';
+import { FaFilePdf, FaFile, FaFileWord } from 'react-icons/fa';
+import mammoth from 'mammoth';
 
 const AttachmentViewerModal = ({ isOpen, onClose, attachments = [], initialIndex = 0, title = "Attachments" }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [docPreviewHtml, setDocPreviewHtml] = useState(null);
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen && attachments.length > 0) {
@@ -11,16 +14,58 @@ const AttachmentViewerModal = ({ isOpen, onClose, attachments = [], initialIndex
     }
   }, [isOpen, initialIndex, attachments.length]);
 
+  const currentAttachment = attachments[currentIndex];
+  const isImage = currentAttachment && (/\.(jpg|jpeg|png|gif|webp)$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
+    /^image\//i.test(currentAttachment.mimetype || ''));
+  const isPdf = currentAttachment && (/\.pdf$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
+    currentAttachment.mimetype === 'application/pdf');
+  const isWord = currentAttachment && (
+    /\.docx?$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
+    currentAttachment.mimetype === 'application/msword' ||
+    currentAttachment.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  );
+
+  const getArrayBuffer = () => {
+    const data = currentAttachment?.data;
+    if (!data) return null;
+    if (data instanceof ArrayBuffer) return data;
+    if (data instanceof Uint8Array) return data.buffer;
+    if (data?.type === 'Buffer' && Array.isArray(data.data)) {
+      return new Uint8Array(data.data).buffer;
+    }
+    if (typeof data === 'string') {
+      const base64 = data.startsWith('data:') ? data.split(',')[1] : data;
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    if (!isOpen || !isWord || !currentAttachment) {
+      setDocPreviewHtml(null);
+      return;
+    }
+    const arrayBuffer = getArrayBuffer();
+    if (!arrayBuffer) {
+      setDocPreviewHtml(null);
+      return;
+    }
+    setDocPreviewLoading(true);
+    mammoth.convertToHtml({ arrayBuffer })
+      .then((result) => setDocPreviewHtml(result.value))
+      .catch((err) => {
+        console.error("Word preview failed:", err);
+        setDocPreviewHtml(null);
+      })
+      .finally(() => setDocPreviewLoading(false));
+  }, [isOpen, currentIndex, currentAttachment]);
+
   if (!isOpen || !attachments || attachments.length === 0) return null;
 
-  const currentAttachment = attachments[currentIndex];
- const isImage = currentAttachment && ( /\.(jpg|jpeg|png|gif|webp)$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
-  /^image\//i.test(currentAttachment.mimetype || '')); 
-const isPdf = currentAttachment && (/\.pdf$/i.test(currentAttachment.name || currentAttachment.filename || '') ||
-  currentAttachment.mimetype === 'application/pdf');
-
-  
-  const handlePrevious = () => {
+    const handlePrevious = () => {
     setCurrentIndex((prev) => (prev === 0 ? attachments.length - 1 : prev - 1));
   };
 
@@ -92,11 +137,12 @@ const dataURLtoBlob = (dataURL) => {
   return new Blob([u8arr], { type: mime });
 };
 
-  const getFileIcon = () => {
-    if (isPdf) return <FaFilePdf className="w-16 h-16 text-red-500" />;
-    if (isImage) return <IoImage className="w-16 h-16 text-blue-500" />;
-    return <FaFile className="w-16 h-16 text-gray-500" />;
-  };
+const getFileIcon = () => {
+  if (isPdf) return <FaFilePdf className="w-16 h-16 text-red-500" />;
+  if (isImage) return <IoImage className="w-16 h-16 text-blue-500" />;
+  if (isWord) return <FaFileWord className="w-16 h-16 text-[#2b579a]" />;
+  return <FaFile className="w-16 h-16 text-gray-500" />;
+};
 
 const getDataUrl = () => {
   if (!currentAttachment?.data) return null;
@@ -121,6 +167,9 @@ const getDataUrl = () => {
 
   return null;
 };
+
+
+  // ...rest of the component (handlePrevious, handleNext, handleDownload, dataURLtoBlob, getFileIcon, getDataUrl, return JSX) stays exactly as-is
 
   return (
     <>
@@ -162,6 +211,26 @@ const getDataUrl = () => {
                   <p className="text-lg text-base-content font-medium">{currentAttachment.name || 'PDF Document'}</p>
                   <p className="text-sm text-base-content/60">PDF Preview not available</p>
                 </div>
+              ) : isWord ? (
+                docPreviewLoading ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <span className="loading loading-spinner loading-lg text-primary" />
+                    <p className="text-sm text-base-content/60">Loading document…</p>
+                  </div>
+                ) : docPreviewHtml ? (
+                  <div className="w-full max-h-[60vh] overflow-y-auto bg-white rounded-lg border border-base-200 p-6">
+                    <div
+                      className="prose prose-sm max-w-none text-left"
+                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <FaFileWord className="w-24 h-24 text-[#2b579a]" />
+                    <p className="text-lg text-base-content font-medium text-center">{currentAttachment.name || currentAttachment.filename || 'Word Document'}</p>
+                    <p className="text-sm text-base-content/60">Preview not available — download to view</p>
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col items-center gap-4">
                   {getFileIcon()}

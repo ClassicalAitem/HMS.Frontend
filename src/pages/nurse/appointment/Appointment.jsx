@@ -1,35 +1,37 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Header } from "@/components/common";
+/* eslint-disable no-unused-vars */
+import React, { useState, useEffect, useMemo } from 'react';
+import { Header } from '@/components/common';
+import { DataTable } from '@/components/common';
+import { BookAppointmentModal } from '@/components/modals';
+import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
+// import appointmentsData from '@/data/appointments.json';
+import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
+import { PiSlidersLight } from 'react-icons/pi';
+import { toast } from 'react-hot-toast';
+import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getPatients } from '@/services/api/patientsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import Sidebar from "@/components/nurse/dashboard/Sidebar";
-import { DataTable } from "@/components/common";
-import { BookAppointmentModal } from "@/components/modals";
-import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal";
-import { toast } from "react-hot-toast";
-import { getAllAppointments, createAppointment } from "@/services/api/appointmentsAPI";
-import { getPatients } from "@/services/api/patientsAPI";
+
 
 const Appointment = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const [patientsById, setPatientsById] = useState({});
-  const [selectedDate, setSelectedDate] = useState('7/18/17');
+  const [selectedDate, setSelectedDate] = useState(formatNigeriaDate(new Date()));
   const [filterOpen, setFilterOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [patientsById, setPatientsById] = useState({});
 
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
-
+  // Load appointments data from backend
   useEffect(() => {
     const load = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          if (window.__appointmentsLoadInFlight) return;
+          window.__appointmentsLoadInFlight = true;
+        }
         const res = await toast.promise(
           getAllAppointments(),
           {
@@ -37,68 +39,39 @@ const Appointment = () => {
             success: 'Appointments loaded',
             error: 'Failed to load appointments'
           },
-          { id: 'nurse-appointments-load' }
+          { id: 'appointments-load' }
         );
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+        console.log('Raw appointment data:', list);
         const mapped = list.map((a, idx) => ({
           id: a?.id || a?._id || a?.appointmentId || idx + 1,
           patientId: a?.patientId,
+          dependantId: a?.dependantId || null,
+          dependant: a?.dependant || null,
+          patient: a?.patient || null,
           patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
           date: a?.appointmentDate || a?.date,
-          time: a?.appointmentTime || a?.time,
-          appointmentType: a?.department || a?.appointmentType || 'General',
+          time: a?.appointmentTime || a?.time, 
+          appointmentType: a?.appointmentType || 'consultation',
+          department: a?.department || 'doctor',
           status: a?.status || 'Active',
         }));
+        console.log('Mapped appointments:', mapped);
         setAppointments(mapped);
       } catch (err) {
-        console.error('Nurse Appointments: load error', err);
+        console.error('Load appointments error', err);
+        // Fallback: keep existing state
+      }
+      finally {
+        if (typeof window !== 'undefined') {
+          window.__appointmentsLoadInFlight = false;
+        }
       }
     };
     load();
   }, []);
 
-  const handleBookAppointment = async (appointmentData) => {
-    try {
-      await toast.promise(
-        createAppointment(appointmentData),
-        {
-          loading: 'Saving appointment...',
-          success: 'Appointment saved',
-          error: (e) => e?.message || 'Failed to save appointment'
-        }
-      );
-      setIsBookModalOpen(false);
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-      const mapped = list.map((a, idx) => ({
-        id: a?.id || a?._id || a?.appointmentId || idx + 1,
-        patientId: a?.patientId,
-        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
-        date: a?.appointmentDate || a?.date,
-        time: a?.appointmentTime || a?.time,
-        appointmentType: a?.department || a?.appointmentType || 'General',
-        status: a?.status || 'Active',
-      }));
-      setAppointments(mapped);
-    } catch (err) {
-      console.error('Nurse Appointments: create error', err);
-      toast.error(err?.message || 'Failed to book appointment');
-    }
-  };
-
-  const handleRowClick = (appointment) => {
-    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
-    if (appointmentId) {
-      setSelectedAppointmentId(appointmentId);
-      setIsDetailsModalOpen(true);
-    } else {
-      toast.error('No appointment ID found');
-    }
-  };
-
-  // Fetch patients map for resolving patientId -> name
   useEffect(() => {
     const fetchPatients = async () => {
       try {
@@ -120,7 +93,41 @@ const Appointment = () => {
     fetchPatients();
   }, []);
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const closeSidebar = () => {
+    setIsSidebarOpen(false);
+  };
+
+  const StatusBadge = ({ status }) => {
+    const getBadgeClass = (status) => {
+      switch (status) {
+        case 'completed':
+          return 'badge badge-primary text-white';
+        case 'scheduled':
+          return 'badge badge-outline badge-info';
+        case 'cancelled':
+          return 'badge badge-error text-white';
+        default:
+          return 'badge badge-neutral text-white';
+      }
+    };
+
+    return (
+      <div className={getBadgeClass(status)}>
+        {status}
+      </div>
+    );
+  };
+
+  // Process appointments data
   const resolvePatientName = (a) => {
+    if (a?.dependantId) {
+      const depName = `${a?.dependant?.firstName || ''} ${a?.dependant?.lastName || ''}`.trim();
+      return depName || 'Dependant';
+    }
     const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
     const resolved = pid ? patientsById[pid] : undefined;
     return resolved || a?.patientName || a?.patient?.fullName || 'Unknown';
@@ -129,130 +136,233 @@ const Appointment = () => {
   const processedAppointments = useMemo(() => appointments.map(a => ({
     ...a,
     patientName: resolvePatientName(a),
-  })), [appointments, patientsById, resolvePatientName]);
+  })), [appointments, patientsById]);
 
+  // Define table columns
   const columns = useMemo(() => [
-    { key: 'id', title: 'S/n', sortable: true, className: 'text-base-content font-medium' },
-    { key: 'patientName', title: 'Patient Name', sortable: true, className: 'text-base-content font-medium' },
-    { key: 'date', title: 'Date', sortable: true, className: 'text-base-content/70' },
-    { key: 'time', title: 'Time', sortable: true, className: 'text-base-content/70' },
-    { key: 'appointmentType', title: 'Appointment type', sortable: true, className: 'text-base-content/70' },
-    { key: 'status', title: 'Status', className: 'text-base-content/70', render: (value) => <span className="badge badge-outline">{value}</span> },
+
+    {
+      key: 'patientName',
+      title: 'Patient Name',
+      sortable: true,
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          <span>{value}</span>
+          {row.dependantId && (
+            <span className="badge badge-secondary badge-xs">
+              {row.dependant?.relationshipType || 'Dependant'}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      title: 'Date',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'time',
+      title: 'Time',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'appointmentType',
+      title: 'Appointment type',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'department',
+      title: 'Department',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
+      key: 'status',
+      title: 'Status',
+      className: 'text-base-content/70',
+      render: (value, row) => <StatusBadge status={value} />
+    }
   ], []);
 
+  // Get current date for display
   const getCurrentDate = () => {
-    const today = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return today.toLocaleDateString('en-US', options);
+    return formatNigeriaDate(new Date());
   };
+
+  const handleRowClick = (appointment) => {
+    console.log('Row clicked:', appointment);
+    // Use the actual appointment ID from the API, or fall back to the mapped ID
+    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
+    console.log('Appointment ID:', appointmentId);
+    if (appointmentId) {
+      setSelectedAppointmentId(appointmentId);
+      setIsDetailsModalOpen(true);
+      console.log('Opening modal with ID:', appointmentId);
+    } else {
+      toast.error('No appointment ID found');
+    }
+  };
+
+  const handleBookAppointment = async (appointmentData) => {
+    try {
+      await toast.promise(
+        createAppointment(appointmentData),
+        {
+          loading: 'Saving appointment...',
+          success: 'Appointment saved',
+          error: (e) => e?.message || 'Failed to save appointment'
+        }
+      );
+      setIsBookModalOpen(false);
+      // Refresh list
+      const res = await getAllAppointments();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+      const mapped = list.map((a, idx) => ({
+        id: a?.id || a?._id || a?.appointmentId || idx + 1,
+        patientId: a?.patientId,
+        dependantId: a?.dependantId || null,
+        dependant: a?.dependant || null,
+        patient: a?.patient || null,
+        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+        date: a?.appointmentDate || a?.date,
+        time: a?.appointmentTime || a?.time, 
+        appointmentType: a?.appointmentType || 'consultation',
+        department: a?.department || 'doctor',
+        status: a?.status || 'Active',
+      }));
+      setAppointments(mapped);
+    } catch (err) {
+      console.error('Create appointment error', err);
+      toast.error(err?.message || 'Failed to book appointment');
+    }
+  };
+
   return (
-    <>
-    <div className="flex min-h-screen w-full">
+    <div className="flex h-screen">
+      {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
+      {/* Sidebar */}
+      <div className={`${
+        'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0'
+      } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
+      {/* Main Content */}
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+        {/* Header */}
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <section className="space-y-4 sm:space-y-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
-                <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
-              </div>
-               <button
-                 className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
-                 onClick={() => setIsBookModalOpen(true)}
-               >
-                 <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                 </svg>
-                 <span className="text-xs 2xl:text-sm">Book Appointment</span>
-               </button>
+        {/* Page Content */}
+        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+          {/* Page Header */}
+          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+            <div>
+              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
+              <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
+            </div>
+             <button
+               className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
+               onClick={() => setIsBookModalOpen(true)}
+             >
+               <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+               </svg>
+               <span className="text-xs 2xl:text-sm">Book Appointment</span>
+             </button>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:justify-between sm:items-center">
+            <div className="flex gap-3 items-center">
+              <button
+                className="flex gap-2 items-center btn btn-sm w-full sm:w-auto"
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <PiSlidersLight className="w-4 h-4 rotate-90" />
+                <span className="text-xs">Filter</span>
+              </button>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  className="btn btn-sm flex items-center gap-2"
-                  onClick={() => setFilterOpen(!filterOpen)}
-                >
-                  <svg className="w-4 h-4 rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6h16M7 12h10M10 18h4" strokeWidth="2" strokeLinecap="round"/></svg>
-                  <span className="text-xs">Filter</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="dropdown dropdown-end">
-                  <label tabIndex={0} className="btn btn-outline btn-sm flex items-center gap-2">
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 7V3m8 4V3M3 11h18M5 19h14" strokeWidth="2" strokeLinecap="round"/></svg>
-                    <span className="text-xs">{selectedDate}</span>
-                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round"/></svg>
-                  </label>
-                  <ul tabIndex={0} className="menu dropdown-content mt-1 w-52 rounded-box bg-base-100 p-2 shadow">
-                    <li><a onClick={() => setSelectedDate('7/18/17')}>7/18/17</a></li>
-                    <li><a onClick={() => setSelectedDate('7/19/17')}>7/19/17</a></li>
-                    <li><a onClick={() => setSelectedDate('7/20/17')}>7/20/17</a></li>
-                  </ul>
-                </div>
+            <div className="flex gap-3 items-center w-full sm:w-auto justify-end">
+              <div className="dropdown dropdown-end w-full sm:w-auto">
+                <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm w-full sm:w-auto justify-between">
+                  <FaCalendarAlt className="w-3 h-3" />
+                  <span className="text-xs">{selectedDate}</span>
+                  <FaChevronDown className="w-3 h-3" />
+                </label>
+                <ul tabIndex={0} className="p-2 mt-2 shadow menu dropdown-content bg-base-100 rounded-box w-52">
+                  <li>
+                    <button onClick={() => setSelectedDate(formatNigeriaDate(new Date()))}>Today</button>
+                  </li>
+                  <li>
+                    <button onClick={() => setSelectedDate(formatNigeriaDate(new Date(Date.now() + 86400000)))}>Tomorrow</button>
+                  </li>
+                  <li>
+                    <button onClick={() => setSelectedDate(formatNigeriaDate(new Date(Date.now() + 2 * 86400000)))}>Day After Tomorrow</button>
+                  </li>
+                </ul>
+                
               </div>
             </div>
+          </div>
 
-            <div className="flex min-h-0 w-full flex-1">
-              <div className="card w-full bg-base-100 shadow-xl">
-                <div className="card-body p-3 sm:p-4 2xl:p-6">
-                  <DataTable
-                    data={processedAppointments}
-                    columns={columns}
-                    searchable={filterOpen}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={10}
-                    maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                    showEntries={true}
-                    searchPlaceholder="Search appointments..."
-                    onRowClick={handleRowClick}
-                  />
-                </div>
+          {/* Appointments Table */}
+          <div className="flex flex-1 w-full min-h-0">
+            <div className="w-full shadow-xl card bg-base-100">
+              <div className="p-4 card-body 2xl:p-6">
+                <DataTable
+                  data={processedAppointments}
+                  columns={columns}
+                  searchable={filterOpen}
+                  sortable={true}
+                  paginated={true}
+                  initialEntriesPerPage={10}
+                  maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                  showEntries={true}
+                  searchPlaceholder="Search appointments..."
+                  onRowClick={handleRowClick}
+                />
               </div>
             </div>
-          </section>
+          </div>
         </div>
       </div>
+
+      {/* Book Appointment Modal */}
+      <BookAppointmentModal
+        isOpen={isBookModalOpen}
+        onClose={() => setIsBookModalOpen(false)}
+        onSubmit={handleBookAppointment}
+      />
+
+      {/* Appointment Details Modal */}
+      <AppointmentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        appointmentId={selectedAppointmentId}
+        onUpdated={(updated) => {
+          setAppointments(prev => prev.map(a => (
+            a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
+              { ...a, status: updated?.status } : a
+          )));
+        }}
+      />
     </div>
-
-    <BookAppointmentModal
-      isOpen={isBookModalOpen}
-      onClose={() => setIsBookModalOpen(false)}
-      onSubmit={handleBookAppointment}
-    />
-
-    <AppointmentDetailsModal
-      isOpen={isDetailsModalOpen}
-      onClose={() => setIsDetailsModalOpen(false)}
-      appointmentId={selectedAppointmentId}
-      onUpdated={(updated) => {
-        setAppointments(prev => prev.map(a => (
-          a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
-            { ...a, status: updated?.status } : a
-        )));
-      }}
-    />
-    </>
   );
 };
 
 export default Appointment;
+
