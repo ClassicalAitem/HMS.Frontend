@@ -40,17 +40,6 @@ const getTotalDoses = (med) => {
   return Math.round((days * 24) / intervalHours);
 };
 
-// Next dose date/time based on frequency, formatted for the Appointment API
-const getNextDoseDateTime = (frequency) => {
-  const intervalHours = parseIntervalHours(frequency);
-  if (!intervalHours) return null;
-  const next = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
-  return {
-    appointmentDate: next.toISOString().slice(0, 10), // YYYY-MM-DD
-    appointmentTime: next.toTimeString().slice(0, 8),  // HH:mm:ss
-  };
-};
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const LoadingScreen = () => (
   <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-center">
@@ -75,7 +64,11 @@ const MedicationRow = ({ med, index, onDosesChange, onStatusChange, onScheduleNe
   const totalDoses = getTotalDoses(med);
   const dosesGiven = Number(med.dosesGiven) || 0;
   const remaining = totalDoses !== null ? Math.max(totalDoses - dosesGiven, 0) : null;
-  const canSchedule = !isScheduling && !isScheduled && (remaining === null || remaining > 0);
+
+  const [nextDate, setNextDate] = useState("");
+  const [nextTime, setNextTime] = useState("");
+
+  const canSchedule = !isScheduling && !isScheduled && nextDate && nextTime && (remaining === null || remaining > 0);
 
   return (
     <div className="w-full space-y-4">
@@ -157,14 +150,41 @@ const MedicationRow = ({ med, index, onDosesChange, onStatusChange, onScheduleNe
           </p>
         )}
 
-        <button
-          type="button"
-          className="btn btn-outline btn-xs mt-2"
-          disabled={!canSchedule}
-          onClick={() => onScheduleNext(index)}
-        >
-          {isScheduling ? "Scheduling..." : isScheduled ? "Next Dose Scheduled ✓" : "Schedule Next Dose"}
-        </button>
+        {!isScheduled && (remaining === null || remaining > 0) && (
+          <div className="flex flex-wrap items-end gap-2 mt-3">
+            <div>
+              <label className="block mb-1 text-xs text-gray-600">Next Dose Date</label>
+              <input
+                type="date"
+                value={nextDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setNextDate(e.target.value)}
+                className="input input-bordered input-sm"
+              />
+            </div>
+            <div>
+              <label className="block mb-1 text-xs text-gray-600">Time</label>
+              <input
+                type="time"
+                value={nextTime}
+                onChange={(e) => setNextTime(e.target.value)}
+                className="input input-bordered input-sm"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline btn-xs"
+              disabled={!canSchedule}
+              onClick={() => onScheduleNext(index, nextDate, nextTime)}
+            >
+              {isScheduling ? "Scheduling..." : "Schedule Next Dose"}
+            </button>
+          </div>
+        )}
+
+        {isScheduled && (
+          <p className="text-xs text-[#00943C] font-medium mt-3">Next Dose Scheduled ✓</p>
+        )}
       </div>
     </div>
   );
@@ -251,13 +271,12 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
     updateMedicationField(index, "injectionStatus", value);
   }, [updateMedicationField]);
 
-  const handleScheduleNextDose = async (index) => {
-    const med = prescription.medications[index];
-    const next = getNextDoseDateTime(med.frequency);
-    if (!next) {
-      toast.error("Could not determine next dose time from frequency");
+  const handleScheduleNextDose = async (index, nextDate, nextTime) => {
+    if (!nextDate || !nextTime) {
+      toast.error("Please pick a date and time for the next dose");
       return;
     }
+    const med = prescription.medications[index];
     const totalDoses = getTotalDoses(med);
     const dosesGiven = Number(med.dosesGiven) || 0;
 
@@ -266,8 +285,8 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
       const payload = {
         patientId,
         dependantId: dependantId || undefined,
-        appointmentDate: next.appointmentDate,
-        appointmentTime: next.appointmentTime,
+        appointmentDate: nextDate,
+        appointmentTime: `${nextTime}:00`,
         department: "nurse",
         appointmentType: "injection_followup",
         procedureCode: med.drugCode || undefined,
