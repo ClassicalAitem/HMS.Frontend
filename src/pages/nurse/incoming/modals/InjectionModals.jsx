@@ -4,12 +4,52 @@ import { FaRegIdBadge } from "react-icons/fa6";
 import apiClient from "@/services/api/apiClient";
 import toast from "react-hot-toast";
 import { updatePrescription } from "@/services/api/prescriptionsAPI";
+import { createAppointment } from "@/services/api/appointmentsAPI";
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const checkAllCompleted = (medications = []) =>
   medications
     .filter((med) => med.medicationType === "injection")
     .every((med) => med.injectionStatus === "completed");
+
+// Parse "8hly", "12hly", "od", "bd", "tds", "qds" into hours-between-doses
+const parseIntervalHours = (frequency) => {
+  if (!frequency) return null;
+  const str = String(frequency).toLowerCase().replace(/\s+/g, "");
+  const hlyMatch = str.match(/^(\d+)hly$/);
+  if (hlyMatch) return Number(hlyMatch[1]);
+  const shorthand = { od: 24, bd: 12, tds: 8, qds: 6 };
+  return shorthand[str] ?? null;
+};
+
+// Parse "5/7" duration into total course days (numerator = days)
+const parseDurationDays = (duration) => {
+  if (!duration) return null;
+  const str = String(duration).trim();
+  const slashMatch = str.match(/^(\d+)\s*\/\s*\d+$/);
+  if (slashMatch) return Number(slashMatch[1]);
+  const numMatch = str.match(/^(\d+)/);
+  return numMatch ? Number(numMatch[1]) : null;
+};
+
+// Total doses for the full course, or null if we can't parse it
+const getTotalDoses = (med) => {
+  const days = parseDurationDays(med?.duration);
+  const intervalHours = parseIntervalHours(med?.frequency);
+  if (!days || !intervalHours) return null;
+  return Math.round((days * 24) / intervalHours);
+};
+
+// Next dose date/time based on frequency, formatted for the Appointment API
+const getNextDoseDateTime = (frequency) => {
+  const intervalHours = parseIntervalHours(frequency);
+  if (!intervalHours) return null;
+  const next = new Date(Date.now() + intervalHours * 60 * 60 * 1000);
+  return {
+    appointmentDate: next.toISOString().slice(0, 10), // YYYY-MM-DD
+    appointmentTime: next.toTimeString().slice(0, 8),  // HH:mm:ss
+  };
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const LoadingScreen = () => (
@@ -31,82 +71,104 @@ const EmptyScreen = ({ onClose }) => (
   </div>
 );
 
-const MedicationRow = ({ med, index, onDosesChange, onStatusChange }) => (
-  <div className="w-full space-y-4">
-    <div className="flex items-start gap-8 flex-wrap">
-      <div>
-        <div className="text-[12px] text-gray-600">Drug Code</div>
-        <div className="flex items-center gap-2 mt-1">
-          <FaRegIdBadge />
-          <p className="text-[14px] font-medium">{med.drugCode}</p>
+const MedicationRow = ({ med, index, onDosesChange, onStatusChange, onScheduleNext, isScheduling, isScheduled }) => {
+  const totalDoses = getTotalDoses(med);
+  const dosesGiven = Number(med.dosesGiven) || 0;
+  const remaining = totalDoses !== null ? Math.max(totalDoses - dosesGiven, 0) : null;
+  const canSchedule = !isScheduling && !isScheduled && (remaining === null || remaining > 0);
+
+  return (
+    <div className="w-full space-y-4">
+      <div className="flex items-start gap-8 flex-wrap">
+        <div>
+          <div className="text-[12px] text-gray-600">Drug Code</div>
+          <div className="flex items-center gap-2 mt-1">
+            <FaRegIdBadge />
+            <p className="text-[14px] font-medium">{med.drugCode}</p>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[12px] text-gray-600">Drug Name</div>
+          <p className="text-[14px] font-medium mt-1">{med.drugName}</p>
+        </div>
+
+        <div>
+          <div className="text-[12px] text-gray-600">Dosage</div>
+          <div className="flex items-center gap-2 mt-1">
+            <FaRegIdBadge />
+            <p className="text-[14px] font-medium">{med.dosage}</p>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[12px] text-gray-600">Duration</div>
+          <p className="text-[14px] font-medium mt-1">{med.duration}</p>
+        </div>
+
+        <div>
+          <div className="text-[12px] text-gray-600">Frequency</div>
+          <div className="flex items-center gap-2 mt-1">
+            <FaRegIdBadge />
+            <p className="text-[14px] font-medium">{med.frequency}</p>
+          </div>
+        </div>
+
+        <div>
+          <label className="block mb-2 text-sm font-medium text-base-content/70">
+            Doses Given
+          </label>
+          <input
+            type="number"
+            value={med.dosesGiven}
+            min={0}
+            disabled={med.injectionStatus === "completed"}
+            onChange={(e) => onDosesChange(index, Number(e.target.value))}
+            className="input input-bordered input-sm w-20"
+          />
+        </div>
+
+        <div>
+          <div className="text-[12px] text-gray-600">Instruction</div>
+          <p className="text-[14px] font-medium mt-1">{med.instructions}</p>
         </div>
       </div>
 
-      <div>
-        <div className="text-[12px] text-gray-600">Drug Name</div>
-        <p className="text-[14px] font-medium mt-1">{med.drugName}</p>
-      </div>
-
-      <div>
-        <div className="text-[12px] text-gray-600">Dosage</div>
-        <div className="flex items-center gap-2 mt-1">
-          <FaRegIdBadge />
-          <p className="text-[14px] font-medium">{med.dosage}</p>
-        </div>
-      </div>
-
-      <div>
-        <div className="text-[12px] text-gray-600">Duration</div>
-        <p className="text-[14px] font-medium mt-1">{med.duration}</p>
-      </div>
-
-      <div>
-        <div className="text-[12px] text-gray-600">Frequency</div>
-        <div className="flex items-center gap-2 mt-1">
-          <FaRegIdBadge />
-          <p className="text-[14px] font-medium">{med.frequency}</p>
-        </div>
-      </div>
-
-      <div>
-        <label className="block mb-2 text-sm font-medium text-base-content/70">
-          Doses Given
+      <div className="bg-[#F0EEF3] p-4 w-full rounded">
+        <label className="flex items-center gap-2 mb-3">
+          <FaUser color="#00943C" />
+          <h5 className="font-[500]">Injection Status:</h5>
         </label>
-        <input
-          type="number"
-          value={med.dosesGiven}
-          min={0}
-          disabled={med.injectionStatus === "completed"}
-          onChange={(e) => onDosesChange(index, Number(e.target.value))}
-          className="input input-bordered input-sm w-20"
-        />
-      </div>
+        <select
+          value={med.injectionStatus || ""}
+          onChange={(e) => onStatusChange(index, e.target.value)}
+          className="select select-bordered select-sm"
+        >
+          <option value="">Select status</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+          <option value="skipped">Skipped</option>
+        </select>
 
-      <div>
-        <div className="text-[12px] text-gray-600">Instruction</div>
-        <p className="text-[14px] font-medium mt-1">{med.instructions}</p>
+        {totalDoses !== null && (
+          <p className="text-xs text-gray-600 mt-2">
+            {remaining} of {totalDoses} dose(s) remaining
+          </p>
+        )}
+
+        <button
+          type="button"
+          className="btn btn-outline btn-xs mt-2"
+          disabled={!canSchedule}
+          onClick={() => onScheduleNext(index)}
+        >
+          {isScheduling ? "Scheduling..." : isScheduled ? "Next Dose Scheduled ✓" : "Schedule Next Dose"}
+        </button>
       </div>
     </div>
-
-    <div className="bg-[#F0EEF3] p-4 w-full rounded">
-      <label className="flex items-center gap-2 mb-3">
-        <FaUser color="#00943C" />
-        <h5 className="font-[500]">Injection Status:</h5>
-      </label>
-      <select
-        value={med.injectionStatus || ""}
-        onChange={(e) => onStatusChange(index, e.target.value)}
-        className="select select-bordered select-sm"
-      >
-        <option value="">Select status</option>
-        <option value="pending">Pending</option>
-        <option value="in_progress">In Progress</option>
-        <option value="completed">Completed</option>
-        <option value="skipped">Skipped</option>
-      </select>
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId, patientData }) => {
@@ -115,6 +177,8 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
   const [selectedStatus, setSelectedStatus] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [isFullyAdministered, setIsFullyAdministered] = useState(false);
+  const [scheduledDoses, setScheduledDoses] = useState({});
+  const [schedulingIndex, setSchedulingIndex] = useState(null);
 
   // ─── Fetch ──────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -186,6 +250,46 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
   const handleStatusChange = useCallback((index, value) => {
     updateMedicationField(index, "injectionStatus", value);
   }, [updateMedicationField]);
+
+  const handleScheduleNextDose = async (index) => {
+    const med = prescription.medications[index];
+    const next = getNextDoseDateTime(med.frequency);
+    if (!next) {
+      toast.error("Could not determine next dose time from frequency");
+      return;
+    }
+    const totalDoses = getTotalDoses(med);
+    const dosesGiven = Number(med.dosesGiven) || 0;
+
+    try {
+      setSchedulingIndex(index);
+      const payload = {
+        patientId,
+        dependantId: dependantId || undefined,
+        appointmentDate: next.appointmentDate,
+        appointmentTime: next.appointmentTime,
+        department: "nurse",
+        appointmentType: "injection_followup",
+        procedureCode: med.drugCode || undefined,
+        procedureName: med.drugName || undefined,
+        notes: `Follow-up injection dose ${dosesGiven + 1}${totalDoses ? `/${totalDoses}` : ""} for ${med.drugName}`,
+        status: "scheduled",
+      };
+
+      const res = await toast.promise(createAppointment(payload), {
+        loading: "Scheduling next dose...",
+        success: "Next dose appointment scheduled",
+        error: (e) => e?.response?.data?.error || e?.message || "Failed to schedule appointment",
+      });
+
+      const created = res?.data?.data ?? res?.data ?? res;
+      setScheduledDoses((prev) => ({ ...prev, [index]: created }));
+    } catch (err) {
+      console.error("Schedule next dose failed:", err);
+    } finally {
+      setSchedulingIndex(null);
+    }
+  };
 
   // ─── Update ──────────────────────────────────────────────────────────────────
   const handleUpdate = async () => {
@@ -274,6 +378,9 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
                 index={med.originalIndex}
                 onDosesChange={handleDosesChange}
                 onStatusChange={handleStatusChange}
+                onScheduleNext={handleScheduleNextDose}
+                isScheduling={schedulingIndex === med.originalIndex}
+                isScheduled={!!scheduledDoses[med.originalIndex]}
               />
             ))}
           </div>

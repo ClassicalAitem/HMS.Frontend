@@ -46,10 +46,11 @@ import SendToNurse from "@/pages/doctor/incoming/SendToNurse";
 import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
-// import PatientHistory from "@/pages/doctor/patien/PatientHistory";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
 import DoctorPaymentRecords from "@/pages/doctor/payment-records/ReceiptRecord";
 import MedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
+import DRAdmittedList from "@/pages/doctor/admitted/AdmittedList";
+import DRAdmittedPatient from "@/pages/doctor/admitted/AdmittedPatient";
 
 // Medical Director Pages
 import MDDashboard from "@/pages/medical-director/dashboard/MDDashboard";
@@ -139,6 +140,8 @@ import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
 import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
 import DependantVitalsDetails from "@/pages/nurse/dependantVitals/PatientVitalsDetails";
 import NurseIncoming from "@/pages/nurse/incoming/Incoming";
+import AdmittedList from "@/pages/nurse/admitted/AdmittedList";
+import AdmittedPatient from "@/pages/nurse/admitted/AdmittedPatient";
 // Pharmacist
 import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
 import DrugDispensation from "@/pages/pharmacist/DrugDispensation/DrugDispensation";
@@ -171,6 +174,7 @@ import SonographerDashboard from "@/pages/sonographer/dashboard/SonographerDashb
 import SonographerIncoming from "@/pages/sonographer/incoming/Incoming";
 import SonographerIncomingDetails from "@/pages/sonographer/incoming/IncomingDetails";
 import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory";
+import SonographerPatients from "@/pages/sonographer/patients/SonographerPatients";
 import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
 import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
 import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
@@ -320,6 +324,16 @@ const AppRoutes = () => {
       <Route path="/dashboard/nurse/appointments" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <Appointmentss />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/admittedList" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <AdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/admitted/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <AdmittedPatient />
         </ProtectedRoute>
       } />
       <Route path="/book" element={
@@ -487,6 +501,16 @@ const AppRoutes = () => {
       <Route path="/dashboard/doctor/payment-records" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <DoctorPaymentRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/admittedPatients" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <DRAdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/admittedPatients/:patientId" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <DRAdmittedPatient />
         </ProtectedRoute>
       } />
 
@@ -986,6 +1010,11 @@ const AppRoutes = () => {
             <WriteSurgicalNote />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/surgeon/write-surgical-note" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+            <WriteSurgicalNote />
+        </ProtectedRoute>
+      } />
       <Route path="/book" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
           <BookAppointmentModal />
@@ -1077,6 +1106,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/sonographer/incoming/:patientId" element={
         <ProtectedRoute allowedRoles={['sonographer']}>
           <SonographerIncomingDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/sonographer/patients" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerPatients />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/sonographer/scan-history" element={

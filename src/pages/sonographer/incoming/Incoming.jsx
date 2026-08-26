@@ -230,10 +230,16 @@ const SonographerIncoming = () => {
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
+    const typeStyles = {
+    regular: { border: "border-l-primary", badge: null },
+    dependant: { border: "border-l-secondary", badge: { text: "Dependant", cls: "badge-secondary" } },
+    opd: { border: "border-l-info", badge: { text: "OPD", cls: "badge-info" } },
+  };
+
   return (
     <div className="flex h-screen">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={closeSidebar} />
       )}
 
       <div
@@ -244,143 +250,162 @@ const SonographerIncoming = () => {
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
+      <div className="flex overflow-hidden flex-col flex-1 bg-base-200/40">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="mb-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-3 rounded-full text-primary">
-                  <GiUltrasound className="w-6 h-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-base-content">Incoming Scans</h1>
-                  <p className="text-base-content/70">Patients awaiting sonography scan uploads.</p>
-                </div>
+        <div className="flex overflow-y-auto flex-col p-3 sm:p-6 gap-5">
+          {/* Page header */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-br from-primary to-primary/70 p-3 rounded-2xl text-primary-content shadow-sm">
+                <GiUltrasound className="w-6 h-6" />
               </div>
+              <div>
+                <h1 className="text-2xl font-bold text-base-content leading-tight">Incoming Scans</h1>
+                <p className="text-sm text-base-content/60">Patients awaiting sonography scan uploads</p>
+              </div>
+            </div>
+
+            <div className="relative w-full sm:w-72">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
+              <input
+                type="text"
+                placeholder="Search by name or ID"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="input input-bordered input-sm sm:input-md w-full pl-9 rounded-full bg-base-100"
+              />
             </div>
           </div>
 
-          <div className="card bg-base-100 shadow-sm border border-base-200">
-            <div className="card-body">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
-                <div>
-                  <h2 className="card-title">Awaiting Scan</h2>
-                  <p className="text-sm text-base-content/70">Select a patient to open the upload details page.</p>
-                </div>
-                <div className="w-full md:w-auto">
-                  <div className="flex items-center gap-2 w-full">
-                    <span className="bg-base-200 px-3 py-2 rounded-l-lg">
-                      <FaSearch className="w-4 h-4 text-base-content/60" />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Search by name or ID"
-                      value={searchValue}
-                      onChange={(e) => setSearchValue(e.target.value)}
-                      className="input input-bordered w-full rounded-r-lg"
-                    />
-                  </div>
-                </div>
+          {/* Stat strip */}
+          {!loading && !error && patients.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <div className="badge badge-lg badge-ghost gap-1.5 py-3">
+                <span className="font-semibold text-base-content">{filteredPatients.length}</span>
+                <span className="text-base-content/60">waiting</span>
               </div>
+              {["regular", "dependant", "opd"].map((t) => {
+                const count = patients.filter((p) => p.patientType === t).length;
+                if (!count) return null;
+                return (
+                  <div key={t} className="badge badge-lg badge-ghost gap-1.5 py-3 capitalize">
+                    <span className="font-semibold text-base-content">{count}</span>
+                    <span className="text-base-content/60">{t}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-              {loading ? (
-                <div className="grid gap-4">
-                  {[1, 2, 3].map((item) => (
-                    <div key={item} className="h-28 rounded-3xl bg-base-200 animate-pulse" />
-                  ))}
-                </div>
-              ) : error ? (
-                <div className="text-error">Unable to load patients. Please refresh the page.</div>
-              ) : filteredPatients.length === 0 ? (
-                <div className="text-center py-10 text-base-content/70">
-                  <p>No sonography appointments are waiting right now.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredPatients.map((patient) => {
-                    const patientIdValue = patient?.id || patient?._id;
-                    let displayName = "Unknown Patient";
-                    let displayId = patientIdValue;
+          {/* List */}
+          {loading ? (
+            <div className="grid gap-3">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="h-32 rounded-2xl bg-base-100 border border-base-200 animate-pulse" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="rounded-2xl border border-error/30 bg-error/5 p-6 text-center text-error text-sm">
+              Unable to load patients. Please refresh the page.
+            </div>
+          ) : filteredPatients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-base-300 py-16 text-center">
+              <GiUltrasound className="w-8 h-8 text-base-content/20" />
+              <p className="text-base-content/60 text-sm">
+                {searchValue ? "No matches for your search." : "No sonography appointments are waiting right now."}
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {filteredPatients.map((patient) => {
+                const patientIdValue = patient?.id || patient?._id;
+                let displayName = "Unknown Patient";
+                let displayId = patientIdValue;
 
-                    if (patient.patientType === "dependant" && patient.dependantInfo) {
-                      displayName = patient.dependantInfo.name;
-                      displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
-                    } else if (patient.patientType === "opd" && patient.opdPatientInfo) {
-                      displayName = patient.opdPatientInfo.name;
-                      displayId = patient.opdPatientInfo.id || patientIdValue;
-                    } else {
-                      displayName = `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || patient?.fullName || "Unknown Patient";
-                      displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
-                    }
+                if (patient.patientType === "dependant" && patient.dependantInfo) {
+                  displayName = patient.dependantInfo.name;
+                  displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
+                } else if (patient.patientType === "opd" && patient.opdPatientInfo) {
+                  displayName = patient.opdPatientInfo.name;
+                  displayId = patient.opdPatientInfo.id || patientIdValue;
+                } else {
+                  displayName = `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || patient?.fullName || "Unknown Patient";
+                  displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
+                }
 
-                    const statusText = Array.isArray(patient?.status) ? patient.status.join(", ") : patient?.status || "—";
+                const statusText = Array.isArray(patient?.status) ? patient.status.join(", ") : patient?.status || "—";
+                const initials = displayName
+                  .split(" ")
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((n) => n[0]?.toUpperCase())
+                  .join("");
+                const style = typeStyles[patient.patientType] || typeStyles.regular;
 
-                    return (
-                      <div
-                        key={patientIdValue}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleNavigate(patient)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') handleNavigate(patient);
-                        }}
-                        className="w-full rounded-2xl border border-base-200 bg-base-100 p-4 sm:p-5 text-left shadow-sm transition-all hover:border-primary hover:shadow-md cursor-pointer"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <p className="font-semibold text-base-content truncate">{displayName}</p>
-                              {patient.patientType === "dependant" && (
-                                <span className="badge badge-secondary badge-xs">Dependant</span>
-                              )}
-                              {patient.patientType === "opd" && (
-                                <span className="badge badge-info badge-xs">OPD</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-base-content/60 font-mono">{displayId}</p>
-                          </div>
-                          <span className="badge badge-primary badge-outline badge-sm shrink-0">Upload Scan</span>
+                return (
+                  <div
+                    key={patientIdValue}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleNavigate(patient)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") handleNavigate(patient);
+                    }}
+                    className={`group w-full rounded-2xl border border-base-200 border-l-4 ${style.border} bg-base-100 p-4 sm:p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer`}
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 text-sm font-semibold text-base-content/70 shrink-0">
+                          {initials || "?"}
                         </div>
-
-                        <div className="mt-3 pt-3 border-t border-base-200 grid gap-2 sm:grid-cols-2 text-xs text-base-content/60">
-                          <p>Status: <span className="font-medium text-base-content/80">{statusText}</span></p>
-                          <p className="sm:text-right">Updated: {patient?.updatedAt ? new Date(patient.updatedAt).toLocaleString() : "—"}</p>
-                        </div>
-
-                        {patient.investigationId && patient.investigation && (
-                          <div className="mt-3 p-3 bg-base-200/60 rounded-lg">
-                            <p className="text-xs uppercase text-base-content/50 mb-1.5 font-semibold tracking-wide">Ordered Tests</p>
-                            {patient.investigation?.tests && patient.investigation.tests.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {patient.investigation.tests.map((test, idx) => (
-                                  <span key={idx} className="badge badge-ghost badge-sm">
-                                    {test.name || test}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="badge badge-ghost badge-sm">
-                                {patient.investigation?.testName || patient.investigation?.investigationType || 'Sonography'}
-                              </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-base-content truncate">{displayName}</p>
+                            {style.badge && (
+                              <span className={`badge badge-xs ${style.badge.cls}`}>{style.badge.text}</span>
                             )}
                           </div>
-                        )}
-
-                        <div
-                          className="mt-3 flex justify-end"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ClearItemButton item={patient} onClear={handleClear} onCleared={fetchIncomingPatients} />
+                          <p className="text-xs text-base-content/50 font-mono mt-0.5">{displayId}</p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <span className="badge badge-primary badge-outline badge-sm shrink-0 group-hover:badge-primary transition-colors">
+                        Upload Scan
+                      </span>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-base-200 flex flex-wrap items-center justify-between gap-y-1 text-xs text-base-content/60">
+                      <p>Status: <span className="font-medium text-base-content/80">{statusText}</span></p>
+                      <p>Updated: {patient?.updatedAt ? new Date(patient.updatedAt).toLocaleString() : "—"}</p>
+                    </div>
+
+                    {patient.investigationId && patient.investigation && (
+                      <div className="mt-3 p-3 bg-base-200/50 rounded-xl">
+                        <p className="text-[10px] uppercase text-base-content/40 mb-1.5 font-semibold tracking-wider">Ordered Tests</p>
+                        {patient.investigation?.tests && patient.investigation.tests.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {patient.investigation.tests.map((test, idx) => (
+                              <span key={idx} className="badge badge-ghost badge-sm bg-base-100">
+                                {test.name || test}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="badge badge-ghost badge-sm bg-base-100">
+                            {patient.investigation?.testName || patient.investigation?.investigationType || "Sonography"}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
+                      <ClearItemButton item={patient} onClear={handleClear} onCleared={fetchIncomingPatients} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
