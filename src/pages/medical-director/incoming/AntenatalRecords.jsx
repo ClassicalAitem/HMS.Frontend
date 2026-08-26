@@ -666,22 +666,39 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
                   { field: 'pcv', label: 'PCV', type: 'text', placeholder: 'e.g. 40%' },
                   { field: 'hbv', label: 'HBV', type: 'text', placeholder: 'Negative/Positive' },
                   { field: 'abo', label: 'ABO', type: 'text', placeholder: 'Blood Group' },
-                  { field: 'genotype', label: 'Genotype', type: 'text', placeholder: 'e.g. AA, AS, SS' },
+                  { field: 'genotype', label: 'Genotype', type: 'select' },
                   ].map(({ field, label, type, placeholder }) => (
                   <div key={field}>
                     <label className="label"><span className="label-text">{label}</span></label>
-                    <input
-                      type={type}
-                      className="input input-bordered w-full"
-                      placeholder={placeholder}
+                        {type === 'select' ? (
+                    <select
+                      className="select select-bordered select-sm w-full"
                       value={formData.routineTest[field]}
                       onChange={(e) => updateRoutineTest(field, e.target.value)}
-                    />
+                    >
+                      <option value="">Select</option>
+                      <option value="AA">AA</option>
+                      <option value="AS">AS</option>
+                      <option value="SS">SS</option>
+                      <option value="AC">AC</option>
+                      <option value="SC">SC</option>
+                      <option value="CC">CC</option>
+                    </select>
+                     ) : (
+                       <input
+                        type="text"
+                        className="input input-bordered input-sm w-full"
+                        placeholder={placeholder}
+                        value={formData.routineTest[field]}
+                        onChange={(e) => updateRoutineTest(field, e.target.value)}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           </div>
+           
 
         {/* Antenatal Examinations */}
 <div className="card bg-base-100 shadow-sm">
@@ -751,13 +768,26 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
                     />
                   </td>
                   <td className="py-2">
-                    <input
+                    <select
+                        className="input input-bordered input-sm w-full min-w-[100px]"
+                      placeholder="e.g. Cephalic"
+                      value={item.presentationAndLie}
+                      onChange={(e) => updateExamination(idx, 'presentationAndLie', e.target.value)}
+                   >
+                        <option value="">Select</option>
+                        <option value="Cephalic">Cephalic</option>
+                        <option value="Breech">Breech</option>
+                        <option value="Transverse lie">Transverse lie</option>
+                        <option value="Oblique Cephalic">Oblique Cephalic</option>
+                        <option value="Oblique Breech">Oblique Breech</option>
+                      </select>
+                        {/* <input
                       type="text"
                       className="input input-bordered input-sm w-full min-w-[100px]"
                       placeholder="e.g. Cephalic"
                       value={item.presentationAndLie}
                       onChange={(e) => updateExamination(idx, 'presentationAndLie', e.target.value)}
-                    />
+                    /> */}
                   </td>
                   <td className="py-2">
                     <input

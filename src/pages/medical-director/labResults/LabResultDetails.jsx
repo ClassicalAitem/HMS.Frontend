@@ -284,6 +284,10 @@ const LabResultDetails = () => {
               return (
                 <div
                   key={idx}
+                  onClick={() => {
+                    setCurrentFileIndex(idx);
+                    setIsAttachmentViewerOpen(true);
+                  }}
                   className="relative group rounded-lg overflow-hidden border border-gray-300 hover:border-[#00943C] transition-all cursor-pointer"
                 >
                   {isImage && getImageUrl(file) ? (
@@ -292,7 +296,6 @@ const LabResultDetails = () => {
                         src={getImageUrl(file)}
                         alt={file.name}
                         className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
-                        onClick={() => { setCurrentFileIndex(idx); setIsAttachmentViewerOpen(true); }}
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100 gap-2">
                         <button
@@ -307,6 +310,9 @@ const LabResultDetails = () => {
                   ) : (
                     <div className="w-full h-32 bg-gray-200 flex items-center justify-center group-hover:bg-gray-300 transition-all">
                       <FaFileImage className="w-10 h-10 text-gray-400" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="text-white text-sm font-semibold">View</span>
+                      </div>
                     </div>
                   )}
                   <div className="p-2 bg-white border-t border-gray-300">

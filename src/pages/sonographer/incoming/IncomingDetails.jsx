@@ -9,11 +9,14 @@ import { updateInvestigation } from "@/services/api/investigationRequestAPI";
 import { getOpdPatientById, updateOpdPatient } from "@/services/api/opdPatientAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import toast from "react-hot-toast";
-import { FaUpload, FaCheckCircle, FaArrowLeft, FaTimes, FaEye, FaXRay, FaHistory } from "react-icons/fa";
+import { FaUpload, FaCheckCircle, FaArrowLeft, FaTimes, FaEye, FaXRay, FaHistory, FaTrash } from "react-icons/fa";
 import { formatNigeriaDateTime, formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
+import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import { useAppSelector } from "@/store/hooks";
 import SendPatientModal from "@/components/modals/SendPatientModal";
+import mammoth from "mammoth";
+import { FaFileWord } from "react-icons/fa";
 
 const investigationStatusBadge = (status) => {
   const s = String(status || '').toLowerCase();
@@ -44,6 +47,10 @@ const SonographerIncomingDetails = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [docPreviewHtml, setDocPreviewHtml] = useState(null);
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+
 
 useEffect(() => {
   let mounted = true;
@@ -247,9 +254,9 @@ useEffect(() => {
         toast.success("Scan uploaded successfully.");
       }
 
-      // Update investigation status to sonography_completed
+      // Update investigation status to completed
       if (investigation?._id) {
-        await updateInvestigation(investigation._id, { status: 'sonography_completed' });
+        await updateInvestigation(investigation._id, { status: 'completed' });
       }
 
       // Show success state instead of navigating
@@ -313,10 +320,27 @@ useEffect(() => {
     const isInvestigationCompleted = String(investigation?.status || '').toLowerCase() === 'completed';
 
 
-  const openPreview = (file) => {
+  const openPreview = async (file) => {
     setPreviewFile(file);
     setShowPreview(true);
-  }
+    setDocPreviewHtml(null);
+
+    const isWord = file.name.toLowerCase().endsWith(".docx") || file.name.toLowerCase().endsWith(".doc");
+    if (isWord) {
+      setDocPreviewLoading(true);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        setDocPreviewHtml(result.value);
+      } catch (err) {
+        console.error("Word preview failed:", err);
+        setDocPreviewHtml(null);
+      } finally {
+        setDocPreviewLoading(false);
+      }
+    }
+  };
+
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -324,6 +348,28 @@ useEffect(() => {
   const displaySubjectName = patientType === "dependant"
     ? (dependantInfo?.fullName || `${dependantInfo?.firstName || ''} ${dependantInfo?.lastName || ''}`.trim() || 'Unknown Dependant')
     : (patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown');
+
+  const isViewingDependant = patientType === "dependant";
+  const summarySubject = useMemo(() => {
+    const subject = isViewingDependant ? (dependantInfo || {}) : (patient || {});
+    const parent = isViewingDependant ? (patient || {}) : subject;
+
+    return {
+      fullName: displaySubjectName,
+      gender: subject.gender || '—',
+      phone: subject.phone || subject.phoneNumber || parent.phone || parent.phoneNumber || '—',
+      hospitalId: parent.hospitalId || '—',
+      status: subject.status || parent.status || 'Unknown',
+      dob: subject.dob || subject.dateOfBirth || subject.birthDate,
+      cardType: subject.cardType || parent.cardType || 'personal',
+      familyName: subject.familyName || parent.familyName || subject.lastName || parent.lastName,
+      companyName: subject.companyName || parent.companyName,
+      hmos: Array.isArray(parent.hmos)
+        ? parent.hmos.filter((h) => isViewingDependant ? h.dependantId === dependantId : !h.dependantId)
+        : [],
+      relationshipType: subject.relationshipType,
+    };
+  }, [dependantId, dependantInfo, displaySubjectName, isViewingDependant, patient]);
 
   return (
     <div className="flex h-screen">
@@ -373,84 +419,16 @@ useEffect(() => {
               </div>
             </div>
           </div>
+           <PatientDetailsCard
+                patient={patient}
+                summarySubject={summarySubject}
+                isViewingDependant={isViewingDependant}
+              />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
               {/* Patient Info */}
-              <div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
-                <div className="card-body">
-                  <h2 className="card-title text-base">Patient Information</h2>
-                  {loading ? (
-                    <div className="py-10 flex justify-center">
-                      <div className="loading loading-spinner" />
-                    </div>
-                  ) : !patient ? (
-                    <p className="text-base-content/70">Patient information could not be loaded.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <p className="text-xs uppercase text-base-content/50">Name</p>
-                          {patientType === "dependant" && (
-                            <span className="badge badge-secondary badge-xs">Dependant</span>
-                          )}
-                          {patientType === "opd" && (
-                            <span className="badge badge-info badge-xs">OPD</span>
-                          )}
-                        </div>
-                        <p className="font-semibold text-base-content">{displaySubjectName}</p>
-                        {patientType === "dependant" && (
-                          <p className="text-xs text-base-content/50 mt-1">
-                            Dependant of {patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase text-base-content/50">Patient ID</p>
-                        <p className="text-base-content font-mono text-sm">{patient?.hospitalId || patient?.patientId || patient?.id || patient?._id || '—'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase text-base-content/50">Current Status</p>
-                        <p className="text-base-content">
-                          {patientType === "dependant"
-                            ? (Array.isArray(dependantInfo?.status) ? dependantInfo.status.join(', ') : dependantInfo?.status || '—')
-                            : (Array.isArray(patient?.status) ? patient.status.join(', ') : patient?.status || '—')}
-                        </p>
-                      </div>
-                      {patient?.updatedAt && (
-                        <div>
-                          <p className="text-xs uppercase text-base-content/50">Last Updated</p>
-                          <p className="text-base-content">{formatNigeriaDateTime(patient.updatedAt)}</p>
-                        </div>
-                      )}
-                      <PatientCardTypeInfo
-                        cardType={patient?.cardType}
-                        familyName={patient?.familyName}
-                        companyName={patient?.companyName}
-                      />
-                      {investigation && (
-                        <div className="p-3 bg-base-200/60 rounded-lg">
-                          <p className="text-xs uppercase text-base-content/50 mb-1.5 font-semibold tracking-wide">Current Order</p>
-                          {investigation?.tests && investigation.tests.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {investigation.tests.map((test, idx) => (
-                                <span key={idx} className="badge badge-ghost badge-sm">
-                                  {test.name || test}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="badge badge-ghost badge-sm">
-                              {investigation?.testName || investigation?.investigationType || 'Sonography'}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
+             
               {/* Radiology History */}
               <div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
                 <div className="card-body">
@@ -576,11 +554,11 @@ useEffect(() => {
                             <input
                               type="file"
                               multiple
-                              accept=".jpg,.jpeg,.png,.dcm"
+                              accept=".doc,.docx"
                               onChange={handleFileChange}
                               className="file-input file-input-bordered w-full"
                             />
-                            <p className="text-xs text-base-content/60 mt-2">Supported: JPG, PNG, DICOM.</p>
+                          <p className="text-xs text-base-content/60 mt-2">Supported: DOC, DOCX.</p>
                           </div>
 
                           {files.length > 0 && (
@@ -604,12 +582,12 @@ useEffect(() => {
                                       >
                                         <FaEye className="w-3 h-3" />
                                       </button>
-                                      <button
+                                     <button
                                         type="button"
                                         onClick={() => removeFile(idx)}
-                                        className="btn btn-ghost btn-xs text-error"
+                                        className="btn btn-ghost btn-xs"
                                       >
-                                        <FaTimes className="w-3 h-3" />
+                                        <FaTrash className="w-3 h-3" />
                                       </button>
                                     </div>
                                   </div>
@@ -666,10 +644,23 @@ useEffect(() => {
                   alt={previewFile.name}
                   className="max-w-full h-auto rounded-lg"
                 />
+              ) : docPreviewLoading ? (
+                <div className="py-10 flex flex-col items-center gap-2">
+                  <span className="loading loading-spinner loading-md" />
+                  <p className="text-sm text-base-content/60">Rendering document…</p>
+                </div>
+              ) : docPreviewHtml ? (
+                <div
+                  className="prose prose-sm max-w-full w-full max-h-[60vh] overflow-y-auto text-left px-2"
+                  dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                />
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-base-content/70">Preview not available for this file type</p>
-                  <p className="text-sm text-base-content/50 mt-2">{previewFile.type || 'Unknown type'}</p>
+                  <FaFileWord className="w-10 h-10 text-primary/50 mx-auto mb-3" />
+                  <p className="text-base-content/70 font-medium">{previewFile.name}</p>
+                  <p className="text-sm text-base-content/50 mt-1">
+                    {(previewFile.size / 1024 / 1024).toFixed(2)} MB · Preview not available
+                  </p>
                 </div>
               )}
             </div>
