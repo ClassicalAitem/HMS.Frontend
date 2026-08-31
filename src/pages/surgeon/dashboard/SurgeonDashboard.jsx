@@ -2,9 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/common";
 import { Sidebar, TaskAssigned, MedicationSchedule } from "@/components/surgeon";
 import { useAppSelector } from "@/store/hooks";
-import { getMetrics } from "@/services/api/metricsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
-import { getVitalsByNurse } from "@/services/api/vitalsAPI";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 
 const SurgeonDashboard = () => {
@@ -26,19 +24,6 @@ const SurgeonDashboard = () => {
     let mounted = true;
   
 
-    // Helper: build map of patient identifiers => display name
-    const buildPatientsMap = (patients = []) => {
-      const map = {};
-      patients.forEach((p) => {
-        const name = (p?.fullName || `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || p?.name || "").trim();
-        const ids = [p?.hospitalId, p?.patientId, p?.id];
-        ids.filter(Boolean).forEach((id) => {
-          if (!map[id]) map[id] = name || "Unknown";
-        });
-      });
-      return map;
-    };
-
     // Fetch patients and build Incoming
     const fetchIncoming = async () => {
       try {
@@ -46,9 +31,6 @@ const SurgeonDashboard = () => {
         const res = await getPatients();
         const patients = Array.isArray(res?.data) ? res.data : [];
 
-        // Update patients map for name resolution across the dashboard
-        const map = buildPatientsMap(patients);
-        if (mounted) setPatientsById(map);
         const statuses = new Set([
           "awaiting_injection",
           "awaiting_sampling",

@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/superadmin/dashboard';
 import { FaUserPlus, FaSave, FaTimes, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { usersAPI } from '@/services/api/usersAPI';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 // Validation schema
 const registrationSchema = yup.object({
@@ -111,11 +112,7 @@ const onSubmit = async (data) => {
     reset();
 
   } catch (error) {
-    const message =
-      error?.response?.data?.message ||
-      'Failed to register user';
-
-    toast.error(message);
+    toast.error(getErrorMessage(error, 'Failed to register user'));
   } finally {
     setIsLoading(false);
   }

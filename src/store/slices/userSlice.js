@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Initial state
 const initialState = {
@@ -31,7 +32,7 @@ export const fetchUserProfile = createAsyncThunk(
       
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch profile Refresh the page or try again later.'));
     }
   }
 );
@@ -61,7 +62,7 @@ export const updateUserProfile = createAsyncThunk(
       
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to update profile Refresh the page or try again later.'));
     }
   }
 );

@@ -5,6 +5,7 @@ import * as yup from 'yup';
 import { FaTimes, FaUserEdit, FaEye, FaEyeSlash, FaSave } from 'react-icons/fa';
 import { usersAPI } from '../../../services/api/usersAPI';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { getAllDepartments } from '@/services/api/departmentAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
@@ -42,7 +43,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
         const list = res.data || [];
         setDepartments(list);
       } catch (error) {
-        console.error(error);
+        toast.error(getErrorMessage(error, 'Failed to load departments'));
       }
     }
     fetchDepartment();
@@ -71,7 +72,6 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
   // Update form values when user prop changes
   useEffect(() => {
     if (user && isOpen) {
-      console.log('📝 EditUserModal: Setting form values for user:', user);
       setValue('firstName', user.firstName || '');
       setValue('lastName', user.lastName || '');
       setValue('email', user.email || '');
@@ -82,11 +82,9 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
   }, [user, isOpen, setValue]);
 
   const onSubmit = async (data) => {
-    console.log('📝 EditUserModal: Form submitted with data:', data);
     setIsLoading(true);
 
     try {
-      console.log('Data to be sent for update:', data);
       // Prepare the data for the API
       const updateData = {
         firstName: data.firstName.trim(),
@@ -99,13 +97,8 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
         updateData.departmentId = data.departmentId;
       }
 
-      console.log('📤 EditUserModal: Sending update data:', updateData);
-      console.log('📤 EditUserModal: Updating user ID:', user.id);
-
       // Call the update user API
       const response = await usersAPI.updateUser(user.id, updateData);
-
-      console.log('✅ EditUserModal: User updated successfully:', response.data);
 
       // Show success message
       toast.success('User updated successfully!');
@@ -119,10 +112,8 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
         onUserUpdated();
       }
     } catch (error) {
-      console.error('❌ EditUserModal: Error updating user:', error);
-
       // Show error message
-      const errorMessage = error.response?.data?.message || 'Failed to update user. Please try again.';
+      const errorMessage = getErrorMessage(error, 'Failed to update user. Please try again.');
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

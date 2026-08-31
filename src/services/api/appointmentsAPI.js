@@ -5,7 +5,6 @@ import apiClient from './apiClient';
 
 export const getAllAppointments = async (params = {}) => {
   const url = '/appointment';
-  console.log('📅 AppointmentsAPI: Fetching all appointments', { params, url });
   const response = await apiClient.get(url, { params });
   return response;
 };
@@ -13,7 +12,6 @@ export const getAllAppointments = async (params = {}) => {
 export const getAppointmentById = async (id) => {
   if (!id) throw new Error('Appointment ID is required');
   const url = `/appointment/${id}`;
-  console.log('📅 AppointmentsAPI: Fetching appointment by ID', { id, url });
   const response = await apiClient.get(url);
   return response;
 };
@@ -36,7 +34,6 @@ export const createAppointment = async (payload) => {
     notes: payload.notes,
   };
   const url = '/appointment';
-  console.log('📅 AppointmentsAPI: Creating appointment', { url, body });
   const response = await apiClient.post(url, body);
   return response;
 };
@@ -44,7 +41,6 @@ export const createAppointment = async (payload) => {
 export const updateAppointment = async (id, payload) => {
   if (!id) throw new Error('Appointment ID is required');
   const url = `/appointment/${id}`;
-  console.log('📅 AppointmentsAPI: Updating appointment', { id, url, payload });
   const response = await apiClient.patch(url, payload);
   return response;
 };

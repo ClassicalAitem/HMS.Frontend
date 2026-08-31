@@ -6,6 +6,7 @@ import {
   updatePatient, 
   deletePatient 
 } from '../../services/api/patientsAPI';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Initial state
 const initialState = {
@@ -27,9 +28,7 @@ export const fetchPatients = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('❌ PatientsSlice: Fetch patients error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch patients';
-      console.log('📤 PatientsSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch patients'));
     }
   }
 );
@@ -44,9 +43,7 @@ export const fetchPatientById = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('❌ PatientsSlice: Fetch patient by ID error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch patient';
-      console.log('📤 PatientsSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch patient'));
     }
   }
 );
@@ -61,9 +58,7 @@ export const addPatient = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('❌ PatientsSlice: Create patient error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create patient';
-      console.log('📤 PatientsSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to create patient'));
     }
   }
 );
@@ -78,9 +73,7 @@ export const editPatient = createAsyncThunk(
       return response;
     } catch (error) {
       console.error('❌ PatientsSlice: Update patient error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update patient';
-      console.log('📤 PatientsSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to update patient'));
     }
   }
 );
@@ -95,9 +88,7 @@ export const removePatient = createAsyncThunk(
       return { patientId, response };
     } catch (error) {
       console.error('❌ PatientsSlice: Delete patient error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete patient';
-      console.log('📤 PatientsSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to delete patient'));
     }
   }
 );

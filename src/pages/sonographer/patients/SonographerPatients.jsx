@@ -5,6 +5,7 @@ import Sidebar from '@/components/sonographer/dashboard/Sidebar';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearPatientsError, fetchPatients } from '@/store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { Skeleton } from '@heroui/skeleton';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
@@ -42,7 +43,7 @@ const SonographerPatients = () => {
 
   useEffect(() => {
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       dispatch(clearPatientsError());
     }
   }, [error, dispatch]);

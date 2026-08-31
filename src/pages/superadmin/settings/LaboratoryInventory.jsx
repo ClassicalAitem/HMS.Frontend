@@ -4,6 +4,7 @@ import { MdAdd } from 'react-icons/md'
 import toast from 'react-hot-toast'
 import { FaTrash } from 'react-icons/fa'
 import { createLaboratoryInventory, deleteLaboratoryInventory, getLaboratoryInventories, restockLaboratoryInventory, updateLaboratoryInventory } from '@/services/api/labInventoryApi'
+import { getErrorMessage, showErrorToast } from '@/utils/errorHandler'
 
 const LaboratoryInventoryStocks = () => {
   const [items, setItems] = useState([])
@@ -23,7 +24,7 @@ const LaboratoryInventoryStocks = () => {
       toast.success('Item deleted');
       await fetch();
     } catch (e) {
-      toast.error(e?.response?.data?.message || 'Failed to delete item');
+      showErrorToast(e, 'Failed to delete item');
     } finally {
       setDeleting(null);
     }
@@ -37,8 +38,8 @@ const LaboratoryInventoryStocks = () => {
       const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
       setItems(list)
     } catch (err) {
-      console.error('LaboratoryInventoryStocks: fetch error', err)
-      setError(err)
+      setError(getErrorMessage(err, 'Failed to load laboratory inventory'))
+      showErrorToast(err, 'Failed to load laboratory inventory')
     } finally {
       setLoading(false)
     }
@@ -119,7 +120,7 @@ const LaboratoryInventoryStocks = () => {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      toast.error('Export failed')
+      showErrorToast(e, 'Export failed')
     }
   }
 
@@ -127,38 +128,32 @@ const LaboratoryInventoryStocks = () => {
 
   const handleAdd = async (payload) => {
     const p = createLaboratoryInventory(payload)
-    toast.promise(p, { loading: 'Creating item...', success: 'Item created', error: 'Failed creating' })
+    toast.promise(p, { loading: 'Creating item...', success: 'Item created', error: (e) => getErrorMessage(e, 'Failed creating item') })
     try {
       await p
       fetch()
       setShowAdd(false)
-        } catch (e) {
-          console.error('Error creating inventory:', e)
-        }
+        } catch { }
   }
 
   const handleEdit = async (id, payload) => {
     const p = updateLaboratoryInventory(id, payload)
-    toast.promise(p, { loading: 'Updating item...', success: 'Item updated', error: 'Failed updating' })
+    toast.promise(p, { loading: 'Updating item...', success: 'Item updated', error: (e) => getErrorMessage(e, 'Failed updating item') })
     try {
       await p
       fetch()
       setEditing(null)
-        } catch (e) {
-          console.error('Error updating inventory:', e)
-        }
+        } catch { }
   }
 
   const handleRestock = async (id, payload) => {
     const p = restockLaboratoryInventory(id, payload)
-    toast.promise(p, { loading: 'Restocking...', success: 'Restocked', error: 'Failed restock' })
+    toast.promise(p, { loading: 'Restocking...', success: 'Restocked', error: (e) => getErrorMessage(e, 'Failed to restock item') })
     try {
       await p
       fetch()
       setRestockingFor(null)
-        } catch (e) {
-          console.error('Error restocking inventory:', e)
-        }
+        } catch { }
   }
 
   return (

@@ -4,47 +4,12 @@ import { API_ENDPOINTS } from '../../config/env';
 export const authAPI = {
   // Login user
   login: async (credentials) => {
-    console.log('🔐 AuthAPI: Starting login request');
-    console.log('📤 AuthAPI: Login credentials:', credentials);
-    console.log('🌐 AuthAPI: API endpoint:', API_ENDPOINTS.LOGIN);
-    console.log('🔗 AuthAPI: Full URL:', `${import.meta.env.VITE_API_BASE_URL}${API_ENDPOINTS.LOGIN}`);
-    
-    try {
-      const response = await apiClient.post(API_ENDPOINTS.LOGIN, credentials);
-      console.log('✅ AuthAPI: Login response received');
-      console.log('📥 AuthAPI: Response status:', response.status);
-      console.log('📥 AuthAPI: Response data:', response.data);
-      return response;
-    } catch (error) {
-      console.error('❌ AuthAPI: Login error occurred');
-      console.error('📥 AuthAPI: Error response:', error.response);
-      console.error('📥 AuthAPI: Error data:', error.response?.data);
-      console.error('📥 AuthAPI: Error status:', error.response?.status);
-      console.error('📥 AuthAPI: Error message:', error.message);
-      throw error;
-    }
+    return apiClient.post(API_ENDPOINTS.LOGIN, credentials);
   },
 
   // Logout user
   logout: async () => {
-    console.log('🚪 AuthAPI: Starting logout request');
-    console.log('🌐 AuthAPI: API endpoint: /user/logout');
-    console.log('🔗 AuthAPI: Full URL:', `${import.meta.env.VITE_API_BASE_URL}/user/logout`);
-    
-    try {
-      const response = await apiClient.post('/user/logout');
-      console.log('✅ AuthAPI: Logout response received');
-      console.log('📥 AuthAPI: Response status:', response.status);
-      console.log('📥 AuthAPI: Response data:', response.data);
-      return response;
-    } catch (error) {
-      console.error('❌ AuthAPI: Logout error occurred');
-      console.error('📥 AuthAPI: Error response:', error.response);
-      console.error('📥 AuthAPI: Error data:', error.response?.data);
-      console.error('📥 AuthAPI: Error status:', error.response?.status);
-      console.error('📥 AuthAPI: Error message:', error.message);
-      throw error;
-    }
+    return apiClient.post('/user/logout');
   },
 
   // Refresh token
@@ -57,12 +22,7 @@ export const authAPI = {
 
   // Change password
   changePassword: async (passwordData, userId) => {
-    console.log('🔄 AuthAPI: Changing password for user:', userId);
-    console.log('📤 AuthAPI: Password data:', passwordData);
-    
-    const response = await apiClient.patch(`/user/changePassword/${userId}`, passwordData);
-    console.log('✅ AuthAPI: Change password response:', response);
-    return response;
+    return apiClient.patch(`/user/changePassword/${userId}`, passwordData);
   },
 
   // Forgot password

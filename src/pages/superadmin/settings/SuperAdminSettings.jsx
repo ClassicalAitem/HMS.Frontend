@@ -14,6 +14,7 @@ import {
   FaClipboardList, 
   FaCog 
 } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 const SuperAdminSettings = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -41,12 +42,12 @@ const SuperAdminSettings = () => {
     {
       icon: FaShieldAlt,
       label: 'Security Scan',
-      onClick: () => console.log('Security Scan clicked')
+      onClick: () => toast.info('Security scan is not available yet.')
     },
     {
       icon: FaBell,
       label: 'Notifications',
-      onClick: () => console.log('Notifications clicked')
+      onClick: () => toast.info('Notifications are managed from the notification center.')
     }
   ];
 
