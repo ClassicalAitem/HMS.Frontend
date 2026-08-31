@@ -411,11 +411,14 @@ const PatientDetails = () => {
             />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-            <SendPatientModal
+           <SendPatientModal
               patientId={patient?.id || patientId}
               patient={displayPatient}
               onUpdated={() => navigate('/frontdesk/dashboard')}
               allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+              defaultDependantId={isViewingDependant ? dependantId : null}
+              defaultDependantLabel={summarySubject?.fullName}
+              lockSubject={isViewingDependant}
             />
             <ViewPatientModal patientId={patient?.id || patientId} patient={patient} />
           </div>
