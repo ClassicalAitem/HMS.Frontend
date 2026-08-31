@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList } from 'react-icons/fa';
 import { formatNigeriaDateShort, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { getErrorMessage, showErrorToast } from '@/utils/errorHandler';
 
 const Surgeries = () => {
   const [surgeries, setSurgeries] = useState([]);
@@ -21,12 +22,9 @@ const Surgeries = () => {
   const fetchSurgeries = async () => {
     try {
       setLoading(true);
-      console.log('🏥 Surgeries Page: Fetching all surgery data...');
-      
       // Fetch all surgeries
       const surgeryResponse = await getAllSurgeries();
       const surgeryData = surgeryResponse?.data || [];
-      console.log('🏥 Surgeries Page: Raw surgery data:', surgeryData);
 
       // Resolve patient names for all surgeries
       const surgeriesWithPatientNames = await Promise.all(
@@ -42,8 +40,7 @@ const Surgeries = () => {
               formattedDate: formatDate(surgery.scheduledDate),
               isUpcoming: new Date(surgery.scheduledDate) >= new Date()
             };
-          } catch (patientError) {
-            console.error(`🏥 Surgeries Page: Error fetching patient ${surgery.patientId}:`, patientError);
+          } catch {
             return {
               ...surgery,
               patientName: 'Unknown Patient',
@@ -54,11 +51,11 @@ const Surgeries = () => {
         })
       );
 
-      console.log('🏥 Surgeries Page: Final surgeries with patient names:', surgeriesWithPatientNames);
       setSurgeries(surgeriesWithPatientNames);
     } catch (error) {
-      console.error('🏥 Surgeries Page: Error fetching surgeries:', error);
-      setError('Failed to load surgeries');
+      const message = getErrorMessage(error, 'Failed to load surgeries');
+      setError(message);
+      showErrorToast(error, message);
     } finally {
       setLoading(false);
     }

@@ -10,6 +10,7 @@ import { getUniqueFamilyNames, getUniqueCompanyNames } from '@/services/api/pati
 import SearchableNameDropdown from '@/components/common/SearchableNameDropdown';
 import toast from 'react-hot-toast';
 import KolakLoader from '@/components/common/KolakLoader';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const Registration = () => {
   const navigate = useNavigate();
@@ -173,10 +174,10 @@ const Registration = () => {
       toast.error("Date of birth cannot be in the future.");
       return false;
     }
-    // if (!formData.gender) {
-    //   toast.error("Please select a gender.");
-    //   return false;
-    // }
+    if (!formData.gender) {
+      toast.error('Gender is required.');
+      return false;
+    }
     if (!formData.phone.trim()) {
       toast.error("Phone number is required.");
       return false;
@@ -190,18 +191,20 @@ const Registration = () => {
       return false;
     }
 
-    // Next of kin — required per the form, so validate explicitly instead of relying on HTML5
-    if (!formData.nextOfKin.name.trim()) {
-      toast.error("Next of kin name is required.");
-      return false;
-    }
-    if (!formData.nextOfKin.phone.trim()) {
-      toast.error("Next of kin phone number is required.");
-      return false;
-    }
-    if (!formData.nextOfKin.relationship) {
-      toast.error("Please select next of kin relationship.");
-      return false;
+    const nextOfKinTouched = Object.values(formData.nextOfKin).some((value) => String(value || '').trim());
+    if (nextOfKinTouched) {
+      if (!formData.nextOfKin.name.trim()) {
+        toast.error('Next of kin name is required if adding next of kin details.');
+        return false;
+      }
+      if (!formData.nextOfKin.phone.trim()) {
+        toast.error('Next of kin phone number is required if adding next of kin details.');
+        return false;
+      }
+      if (!formData.nextOfKin.relationship) {
+        toast.error('Next of kin relationship is required if adding next of kin details.');
+        return false;
+      }
     }
 
     // Card type name requirements
@@ -241,6 +244,31 @@ const Registration = () => {
       }
     }
 
+    const dependant = formData.dependants;
+    const dependantTouched = Object.values(dependant).some((value) => String(value || '').trim());
+    if (dependantTouched) {
+      if (!dependant.firstName.trim()) {
+        toast.error('Dependant first name is required if adding a dependant.');
+        return false;
+      }
+      if (!dependant.lastName.trim()) {
+        toast.error('Dependant last name is required if adding a dependant.');
+        return false;
+      }
+      if (!dependant.dob) {
+        toast.error('Dependant date of birth is required if adding a dependant.');
+        return false;
+      }
+      if (!dependant.gender) {
+        toast.error('Dependant gender is required if adding a dependant.');
+        return false;
+      }
+      if (!dependant.relationshipType) {
+        toast.error('Dependant relationship type is required if adding a dependant.');
+        return false;
+      }
+    }
+
 
     
 
@@ -253,10 +281,8 @@ const Registration = () => {
     setIsLoading(true);
     
     try {
-      console.log('🔄 Registration: Creating new patient');
-      console.log('📊 Registration: Patient data:', formData);
-      
       // Prepare data for API (only include HMO if provider is provided)
+      const nextOfKinTouched = Object.values(formData.nextOfKin).some((value) => String(value || '').trim());
       const patientData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -266,7 +292,7 @@ const Registration = () => {
         address: formData.address || undefined,
         dob: formData.dob,
         gender: formData.gender,
-        nextOfKin: formData.nextOfKin,
+        ...(nextOfKinTouched && { nextOfKin: formData.nextOfKin }),
         cardType: formData.cardType || 'personal',
         ...(formData.cardType === 'family' && formData.familyName && { familyName: formatCardName(formData.familyName) }),
         ...(formData.cardType === 'company' && formData.companyName && { companyName: formatCardName(formData.companyName) }),
@@ -291,17 +317,10 @@ const Registration = () => {
         })
       };
 
-      console.log('🔄 Registration: Sending data to backend in form:', patientData);
-      
-      console.log('📤 Registration: Final API data being sent:', JSON.stringify(patientData, null, 2));
-
-      // return;
-      
       const result = await dispatch(addPatient(patientData));
       
       if (addPatient.fulfilled.match(result)) {
         toast.success('Patient registered successfully!');
-        console.log('✅ Registration: Patient created:', result.payload);
         
         // Reset form
         setFormData({
@@ -347,11 +366,10 @@ const Registration = () => {
         // Navigate to patients list
         navigate('/frontdesk/patients');
       } else {
-        toast.error('Failed to register patient');
+        toast.error(getErrorMessage(result.payload, 'Failed to register patient'));
       }
     } catch (error) {
-      console.error('❌ Registration: Registration error:', error);
-      toast.error('Failed to register patient');
+      toast.error(getErrorMessage(error, 'Failed to register patient'));
     } finally {
       setIsLoading(false);
     }

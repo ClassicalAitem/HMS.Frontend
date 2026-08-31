@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaUserPlus, FaEye, FaEyeSlash, FaPlus } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { createMedicalRecord } from '@/services/api/medicalRecordAPI';
 
 // Validation schema
@@ -38,21 +39,18 @@ const AddComplaintModal = ({ isOpen, onClose, onMedicalRecordAdded }) => {
 
 
   const onSubmit = async (data) => {
-    console.log('📝 AddComplaintModal: Form submitted with data:', data);
     setIsLoading(true);
 
     try {
       // Fetch data from the API
     const response = await createMedicalRecord(data);
-    console.log('Medical record added:', response.data);
     toast.success('Medical record added successfully!');
     reset();
     onMedicalRecordAdded();
     } catch (error) {
       
       // Show error message
-      const errorMessage = error.response?.data?.message || 'Failed to create complaint. Please try again.';
-      console.error('❌ AddUserModal: Error creating user:', error);
+      const errorMessage = getErrorMessage(error, 'Failed to create complaint. Please try again.');
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

@@ -37,7 +37,6 @@ export const getPatients = async () => {
       data: patients
     };
   } catch (error) {
-    console.error('Get patients error', error);
     throw error;
   }
 };
@@ -62,7 +61,6 @@ export const updatePatientStatus = async (patientId, statusOrOptions) => {
     );
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Update patient status error', error);
     throw error;
   }
 };
@@ -80,7 +78,6 @@ export const getPatientById = async (patientId) => {
 
     return response.data;
   } catch (error) {
-    console.error('Get patient by ID error', error);
     throw error;
   }
 };
@@ -95,16 +92,9 @@ export const createPatient = async (patientData) => {
         throw new Error(`Missing required field: ${field}`);
       }
     }
-    console.log('📤 PatientsAPI: Creating new patient');
-    console.log('📊 PatientsAPI: Patient data:', patientData);
     const response = await apiClient.post('/patient', patientData);
-    console.log('✅ PatientsAPI: Patient created successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Create patient error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
     throw error;
   }
 };
@@ -112,16 +102,9 @@ export const createPatient = async (patientData) => {
 // Update patient
 export const updatePatient = async (patientId, updateData) => {
   try {
-    console.log('📤 PatientsAPI: Updating patient:', patientId);
-    console.log('📊 PatientsAPI: Update data:', updateData);
     const response = await apiClient.patch(`/patient/${patientId}`, updateData);
-    console.log('✅ PatientsAPI: Patient updated successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Update patient error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
     throw error;
   }
 };
@@ -129,15 +112,9 @@ export const updatePatient = async (patientId, updateData) => {
 // Delete patient (if endpoint exists)
 export const deletePatient = async (patientId) => {
   try {
-    console.log('🗑️ PatientsAPI: Deleting patient:', patientId);
     const response = await apiClient.delete(`/patient/${patientId}`);
-    console.log('✅ PatientsAPI: Patient deleted successfully');
-    console.log('📊 PatientsAPI: Response data:', response.data);
     return response.data;
   } catch (error) {
-    console.error('❌ PatientsAPI: Delete patient error occurred');
-    console.error('📥 PatientsAPI: Error response:', error.response);
-    console.error('📥 PatientsAPI: Error data:', error.response?.data);
     throw error;
   }
 };
@@ -157,7 +134,6 @@ export const getUniqueFamilyNames = async () => {
 
     return familyNames;
   } catch (error) {
-    console.error('Error fetching family names:', error);
     return [];
   }
 };
@@ -176,7 +152,6 @@ export const getUniqueCompanyNames = async () => {
 
     return companyNames;
   } catch (error) {
-    console.error('Error fetching company names:', error);
     return [];
   }
 };

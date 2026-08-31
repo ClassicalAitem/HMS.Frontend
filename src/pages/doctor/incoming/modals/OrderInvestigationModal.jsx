@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaPlus, FaFlask, FaTrash, FaXRay } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { createInvestigationRequestByConsultation, updateInvestigation } from '@/services/api/investigationRequestAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
@@ -169,10 +170,7 @@ const OrderInvestigationModal = ({
 
       console.error("Investigation error:", error);
 
-      toast.error(
-        error.response?.data?.message ||
-        "Failed to save investigation"
-      );
+      toast.error(getErrorMessage(error, 'Failed to save investigation'));
 
     } finally {
       setIsLoading(false);

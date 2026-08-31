@@ -7,6 +7,7 @@ import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtil
 import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList, FaUser, FaPhone, FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import { getErrorMessage, showErrorToast } from '@/utils/errorHandler';
 
 const SurgeryDetails = () => {
   const { surgeryId } = useParams();
@@ -25,30 +26,26 @@ const SurgeryDetails = () => {
   const fetchSurgeryDetails = async () => {
     try {
       setLoading(true);
-      console.log('🏥 SurgeryDetails: Fetching surgery details for ID:', surgeryId);
-      
       // Fetch surgery details
       const surgeryResponse = await getSurgeryById(surgeryId);
       const surgeryData = surgeryResponse?.data || {};
-      console.log('🏥 SurgeryDetails: Surgery data:', surgeryData);
 
       // Fetch patient details
       if (surgeryData.patientId) {
         try {
           const patientResponse = await getPatientById(surgeryData.patientId);
           const patientData = patientResponse?.data || {};
-          console.log('🏥 SurgeryDetails: Patient data:', patientData);
           setPatient(patientData);
-        } catch (patientError) {
-          console.error('🏥 SurgeryDetails: Error fetching patient:', patientError);
+        } catch {
           setPatient(null);
         }
       }
 
       setSurgery(surgeryData);
     } catch (error) {
-      console.error('🏥 SurgeryDetails: Error fetching surgery details:', error);
-      setError('Failed to load surgery details');
+      const message = getErrorMessage(error, 'Failed to load surgery details');
+      setError(message);
+      showErrorToast(error, message);
     } finally {
       setLoading(false);
     }

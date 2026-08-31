@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { useSelector } from 'react-redux';
 import { connectSocket, disconnectSocket, getSocket } from '@/services/socket';
 import { getQueueCount } from '@/services/api/notificationAPI';
+import { showErrorToast } from '@/utils/errorHandler';
 
 const NotificationContext = createContext(null);
 
@@ -16,7 +17,7 @@ export const NotificationProvider = ({ children }) => {
     if (!role) return;
     getQueueCount(role)
       .then((res) => setIncomingCount(res?.data?.count ?? 0))
-      .catch((err) => console.error('Failed to load queue count', err));
+      .catch((err) => showErrorToast(err, 'Unable to refresh the queue count.'));
   }, []);
 
   useEffect(() => {

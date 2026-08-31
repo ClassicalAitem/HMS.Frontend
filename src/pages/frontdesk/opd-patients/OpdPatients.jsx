@@ -9,6 +9,7 @@ import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import KolakLoader from '@/components/common/KolakLoader';
+import { showErrorToast } from '@/utils/errorHandler';
 
 const OpdPatients = () => {
   const navigate = useNavigate();
@@ -34,10 +35,10 @@ const OpdPatients = () => {
           );
           setServiceCharges(labCharges);
         } catch (error) {
-          console.error('Failed to load service charges:', error);
+          showErrorToast(error, 'Failed to load service charges');
         }
       } catch (error) {
-        console.error('Failed to fetch OPD patients:', error);
+        showErrorToast(error, 'Failed to load OPD patients');
         setOpdPatients([]);
       } finally {
         setIsLoading(false);
@@ -62,8 +63,7 @@ const OpdPatients = () => {
         toast.success('OPD patient deleted successfully');
         setOpdPatients(opdPatients.filter((p) => p.id !== id));
       } catch (error) {
-        console.error('Failed to delete OPD patient:', error);
-        toast.error('Failed to delete OPD patient');
+        showErrorToast(error, 'Failed to delete OPD patient');
       }
     }
   }, [opdPatients]);
