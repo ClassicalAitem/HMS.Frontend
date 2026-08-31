@@ -24,7 +24,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 const medicationSchema = yup.object().shape({ 
   medicationType: yup.string().oneOf(['oral', 'injection']).required(), 
   drugName: yup.string().required('Drug name is required'), 
-   dosage: yup.string().required('Dosage is required'),
+  //  dosage: yup.string().required('Dosage is required'),
   frequency: yup.string().required('Frequency is required'),
   duration: yup.string().oneOf(DURATIONS).required('Duration is required'),
   instructions: yup.string(),
