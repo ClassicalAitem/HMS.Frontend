@@ -6,8 +6,16 @@ import { FaTimes, FaCreditCard } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAppDispatch } from '@/store/hooks';
 import { createServiceCharge } from '@/store/slices/serviceChargesSlice';
+<<<<<<< Updated upstream
 import { SERVICE_CHARGE_CATEGORY, SERVICE_CHARGE_CATEGORY_LABELS } from '@/constants/cardTypes';
 import { getErrorMessage } from '@/utils/errorHandler';
+=======
+<<<<<<< HEAD
+=======
+import { SERVICE_CHARGE_CATEGORY, SERVICE_CHARGE_CATEGORY_LABELS } from '@/constants/cardTypes';
+import { getErrorMessage } from '@/utils/errorHandler';
+>>>>>>> c1a281ef631178b691b8229230241375fd524863
+>>>>>>> Stashed changes
 
 const addServiceChargeSchema = yup.object({
   service: yup
