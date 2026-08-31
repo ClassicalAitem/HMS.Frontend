@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import serviceChargesAPI from '../../services/api/serviceChargesAPI';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Async thunks for service charges CRUD operations
 export const fetchServiceCharges = createAsyncThunk(
@@ -13,7 +14,7 @@ export const fetchServiceCharges = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('❌ ServiceChargesSlice: Fetch service charges error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch service charges');
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch service charges Refresh the page or try again later.'));
     }
   }
 );
@@ -29,7 +30,7 @@ export const createServiceCharge = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('❌ ServiceChargesSlice: Create service charge error:', error);
-      throw error; // Rethrow the error to be caught in the component
+      return rejectWithValue(getErrorMessage(error, 'Failed to create service charge Refresh the page or try again later.'));
     }
   }
 );
@@ -45,7 +46,7 @@ export const updateServiceCharge = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('❌ ServiceChargesSlice: Update service charge error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to update service charge');
+      return rejectWithValue(getErrorMessage(error, 'Failed to update service charge Refresh the page or try again later.'));
     }
   }
 );
@@ -61,7 +62,7 @@ export const deleteServiceCharge = createAsyncThunk(
       return { id, data: response.data };
     } catch (error) {
       console.error('❌ ServiceChargesSlice: Delete service charge error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to delete service charge');
+      return rejectWithValue(getErrorMessage(error, 'Failed to delete service charge Refresh the page or try again later.'));
     }
   }
 );

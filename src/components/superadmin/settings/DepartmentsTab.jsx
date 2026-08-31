@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FaPlus, FaUsers, FaBed, FaEdit, FaTrash } from 'react-icons/fa';
 import { AddDepartmentModal, EditDepartmentModal } from '@/components/modals';
 import { getAllDepartments } from '@/services/api/departmentAPI';
+import { showErrorToast } from '@/utils/errorHandler';
 
 const DepartmentsTab = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -17,9 +18,8 @@ const DepartmentsTab = () => {
         const res = await getAllDepartments()
         setDepartments(res.data)
 
-        console.log(res.data);
       } catch(error) {
-        console.error(error);
+        showErrorToast(error, 'Failed to load departments');
       } finally {
         setLoading(false);
       }
@@ -34,13 +34,11 @@ const DepartmentsTab = () => {
   };
 
   const handleEditDepartment = (department) => {
-    console.log('Edit department:', department);
     // TODO: Implement edit functionality
     setSelectedDepartment(department);
   };
 
   const handleDeleteDepartment = (department) => {
-    console.log('Delete department:', department);
     // TODO: Implement delete functionality
   };
 

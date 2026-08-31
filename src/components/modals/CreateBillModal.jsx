@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaPlus, FaMoneyBillWave, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
@@ -264,7 +265,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
       if (onSuccess) onSuccess();
       onClose();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create bill');
+      toast.error(getErrorMessage(error, 'Failed to create bill'));
     } finally {
       setIsLoading(false);
     }

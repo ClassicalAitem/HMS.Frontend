@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { updateHmo } from '@/services/api/hmoAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const EditHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
   const [selectedHmoId, setSelectedHmoId] = useState('');
@@ -64,7 +65,7 @@ const EditHmoModal = ({ isOpen, onClose, patient, onSuccess }) => {
     }
     const err = validateDate(expiresAt);
     if (err) {
-      toast.error(err);
+      toast.error(getErrorMessage(err));
       return;
     }
 

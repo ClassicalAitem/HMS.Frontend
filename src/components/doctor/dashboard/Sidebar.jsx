@@ -52,7 +52,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/doctor",  active: location.pathname === '/dashboard/doctor' },
     { icon: FaInbox, label: "Incoming", path: "/dashboard/doctor/incoming",  active: location.pathname === '/dashboard/doctor/incoming' ,badge: location.pathname.startsWith("/dashboard/doctor/incoming") ? 0 : incomingCount },
-    // { icon: FaUserCheck, label: "Admitted Patients", path: "/dashboard/doctor/admitted", badge: admittedCount },
+    { icon: FaUserCheck, label: "Admitted Patients", path: "/dashboard/doctor/admittedPatients", active: location.pathname === '/dashboard/doctor/admittedPatients' },
     { icon: FaUserCheck, label: "Attended Today", path: "/dashboard/doctor/attended-today", active: location.pathname === '/dashboard/doctor/attended-today'   },
     { icon: SlCalender, label: "Appointments", path: "/dashboard/doctor/appointments",  active: location.pathname === '/dashboard/doctor/appointments' },
     { icon: FaUsers, label: "Patients", path: "/dashboard/doctor/patientshistory",  active: location.pathname === '/dashboard/doctor/patientshistory' },

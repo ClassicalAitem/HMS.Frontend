@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes, FaPlus } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { updateConsultation } from '@/services/api/consultationAPI';
 import { getAllComplaint, createMedicalRecord } from '@/services/api/medicalRecordAPI';
 
@@ -114,7 +115,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
       onClose();
     } catch (error) {
       console.error('Error updating diagnosis:', error);
-      toast.error(error.response?.data?.message || 'Failed to update diagnosis');
+      toast.error(getErrorMessage(error, 'Failed to update diagnosis'));
     } finally {
       setIsLoading(false);
     }

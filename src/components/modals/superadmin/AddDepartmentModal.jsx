@@ -6,6 +6,7 @@ import { FaTimes, FaBuilding } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { create } from 'zustand';
 import { createDepartment } from '@/services/api/departmentAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const addDepartmentSchema = yup.object({
   name: yup
@@ -30,16 +31,12 @@ const AddDepartmentModal = ({ isOpen, onClose, onDepartmentAdded }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
       await createDepartment(data);
-      console.log('Department added:', data);
       toast.success('Department added successfully!');
       reset();
       onDepartmentAdded();
     } catch (error) {
-      console.error('Error adding department:', error);
-      toast.error('Failed to add department');
+      toast.error(getErrorMessage(error, 'Failed to add department'));
     } finally {
       setIsLoading(false);
     }
