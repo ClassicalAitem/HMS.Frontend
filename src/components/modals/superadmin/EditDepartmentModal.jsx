@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { updateDepartment } from '@/services/api/departmentAPI';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchUsers } from '@/store/slices/usersSlice';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 
 const EditDepartmentModal = ({ isOpen, onClose, onDepartmentUpdate }) => {
@@ -67,17 +68,12 @@ const EditDepartmentModal = ({ isOpen, onClose, onDepartmentUpdate }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Data to be sent for creation:', data);
       await updateDepartment(onDepartmentUpdate.id, data)
-      console.log('Department updated:', data);
       toast.success('Department updated successfully!');
       reset();
       onClose();
     } catch (error) {
-      console.error('Error updating department:', error);
-      toast.error('Failed to update department');
+      toast.error(getErrorMessage(error, 'Failed to update department'));
     } finally {
       setIsLoading(false);
     }
@@ -87,10 +83,6 @@ const EditDepartmentModal = ({ isOpen, onClose, onDepartmentUpdate }) => {
     reset();
     onClose();
   };
-
-  console.log('Department', onDepartmentUpdate)
-  console.log('Users:', users);
-
 
 
   if (!isOpen) return null;

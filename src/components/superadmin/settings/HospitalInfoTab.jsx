@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaSave, FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const hospitalInfoSchema = yup.object({
   hospitalName: yup
@@ -57,13 +58,9 @@ const HospitalInfoTab = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Hospital info updated:', data);
       toast.success('Hospital information updated successfully!');
     } catch (error) {
-      console.error('Error updating hospital info:', error);
-      toast.error('Failed to update hospital information');
+      toast.error(getErrorMessage(error, 'Failed to update hospital information'));
     } finally {
       setIsLoading(false);
     }

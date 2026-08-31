@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/frontdesk/dashboard';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { showErrorToast } from '@/utils/errorHandler';
 
 const FrontDeskPaymentRecords = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -60,6 +61,9 @@ const mapped = filteredList.map((a, idx) => ({
 }));
 
 setPaymentRecords(mapped);
+      } catch (error) {
+        showErrorToast(error, 'Failed to load payment records');
+        setPaymentRecords([]);
       } finally {
         setIsLoading(false);
       }
