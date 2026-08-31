@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authAPI } from '../../services/api/authAPI';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Initial state
 const initialState = {
@@ -79,9 +80,7 @@ export const loginUser = createAsyncThunk(
         });
       }
       
-      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
-      console.log('📤 AuthSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Login failed'));
     }
   }
 );
@@ -130,9 +129,7 @@ export const refreshToken = createAsyncThunk(
       const response = await authAPI.refreshToken(auth.refreshToken);
       return response.data;
     } catch (error) {
-      return rejectWithValue(
-        error.response?.data?.message || 'Token refresh failed'
-      );
+      return rejectWithValue(getErrorMessage(error, 'Token refresh failed'));
     }
   }
 );
@@ -166,9 +163,7 @@ export const changePassword = createAsyncThunk(
       }
     } catch (error) {
       console.error('❌ AuthSlice: Change password error:', error);
-      return rejectWithValue(
-        error.response?.data?.message || error.message || 'Password change failed'
-      );
+      return rejectWithValue(getErrorMessage(error, 'Password change failed'));
     }
   }
 );

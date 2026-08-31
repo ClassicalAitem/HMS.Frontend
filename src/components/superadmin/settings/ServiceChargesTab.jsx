@@ -4,6 +4,7 @@ import { AddServiceChargeModal, EditServiceChargeModal } from '@/components/moda
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { deleteServiceCharge, fetchServiceCharges } from '@/store/slices/serviceChargesSlice';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const ServiceChargesTab = ({ categoryFilter = null }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -20,19 +21,11 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
     dispatch(fetchServiceCharges());
   }, [dispatch]);
 
-  // Debug: Log service charges data
-  useEffect(() => {
-    console.log('💰 ServiceChargesTab - Service charges:', serviceCharges);
-    console.log('💰 ServiceChargesTab - isLoading:', isLoading);
-    console.log('💰 ServiceChargesTab - error:', error);
-  }, [serviceCharges, isLoading, error]);
-
   const handleAddServiceCharge = () => {
     setIsAddModalOpen(true);
   };
 
   const handleEditServiceCharge = (serviceCharge) => {
-    console.log('Edit service charge:', serviceCharge);
     setSelectedServiceCharge(serviceCharge);
     setIsEditModalOpen(true);
   };
@@ -59,7 +52,6 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
   );
     const handleDeleteServiceCharge = async (serviceChargeId) => {
     if (window.confirm('Are you sure you want to delete this service charge?')) {
-      console.log('🗑️ ServiceChargesTab: Deleting service charge:', serviceChargeId);
       const result = await dispatch(deleteServiceCharge(serviceChargeId));
 
       if (deleteServiceCharge.fulfilled.match(result)) {
@@ -67,7 +59,7 @@ const ServiceChargesTab = ({ categoryFilter = null }) => {
         // Refresh the list to reflect changes
         dispatch(fetchServiceCharges());
       } else {
-        toast.error(result.payload || 'Failed to delete service charge');
+        toast.error(getErrorMessage(result.payload, 'Failed to delete service charge'));
       }
     }
   };

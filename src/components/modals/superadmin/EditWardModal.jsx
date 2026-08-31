@@ -8,6 +8,7 @@ import { updateWard } from '@/services/api/wardAPI';
 import { useAppDispatch } from '@/store/hooks';
 import { fetchUsers } from '@/store/slices/usersSlice';
 import { getAllDepartments } from '@/services/api/departmentAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const EditWardModal = ({ isOpen, onClose, onWardUpdate }) => {
   const dispatch = useAppDispatch();
@@ -20,9 +21,8 @@ const EditWardModal = ({ isOpen, onClose, onWardUpdate }) => {
           const res = await getAllDepartments()
           setDepartments(res.data)
 
-          console.log(res.data);
         } catch(error) {
-          console.error(error);
+          toast.error(getErrorMessage(error, 'Failed to load departments'));
         }
 
       }
@@ -81,17 +81,12 @@ const EditWardModal = ({ isOpen, onClose, onWardUpdate }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Data to be sent for creation:', data);
       await updateWard(onWardUpdate.id, data)
-      console.log('Ward updated:', data);
       toast.success('Ward updated successfully!');
       reset();
       onClose();
     } catch (error) {
-      console.error('Error updating ward:', error);
-      toast.error('Failed to update ward');
+      toast.error(getErrorMessage(error, 'Failed to update ward'));
     } finally {
       setIsLoading(false);
     }
@@ -101,9 +96,6 @@ const EditWardModal = ({ isOpen, onClose, onWardUpdate }) => {
     reset();
     onClose();
   };
-
-  console.log('Department', departments)
-
 
   if (!isOpen) return null;
 

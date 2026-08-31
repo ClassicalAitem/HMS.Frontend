@@ -13,6 +13,7 @@ import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 // Icons and utilities now handled within extracted components
 import PatientPageHeader from '@/components/frontdesk/patients/PatientPageHeader';
 import PatientIdentificationCard from '@/components/frontdesk/patients/PatientIdentificationCard';
@@ -301,7 +302,7 @@ const PatientDetails = () => {
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       dispatch(clearPatientsError());
       // Redirect to patients list on error
       navigate('/frontdesk/patients');

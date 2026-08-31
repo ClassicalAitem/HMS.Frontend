@@ -4,9 +4,9 @@ import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
-import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
 
 const SurgeonIncoming = () => {
   const navigate = useNavigate();
@@ -26,13 +26,17 @@ const SurgeonIncoming = () => {
     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const res = await getInvestigations();
-        const investigations = res?.data || [];
-        const sorted = investigations.sort((a, b) => {
+        const res = await getInvestigations({ type: 'surgical' });
+        const investigations = Array.isArray(res?.data)
+          ? res.data
+          : (Array.isArray(res) ? res : []);
+
+        const sorted = [...investigations].sort((a, b) => {
           const aTime = new Date(a?.createdAt || 0).getTime();
           const bTime = new Date(b?.createdAt || 0).getTime();
           return bTime - aTime;
         });
+
         const mapped = await Promise.all(sorted.map(async (inv) => {
           let patientName = 'Unknown';
           let patientId = '—';
@@ -68,6 +72,7 @@ const SurgeonIncoming = () => {
             snapshot: inv,
           };
         }));
+
         if (mounted) setItems(mapped);
       } catch (err) {
         console.error("Surgeon Incoming: investigation fetch error", err);

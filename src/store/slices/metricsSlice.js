@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import metricsAPI from '../../services/api/metricsAPI';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Async thunk to fetch metrics
 export const fetchMetrics = createAsyncThunk(
@@ -27,7 +28,7 @@ export const fetchMetrics = createAsyncThunk(
       return mergedData;
     } catch (error) {
       console.error('❌ MetricsSlice: Fetch metrics error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch metrics');
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch metrics'));
     }
   }
 );

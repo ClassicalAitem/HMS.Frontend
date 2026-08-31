@@ -6,6 +6,7 @@ import { FaTimes, FaCreditCard } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAppDispatch } from '@/store/hooks';
 import { updateServiceCharge } from '@/services/api/serviceChargesAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const updateServiceChargeSchema = yup.object({
   service: yup
@@ -126,8 +127,7 @@ const EditServiceChargeModal = ({ isOpen, onClose, onServiceChargeUpdated }) => 
       toast.success('Service charge updated successfully!');
       handleClose();
     } catch (error) {
-      console.error('❌ Error updating service charge:', error);
-      toast.error('Failed to update service charge');
+      toast.error(getErrorMessage(error, 'Failed to update service charge'));
     } finally {
       setIsLoading(false);
     }
