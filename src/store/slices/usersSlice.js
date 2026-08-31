@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { usersAPI } from '../../services/api/usersAPI';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Initial state
 const initialState = {
@@ -26,16 +27,11 @@ const initialState = {
 export const fetchUsers = createAsyncThunk(
   'users/fetchUsers',
   async (params = {}, { rejectWithValue }) => {
-    console.log('🔄 UsersSlice: Starting fetchUsers thunk');
-    console.log('📤 UsersSlice: Request params:', params);
-
     try {
       const response = await usersAPI.getUsers(params);
-      console.log('✅ UsersSlice: API response received:', response);
 
       // Handle the API response structure
       if (response.data.success) {
-        console.log('✅ UsersSlice: Users fetched successfully');
         const users = response.data.data.map(user => ({
           id: user.id,
           firstName: user.firstName,
@@ -55,7 +51,6 @@ export const fetchUsers = createAsyncThunk(
           updatedAt: user.updatedAt,
         }));
 
-        console.log('📦 UsersSlice: Processed users data:', users);
         return {
           users,
           pagination: response.data.pagination || {
@@ -66,14 +61,10 @@ export const fetchUsers = createAsyncThunk(
           }
         };
       } else {
-        console.error('❌ UsersSlice: Fetch users failed - success is false');
         throw new Error(response.data.message || 'Failed to fetch users');
       }
     } catch (error) {
-      console.error('❌ UsersSlice: Fetch users error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch users';
-      console.log('📤 UsersSlice: Rejecting with message:', errorMessage);
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch users Refresh the page or try again later.'));
     }
   }
 );
@@ -81,24 +72,17 @@ export const fetchUsers = createAsyncThunk(
 export const fetchUserById = createAsyncThunk(
   'users/fetchUserById',
   async (userId, { rejectWithValue }) => {
-    console.log('🔄 UsersSlice: Starting fetchUserById thunk');
-    console.log('📤 UsersSlice: User ID:', userId);
-
     try {
       const response = await usersAPI.getUserById(userId);
-      console.log('✅ UsersSlice: API response received:', response);
 
       if (response.data.success) {
         const user = response.data.data;
-        console.log('📦 UsersSlice: Processed user data:', user);
         return user;
       } else {
         throw new Error(response.data.message || 'Failed to fetch user');
       }
     } catch (error) {
-      console.error('❌ UsersSlice: Fetch user by ID error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch user';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, ' Failed to fetch user Refresh the page or try again later.'));
     }
   }
 );
@@ -106,24 +90,17 @@ export const fetchUserById = createAsyncThunk(
 export const createUser = createAsyncThunk(
   'users/createUser',
   async (userData, { rejectWithValue }) => {
-    console.log('🔄 UsersSlice: Starting createUser thunk');
-    console.log('📤 UsersSlice: User data:', userData);
-
     try {
       const response = await usersAPI.createUser(userData);
-      console.log('✅ UsersSlice: API response received:', response);
 
       if (response.data.success) {
         const user = response.data.data;
-        console.log('📦 UsersSlice: Created user data:', user);
         return user;
       } else {
         throw new Error(response.data.message || 'Failed to create user');
       }
     } catch (error) {
-      console.error('❌ UsersSlice: Create user error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create user';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to create user Refresh the page or try again later.'));
     }
   }
 );
@@ -131,25 +108,17 @@ export const createUser = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   'users/updateUser',
   async ({ userId, userData }, { rejectWithValue }) => {
-    console.log('🔄 UsersSlice: Starting updateUser thunk');
-    console.log('📤 UsersSlice: User ID:', userId);
-    console.log('📤 UsersSlice: User data:', userData);
-
     try {
       const response = await usersAPI.updateUser(userId, userData);
-      console.log('✅ UsersSlice: API response received:', response);
 
       if (response.data.success) {
         const user = response.data.data;
-        console.log('📦 UsersSlice: Updated user data:', user);
         return user;
       } else {
         throw new Error(response.data.message || 'Failed to update user');
       }
     } catch (error) {
-      console.error('❌ UsersSlice: Update user error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update user';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to update user Refresh the page or try again later.'));
     }
   }
 );
@@ -157,23 +126,16 @@ export const updateUser = createAsyncThunk(
 export const deleteUser = createAsyncThunk(
   'users/deleteUser',
   async (userId, { rejectWithValue }) => {
-    console.log('🔄 UsersSlice: Starting deleteUser thunk');
-    console.log('📤 UsersSlice: User ID:', userId);
-
     try {
       const response = await usersAPI.deleteUser(userId);
-      console.log('✅ UsersSlice: API response received:', response);
 
       if (response.status === 204) {
-        console.log('📦 UsersSlice: User deleted successfully');
         return userId;
       } else {
         throw new Error(response?.data?.message || 'Failed to delete user');
       }
     } catch (error) {
-      console.error('❌ UsersSlice: Delete user error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete user';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to delete user Refresh the page or try again later.'));
     }
   }
 );
@@ -199,9 +161,7 @@ export const toggleUserStatus = createAsyncThunk(
         throw new Error(response?.data?.message || 'Failed to toggle user status');
       }
     } catch (error) {
-      console.error('❌ UsersSlice: Toggle user status error caught:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to toggle user status';
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(getErrorMessage(error, 'Failed to toggle user status Refresh the page or try again later.'));
     }
   }
 );

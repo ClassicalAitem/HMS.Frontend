@@ -10,6 +10,11 @@ const DispenseConfirmModal = ({
   const [selected, setSelected] = useState({})
   const [qtyOverride, setQtyOverride] = useState({})
 
+  const formatQty = (n) => {
+  const num = Number(n) || 0
+  return Number.isInteger(num) ? num : num.toFixed(2)
+}
+
   const finalRows = useMemo(() => {
     return rows
       .filter((row) => {
@@ -112,8 +117,16 @@ const DispenseConfirmModal = ({
                   </div>
                 </div>
 
-                <div className="text-left md:text-right">
-                  <div className="text-xs text-base-content/60">Prescribed Qty</div>
+               <div className="text-left md:text-right">
+                  {row.bottlesNeeded ? (
+                    <div className="text-xs text-base-content/60">
+                      Prescribed: {formatQty(row.prescribedQty)}{row.suggestedUnit ? ` ${row.suggestedUnit}` : ''}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-base-content/60">
+                      Prescribed Qty{row.suggestedUnit ? ` (${row.suggestedUnit})` : ''}
+                    </div>
+                  )}
                   {isRejected && isSuperAdmin && isChecked ? (
                     <input
                       type="number"
@@ -123,9 +136,11 @@ const DispenseConfirmModal = ({
                       onChange={(e) => setQtyOverride((prev) => ({ ...prev, [row.key]: e.target.value }))}
                     />
                   ) : (
-                    <div className={`text-sm font-bold ${blockedForPharmacist ? 'text-base-content/40 line-through' : 'text-primary'}`}>
-                      {row.suggestedQty} unit(s)
-                    </div>
+                      <div className={`text-sm font-bold ${blockedForPharmacist ? 'text-base-content/40 line-through' : 'text-primary'}`}>
+                        {row.bottlesNeeded
+                          ? `Billed: ${row.bottlesNeeded} bottle${row.bottlesNeeded > 1 ? 's' : ''} (${row.suggestedQty}${row.suggestedUnit ? ` ${row.suggestedUnit}` : ''})`
+                          : `${row.suggestedQty}${row.suggestedUnit ? ` ${row.suggestedUnit}` : ' unit(s)'}`}
+                      </div>
                   )}
                 </div>
               </div>

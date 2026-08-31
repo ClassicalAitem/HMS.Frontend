@@ -6,6 +6,7 @@ import { FaTimes, FaBed } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { getAllDepartments } from '@/services/api/departmentAPI';
 import { createWard } from '@/services/api/wardAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const addWardSchema = yup.object({
   name: yup
@@ -24,8 +25,6 @@ const addWardSchema = yup.object({
   occupancy: yup
     .string()
     .required('Occupancy is required')
-    .min(2, 'Occupancy must be at least 2 characters')
-    .max(10, 'Occupancy must not exceed 10 characters')
 });
 
 const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
@@ -42,17 +41,13 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
         setDepartments(list);
 
 
-        console.log({'Get Departments': res});
       } catch(error) {
-        console.error(error);
+        toast.error(getErrorMessage(error, 'Failed to load departments'));
       }
 
     }
     fetchDepartment();
   }, [isOpen])
-
-  console.log('Departments:', departments);
-
 
 
 
@@ -80,16 +75,13 @@ const AddWardModal = ({ isOpen, onClose, onWardAdded }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
       await createWard(data);
-      console.log('Ward added:', data);
       toast.success('Ward added successfully!');
       reset();
       onWardAdded();
+      window.location.reload(); // Refresh the page to show the new ward
     } catch (error) {
-      console.error('Error adding ward:', error);
-      toast.error('Failed to add ward');
+      toast.error(getErrorMessage(error, 'Failed to add ward'));
     } finally {
       setIsLoading(false);
     }

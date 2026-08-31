@@ -8,6 +8,7 @@ import { DataTable } from '@/components/common';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { Skeleton } from '@heroui/skeleton';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { MedicalDirectorLayout } from '@/layouts/medical-director';
@@ -49,7 +50,7 @@ useEffect(() => {
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       dispatch(clearPatientsError());
     }
   }, [error, dispatch]);

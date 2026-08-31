@@ -1,5 +1,6 @@
 /* eslint-disable no-useless-catch */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Initial state
 const initialState = {
@@ -45,7 +46,7 @@ export const fetchAppointments = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch appointments'));
     }
   }
 );
@@ -72,7 +73,7 @@ export const fetchAppointmentById = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch appointment details'));
     }
   }
 );
@@ -102,7 +103,7 @@ export const createAppointment = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      throw error; // Rethrow the error to be caught in the component
+      return rejectWithValue(getErrorMessage(error, 'Failed to create appointment'));
     }
   }
 );
@@ -132,7 +133,7 @@ export const updateAppointment = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to update appointment'));
     }
   }
 );

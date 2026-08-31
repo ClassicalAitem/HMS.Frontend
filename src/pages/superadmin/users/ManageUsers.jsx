@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
 import { AddUserModal, EditUserModal, ResetPasswordModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const ManageUsers = () => {
@@ -25,14 +26,13 @@ const ManageUsers = () => {
   const [selectedStatus, setSelectedStatus] = useState('all');
 
   useEffect(() => {
-    console.log('🔄 ManageUsers: Component mounted, fetching users');
     dispatch(fetchUsers());
   }, [dispatch]);
 
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       dispatch(clearUsersError());
     }
   }, [error, dispatch]);
@@ -47,7 +47,6 @@ const ManageUsers = () => {
 
   // Filter functions
   const handleRefresh = () => {
-    console.log('🔄 ManageUsers: Refreshing users data');
     dispatch(fetchUsers());
     toast.success('Users data refreshed');
   };
@@ -141,7 +140,6 @@ const ManageUsers = () => {
 
   const handleDeleteUser = async (userId) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
-      console.log('🗑️ ManageUsers: Deleting user:', userId);
       const result = await dispatch(deleteUser(userId));
 
       if (deleteUser.fulfilled.match(result)) {
@@ -167,12 +165,10 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
 };
 
   const handleUserAdded = () => {
-    console.log('🔄 ManageUsers: User added, refreshing users list');
     dispatch(fetchUsers());
   };
 
   const handleUserUpdated = () => {
-    console.log('🔄 ManageUsers: User updated, refreshing users list');
     dispatch(fetchUsers());
   };
 

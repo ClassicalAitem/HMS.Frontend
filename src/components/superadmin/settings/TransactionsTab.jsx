@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { FaDownload, FaEye, FaSearch, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDateShort } from '@/utils/formatDateTimeUtils';
+import { showErrorToast } from '@/utils/errorHandler';
 
 const TransactionsTab = () => {
   const [transactions, setTransactions] = useState([]);
@@ -31,11 +32,10 @@ const TransactionsTab = () => {
             status: a.status
         }))
 
-        console.log('Fetched Receipts:', mapped);
         setTransactions(mapped);
 
       } catch (error) {
-        console.error('Error fetching billing data:', error);
+        showErrorToast(error, 'Failed to load transactions');
       } finally {
         setLoading(false);
       }
@@ -79,7 +79,6 @@ const TransactionsTab = () => {
       .reduce((sum, txn) => sum + Number(txn.amount), 0);
   }
 
-  console.log('Pending Bills:', pendingBills());
 
   const todayRevenue = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -88,7 +87,6 @@ const TransactionsTab = () => {
       .reduce((sum, txn) => sum + Number(txn.amount), 0);
   }
 
-  console.log('Today Revenue:', todayRevenue());
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-NG', {

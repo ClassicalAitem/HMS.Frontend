@@ -14,9 +14,6 @@ const TokenExpirationHandler = () => {
     const handleTokenExpiration = (event) => {
       if (notified) return;
       notified = true;
-      console.log('🚨 TokenExpirationHandler: Token expiration event received');
-      console.log('🚨 TokenExpirationHandler: Event detail:', event.detail);
-      
       const message = event.detail?.message || 'Your session has expired. Please log in again.';
       
       // Show user-friendly error message

@@ -4,10 +4,12 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { createSurgery } from "@/services/api/surgeryAPI";
+import { createSurgery, updateSurgery } from "@/services/api/surgeryAPI";
 import { getInvestigationById } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
+import toast from "react-hot-toast";
 
 
 const initialApgarScore = {
@@ -30,25 +32,31 @@ const initialBabyAssessment = {
   deformity: '',
 };
 
-const WriteSurgicalNote = () => {
-  const { investigationRequestId: paramInvestigationRequestId } = useParams();
+const CreateSurgicalNote = () => {
+  const { investigationRequestId: paramInvestigationRequestId , consultationId} = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
-  const [investigationRequestId, setInvestigationRequestId] = useState(paramInvestigationRequestId);
+  const appointmentSnapshot = location?.state?.appointmentSnapshot;
+  const stateInvestigationRequestId = location?.state?.investigationRequestId;
+  const editSurgery = location?.state?.editSurgery || null;
+  const isEditMode = !!editSurgery;
+  const [investigationRequestId, setInvestigationRequestId] = useState(
+    paramInvestigationRequestId || stateInvestigationRequestId
+  );
   useEffect(() => {
-    setInvestigationRequestId(paramInvestigationRequestId);
-  }, [paramInvestigationRequestId]);
+    setInvestigationRequestId(paramInvestigationRequestId || stateInvestigationRequestId);
+  }, [paramInvestigationRequestId, stateInvestigationRequestId]);
   const [investigations, setInvestigations] = useState([]);
   const [investigationsLoading, setInvestigationsLoading] = useState(false);
   // Optionally, fetch investigation details if needed (not all for a patient)
   // If you want to fetch the investigation request details for this ID:
   const [patientId, setPatientId] = useState(undefined);
   useEffect(() => {
-    if (!paramInvestigationRequestId) return;
+    if (!investigationRequestId) return;
     setInvestigationsLoading(true);
-    getInvestigationById(paramInvestigationRequestId)
+    getInvestigationById(investigationRequestId)
       .then(async (data) => {
         // If the API returns a single object, wrap in array for selector compatibility
         const list = Array.isArray(data) ? data : (data?.data ? [data.data] : [data]);
@@ -79,12 +87,105 @@ const WriteSurgicalNote = () => {
         setPatient(null);
       })
       .finally(() => setInvestigationsLoading(false));
-  }, [paramInvestigationRequestId]);
+  }, [investigationRequestId]);
 
 
   const [patient, setPatient] = useState(snapshot || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Procedure name/code combobox — sourced from past appointments (procedureName+procedureCode are
+  // free-text columns on Appointment; there's no dedicated procedure catalog endpoint)
+  const [procedureOptions, setProcedureOptions] = useState([]);
+  const [procedureOptionsLoading, setProcedureOptionsLoading] = useState(false);
+  const [procedureSearch, setProcedureSearch] = useState("");
+  const [procedureDropdownOpen, setProcedureDropdownOpen] = useState(false);
+  const procedureWrapperRef = React.useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProcedureOptions = async () => {
+      setProcedureOptionsLoading(true);
+      try {
+        const res = await getAllAppointments();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const seen = new Map();
+        list.forEach((appt) => {
+          const name = appt?.procedureName;
+          const code = appt?.procedureCode;
+          if (name && code && !seen.has(name)) {
+            seen.set(name, code);
+          }
+        });
+        const options = Array.from(seen.entries()).map(([name, code]) => ({ name, code }));
+        if (mounted) setProcedureOptions(options);
+      } catch (err) {
+        console.error('[SurgicalNote] Error fetching procedure options:', err);
+        if (mounted) setProcedureOptions([]);
+      } finally {
+        if (mounted) setProcedureOptionsLoading(false);
+      }
+    };
+    loadProcedureOptions();
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!editSurgery) return;
+    setForm((prev) => ({
+      ...prev,
+      procedureName: editSurgery.procedureName || "",
+      procedureCode: editSurgery.procedureCode || "",
+      scheduledDate: editSurgery.scheduledDate
+        ? new Date(editSurgery.scheduledDate).toISOString().split("T")[0]
+        : "",
+      startTime: editSurgery.startTime || "",
+      endTime: editSurgery.endTime || "",
+      operationRoom: editSurgery.operationRoom || "",
+      status: editSurgery.status || "scheduled",
+      notes: editSurgery.notes || "",
+      outcomes: editSurgery.outcomes || "",
+      surgeonTeam: editSurgery.surgeonTeam?.length ? editSurgery.surgeonTeam : [{ surgeonName: "" }],
+      surgeonAssistants: editSurgery.surgeonAssistants?.length ? editSurgery.surgeonAssistants : [{ assistantName: "" }],
+      anesthesiaDosages: editSurgery.anesthesiaDosages?.length ? editSurgery.anesthesiaDosages : [{ anesthesiaType: "", dosage: "" }],
+      vitalSigns: editSurgery.vitalSigns?.length ? editSurgery.vitalSigns : [{
+        bloodPressure: '', heartRate: '', respiratoryRate: '', temperature: '', oxygenSaturation: '',
+      }],
+      postOperativeAssessments: editSurgery.postOperativeAssessment?.length ? editSurgery.postOperativeAssessment : [{ medication: "" }],
+      babyAssessment: editSurgery.babyAssessment?.length ? editSurgery.babyAssessment : [{ ...initialBabyAssessment }],
+      estimatedBloodLoss: editSurgery.estimatedBloodLoss ?? '',
+      complications: editSurgery.complications || '',
+      swabUsed: editSurgery.swabsUsed ?? '',
+      specimensForHistology: editSurgery.specimensForHistology || "not_sent",
+      surgicalFindings: editSurgery.surgicalFindings || "",
+      showBaby: !!editSurgery.babyAssessment?.length,
+    }));
+    setProcedureSearch(editSurgery.procedureName || "");
+  }, [editSurgery]);
+
+  useEffect(() => {
+    if (!procedureDropdownOpen) return;
+    const handleClick = (e) => {
+      if (procedureWrapperRef.current && !procedureWrapperRef.current.contains(e.target)) {
+        setProcedureDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [procedureDropdownOpen]);
+
+  const filteredProcedureOptions = useMemo(() => {
+    const q = (procedureSearch || "").toLowerCase();
+    if (!q) return procedureOptions;
+    return procedureOptions.filter((p) => p.name.toLowerCase().includes(q));
+  }, [procedureOptions, procedureSearch]);
+
+  const selectProcedure = (option) => {
+    setForm((prev) => ({ ...prev, procedureName: option.name, procedureCode: option.code }));
+    setProcedureSearch(option.name);
+    setProcedureDropdownOpen(false);
+  };
 
 
   const patientName = useMemo(() => (
@@ -125,6 +226,33 @@ const WriteSurgicalNote = () => {
     surgicalFindings: "",
     showBaby: false,
   });
+
+  useEffect(() => {
+    if (investigationRequestId || !appointmentSnapshot) return;
+    const appointmentPatientId = appointmentSnapshot.patientId || appointmentSnapshot.patient?.id || appointmentSnapshot.patient?._id;
+    setPatientId(appointmentPatientId);
+    if (appointmentSnapshot.patient) {
+      setPatient(appointmentSnapshot.patient);
+    } else if (appointmentPatientId) {
+      getPatientById(appointmentPatientId)
+        .then((res) => setPatient(res?.data || res))
+        .catch(() => setPatient(null));
+    }
+  }, [appointmentSnapshot, investigationRequestId]);
+
+  useEffect(() => {
+    if (!appointmentSnapshot || investigationRequestId) return;
+    setForm((prev) => ({
+      ...prev,
+      procedureName: appointmentSnapshot.procedureName || prev.procedureName,
+      procedureCode: appointmentSnapshot.procedureCode || prev.procedureCode,
+      scheduledDate: appointmentSnapshot.appointmentDate
+        ? new Date(appointmentSnapshot.appointmentDate).toISOString().split('T')[0]
+        : prev.scheduledDate,
+      startTime: appointmentSnapshot.appointmentTime || prev.startTime,
+    }));
+    setProcedureSearch(appointmentSnapshot.procedureName || '');
+  }, [appointmentSnapshot, investigationRequestId]);
 
   // Handlers for dynamic fields
   const handleChange = (e) => {
@@ -172,18 +300,97 @@ const WriteSurgicalNote = () => {
     }));
   };
 
+  const validateForm = () => {
+    if (!form.procedureName.trim()) {
+      toast("Procedure name is required.");
+      return false;
+    }
+
+    if (!form.scheduledDate) {
+      toast("Schedule date is required.");
+      return false;
+    }
+
+    if (form.startTime && form.endTime && form.endTime <= form.startTime) {
+      toast("End time must be after start time.");
+      return false;
+    }
+
+    const hasValidSurgeon = form.surgeonTeam.some((s) => s.surgeonName.trim());
+    if (!hasValidSurgeon) {
+      toast("At least one surgeon is required.");
+      return false;
+    }
+
+    // Reject rows where only one of the two anesthesia fields was filled
+    const badAnesthesia = form.anesthesiaDosages.some(
+      (a) => (a.anesthesiaType.trim() && !a.dosage.trim()) ||
+             (!a.anesthesiaType.trim() && a.dosage.trim())
+    );
+    if (badAnesthesia) {
+      toast("Each anesthesia entry needs both a type and a dosage.");
+      return false;
+    }
+
+    if (form.estimatedBloodLoss && Number(form.estimatedBloodLoss) < 0) {
+      toast("Estimated blood loss cannot be negative.");
+      return false;
+    }
+
+    if (form.swabUsed && Number(form.swabUsed) < 0) {
+      toast("Number of swabs used cannot be negative.");
+      return false;
+    }
+
+    for (const v of form.vitalSigns) {
+      const fields = ["heartRate", "respiratoryRate", "temperature", "oxygenSaturation"];
+      for (const f of fields) {
+        if (v[f] && Number(v[f]) < 0) {
+          toast("Vital sign values cannot be negative.");
+          return false;
+        }
+      }
+    }
+
+    if (form.showBaby) {
+      for (const b of form.babyAssessment) {
+        const fields = ["weight", "length", "headCircumference", "abdominalCircumference", "randomBloodSugar"];
+        for (const f of fields) {
+          if (b[f] && Number(b[f]) < 0) {
+            toast("Baby assessment measurements cannot be negative.");
+            return false;
+          }
+        }
+        const apgarFields = ["appearance", "pulse", "grimace", "activity", "respiration"];
+        for (const f of apgarFields) {
+          const val = b.apgarScore[f];
+          if (val !== "" && (Number(val) < 0 || Number(val) > 2)) {
+            toast("Apgar scores must be between 0 and 2.");
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSaving(true);
-    if (!investigationRequestId) {
-      setError("No investigationRequestId selected. Please select an investigation request before submitting.");
+    if (!investigationRequestId && !appointmentSnapshot?.id && !appointmentSnapshot?._id && !appointmentSnapshot?.appointmentId) {
+      toast("No investigation request or appointment selected. Please go back to Incoming.");
       setSaving(false);
       return;
     }
     // Prepare payload to match ISurgery
+   // Prepare payload to match ISurgery
     const payload = {
       ...form,
+      surgeonTeam: form.surgeonTeam.filter((s) => s.surgeonName.trim()),
+      surgeonAssistants: form.surgeonAssistants.filter((a) => a.assistantName.trim()),
+      anesthesiaDosages: form.anesthesiaDosages.filter((a) => a.anesthesiaType.trim() && a.dosage.trim()),
       estimatedBloodLoss: form.estimatedBloodLoss ? Number(form.estimatedBloodLoss) : undefined,
       swabUsed: form.swabUsed ? Number(form.swabUsed) : undefined,
       babyAssessment: form.showBaby ? form.babyAssessment.map((b) => ({
@@ -202,23 +409,42 @@ const WriteSurgicalNote = () => {
           respiration: b.apgarScore.respiration ? Number(b.apgarScore.respiration) : undefined,
         },
       })) : undefined,
-      vitalSigns: [
-        {
-          bloodPressure: form.vitalSigns.bloodPressure,
-          heartRate: form.vitalSigns.heartRate ? Number(form.vitalSigns.heartRate) : undefined,
-          respiratoryRate: form.vitalSigns.respiratoryRate ? Number(form.vitalSigns.respiratoryRate) : undefined,
-          temperature: form.vitalSigns.temperature ? Number(form.vitalSigns.temperature) : undefined,
-          oxygenSaturation: form.vitalSigns.oxygenSaturation ? Number(form.vitalSigns.oxygenSaturation) : undefined,
-        }
-      ],
+     vitalSigns: form.vitalSigns.map((v) => ({
+        bloodPressure: v.bloodPressure || undefined,
+        heartRate: v.heartRate ? Number(v.heartRate) : undefined,
+        respiratoryRate: v.respiratoryRate ? Number(v.respiratoryRate) : undefined,
+        temperature: v.temperature ? Number(v.temperature) : undefined,
+        oxygenSaturation: v.oxygenSaturation ? Number(v.oxygenSaturation) : undefined,
+      })),
+      postOperativeAssessment: form.postOperativeAssessments
+        .filter((m) => m.medication?.trim())
+        .map((m) => ({ medication: m.medication.trim() })),
       // , dependantId, surgeonId, investigationRequestId are set by backend
     };
     try {
-      await createSurgery(investigationRequestId, payload);
-      alert("Surgical note submitted successfully!");
-      navigate(`/dashboard/surgeon/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } });
+      if (isEditMode) {
+        await updateSurgery(editSurgery._id, payload);
+        alert("Surgical note updated successfully!");
+      } else if (investigationRequestId) {
+        await createSurgery(investigationRequestId, payload);
+        alert("Surgical note submitted successfully!");
+      } else {
+        await createSurgery(
+          appointmentSnapshot.id || appointmentSnapshot._id || appointmentSnapshot.appointmentId,
+          payload,
+        );
+        alert("Surgical note submitted successfully!");
+      }
+      navigate(
+        appointmentSnapshot && !investigationRequestId
+          ? '/dashboard/surgeon/incoming'
+          : `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}`,
+        { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } },
+      );
     } catch (err) {
-      setError("Failed to submit surgical note.\n" + (err?.response?.data?.message || err.message));
+      const message = err?.response?.data?.message || err.message;
+      setError("Failed to submit surgical note.\n" + message);
+      toast(message || "Failed to submit surgical note.");
     } finally {
       setSaving(false);
     }
@@ -234,7 +460,7 @@ const WriteSurgicalNote = () => {
                     <div className="flex items-center gap-3 w-full justify-between">
                       <div className="flex items-center gap-3">
                         <div>
-                          <h1 className="text-2xl font-semibold text-base-content">Write Surgical Note    |    </h1>
+                          <h1 className="text-2xl font-semibold text-base-content">{isEditMode ? "Edit Surgical Note" : "Write Surgical Note"}    |    </h1>
                         </div>
         
                        <div className="flex items-center gap-3">
@@ -254,7 +480,7 @@ const WriteSurgicalNote = () => {
                       <div>
                         <IoIosCloseCircleOutline 
                           className="btn btn-ghost text-error btn-md btn-circle" 
-                          onClick={() => navigate(`/dashboard/surgeon/medical-history/${patientId}`, { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } })} />
+                          onClick={() => navigate(-1)} />
                       </div>
                     </div>
                   </div>
@@ -266,14 +492,63 @@ const WriteSurgicalNote = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="label">Procedure Name *</label>
-                <input name="procedureName" value={form.procedureName} onChange={handleChange} className="input input-bordered w-full" required />
+                <div ref={procedureWrapperRef} className="relative w-full">
+                  <input
+                    type="text"
+                    className="input input-bordered w-full"
+                    placeholder={procedureOptionsLoading ? "Loading procedures..." : "Search or type procedure name..."}
+                    value={procedureSearch || form.procedureName}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setProcedureSearch(value);
+                      setProcedureDropdownOpen(true);
+                      // Allow free typing; keep procedureName in sync so a manually-typed
+                      // name still submits even if it isn't in the options list
+                      setForm((prev) => ({ ...prev, procedureName: value }));
+                    }}
+                    onFocus={() => setProcedureDropdownOpen(true)}
+                    autoComplete="off"
+                    required
+                  />
+                  {procedureDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {filteredProcedureOptions.length > 0 ? (
+                        <ul className="py-1">
+                          {filteredProcedureOptions.map((option) => (
+                            <li
+                              key={option.name}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                selectProcedure(option);
+                              }}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700 flex justify-between items-center"
+                            >
+                              <span>{option.name}</span>
+                              <span className="text-xs text-gray-400 ml-2">{option.code}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="py-2 px-4 text-gray-400 text-sm">
+                          {procedureOptionsLoading ? "Loading..." : "No matching past procedures — you can type a new one"}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="label">Procedure Code</label>
-                <input name="procedureCode" value={form.procedureCode} onChange={handleChange} className="input input-bordered w-full" />
+                <input
+                  name="procedureCode"
+                  value={form.procedureCode}
+                  onChange={handleChange}
+                  className="input input-bordered w-full"
+                  placeholder="Auto-filled from procedure name, or enter manually"
+                />
               </div>
               <div>
-                <label className="label">Scheduled Date *</label>
+                <label className="label">Schedule Date *</label>
                 <input type="date" name="scheduledDate" value={form.scheduledDate} onChange={handleChange} className="input input-bordered w-full" required />
               </div>
               <div>
@@ -334,8 +609,8 @@ const WriteSurgicalNote = () => {
               <label className="label">Anesthesia with Dosage</label>
               {form.anesthesiaDosages.map((a, i) => (
                 <div key={i} className="flex gap-2 mb-2">
-                  <input placeholder="Anesthesia Type" value={a.anesthesiaType} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anesthesiaType')} className="input input-bordered flex-1" />
-                  <input placeholder="Dosage" value={a.dosage} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'dosage')} className="input input-bordered flex-1" />
+                  <input required placeholder="Anesthesia Type" value={a.anesthesiaType} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anesthesiaType')} className="input input-bordered flex-1" />
+                  <input required placeholder="Dosage" value={a.dosage} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'dosage')} className="input input-bordered flex-1" />
                   {form.anesthesiaDosages.length > 1 && (
                     <button type="button" className="btn btn-error btn-xs" onClick={() => removeFromList('anesthesiaDosages', i)}>Remove</button>
                   )}
@@ -478,8 +753,8 @@ const WriteSurgicalNote = () => {
             </div>
 
             <div className="flex justify-center gap-4 pt-4 pb-12">
-              <button type="submit" className="btn bg-[#00943C] hover:bg-[#007a31] text-white px-12 h-12 text-lg font-normal normal-case rounded-md" disabled={saving || !investigationRequestId}>{saving ? "Saving..." : "Save"}</button>
-              <button type="button" className="btn btn-outline border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-12 h-12 text-lg font-normal normal-case rounded-md" onClick={() => window.history.back()}>Cancel</button>
+             <button type="submit" className="btn bg-[#00943C] hover:bg-[#007a31] text-white px-12 h-12 text-lg font-normal normal-case rounded-md" disabled={saving || (!investigationRequestId && !appointmentSnapshot?.id && !appointmentSnapshot?._id && !appointmentSnapshot?.appointmentId)}>{saving ? "Saving..." : isEditMode ? "Update" : "Save"}</button>
+             <button type="button" className="btn btn-outline border-gray-300 hover:border-gray-400 hover:bg-gray-50 text-gray-700 px-12 h-12 text-lg font-normal normal-case rounded-md" onClick={() => window.history.back()}>Cancel</button>
             </div>
           </form>
         </div>
@@ -488,4 +763,4 @@ const WriteSurgicalNote = () => {
   );
 };
 
-export default WriteSurgicalNote;
+export default CreateSurgicalNote;
