@@ -16,7 +16,7 @@ import SendPatientModal from '@/components/modals/SendPatientModal'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import KolakLoader from '@/components/common/KolakLoader'
 import { useNotifications } from '@/contexts/NotificationContext'
-import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator'
+import { calculatePrescriptionLine } from '@/utils/prescriptionsCalculator'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import { usersAPI } from '@/services/api/usersAPI'
 
@@ -159,47 +159,94 @@ const IncomingDetails = () => {
   }
 }, [prescriptions])
 
-  const calculateQuantity = (med) => calculateDispenseQuantity(med.frequency, med.duration)
+const formatQty = (n) => {
+  const num = Number(n) || 0
+  return Number.isInteger(num) ? num : num.toFixed(2)
+}
+
+  const findInventoryMatch = (med) => {
+    const medicationName = String(med.drugName || '').toLowerCase()
+    return inventory.find(
+      (item) =>
+        (item._id || item.id) === med.inventoryId ||
+        String(item.name || '').toLowerCase() === medicationName
+    )
+  }
+
+const getDispenseInfo = (med) => {
+  const inv = findInventoryMatch(med)
+  if (!inv) return { inv: null, quantity: 0, unit: null, convertible: true, prescribedQty: 0, bottlesNeeded: null }
+
+  const line = calculatePrescriptionLine({
+    medicationType: med.medicationType,
+    dosageAmount: med.dosageAmount,
+    dosageUnit: med.dosageUnit,
+    frequency: med.frequency,
+    duration: med.duration,
+    inventory: inv,
+  })
+
+  return {
+    inv,
+    quantity: line.convertible === false ? 0 : (line.billedQuantity ?? 0),
+    unit: inv.unit === 'tablet' ? null : (line.unit || inv.unit),
+    convertible: line.convertible !== false,
+    prescribedQty: line.convertible === false ? 0 : (line.prescribedQuantity ?? 0),
+    bottlesNeeded: line.bottlesNeeded ?? null,
+  }
+}
 
   // Determine stock & billing availability state
-  const getDrugAvailabilityStatus = (med, suggestedQty) => {
-    // 1. Not Stocked by Hospital (Explicitly set unavailable or missing inventory ID)
-    if (med.availability === 'unavailable' || !med.inventoryId) {
-      return {
-        label: 'Not Stocked by Hospital',
-        badgeClass: 'badge-warning',
-        inStock: false,
-        isBilled: false,
-        stockQty: 0,
-      }
-    }
+  const getDrugAvailabilityStatus = (med, dispenseInfo) => {
+  const unitSuffix = dispenseInfo.unit ? ` ${dispenseInfo.unit}` : ''
 
-    const inv = inventory.find(
-      (i) => (i._id || i.id) === med.inventoryId || i.name.toLowerCase() === med.drugName.toLowerCase()
-    )
-
-    const stockQty = Number(inv?.stock ?? inv?.quantity ?? inv?.stockQuantity ?? 0)
-
-    // 2. Out of Stock (Hospital stocks it, but available quantity is 0 or less than prescribed quantity)
-    if (!inv || stockQty < suggestedQty) {
-      return {
-        label: stockQty === 0 ? 'Out of Stock (0 Left)' : `Insufficient Stock (${stockQty} Left)`,
-        badgeClass: 'badge-error',
-        inStock: false,
-        stockQty,
-        isBilled: false,
-      }
-    }
-
-    // 3. In Stock (Sufficient stock available)
+  // 1. Not Stocked by Hospital (Explicitly set unavailable or missing inventory ID)
+  if (med.availability === 'unavailable' || !med.inventoryId) {
     return {
-      label: `In Stock (${stockQty} Available)`,
-      badgeClass: 'badge-success',
-      inStock: true,
-      stockQty,
-      isBilled: true,
+      label: 'Not Stocked by Hospital',
+      badgeClass: 'badge-warning',
+      inStock: false,
+      isBilled: false,
+      stockQty: 0,
     }
   }
+
+  const { inv, quantity, convertible } = dispenseInfo
+
+  if (!convertible) {
+    return {
+      label: 'Cannot determine quantity — check dosage unit',
+      badgeClass: 'badge-error',
+      inStock: false,
+      stockQty: 0,
+      isBilled: false,
+    }
+  }
+
+  const stockQty = Number(inv?.stock ?? 0)
+
+  // 2. Out of Stock (Hospital stocks it, but available quantity is 0 or less than prescribed quantity)
+  if (!inv || stockQty < quantity) {
+    return {
+      label: stockQty === 0
+        ? `Out of Stock (0${unitSuffix} Left)`
+        : `Insufficient Stock (${formatQty(stockQty)}${unitSuffix} Left)`,
+      badgeClass: 'badge-error',
+      inStock: false,
+      stockQty,
+      isBilled: false,
+    }
+  }
+
+  // 3. In Stock (Sufficient stock available)
+  return {
+    label: `In Stock (${formatQty(stockQty)}${unitSuffix} Available)`,
+    badgeClass: 'badge-success',
+    inStock: true,
+    stockQty,
+    isBilled: true,
+  }
+}
 
   const getHmoStatusForMed = (prescriptionId, drugName) => {
     if (!billings.length) return null
@@ -241,31 +288,33 @@ const IncomingDetails = () => {
         : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
 
      return (p.medications || []).map((m) => {
-        const inv = inventory.find(
-          (i) => (i._id || i.id) === m.inventoryId || i.name.toLowerCase() === m.drugName.toLowerCase()
-        )
-        const suggestedQty = calculateQuantity(m)
-        const availabilityInfo = getDrugAvailabilityStatus(m, suggestedQty)
+        const dispenseInfo = getDispenseInfo(m)
+        const suggestedQty = dispenseInfo.quantity
+        const suggestedUnit = dispenseInfo.unit // 'ml' | 'iu' | null
+        const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
         const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
 
-        return {
-          ...m,
-          form: inv?.form,
-          strength: inv?.strength,
-          status: p.status,
-          pharmacistName: p.pharmacistName,
-          doctorName: doctors[p.doctorId] || null, 
-          _id: p._id,
-          createdAt: p.createdAt,
-          updatedAt: p.updatedAt,
-          isForDependant,
-          dependantId: p.dependantId,
-          patientId: p.patientId,
-          forName,
-          suggestedQty,
-          availabilityInfo,
-          hmoStatus,
-        }
+       return {
+  ...m,
+  form: dispenseInfo.inv?.form,
+  strength: dispenseInfo.inv?.strength,
+  status: p.status,
+  pharmacistName: p.pharmacistName,
+  doctorName: doctors[p.doctorId] || null, 
+  _id: p._id,
+  createdAt: p.createdAt,
+  updatedAt: p.updatedAt,
+  isForDependant,
+  dependantId: p.dependantId,
+  patientId: p.patientId,
+  forName,
+  suggestedQty,
+  suggestedUnit: dispenseInfo.unit,
+  prescribedQty: dispenseInfo.prescribedQty,
+  bottlesNeeded: dispenseInfo.bottlesNeeded,
+  availabilityInfo,
+  hmoStatus,
+}
       })
     })
 
@@ -311,8 +360,15 @@ const IncomingDetails = () => {
                 <div className="text-sm">Frequency: {m.frequency}</div>
                 <div className="text-sm">Duration: {m.duration}</div>
                 <div className="text-sm font-medium text-primary mt-1">
-                  Prescribed Quantity: {m.suggestedQty} unit(s)
-                </div>
+                  <div className="text-sm font-medium text-primary mt-1">
+                    Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
+                  </div>
+                  {m.bottlesNeeded ? (
+                    <div className="text-sm font-medium text-primary">
+                      Billed: {m.bottlesNeeded} bottle{m.bottlesNeeded > 1 ? 's' : ''} ({m.suggestedQty}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ''})
+                    </div>
+                  ) : null}
+                  </div>
               </div>
               <div className="text-sm sm:text-right space-y-1">
                 <div>Status: <span className="capitalize font-medium">{m.status}</span></div>
@@ -352,27 +408,29 @@ const IncomingDetails = () => {
         : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
 
       return (p.medications || []).map((m) => {
-        const inv = inventory.find(
-          (i) => (i._id || i.id) === m.inventoryId || i.name.toLowerCase() === m.drugName.toLowerCase()
-        )
-        const suggestedQty = calculateQuantity(m)
-        const availabilityInfo = getDrugAvailabilityStatus(m, suggestedQty)
+        const dispenseInfo = getDispenseInfo(m)
+        const suggestedQty = dispenseInfo.quantity
+          const suggestedUnit = dispenseInfo.unit
+        const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
         const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
 
        return {
-          key: `${p._id}-${m.drugName}`,
-          prescriptionId: p._id,
-          drugName: m.drugName,
-          dosage: m.dosage,
-          frequency: m.frequency,
-          duration: m.duration,
-          forName,
-          doctorName: doctors[p.doctorId] || null, 
-          suggestedQty,
-          formStrength: inv ? `${inv.form || ''} ${inv.strength ? '• ' + inv.strength : ''}`.trim() : '',
-          availabilityInfo,
-          hmoStatus,
-        }
+  key: `${p._id}-${m.drugName}`,
+  prescriptionId: p._id,
+  drugName: m.drugName,
+  dosage: m.dosage,
+  frequency: m.frequency,
+  duration: m.duration,
+  forName,
+  doctorName: doctors[p.doctorId] || null, 
+  suggestedQty,
+  suggestedUnit,
+  prescribedQty: dispenseInfo.prescribedQty,
+  bottlesNeeded: dispenseInfo.bottlesNeeded,
+  formStrength: dispenseInfo.inv ? `${dispenseInfo.inv.form || ''} ${dispenseInfo.inv.strength ? '• ' + dispenseInfo.inv.strength : ''}`.trim() : '',
+  availabilityInfo,
+  hmoStatus,
+}
       })
     })
   }

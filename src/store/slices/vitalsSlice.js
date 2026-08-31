@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import vitalsAPI from '../../services/api/vitalsAPI';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Async thunk to fetch vitals
 export const fetchVitals = createAsyncThunk(
@@ -13,7 +14,7 @@ export const fetchVitals = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('❌ VitalsSlice: Fetch vitals error:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch vitals');
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch vitals Refresh the page or try again later.'));
     }
   }
 );

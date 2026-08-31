@@ -5,6 +5,7 @@ import { FaFileInvoice } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
@@ -123,7 +124,7 @@ const CashierPatientDetails = () => {
 
   useEffect(() => {
     if (error && !snapshot && !currentPatient) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       dispatch(clearPatientsError());
     }
   }, [error, dispatch, snapshot, currentPatient]);

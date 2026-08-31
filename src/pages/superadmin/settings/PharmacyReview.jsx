@@ -11,6 +11,7 @@ import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import { DispenseConfirmModal } from '@/components/modals'
 import toast from 'react-hot-toast'
+import { getErrorMessage } from '@/utils/errorHandler'
 
 const PharmacyReview = () => {
   const currentUser = useAppSelector((state) => state.auth.user)
@@ -102,8 +103,7 @@ const PharmacyReview = () => {
 
         if (mounted) setCandidates([...patientCandidates, ...dependantCandidates])
       } catch (err) {
-        console.error('PharmacyReview: failed to load candidates', err)
-        toast.error('Failed to load pharmacy review list')
+        toast.error(getErrorMessage(err, 'Failed to load pharmacy review list'))
       } finally {
         if (mounted) setLoading(false)
       }
@@ -149,8 +149,7 @@ const PharmacyReview = () => {
         : []
       setBillings(Array.isArray(rawBillings) ? rawBillings : [])
     } catch (err) {
-      console.error('PharmacyReview: failed to load detail', err)
-      toast.error('Failed to load patient detail')
+      toast.error(getErrorMessage(err, 'Failed to load patient detail'))
     } finally {
       setDetailLoading(false)
     }
@@ -272,7 +271,7 @@ const PharmacyReview = () => {
       toast.promise(promise, {
         loading: 'Dispensing override item(s)...',
         success: 'Dispensed successfully',
-        error: 'Failed — check stock levels',
+        error: (error) => getErrorMessage(error, 'Failed to dispense. Check stock levels.'),
       })
 
       await promise
@@ -290,7 +289,7 @@ const PharmacyReview = () => {
         )
       )
     } catch (err) {
-      console.error('PharmacyReview: dispense failed', err)
+      toast.error(getErrorMessage(err, 'Failed to dispense. Check stock levels.'))
     } finally {
       setDispenseSubmitting(false)
     }

@@ -6,11 +6,13 @@ import { FaTimes, FaUserEdit, FaEye, FaEyeSlash, FaSave } from 'react-icons/fa';
 import { usersAPI } from '../../../services/api/usersAPI';
 import toast from 'react-hot-toast';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 // Validation schema
 const resetPasswordSchema = yup.object({
   password: yup
     .string()
+    .required('Password is required')
     .min(6, 'Password must be at least 8 characters')
     .max(50, 'Password must not exceed 50 characters'),
   confirmPassword: yup
@@ -47,14 +49,12 @@ const ResetPasswordModal = ({ isOpen, onClose, user, onUserUpdated }) => {
   // Update form values when user prop changes
   useEffect(() => {
     if (user && isOpen) {
-      console.log('📝 ResetPasswordModal: Setting form values for user:', user);
       setValue('password', '');
       setValue('confirmPassword', '');
     }
   }, [user, isOpen, setValue]);
 
   const onSubmit = async (data) => {
-    console.log('📝 ResetPasswordModal: Form submitted with data:', data);
     setIsLoading(true);
 
     const resetPasswordData = {
@@ -66,25 +66,13 @@ const ResetPasswordModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       resetPasswordData.password = data.password;
     }
 
-    console.log('📤 ResetPasswordModal: Sending update data:', resetPasswordData);
-
     try {
       await toast.promise(
         usersAPI.resetUserPassword(resetPasswordData),
         {
           loading: 'Resetting user password...',
           success: 'User password reset successfully!',
-          error: (err) => {
-            console.error('❌ ResetPasswordModal: Error updating user:', err);
-            const responseMsg = err.response?.data?.message;
-            
-            // Handle object error messages safely to prevent React crash
-            if (typeof responseMsg === 'object' && responseMsg !== null) {
-              return responseMsg.message || 'Failed to reset password';
-            }
-            
-            return responseMsg || 'Failed to reset password. Please try again.';
-          }
+          error: (err) => getErrorMessage(err, 'Failed to reset password. Please try again.')
         }
       );
 
@@ -98,7 +86,6 @@ const ResetPasswordModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       }
     } catch (error) {
       // Error is handled by toast.promise error callback
-      console.error('❌ ResetPasswordModal: Error caught in submit:', error);
     } finally {
       setIsLoading(false);
     }

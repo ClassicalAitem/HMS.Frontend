@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { addDependantForPatient } from '@/services/api/dependantAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const emptyDependant = {
   firstName: '',
@@ -45,7 +46,7 @@ const AddDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
     e.preventDefault();
     const error = validate();
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       return;
     }
 
@@ -57,14 +58,13 @@ const AddDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
       toast.promise(promise, {
         loading: `Adding ${dependants.length} dependant${dependants.length > 1 ? 's' : ''}...`,
         success: 'Dependants added successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to add dependants'
+        error: (err) => getErrorMessage(err, 'Failed to add dependants')
       }, { duration: 3000 });
 
       await promise;
       onSuccess && onSuccess();
       onClose();
-    } catch (err) {
-      console.error('AddDependantModal submit error', err);
+    } catch {
     } finally {
       setIsLoading(false);
     }
