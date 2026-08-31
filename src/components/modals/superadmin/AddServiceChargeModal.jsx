@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { useAppDispatch } from '@/store/hooks';
 import { createServiceCharge } from '@/store/slices/serviceChargesSlice';
 import { SERVICE_CHARGE_CATEGORY, SERVICE_CHARGE_CATEGORY_LABELS } from '@/constants/cardTypes';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const addServiceChargeSchema = yup.object({
   service: yup
@@ -119,8 +120,7 @@ const AddServiceChargeModal = ({ isOpen, onClose, onServiceChargeAdded }) => {
       setAdmissionInputError('');
       onServiceChargeAdded();
     } catch (error) {
-      console.error('❌ Error adding service charge:', error);
-      toast.error(error?.message || 'Failed to add service charge');
+      toast.error(getErrorMessage(error, 'Failed to add service charge'));
     } finally {
       setIsLoading(false);
     }

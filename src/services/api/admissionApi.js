@@ -65,6 +65,16 @@ export const updateAdmission = async (id, updateData) => {
   }
 }
 
+export const confirmAdmission = async (id, { wardId, bedNumber } = {}) => {
+  try {
+    const response = await apiClient.patch(`/admission/${id}/confirm`, { wardId, bedNumber })
+    return response.data ?? {}
+  } catch (err) {
+    console.error('admissionAPI: confirmAdmission error', err)
+    throw err
+  }
+}
+
 export const dischargeAdmission = async (id, dischargeNotes) => {
   try {
     const response = await apiClient.patch(`/admission/${id}/discharge`, { dischargeNotes })
@@ -111,6 +121,7 @@ export default {
   getAdmissionById,
   getAdmissionByPatientId,
   updateAdmission,
+  confirmAdmission,
   dischargeAdmission,
   createAdmission,
   deleteAdmission

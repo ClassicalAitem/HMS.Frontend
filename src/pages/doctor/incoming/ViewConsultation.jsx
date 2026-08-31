@@ -67,7 +67,7 @@ import { SendToHmoModal } from '@/components/modals';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { DoctorLayout } from '@/components/doctor/doctor';
-import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator';
+import { calculateDispenseQuantity, calculatePrescriptionLine } from '@/utils/prescriptionsCalculator';
 import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
 import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
 import AddExaminationModal from './modals/AddExaminationModal';
@@ -732,24 +732,37 @@ const ViewConsultation = () => {
         }),
       );
     const prescriptionItems = prescriptions
-      .filter((prescription) => !prescription.isBilled && !prescription.billId)
-      .flatMap((prescription) =>
-        (Array.isArray(prescription.medications) ? prescription.medications : []).map((medication) => {
-          const inventory = getInventoryMatch(medication);
-          const unavailable = medication.availability === 'unavailable';
-          const stock = Number(inventory?.stock) || 0;
-          return {
-            serviceChargeId: prescription.serviceChargeId || '',
-            code: 'PRESCRIPTION',
-            description: `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
-            quantity: calculateDispenseQuantity(medication.frequency, medication.duration) || 1,
-            price: unavailable || !inventory || stock <= 0 ? 0 : Number(inventory.sellingPrice) || 0,
-            prescriptionId: prescription._id || prescription.id,
-            availability: unavailable ? 'unavailable' : 'available',
-            stock,
-          };
-        }),
-      );
+  .filter((prescription) => !prescription.isBilled && !prescription.billId)
+  .flatMap((prescription) =>
+    (Array.isArray(prescription.medications) ? prescription.medications : []).map((medication) => {
+      const inventory = getInventoryMatch(medication);
+      const unavailable = medication.availability === 'unavailable';
+      const stock = Number(inventory?.stock) || 0;
+      const isUnbillable = unavailable || !inventory || stock <= 0;
+
+      const line = !isUnbillable
+        ? calculatePrescriptionLine({
+            medicationType: medication.medicationType,
+            dosageAmount: medication.dosageAmount,
+            dosageUnit: medication.dosageUnit,
+            frequency: medication.frequency,
+            duration: medication.duration,
+            inventory,
+          })
+        : null;
+
+      return {
+        serviceChargeId: prescription.serviceChargeId || '',
+        code: 'PRESCRIPTION',
+        description: `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
+        quantity: isUnbillable ? 1 : (line?.billedQuantity ?? 1),
+        price: isUnbillable ? 0 : (line?.unitPrice ?? 0),
+        prescriptionId: prescription._id || prescription.id,
+        availability: unavailable ? 'unavailable' : 'available',
+        stock,
+      };
+    }),
+  );
     const admissionItems = activeAdmissions
       .filter((admission) => !admission.isBilled && !admission.billId)
       .flatMap((admission) =>
@@ -2140,7 +2153,6 @@ const ViewConsultation = () => {
                                   )}
                                 </div>
 
-                                {/* ACTION BUTTONS */}
                                 {/* ACTION BUTTONS */}
                                 {!pres.isBilled && (
                                   <div className="flex gap-2">

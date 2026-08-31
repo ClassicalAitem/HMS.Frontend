@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaUserShield } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const createRoleSchema = yup.object({
   name: yup
@@ -60,15 +61,11 @@ const CreateRoleModal = ({ isOpen, onClose, onRoleCreated }) => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Role created:', data);
       toast.success('Role created successfully!');
       reset();
       onRoleCreated();
     } catch (error) {
-      console.error('Error creating role:', error);
-      toast.error('Failed to create role');
+      toast.error(getErrorMessage(error, 'Failed to create role'));
     } finally {
       setIsLoading(false);
     }

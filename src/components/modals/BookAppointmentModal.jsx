@@ -5,6 +5,7 @@ import { getPatients } from '@/services/api/patientsAPI';
 import { getAllComplaint } from '@/services/api/medicalRecordAPI';
 import { toast } from 'react-hot-toast';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -17,8 +18,6 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     procedureCode: '',
     notes: ''
   });
-
-  console.log('Form Data:', formData);
 
   const [complaints, setComplaints] = useState([]);
 
@@ -43,7 +42,6 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     }
   }, [isOpen]);
 
-  console.log('Fetched complaints:', complaints);
 
   // Validation state
   const [dateError, setDateError] = useState('');
@@ -162,7 +160,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     }));
     setDependants(normalized);
   } catch (e) {
-    console.error('Failed to load dependants for patient', e);
+    toast.error(getErrorMessage(e, 'Failed to load dependants'));
     setDependants([]);
   } finally {
     setLoadingDependants(false);
@@ -302,8 +300,25 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
       setTimeError('');
       setProcedureError({ name: '', code: '' });
     };
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.patientId) {
+      toast.error('Patient is required.');
+      return;
+    }
+    if (!formData.appointmentDate) {
+      toast.error('Appointment date is required.');
+      return;
+    }
+    if (!formData.appointmentTime) {
+      toast.error('Appointment time is required.');
+      return;
+    }
+    if (!formData.department) {
+      toast.error('Department is required.');
+      return;
+    }
 
     const isDateValid = validateDate(formData.appointmentDate);
     const isTimeValid = validateTime(formData.appointmentDate, formData.appointmentTime);
@@ -319,9 +334,7 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
       return;
     }
 
-    onSubmit(formData);
-    onClose();
-    resetForm();
+    await onSubmit(formData);
   };
 
   const handleCancel = () => {

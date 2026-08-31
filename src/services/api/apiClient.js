@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '../../config/env';
+import { showErrorToast } from '../../utils/errorHandler';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -13,16 +14,9 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    console.log('🚀 API Client: Making request to:', config.url);
-    console.log('🚀 API Client: Request method:', config.method);
-    console.log('🚀 API Client: Request data:', config.data);
-
     // Get token from localStorage
     const directToken = localStorage.getItem('token');
     const persistRoot = localStorage.getItem('persist:root');
-
-    console.log('🔍 API Client: Direct token from localStorage:', directToken ? 'Present' : 'Missing');
-    console.log('🔍 API Client: persist:root exists:', persistRoot ? 'Yes' : 'No');
 
     let token = directToken;
 
@@ -44,10 +38,7 @@ apiClient.interceptors.request.use(
       // Validate JWT format (should have 3 parts separated by dots)
       const jwtParts = cleanToken.split('.');
       if (jwtParts.length !== 3) {
-        console.error('❌ API Client: Invalid JWT format - expected 3 parts, got:', jwtParts.length);
-        console.error('❌ API Client: Token parts:', jwtParts);
-        console.error('❌ API Client: Raw token:', token);
-        console.error('❌ API Client: Clean token:', cleanToken);
+        localStorage.removeItem('token');
       } else {
         config.headers.Authorization = `Bearer ${cleanToken}`;
       }
@@ -66,9 +57,6 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401) {
-      console.log('🚨 API Client: 401 Unauthorized error detected');
-      console.log('🚨 API Client: Error message:', error.response?.data?.message);
-
       // Check if it's a JWT expiration error or no token error
       const errorMessage = error.response?.data?.message?.toLowerCase();
       const isJwtExpired = errorMessage?.includes('jwt expired') ||
@@ -80,9 +68,6 @@ apiClient.interceptors.response.use(
                           errorMessage?.includes('access denied');
 
       if (isJwtExpired) {
-        console.log('⏰ API Client: Authentication issue detected (token expired/missing)');
-        console.log('🔄 API Client: Clearing authentication data and redirecting to login');
-
         // Clear all authentication data
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
@@ -126,7 +111,6 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
           }
         } catch (refreshError) {
-          console.log('❌ API Client: Token refresh failed');
           // Refresh failed, clear auth data and redirect
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
@@ -143,9 +127,9 @@ apiClient.interceptors.response.use(
       }
     }
 
-    console.log('❌ API Client: Request failed');
-    console.log('❌ API Client: Error status:', error.response?.status);
-    console.log('❌ API Client: Error message:', error.response?.data?.message);
+    if (!error.config?.skipErrorToast && error.response?.status !== 401) {
+      showErrorToast(error);
+    }
 
     return Promise.reject(error);
   }

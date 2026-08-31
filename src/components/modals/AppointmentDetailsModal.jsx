@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical, FaIdBadge, FaBarcode } from 'react-icons/fa';
 import { getAppointmentById, updateAppointment } from '@/services/api/appointmentsAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import { getDependantById } from '@/services/api/dependantAPI';
+import { useAppSelector } from '@/store/hooks';
+import { createInvestigationRequestByConsultation } from '@/services/api/investigationRequestAPI';
 
 const SectionHeading = ({ icon, children }) => (
   <h3 className="text-sm font-semibold text-base-content flex items-center gap-2 mb-3">
@@ -21,12 +24,18 @@ const Field = ({ label, children }) => (
 );
 
 const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) => {
+  const navigate = useNavigate();
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const isSurgeonUser = (currentUser?.role || '').toLowerCase() === 'surgeon';
   const [appointment, setAppointment] = useState(null);
   const [patient, setPatient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editStatus, setEditStatus] = useState('');
+  const [startingNote, setStartingNote] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  const isSurgery = (appointment?.appointmentType || '').toLowerCase() === 'surgery';
 
   useEffect(() => {
     if (isOpen && appointmentId) {
@@ -86,6 +95,36 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
       setLoading(false);
     }
   };
+
+  const handleStartSurgicalNote = async () => {
+  if (!appointment?.consultationId) {
+    toast.error('This appointment has no linked consultation.');
+    return;
+  }
+  setStartingNote(true);
+  try {
+    const payload = {
+      patientId: appointment.patientId,
+      dependantId: appointment.dependantId || undefined,
+      type: 'surgical',
+      tests: [{ name: appointment.procedureName || 'Surgical Procedure' }],
+    };
+    await toast.promise(
+      createInvestigationRequestByConsultation(appointment.consultationId, payload),
+      {
+        loading: 'Creating investigation request...',
+        success: 'Investigation request created',
+        error: (e) => e?.response?.data?.message || e?.message || 'Failed to start surgical note',
+      },
+    );
+    onClose();
+    navigate('/dashboard/surgeon/incoming');
+  } catch (err) {
+    console.error('Start surgical note failed', err);
+  } finally {
+    setStartingNote(false);
+  }
+};
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -310,6 +349,23 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
               <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
                 Close
               </button>
+              {isSurgery && isSurgeonUser && !isEditing && (
+                <button
+                  type="button"
+                  onClick={handleStartSurgicalNote}
+                  className="btn btn-secondary btn-sm"
+                  disabled={startingNote}
+                >
+                  {startingNote ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs"></span>
+                      Starting...
+                    </>
+                  ) : (
+                    'Start Surgical Note'
+                  )}
+                </button>
+              )}
               {appointment.id && !isEditing && (
                 <button
                   type="button"

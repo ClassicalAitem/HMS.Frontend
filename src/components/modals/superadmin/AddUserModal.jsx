@@ -5,6 +5,7 @@ import * as yup from 'yup';
 import { FaTimes, FaUserPlus, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { usersAPI } from '../../../services/api/usersAPI';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 // Validation schema
 const addUserSchema = yup.object({
@@ -63,7 +64,6 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
   const watchedRole = watch('role');
 
   const onSubmit = async (data) => {
-    console.log('📝 AddUserModal: Form submitted with data:', data);
     setIsLoading(true);
 
     try {
@@ -76,8 +76,6 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         password: data.password,
       };
 
-      console.log('📤 AddUserModal: Sending user data:', userData);
-
       // Call the appropriate API based on role
       let response;
       if (data.role === 'admin') {
@@ -86,8 +84,6 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         // For other roles, use the general createUser endpoint
         response = await usersAPI.createUser(userData);
       }
-
-      console.log('✅ AddUserModal: User created successfully:', response.data);
 
       // Show success message
       toast.success(`${data.role.charAt(0).toUpperCase() + data.role.slice(1)} created successfully!`);
@@ -101,20 +97,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         onUserAdded();
       }
     } catch (error) {
-      console.error('❌ AddUserModal: Error creating user:', error);
-      console.error('📥 AddUserModal: Error response data:', error.response?.data);
-
-      // Show error message from backend
-      let errorMessage = 'Failed to create user. Please try again.';
-      
-      if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
-      console.log('📋 AddUserModal: Displaying error message:', errorMessage);
-      toast.error(errorMessage);
+      toast.error(getErrorMessage(error, 'Failed to create user. Please try again.'));
     } finally {
       setIsLoading(false);
     }

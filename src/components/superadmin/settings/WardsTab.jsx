@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { FaPlus, FaMapMarkerAlt, FaEdit, FaTrash } from 'react-icons/fa';
 import { AddWardModal, EditWardModal } from '@/components/modals';
 import { getAllWards } from '@/services/api/wardAPI';
+import { showErrorToast } from '@/utils/errorHandler';
 
 const WardsTab = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -16,9 +17,8 @@ const WardsTab = () => {
         setLoading(true);
         const res = await getAllWards();
         setWards(res.data)
-        console.log(res.data);
       } catch(error) {
-        console.error(error);
+        showErrorToast(error, 'Failed to load wards');
       } finally {
         setLoading(false);
       }
@@ -31,13 +31,11 @@ const WardsTab = () => {
   };
 
   const handleEditWard = (ward) => {
-    console.log('Edit ward:', ward);
     // TODO: Implement edit functionality
     setSelectedWard(ward);
   };
 
   const handleDeleteWard = (ward) => {
-    console.log('Delete ward:', ward);
     // TODO: Implement delete functionality
   };
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaTimes, FaFileUpload, FaDownload } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { uploadMedicalRecordCSV } from '@/services/api/medicalRecordAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const UploadCsvModal = ({ isOpen, onClose, onUploadSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -51,9 +52,8 @@ const UploadCsvModal = ({ isOpen, onClose, onUploadSuccess }) => {
           );
 
           if (response.errors.length > 0) {
-            console.warn('CSV Import Errors:', response.errors);
             response.errors.forEach((error) => {
-              toast.error(`Error: ${error}`, { duration: 3000 });
+              toast.error(getErrorMessage(error, 'A CSV row could not be imported'), { duration: 3000 });
             });
           }
 
@@ -62,16 +62,14 @@ const UploadCsvModal = ({ isOpen, onClose, onUploadSuccess }) => {
           onUploadSuccess();
           onClose();
         } catch (error) {
-          const errorMessage = error.message || 'Failed to upload CSV';
-          toast.error(errorMessage);
-          console.error('CSV Upload Error:', error);
+          toast.error(getErrorMessage(error, 'Failed to upload CSV'));
         } finally {
           setIsLoading(false);
         }
       };
       reader.readAsText(file);
     } catch (error) {
-      toast.error('Error processing file');
+      toast.error(getErrorMessage(error, 'Error processing file'));
       setIsLoading(false);
     }
   };

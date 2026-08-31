@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaFileAlt, FaChartBar } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 const FinancialReportsTab = () => {
   const [reportType, setReportType] = useState('');
@@ -8,13 +9,19 @@ const FinancialReportsTab = () => {
   const [period, setPeriod] = useState('');
 
   const handleGenerateReport = () => {
-    console.log('Generate report:', { reportType, dataRange });
-    // TODO: Implement report generation
+    if (!reportType || !dataRange) {
+      toast.error('Report type and date range are required.');
+      return;
+    }
+    toast.info('Report generation is not available yet.');
   };
 
   const handleViewAnalytics = () => {
-    console.log('View analytics:', { analyticsType, period });
-    // TODO: Implement analytics view
+    if (!analyticsType || !period) {
+      toast.error('Analytics type and period are required.');
+      return;
+    }
+    toast.info('Analytics viewing is not available yet.');
   };
 
   return (

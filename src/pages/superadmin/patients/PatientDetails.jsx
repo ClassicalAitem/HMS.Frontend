@@ -8,6 +8,7 @@ import CreateBillModal from '@/components/modals/CreateBillModal';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/utils/errorHandler';
 // Icons and utilities now handled within extracted components
 import PatientPageHeader from '@/components/frontdesk/patients/PatientPageHeader';
 import PatientIdentificationCard from '@/components/frontdesk/patients/PatientIdentificationCard';
@@ -36,7 +37,6 @@ const PatientDetails = () => {
   // Fetch patient data from backend
   useEffect(() => {
     if (patientId) {
-      console.log('🔄 PatientDetails: Fetching patient by ID:', patientId);
       dispatch(fetchPatientById(patientId));
     }
   }, [patientId, dispatch]);
@@ -44,7 +44,7 @@ const PatientDetails = () => {
   // Show error toast if there's an error
   useEffect(() => {
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       dispatch(clearPatientsError());
       // Redirect to patients list on error
       navigate('/superadmin/patients');
@@ -63,7 +63,6 @@ const PatientDetails = () => {
   };
 
   const handleEditPatient = (updatedData) => {
-    console.log('✅ PatientDetails: Patient updated successfully:', updatedData);
     // The modal already handles the update via Redux
     // We can refresh the patient data here if needed
     if (patientId) {
@@ -74,21 +73,12 @@ const PatientDetails = () => {
 
   // Removed unused helpers to keep file lean
 
-  // Debug logging
-  console.log('🔍 PatientDetails: Component render state:', {
-    isLoading,
-    currentPatient: currentPatient ? 'Present' : 'Missing',
-    error,
-    patientId
-  });
-
   const isTransitionLoading = isLoading || (currentPatient && String(currentPatient.id) !== String(patientId));
 
   // Loading handled via Skeleton overlays; do not early return.
 
   // Show error state or redirect if no patient (only when not loading)
   if (!currentPatient && !isTransitionLoading) {
-    console.log('❌ PatientDetails: No currentPatient, showing not found message');
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">

@@ -12,6 +12,7 @@ import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const Appointments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -42,7 +43,6 @@ const Appointments = () => {
         );
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-        console.log('Raw appointment data:', list);
         const mapped = list.map((a, idx) => ({
           id: a?.id || a?._id || a?.appointmentId || idx + 1,
           patientId: a?.patientId,
@@ -56,10 +56,8 @@ const Appointments = () => {
           department: a?.department || 'doctor',
           status: a?.status || 'Active',
         }));
-        console.log('Mapped appointments:', mapped);
         setAppointments(mapped);
-      } catch (err) {
-        console.error('Load appointments error', err);
+      } catch {
         // Fallback: keep existing state
       }
       finally {
@@ -84,8 +82,7 @@ const Appointments = () => {
           idKeys.forEach((k) => { map[k] = name; });
         });
         setPatientsById(map);
-      } catch (err) {
-        console.error('Fetch patients for name resolution failed', err);
+      } catch {
         setPatientsById({});
       }
     };
@@ -199,14 +196,11 @@ const Appointments = () => {
   };
 
   const handleRowClick = (appointment) => {
-    console.log('Row clicked:', appointment);
     // Use the actual appointment ID from the API, or fall back to the mapped ID
     const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
-    console.log('Appointment ID:', appointmentId);
     if (appointmentId) {
       setSelectedAppointmentId(appointmentId);
       setIsDetailsModalOpen(true);
-      console.log('Opening modal with ID:', appointmentId);
     } else {
       toast.error('No appointment ID found');
     }
@@ -219,7 +213,7 @@ const Appointments = () => {
         {
           loading: 'Saving appointment...',
           success: 'Appointment saved',
-          error: (e) => e?.message || 'Failed to save appointment'
+          error: (e) => getErrorMessage(e, 'Failed to save appointment')
         }
       );
       setIsBookModalOpen(false);
@@ -242,8 +236,7 @@ const Appointments = () => {
       }));
       setAppointments(mapped);
     } catch (err) {
-      console.error('Create appointment error', err);
-      toast.error(err?.message || 'Failed to book appointment');
+      toast.error(getErrorMessage(err, 'Failed to book appointment'));
     }
   };
 

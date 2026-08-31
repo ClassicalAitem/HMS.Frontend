@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { updateDependant } from '@/services/api/dependantAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const EditDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
   const dependants = useMemo(() => patient?.dependants || [], [patient]);
@@ -82,7 +83,7 @@ const handleChange = (field, value) =>
   const handleSubmit = async (e) => {
     e.preventDefault();
     const err = validate();
-    if (err) { toast.error(err); return; }
+    if (err) { toast.error(getErrorMessage(err)); return; }
 
     const updates = collectChangedFields();
     if (Object.keys(updates).length === 0) {
@@ -96,7 +97,7 @@ const handleChange = (field, value) =>
       toast.promise(promise, {
         loading: 'Updating dependant...',
         success: 'Dependant updated successfully',
-        error: (e) => e?.response?.data?.message || 'Failed to update dependant',
+        error: (e) => getErrorMessage(e, 'Failed to update dependant'),
       }, { duration: 3000 });
 
       await promise;
