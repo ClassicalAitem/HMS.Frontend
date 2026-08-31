@@ -68,7 +68,7 @@ export const updatePrescription = async (id, updateData) => {
 export const createPrescription = async (data, contextId, contextType = 'consultation') => {
   try {
     const payload = data?.medications?.[0] || []
-    const requiredFields = ['drugName', 'dosage', 'frequency', 'duration', 'status']
+    const requiredFields = ['drugName', 'frequency', 'duration', 'status']
     for (const field of requiredFields) {
       if (!payload?.[field] && !data?.[field]) {
         throw new Error(`Missing required field: ${field}`)
