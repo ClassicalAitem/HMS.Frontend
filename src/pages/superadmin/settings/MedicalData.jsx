@@ -8,6 +8,7 @@ import UpdateComplaintModal from '@/components/modals/superadmin/UpdateComplaint
 import UploadCsvModal from '@/components/modals/superadmin/UploadCsvModal';
 import {  deleteComplaint, getAllComplaint } from '@/services/api/medicalRecordAPI';
 import { FaScreenpal } from 'react-icons/fa6';
+import { showErrorToast } from '@/utils/errorHandler';
 
 
 
@@ -25,10 +26,6 @@ const MedicalData = () => {
   const navigate = useNavigate();
 
 
-    React.useEffect(() => {
-    console.log('complaints:', complaints);
-  }, [complaints]);
-
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -42,7 +39,8 @@ const MedicalData = () => {
     try {
       const data = await getAllComplaint();
       setComplaints(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (error) {
+      showErrorToast(error, 'Failed to load medical data');
       setComplaints([]);
     } finally {
       setIsLoading(false);
@@ -104,8 +102,7 @@ const MedicalData = () => {
         setSelectedIds(new Set());
         await fetchComplaints();
       } catch (error) {
-        console.error('Bulk delete failed:', error);
-        alert('Failed to delete some items. Please try again.');
+        showErrorToast(error, 'Failed to delete some medical records');
       } finally {
         setIsDeleting(false);
       }
@@ -204,8 +201,8 @@ const MedicalData = () => {
                 try {
                   await deleteComplaint(row.id);
                   await fetchComplaints();
-                } catch {
-                  alert('Delete failed!');
+                } catch (error) {
+                  showErrorToast(error, 'Delete failed');
                 }
               }
             }}

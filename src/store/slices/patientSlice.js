@@ -1,5 +1,6 @@
 /* eslint-disable no-useless-catch */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { getErrorMessage } from '../../utils/errorHandler';
 
 // Initial state
 const initialState = {
@@ -44,7 +45,7 @@ export const fetchPatients = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch patients'));
     }
   }
 );
@@ -71,7 +72,7 @@ export const fetchPatientById = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to fetch patient details'));
     }
   }
 );
@@ -101,7 +102,7 @@ export const createPatient = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      throw error;
+      return rejectWithValue(getErrorMessage(error, 'Failed to create patient'));
     }
   }
 );
@@ -131,7 +132,7 @@ export const updatePatient = createAsyncThunk(
 
       return await response.json();
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(getErrorMessage(error, 'Failed to update patient'));
     }
   }
 );

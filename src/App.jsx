@@ -7,7 +7,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
-import RouteDebug from './components/common/RouteDebug';
 import TokenExpirationHandler from './components/common/TokenExpirationHandler';
 
 function App() {
@@ -48,10 +47,6 @@ function App() {
                   }}
                 />
 
-                {/* Debug Component - Remove in production */}
-                <div className="fixed top-4 right-4 z-50">
-                  <RouteDebug />
-                </div>
               </div>
             </NotificationProvider>
           </Router>

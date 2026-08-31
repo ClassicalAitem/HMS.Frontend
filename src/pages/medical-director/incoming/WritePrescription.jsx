@@ -12,6 +12,7 @@ import { createPrescription, getPrescriptionsForConsultation, updatePrescription
 import { IoIosCloseCircleOutline, IoMdAdd, IoMdTrash } from 'react-icons/io'; 
 import { FaPrescriptionBottleAlt, FaSyringe, FaPills, FaNotesMedical, FaFileMedicalAlt } from 'react-icons/fa'; 
 import toast from 'react-hot-toast'; 
+import { getErrorMessage } from '@/utils/errorHandler';
 import { getInventories } from '@/services/api/inventoryAPI'; 
 import KolakLoader from '@/components/common/KolakLoader';
 
@@ -263,10 +264,7 @@ const payload = {
  
     console.error("Prescription error:", error); 
  
-    toast.error( 
-      error.response?.data?.message || 
-      "Failed to save prescription" 
-    ); 
+    toast.error(getErrorMessage(error, 'Failed to save prescription'));
  
   } finally { 
     setSaving(false); 

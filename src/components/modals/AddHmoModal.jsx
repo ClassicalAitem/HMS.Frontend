@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { addHmoForPatient } from '@/services/api/hmoAPI';
+import { getErrorMessage } from '@/utils/errorHandler';
 
 const emptyHmo = { provider: '', memberId: '', plan: '', expiresAt: '' };
 
@@ -42,7 +43,7 @@ const AddHmoModal = ({ isOpen, onClose, patient, dependantId = null, onSuccess }
     e.preventDefault();
     const error = validate();
     if (error) {
-      toast.error(error);
+      toast.error(getErrorMessage(error));
       return;
     }
 
@@ -57,14 +58,13 @@ const AddHmoModal = ({ isOpen, onClose, patient, dependantId = null, onSuccess }
       toast.promise(promise, {
         loading: 'Adding HMO(s)...',
         success: 'HMO(s) added successfully',
-        error: (err) => err?.response?.data?.message || 'Failed to add HMO(s)'
+        error: (err) => getErrorMessage(err, 'Failed to add HMO(s)')
       }, { duration: 3000 });
 
       await promise;
       onSuccess && onSuccess();
       onClose();
-    } catch (err) {
-      console.error('AddHmoModal submit error', err);
+    } catch {
     } finally {
       setIsLoading(false);
     }

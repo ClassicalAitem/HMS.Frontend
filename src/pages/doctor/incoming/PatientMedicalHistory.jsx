@@ -34,7 +34,7 @@ import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import KolakLoader from "@/components/common/KolakLoader";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { calculateDispenseQuantity } from "@/utils/prescriptionsCalculator";
+import { calculateDispenseQuantity, calculatePrescriptionLine } from "@/utils/prescriptionsCalculator";
 import { DoctorLayout } from "@/components/doctor/doctor";
 
 const PatientMedicalHistory = () => {
@@ -706,50 +706,58 @@ const latestLab = useMemo(() => {
     };
 
     const getPrescriptionBillItems = () => {
-      if (!Array.isArray(prescriptions)) return [];
+  if (!Array.isArray(prescriptions)) return [];
 
-      const unbilledPrescriptions = prescriptions.filter(pres => !pres.isBilled && !pres.billId);
+  const unbilledPrescriptions = prescriptions.filter(pres => !pres.isBilled && !pres.billId);
 
-      return unbilledPrescriptions.flatMap(pres => {
-        const serviceCharge = serviceCharges.find(sc => sc.id === pres.serviceChargeId);
-        if (serviceCharge && !serviceCharge.isBillable) return [];
+  return unbilledPrescriptions.flatMap(pres => {
+    const serviceCharge = serviceCharges.find(sc => sc.id === pres.serviceChargeId);
+    if (serviceCharge && !serviceCharge.isBillable) return [];
 
-        const medications = Array.isArray(pres.medications) ? pres.medications : [];
+    const medications = Array.isArray(pres.medications) ? pres.medications : [];
 
-        if (medications.length === 0) {
-          return [{
-            serviceChargeId: pres?.serviceChargeId || '',
-            code: 'PRESCRIPTION',
-            description: 'Prescription',
-            quantity: 1,
-            price: 0,
-            prescriptionId: pres?.id || pres?._id,
-          }];
-        }
+    if (medications.length === 0) {
+      return [{
+        serviceChargeId: pres?.serviceChargeId || '',
+        code: 'PRESCRIPTION',
+        description: 'Prescription',
+        quantity: 1,
+        price: 0,
+        prescriptionId: pres?.id || pres?._id,
+      }];
+    }
 
-         return medications.map(med => {
-         const isUnavailable = med.availability === 'unavailable';
-         const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
-         const stock = inventoryMatch ? Number(inventoryMatch.stock) || 0 : 0;
-         const isOutOfStock = !isUnavailable && (!inventoryMatch || stock <= 0);
+    return medications.map(med => {
+      const isUnavailable = med.availability === 'unavailable';
+      const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
+      const stock = inventoryMatch ? Number(inventoryMatch.stock) || 0 : 0;
+      const isOutOfStock = !isUnavailable && (!inventoryMatch || stock <= 0);
+      const unbillable = isUnavailable || isOutOfStock;
 
-         const quantity = calculateDispenseQuantity(med.frequency, med.duration) || 1;
-         const unbillable = isUnavailable || isOutOfStock;
-         const unitPrice = unbillable ? 0 : (Number(inventoryMatch?.sellingPrice) || 0);
+      const line = !unbillable
+        ? calculatePrescriptionLine({
+            medicationType: med.medicationType,
+            dosageAmount: med.dosageAmount,
+            dosageUnit: med.dosageUnit,
+            frequency: med.frequency,
+            duration: med.duration,
+            inventory: inventoryMatch,
+          })
+        : null;
 
-         return {
-           serviceChargeId: pres?.serviceChargeId || '',
-           code: 'PRESCRIPTION',
-           description: `${med.drugName} (${med.dosage})`,
-           quantity,
-           price: unitPrice,
-           prescriptionId: pres?.id || pres?._id,
-           availability: unbillable ? (isUnavailable ? 'unavailable' : 'available') : 'available',
-           stock,
-         };
-       });
-      });
-    };
+      return {
+        serviceChargeId: pres?.serviceChargeId || '',
+        code: 'PRESCRIPTION',
+        description: `${med.drugName} (${med.dosage})`,
+        quantity: unbillable ? 1 : (line?.billedQuantity ?? 1),
+        price: unbillable ? 0 : (line?.unitPrice ?? 0),
+        prescriptionId: pres?.id || pres?._id,
+        availability: isUnavailable ? 'unavailable' : 'available',
+        stock,
+      };
+    });
+  });
+};
 
     const getAdmissionBillItems = () => {
       if (!Array.isArray(admissions)) return [];
@@ -1147,16 +1155,22 @@ const dependant = isDependant
            rows={useMemo(() => (
             Array.isArray(prescriptions) ? prescriptions.map((p) => {
                 const totalPrice = (p?.medications || []).reduce((sum, med) => {
-               const isUnavailable = med.availability === 'unavailable';
-               const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
-               const isOutOfStock = !isUnavailable && (!inventoryMatch || Number(inventoryMatch.stock) <= 0);
+                const isUnavailable = med.availability === 'unavailable';
+                const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
+                const isOutOfStock = !isUnavailable && (!inventoryMatch || Number(inventoryMatch.stock) <= 0);
 
-               if (isUnavailable || isOutOfStock) return sum; // ₦0 for unavailable/out-of-stock, same rule as billing
+                if (isUnavailable || isOutOfStock) return sum;
 
-               const quantity = calculateDispenseQuantity(med.frequency, med.duration) || 1;
-               const unitPrice = Number(inventoryMatch?.sellingPrice) || 0;
-               return sum + (quantity * unitPrice);
-             }, 0);
+                const line = calculatePrescriptionLine({
+                  medicationType: med.medicationType,
+                  dosageAmount: med.dosageAmount,
+                  dosageUnit: med.dosageUnit,
+                  frequency: med.frequency,
+                  duration: med.duration,
+                  inventory: inventoryMatch,
+                });
+                return sum + (line.lineTotal || 0);
+              }, 0);
 
               //  Determine who it's for
               const isForDependant = !!p?.dependantId;

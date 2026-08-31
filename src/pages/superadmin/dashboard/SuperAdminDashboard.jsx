@@ -33,16 +33,6 @@ const SuperAdminDashboard = () => {
   const { metrics, isLoading, error } = useAppSelector((state) => state.metrics);
   const { vitals, isLoading: vitalsLoading, error: vitalsError } = useAppSelector((state) => state.vitals);
 
-  // Debug: Log metrics and vitals data
-  useEffect(() => {
-    console.log('📊 Dashboard - Metrics state:', metrics);
-    console.log('📊 Dashboard - isLoading:', isLoading);
-    console.log('📊 Dashboard - error:', error);
-    console.log('🩺 Dashboard - Vitals state:', vitals);
-    console.log('🩺 Dashboard - vitalsLoading:', vitalsLoading);
-    console.log('🩺 Dashboard - vitalsError:', vitalsError);
-  }, [metrics, isLoading, error, vitals, vitalsLoading, vitalsError]);
-
   useEffect(() => {
     // Fetch both metrics and vitals data
     dispatch(fetchMetrics());
