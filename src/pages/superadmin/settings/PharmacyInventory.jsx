@@ -510,6 +510,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
                 <option value="Cream">Cream</option>
                 <option value="Infusion">Infusion</option>
                 <option value="Injection">Injection</option>
+                <option value="Suspension">Suspension</option>
               </select>
             </div> 
 
