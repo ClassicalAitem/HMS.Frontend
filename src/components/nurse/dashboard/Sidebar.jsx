@@ -91,12 +91,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       path: "/dashboard/nurse/appointments",
       active: location.pathname.startsWith("/dashboard/nurse/appointments"),
     },
-    {
-      icon: TbCalendarPlus,
-      label: "Admitted Patients",
-      path: "/dashboard/nurse/admittedList",
-      active: location.pathname.startsWith("/dashboard/nurse/admittedList"),
-    },
+    // {
+    //   icon: TbCalendarPlus,
+    //   label: "Admitted Patients",
+    //   path: "/dashboard/nurse/admittedList",
+    //   active: location.pathname.startsWith("/dashboard/nurse/admittedList"),
+    // },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active, badge, onClick }) => (
