@@ -10,6 +10,7 @@ import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage, FaFileWord } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { usersAPI } from "@/services/api/usersAPI";
 
 const HMOLabResultDetails = () => {
   const { labResultId } = useParams();
@@ -28,6 +29,7 @@ const HMOLabResultDetails = () => {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [labTechnician, setLabTechnician] = useState(null);
 
   const effectiveInvestigationId = labResult?.investigationRequestId;
   const toggleSidebar = () => setIsSidebarOpen((value) => !value);
@@ -67,6 +69,18 @@ const HMOLabResultDetails = () => {
           } catch (err) {
             console.error("Error fetching dependant:", err);
             setDependant(null);
+          }
+        }
+
+                // Fetch lab technician if present
+        if (labData?.labTechnicianId) {
+          try {
+            const techRes = await usersAPI.getUserById(labData.labTechnicianId);
+            const techData = techRes?.data?.data ?? techRes?.data ?? techRes;
+            setLabTechnician(techData);
+          } catch (err) {
+            console.error("Error fetching lab technician:", err);
+            setLabTechnician(null);
           }
         }
 
@@ -411,7 +425,7 @@ const HMOLabResultDetails = () => {
 
         <div className="overflow-y-auto flex-1 min-w-0">
           <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden">
-            <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+                        <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center no-print">
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl lg:text-[32px] text-[#00943C] font-bold break-words">
                   Lab Result Details
@@ -422,7 +436,7 @@ const HMOLabResultDetails = () => {
                   <span className="badge badge-sm badge-outline ml-2">{personType}</span>
                 </p>
               </div>
-              <div className="flex gap-2 no-print">
+              <div className="flex gap-2">
                 <button
                   onClick={() => navigate(-1)}
                   className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
@@ -447,7 +461,11 @@ const HMOLabResultDetails = () => {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
-                  <p className="text-base sm:text-lg font-bold break-words">{labResult?.form?.labNo || "N/A"}</p>
+                  <p className="text-base sm:text-lg font-bold break-words">
+                    {labTechnician
+                      ? `${labTechnician.firstName || ''} ${labTechnician.lastName || ''}`.trim() || labTechnician.name || "N/A"
+                      : "N/A"}
+                  </p>
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Date</p>
@@ -609,8 +627,18 @@ const HMOLabResultDetails = () => {
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                   }
+
+                  /* Prevent sections/rows from being split across a page break */
+                  .mb-6,
+                  table,
+                  tr,
+                  .grid {
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                  }
+
                   @page {
-                    margin: 0;
+                    margin: 12mm;
                     size: A4;
                   }
                 }
