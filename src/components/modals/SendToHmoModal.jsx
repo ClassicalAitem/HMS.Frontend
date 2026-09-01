@@ -183,7 +183,7 @@ const SendToHmoModal = ({
       reset({
         items: defaultItems.map(d => {
           const isUnavailable = d.availability === 'unavailable';
-          const isOutOfStock = d.availability === 'available' && Number(d.stock) <= 0;
+          const isOutOfStock = d.insufficientStock === true || (d.availability === 'available' && Number(d.stock) <= 0);
           const isUnbillable = isUnavailable || isOutOfStock;
 
           return {

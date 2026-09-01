@@ -8,6 +8,7 @@ import DepartmentsTab from '@/components/superadmin/settings/DepartmentsTab';
 import WardsTab from '@/components/superadmin/settings/WardsTab';
 
 const HospitalSetup = () => {
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('hospital-info');
   const navigate = useNavigate();

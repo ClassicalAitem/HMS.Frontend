@@ -10,46 +10,62 @@ import { getPatientById } from '@/services/api/patientsAPI';
 import { getAnteNatalRecordByPatientId } from '@/services/api/anteNatalAPI';
 import { createPrescription, getPrescriptionsForConsultation, updatePrescription } from '@/services/api/prescriptionsAPI';
 import { IoIosCloseCircleOutline, IoMdAdd, IoMdTrash } from 'react-icons/io';
-import { FaPrescriptionBottleAlt, FaSyringe, FaPills } from 'react-icons/fa';
+import { FaPrescriptionBottleAlt, FaSyringe, FaPills, FaTint, FaBoxOpen } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { getInventories } from '@/services/api/inventoryAPI';
 import KolakLoader from '@/components/common/KolakLoader';
 import { DoctorLayout } from '@/components/doctor/doctor';
-import { calculatePrescriptionLine } from '@/utils/prescriptionsCalculator';
+import {
+  calculatePrescriptionLine,
+  hasConcentrationData,
+  buildDurationString,
+  parseDurationParts,
+} from '@/utils/prescriptionsCalculator';
+import { DURATION } from '@/constants/patientStatus';
 
-const ORAL_FREQUENCIES = ['STAT', 'dly', 'b.d', 'tds', 'qds'];
-const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12hly', '24hly'];
-const DURATIONS = ['1/7', '2/7', '3/7', '4/7', '5/7', '6/7', '1/52', '2/52', '3/52', '1/12', '2/12', '3/12', '4/12', '5/12', '6/12', '1yr'];
+const ORAL_FREQUENCIES = ['STAT', 'dly', 'b.d', 'tds', 'qds', 'mane', 'nocte', 'prn', 'alt die'];
+const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12hly', '24hly', 'mane', 'nocte', 'prn'];
 
-// Add new forms here later (e.g. cream) — one entry, one icon, done.
 const MEDICATION_TABS = [
-  { value: 'tablet', label: 'Tablet', icon: FaPills },
-  { value: 'syrup', label: 'Syrup', icon: FaPrescriptionBottleAlt },
+  { value: 'tablet', label: 'Tab/Cap', icon: FaPills },
+  { value: 'syrup', label: 'Syr/Susp', icon: FaPrescriptionBottleAlt },
+  { value: 'gutt', label: 'Gutt', icon: FaTint },
+  { value: 'cream', label: 'Cream', icon: FaBoxOpen },
+  { value: 'infusion', label: 'Infusion', icon: FaTint },
   { value: 'injection', label: 'Injection', icon: FaSyringe },
 ];
+
+const DURATION_LABELS = {
+  '1/7': '1 day', '2/7': '2 days', '3/7': '3 days', '4/7': '4 days', '5/7': '5 days', '6/7': '6 days',
+  '1/52': '1 week', '2/52': '2 weeks', '3/52': '3 weeks',
+  '1/12': '1 month', '2/12': '2 months', '3/12': '3 months', '4/12': '4 months', '5/12': '5 months', '6/12': '6 months',
+  '1yr': '1 year',
+};
 
 const currency = (n) => `₦${(Number(n) || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 
 // What units can the doctor pick for this tab + selected drug?
 const getUnitOptions = (medicationType, selectedDrug) => {
-  const hasConcentration = !!(selectedDrug?.concentrationAmount && selectedDrug?.concentrationPer);
+  const hasConcentration = hasConcentrationData(selectedDrug);
 
   if (medicationType === 'tablet') {
-    const opts = [{ value: 'tablet', label: 'tablet(s)' }];
-    if (hasConcentration) opts.push({ value: 'mg', label: 'mg' });
-    return opts;
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'tablet', label: 'tablet(s)/cap(s)' }]
+      : [{ value: 'tablet', label: 'tablet(s)/cap(s)' }];
   }
   if (medicationType === 'syrup') {
-    const opts = [{ value: 'ml', label: 'ml' }];
-    if (hasConcentration) opts.push({ value: 'mg', label: 'mg' });
-    return opts;
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'ml', label: 'ml' }]
+      : [{ value: 'ml', label: 'ml' }];
   }
+  if (medicationType === 'gutt') return [{ value: 'ml', label: 'ml' }];
+  if (medicationType === 'infusion') return [{ value: 'ml', label: 'ml' }];
+  if (medicationType === 'cream') return [{ value: 'tablet', label: 'tube(s)' }];
   if (medicationType === 'injection') {
     const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
-    const opts = [{ value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' }];
-    if (hasConcentration) opts.push({ value: 'mg', label: 'mg' });
-    return opts;
+    const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
+    return hasConcentration ? [{ value: 'mg', label: 'mg' }, physicalOpt] : [physicalOpt];
   }
   return [{ value: 'unit', label: 'unit' }];
 };
@@ -58,16 +74,21 @@ const matchesMedicationType = (drug, medicationType) => {
   if (medicationType === 'tablet') return drug.form === 'Tablet';
   if (medicationType === 'syrup') return drug.form === 'Syrup';
   if (medicationType === 'injection') return drug.form === 'Injection';
+  if (medicationType === 'gutt') return drug.form === 'Gutt';
+  if (medicationType === 'cream') return drug.form === 'Cream';
+  if (medicationType === 'infusion') return drug.form === 'Infusion';
   return false;
 };
 
 const medicationSchema = yup.object().shape({
-  medicationType: yup.string().oneOf(['tablet', 'syrup', 'injection']).required(),
+  medicationType: yup.string().oneOf(['tablet', 'syrup', 'injection', 'gutt', 'cream', 'infusion']).required(),
   drugName: yup.string().required('Drug name is required'),
   dosageAmount: yup.number().typeError('Enter a number').positive('Must be greater than 0').required('Dose amount is required'),
   dosageUnit: yup.string().required('Select a unit'),
   frequency: yup.string().required('Frequency is required'),
-  duration: yup.string().oneOf(DURATIONS).required('Duration is required'),
+  duration: yup.string().required('Duration is required'),
+  durationAmount: yup.number().typeError('Enter a number').positive('Must be greater than 0').required('Duration amount is required'),
+  durationUnit: yup.string().required('Duration unit is required'),
   instructions: yup.string(),
   inventoryId: yup.string().nullable(),
   availability: yup.string().oneOf(['available', 'unavailable']).required('Please select the drug from the list or mark it unavailable'),
@@ -94,10 +115,13 @@ const emptyMedication = {
   dosageUnit: 'tablet',
   frequency: '',
   duration: '',
+  durationAmount: '',
+  durationUnit: 'day',
   instructions: '',
   dosesGiven: 0,
   injectionStatus: 'pending',
   inventoryId: null,
+  _selectedDrug: null,
   availability: undefined,
 };
 
@@ -147,19 +171,37 @@ const WritePrescription = () => {
 
   useEffect(() => {
     if (editingPrescription) {
-      const meds = editingPrescription.medications.map((med) => ({
+      const meds = editingPrescription.medications.map((med) => {
+        const { amount, unit } = parseDurationParts(med.duration);
+       return {
         medicationType: med.medicationType || 'tablet',
         drugName: med.drugName || '',
         dosageAmount: med.dosageAmount ?? '',
-        dosageUnit: med.dosageUnit || (med.medicationType === 'tablet' ? 'tablet' : 'ml'),
+        dosageUnit:
+          med.dosageUnit ||
+          (med.medicationType === 'tablet'
+            ? 'tablet'
+            : ''),
         frequency: med.frequency || '',
         duration: med.duration || '',
+        durationAmount: amount || '',
+        durationUnit: unit || 'day',
         instructions: med.instructions || '',
-        dosesGiven: med.dosesGiven || 0,
-        injectionStatus: med.injectionStatus || 'pending',
+        dosesGiven: med.dosesGiven ?? 0,
+        injectionStatus:
+          med.injectionStatus || 'pending',
         inventoryId: med.inventoryId ?? null,
-        availability: med.availability || (med.inventoryId ? 'available' : undefined),
-      }));
+
+        // IMPORTANT
+        _selectedDrug: null,
+
+        availability:
+          med.availability ||
+          (med.inventoryId
+            ? 'available'
+            : undefined),
+      };
+      });
       setValue('medications', meds);
     }
   }, [editingPrescription, setValue]);
@@ -278,14 +320,15 @@ const WritePrescription = () => {
         ...(isDependant ? { dependantId: targetId } : { patientId }),
         ...(isAntenatal ? { antenatalId: sourceId } : { consultationId: sourceId }),
         medications: data.medications.map((med) => {
-          const { _selectedDrug, ...medData } = med;
+          const { _selectedDrug, durationAmount, durationUnit, ...medData } = med;
+          const normalizedDuration = buildDurationString(durationAmount, durationUnit) || medData.duration;
           const preview = _selectedDrug && medData.availability === 'available'
             ? calculatePrescriptionLine({
               medicationType: medData.medicationType,
               dosageAmount: medData.dosageAmount,
               dosageUnit: medData.dosageUnit,
               frequency: medData.frequency,
-              duration: medData.duration,
+              duration: normalizedDuration,
               inventory: _selectedDrug,
             })
             : null;
@@ -295,6 +338,7 @@ const WritePrescription = () => {
 
           return {
             ...medData,
+            duration: normalizedDuration,
             dosage: `${medData.dosageAmount} ${dosageUnitLabel}`,
             instructions: medData.instructions || undefined,
             dosesGiven: medData.medicationType === 'injection' ? Number(medData.dosesGiven) : undefined,
@@ -434,15 +478,19 @@ const WritePrescription = () => {
                                   type="button"
                                   className={`tab gap-2 ${active ? 'tab-active' : ''}`}
                                  onClick={() => {
-                                  setValue(`medications.${index}.medicationType`, tab.value);
-                                  setValue(`medications.${index}.frequency`, '');
-                                  setValue(`medications.${index}.drugName`, '');
-                                  setValue(`medications.${index}._selectedDrug`, null);
-                                  setValue(`medications.${index}.inventoryId`, null);
-                                  setValue(`medications.${index}.availability`, undefined);
-                                  const opts = getUnitOptions(tab.value, null);
-                                  setValue(`medications.${index}.dosageUnit`, opts[0]?.value || '');
-                                }}
+                                    setValue(`medications.${index}.medicationType`, tab.value);
+                                    setValue(`medications.${index}.frequency`, '');
+                                    setValue(`medications.${index}.drugName`, '');
+                                    setValue(`medications.${index}._selectedDrug`, null);
+                                    setValue(`medications.${index}.inventoryId`, null);
+                                    setValue(`medications.${index}.availability`, undefined);
+                                    setValue(`medications.${index}.dosageAmount`, '');
+                                    setValue(`medications.${index}.duration`, '');
+                                    setValue(`medications.${index}.durationAmount`, '');
+                                    setValue(`medications.${index}.durationUnit`, 'day');
+                                    const opts = getUnitOptions(tab.value, null);
+                                    setValue(`medications.${index}.dosageUnit`, opts[0]?.value || '');
+                                  }}
                                 >
                                   <Icon /> {tab.label}
                                 </button>
@@ -532,7 +580,7 @@ const WritePrescription = () => {
                                   </p>
                                   {selectedDrug?.stock !== undefined && (
                                     <p className="text-xs mt-1">
-                                      Stock: <span className={selectedDrug.stock > 0 ? 'text-success font-semibold' : 'text-warning font-semibold'}>{selectedDrug.stock}</span> {selectedDrug.unit || 'tablet'}
+                                      Stock: <span className={selectedDrug.stock > 0 ? 'text-success font-semibold' : 'text-warning font-semibold'}>{selectedDrug.stock}</span> {selectedDrug.unit || getUnitOptions(medicationType, null)[0]?.value}
                                       {selectedDrug.packSize > 1 && ` (packs of ${selectedDrug.packSize})`}
                                     </p>
                                   )}
@@ -583,7 +631,7 @@ const WritePrescription = () => {
                                 {...register(`medications.${index}.frequency`)}
                               >
                                 <option value="">Select frequency</option>
-                                {(medicationType === 'injection' ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
+                                {(['injection', 'infusion'].includes(medicationType) ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
                                   <option key={f} value={f}>{f}</option>
                                 ))}
                               </select>
@@ -593,18 +641,63 @@ const WritePrescription = () => {
                             </div>
 
                             <div className="form-control">
-                              <label className="label"><span className="label-text">Duration</span></label>
-                              <select
-                                className={`select select-bordered w-full ${errors.medications?.[index]?.duration ? 'select-error' : ''}`}
-                                {...register(`medications.${index}.duration`)}
-                              >
-                                <option value="">Select duration</option>
-                                {DURATIONS.map((d) => (<option key={d} value={d}>{d}</option>))}
-                              </select>
-                              {errors.medications?.[index]?.duration && (
-                                <span className="text-error text-xs mt-1">{errors.medications[index].duration.message}</span>
-                              )}
-                            </div>
+  <label className="label"><span className="label-text">Duration</span></label>
+
+  <div className="flex flex-wrap gap-1 mb-2">
+    {[1, 2, 3, 4, 5, 6].map((n) => {
+      const unit = watch(`medications.${index}.durationUnit`) || 'day';
+      const active = Number(watch(`medications.${index}.durationAmount`)) === n;
+      return (
+        <button
+          key={n}
+          type="button"
+          className={`btn btn-xs ${active ? 'btn-primary' : 'btn-outline'}`}
+          onClick={() => {
+            setValue(`medications.${index}.durationAmount`, n);
+            setValue(`medications.${index}.duration`, buildDurationString(n, unit));
+          }}
+        >
+          {n}
+        </button>
+      );
+    })}
+  </div>
+
+  <div className="flex gap-2">
+    <input
+      type="number"
+      min="1"
+      step="1"
+      placeholder="e.g. 8"
+      className={`input input-bordered w-full ${errors.medications?.[index]?.duration ? 'input-error' : ''}`}
+      value={watch(`medications.${index}.durationAmount`) || ''}
+      onChange={(e) => {
+        const amount = e.target.value;
+        const unit = watch(`medications.${index}.durationUnit`) || 'day';
+        setValue(`medications.${index}.durationAmount`, amount);
+        setValue(`medications.${index}.duration`, buildDurationString(amount, unit));
+      }}
+    />
+    <select
+      className="select select-bordered w-32"
+      value={watch(`medications.${index}.durationUnit`) || 'day'}
+      onChange={(e) => {
+        const unit = e.target.value;
+        const amount = watch(`medications.${index}.durationAmount`);
+        setValue(`medications.${index}.durationUnit`, unit);
+        setValue(`medications.${index}.duration`, buildDurationString(amount, unit));
+      }}
+    >
+      <option value="day">Day(s)</option>
+      <option value="week">Week(s)</option>
+      <option value="month">Month(s)</option>
+      <option value="year">Year(s)</option>
+    </select>
+  </div>
+  {errors.medications?.[index]?.duration && (
+    <span className="text-error text-xs mt-1">{errors.medications[index].duration.message}</span>
+  )}
+</div>
 
                             {medicationType === 'injection' && (
                               <>
