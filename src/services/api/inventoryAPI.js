@@ -22,7 +22,7 @@ export const getInventory = async (id) => {
 
 export const createInventory = async (payload) => {
   try {
-    const requiredFields = ['name',  'batchNumber']
+    const requiredFields = ['name']
     for (const field of requiredFields) {
       if (!payload[field]) {
         throw new Error(`Missing required field: ${field}`)

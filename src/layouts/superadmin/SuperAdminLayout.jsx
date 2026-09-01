@@ -14,7 +14,7 @@ const SuperAdminLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden bg-base-300/20">
+    <div className="flex h-screen w-full overflow-hidden bg-base-300/20">
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"

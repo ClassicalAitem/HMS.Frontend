@@ -24,6 +24,23 @@ const pricePerUnit = (item) => {
   return sellingPrice / packSize
 }
 
+// Builds a compact page list like [1, '...', 4, 5, 6, '...', 35] —
+// always shows first, last, current, and one neighbor on each side.
+const getPageNumbers = (current, total) => {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+
+  const pages = [1]
+  const start = Math.max(2, current - 1)
+  const end = Math.min(total - 1, current + 1)
+
+  if (start > 2) pages.push('...')
+  for (let p = start; p <= end; p += 1) pages.push(p)
+  if (end < total - 1) pages.push('...')
+  pages.push(total)
+
+  return pages
+}
+
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +53,7 @@ const InventoryStocks = () => {
   const [deleting, setDeleting] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const itemsPerPage = 7
 
   const fetch = async () => {
     setLoading(true)
@@ -150,7 +167,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setShowAdd(false)
-    } catch { }
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   const handleEdit = async (id, payload) => {
@@ -160,7 +179,9 @@ const InventoryStocks = () => {
       await p
       fetch()
       setEditing(null)
-    } catch { }
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   const handleRestock = async (id, payload) => {
@@ -170,12 +191,14 @@ const InventoryStocks = () => {
       await p
       fetch()
       setRestockingFor(null)
-    } catch { }
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   return (
     <SuperAdminLayout>
-      <div className="p-6">
+  <div className="flex h-full flex-col gap-4 overflow-y-auto">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Inventory & Stocks</h1>
@@ -315,9 +338,35 @@ const InventoryStocks = () => {
                   } ({filtered.length} Total)
                 </div>
                 <div className="join">
-                  {Array.from({ length: Math.max(1, Math.ceil(filtered.length / itemsPerPage)) }).map((_, idx) => (
-                    <button key={idx} onClick={() => setCurrentPage(idx + 1)} className={`join-item btn btn-ghost btn-xs ${currentPage === idx + 1 ? 'bg-primary text-white' : ''}`}>{idx + 1}</button>
-                  ))}
+                  <button
+                    className="join-item btn btn-ghost btn-xs"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </button>
+
+                  {getPageNumbers(currentPage, Math.max(1, Math.ceil(filtered.length / itemsPerPage))).map((page, idx) =>
+                    page === '...' ? (
+                      <button key={`ellipsis-${idx}`} className="join-item btn btn-ghost btn-xs btn-disabled">…</button>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`join-item btn btn-ghost btn-xs ${currentPage === page ? 'bg-primary text-white' : ''}`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    className="join-item btn btn-ghost btn-xs"
+                    disabled={currentPage === Math.max(1, Math.ceil(filtered.length / itemsPerPage))}
+                    onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(filtered.length / itemsPerPage)), p + 1))}
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             </>
@@ -382,7 +431,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
 
   const handle = async () => {
     if (!form.name.trim()) return toast.error('Item name is required')
-    if (!form.form) return toast.error('Please select a form (Tablet, Syrup, or Injection)')
+    if (!form.form) return toast.error('Please select a form (Tablet, Syrup, Injection, Cream, Gutt, or Infusion)')
     if (!form.batchNumber.trim()) return toast.error('Batch number is required')
     if (!isEdit && (!form.packs || Number(form.packs) <= 0)) {
       return toast.error(form.unit === 'tablet' ? 'Enter number of tablets' : 'Enter number of bottles/vials')
@@ -448,15 +497,18 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
                 value={form.form}
                 onChange={(e) => {
                   const nextForm = e.target.value
-                  // Keep unit sensible when form changes — tablet form implies tablet unit,
-                  // syrup/injection imply a liquid/IU unit (doctor's filter depends on this).
-                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : (form.unit === 'tablet' ? 'ml' : form.unit)
+                  // Keep unit sensible when form changes; cream uses the discrete tube model,
+                  // while gutt/infusion behave like liquid bottles.
+                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : nextForm === 'Cream' ? 'tablet' : nextForm === 'Gutt' || nextForm === 'Infusion' ? 'ml' : nextForm === 'Syrup' ? 'ml' : nextForm === 'Injection' ? (form.unit === 'tablet' ? 'ml' : form.unit) : form.unit
                   setForm({ ...form, form: nextForm, unit: nextUnit })
                 }}
               >
                 <option value="">Select form</option>
                 <option value="Tablet">Tablet</option>
                 <option value="Syrup">Syrup</option>
+                <option value="Gutt">Gutt</option>
+                <option value="Cream">Cream</option>
+                <option value="Infusion">Infusion</option>
                 <option value="Injection">Injection</option>
               </select>
             </div> 
@@ -591,6 +643,27 @@ function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
   const [fileName, setFileName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const FORM_ALIASES = {
+  tablet: 'Tablet',
+  tab: 'Tablet',
+  cap: 'Tablet',
+  capsule: 'Tablet',
+  susp: 'Syrup',
+  suspension: 'Syrup',
+  syrup: 'Syrup',
+  injection: 'Injection',
+  injectiong: 'Injection', // typo present in source data
+}
+
+const normalizeForm = (rawForm) => {
+  const key = String(rawForm || '').trim().toLowerCase()
+  return FORM_ALIASES[key] || 'Tablet' // unmapped/unknown/empty forms default to Tablet
+}
+
+const makeDuplicateKey = (name, strength, form, batchNumber) =>
+  [name, strength, form, batchNumber].map((v) => String(v || '').trim().toLowerCase()).join('|')
+
+
   const parseCsvLine = (line) => {
     const values = []
     let current = ''
@@ -663,8 +736,13 @@ function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
       return entry
     })
 
-    const makeDuplicateKey = (name) => String(name || '').trim().toLowerCase()
-    const existingKeys = new Set(items.map((item) => makeDuplicateKey(item.name)))
+    const makeDuplicateKey = (name, strength, form, batch) =>
+      [name, strength, form, batch].map((v) => String(v || '').trim().toLowerCase()).join('|')
+
+    const existingKeys = new Set(
+      items.map((item) => makeDuplicateKey(item.name, item.strength, item.form, item.batchNumber))
+    )
+
     const seenKeys = new Set()
     const uploadPayloads = []
     const skippedDuplicateRows = []
@@ -673,18 +751,17 @@ function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
     parsedRows.forEach((item) => {
       const name = String(item.name || item.drug || item.item || '').trim()
       if (!name) { skippedInvalidRows.push(item.__rowIndex); return }
+
       const rawForm = String(item.form || '').trim()
-      const normalizedForm = rawForm.toLowerCase()
-      const form = ['Tablet', 'Syrup', 'Injection'].includes(rawForm)
-        ? rawForm
-        : (normalizedForm === 'tablet' ? 'Tablet' : normalizedForm === 'syrup' ? 'Syrup' : normalizedForm === 'injection' ? 'Injection' : '')
-      if (!form) { skippedInvalidRows.push(item.__rowIndex); return }
-      const key = makeDuplicateKey(name)
+      const form = normalizeForm(rawForm)
+      const strength = String(item.strength || '').trim()
+      const batchNumber = String(item.batchnumber || item.batch_number || item.batch || '').trim()
+
+      const key = makeDuplicateKey(name, strength, form, batchNumber)
       if (seenKeys.has(key) || existingKeys.has(key)) { skippedDuplicateRows.push(item.__rowIndex); return }
       seenKeys.add(key)
 
-      const payload = { name }
-      const strength = String(item.strength || '').trim()
+      const payload = { name, form }
       const unit = String(item.unit || 'tablet').trim().toLowerCase()
       const packSizeValue = String(item.packsize ?? item.pack_size ?? '1').trim()
       const packsValue = String(item.packs ?? item.stock ?? item.qty ?? item.quantity ?? '').trim()
@@ -692,13 +769,11 @@ function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
       const sellingPriceValue = String(item.sellingprice ?? item.selling_price ?? item.price ?? '').trim()
       const reorderLevelValue = String(item.reorderlevel ?? item.reorder_level ?? item.reorder ?? '').trim()
       const supplier = String(item.supplier || '').trim()
-      const batchNumber = String(item.batchnumber || item.batch_number || item.batch || '').trim()
       const expiry = String(item.expirydate || item.expiry_date || item.expiry || '').trim()
       const description = String(item.description || item.notes || '').trim()
 
-      if (form) payload.form = form
       if (strength) payload.strength = strength
-      payload.unit = ['tablet', 'ml', 'iu'].includes(unit) ? unit : 'tablet'
+      payload.unit = ['tablet', 'ml', 'iu', 'ampoule'].includes(unit) ? unit : 'tablet'
       payload.packSize = packSizeValue !== '' ? Number(packSizeValue) : 1
       if (packsValue !== '') payload.packs = Number(packsValue)
       if (costPriceValue !== '') payload.costPrice = Number(costPriceValue)
