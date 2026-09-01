@@ -697,86 +697,253 @@ const ViewConsultation = () => {
     }
   };
 
-  const getInventoryMatch = (medication) => {
-    if (medication?.inventoryId) {
-      const match = inventoryData.find(
-        (item) => (item._id || item.id) === medication.inventoryId,
-      );
-      if (match) return match;
+const getInventoryMatch = (medication) => {
+  if (!medication) return null;
+
+  // 1. Match by inventory ID
+  if (medication.inventoryId) {
+    const medicationInventoryId =
+      String(medication.inventoryId);
+
+    const match = inventoryData.find(
+      (item) =>
+        String(item?._id || item?.id) ===
+        medicationInventoryId
+    );
+
+    if (match) {
+      return match;
     }
-    const name = medication?.drugName?.toLowerCase();
-    return name
-      ? inventoryData.find((item) =>
-          String(item?.name || '').toLowerCase().includes(name),
-        )
-      : null;
-  };
+  }
 
-  const getBillItems = () => {
-    const labItems = labRequests
-      .filter((lab) => !lab.isBilled && !lab.billId)
-      .flatMap((lab) =>
-        (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
-          const testName = typeof test === 'string' ? test : test?.name || test?.code;
-          const charge = serviceCharges.find((item) =>
-            String(item?.service || item?.name || '').toLowerCase().includes(String(testName || '').toLowerCase()),
-          );
-          return {
-            serviceChargeId: lab.serviceChargeId || charge?._id || charge?.id || '',
-            code: 'LAB',
-            description: testName || lab.type || 'Lab Test',
-            quantity: 1,
-            price: Number(charge?.amount || charge?.price || 0),
-            investigationId: lab._id || lab.id,
-          };
-        }),
-      );
-    const prescriptionItems = prescriptions
-  .filter((prescription) => !prescription.isBilled && !prescription.billId)
-  .flatMap((prescription) =>
-    (Array.isArray(prescription.medications) ? prescription.medications : []).map((medication) => {
-      const inventory = getInventoryMatch(medication);
-      const unavailable = medication.availability === 'unavailable';
-      const stock = Number(inventory?.stock) || 0;
-      const isUnbillable = unavailable || !inventory || stock <= 0;
+  // 2. Exact drug-name match
+  const medicationName =
+    String(medication.drugName || '')
+      .trim()
+      .toLowerCase();
 
-      const line = !isUnbillable
-        ? calculatePrescriptionLine({
-            medicationType: medication.medicationType,
-            dosageAmount: medication.dosageAmount,
-            dosageUnit: medication.dosageUnit,
-            frequency: medication.frequency,
-            duration: medication.duration,
-            inventory,
-          })
-        : null;
+  if (!medicationName) {
+    return null;
+  }
 
-      return {
-        serviceChargeId: prescription.serviceChargeId || '',
-        code: 'PRESCRIPTION',
-        description: `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
-        quantity: isUnbillable ? 1 : (line?.billedQuantity ?? 1),
-        price: isUnbillable ? 0 : (line?.unitPrice ?? 0),
-        prescriptionId: prescription._id || prescription.id,
-        availability: unavailable ? 'unavailable' : 'available',
-        stock,
-      };
-    }),
+  const exactMatch = inventoryData.find(
+    (item) =>
+      String(item?.name || '')
+        .trim()
+        .toLowerCase() === medicationName
   );
-    const admissionItems = activeAdmissions
-      .filter((admission) => !admission.isBilled && !admission.billId)
-      .flatMap((admission) =>
-        (Array.isArray(admission.admissions) ? admission.admissions : []).map((item) => ({
-          serviceChargeId: item.serviceChargeId || '',
-          code: 'ADMISSION',
-          description: item.name || admission.ward || 'Admission',
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  // 3. Partial name fallback
+  return inventoryData.find(
+    (item) =>
+      String(item?.name || '')
+        .trim()
+        .toLowerCase()
+        .includes(medicationName)
+  );
+};
+
+ const getBillItems = () => {
+  const labItems = labRequests
+    .filter((lab) => !lab.isBilled && !lab.billId)
+    .flatMap((lab) =>
+      (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
+        const testName =
+          typeof test === 'string'
+            ? test
+            : test?.name || test?.code;
+
+        const charge = serviceCharges.find((item) =>
+          String(item?.service || item?.name || '')
+            .toLowerCase()
+            .includes(String(testName || '').toLowerCase())
+        );
+
+        return {
+          serviceChargeId:
+            lab.serviceChargeId ||
+            charge?._id ||
+            charge?.id ||
+            '',
+
+          code: 'LAB',
+          description: testName || lab.type || 'Lab Test',
+
           quantity: 1,
-          price: Number(item.amount) || 0,
-          admissionId: admission._id || admission.id,
-        })),
-      );
-    return [...labItems, ...prescriptionItems, ...admissionItems];
-  };
+
+          price: Number(
+            charge?.amount ||
+            charge?.price ||
+            0
+          ),
+
+          investigationId: lab._id || lab.id,
+        };
+      })
+    );
+
+  // ─────────────────────────────────────────────
+  // PRESCRIPTIONS
+  // ─────────────────────────────────────────────
+
+  const prescriptionItems = prescriptions
+    .filter(
+      (prescription) =>
+        !prescription.isBilled &&
+        !prescription.billId
+    )
+    .flatMap((prescription) =>
+      (Array.isArray(prescription.medications)
+        ? prescription.medications
+        : []
+      ).map((medication) => {
+
+        const inventory = getInventoryMatch(medication);
+
+        const unavailable =
+          medication.availability === 'unavailable';
+
+        /*
+         * Calculate the prescription using the
+         * actual inventory item.
+         */
+        const line =
+          !unavailable && inventory
+            ? calculatePrescriptionLine({
+                medicationType:
+                  medication.medicationType,
+
+                dosageAmount:
+                  medication.dosageAmount,
+
+                dosageUnit:
+                  medication.dosageUnit,
+
+                frequency:
+                  medication.frequency,
+
+                duration:
+                  medication.duration,
+
+                inventory,
+              })
+            : null;
+
+        /*
+         * Prefer the calculated values.
+         * Fall back to values already saved
+         * on the prescription.
+         */
+        const billedQuantity =
+          line?.billedQuantity ??
+          medication.billedQuantity ??
+          medication.prescribedQuantity ??
+          1;
+
+        const unitPrice =
+          line?.unitPrice ??
+          medication.unitPrice ??
+          0;
+
+        const lineTotal =
+          line?.lineTotal ??
+          medication.lineTotal ??
+          (Number(billedQuantity) * Number(unitPrice));
+
+        return {
+          serviceChargeId:
+            medication.serviceChargeId || '',
+
+          code: 'PRESCRIPTION',
+
+          description:
+            `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
+
+          /*
+           * This is what CreateBillModal will display
+           * in the Qty column.
+           */
+          quantity: unavailable
+            ? 1
+            : Number(billedQuantity) || 1,
+
+          /*
+           * This is what CreateBillModal will display
+           * in the Price column.
+           */
+          price: unavailable
+            ? 0
+            : Number(unitPrice) || 0,
+
+          /*
+           * Keep the calculated total available.
+           */
+          lineTotal: unavailable
+            ? 0
+            : Number(lineTotal) || 0,
+
+          prescriptionId:
+            prescription._id ||
+            prescription.id,
+
+          availability:
+            unavailable
+              ? 'unavailable'
+              : 'available',
+
+          stock:
+            Number(inventory?.stock) || 0,
+        };
+      })
+    );
+
+  // ─────────────────────────────────────────────
+  // ADMISSIONS
+  // ─────────────────────────────────────────────
+
+  const admissionItems = activeAdmissions
+    .filter(
+      (admission) =>
+        !admission.isBilled &&
+        !admission.billId
+    )
+    .flatMap((admission) =>
+      (
+        Array.isArray(admission.admissions)
+          ? admission.admissions
+          : []
+      ).map((item) => ({
+        serviceChargeId:
+          item.serviceChargeId || '',
+
+        code: 'ADMISSION',
+
+        description:
+          item.name ||
+          admission.ward ||
+          'Admission',
+
+        quantity: 1,
+
+        price:
+          Number(item.amount) || 0,
+
+        admissionId:
+          admission._id ||
+          admission.id,
+      }))
+    );
+
+  return [
+    ...labItems,
+    ...prescriptionItems,
+    ...admissionItems,
+  ];
+};
 
   const openBillModal = (setModalOpen) => {
     setBillDefaults(getBillItems());
