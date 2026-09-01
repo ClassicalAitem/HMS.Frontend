@@ -23,6 +23,10 @@ export const FREQUENCY_TIMES_PER_DAY = {
   '8hly': 3,
   '12hly': 2,
   '24hly': 1,
+  mane: 1,
+  nocte: 1,
+  prn: 1,
+  'alt die': 0.5,
 };
 
 export const DURATION_DAYS = {
@@ -32,11 +36,61 @@ export const DURATION_DAYS = {
   '1yr': 365,
 };
 
+export function buildDurationString(amount, unit) {
+  const n = Number(amount);
+  if (!n || n <= 0) return '';
+
+  switch (unit) {
+    case 'day': return `${n}/7`;
+    case 'week': return `${n}/52`;
+    case 'month': return `${n}/12`;
+    case 'year': return `${n}yr`;
+    default: return '';
+  }
+}
+
+export function parseDurationParts(duration) {
+  if (!duration) return { amount: '', unit: 'day' };
+  const str = String(duration).trim();
+  const yrMatch = str.match(/^(\d+)yr$/);
+  if (yrMatch) return { amount: Number(yrMatch[1]), unit: 'year' };
+
+  const fracMatch = str.match(/^(\d+)\/(7|52|12)$/);
+  if (fracMatch) {
+    const n = Number(fracMatch[1]);
+    const denom = Number(fracMatch[2]);
+    return {
+      amount: n,
+      unit: denom === 7 ? 'day' : denom === 52 ? 'week' : 'month',
+    };
+  }
+
+  return { amount: '', unit: 'day' };
+}
+
+export function parseDurationDays(duration) {
+  if (!duration) return 1;
+  const str = String(duration).trim();
+  const yrMatch = str.match(/^(\d+)yr$/);
+  if (yrMatch) return Number(yrMatch[1]) * 365;
+
+  const fracMatch = str.match(/^(\d+)\/(7|52|12)$/);
+  if (fracMatch) {
+    const n = Number(fracMatch[1]);
+    const denom = Number(fracMatch[2]);
+    if (denom === 7) return n;
+    if (denom === 52) return n * 7;
+    if (denom === 12) return n * 30;
+  }
+
+  return DURATION_DAYS[str] ?? 1;
+}
+
 export function getDoseCount(frequency, duration) {
   if (frequency === 'STAT') return 1;
   const timesPerDay = FREQUENCY_TIMES_PER_DAY[frequency] ?? 1;
-  const days = DURATION_DAYS[duration] ?? 1;
-  return timesPerDay * days;
+  const days = parseDurationDays(duration);
+  return Math.ceil(timesPerDay * days);
 }
 
 // Kept for backward compatibility with existing call sites (e.g. ViewConsultation's
@@ -45,20 +99,126 @@ export function calculateDispenseQuantity(frequency, duration) {
   return getDoseCount(frequency, duration);
 }
 
+// Parses a strength string into a concentration { amount, per }.
+// Handles the two formats seen in inventory data:
+//   "500mg"       -> 500mg per 1 unit (tablet/ampoule/etc.)
+//   "125mg/5ml"   -> 125mg per 5 ml (syrups/suspensions)
+// Returns null if the string doesn't match either shape (bare numbers like
+// "400" with no unit, IU strengths like "10IU", blank strings, etc.) —
+// those genuinely can't be converted without a doctor/pharmacist clarifying.
+export function parseStrengthConcentration(strength) {
+  if (!strength) return null;
+  const str = String(strength).trim();
+
+  const ratioMatch = str.match(/^([\d.]+)\s*mg\s*\/\s*([\d.]+)\s*ml$/i);
+  if (ratioMatch) {
+    const amount = Number(ratioMatch[1]);
+    const per = Number(ratioMatch[2]);
+    return amount > 0 && per > 0 ? { amount, per } : null;
+  }
+
+  const simpleMatch = str.match(/^([\d.]+)\s*mg$/i);
+  if (simpleMatch) {
+    const amount = Number(simpleMatch[1]);
+    return amount > 0 ? { amount, per: 1 } : null;
+  }
+
+  return null;
+}
+
+// Parses a dosage string such as "2 tablets", "500mg", "5 ml", or "1/2 tablet"
+// into a numeric amount + normalized unit used by the billing calculator.
+export function parseDosageString(dosage) {
+  if (dosage === null || dosage === undefined || dosage === '') {
+    return { amount: 0, unit: '' };
+  }
+
+  const str = String(dosage).trim();
+  if (!str) return { amount: 0, unit: '' };
+
+  const match = str.match(/^([\d.]+(?:\/\d+(?:\.\d+)?)?)\s*([A-Za-z]+)?$/i);
+  if (!match) {
+    return { amount: 0, unit: '' };
+  }
+
+  const rawAmount = match[1];
+  const rawUnit = (match[2] || '').toLowerCase();
+
+  let amount = Number(rawAmount);
+  if (rawAmount.includes('/')) {
+    const [numerator, denominator] = rawAmount.split('/');
+    const parsedNumerator = Number(numerator);
+    const parsedDenominator = Number(denominator);
+    amount = parsedDenominator ? parsedNumerator / parsedDenominator : 0;
+  }
+
+  const normalizedUnit = (() => {
+    const map = {
+      tablet: 'tablet',
+      tablets: 'tablet',
+      tab: 'tablet',
+      tabs: 'tablet',
+      capsule: 'capsule',
+      capsules: 'capsule',
+      ampoule: 'ampoule',
+      ampoules: 'ampoule',
+      ml: 'ml',
+      millilitre: 'ml',
+      milliliter: 'ml',
+      mg: 'mg',
+      microgram: 'mcg',
+      micrograms: 'mcg',
+      mcg: 'mcg',
+      iu: 'iu',
+      unit: 'iu',
+      units: 'iu',
+      drop: 'ml',
+      drops: 'ml',
+      gtt: 'ml',
+      gtts: 'ml',
+      teaspoon: 'ml',
+      teaspoons: 'ml',
+      tablespoon: 'ml',
+      tablespoons: 'ml',
+    };
+
+    if (!rawUnit) return '';
+    return map[rawUnit] || rawUnit.replace(/s$/, '');
+  })();
+
+  return { amount: Number.isFinite(amount) ? amount : 0, unit: normalizedUnit };
+}
+
+// Explicit concentrationAmount/concentrationPer on the inventory item always
+// wins (lets a pharmacist override/correct a weird strength string). Falls
+// back to parsing `strength` when those aren't set.
+function getConcentration(inventory) {
+  if (inventory?.concentrationAmount && inventory?.concentrationPer) {
+    return {
+      amount: Number(inventory.concentrationAmount),
+      per: Number(inventory.concentrationPer),
+    };
+  }
+  return parseStrengthConcentration(inventory?.strength);
+}
+
+// Exported so the UI can decide whether to show "mg" as a dosing option
+// using the exact same rule the calculator uses to convert it.
+export function hasConcentrationData(inventory) {
+  return !!getConcentration(inventory);
+}
+
 // Converts a dosage entered in `dosageUnit` into the inventory item's own
 // `unit`. Returns null if the conversion isn't possible (e.g. mg requested
 // but the drug has no concentration set in inventory).
 function convertToInventoryUnit(amount, dosageUnit, inventory) {
-  if (!inventory) return null;
-  const invUnit = inventory.unit || 'tablet';
+  if (!inventory || !inventory.unit) return null;
+  const invUnit = inventory.unit;
   if (dosageUnit === invUnit) return amount;
   if (dosageUnit === 'mg') {
-    const { concentrationAmount, concentrationPer } = inventory;
-    if (!concentrationAmount || !concentrationPer) return null;
-    // e.g. 500mg per 1 tablet -> tablets = (doseMg / 500) * 1
-    // or 250mg per 5ml -> ml = (doseMg / 250) * 5
-    // or 50mg per 1 ampoule -> ampoules = (doseMg / 50) * 1
-    return (amount / concentrationAmount) * concentrationPer;
+    const concentration = getConcentration(inventory);
+    if (!concentration) return null;
+    return (amount / concentration.amount) * concentration.per;
   }
   return null;
 }
@@ -94,6 +254,17 @@ export function calculatePrescriptionLine({
     };
   }
 
+  if (!inventory.unit) {
+    return {
+      prescribedQuantity: totalDosageUnits,
+      billedQuantity: null,
+      unit: dosageUnit,
+      unitPrice: 0,
+      lineTotal: 0,
+      convertible: false,
+    };
+  }
+
   const totalInInventoryUnit = convertToInventoryUnit(totalDosageUnits, dosageUnit, inventory);
   if (totalInInventoryUnit === null) {
     return {
@@ -109,9 +280,9 @@ export function calculatePrescriptionLine({
   const packSize = Number(inventory.packSize) || 1;
   const sellingPrice = Number(inventory.sellingPrice) || 0;
   const unitPrice = packSize > 0 ? sellingPrice / packSize : 0;
-  const invUnit = inventory.unit || 'tablet';
+  const invUnit = inventory.unit;
 
-   if (medicationType === 'syrup') {
+   if (medicationType === 'syrup' || medicationType === 'gutt' || medicationType === 'infusion') {
     const bottlesNeeded = Math.ceil(totalInInventoryUnit / packSize) || 0;
     const billedQuantity = bottlesNeeded * packSize;
     return {

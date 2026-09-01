@@ -8,7 +8,6 @@ import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
 import { getInventories } from '@/services/api/inventoryAPI'
 import { AddDrugModal, DispenseConfirmModal } from '@/components/modals'
-import { hasStatus } from '@/utils/statusUtils'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
@@ -19,6 +18,7 @@ import { useNotifications } from '@/contexts/NotificationContext'
 import { calculatePrescriptionLine } from '@/utils/prescriptionsCalculator'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import { usersAPI } from '@/services/api/usersAPI'
+import { PRESCRIPTION_STATUS } from '@/constants/prescriptionStatus'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -31,7 +31,8 @@ const IncomingDetails = () => {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [prescriptions, setPrescriptions] = useState({ active: [], history: [] })
+  const [prescriptions, setPrescriptions] = useState({ active: [], history: [], cancelled: [] })
+  const [expandedIds, setExpandedIds] = useState(new Set())
   const [patient, setPatient] = useState(null)
   const [inventory, setInventory] = useState([])
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
@@ -67,12 +68,17 @@ const IncomingDetails = () => {
           ? list.filter((p) => p.dependantId === incomingDependantId)
           : list.filter((p) => !p.dependantId)
 
-        const active = filtered.filter((p) => String(p.status).toLowerCase() !== 'completed')
+        const active = filtered.filter(
+          (p) => ![PRESCRIPTION_STATUS.COMPLETED, PRESCRIPTION_STATUS.CANCELLED].includes(String(p.status).toLowerCase())
+        )
         const history = filtered
-          .filter((p) => String(p.status).toLowerCase() === 'completed')
+          .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.COMPLETED)
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+        const cancelled = filtered
+          .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.CANCELLED)
           .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
 
-        if (mounted) setPrescriptions({ active, history })
+        if (mounted) setPrescriptions({ active, history, cancelled })
 
         const pRes = await getPatientById(patientId)
         const pData = pRes?.data ?? pRes
@@ -270,277 +276,342 @@ const getDispenseInfo = (med) => {
     return null
   }
 
-  const renderMedications = (list = [], isHistory = false) => {
-    if (!list.length) {
-      return <div className="text-sm text-base-content/60">No data.</div>
-    }
-
-    const meds = list.flatMap((p) => {
-      const isForDependant = !!p.dependantId
-      const dependant = isForDependant
-        ? dependants.find((d) => d.id === p.dependantId || d._id === p.dependantId)
-        : null
-
-      const forName = isForDependant
-        ? dependant
-          ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
-          : 'Dependant'
-        : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
-
-     return (p.medications || []).map((m) => {
-        const dispenseInfo = getDispenseInfo(m)
-        const suggestedQty = dispenseInfo.quantity
-        const suggestedUnit = dispenseInfo.unit // 'ml' | 'iu' | null
-        const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
-        const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
-
-       return {
-  ...m,
-  form: dispenseInfo.inv?.form,
-  strength: dispenseInfo.inv?.strength,
-  status: p.status,
-  pharmacistName: p.pharmacistName,
-  doctorName: doctors[p.doctorId] || null, 
-  _id: p._id,
-  createdAt: p.createdAt,
-  updatedAt: p.updatedAt,
-  isForDependant,
-  dependantId: p.dependantId,
-  patientId: p.patientId,
-  forName,
-  suggestedQty,
-  suggestedUnit: dispenseInfo.unit,
-  prescribedQty: dispenseInfo.prescribedQty,
-  bottlesNeeded: dispenseInfo.bottlesNeeded,
-  availabilityInfo,
-  hmoStatus,
-}
-      })
+  const toggleExpand = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
     })
-
-    return (
-      <div className="space-y-3">
-        {meds.map((m, i) => (
-          <div
-            key={i}
-            className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
-          >
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-base-200">
-              {/* <div className="flex items-center gap-2">
-                <span className="font-medium text-sm">{m.forName || 'Unknown'}</span>
-                {m.isForDependant ? (
-                  <span className="badge badge-secondary badge-sm font-medium">Dependant</span>
-                ) : (
-                  <span className="badge badge-primary badge-sm font-medium">Main Patient</span>
-                )}
-              </div> */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
-                  {m.availabilityInfo.label}
-                </span>
-                {m.hmoStatus === 'approved' && (
-                  <span className="badge badge-sm badge-success font-medium">HMO: Covered</span>
-                )}
-                {m.hmoStatus === 'partial' && (
-                  <span className="badge badge-sm badge-warning font-medium">HMO: Partial</span>
-                )}
-                {m.hmoStatus === 'rejected' && (
-                  <span className="badge badge-sm badge-error font-medium">HMO: Not Covered</span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-              <div>
-                <div className="font-semibold text-base">{m.drugName}</div>
-                <div className="text-sm text-base-content/70">
-                  {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
-                </div>
-                <div className="text-sm mt-1">Dosage: {m.dosage}</div>
-                <div className="text-sm">Frequency: {m.frequency}</div>
-                <div className="text-sm">Duration: {m.duration}</div>
-                <div className="text-sm font-medium text-primary mt-1">
-                  <div className="text-sm font-medium text-primary mt-1">
-                    Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
-                  </div>
-                  {m.bottlesNeeded ? (
-                    <div className="text-sm font-medium text-primary">
-                      Billed: {m.bottlesNeeded} bottle{m.bottlesNeeded > 1 ? 's' : ''} ({m.suggestedQty}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ''})
-                    </div>
-                  ) : null}
-                  </div>
-              </div>
-              <div className="text-sm sm:text-right space-y-1">
-                <div>Status: <span className="capitalize font-medium">{m.status}</span></div>
-                 {m.doctorName && (
-                  <div className="text-xs text-base-content/70">Prescribed by: Dr. {m.doctorName}</div>
-                )}
-                {m.pharmacistName && (
-                  <div className="text-xs text-base-content/70">Pharmacist: {m.pharmacistName}</div>
-                )}
-                <div className="text-xs text-base-content/60">
-                  Created: {m.createdAt ? formatNigeriaDateTime(m.createdAt) : '—'}
-                </div>
-                {m.instructions && (
-                  <div className="text-xs mt-1 bg-base-200 p-1.5 rounded">
-                    Instruction: {m.instructions}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )
   }
 
-  const buildDispenseRows = () => {
-    return prescriptions.active.flatMap((p) => {
+  const renderMedCard = (m, isHistory = false) => (
+    <div
+      key={`${m._id || m.drugName}-${m.drugName}`}
+      className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
+    >
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-base-200">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
+            {m.availabilityInfo.label}
+          </span>
+          {m.hmoStatus === 'approved' && (
+            <span className="badge badge-sm badge-success font-medium">HMO: Covered</span>
+          )}
+          {m.hmoStatus === 'partial' && (
+            <span className="badge badge-sm badge-warning font-medium">HMO: Partial</span>
+          )}
+          {m.hmoStatus === 'rejected' && (
+            <span className="badge badge-sm badge-error font-medium">HMO: Not Covered</span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+        <div>
+          <div className="font-semibold text-base">{m.drugName}</div>
+          <div className="text-sm text-base-content/70">
+            {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
+          </div>
+          <div className="text-sm mt-1">Dosage: {m.dosage}</div>
+          <div className="text-sm">Frequency: {m.frequency}</div>
+          <div className="text-sm">Duration: {m.duration}</div>
+          <div className="text-sm font-medium text-primary mt-1">
+            <div className="text-sm font-medium text-primary mt-1">
+              Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
+            </div>
+            {m.bottlesNeeded ? (
+              <div className="text-sm font-medium text-primary">
+                Billed: {m.bottlesNeeded} bottle{m.bottlesNeeded > 1 ? 's' : ''} ({m.suggestedQty}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ''})
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="text-sm sm:text-right space-y-1">
+          {m.instructions && (
+            <div className="text-xs mt-1 bg-base-200 p-1.5 rounded">
+              Instruction: {m.instructions}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  const computeMedRows = (p) => {
+    const isForDependant = !!p.dependantId
+    const dependant = isForDependant
+      ? dependants.find((d) => d.id === p.dependantId || d._id === p.dependantId)
+      : null
+
+    const forName = isForDependant
+      ? dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() : 'Dependant'
+      : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
+
+    return (p.medications || []).map((m) => {
+      const dispenseInfo = getDispenseInfo(m)
+      const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
+      const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
+
+      return {
+        ...m,
+        form: dispenseInfo.inv?.form,
+        strength: dispenseInfo.inv?.strength,
+        status: p.status,
+        pharmacistName: p.pharmacistName,
+        doctorName: doctors[p.doctorId] || null,
+        _id: p._id,
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+        isForDependant,
+        dependantId: p.dependantId,
+        patientId: p.patientId,
+        forName,
+        suggestedQty: dispenseInfo.quantity,
+        suggestedUnit: dispenseInfo.unit,
+        prescribedQty: dispenseInfo.prescribedQty,
+        bottlesNeeded: dispenseInfo.bottlesNeeded,
+        availabilityInfo,
+        hmoStatus,
+      }
+    })
+  }
+
+  const buildDispenseRowsForPrescriptions = (list = []) => {
+    return list.flatMap((p) => {
       const isForDependant = !!p.dependantId
       const dependant = isForDependant
         ? dependants.find((d) => d.id === p.dependantId || d._id === p.dependantId)
         : null
 
       const forName = isForDependant
-        ? dependant
-          ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim()
-          : 'Dependant'
+        ? dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() : 'Dependant'
         : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
 
       return (p.medications || []).map((m) => {
         const dispenseInfo = getDispenseInfo(m)
-        const suggestedQty = dispenseInfo.quantity
-          const suggestedUnit = dispenseInfo.unit
         const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
         const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
 
-       return {
-  key: `${p._id}-${m.drugName}`,
-  prescriptionId: p._id,
-  drugName: m.drugName,
-  dosage: m.dosage,
-  frequency: m.frequency,
-  duration: m.duration,
-  forName,
-  doctorName: doctors[p.doctorId] || null, 
-  suggestedQty,
-  suggestedUnit,
-  prescribedQty: dispenseInfo.prescribedQty,
-  bottlesNeeded: dispenseInfo.bottlesNeeded,
-  formStrength: dispenseInfo.inv ? `${dispenseInfo.inv.form || ''} ${dispenseInfo.inv.strength ? '• ' + dispenseInfo.inv.strength : ''}`.trim() : '',
-  availabilityInfo,
-  hmoStatus,
-}
+        return {
+          key: `${p._id}-${m.drugName}`,
+          prescriptionId: p._id,
+          drugName: m.drugName,
+          dosage: m.dosage,
+          frequency: m.frequency,
+          duration: m.duration,
+          forName,
+          doctorName: doctors[p.doctorId] || null,
+          suggestedQty: dispenseInfo.quantity,
+          suggestedUnit: dispenseInfo.unit,
+          prescribedQty: dispenseInfo.prescribedQty,
+          bottlesNeeded: dispenseInfo.bottlesNeeded,
+          formStrength: dispenseInfo.inv ? `${dispenseInfo.inv.form || ''} ${dispenseInfo.inv.strength ? '• ' + dispenseInfo.inv.strength : ''}`.trim() : '',
+          availabilityInfo,
+          hmoStatus,
+        }
       })
     })
   }
 
-const submitDispense = async (finalRows, action) => {
-  setDispenseSubmitting(true)
+  const handlePrescriptionAction = (p) => {
+    setPendingAction({ prescriptionIds: [p._id] })
+    setDispenseModalRows(buildDispenseRowsForPrescriptions([p]))
+  }
 
-  const activePrescriptions = prescriptions.active
-  const pid = patient?.id || patient?._id || patient?.patientId
+  const handleCancelPrescription = async (p) => {
+    if (!window.confirm('Cancel this prescription? This cannot be undone.')) return
 
-  const unavailableRows = (finalRows || []).filter(
-    (row) => !row?.availabilityInfo?.inStock
-  )
-
-  unavailableRows.forEach((row) => {
-    const requestedQty = Number(row.suggestedQty) || 0
-    const stockQty = Number(row.availabilityInfo?.stockQty) || 0
-    const shortage = Math.max(requestedQty - stockQty, 0)
-
-    if (row.availabilityInfo?.label === 'Not Stocked by Hospital') {
-      toast.error(`${row.drugName} is not available in the hospital inventory.`)
-    } else if (shortage > 0) {
-      toast.error(`Insufficient stock for ${row.drugName}, short by ${shortage} unit(s).`)
-    }
-  })
-
-  // Only rows that are actually in stock get deducted — nothing to deduct
-  // for "unavailable" or "out of stock" medications.
-  const dispensableRows = (finalRows || []).filter(
-    (row) => row?.availabilityInfo?.inStock && Number(row.suggestedQty) > 0
-  )
-
-  const byPrescription = dispensableRows.reduce((acc, row) => {
-    if (!acc[row.prescriptionId]) acc[row.prescriptionId] = []
-    acc[row.prescriptionId].push({
-      drugName: row.drugName,
-      quantity: Number(row.suggestedQty) || 0,
-    })
-    return acc
-  }, {})
-
-  const dispenseCalls = Object.entries(byPrescription).map(([prescriptionId, items]) =>
-    dispensesAPI.createDispense(prescriptionId, {
-      items,
+    const promise = updatePrescription(p._id, {
+      status: PRESCRIPTION_STATUS.CANCELLED,
       pharmacistId,
-      status: 'dispensed',
+      pharmacistName,
     })
-  )
 
-  const statusUpdate = action === 'sendToNurse'
-    ? isViewingDependant
-      ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_INJECTION })
-      : updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_INJECTION })
-    : isViewingDependant
-      ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
-      : updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+    toast.promise(promise, {
+      loading: 'Cancelling prescription...',
+      success: 'Prescription cancelled',
+      error: 'Failed to cancel prescription',
+    })
 
-  const promise = Promise.all([
-    ...activePrescriptions.map((p) =>
-      updatePrescription(p._id, {
-        status: 'completed',
-        pharmacistId,
-        pharmacistName,
+    try {
+      await promise
+      setPrescriptions((prev) => {
+        const stillActive = prev.active.filter((item) => item._id !== p._id)
+        const cancelledEntry = { ...p, status: PRESCRIPTION_STATUS.CANCELLED, pharmacistId, pharmacistName }
+        return { ...prev, active: stillActive, cancelled: [cancelledEntry, ...prev.cancelled] }
       })
-    ),
-    statusUpdate,
-    ...dispenseCalls,
-  ])
+    } catch (err) {
+      console.error('Cancel failed:', err)
+    }
+  }
 
-  toast.promise(promise, {
-    loading: action === 'sendToNurse' ? 'Completing & sending to nurse...' : 'Completing prescription...',
-    success: action === 'sendToNurse' ? 'Sent to nurse' : 'Prescription completed',
-    error: 'Failed — check stock levels',
-  })
+  const submitDispense = async (finalRows, pendingActionValue) => {
+    const { prescriptionIds } = pendingActionValue || {}
+    setDispenseSubmitting(true)
 
-  try {
-    await promise
+    const targetPrescriptions = prescriptions.active.filter((p) => prescriptionIds.includes(p._id))
+    const pid = patient?.id || patient?._id || patient?.patientId
 
-    const invRes = await getInventories()
-    setInventory(invRes?.data ?? [])
+    const unavailableRows = (finalRows || []).filter((row) => !row?.availabilityInfo?.inStock)
+    unavailableRows.forEach((row) => {
+      const requestedQty = Number(row.suggestedQty) || 0
+      const stockQty = Number(row.availabilityInfo?.stockQty) || 0
+      const shortage = Math.max(requestedQty - stockQty, 0)
 
-    setPrescriptions((prev) => {
-      const updatedHistory = [
-        ...activePrescriptions.map((p) => ({ ...p, status: 'completed', pharmacistId, pharmacistName })),
-        ...prev.history,
-      ]
-      return { active: [], history: updatedHistory }
+      if (row.availabilityInfo?.label === 'Not Stocked by Hospital') {
+        toast.error(`${row.drugName} is not available in the hospital inventory.`)
+      } else if (shortage > 0) {
+        toast.error(`Insufficient stock for ${row.drugName}, short by ${shortage} unit(s).`)
+      }
     })
 
-    setPatient((prev) =>
-      isViewingDependant
-        ? prev
-        : {
-            ...(prev || {}),
-            status: action === 'sendToNurse' ? PATIENT_STATUS.AWAITING_INJECTION : PATIENT_STATUS.PHARMACY_COMPLETED,
-          }
+    const dispensableRows = (finalRows || []).filter(
+      (row) => row?.availabilityInfo?.inStock && Number(row.suggestedQty) > 0
     )
 
-    setDispenseModalRows(null)
-  } catch (err) {
-    console.error('Submission failed:', err)
-  } finally {
-    setDispenseSubmitting(false)
-  }
-}
+    const byPrescription = dispensableRows.reduce((acc, row) => {
+      if (!acc[row.prescriptionId]) acc[row.prescriptionId] = []
+      acc[row.prescriptionId].push({
+        drugName: row.drugName,
+        quantity: Number(row.suggestedQty) || 0,
+      })
+      return acc
+    }, {})
 
-  const handleComplete = () => {
-    if (!prescriptions.active.length) return
-    setPendingAction('complete')
-    setDispenseModalRows(buildDispenseRows())
+    const dispenseCalls = Object.entries(byPrescription).map(([prescriptionId, items]) =>
+      dispensesAPI.createDispense(prescriptionId, {
+        items,
+        pharmacistId,
+        status: PRESCRIPTION_STATUS.DISPENSED,
+      })
+    )
+
+    const hasInjection = targetPrescriptions.some((p) =>
+      (p.medications || []).some((m) => m.medicationType === 'injection')
+    )
+
+    const statusUpdate = hasInjection
+      ? isViewingDependant
+        ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_INJECTION })
+        : updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_INJECTION })
+      : isViewingDependant
+        ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+        : updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+
+    const promise = Promise.all([
+      ...targetPrescriptions.map((p) =>
+        updatePrescription(p._id, {
+          status: PRESCRIPTION_STATUS.COMPLETED,
+          pharmacistId,
+          pharmacistName,
+        })
+      ),
+      statusUpdate,
+      ...dispenseCalls,
+    ])
+
+    toast.promise(promise, {
+      loading: hasInjection ? 'Dispensing & sending to nurse...' : 'Dispensing...',
+      success: hasInjection ? 'Sent to nurse for injection' : 'Prescription completed',
+      error: 'Failed — check stock levels',
+    })
+
+    try {
+      await promise
+
+      const invRes = await getInventories()
+      setInventory(invRes?.data ?? [])
+
+      setPrescriptions((prev) => {
+        const stillActive = prev.active.filter((p) => !prescriptionIds.includes(p._id))
+        const movedToHistory = prev.active
+          .filter((p) => prescriptionIds.includes(p._id))
+          .map((p) => ({ ...p, status: PRESCRIPTION_STATUS.COMPLETED, pharmacistId, pharmacistName }))
+        return { ...prev, active: stillActive, history: [...movedToHistory, ...prev.history] }
+      })
+
+      setPatient((prev) =>
+        isViewingDependant
+          ? prev
+          : {
+              ...(prev || {}),
+              status: hasInjection ? PATIENT_STATUS.AWAITING_INJECTION : PATIENT_STATUS.PHARMACY_COMPLETED,
+            }
+      )
+
+      setDispenseModalRows(null)
+    } catch (err) {
+      console.error('Submission failed:', err)
+    } finally {
+      setDispenseSubmitting(false)
+    }
+  }
+
+  const renderPrescriptionCard = (p, isHistory = false) => {
+    const isForDependant = !!p.dependantId
+    const dependant = isForDependant
+      ? dependants.find((d) => d.id === p.dependantId || d._id === p.dependantId)
+      : null
+    const forName = isForDependant
+      ? dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() : 'Dependant'
+      : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
+    const medRows = computeMedRows(p)
+    const isOpen = isHistory || expandedIds.has(p._id)
+
+    return (
+      <div key={p._id} className="border border-base-300 rounded-lg mb-3 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => !isHistory && toggleExpand(p._id)}
+          className={`w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 text-left ${isHistory ? 'bg-base-200 opacity-70 cursor-default' : 'bg-base-100 hover:bg-base-200'}`}
+        >
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm">{forName || 'Unknown'}</span>
+              <span className={`badge badge-sm ${isForDependant ? 'badge-secondary' : 'badge-primary'} font-medium`}>
+                {isForDependant ? 'Dependant' : 'Main Patient'}
+              </span>
+              <span className="capitalize badge badge-sm badge-ghost font-medium">{p.status}</span>
+            </div>
+            <div className="text-xs text-base-content/60">
+              {p.createdAt ? formatNigeriaDateTime(p.createdAt) : '—'}
+              {doctors[p.doctorId] && <> · Dr. {doctors[p.doctorId]}</>}
+              {p.pharmacistName && <> · Pharmacist: {p.pharmacistName}</>}
+              {' · '}{(p.medications || []).length} drug{(p.medications || []).length === 1 ? '' : 's'}
+            </div>
+          </div>
+          {!isHistory && (
+            <span className="text-xs text-base-content/50">{isOpen ? '▲ Collapse' : '▼ Expand'}</span>
+          )}
+        </button>
+
+        {isOpen && (
+          <div className="p-3 space-y-3 border-t border-base-200">
+            {medRows.map((m) => renderMedCard(m, isHistory))}
+
+            {!isHistory && (
+              <div className="flex flex-col gap-2 sm:flex-row pt-2">
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={dispenseSubmitting}
+                  onClick={() => handlePrescriptionAction(p)}
+                >
+                  Dispense
+                </button>
+                <button
+                  className="btn btn-outline btn-error btn-sm"
+                  disabled={dispenseSubmitting}
+                  onClick={() => handleCancelPrescription(p)}
+                >
+                  Cancel Prescription
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
   }
 
   const summarySubject = useMemo(() => {
@@ -628,39 +699,25 @@ const submitDispense = async (finalRows, action) => {
           ) : (
             <>
               <h3 className="font-medium mb-3">Active Prescriptions</h3>
-              {renderMedications(prescriptions.active)}
-
-              {prescriptions.active.length > 0 && (
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <button className="btn btn-primary btn-sm" onClick={handleComplete}>
-                    Complete Pharmacy
-                  </button>
-
-                  <button
-                    className="btn btn-primary btn-sm"
-                    disabled={
-                      !patient ||
-                      prescriptions.active.length === 0 ||
-                      hasStatus(patient?.status, PATIENT_STATUS.AWAITING_INJECTION)
-                    }
-                    onClick={() => {
-                      const activePrescriptions = prescriptions.active
-                      if (!activePrescriptions.length) return
-
-                      const pid = patient?.id || patient?._id || patient?.patientId
-                      if (!pid) return
-
-                      setPendingAction('sendToNurse')
-                      setDispenseModalRows(buildDispenseRows())
-                    }}
-                  >
-                    Complete & Send to Nurse
-                  </button>
-                </div>
+              {prescriptions.active.length ? (
+                prescriptions.active.map((p) => renderPrescriptionCard(p, false))
+              ) : (
+                <div className="text-sm text-base-content/60">No data.</div>
               )}
 
               <h3 className="font-medium mt-6 mb-3">History</h3>
-              {renderMedications(prescriptions.history, true)}
+              {prescriptions.history.length ? (
+                prescriptions.history.map((p) => renderPrescriptionCard(p, true))
+              ) : (
+                <div className="text-sm text-base-content/60">No data.</div>
+              )}
+
+              <h3 className="font-medium mt-6 mb-3">Cancelled</h3>
+              {prescriptions.cancelled.length ? (
+                prescriptions.cancelled.map((p) => renderPrescriptionCard(p, true))
+              ) : (
+                <div className="text-sm text-base-content/60">No data.</div>
+              )}
             </>
           )}
         </div>

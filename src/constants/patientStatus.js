@@ -77,7 +77,37 @@ export const FREQUENCY  ={
   EIGHT_HLY  : "8hly",
   TWELVE_HLY : "12hly",
   TWENTYFOUR_HLY : "24hly",
+  MANE : "mane",
+  NOCTE : "nocte",
+  PRN : "prn",
+  ALT_DIE : "alt die",
 }
+
+export const ORAL_FREQUENCIES = [
+  FREQUENCY.STAT,
+  FREQUENCY.DLY,
+  FREQUENCY.BD,
+  FREQUENCY.TDS,
+  FREQUENCY.QDS,
+  FREQUENCY.MANE,
+  FREQUENCY.NOCTE,
+  FREQUENCY.PRN,
+  FREQUENCY.ALT_DIE,
+];
+
+export const INJECTION_FREQUENCIES = [
+  FREQUENCY.STAT,
+  FREQUENCY.DLY,
+  FREQUENCY.HLY,
+  FREQUENCY.FOUR_HLY,
+  FREQUENCY.SIX_HLY,
+  FREQUENCY.EIGHT_HLY,
+  FREQUENCY.TWELVE_HLY,
+  FREQUENCY.TWENTYFOUR_HLY,
+  FREQUENCY.MANE,
+  FREQUENCY.NOCTE,
+  FREQUENCY.PRN,
+];
 
 export const DURATION = {
   ONE_SEVEN : "1/7",
@@ -96,6 +126,14 @@ export const DURATION = {
   FIVE_TWELVE : "5/12",
   SIX_TWELVE : "6/12",
   ONE_YEAR : "1yr",
+}
+
+export function isValidDuration(value) {
+  if (!value) return false;
+  const str = String(value).trim();
+  if (/^\d+yr$/.test(str)) return true;
+  if (/^\d+\/(7|52|12)$/.test(str)) return true;
+  return Object.values(DURATION).includes(str);
 }
 
 
