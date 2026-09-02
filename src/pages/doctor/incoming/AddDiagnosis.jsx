@@ -464,7 +464,7 @@ const handleConfirmSave = async () => {
                       complaints.map((item, idx) => (
                         <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/50">
                           <td className="py-4 pl-6 font-medium text-base-content">{item.name}</td>
-                          <td className="py-4 text-base-content/80">{item.duration} {item.unit}</td>
+                          <td className="py-4 text-base-content/80">{item.duration}</td>
                           <td className="py-4 pr-6 text-right">
                             <button onClick={() => removeComplaint(idx)} className="btn btn-ghost btn-xs text-error">
                               <span className="text-lg font-bold">−</span>

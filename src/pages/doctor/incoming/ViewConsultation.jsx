@@ -1200,7 +1200,7 @@ const getInventoryMatch = (medication) => {
         data={medicalRecords.family}
       />
       <AddHistoryModal
-        isOpen={activeModal === 'medical'}
+        isOpen={activeModal === 'medical history'}
         onClose={() => setActiveModal(null)}
         onAdd={(item) =>
           setEditForm((prev) => ({
@@ -1208,7 +1208,7 @@ const getInventoryMatch = (medication) => {
             medicalHistory: [...prev.medicalHistory, item],
           }))
         }
-        type="Medical"
+        type="Medical_History"
         data={medicalRecords.symptoms}
       />
       <AddHistoryModal
@@ -1236,7 +1236,7 @@ const getInventoryMatch = (medication) => {
         data={medicalRecords.social}
       />
       <AddHistoryModal
-        isOpen={activeModal === 'allergy'}
+        isOpen={activeModal === 'allergic'}
         onClose={() => setActiveModal(null)}
         onAdd={(item) =>
           setEditForm((prev) => ({
@@ -1244,7 +1244,7 @@ const getInventoryMatch = (medication) => {
             allergyHistory: [...prev.allergyHistory, item],
           }))
         }
-        type="Allergy"
+        type="Allergic"
         data={medicalRecords.allergic}
       />
       <OrderInvestigationModal
@@ -2620,7 +2620,7 @@ const getInventoryMatch = (medication) => {
                     {isEditMode && (
                       <button
                         className="btn btn-xs btn-primary"
-                        onClick={() => setActiveModal('medical')}
+                        onClick={() => setActiveModal('medical history')}
                       >
                         <FaPlus className="w-3 h-3" />
                       </button>
@@ -2775,7 +2775,7 @@ const getInventoryMatch = (medication) => {
                     {isEditMode && (
                       <button
                         className="btn btn-xs btn-error"
-                        onClick={() => setActiveModal('allergy')}
+                        onClick={() => setActiveModal('allergic')}
                       >
                         <FaPlus className="w-3 h-3" />
                       </button>
