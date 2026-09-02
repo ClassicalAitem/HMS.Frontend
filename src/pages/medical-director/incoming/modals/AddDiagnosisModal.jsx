@@ -9,7 +9,6 @@ import { getAllComplaint, createMedicalRecord } from '@/services/api/medicalReco
 
 const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded , existingDiagnosis }) => {
   const [diagnoses, setDiagnoses] = useState([]); // Array of selected diagnoses
-  const [diagnosisInput, setDiagnosisInput] = useState('');
   const [search, setSearch] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -34,7 +33,6 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
     };
     fetchDiagnosis();
     setSearch('');
-    setDiagnosisInput('');
 
     // Seed the chip list with whatever diagnoses are already saved
     const initial = existingDiagnosis
@@ -90,7 +88,6 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
     }
 
     setDiagnoses(prev => [...prev, trimmedName]);
-    setDiagnosisInput('');
     setSearch('');
     setDropdownOpen(false);
   };
@@ -142,10 +139,9 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
                   type="text"
                   className="input input-bordered w-full"
                   placeholder="Search diagnosis..."
-                  value={search || diagnosisInput}
+                  value={search}
                   onChange={e => {
                     setSearch(e.target.value);
-                    setDiagnosisInput(e.target.value);
                     setDropdownOpen(true);
                   }}
                   onFocus={() => setDropdownOpen(true)}
@@ -156,9 +152,9 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
                   <button
                     type="button"
                     className="text-gray-400 hover:text-primary"
-                    onClick={() => handleAddDiagnosis(search || diagnosisInput, true)}
+                    onClick={() => handleAddDiagnosis(search, true)}
                     tabIndex={-1}
-                    disabled={isLoading || !(search || diagnosisInput)}
+                    disabled={isLoading || !search.trim()}
                   >
                     <FaPlus className="w-4 h-4" />
                   </button>
@@ -166,47 +162,54 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
                 {dropdownOpen && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                     {(() => {
+                      const query = search.trim();
                       const filteredItems = localDiagnosisOptions.filter(item =>
-                        (search || diagnosisInput)
-                          ? item.name.toLowerCase().includes((search || diagnosisInput).toLowerCase())
+                        query
+                          ? item.name.toLowerCase().includes(query.toLowerCase())
                           : true
                       );
 
-                      if (filteredItems.length > 0) {
-                        return (
-                          <ul className="py-1">
-                            {filteredItems.map(item => (
-                              <li
-                                key={item.id || item._id}
-                                onClick={() => handleAddDiagnosis(item.name)}
-                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
-                              >
-                                {item.name}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      }
-
-                      if (search && search.trim()) {
-                        return (
-                          <div className="py-2 px-4">
-                            <button
-                              type="button"
-                              onClick={() => handleAddDiagnosis(search || diagnosisInput, true)}
-                              className="flex items-center gap-2 w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-gray-50 px-2 py-1 rounded"
-                            >
-                              <FaPlus className="w-4 h-4" />
-                              Add "{search.trim() || diagnosisInput.trim()}" as new diagnosis
-                            </button>
-                          </div>
-                        );
-                      }
+                      // Only hide the "add new" option if there's an EXACT match
+                      // (case-insensitive). Partial matches shouldn't block adding
+                      // a differently-named new diagnosis.
+                      const hasExactMatch = query
+                        ? filteredItems.some(item => item.name.toLowerCase() === query.toLowerCase())
+                        : true;
 
                       return (
-                        <div className="py-2 px-4 text-gray-400 text-sm">
-                          No matches found
-                        </div>
+                        <>
+                          {query && !hasExactMatch && (
+                            <div className={`py-2 px-4 ${filteredItems.length > 0 ? "border-t border-gray-100" : ""}`}>
+                              <button
+                                type="button"
+                                onClick={() => handleAddDiagnosis(query, true)}
+                                className="flex items-center gap-2 w-full text-left text-sm text-blue-600 hover:text-blue-800 hover:bg-gray-50 px-2 py-1 rounded"
+                              >
+                                <FaPlus className="w-4 h-4" />
+                                Add "{query}" as new diagnosis
+                              </button>
+                            </div>
+                          )}
+                          {filteredItems.length > 0 ? (
+                            <ul className="py-1">
+                              {filteredItems.map(item => (
+                                <li
+                                  key={item.id || item._id}
+                                  onClick={() => handleAddDiagnosis(item.name)}
+                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-700"
+                                >
+                                  {item.name}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            !query && (
+                              <div className="py-2 px-4 text-gray-400 text-sm">
+                                No matches found
+                              </div>
+                            )
+                          )}
+                        </>
                       );
                     })()}
                   </div>
