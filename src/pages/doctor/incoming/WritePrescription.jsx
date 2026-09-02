@@ -476,7 +476,7 @@ const WritePrescription = () => {
                                 <button
                                   key={tab.value}
                                   type="button"
-                                  className={`tab gap-2 ${active ? 'tab-active' : ''}`}
+                                  className={`tab gap-2  ${active ? 'tab-active bg-primary text-primary-content' : ''}`}
                                  onClick={() => {
                                     setValue(`medications.${index}.medicationType`, tab.value);
                                     setValue(`medications.${index}.frequency`, '');
