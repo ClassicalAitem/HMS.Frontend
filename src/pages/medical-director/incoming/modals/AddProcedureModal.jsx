@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaTimes, FaHospital, FaCalendarAlt, FaClock, FaNotesMedical } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { getAllComplaint } from '@/services/api/medicalRecordAPI';
+import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { createAppointment } from '@/services/api/appointmentsAPI';
 
 const AddProcedureModal = ({
@@ -14,38 +14,42 @@ const AddProcedureModal = ({
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProcedures, setIsLoadingProcedures] = useState(false);
-  const [surgicalProcedures, setSurgicalProcedures] = useState([]);
+  const [surgicalCharges, setSurgicalCharges] = useState([]);
   const [procedureSearch, setProcedureSearch] = useState('');
   const [isProcedureDropdownOpen, setIsProcedureDropdownOpen] = useState(false);
 
   const [form, setForm] = useState({
     procedureName: '',
-    procedureCode: '',
+    serviceChargeId: '',
+    price: 0,
     appointmentDate: '',
     appointmentTime: '',
     department: '',
     notes: '',
   });
 
-  // Load surgical-category records only (this is the "procedure list")
+  // Load surgical-category SERVICE CHARGES (this is the "procedure list" to bill against)
   useEffect(() => {
     if (!isOpen) return;
 
-    const loadSurgicalRecords = async () => {
+    const loadSurgicalCharges = async () => {
       try {
         setIsLoadingProcedures(true);
-        const res = await getAllComplaint();
-        const list = Array.isArray(res) ? res : (res?.data ?? []);
-        const surgicalOnly = list.filter((x) => x.category === 'surgical');
-        setSurgicalProcedures(surgicalOnly);
+        const res = await getServiceCharges();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        const surgicalOnly = list.filter(
+          (x) => String(x?.category || '').toLowerCase() === 'surgical',
+        );
+        setSurgicalCharges(surgicalOnly);
       } catch (err) {
-        console.error('Failed to load surgical procedures', err);
+        console.error('Failed to load surgical service charges', err);
       } finally {
         setIsLoadingProcedures(false);
       }
     };
 
-    loadSurgicalRecords();
+    loadSurgicalCharges();
   }, [isOpen]);
 
   // Reset form each time modal opens
@@ -53,10 +57,11 @@ const AddProcedureModal = ({
     if (isOpen) {
       setForm({
         procedureName: '',
-        procedureCode: '',
+        serviceChargeId: '',
+        price: 0,
         appointmentDate: '',
         appointmentTime: '',
-        department: 'Doctor',
+        department: 'doctor',
         notes: '',
       });
       setProcedureSearch('');
@@ -64,9 +69,9 @@ const AddProcedureModal = ({
     }
   }, [isOpen]);
 
-  const filteredProcedures = surgicalProcedures.filter((item) =>
+  const filteredCharges = surgicalCharges.filter((item) =>
     procedureSearch
-      ? (item.name || item.title || '')
+      ? String(item.service || '')
           .toLowerCase()
           .includes(procedureSearch.toLowerCase())
       : true,
@@ -79,8 +84,8 @@ const AddProcedureModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!form.procedureName.trim()) {
-      toast.error('Please select or enter a procedure');
+    if (!form.procedureName.trim() || !form.serviceChargeId) {
+      toast.error('Please select a procedure from the list');
       return;
     }
     if (!form.appointmentDate) {
@@ -102,7 +107,8 @@ const AddProcedureModal = ({
         appointmentDate: form.appointmentDate,
         appointmentTime: form.appointmentTime,
         procedureName: form.procedureName,
-        procedureCode: form.procedureCode,
+        serviceChargeId: form.serviceChargeId,
+        price: form.price,
         department: form.department,
         notes: form.notes,
         status: 'scheduled',
@@ -150,7 +156,7 @@ const AddProcedureModal = ({
         {/* FORM */}
         <div className="p-6 overflow-y-auto flex-1">
           <form id="add-procedure-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* PROCEDURE PICKER */}
+            {/* PROCEDURE PICKER (from surgical service charges) */}
             <div className="form-control w-full relative">
               <label className="label">
                 <span className="label-text font-medium">Procedure</span>
@@ -168,8 +174,14 @@ const AddProcedureModal = ({
                 }}
                 onChange={(e) => {
                   setProcedureSearch(e.target.value);
-                  setForm((prev) => ({ ...prev, procedureName: e.target.value }));
                   setIsProcedureDropdownOpen(true);
+                  // typing manually invalidates a previous exact pick
+                  setForm((prev) => ({
+                    ...prev,
+                    procedureName: e.target.value,
+                    serviceChargeId: '',
+                    price: 0,
+                  }));
                 }}
                 onBlur={() => {
                   // slight delay so click on dropdown item registers first
@@ -177,45 +189,59 @@ const AddProcedureModal = ({
                 }}
               />
 
-              {isProcedureDropdownOpen && filteredProcedures.length > 0 && (
+              {isProcedureDropdownOpen && filteredCharges.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 top-[72px] bg-white border rounded-md shadow max-h-60 overflow-auto">
-                  {filteredProcedures.map((item) => (
+                  {filteredCharges.map((item) => (
                     <div
-                      key={item._id || item.id}
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                      key={item.id || item._id}
+                      className="px-4 py-2 cursor-pointer hover:bg-gray-100 flex justify-between items-center"
                       onClick={() => {
                         setForm((prev) => ({
                           ...prev,
-                          procedureName: item.name || item.title || '',
-                          procedureCode: item.code || item.procedureCode || '',
+                          procedureName: item.service || '',
+                          serviceChargeId: item.id || item._id,
+                          price: Number(item.amount) || 0,
                         }));
                         setIsProcedureDropdownOpen(false);
                         setProcedureSearch('');
                       }}
                     >
-                      <span>{item.name || item.title}</span>
-                      {item.code && (
-                        <span className="text-xs text-gray-500 ml-2">({item.code})</span>
-                      )}
+                      <span>{item.service}</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        ₦{Number(item.amount || 0).toLocaleString()}
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
+
+              {isProcedureDropdownOpen &&
+                procedureSearch &&
+                filteredCharges.length === 0 &&
+                !isLoadingProcedures && (
+                  <div className="absolute z-50 w-full mt-1 top-[72px] bg-white border rounded-md shadow p-3 text-sm text-gray-500">
+                    No surgical service charge matches "{procedureSearch}"
+                  </div>
+                )}
             </div>
 
-            {/* PROCEDURE CODE (auto-filled but editable) */}
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium">Procedure Code</span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. SUR-001"
-                className="input input-bordered w-full"
-                value={form.procedureCode}
-                onChange={(e) => handleChange('procedureCode', e.target.value)}
-              />
-            </div>
+            {/* Auto-filled price, read-only display */}
+            {form.serviceChargeId && (
+              <div className="form-control w-full">
+                <label className="label">
+                  <span className="label-text font-medium">Price</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered w-full bg-base-200"
+                  value={`₦${Number(form.price || 0).toLocaleString()}`}
+                  readOnly
+                />
+              </div>
+            )}
+
+        
+
 
             <div className="divider">Schedule</div>
 
@@ -261,6 +287,7 @@ const AddProcedureModal = ({
                 <option value="">Select department</option>
                 <option value="doctor">Doctor</option>
                 <option value="medical-director">Medical Director</option>
+                
               </select>
             </div>
 
@@ -278,8 +305,6 @@ const AddProcedureModal = ({
                 onChange={(e) => handleChange('notes', e.target.value)}
               />
             </div>
-
-           
           </form>
         </div>
 

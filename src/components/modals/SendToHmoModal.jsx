@@ -13,6 +13,7 @@ import { updateSubjectStatus } from '@/utils/statusHelper';
 
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
+  appointmentId: yup.string().nullable().optional(),
   code: yup.string().required('Item code is required'),
   description: yup.string().required('Description is required'),
   quantity: yup.number().typeError('Must be a number').min(1, 'Min 1').required(),
@@ -191,6 +192,7 @@ const SendToHmoModal = ({
             investigationId: d.investigationId || null,
             prescriptionId: d.prescriptionId || null,
             admissionId: d.admissionId || null,
+            appointmentId: d.appointmentId || null,
             code: d.code || '',
             description: d.description || '',
             quantity: d.quantity || 1,
@@ -237,6 +239,7 @@ const SendToHmoModal = ({
           investigationId: item.investigationId,
           prescriptionId: item.prescriptionId,
           admissionId: item.admissionId,
+          appointmentId: item.appointmentId,
         })),
         ...(dependantId && { dependantId }),
       };
