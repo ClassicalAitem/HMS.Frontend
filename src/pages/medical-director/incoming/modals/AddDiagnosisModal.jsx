@@ -111,7 +111,7 @@ const AddDiagnosisModal = ({ isOpen, onClose, consultationId, onDiagnosisAdded ,
       await updateConsultation(consultationId, payload);
       toast.success('Diagnosis updated successfully!');
       setDiagnoses([]);
-      onDiagnosisAdded();
+      onDiagnosisAdded(diagnoses.join(', '));
       onClose();
     } catch (error) {
       console.error('Error updating diagnosis:', error);
