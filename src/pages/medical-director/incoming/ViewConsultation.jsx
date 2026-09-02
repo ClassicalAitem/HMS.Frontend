@@ -763,7 +763,7 @@ const ViewConsultation = () => {
           admissionId: admission._id || admission.id,
         })),
       );
-    return [...labItems, ...prescriptionItems, ...admissionItems];
+     return [...labItems, ...prescriptionItems, ...admissionItems];
   };
 
   const openBillModal = (setModalOpen) => {
@@ -959,7 +959,10 @@ const ViewConsultation = () => {
         patientId={patientId}
         dependantId={consultation?.dependantId || dependantId}
         defaultItems={billDefaults}
-        onSuccess={loadData}
+        onSuccess={() => {
+          loadData();
+          setProceduresRefreshVersion((version) => version + 1);
+        }}
       />
       <SendToHmoModal
         isOpen={isSendToHmoModalOpen}
@@ -975,6 +978,7 @@ const ViewConsultation = () => {
         onSentSuccessfully={() => {
           setIsSendToHmoModalOpen(false);
           loadData();
+          setProceduresRefreshVersion((version) => version + 1);
         }}
       />
       <AddComplaintModal
@@ -1008,7 +1012,7 @@ const ViewConsultation = () => {
             medicalHistory: [...prev.medicalHistory, item],
           }))
         }
-        type="Medical"
+        type="Medical_History"
         data={medicalRecords.symptoms}
       />
       <AddHistoryModal
@@ -1036,7 +1040,7 @@ const ViewConsultation = () => {
         data={medicalRecords.social}
       />
       <AddHistoryModal
-        isOpen={activeModal === 'allergy'}
+        isOpen={activeModal === 'allergic'}
         onClose={() => setActiveModal(null)}
         onAdd={(item) =>
           setEditForm((prev) => ({
@@ -1044,7 +1048,7 @@ const ViewConsultation = () => {
             allergyHistory: [...prev.allergyHistory, item],
           }))
         }
-        type="Allergy"
+        type="Allergic"
         data={medicalRecords.allergic}
       />
       <OrderInvestigationModal
@@ -2519,7 +2523,7 @@ const ViewConsultation = () => {
                     {isEditMode && (
                       <button
                         className="btn btn-xs btn-error"
-                        onClick={() => setActiveModal('allergy')}
+                        onClick={() => setActiveModal('allergic')}
                       >
                         <FaPlus className="w-3 h-3" />
                       </button>
