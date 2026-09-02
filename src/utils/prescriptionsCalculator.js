@@ -277,10 +277,26 @@ export function calculatePrescriptionLine({
     };
   }
 
+  function resolveInventoryUnit(medicationType, inventory) {
+  const raw = inventory?.unit;
+
+  if (medicationType === 'tablet' || medicationType === 'cream') {
+    return 'tablet';
+  }
+  if (medicationType === 'syrup' || medicationType === 'gutt' || medicationType === 'infusion') {
+    return 'ml';
+  }
+  if (medicationType === 'injection') {
+    if (raw === 'iu' || raw === 'ampoule') return raw;
+    return 'ml';
+  }
+  return raw || 'unit';
+}
+
   const packSize = Number(inventory.packSize) || 1;
   const sellingPrice = Number(inventory.sellingPrice) || 0;
   const unitPrice = packSize > 0 ? sellingPrice / packSize : 0;
-  const invUnit = inventory.unit;
+  const invUnit = resolveInventoryUnit(medicationType, inventory);
 
    if (medicationType === 'syrup' || medicationType === 'gutt' || medicationType === 'infusion') {
     const bottlesNeeded = Math.ceil(totalInInventoryUnit / packSize) || 0;
