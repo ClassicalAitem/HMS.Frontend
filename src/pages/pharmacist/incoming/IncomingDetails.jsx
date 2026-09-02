@@ -192,10 +192,12 @@ const getDispenseInfo = (med) => {
     inventory: inv,
   })
 
+  const suppressUnit = med.medicationType === 'tablet' || med.medicationType === 'cream'
+
   return {
     inv,
     quantity: line.convertible === false ? 0 : (line.billedQuantity ?? 0),
-    unit: inv.unit === 'tablet' ? null : (line.unit || inv.unit),
+    unit: suppressUnit ? null : line.unit,
     convertible: line.convertible !== false,
     prescribedQty: line.convertible === false ? 0 : (line.prescribedQuantity ?? 0),
     bottlesNeeded: line.bottlesNeeded ?? null,
