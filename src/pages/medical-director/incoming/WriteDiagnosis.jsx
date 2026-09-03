@@ -100,8 +100,6 @@ const WriteDiagnosis = () => {
       // Assuming for this task we just patch the consultation details provided in the docs.
     };
 
-    console.log("Submitting Diagnosis Patch:", payload);
-
     setSaving(true);
 
     toast.promise(

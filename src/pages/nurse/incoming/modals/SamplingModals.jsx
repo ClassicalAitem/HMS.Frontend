@@ -65,8 +65,6 @@ const SamplingModals = ({ setIsRecordSampling, patientId, patientData, dependant
     return () => { cancelled = true; };
   }, [patientId, dependantId]);
 
-  console.log('investigation', investigation);
-
   // ─── Update ──────────────────────────────────────────────────────────────────
   const handleStatusUpdate = useCallback(async () => {
     try {

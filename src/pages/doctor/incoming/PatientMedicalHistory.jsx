@@ -31,6 +31,8 @@ import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtil
 import toast from "react-hot-toast";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
+import { getAllAppointments } from "@/services/api/appointmentsAPI";
+import AddProcedureModal from "./modals/AddProcedureModal";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import KolakLoader from "@/components/common/KolakLoader";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -81,8 +83,9 @@ const [subjectLoading, setSubjectLoading] = useState(true);
 const [admissions, setAdmissions] = useState([]);
 const [admissionsLoading, setAdmissionsLoading] = useState(false);
 
-const [procedures, setProcedures] = useState([]);
-const [proceduresLoading, setProceduresLoading] = useState(false);
+  const [procedures, setProcedures] = useState([]);
+  const [proceduresLoading, setProceduresLoading] = useState(false);
+  const [isAddProcedureModalOpen, setIsAddProcedureModalOpen] = useState(false);
 
   const filterSubjectRecords = (items) => {
     if (!Array.isArray(items)) return [];
@@ -425,24 +428,64 @@ useEffect(() => {
   return () => { mounted = false; };
 }, [patientId, isViewingDependant, dependantId]);
 
+  const fetchProceduresList = async () => {
+    try {
+      const [surgeryResults, apptRes] = await Promise.allSettled([
+        labInvestigations.length
+          ? Promise.allSettled(
+              labInvestigations.map((inv) => getSurgeryByInvestigationRequestId(inv._id || inv.id))
+            )
+          : Promise.resolve([]),
+        getAllAppointments(),
+      ]);
+
+      const surgeryList = (surgeryResults.status === 'fulfilled' && Array.isArray(surgeryResults.value))
+        ? surgeryResults.value
+            .filter((r) => r.status === 'fulfilled')
+            .map((r) => r.value?.data)
+            .filter(Boolean)
+        : [];
+
+      const rawAppts = apptRes.status === 'fulfilled' ? (apptRes.value?.data?.data ?? apptRes.value?.data ?? []) : [];
+      const apptList = Array.isArray(rawAppts) ? rawAppts : (rawAppts.appointments ?? []);
+      const targetPid = String(patientId || '');
+      const targetDepId = isViewingDependant ? String(dependantId || '') : null;
+
+      const surgicalAppts = apptList.filter((a) => {
+        if ((a.appointmentType || '').toLowerCase() !== 'surgery') return false;
+        if (targetDepId) {
+          return String(a.dependantId || '') === targetDepId;
+        }
+        return String(a.patientId || '') === targetPid && !a.dependantId;
+      });
+
+      const combined = [...surgeryList];
+      surgicalAppts.forEach((app) => {
+        if (!combined.some((c) => (c._id || c.id) === (app._id || app.id))) {
+          combined.push(app);
+        }
+      });
+
+      return combined;
+    } catch (err) {
+      console.error("Failed to load procedures", err);
+      return [];
+    }
+  };
+
+  const refreshProcedures = async () => {
+    const list = await fetchProceduresList();
+    setProcedures(list);
+  };
+
   // Fetch procedures (surgical notes) tied to this subject's lab investigations
   useEffect(() => {
     let mounted = true;
     const loadProcedures = async () => {
-      if (!labInvestigations.length) {
-        if (mounted) setProcedures([]);
-        return;
-      }
       try {
         setProceduresLoading(true);
-        const results = await Promise.allSettled(
-          labInvestigations.map((inv) => getSurgeryByInvestigationRequestId(inv._id || inv.id))
-        );
-        const list = results
-          .filter((r) => r.status === 'fulfilled')
-          .map((r) => r.value?.data)
-          .filter(Boolean);
-        if (mounted) setProcedures(list);
+        const combined = await fetchProceduresList();
+        if (mounted) setProcedures(combined);
       } catch (err) {
         console.error("Failed to load procedures", err);
       } finally {
@@ -451,7 +494,7 @@ useEffect(() => {
     };
     loadProcedures();
     return () => { mounted = false; };
-  }, [labInvestigations]);
+  }, [labInvestigations, patientId, dependantId, isViewingDependant]);
 
   // Fetch dependants on-demand as we encounter them in various data
   useEffect(() => {
@@ -639,7 +682,12 @@ const latestLab = useMemo(() => {
 
   // Refresh all after billing
   const refreshBillableItems = async () => {
-    await Promise.all([refreshLabInvestigations(), refreshPrescriptions(), refreshAdmissions()]);
+    await Promise.all([
+      refreshLabInvestigations(),
+      refreshPrescriptions(),
+      refreshAdmissions(),
+      refreshProcedures(),
+    ]);
   };
 
     const getInventoryMatch = (med) => {
@@ -792,6 +840,37 @@ const latestLab = useMemo(() => {
           };
         }).filter(Boolean);
       });
+    };
+
+    const getProcedureBillItems = () => {
+      if (!Array.isArray(procedures)) return [];
+
+      const unbilledProcedures = procedures.filter(
+        (proc) => !proc.isBilled && !proc.billId && !billedItemIds.has(proc.id || proc._id || proc.appointmentId)
+      );
+
+      return unbilledProcedures.map((proc) => {
+        const matchingCharge = serviceCharges.find(
+          (sc) =>
+            sc.id === proc.serviceChargeId ||
+            sc._id === proc.serviceChargeId ||
+            String(sc.service || sc.name || '').toLowerCase() === String(proc.procedureName || '').toLowerCase()
+        );
+
+        const isBillable = matchingCharge ? matchingCharge.isBillable !== false : true;
+        if (!isBillable) return null;
+
+        const price = Number(proc.price || matchingCharge?.amount || matchingCharge?.price || 0);
+
+        return {
+          serviceChargeId: proc.serviceChargeId || matchingCharge?.id || matchingCharge?._id || '',
+          code: 'SURGERY',
+          description: proc.procedureName || 'Surgical Procedure',
+          quantity: 1,
+          price,
+          appointmentId: proc.id || proc._id || proc.appointmentId,
+        };
+      }).filter(Boolean);
     };
  
   const investigations = useMemo(() => 
@@ -1222,6 +1301,13 @@ const dependant = isDependant
             <div className="p-4 card-body">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-medium text-base-content">Procedures / Surgical Notes</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsAddProcedureModalOpen(true)}
+                  className="btn btn-sm btn-primary gap-1.5 font-medium text-white shadow-sm"
+                >
+                  + Add Procedure
+                </button>
               </div>
               {proceduresLoading ? (
                 <div className="skeleton h-4 w-48" />
@@ -1238,7 +1324,7 @@ const dependant = isDependant
                       </tr>
                     </thead>
                     <tbody>
-                      {procedures.slice(0, 5).map((proc) => {
+                      {procedures.slice(0, 5).map((proc, index) => {
                         const isForDependant = !!proc?.dependantId;
                         const dependant = isForDependant
                           ? dependantCache[proc.dependantId]?.data?.dependant || dependantCache[proc.dependantId]?.dependant || dependantCache[proc.dependantId]
@@ -1252,7 +1338,7 @@ const dependant = isDependant
                         const consultationIdForProc = relatedInvestigation?.consultationId;
 
                         return (
-                          <tr key={proc._id} className="hover">
+                          <tr key={proc.id || proc._id || proc.appointmentId || index} className="hover">
                             <td>
                               <div className="flex items-center justify-center gap-2 flex-wrap">
                                 <span className="badge badge-sm badge-outline">
@@ -1269,25 +1355,67 @@ const dependant = isDependant
                                 {proc.status?.replace('_', ' ')}
                               </span>
                             </td>
-                            <td>{proc.scheduledDate ? formatNigeriaDate(proc.scheduledDate) : '—'}</td>
+                            <td>{proc.scheduledDate || proc.appointmentDate ? formatNigeriaDate(proc.scheduledDate || proc.appointmentDate) : '—'}</td>
                             <td>
-                              <button
-                                className="btn btn-sm btn-ghost"
-                                disabled={!consultationIdForProc}
-                                onClick={() => consultationIdForProc && navigate(
-                                  `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationIdForProc}`,
-                                  {
-                                    state: {
-                                      from: fromIncoming ? "incoming" : "patients",
-                                      patientSnapshot: patient,
-                                      dependantId,
-                                      dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
-                                    },
-                                  }
+                              <div className="flex items-center justify-center gap-1">
+                                {!proc.isBilled && !proc.billId && !billedItemIds.has(proc.id || proc._id || proc.appointmentId) && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      title="Bill Patient"
+                                      className="btn btn-xs btn-outline btn-primary"
+                                      onClick={() => {
+                                        setBillDefaults([{
+                                          serviceChargeId: proc.serviceChargeId || '',
+                                          code: 'SURGERY',
+                                          description: proc.procedureName || 'Surgical Procedure',
+                                          quantity: 1,
+                                          price: Number(proc.price || 0),
+                                          appointmentId: proc.id || proc._id,
+                                        }]);
+                                        setIsBillModalOpen(true);
+                                      }}
+                                    >
+                                      Bill
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Send to HMO"
+                                      className="btn btn-xs btn-outline btn-secondary"
+                                      onClick={() => {
+                                        setBillDefaults([{
+                                          serviceChargeId: proc.serviceChargeId || '',
+                                          code: 'SURGERY',
+                                          description: proc.procedureName || 'Surgical Procedure',
+                                          quantity: 1,
+                                          price: Number(proc.price || 0),
+                                          appointmentId: proc.id || proc._id,
+                                        }]);
+                                        setIsSendToHmoModalOpen(true);
+                                      }}
+                                    >
+                                      HMO
+                                    </button>
+                                  </>
                                 )}
-                              >
-                                View
-                              </button>
+                                <button
+                                  className="btn btn-xs btn-ghost"
+                                  disabled={!consultationIdForProc}
+                                  onClick={() => consultationIdForProc && navigate(
+                                    `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationIdForProc}`,
+                                    {
+                                      state: {
+                                        from: fromIncoming ? "incoming" : "patients",
+                                        patientSnapshot: patient,
+                                        dependantId,
+                                        dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                                      },
+                                    }
+                                  )}
+                                >
+                                  View
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1421,9 +1549,8 @@ const dependant = isDependant
                 const labItems = getLabInvestigationBillItems();
                 const prescriptionItems = getPrescriptionBillItems();
                 const admissionItems = getAdmissionBillItems();
-                const allItems = [...labItems, ...prescriptionItems, ...admissionItems];
-                
-               
+                const procedureItems = getProcedureBillItems();
+                const allItems = [...labItems, ...prescriptionItems, ...admissionItems, ...procedureItems];
                 
                 setBillDefaults(allItems);
                 setIsBillModalOpen(true);
@@ -1444,9 +1571,8 @@ const dependant = isDependant
                   const labItems = getLabInvestigationBillItems();
                   const prescriptionItems = getPrescriptionBillItems();
                   const admissionItems = getAdmissionBillItems();
-                  const allItems = [...labItems, ...prescriptionItems, ...admissionItems];
-                  
-                
+                  const procedureItems = getProcedureBillItems();
+                  const allItems = [...labItems, ...prescriptionItems, ...admissionItems, ...procedureItems];
                   
                   setBillDefaults(allItems);
                   setIsSendToHmoModalOpen(true);
@@ -1491,12 +1617,24 @@ const dependant = isDependant
                               if (item.investigationId) next.add(item.investigationId);
                               if (item.prescriptionId) next.add(item.prescriptionId);
                               if (item.admissionId) next.add(item.admissionId);
+                              if (item.appointmentId) next.add(item.appointmentId);
                             });
                             return next;
                           });
                           refreshBillableItems();
                         }}
                       />
+
+            <AddProcedureModal
+              isOpen={isAddProcedureModalOpen}
+              onClose={() => setIsAddProcedureModalOpen(false)}
+              patientId={patientId}
+              dependantId={isViewingDependant ? dependantId : undefined}
+              patient={patient}
+              onProcedureCreated={() => {
+                refreshBillableItems();
+              }}
+            />
         </div>
       </div>
     {/* </div> */}

@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { SuperAdminLayout } from '@/layouts/superadmin'
 import { MdAdd } from 'react-icons/md'
 import toast from 'react-hot-toast'
-import { FaTrash } from 'react-icons/fa'
+import { FaTrash, FaArrowLeft, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaClock, FaBan, FaSearch, FaDownload } from 'react-icons/fa'
 import { createLaboratoryInventory, deleteLaboratoryInventory, getLaboratoryInventories, restockLaboratoryInventory, updateLaboratoryInventory } from '@/services/api/labInventoryApi'
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler'
 
 const LaboratoryInventoryStocks = () => {
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -160,69 +162,146 @@ const LaboratoryInventoryStocks = () => {
 
 <SuperAdminLayout>
 
-         <div className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+          <div className="p-4 sm:p-6 space-y-6">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-primary">Laboratory Inventory & Supplies</h1>
-            <p className="text-xs text-base-content/70">Manage lab equipment, reagents, supplies and restock</p>
+            <button
+              onClick={() => navigate('/superadmin/settings')}
+              className="flex items-center text-xs font-semibold text-base-content/70 hover:text-primary transition-colors mb-2"
+            >
+              <FaArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+              Back to Settings
+            </button>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Laboratory Inventory & Supplies</h1>
+              <span className="badge badge-primary badge-sm font-semibold">Live Stock</span>
+            </div>
+            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">Manage clinical laboratory reagents, test kits, consumables, and automated restock triggers</p>
           </div>
-          <div className="flex items-center gap-3">
-            <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
-            <button className="btn btn-primary btn-sm flex items-center gap-2" onClick={() => setShowAdd(true)}><MdAdd/> Add new item</button>
+          <div className="flex items-center gap-2.5">
+            <button className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20 flex items-center gap-1.5" onClick={() => setShowAdd(true)}>
+              <MdAdd className="w-4 h-4" /> Add New Supply
+            </button>
           </div>
         </div>
 
-        <div className="rounded-xl bg-base-100 border border-base-300 p-4">
+        {/* Top Stat Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="p-4 rounded-2xl bg-base-100 border border-base-200 shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider block mb-0.5">Total Supplies</span>
+              <span className="text-2xl font-black text-base-content">{totalItems}</span>
+              <span className="text-[11px] text-base-content/50 block mt-1">Reagents & Kits</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+              <FaBoxes />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-base-100 border border-base-200 shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider block mb-0.5">In Stock</span>
+              <span className="text-2xl font-black text-success">{inStockCount}</span>
+              <span className="text-[11px] text-success/70 block mt-1">{totalItems ? Math.round((inStockCount / totalItems) * 100) : 0}% available</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center font-bold">
+              <FaCheckCircle />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-base-100 border border-base-200 shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider block mb-0.5">Low Stock</span>
+              <span className="text-2xl font-black text-warning">{lowStockCount}</span>
+              <span className="text-[11px] text-warning/70 block mt-1">Needs reordering</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center font-bold">
+              <FaExclamationTriangle />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-base-100 border border-base-200 shadow-sm flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider block mb-0.5">Expiring Soon</span>
+              <span className="text-2xl font-black text-orange-500">{expiringSoonCount}</span>
+              <span className="text-[11px] text-orange-500/70 block mt-1">Within 30 days</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center font-bold">
+              <FaClock />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-base-100 border border-base-200 shadow-sm flex items-center justify-between col-span-2 lg:col-span-1">
+            <div>
+              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider block mb-0.5">Expired Items</span>
+              <span className="text-2xl font-black text-error">{expiredCount}</span>
+              <span className="text-[11px] text-error/70 block mt-1">Discard / Quarantine</span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-error/10 text-error flex items-center justify-center font-bold">
+              <FaBan />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-base-100 border border-base-200 shadow-sm p-5 space-y-4">
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({length:6}).map((_,i)=>(<div key={i} className="h-40 rounded-xl bg-base-200 animate-pulse"/>))}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-40 rounded-2xl bg-base-200 animate-pulse" />
+              ))}
             </div>
           ) : error ? (
-            <div className="text-sm text-error">Failed to load inventory.</div>
+            <div className="text-sm text-error font-medium p-4 bg-error/10 rounded-xl">Failed to load laboratory inventory records.</div>
           ) : (
             <>
-              {/* Top stat cards */}
-<div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Total Items</div>
-                  <div className="text-3xl font-bold">{totalItems}</div>
-                  <div className="text-xs text-base-content/60">Unique supplies</div>
-                </div>
-                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">In Stock</div>
-                  <div className="text-3xl font-bold">{inStockCount}</div>
-                  <div className="text-xs text-success/70">{totalItems ? Math.round((inStockCount/totalItems)*100) : 0}% availability</div>
-                </div>
-                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Low Stock</div>
-                  <div className="text-3xl font-bold">{lowStockCount}</div>
-                  <div className="text-xs text-warning/70">Needs reordering</div>
-                </div>
-                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Expiring Soon</div>
-                  <div className="text-3xl font-bold">{expiringSoonCount}</div>
-                  <div className="text-xs text-error/70">Within 90 days</div>
-                </div>
-                <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-                  <div className="text-sm text-base-content/70">Expired</div>
-                  <div className="text-3xl font-bold">{expiredCount}</div>
-                  <div className="text-xs text-error/70">Past expiry date</div>
-                </div>
-              </div>
-
               {/* Tabs and controls */}
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <button className={`px-2 py-1 rounded ${activeTab==='all'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('all'); setCurrentPage(1)}}>All Items</button>
-                  <button className={`px-2 py-1 rounded ${activeTab==='low'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('low'); setCurrentPage(1)}}>Low Stock</button>
-                  <button className={`px-2 py-1 rounded ${activeTab==='out'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('out'); setCurrentPage(1)}}>Out of Stock</button>
-                  <button className={`px-2 py-1 rounded ${activeTab==='expiring'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expiring'); setCurrentPage(1)}}>Expiring Soon</button>
-                  <button className={`px-2 py-1 rounded ${activeTab==='expired'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('expired'); setCurrentPage(1)}}>Expired</button>
-                  <button className={`px-2 py-1 rounded ${activeTab==='recent'?'bg-primary text-primary-content':'bg-base-200'}`} onClick={()=>{setActiveTab('recent'); setCurrentPage(1)}}>Recent Activity</button>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-base-200 pb-4">
+                <div className="flex flex-wrap items-center gap-1.5 bg-base-200/60 p-1 rounded-xl border border-base-300/60">
+                  {[
+                    { id: 'all', label: 'All Supplies' },
+                    { id: 'low', label: 'Low Stock' },
+                    { id: 'out', label: 'Out of Stock' },
+                    { id: 'expiring', label: 'Expiring Soon' },
+                    { id: 'expired', label: 'Expired' },
+                    { id: 'recent', label: 'Recent Activity' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                        activeTab === t.id
+                          ? 'bg-primary text-primary-content shadow-sm'
+                          : 'text-base-content/70 hover:text-base-content hover:bg-base-100'
+                      }`}
+                      onClick={() => {
+                        setActiveTab(t.id);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
+
                 <div className="flex items-center gap-2">
-                  <input className="input input-sm input-bordered" placeholder="Search Supplies..." value={search} onChange={(e)=>{setSearch(e.target.value); setCurrentPage(1)}} />
-                  <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
+                  <div className="relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 w-3 h-3" />
+                    <input
+                      className="input input-sm input-bordered rounded-xl pl-8 w-44 sm:w-56 text-xs"
+                      placeholder="Search reagents, form..."
+                      value={search}
+                      onChange={(e) => {
+                        setSearch(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                    />
+                  </div>
+                  <button
+                    className="btn btn-outline btn-sm rounded-xl px-3 text-xs"
+                    onClick={() => exportCsv(filtered)}
+                  >
+                    <FaDownload className="w-3 h-3 mr-1" /> Export
+                  </button>
                 </div>
               </div>
 
