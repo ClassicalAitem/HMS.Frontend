@@ -340,10 +340,14 @@ const OrderInvestigationModalAntenatal = ({
                           const isBillable = test.isBillable !== false;
                           const availabilityBadge = isBillable ? 'Available' : 'Unavailable';
                           return (
-                            <div
+                           <div
                               key={test.id}
                               className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
-                             onClick={() => {
+                              onMouseDown={(e) => {
+                                // preventDefault stops the input from blurring, so we don't race
+                                // the onBlur close-timeout — selection now works on the first click
+                                // no matter how much/little the user has typed.
+                                e.preventDefault();
                                 setValue(`tests.${index}.name`, test.service);
                                 setValue(`tests.${index}.isCustom`, false);
                                 setTestDropdownIndex(null);
