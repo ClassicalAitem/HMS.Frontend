@@ -6,6 +6,7 @@ import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActio
 import { getPatientById } from "@/services/api/patientsAPI";
 import { PharmacyActionModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";
+import { createPrescription } from "@/services/api/prescriptionsAPI";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const SendToPharmacy = () => {
@@ -96,6 +97,39 @@ useEffect(() => {
     setNewMed({ name: "", dosage: "", frequency: "", duration: "", instructions: "" });
   };
   const removeMedication = (id) => setMeds((list) => list.filter((m) => m.id !== id));
+
+  const handlePharmacyConfirm = async () => {
+    const consultationId =
+      location?.state?.consultationId ||
+      patient?.activeConsultation ||
+      patient?.consultationId;
+
+    if (meds.length > 0 && consultationId) {
+      const payload = {
+        patientId,
+        consultationId,
+        medications: meds.map((m) => {
+          const matchedInv = inventories.find(
+            (inv) => inv.name?.toLowerCase() === m.name?.toLowerCase()
+          );
+          return {
+            inventoryId: matchedInv?._id || undefined,
+            medicationType: "tablet",
+            drugName: m.name,
+            dosage: m.dosage || "1 tablet",
+            dosageAmount: 1,
+            dosageUnit: "tablet",
+            frequency: m.frequency || "dly",
+            duration: m.duration || "3/7",
+            instructions: m.instructions || undefined,
+            availability: matchedInv ? "available" : "unavailable",
+          };
+        }),
+        status: "pending",
+      };
+      await createPrescription(payload, consultationId, "consultation");
+    }
+  };
 
   return (
     <div className="flex h-screen">
@@ -282,6 +316,7 @@ useEffect(() => {
           <PharmacyActionModal
             isOpen={isPharmacyOpen}
             onClose={() => setIsPharmacyOpen(false)}
+            onConfirm={handlePharmacyConfirm}
             patientId={patientId}
             defaultStatus={["awaiting_pharmacy"]}
             itemsCount={meds.length}
