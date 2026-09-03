@@ -21,6 +21,7 @@ import SurgeonAssignedTask from "@/pages/surgeon/assignedTask/AssignedTask";
 import SurgeonAppointments from "@/pages/surgeon/appointment/Appointment"
 import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
 import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
+import SurgeonNoteHistory from "@/pages/surgeon/history/SurgeonNoteHistory";
 
 import ViewConsultationRecords from "@/pages/doctor/incoming/ViewConsultationRecords";
 import ViewAllPrescriptions from "@/pages/doctor/incoming/ViewAllPrescriptions";
@@ -1003,6 +1004,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/surgeon/appointments" element={
         <ProtectedRoute allowedRoles={['surgeon']}>
           <SurgeonAppointments />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/surgeon/surgical-notes" element={
+        <ProtectedRoute allowedRoles={['surgeon']}>
+          <SurgeonNoteHistory />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/surgeon/write-surgical-note/:investigationRequestId" element={

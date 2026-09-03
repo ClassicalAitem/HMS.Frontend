@@ -67,9 +67,7 @@ const AntenatalRecordDetails = () => {
     const getAntenatalRecordId = (record) =>
       record?._id || record?.id || record?.antenatalId || record?.recordId || record?.__wrapperId || null;
 
-  useEffect(() => {
-    console.log('AntenatalRecordDetails: Component mounted with patientId:', patientId);
-  }, [patientId]);
+
 
   useEffect(() => {
     let mounted = true;
@@ -77,10 +75,8 @@ const AntenatalRecordDetails = () => {
       try {
         setLoadingPatient(true);
         setError(null);
-        console.log('Loading patient data for ID:', patientId);
         const res = await getPatientById(patientId);
         const pData = res?.data ?? res;
-        console.log('Patient data loaded:', pData);
         if (mounted) setPatient(pData);
       } catch (err) {
         console.error("Failed to load patient:", err);
@@ -312,7 +308,6 @@ useEffect(() => {
     }
     try {
       setLoadingTreatmentData(true);
-      console.log('Loading prescriptions and investigations for antenatal:', selectedRecord._id);
       
       // Fetch prescriptions for antenatal
       try {

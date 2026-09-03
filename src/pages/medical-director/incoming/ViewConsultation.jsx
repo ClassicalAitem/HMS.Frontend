@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Header } from '@/components/common';
 import Sidebar from '@/components/medical-director/dashboard/Sidebar';
@@ -106,6 +106,7 @@ const ViewConsultation = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [procedures, setProcedures] = useState([]);
+  const [proceduresRefreshVersion, setProceduresRefreshVersion] = useState(0);
   const [selectedProcedure, setSelectedProcedure] = useState(null);
   const [isAddProcedureModalOpen, setIsAddProcedureModalOpen] = useState(false);
   const [selectedProcedureId, setSelectedProcedureId] = useState(null);
@@ -292,6 +293,7 @@ const ViewConsultation = () => {
             const chargesList = Array.isArray(rawCharges)
               ? rawCharges
               : (rawCharges?.data ?? []);
+            setServiceCharges(chargesList);
             chargesList.forEach((c) => {
               const id = c?._id || c?.id;
               if (id)
@@ -346,6 +348,7 @@ const ViewConsultation = () => {
       } else if (data?.patient) {
         setPatient(data.patient);
       }
+      loadProcedures();
     } catch (error) {
       console.error('Error loading consultation details:', error);
     } finally {
@@ -353,25 +356,41 @@ const ViewConsultation = () => {
     }
   };
 
+  const loadProcedures = useCallback(async () => {
+    if (!consultationId && !patientId) return;
+    try {
+      const res = await getAllAppointments();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+      const targetPatientId = patientId || consultation?.patientId || consultation?.patient?._id || consultation?.patient?.id;
+      const surgicalForThisConsultation = list.filter((a) => {
+        const isSurgery = (a.appointmentType || '').toLowerCase() === 'surgery';
+        if (!isSurgery) return false;
+
+        // Match by consultationId if present
+        if (consultationId && String(a.consultationId || '') === String(consultationId)) {
+          return true;
+        }
+
+        // Or match by patientId / dependantId
+        if (targetPatientId && String(a.patientId || '') === String(targetPatientId)) {
+          if (dependantId) {
+            return String(a.dependantId || '') === String(dependantId);
+          }
+          return !a.dependantId;
+        }
+
+        return false;
+      });
+      setProcedures(surgicalForThisConsultation);
+    } catch (err) {
+      console.error('Failed to load procedures', err);
+    }
+  }, [consultationId, patientId, consultation?.patientId, dependantId]);
+
   useEffect(() => {
-    if (!consultationId) return;
-    const loadProcedures = async () => {
-      try {
-        const res = await getAllAppointments();
-        const raw = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-        const surgicalForThisConsultation = list.filter(
-          (a) =>
-            a.appointmentType === 'surgery' &&
-            a.consultationId === consultationId,
-        );
-        setProcedures(surgicalForThisConsultation);
-      } catch (err) {
-        console.error('Failed to load procedures', err);
-      }
-    };
     loadProcedures();
-  }, [consultationId]);
+  }, [loadProcedures, proceduresRefreshVersion]);
 
   const getProcedureSubjectName = (proc) => {
     if (proc.dependantId) {
@@ -763,7 +782,26 @@ const ViewConsultation = () => {
           admissionId: admission._id || admission.id,
         })),
       );
-     return [...labItems, ...prescriptionItems, ...admissionItems];
+    const procedureItems = procedures
+      .filter((proc) => !proc.isBilled && !proc.billId)
+      .map((proc) => {
+        const matchingCharge = serviceCharges.find(
+          (sc) =>
+            sc.id === proc.serviceChargeId ||
+            sc._id === proc.serviceChargeId ||
+            String(sc.service || sc.name || '').toLowerCase() === String(proc.procedureName || '').toLowerCase(),
+        );
+        return {
+          serviceChargeId: proc.serviceChargeId || matchingCharge?.id || matchingCharge?._id || '',
+          code: 'SURGERY',
+          description: proc.procedureName || 'Surgical Procedure',
+          quantity: 1,
+          price: Number(proc.price || matchingCharge?.amount || matchingCharge?.price || 0),
+          appointmentId: proc.id || proc._id || proc.appointmentId,
+        };
+      });
+
+    return [...labItems, ...prescriptionItems, ...admissionItems, ...procedureItems];
   };
 
   const openBillModal = (setModalOpen) => {
@@ -1132,8 +1170,10 @@ const ViewConsultation = () => {
           consultation?.dependant?._id ||
           consultation?.dependant?.id
         }
+        patient={patient}
         onProcedureCreated={(appointment) => {
           setProcedures((prev) => [...prev, appointment]);
+          loadData();
         }}
       />
         <AddExaminationModal
@@ -1899,9 +1939,9 @@ const ViewConsultation = () => {
                     </div>
                     <div className="max-h-72 overflow-y-auto pr-1 space-y-3">
                       {procedures.length > 0 ? (
-                        procedures.map((proc) => (
+                        procedures.map((proc, idx) => (
                           <div
-                            key={proc._id || proc.id}
+                            key={proc.id || proc._id || proc.appointmentId || idx}
                             className="border border-base-200 rounded-lg p-3 hover:shadow-sm hover:border-primary transition-all cursor-pointer"
                             onClick={() => {
                               setSelectedProcedureId(
