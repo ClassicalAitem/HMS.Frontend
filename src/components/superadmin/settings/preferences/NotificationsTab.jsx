@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaSave, FaUndo } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getSystemPreferences, updateSystemPreferences } from '@/services/api/settingsAPI';
 
 const NotificationsTab = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -14,9 +15,52 @@ const NotificationsTab = () => {
   const [securityAlerts, setSecurityAlerts] = useState(true);
   const [systemMaintenance, setSystemMaintenance] = useState(true);
   const [reportGeneration, setReportGeneration] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handleSaveSettings = () => {
-    toast.success('Notification settings saved successfully!');
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await getSystemPreferences();
+        const notifs = res?.data?.notifications || {};
+        if (notifs.emailNotifications !== undefined) setEmailNotifications(notifs.emailNotifications);
+        if (notifs.smsNotifications !== undefined) setSmsNotifications(notifs.smsNotifications);
+        if (notifs.systemAlerts !== undefined) setSystemAlerts(notifs.systemAlerts);
+        if (notifs.notificationFrequency) setNotificationFrequency(notifs.notificationFrequency);
+        if (notifs.appointmentReminders !== undefined) setAppointmentReminders(notifs.appointmentReminders);
+        if (notifs.labResultsReady !== undefined) setLabResultsReady(notifs.labResultsReady);
+        if (notifs.billingUpdates !== undefined) setBillingUpdates(notifs.billingUpdates);
+        if (notifs.securityAlerts !== undefined) setSecurityAlerts(notifs.securityAlerts);
+        if (notifs.systemMaintenance !== undefined) setSystemMaintenance(notifs.systemMaintenance);
+      } catch (err) {
+        console.error('Failed to load notification settings:', err);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      await updateSystemPreferences({
+        notifications: {
+          emailNotifications,
+          smsNotifications,
+          systemAlerts,
+          notificationFrequency,
+          appointmentReminders,
+          labResultsReady,
+          billingUpdates,
+          securityAlerts,
+          systemMaintenance,
+          reportGeneration,
+        },
+      });
+      toast.success('Notification preferences saved to database!');
+    } catch (err) {
+      toast.error('Failed to save notification preferences');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleResetToDefault = () => {

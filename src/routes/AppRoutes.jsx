@@ -108,6 +108,7 @@ import ManageUsers from "@/pages/superadmin/users/ManageUsers";
 import SuperAdminPatients from "@/pages/superadmin/patients/Patients";
 import SuperPatientDetails from "@/pages/superadmin/patients/PatientDetails";
 import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
+import SuperAdminAppointments from "@/pages/superadmin/appointments/Appointments";
 import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
 import HospitalSetup from "@/pages/superadmin/settings/HospitalSetup";
 import BillingFinance from "@/pages/superadmin/settings/BillingFinance";
@@ -787,6 +788,11 @@ const AppRoutes = () => {
       <Route path="/superadmin/registration" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperAdminRegistration />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/appointments" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SuperAdminAppointments />
         </ProtectedRoute>
       } />
       <Route path="/superadmin/settings" element={
