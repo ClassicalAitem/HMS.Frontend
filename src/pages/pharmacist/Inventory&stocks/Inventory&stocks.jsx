@@ -155,6 +155,9 @@ const InventoryStocks = () => {
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <input className="input input-sm input-bordered w-full" placeholder="Search" value={search} onChange={(e)=>setSearch(e.target.value)} />
+            <button className="btn btn-primary btn-sm whitespace-nowrap" onClick={() => setShowAdd(true)}>
+              <MdAdd className="text-lg" /> Add Item
+            </button>
           </div>
         </div>
 
@@ -248,7 +251,7 @@ const InventoryStocks = () => {
                       <th>Reorder Level</th>
                       <th>Price</th>
                       <th>Expiry Date</th>
-                      {/* <th>Actions</th> */}
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -260,12 +263,12 @@ const InventoryStocks = () => {
                         <td>{item.reorderLevel ?? 0}</td>
                         <td>{item.sellingPrice ?? '—'}</td>
                         <td>{item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0]: '—'}</td>
-                        {/* <td>
+                        <td>
                           <div className="flex gap-2">
                             <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
                             <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
                           </div>
-                        </td> */}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -307,45 +310,104 @@ export default InventoryStocks
 // --- Inline modal components ---
 function InventoryFormModal({ item, onClose, onSubmit }){
   const [form, setForm] = useState({
-    name: item?.name || '', form: item?.form || '', strength: item?.strength || '', costPrice: item?.costPrice || '', sellingPrice: item?.sellingPrice || '', reorderLevel: item?.reorderLevel || 0, supplier: item?.supplier || ''
+    name: item?.name || '',
+    form: item?.form || '',
+    strength: item?.strength || '',
+    stock: item?.stock ?? '',
+    packSize: item?.packSize || 1,
+    costPrice: item?.costPrice || '',
+    sellingPrice: item?.sellingPrice || '',
+    reorderLevel: item?.reorderLevel || 0,
+    supplier: item?.supplier || '',
+    batchNumber: item?.batchNumber || '',
+    expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '',
   })
   const [submitting, setSubmitting] = useState(false)
 
   const handle = async () => {
-    // basic validation
     if (!form.name) return toast.error('Name required')
     if (!form.sellingPrice) return toast.error('Selling price required')
     setSubmitting(true)
     try{
-      await onSubmit(form)
+      const payload = {
+        ...form,
+        stock: form.stock !== '' ? Number(form.stock) : 0,
+        packSize: Number(form.packSize) || 1,
+        costPrice: form.costPrice !== '' ? Number(form.costPrice) : undefined,
+        sellingPrice: Number(form.sellingPrice) || 0,
+        reorderLevel: Number(form.reorderLevel) || 0,
+        expiryDate: form.expiryDate ? form.expiryDate : undefined,
+      }
+      await onSubmit(payload)
     }finally{ setSubmitting(false) }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-opacity-50" onClick={onClose} />
-      <div className="z-10 w-full max-w-lg card bg-base-100 p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg card bg-base-100 p-5 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium">{item?._id ? 'Edit Item' : 'Add Item'}</h3>
+          <h3 className="font-semibold text-lg text-primary">{item?._id ? 'Edit Medication' : 'Add Medication'}</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
-        <div className="space-y-2">
-          <input className="input input-bordered w-full" placeholder="Name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
-          <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Form" value={form.form} onChange={(e)=>setForm({...form,form:e.target.value})} />
-            <input className="input input-bordered flex-1" placeholder="Strength" value={form.strength} onChange={(e)=>setForm({...form,strength:e.target.value})} />
+        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+          <div>
+            <label className="text-xs text-base-content/70 block mb-1">Medication Name *</label>
+            <input className="input input-bordered w-full input-sm" placeholder="e.g. Paracetamol" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} />
           </div>
-          <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Cost Price" value={form.costPrice} onChange={(e)=>setForm({...form,costPrice:e.target.value})} />
-            <input className="input input-bordered flex-1" placeholder="Selling Price" value={form.sellingPrice} onChange={(e)=>setForm({...form,sellingPrice:e.target.value})} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Form</label>
+              <input className="input input-bordered w-full input-sm" placeholder="e.g. Tablet, Syrup" value={form.form} onChange={(e)=>setForm({...form,form:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Strength</label>
+              <input className="input input-bordered w-full input-sm" placeholder="e.g. 500mg, 120mg/5ml" value={form.strength} onChange={(e)=>setForm({...form,strength:e.target.value})} />
+            </div>
           </div>
-          <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e)=>setForm({...form,reorderLevel:e.target.value})} />
-            <input className="input input-bordered flex-1" placeholder="Supplier" value={form.supplier} onChange={(e)=>setForm({...form,supplier:e.target.value})} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Initial Stock (units)</label>
+              <input type="number" min={0} className="input input-bordered w-full input-sm" placeholder="0" value={form.stock} onChange={(e)=>setForm({...form,stock:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Pack Size</label>
+              <input type="number" min={1} className="input input-bordered w-full input-sm" placeholder="1" value={form.packSize} onChange={(e)=>setForm({...form,packSize:e.target.value})} />
+            </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting? 'Saving...' : 'Save'}</button>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Cost Price (₦)</label>
+              <input type="number" className="input input-bordered w-full input-sm" placeholder="Cost price" value={form.costPrice} onChange={(e)=>setForm({...form,costPrice:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Selling Price (₦) *</label>
+              <input type="number" className="input input-bordered w-full input-sm" placeholder="Selling price" value={form.sellingPrice} onChange={(e)=>setForm({...form,sellingPrice:e.target.value})} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Reorder Level</label>
+              <input type="number" min={0} className="input input-bordered w-full input-sm" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e)=>setForm({...form,reorderLevel:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Supplier</label>
+              <input className="input input-bordered w-full input-sm" placeholder="Supplier" value={form.supplier} onChange={(e)=>setForm({...form,supplier:e.target.value})} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Batch Number</label>
+              <input className="input input-bordered w-full input-sm" placeholder="Batch Number" value={form.batchNumber} onChange={(e)=>setForm({...form,batchNumber:e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Expiry Date</label>
+              <input type="date" className="input input-bordered w-full input-sm" value={form.expiryDate} onChange={(e)=>setForm({...form,expiryDate:e.target.value})} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={handle} disabled={submitting}>{submitting? 'Saving...' : 'Save'}</button>
           </div>
         </div>
       </div>
@@ -355,31 +417,52 @@ function InventoryFormModal({ item, onClose, onSubmit }){
 
 function RestockModal({ item, onClose, onSubmit }){
   const [qty, setQty] = useState('')
-  const [batch, setBatch] = useState('')
+  const [batch, setBatch] = useState(item?.batchNumber || '')
+  const [costPrice, setCostPrice] = useState(item?.costPrice || '')
+  const [expiryDate, setExpiryDate] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const handle = async () => {
     if (!qty || Number(qty) <= 0) return toast.error('Enter valid quantity')
     setSubmitting(true)
     try{
-      await onSubmit({ quantity: qty, batchNumber: batch })
+      await onSubmit({
+        quantity: Number(qty),
+        batchNumber: batch || undefined,
+        costPrice: costPrice ? Number(costPrice) : undefined,
+        expiryDate: expiryDate ? expiryDate : undefined,
+      })
     }finally{ setSubmitting(false) }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-opacity-50" onClick={onClose} />
-      <div className="z-10 w-full max-w-md card bg-base-100 p-4">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md card bg-base-100 p-5 shadow-2xl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium">Restock {item.name}</h3>
+          <h3 className="font-semibold text-lg text-primary">Restock {item.name}</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
-        <div className="space-y-2">
-          <input className="input input-bordered w-full" placeholder="Quantity" value={qty} onChange={(e)=>setQty(e.target.value)} />
-          <input className="input input-bordered w-full" placeholder="Batch number (optional)" value={batch} onChange={(e)=>setBatch(e.target.value)} />
-          <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting? 'Restocking...' : 'Restock'}</button>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-base-content/70 block mb-1">Quantity to Add (units) *</label>
+            <input type="number" min={1} className="input input-bordered w-full" placeholder="e.g. 100" value={qty} onChange={(e)=>setQty(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-base-content/70 block mb-1">Batch Number</label>
+            <input className="input input-bordered w-full" placeholder="Batch number" value={batch} onChange={(e)=>setBatch(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-base-content/70 block mb-1">Cost Price (₦, optional)</label>
+            <input type="number" className="input input-bordered w-full" placeholder="Cost price" value={costPrice} onChange={(e)=>setCostPrice(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-base-content/70 block mb-1">Expiry Date (optional)</label>
+            <input type="date" className="input input-bordered w-full" value={expiryDate} onChange={(e)=>setExpiryDate(e.target.value)} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary btn-sm" onClick={handle} disabled={submitting}>{submitting? 'Restocking...' : 'Restock'}</button>
           </div>
         </div>
       </div>

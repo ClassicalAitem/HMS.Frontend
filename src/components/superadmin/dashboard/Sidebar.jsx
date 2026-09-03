@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
-import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics } from "react-icons/md";
+import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics, MdCalendarMonth } from "react-icons/md";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -63,7 +63,13 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: MdSupervisorAccount,
       label: 'Patients',
       path: '/superadmin/patients/patients',
-      active: location.pathname === '/superadmin/patients/patients'
+      active: location.pathname.startsWith('/superadmin/patients')
+    },
+    {
+      icon: MdCalendarMonth,
+      label: 'Appointments',
+      path: '/superadmin/appointments',
+      active: location.pathname.startsWith('/superadmin/appointments')
     },
     {
       icon: MdSecurity,
@@ -75,7 +81,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: MdSettings,
       label: 'Settings',
       path: '/superadmin/settings',
-      active: location.pathname === '/superadmin/settings'
+      active: location.pathname.startsWith('/superadmin/settings')
     }
   ];
 
@@ -95,7 +101,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20 2xl:pb-18">
+    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100  2xl:pb-18">
       {/* Logo */}
       <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
