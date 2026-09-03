@@ -22,15 +22,15 @@ const Header = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header className="w-full border-b border-base-300 bg-base-100 px-3 py-2 sm:px-4 lg:px-4 2xl:px-6 2xl:py-[22px]">
+    <header className="w-full border-b border-neutral/10 bg-base-100 px-3 py-1 sm:px-4 lg:px-4 2xl:px-6 2xl:py-[11px]">
       <div className="flex justify-between gap-2 sm:gap-3 min-h-0">
         {/* Mobile Menu Button */}
         <button
           onClick={onToggleSidebar}
-          className="btn btn-ghost btn-circle shrink-0 lg:hidden min-h-0"
+          className="btn btn-ghost btn-circle btn-xs shrink-0 lg:hidden min-h-0"
           title="Toggle Menu"
         >
-          <FaBars className="h-4 w-4" />
+          <FaBars className="h-3.5 w-3.5" />
         </button>
 
         {/* Search Bar */}
@@ -49,24 +49,24 @@ const Header = ({ onToggleSidebar }) => {
 
         {/* Right Side Actions */}
        {/* Right Side Actions */}
-<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 2xl:gap-4 p-2">
-  <ThemeSwitcher className="2xl:h-5 2xl:w-5" />
+<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 2xl:gap-3 p-1">
+  <ThemeSwitcher className="2xl:h-4 2xl:w-4" />
 
   <button
     onClick={handleRefresh}
-    className="btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md min-h-0"
+    className="btn btn-ghost btn-circle btn-xs min-h-0"
     title="Refresh"
   >
-    <SlRefresh className="h-3 w-3 sm:h-4 sm:w-4 2xl:h-5 2xl:w-5" />
+    <SlRefresh className="h-3 w-3 sm:h-3.5 sm:w-3.5 2xl:h-4 2xl:w-4" />
   </button>
 
   {/* <button
     onClick={handleNotifications}
-    className="relative btn btn-ghost btn-circle btn-xs sm:btn-sm lg:btn-md min-h-0"
+    className="relative btn btn-ghost btn-circle btn-xs min-h-0"
     title="Notifications"
   >
-    <BsBell className="h-3 w-3 sm:h-4 sm:w-4 2xl:h-5 2xl:w-5" />
-    <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-error sm:h-2.5 sm:w-2.5 2xl:h-3 2xl:w-3"></span>
+    <BsBell className="h-3 w-3 sm:h-3.5 sm:w-3.5 2xl:h-4 2xl:w-4" />
+    <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-error sm:h-2 sm:w-2 2xl:h-2.5 2xl:w-2.5"></span>
   </button> */}
 </div>
       </div>
