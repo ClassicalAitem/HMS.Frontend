@@ -42,15 +42,12 @@ export const getAdmissionById = async (id) => {
 
 export const getAdmissionByPatientId = async (patientId) => {
   try {
-    const response = await apiClient.get(`/admission/getAdmissionByPatientId/${patientId}`)
+    const response = await apiClient.get(`/admission/getAdmissionByPatientId/${patientId}`, { skipErrorToast: true })
     return response.data ?? []
   } catch (err) {
-    // Suppress 404 errors (patient has no admissions) - return empty array
     if (err?.response?.status === 404) {
-      console.log('admissionAPI: No admissions found for patient, returning empty array')
       return []
     }
-    console.error('admissionAPI: getAdmissionByPatientId error', err)
     throw err
   }
 }

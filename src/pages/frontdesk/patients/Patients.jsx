@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
@@ -8,20 +7,23 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
-import PatientsDebug from '@/components/common/PatientsDebug';
 import { Skeleton } from '@heroui/skeleton';
-import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import KolakLoader from '@/components/common/KolakLoader';
+import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import ViewDependantsModal from '@/components/superadmin/patients/ViewDependantsModal';
+import { FaUsers, FaUser, FaChild } from 'react-icons/fa';
 
 const Patients = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('all');
+  const [selectedPatientForDependants, setSelectedPatientForDependants] = useState(null);
+  const [isDependantsModalOpen, setIsDependantsModalOpen] = useState(false);
 
   // Fetch patients from backend
   useEffect(() => {
-    console.log('🔄 Patients: Component mounted, fetching patients');
     dispatch(fetchPatients());
   }, [dispatch]);
 
@@ -42,21 +44,17 @@ const Patients = () => {
   };
 
 
-const StatusBadge = ({ status }) => {
-  const currentStatus = Array.isArray(status)
-    ? status[status.length - 1]
-    : status;
+  const StatusBadge = ({ status }) => {
+    const currentStatus = Array.isArray(status) ? status[status.length - 1] : status;
 
   const getBadgeClass = (statusValue) => {
     switch (statusValue?.toLowerCase()) {
-      // Registration / active
       case 'registered':
       case 'active':
         return 'badge badge-success';
       case 'inactive':
         return 'badge badge-neutral';
 
-      // Awaiting-anything — queued, nothing happening yet
       case 'awaiting_front_desk':
       case 'awaiting_payment':
       case 'awaiting_vitals':
@@ -79,7 +77,6 @@ const StatusBadge = ({ status }) => {
       case 'awaiting_follow_up':
         return 'badge badge-warning';
 
-      // In progress / milestone reached — active work happening
       case 'vitals_completed':
       case 'in_consultation':
       case 'consultation_completed':
@@ -97,12 +94,10 @@ const StatusBadge = ({ status }) => {
       case 'post_surgery_observation':
         return 'badge badge-info';
 
-      // Admitted / under care — ongoing significant state
       case 'admitted':
       case 'under_observation':
         return 'badge badge-primary';
 
-      // Positive terminal states
       case 'hmo_approved':
       case 'payment_completed':
       case 'surgery_completed':
@@ -111,18 +106,15 @@ const StatusBadge = ({ status }) => {
       case 'completed':
         return 'badge badge-success';
 
-      // Urgent / needs attention
       case 'surgery_in_progress':
       case 'isolated':
         return 'badge badge-error';
 
-      // Negative / rejected outcomes
       case 'hmo_rejected':
       case 'no_show':
       case 'cancelled':
         return 'badge badge-error';
 
-      // Neutral holding states
       case 'transferred':
       case 'referred':
       case 'deceased':
@@ -133,9 +125,13 @@ const StatusBadge = ({ status }) => {
     }
   };
 
-  return (
-    <span className={getBadgeClass(currentStatus)}>
-      {currentStatus || 'Unknown'}
+    const displayValue = Array.isArray(status)
+      ? status.map((value) => value.replace(/_/g, ' ')).join(', ')
+      : status;
+
+    return (
+    <span className={`${getBadgeClass(currentStatus)} text-xs capitalize`}>
+      {displayValue || 'Active'}
     </span>
   );
 };
@@ -153,22 +149,50 @@ const StatusBadge = ({ status }) => {
     return age;
   };
 
-  // Process patients data to match frontend expectations
-  const processedPatients = useMemo(() => patients.map((patient, index) => ({
+  const primaryPatients = useMemo(() => patients.map((patient, index) => ({
     ...patient,
-    serialNumber: index + 1, // Serial number for display
-    name: `${patient.firstName} ${patient.lastName}`.trim(),
-    age: calculateAge(patient.dob),
-    fullName: `${patient.firstName} ${patient.middleName || ''} ${patient.lastName}`.trim(),
-    nextOfKinName: patient.nextOfKin?.name || 'N/A',
-    nextOfKinPhone: patient.nextOfKin?.phone || 'N/A',
-    nextOfKinRelationship: patient.nextOfKin?.relationship || 'N/A',
-    hmoCount: patient.hmos?.length || 0,
-    dependantsCount: patient.dependants?.length || 0,
-    createdAtFormatted: formatNigeriaDate(patient.createdAt),
-    updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
-    cardType: patient.cardType || 'N/A',
+    id: patient.id || patient._id,
+    serialNumber: index + 1,
+    recordType: 'primary',
+    name: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Patient',
+    fullName: `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim(),
+    age: calculateAge(patient.dob || patient.dateOfBirth),
+    dependantsCount: (patient.dependants || []).length,
+    dependantsList: patient.dependants || [],
+    cardType: patient.cardType || 'personal',
+    familyName: patient.familyName || '',
+    companyName: patient.companyName || '',
+    status: patient.status || 'Active',
   })), [patients]);
+
+  const dependantsOnly = useMemo(() => patients.flatMap((patient) => (
+    (patient.dependants || []).map((dependant, index) => ({
+      ...dependant,
+      id: dependant._id || dependant.id || `${patient.id || patient._id}-dep-${index}`,
+      primaryPatientId: patient.id || patient._id,
+      primaryPatientName: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Principal',
+      primaryPatientHospitalId: patient.hospitalId || '—',
+      recordType: 'dependant',
+      isDependant: true,
+      hospitalId: dependant.hospitalId || dependant.dependantHospitalId || `${patient.hospitalId || 'HOS'}-D${index + 1}`,
+      name: `${dependant.firstName || ''} ${dependant.middleName || ''} ${dependant.lastName || ''}`.trim() || 'Unnamed Dependant',
+      age: calculateAge(dependant.dob || dependant.dateOfBirth),
+      relationship: dependant.relationshipType || dependant.relationship || 'Dependant',
+      gender: dependant.gender || '—',
+      phone: dependant.phone || patient.phone || '—',
+      email: dependant.email || patient.email || '—',
+      cardType: patient.cardType || 'personal',
+      familyName: patient.familyName || '',
+      companyName: patient.companyName || '',
+      status: dependant.status || patient.status || 'Active',
+      dependantsCount: 0,
+    }))
+  )).map((item, index) => ({ ...item, serialNumber: index + 1 })), [patients]);
+
+  const allRecords = useMemo(() => [...primaryPatients, ...dependantsOnly]
+    .map((item, index) => ({ ...item, serialNumber: index + 1 })), [primaryPatients, dependantsOnly]);
+
+  const activeData = viewMode === 'primary' ? primaryPatients : viewMode === 'dependants' ? dependantsOnly : allRecords;
 
   // Define table columns
   const columns = useMemo(() => [
@@ -186,21 +210,32 @@ const StatusBadge = ({ status }) => {
     },
     {
       key: 'name',
-      title: 'Patient Name',
+      title: 'Patient / Subject Name',
       sortable: true,
       className: 'text-base-content font-medium',
-      render: (value, row) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            navigate(`/frontdesk/patients/${row.id}`);
-          }}
-          className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
-        >
+      render: (value, row) => row.isDependant ? (
+        <div>
+          <div className="font-semibold text-base-content">{value}</div>
+          <div className="text-[11px] text-base-content/60">Dep. of <strong className="text-primary">{row.primaryPatientName}</strong></div>
+        </div>
+      ) : (
+        <button type="button" onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          navigate(`/frontdesk/patients/${row.id}`);
+        }} className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline">
           {value}
         </button>
+      )
+    },
+    {
+      key: 'recordType',
+      title: 'Type / Relation',
+      className: 'text-base-content/70',
+      render: (value, row) => row.isDependant ? (
+        <span className="badge badge-sm badge-secondary gap-1 font-medium capitalize"><FaChild className="w-2.5 h-2.5" /> {row.relationship}</span>
+      ) : (
+        <span className="badge badge-sm badge-outline gap-1 font-medium"><FaUser className="w-2.5 h-2.5" /> Primary</span>
       )
     },
     {
@@ -238,12 +273,25 @@ const StatusBadge = ({ status }) => {
       render: (value, row) => <StatusBadge status={value} />
     },
     {
+      key: 'dependantsCount',
+      title: 'Dependants',
+      className: 'text-base-content/70',
+      render: (value, row) => row.isDependant ? (
+        <span className="text-xs text-base-content/50">Guardian: {row.primaryPatientHospitalId}</span>
+      ) : value > 0 ? (
+        <button type="button" onClick={() => {
+          setSelectedPatientForDependants(row);
+          setIsDependantsModalOpen(true);
+        }} className="btn btn-xs btn-primary gap-1 font-semibold rounded-full"><FaUsers className="w-3 h-3" /> {value} Family</button>
+      ) : <span className="text-xs text-base-content/40">—</span>
+    },
+    {
       key: 'cardType',
       title: 'Card Type',
       sortable: true,
       className: 'text-base-content/70',
-      render: (value) => (
-        <span className="capitalize">{value || 'N/A'}</span>
+      render: (value, row) => (
+        <PatientCardTypeInfo cardType={value} familyName={row.familyName} companyName={row.companyName} />
       )
     }
   ], [navigate]);
@@ -292,6 +340,32 @@ const StatusBadge = ({ status }) => {
                 </button>
           </div>
 
+          <div className="flex items-center gap-2 mb-4 text-xs overflow-x-auto">
+            <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+              <FaUser className="text-primary w-3.5 h-3.5" /> Primary: <strong>{primaryPatients.length}</strong>
+            </div>
+            <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+              <FaChild className="text-secondary w-3.5 h-3.5" /> Dependants: <strong>{dependantsOnly.length}</strong>
+            </div>
+            <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+              <FaUsers className="text-success w-3.5 h-3.5" /> Total: <strong>{allRecords.length}</strong>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between bg-base-100 p-2 rounded-xl border border-base-300 shadow-sm mb-4 gap-2">
+            <div className="flex items-center gap-1 bg-base-200 p-1 rounded-lg overflow-x-auto">
+              {[
+                ['all', 'All Records', allRecords.length, FaUsers],
+                ['primary', 'Primary Patients', primaryPatients.length, FaUser],
+                ['dependants', 'Dependants Only', dependantsOnly.length, FaChild],
+              ].map(([mode, label, count, Icon]) => (
+                <button key={mode} type="button" onClick={() => setViewMode(mode)} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === mode ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/70 hover:text-base-content'}`}>
+                  <Icon className="w-3.5 h-3.5" /> {label} ({count})
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Patients Table */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
@@ -327,7 +401,7 @@ const StatusBadge = ({ status }) => {
                   </div>
                 ) : (
                   <DataTable
-                    data={processedPatients}
+                    data={activeData}
                     columns={columns}
                     searchable={true}
                     sortable={true}
@@ -344,8 +418,14 @@ const StatusBadge = ({ status }) => {
         </div>
       </div>
 
-          {/* Debug Component - Remove in production */}
-          {/* <PatientsDebug /> */}
+      <ViewDependantsModal
+        isOpen={isDependantsModalOpen}
+        onClose={() => {
+          setIsDependantsModalOpen(false);
+          setSelectedPatientForDependants(null);
+        }}
+        patient={selectedPatientForDependants}
+      />
         </div>
       );
     };

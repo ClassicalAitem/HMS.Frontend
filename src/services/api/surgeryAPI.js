@@ -59,9 +59,9 @@ export const getSurgeryByInvestigationRequestId = async (investigationRequestId)
   }
 }
 
-export const updateSurgery = async (id) => {
+export const updateSurgery = async (id, data) => {
   try{
-    const response = await  apiClient.patch(`/surgery/${id}`);
+    const response = await apiClient.patch(`/surgery/${id}`, data);
     return response.data;
   } catch (error){
     throw error;
