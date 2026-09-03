@@ -6,8 +6,6 @@ import { logoutUser } from '../store/slices/authSlice';
  * This can be called from any component or service
  */
 export const performLogout = async () => {
-  console.log('🚪 Logout Utility: Starting logout process');
-  
   try {
     // Dispatch logout action
     await store.dispatch(logoutUser());
@@ -17,11 +15,8 @@ export const performLogout = async () => {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('persist:root');
     
-    console.log('✅ Logout Utility: Logout completed successfully');
     return true;
   } catch (error) {
-    console.error('❌ Logout Utility: Logout error:', error);
-    
     // Even if there's an error, clear local storage
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');

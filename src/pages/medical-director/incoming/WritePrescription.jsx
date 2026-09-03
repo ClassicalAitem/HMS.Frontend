@@ -305,7 +305,8 @@ const WritePrescription = () => {
       const targetId = isDependant ? consultation.dependantId : consultation.patientId;
 
       const payload = {
-        ...(isDependant ? { dependantId: targetId } : { patientId }),
+        patientId,
+        ...(isDependant ? { dependantId: targetId } : {}),
         ...(isAntenatal ? { antenatalId: sourceId } : { consultationId: sourceId }),
         medications: data.medications.map((med) => {
           const { _selectedDrug, durationAmount, durationUnit, ...medData } = med;

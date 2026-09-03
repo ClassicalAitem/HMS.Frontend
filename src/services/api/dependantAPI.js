@@ -14,8 +14,6 @@ export const addDependantForPatient = async (patientId, dependant) => {
   }
   if (!dependant || typeof dependant !== 'object') throw new Error('dependant must be an object');
 
-  console.log('Adding dependant for patient ID:', patientId, 'with data:', dependant);
-
   // Only send supported keys
   const allowedKeys = ['firstName', 'middleName', 'lastName', 'dob', 'gender', 'relationshipType'];
   const payload = {};
@@ -23,7 +21,7 @@ export const addDependantForPatient = async (patientId, dependant) => {
     if (dependant[k] !== undefined && dependant[k] !== null && dependant[k] !== '') payload[k] = dependant[k];
   });
 
-  return apiClient.post(`/dependant/${patientId}`, payload);
+  return apiClient.post(`/dependant/${patientId}`, payload, { skipErrorToast: true });
 };
 
 /**
@@ -45,7 +43,7 @@ export const updateDependant = async (dependantId, updates) => {
     throw new Error('No valid fields provided to update');
   }
 
-  return apiClient.patch(`/dependant/${dependantId}`, payload);
+  return apiClient.patch(`/dependant/${dependantId}`, payload, { skipErrorToast: true });
 };
 
 export const getAllDependantsForPatient = async (patientId) => {

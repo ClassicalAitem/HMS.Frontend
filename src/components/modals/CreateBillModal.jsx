@@ -11,12 +11,18 @@ import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { updateSubjectStatus } from '@/utils/statusHelper';
 import { SERVICE_CHARGE_CATEGORY } from '@/constants/cardTypes';
 
+import { getInvestigationByPatientId } from '@/services/api/investigationRequestAPI';
+import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
+import { getAdmissionByPatientId } from '@/services/api/admissionApi';
+import { getAllAppointments } from '@/services/api/appointmentsAPI';
+
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
   investigationId: yup.string().nullable().optional(),
   prescriptionId: yup.string().nullable().optional(),
   admissionId: yup.string().nullable().optional(),
   appointmentId: yup.string().nullable().optional(),
+  procedureId: yup.string().nullable().optional(),
   code: yup.string().required('Item code is required'),
   description: yup.string().required('Description is required'),
   quantity: yup.number().typeError('Must be a number').min(1, 'Min 1').required(),
@@ -176,7 +182,6 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
         );
         setServices(filtered);
       } catch {
-        toast.error("Could not load service list");
         setServices([]);
       } finally {
         setLoadingServices(false);
@@ -187,6 +192,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
 
   useEffect(() => {
     if (!isOpen) return;
+
     if (defaultItems?.length > 0) {
       reset({
         items: defaultItems.map(d => {
@@ -199,7 +205,8 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
             investigationId: d.investigationId || null,
             prescriptionId: d.prescriptionId || null,
             admissionId: d.admissionId || null,
-            appointmentId: d.appointmentId || null,
+            appointmentId: d.appointmentId || d.procedureId || null,
+            procedureId: d.procedureId || d.appointmentId || null,
             code: d.code || '',
             description: d.description || '',
             quantity: d.quantity || 1,
@@ -210,10 +217,216 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
           };
         })
       });
-    } else {
-      reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, code: '', description: '', quantity: 1, price: 0 }] });
+      return;
     }
-  }, [isOpen, defaultItems, reset]);
+
+    if (patientId) {
+      let isSubscribed = true;
+      const loadUnbilledItems = async () => {
+        try {
+          const [invRes, presRes, admRes, apptRes, scRes] = await Promise.allSettled([
+            getInvestigationByPatientId(patientId),
+            getPrescriptionByPatientId(patientId),
+            getAdmissionByPatientId(patientId),
+            getAllAppointments(),
+            getServiceCharges(),
+          ]);
+
+          if (!isSubscribed) return;
+
+          const rawSc = scRes.status === 'fulfilled' ? (scRes.value?.data ?? scRes.value ?? []) : [];
+          const scList = Array.isArray(rawSc) ? rawSc : (rawSc?.data ?? []);
+
+          const findCharge = (name, id) => {
+            if (id) {
+              const byId = scList.find(c => (c.id || c._id) === id);
+              if (byId) return byId;
+            }
+            if (!name) return null;
+            const norm = String(name).toLowerCase().trim();
+            return scList.find(c => {
+              const cName = String(c.service || c.name || '').toLowerCase().trim();
+              return cName === norm || cName.includes(norm) || norm.includes(cName);
+            });
+          };
+
+          const autoItems = [];
+
+          // 1. Lab investigations
+          if (invRes.status === 'fulfilled') {
+            const rawInv = invRes.value?.data ?? invRes.value ?? [];
+            const invList = Array.isArray(rawInv) ? rawInv : (rawInv?.data ? (Array.isArray(rawInv.data) ? rawInv.data : [rawInv.data]) : []);
+            const filteredInv = invList.filter(inv => {
+              if (dependantId) return String(inv.dependantId || '') === String(dependantId);
+              return !inv.dependantId;
+            }).filter(inv => !inv.isBilled && !inv.billId);
+
+            filteredInv.forEach(inv => {
+              const tests = Array.isArray(inv.tests) ? inv.tests : [];
+              if (tests.length === 0) {
+                const charge = findCharge(inv.type, inv.serviceChargeId);
+                autoItems.push({
+                  serviceChargeId: inv.serviceChargeId || charge?.id || charge?._id || null,
+                  investigationId: inv._id || inv.id,
+                  prescriptionId: null,
+                  admissionId: null,
+                  appointmentId: null,
+                  procedureId: null,
+                  code: 'LAB',
+                  description: inv.type || 'Lab Investigation',
+                  quantity: 1,
+                  price: Number(charge?.amount || charge?.price || 0),
+                  isAuto: true,
+                });
+              } else {
+                tests.forEach(test => {
+                  const testName = typeof test === 'string' ? test : (test?.name || test?.code || '');
+                  const charge = findCharge(testName, test?.serviceChargeId || inv.serviceChargeId);
+                  autoItems.push({
+                    serviceChargeId: test?.serviceChargeId || inv.serviceChargeId || charge?.id || charge?._id || null,
+                    investigationId: inv._id || inv.id,
+                    prescriptionId: null,
+                    admissionId: null,
+                    appointmentId: null,
+                    procedureId: null,
+                    code: 'LAB',
+                    description: testName || 'Lab Test',
+                    quantity: 1,
+                    price: Number(test?.price || charge?.amount || charge?.price || 0),
+                    isAuto: true,
+                  });
+                });
+              }
+            });
+          }
+
+          // 2. Prescriptions
+          if (presRes.status === 'fulfilled') {
+            const rawPres = presRes.value?.data ?? presRes.value ?? [];
+            const presList = Array.isArray(rawPres) ? rawPres : (rawPres?.data ? (Array.isArray(rawPres.data) ? rawPres.data : [rawPres.data]) : []);
+            const filteredPres = presList.filter(p => {
+              if (dependantId) return String(p.dependantId || '') === String(dependantId);
+              return !p.dependantId;
+            }).filter(p => !p.isBilled && !p.billId);
+
+            filteredPres.forEach(p => {
+              const meds = Array.isArray(p.medications) ? p.medications : [];
+              meds.forEach(m => {
+                const isUnavailable = m.availability === 'unavailable';
+                autoItems.push({
+                  serviceChargeId: p.serviceChargeId || m.serviceChargeId || null,
+                  investigationId: null,
+                  prescriptionId: p._id || p.id,
+                  admissionId: null,
+                  appointmentId: null,
+                  procedureId: null,
+                  code: 'PRESCRIPTION',
+                  description: `${m.drugName || 'Medication'} (${m.dosage || ''})`,
+                  quantity: Number(m.billedQuantity || m.prescribedQuantity || 1),
+                  price: isUnavailable ? 0 : Number(m.unitPrice || m.price || 0),
+                  isAuto: true,
+                  isUnavailable,
+                });
+              });
+            });
+          }
+
+          // 3. Admissions
+          if (admRes.status === 'fulfilled') {
+            const rawAdm = admRes.value?.data ?? admRes.value ?? [];
+            const admList = Array.isArray(rawAdm) ? rawAdm : (rawAdm?.data ? (Array.isArray(rawAdm.data) ? rawAdm.data : [rawAdm.data]) : []);
+            const filteredAdm = admList.filter(a => {
+              if (dependantId) return String(a.dependantId || '') === String(dependantId);
+              return !a.dependantId;
+            }).filter(a => !a.isBilled && !a.billId);
+
+            filteredAdm.forEach(a => {
+              const items = Array.isArray(a.admissions) ? a.admissions : [];
+              if (items.length === 0) {
+                autoItems.push({
+                  serviceChargeId: a.serviceChargeId || null,
+                  investigationId: null,
+                  prescriptionId: null,
+                  admissionId: a._id || a.id,
+                  appointmentId: null,
+                  procedureId: null,
+                  code: 'ADMISSION',
+                  description: a.ward || 'Admission',
+                  quantity: 1,
+                  price: 0,
+                  isAuto: true,
+                });
+              } else {
+                items.forEach(item => {
+                  autoItems.push({
+                    serviceChargeId: item.serviceChargeId || null,
+                    investigationId: null,
+                    prescriptionId: null,
+                    admissionId: a._id || a.id,
+                    appointmentId: null,
+                    procedureId: null,
+                    code: 'ADMISSION',
+                    description: item.name || a.ward || 'Admission Item',
+                    quantity: 1,
+                    price: Number(item.amount || 0),
+                    isAuto: true,
+                  });
+                });
+              }
+            });
+          }
+
+          // 4. Procedures / Surgical Appointments
+          if (apptRes.status === 'fulfilled') {
+            const rawAppts = apptRes.value?.data?.data ?? apptRes.value?.data ?? [];
+            const apptList = Array.isArray(rawAppts) ? rawAppts : (rawAppts.appointments ?? []);
+            const targetPid = String(patientId);
+            const targetDepId = dependantId ? String(dependantId) : null;
+
+            const surgicalAppts = apptList.filter(a => {
+              const isSurg = (a.appointmentType || '').toLowerCase() === 'surgery';
+              if (!isSurg) return false;
+              if (targetDepId) {
+                return String(a.dependantId || '') === targetDepId;
+              }
+              return String(a.patientId || '') === targetPid && !a.dependantId;
+            }).filter(a => !a.isBilled && !a.billId);
+
+            surgicalAppts.forEach(proc => {
+              const charge = findCharge(proc.procedureName, proc.serviceChargeId);
+              autoItems.push({
+                serviceChargeId: proc.serviceChargeId || charge?.id || charge?._id || null,
+                investigationId: null,
+                prescriptionId: null,
+                admissionId: null,
+                appointmentId: proc.id || proc._id || null,
+                procedureId: proc.id || proc._id || null,
+                code: 'SURGERY',
+                description: proc.procedureName || 'Surgical Procedure',
+                quantity: 1,
+                price: Number(proc.price || charge?.amount || charge?.price || 0),
+                isAuto: true,
+              });
+            });
+          }
+
+          if (autoItems.length > 0) {
+            reset({ items: autoItems });
+          } else {
+            reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, appointmentId: null, procedureId: null, code: '', description: '', quantity: 1, price: 0 }] });
+          }
+        } catch (err) {
+          console.error('Error auto-loading unbilled items:', err);
+          reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, appointmentId: null, procedureId: null, code: '', description: '', quantity: 1, price: 0 }] });
+        }
+      };
+
+      loadUnbilledItems();
+      return () => { isSubscribed = false; };
+    }
+
+    reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, appointmentId: null, procedureId: null, code: '', description: '', quantity: 1, price: 0 }] });
+  }, [isOpen, defaultItems, patientId, dependantId, reset]);
 
   const items = watch("items");
 
@@ -240,32 +453,28 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
           quantity: Number(item.quantity),
           price: Number(item.price),
           total: Number(item.quantity) * Number(item.price),
-          serviceChargeId: item.serviceChargeId,
-          investigationId: item.investigationId,
-          prescriptionId: item.prescriptionId,
-          admissionId: item.admissionId,
-          appointmentId: item.appointmentId,
+          serviceChargeId: item.serviceChargeId || undefined,
+          investigationId: item.investigationId || undefined,
+          prescriptionId: item.prescriptionId || undefined,
+          admissionId: item.admissionId || undefined,
+          appointmentId: item.appointmentId || item.procedureId || undefined,
         })),
         ...(dependantId && { dependantId }),
       };
 
       await createBilling(patientId, payload);
-      toast.success('Bill created successfully!');
 
       try {
-        await toast.promise(
-          updateSubjectStatus(patientId, dependantId, PATIENT_STATUS.AWAITING_CASHIER),
-          {
-            loading: 'Updating status...',
-            success: dependantId ? 'Dependant sent to cashier' : 'Patient sent to cashier',
-            error: (err) => err?.response?.data?.message || 'Failed to update status',
-          }
-        );
+        await updateSubjectStatus(patientId, dependantId, PATIENT_STATUS.AWAITING_CASHIER);
+        toast.success(dependantId ? 'Dependant sent to cashier' : 'Patient sent to cashier');
       } catch (err) {
-        console.error('Failed updating status', err);
+        console.log(err);
+        toast.error('Failed to update patient status!');
       }
+      toast.success('Bill created successfully!');
       reset();
       if (onSuccess) onSuccess();
+      
       onClose();
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to create bill'));
