@@ -1,12 +1,11 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/surgeon/dashboard';
 import { DataTable } from '@/components/common';
 import { BookAppointmentModal } from '@/components/modals';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
-// import appointmentsData from '@/data/appointments.json';
-import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlus, FaFileMedical, FaEye } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
@@ -14,61 +13,48 @@ import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const Appointments = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(formatNigeriaDate(new Date()));
   const [filterOpen, setFilterOpen] = useState(false);
+  const [typeFilter, setTypeFilter] = useState('surgery'); // 'surgery' | 'all' | 'today'
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [patientsById, setPatientsById] = useState({});
 
-  // Load appointments data from backend
+  const loadAppointments = async () => {
+    try {
+      const res = await getAllAppointments();
+      const raw = res?.data?.data ?? res?.data ?? [];
+      const list = Array.isArray(raw) ? raw : raw.appointments ?? [];
+
+      const mapped = list.map((a, idx) => ({
+        id: a?.id || a?._id || a?.appointmentId || idx + 1,
+        patientId: a?.patientId,
+        dependantId: a?.dependantId || null,
+        dependant: a?.dependant || null,
+        patient: a?.patient || null,
+        patientName:
+          a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+        date: a?.appointmentDate || a?.date,
+        time: a?.appointmentTime || a?.time,
+        appointmentType: a?.appointmentType || 'consultation',
+        procedureName: a?.procedureName || 'Surgical Procedure',
+        procedureCode: a?.procedureCode || '',
+        department: a?.department || 'surgeon',
+        status: a?.status || 'scheduled',
+        raw: a,
+      }));
+
+      setAppointments(mapped);
+    } catch (err) {
+      toast.error('Failed to load appointments');
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      try {
-        if (typeof window !== 'undefined') {
-          if (window.__appointmentsLoadInFlight) return;
-          window.__appointmentsLoadInFlight = true;
-        }
-        const res = await toast.promise(
-          getAllAppointments(),
-          {
-            loading: 'Loading appointments...',
-            success: 'Appointments loaded',
-            error: 'Failed to load appointments'
-          },
-          { id: 'appointments-load' }
-        );
-        const raw = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-        console.log('Raw appointment data:', list);
-        const mapped = list.map((a, idx) => ({
-          id: a?.id || a?._id || a?.appointmentId || idx + 1,
-          patientId: a?.patientId,
-          dependantId: a?.dependantId || null,
-          dependant: a?.dependant || null,
-          patient: a?.patient || null,
-          patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
-          date: a?.appointmentDate || a?.date,
-          time: a?.appointmentTime || a?.time, 
-          appointmentType: a?.appointmentType || 'consultation',
-          department: a?.department || 'doctor',
-          status: a?.status || 'Active',
-        }));
-        console.log('Mapped appointments:', mapped);
-        setAppointments(mapped);
-      } catch (err) {
-        console.error('Load appointments error', err);
-        // Fallback: keep existing state
-      }
-      finally {
-        if (typeof window !== 'undefined') {
-          window.__appointmentsLoadInFlight = false;
-        }
-      }
-    };
-    load();
+    loadAppointments();
   }, []);
 
   useEffect(() => {
@@ -76,55 +62,34 @@ const Appointments = () => {
       try {
         const res = await getPatients();
         const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.data ?? []);
+        const list = Array.isArray(raw) ? raw : raw.data ?? [];
         const map = {};
         list.forEach((p) => {
-          const name = `${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`.trim() || 'Unknown Patient';
-          const idKeys = [p?.id, p?.patientId, p?.uuid, p?.hospitalId].filter(Boolean);
-          idKeys.forEach((k) => { map[k] = name; });
+          const name =
+            `${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`.trim() ||
+            'Unknown Patient';
+          const idKeys = [p?.id, p?.patientId, p?.uuid, p?.hospitalId].filter(
+            Boolean,
+          );
+          idKeys.forEach((k) => {
+            map[k] = name;
+          });
         });
         setPatientsById(map);
-      } catch (err) {
-        console.error('Fetch patients for name resolution failed', err);
+      } catch {
         setPatientsById({});
       }
     };
     fetchPatients();
   }, []);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setIsSidebarOpen(false);
 
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
-  const StatusBadge = ({ status }) => {
-    const getBadgeClass = (status) => {
-      switch (status) {
-        case 'completed':
-          return 'badge badge-primary text-white';
-        case 'scheduled':
-          return 'badge badge-outline badge-info';
-        case 'cancelled':
-          return 'badge badge-error text-white';
-        default:
-          return 'badge badge-neutral text-white';
-      }
-    };
-
-    return (
-      <div className={getBadgeClass(status)}>
-        {status}
-      </div>
-    );
-  };
-
-  // Process appointments data
   const resolvePatientName = (a) => {
     if (a?.dependantId) {
-      const depName = `${a?.dependant?.firstName || ''} ${a?.dependant?.lastName || ''}`.trim();
+      const depName =
+        `${a?.dependant?.firstName || ''} ${a?.dependant?.lastName || ''}`.trim();
       return depName || 'Dependant';
     }
     const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
@@ -132,231 +97,303 @@ const Appointments = () => {
     return resolved || a?.patientName || a?.patient?.fullName || 'Unknown';
   };
 
-  const processedAppointments = useMemo(() => appointments.map(a => ({
-    ...a,
-    patientName: resolvePatientName(a),
-  })), [appointments, patientsById]);
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  // Define table columns
-  const columns = useMemo(() => [
+  const processedAppointments = useMemo(() => {
+    const mapped = appointments.map((a) => ({
+      ...a,
+      patientName: resolvePatientName(a),
+    }));
 
-    {
-      key: 'patientName',
-      title: 'Patient Name',
-      sortable: true,
-      className: 'text-base-content font-medium',
-      render: (value, row) => (
-        <div className="flex items-center gap-2">
-          <span>{value}</span>
-          {row.dependantId && (
-            <span className="badge badge-secondary badge-xs">
-              {row.dependant?.relationshipType || 'Dependant'}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'date',
-      title: 'Date',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'time',
-      title: 'Time',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'appointmentType',
-      title: 'Appointment type',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'department',
-      title: 'Department',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'status',
-      title: 'Status',
-      className: 'text-base-content/70',
-      render: (value, row) => <StatusBadge status={value} />
+    if (typeFilter === 'surgery') {
+      return mapped.filter(
+        (a) =>
+          a.appointmentType === 'surgery' ||
+          String(a.department || '').toLowerCase() === 'surgeon',
+      );
     }
-  ], []);
+    if (typeFilter === 'today') {
+      return mapped.filter((a) => a.date && a.date.includes(todayStr));
+    }
+    return mapped;
+  }, [appointments, patientsById, typeFilter, todayStr]);
 
-  // Get current date for display
-  const getCurrentDate = () => {
-    return formatNigeriaDate(new Date());
+  const handleStartSurgicalNote = (row, e) => {
+    if (e) e.stopPropagation();
+    navigate('/dashboard/surgeon/write-surgical-note', {
+      state: { from: 'appointment', appointmentSnapshot: row.raw || row },
+    });
   };
 
+  const columns = useMemo(
+    () => [
+      {
+        key: 'patientName',
+        title: 'Patient Name',
+        sortable: true,
+        className: 'text-base-content font-medium',
+        render: (value, row) => (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-base-content">{value}</span>
+              {row.dependantId && (
+                <span className="badge badge-secondary badge-xs">
+                  Dependant
+                </span>
+              )}
+            </div>
+            {row.patientId && (
+              <span className="text-[11px] text-base-content/50 font-mono">
+                ID: {row.patientId}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'appointmentType',
+        title: 'Procedure / Type',
+        sortable: true,
+        className: 'text-base-content',
+        render: (value, row) => (
+          <div className="flex flex-col">
+            <span className="font-medium text-xs">
+              {row.procedureName || value}
+            </span>
+            {row.procedureCode && (
+              <span className="text-[11px] text-base-content/50 font-mono">
+                {row.procedureCode}
+              </span>
+            )}
+          </div>
+        ),
+      },
+      {
+        key: 'date',
+        title: 'Date & Time',
+        sortable: true,
+        className: 'text-base-content/70 text-xs',
+        render: (value, row) => (
+          <div className="flex flex-col">
+            <span>{value ? formatNigeriaDate(value) : '—'}</span>
+            <span className="text-base-content/50 font-medium">
+              {row.time || '—'}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: 'department',
+        title: 'Department',
+        sortable: true,
+        className: 'text-base-content/70 capitalize text-xs',
+      },
+      {
+        key: 'status',
+        title: 'Status',
+        className: 'text-base-content/70',
+        render: (value) => (
+          <span
+            className={`badge badge-sm font-semibold capitalize ${
+              value === 'completed'
+                ? 'badge-success text-white'
+                : value === 'in_theatre'
+                ? 'badge-warning'
+                : value === 'cancelled'
+                ? 'badge-error text-white'
+                : 'badge-ghost'
+            }`}
+          >
+            {value?.replace('_', ' ') || 'scheduled'}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        title: 'Actions',
+        className: 'text-right',
+        render: (_, row) => (
+          <div
+            className="flex items-center justify-end gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {row.appointmentType === 'surgery' && (
+              <button
+                type="button"
+                className="btn btn-xs btn-primary gap-1 font-semibold text-white shadow-xs"
+                onClick={(e) => handleStartSurgicalNote(row, e)}
+              >
+                <FaFileMedical className="w-3 h-3" />
+                Write Note
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-xs btn-ghost gap-1"
+              onClick={() => {
+                setSelectedAppointmentId(row.id);
+                setIsDetailsModalOpen(true);
+              }}
+            >
+              <FaEye className="w-3 h-3 text-base-content/60" />
+              View
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
+
   const handleRowClick = (appointment) => {
-    console.log('Row clicked:', appointment);
-    // Use the actual appointment ID from the API, or fall back to the mapped ID
-    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
-    console.log('Appointment ID:', appointmentId);
+    const appointmentId =
+      appointment.id || appointment.appointmentId || appointment._id;
     if (appointmentId) {
       setSelectedAppointmentId(appointmentId);
       setIsDetailsModalOpen(true);
-      console.log('Opening modal with ID:', appointmentId);
-    } else {
-      toast.error('No appointment ID found');
     }
   };
 
   const handleBookAppointment = async (appointmentData) => {
     try {
-      await toast.promise(
-        createAppointment(appointmentData),
-        {
-          loading: 'Saving appointment...',
-          success: 'Appointment saved',
-          error: (e) => e?.message || 'Failed to save appointment'
-        }
-      );
+      await toast.promise(createAppointment(appointmentData), {
+        loading: 'Saving appointment...',
+        success: 'Appointment saved',
+        error: (e) => e?.message || 'Failed to save appointment',
+      });
       setIsBookModalOpen(false);
-      // Refresh list
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-      const mapped = list.map((a, idx) => ({
-        id: a?.id || a?._id || a?.appointmentId || idx + 1,
-        patientId: a?.patientId,
-        dependantId: a?.dependantId || null,
-        dependant: a?.dependant || null,
-        patient: a?.patient || null,
-        patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
-        date: a?.appointmentDate || a?.date,
-        time: a?.appointmentTime || a?.time, 
-        appointmentType: a?.appointmentType || 'consultation',
-        department: a?.department || 'doctor',
-        status: a?.status || 'Active',
-      }));
-      setAppointments(mapped);
-    } catch (err) {
-      console.error('Create appointment error', err);
-      toast.error(err?.message || 'Failed to book appointment');
+      loadAppointments();
+    } catch {
+      toast.error('Failed to book appointment');
     }
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
+    <div className="flex h-screen bg-base-200/50">
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`${
-        'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0'
-      } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
 
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 lg:p-8 h-full gap-6">
+          {/* HEADER */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
             <div>
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
-              <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <FaCalendarAlt className="w-5 h-5" />
+                </div>
+                <h1 className="text-2xl font-black text-base-content tracking-tight">
+                  Surgeon Appointments & Theater Bookings
+                </h1>
+              </div>
+              <p className="text-xs text-base-content/60 mt-1">
+                {formatNigeriaDate(new Date())} • Comprehensive surgical & clinical schedule
+              </p>
             </div>
-             <button
-               className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
-               onClick={() => setIsBookModalOpen(true)}
-             >
-               <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-               </svg>
-               <span className="text-xs 2xl:text-sm">Book Appointment</span>
-             </button>
+
+            <button
+              className="btn btn-primary btn-sm gap-1.5 font-semibold text-white shadow-xs"
+              onClick={() => setIsBookModalOpen(true)}
+            >
+              <FaPlus className="w-3.5 h-3.5" />
+              Book Appointment
+            </button>
           </div>
 
-          {/* Filter Bar */}
-          <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:justify-between sm:items-center">
-            <div className="flex gap-3 items-center">
+          {/* FILTER TABS */}
+          <div className="card bg-base-100 p-4 shadow-sm border border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="join">
               <button
-                className="flex gap-2 items-center btn btn-sm w-full sm:w-auto"
-                onClick={() => setFilterOpen(!filterOpen)}
+                className={`btn btn-xs join-item ${
+                  typeFilter === 'surgery'
+                    ? 'btn-primary text-white'
+                    : 'btn-ghost'
+                }`}
+                onClick={() => setTypeFilter('surgery')}
               >
-                <PiSlidersLight className="w-4 h-4 rotate-90" />
-                <span className="text-xs">Filter</span>
+                Surgeries / Procedures
+              </button>
+              <button
+                className={`btn btn-xs join-item ${
+                  typeFilter === 'today' ? 'btn-primary text-white' : 'btn-ghost'
+                }`}
+                onClick={() => setTypeFilter('today')}
+              >
+                Today's Bookings
+              </button>
+              <button
+                className={`btn btn-xs join-item ${
+                  typeFilter === 'all' ? 'btn-primary text-white' : 'btn-ghost'
+                }`}
+                onClick={() => setTypeFilter('all')}
+              >
+                All Appointments ({appointments.length})
               </button>
             </div>
 
-            <div className="flex gap-3 items-center w-full sm:w-auto justify-end">
-              <div className="dropdown dropdown-end w-full sm:w-auto">
-                <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm w-full sm:w-auto justify-between">
-                  <FaCalendarAlt className="w-3 h-3" />
-                  <span className="text-xs">{selectedDate}</span>
-                  <FaChevronDown className="w-3 h-3" />
-                </label>
-                <ul tabIndex={0} className="p-2 mt-2 shadow menu dropdown-content bg-base-100 rounded-box w-52">
-                  <li>
-                    <button onClick={() => setSelectedDate(formatNigeriaDate(new Date()))}>Today</button>
-                  </li>
-                  <li>
-                    <button onClick={() => setSelectedDate(formatNigeriaDate(new Date(Date.now() + 86400000)))}>Tomorrow</button>
-                  </li>
-                  <li>
-                    <button onClick={() => setSelectedDate(formatNigeriaDate(new Date(Date.now() + 2 * 86400000)))}>Day After Tomorrow</button>
-                  </li>
-                </ul>
-                
-              </div>
-            </div>
+            <button
+              className="btn btn-sm btn-ghost gap-2 border border-base-300"
+              onClick={() => setFilterOpen(!filterOpen)}
+            >
+              <PiSlidersLight className="w-4 h-4 rotate-90" />
+              <span className="text-xs font-semibold">
+                {filterOpen ? 'Hide Search' : 'Search Table'}
+              </span>
+            </button>
           </div>
 
-          {/* Appointments Table */}
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                <DataTable
-                  data={processedAppointments}
-                  columns={columns}
-                  searchable={filterOpen}
-                  sortable={true}
-                  paginated={true}
-                  initialEntriesPerPage={10}
-                  maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                  showEntries={true}
-                  searchPlaceholder="Search appointments..."
-                  onRowClick={handleRowClick}
-                />
-              </div>
+          {/* TABLE CONTAINER */}
+          <div className="card bg-base-100 shadow-sm border border-base-200 overflow-hidden">
+            <div className="p-4 sm:p-6">
+              <DataTable
+                data={processedAppointments}
+                columns={columns}
+                searchable={filterOpen}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={10}
+                maxHeight="max-h-[550px]"
+                showEntries={true}
+                searchPlaceholder="Search patients, procedures, or departments..."
+                onRowClick={handleRowClick}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Book Appointment Modal */}
       <BookAppointmentModal
         isOpen={isBookModalOpen}
         onClose={() => setIsBookModalOpen(false)}
         onSubmit={handleBookAppointment}
       />
 
-      {/* Appointment Details Modal */}
       <AppointmentDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
         onUpdated={(updated) => {
-          setAppointments(prev => prev.map(a => (
-            a.id === (updated?.id || updated?._id || updated?.appointmentId) ?
-              { ...a, status: updated?.status } : a
-          )));
+          setAppointments((prev) =>
+            prev.map((a) =>
+              a.id === (updated?.id || updated?._id || updated?.appointmentId)
+                ? { ...a, status: updated?.status }
+                : a,
+            ),
+          );
         }}
       />
     </div>
@@ -364,4 +401,3 @@ const Appointments = () => {
 };
 
 export default Appointments;
-

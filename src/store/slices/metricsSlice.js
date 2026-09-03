@@ -7,16 +7,11 @@ export const fetchMetrics = createAsyncThunk(
   'metrics/fetchMetrics',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('📊 MetricsSlice: Fetching metrics...');
-      
       // Fetch both metrics endpoints
       const [metricsResponse, staffResponse] = await Promise.all([
         metricsAPI.getMetrics(),
         metricsAPI.getStaffMetrics()
       ]);
-      
-      console.log('📊 MetricsSlice: Main metrics response:', metricsResponse);
-      console.log('📊 MetricsSlice: Staff metrics response:', staffResponse);
       
       // Merge both responses
       const mergedData = {
@@ -24,10 +19,8 @@ export const fetchMetrics = createAsyncThunk(
         ...staffResponse.data,
       };
       
-      console.log('📊 MetricsSlice: Merged data:', mergedData);
       return mergedData;
     } catch (error) {
-      console.error('❌ MetricsSlice: Fetch metrics error:', error);
       return rejectWithValue(getErrorMessage(error, 'Failed to fetch metrics'));
     }
   }

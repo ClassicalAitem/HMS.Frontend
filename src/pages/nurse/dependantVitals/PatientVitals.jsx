@@ -5,6 +5,7 @@ import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { PiUsersThree } from "react-icons/pi";
 import { getPatients } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { updateDependantStatus } from "@/services/api/dependantAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
 import { mergePatientStatus, hasStatus } from "@/utils/statusUtils";
@@ -373,14 +374,15 @@ const PatientVitals = () => {
                         onClick={async () => {
                           try {
                             const pid = selectedPatient?.id || selectedPatient?.hospitalId;
-                            const promise = updatePatientStatus(pid, 'awaiting_consultation');
+                            const promise = updateDependantStatus(pid, { status: 'awaiting_consultation' });
                             toast.promise(promise, {
                               loading: 'Sending to doctor...',
-                              success: 'Patient sent to doctor successfully',
+                              success: 'Dependant sent to doctor successfully',
                               error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
                             });
                             await promise;
                             setIsSendDoctorOpen(false);
+                            setRefreshKey((k) => k + 1);
                           } catch (e) {
                             console.error('All Patients: send to doctor failed', e);
                           }
