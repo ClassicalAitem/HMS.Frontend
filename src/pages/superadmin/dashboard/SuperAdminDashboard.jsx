@@ -1,42 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DataTable } from '@/components/common';
 import { SuperAdminLayout } from '@/layouts/superadmin';
+import { Link } from 'react-router-dom';
 import { PiUsersThreeDuotone } from 'react-icons/pi';
 import { LuUserRoundCheck } from 'react-icons/lu';
 import { MdOutlineStore } from 'react-icons/md';
-import { FiFileText } from 'react-icons/fi';
-import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { FiFileText, FiArrowUpRight, FiSettings, FiUserPlus, FiActivity } from 'react-icons/fi';
+import { FaCalendarAlt, FaHospital, FaClipboardCheck, FaUsersCog } from 'react-icons/fa';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchMetrics } from '../../../store/slices/metricsSlice';
-import { fetchVitals } from '../../../store/slices/vitalsSlice';
 
 const SuperAdminDashboard = () => {
 
   
-  // Skeleton loader for vitals table
-  const VitalsTableSkeleton = () => (
-    <div className="space-y-3">
-      {[...Array(7)].map((_, index) => (
-        <div key={index} className="flex space-x-4 p-3 bg-base-200 rounded-lg animate-pulse">
-          <div className="h-6 w-full bg-base-300 rounded"></div>
-          <div className="h-6 w-full bg-base-300 rounded"></div>
-          <div className="h-6 w-full bg-base-300 rounded"></div>
-          <div className="h-6 w-full bg-base-300 rounded"></div>
-          <div className="h-6 w-full bg-base-300 rounded"></div>
-          <div className="h-6 w-full bg-base-300 rounded"></div>
-        </div>
-      ))}
-    </div>
-  );
   const dispatch = useAppDispatch();
   const { metrics, isLoading, error } = useAppSelector((state) => state.metrics);
-  const { vitals, isLoading: vitalsLoading, error: vitalsError } = useAppSelector((state) => state.vitals);
 
   useEffect(() => {
-    // Fetch both metrics and vitals data
     dispatch(fetchMetrics());
-    dispatch(fetchVitals());
   }, [dispatch]);
 
   const getCurrentDate = () => {
@@ -58,56 +40,14 @@ const SuperAdminDashboard = () => {
     </div>
   );
 
-  // Define table columns for vitals
-  const columns = useMemo(() => [
-    {
-      key: 'patientId',
-      title: 'Patient ID',
-      sortable: true,
-      className: 'font-medium text-base-content'
-    },
-    {
-      key: 'bp',
-      title: 'Blood Pressure',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'temperature',
-      title: 'Temperature',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => `${value}°F`
-    },
-    {
-      key: 'pulse',
-      title: 'Pulse',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => `${value} bpm`
-    },
-    {
-      key: 'weight',
-      title: 'Weight',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => `${value} kg`
-    },
-    {
-      key: 'spo2',
-      title: 'SpO2',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => `${value}%`
-    },
-    {
-      key: 'createdAt',
-      title: 'Recorded At',
-      sortable: true,
-      className: 'text-base-content/70',
-      render: (value) => formatNigeriaDateTime(value)
-    }
-  ], []);
+  const operationalActions = [
+    { label: 'Patient Directory', description: 'Review patients and dependants', path: '/superadmin/patients/Patients', icon: FaHospital, tone: 'text-primary bg-primary/10' },
+    { label: 'Manage Users', description: 'Control staff access and roles', path: '/superadmin/users', icon: FaUsersCog, tone: 'text-secondary bg-secondary/10' },
+    { label: 'Appointments', description: 'Review the hospital schedule', path: '/superadmin/appointments', icon: FaCalendarAlt, tone: 'text-info bg-info/10' },
+    { label: 'Registration', description: 'Register a new patient', path: '/superadmin/registration', icon: FiUserPlus, tone: 'text-success bg-success/10' },
+    { label: 'Generate Reports', description: 'Export operational insights', path: '/superadmin/reports', icon: FaClipboardCheck, tone: 'text-warning bg-warning/10' },
+    { label: 'System Settings', description: 'Configure hospital operations', path: '/superadmin/settings', icon: FiSettings, tone: 'text-error bg-error/10' },
+  ];
 
   return (
     <SuperAdminLayout>
@@ -209,36 +149,50 @@ const SuperAdminDashboard = () => {
           </div>
           
 
-          {/* Recent Vitals Data */}
-          <div className="p-6 rounded-lg shadow-lg bg-base-100">
-            <div className="mb-6">
-              <h2 className="text-lg font-medium text-primary 2xl:text-2xl">Recent Vitals Data</h2>
-              <p className="text-xs 2xl:text-base text-base-content/70">Latest patient vital signs recorded in the system.</p>
-            </div>
-            
-            {/* Error Display for Vitals */}
-            {vitalsError && (
-              <div className="alert alert-error mb-4">
-                <span>Error loading vitals: {vitalsError}</span>
+          {/* Operations command center */}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+            <section className="p-6 rounded-2xl border border-base-200 shadow-lg bg-base-100">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">Command Center</p>
+                  <h2 className="mt-1 text-xl font-bold text-base-content">Keep the hospital moving</h2>
+                  <p className="mt-1 text-sm text-base-content/60">Jump into the workflows that need attention today.</p>
+                </div>
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-success/10 text-success text-xs font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-success animate-pulse" /> Systems operational
+                </div>
               </div>
-            )}
-            
-            {/* Vitals Table */}
-            {vitalsLoading ? (
-              <VitalsTableSkeleton />
-            ) : (
-              <DataTable
-                data={vitals || []}
-                columns={columns}
-                searchable={true}
-                sortable={true}
-                paginated={true}
-                initialEntriesPerPage={5}
-                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-100"
-                showEntries={true}
-                searchPlaceholder="Search vitals..."
-              />
-            )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {operationalActions.map(({ label, description, path, icon: Icon, tone }) => (
+                  <Link key={path} to={path} className="group flex items-center gap-3 p-4 rounded-xl border border-base-200 hover:border-primary/40 hover:bg-base-200/50 transition-all">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tone}`}><Icon className="w-5 h-5" /></div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-base-content">{label}</p>
+                      <p className="text-xs text-base-content/55 truncate">{description}</p>
+                    </div>
+                    <FiArrowUpRight className="w-4 h-4 text-base-content/30 group-hover:text-primary transition-colors" />
+                  </Link>
+                ))}
+              </div>
+            </section>
+
+            <section className="relative overflow-hidden p-6 rounded-2xl bg-neutral text-neutral-content shadow-lg">
+              <div className="absolute -right-12 -top-12 w-40 h-40 rounded-full border-[20px] border-white/10" />
+              <div className="relative">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary-content/70">
+                  <FiActivity className="w-4 h-4" /> Hospital pulse
+                </div>
+                <h2 className="mt-3 text-2xl font-bold">Today at a glance</h2>
+                <p className="mt-1 text-sm text-neutral-content/65">A quick operational readout for {getCurrentDate()}.</p>
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <div className="p-3 rounded-xl bg-white/10"><p className="text-2xl font-black">{metrics?.totalPatients || 0}</p><p className="text-xs text-neutral-content/65">Patients in system</p></div>
+                  <div className="p-3 rounded-xl bg-white/10"><p className="text-2xl font-black">{metrics?.totalActiveStaff || 0}</p><p className="text-xs text-neutral-content/65">Active staff</p></div>
+                  <div className="p-3 rounded-xl bg-white/10"><p className="text-2xl font-black">{metrics?.totalDepartments || 0}</p><p className="text-xs text-neutral-content/65">Departments</p></div>
+                  <div className="p-3 rounded-xl bg-white/10"><p className="text-2xl font-black">{metrics?.totalAdmittedPatients || 0}</p><p className="text-xs text-neutral-content/65">Currently admitted</p></div>
+                </div>
+                <Link to="/superadmin/settings/audit-logs" className="inline-flex items-center gap-2 mt-6 text-sm font-semibold text-primary-content hover:underline">Review system activity <FiArrowUpRight /></Link>
+              </div>
+            </section>
           </div>
     </SuperAdminLayout>
   );
