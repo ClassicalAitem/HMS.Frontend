@@ -31,15 +31,14 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
     const fetchInventories = async () => {
       try {
         const res = await getInventories();
-        console.log("Fetched inventories:", res.data);
-        const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
-        setInventoryItems(list)
+        const list = Array.isArray(res?.data) ? res.data : (res?.data ?? []);
+        setInventoryItems(list);
       } catch (error) {
         console.error("Error fetching inventories:", error);
       }
-    }
+    };
     fetchInventories();
-  })
+  }, [prescriptionID]);
 
   // Fetch injection & prescription details
   useEffect(() => {
@@ -48,28 +47,24 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
         setLoading(true);
 
         setPrescription(prescriptionPatient);
-        setSelectedStatus(res.data.data.status || "");
+        setSelectedStatus(prescriptionPatient?.status || "");
 
         // Check if all injection medications are completed
-        const allCompleted = prescriptionData.medications
-          ?.filter(med => med.medicationType === "injection")
-          .every(prescriptionData.status === "completed");
+        const meds = prescriptionPatient?.medications || [];
+        const injectionMeds = meds.filter((med) => med.medicationType === "injection");
+        const allCompleted =
+          injectionMeds.length > 0 &&
+          injectionMeds.every((med) => med.injectionStatus === "completed");
         setIsFullyAdministered(allCompleted);
-
-        console.log({ allCompleted });
-
       } catch (err) {
         console.log("Error fetching prescription", err);
-        console.log("Full error:", err.response);
       } finally {
         setLoading(false);
       }
     };
 
-
     fetchPrescription();
-
-  }, [prescriptionID]);
+  }, [prescriptionPatient, prescriptionID]);
 
    const addMedication = () => {
     if (!newMed.name) return;

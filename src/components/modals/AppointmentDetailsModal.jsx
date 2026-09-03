@@ -7,7 +7,6 @@ import { toast } from 'react-hot-toast';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { useAppSelector } from '@/store/hooks';
-import { createInvestigationRequestByConsultation } from '@/services/api/investigationRequestAPI';
 
 const SectionHeading = ({ icon, children }) => (
   <h3 className="text-sm font-semibold text-base-content flex items-center gap-2 mb-3">
@@ -99,35 +98,10 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
   const handleStartSurgicalNote = async () => {
     setStartingNote(true);
     try {
-      let invReqId = appointment?.investigationRequestId;
-      if (!invReqId && appointment?.consultationId) {
-        try {
-          const payload = {
-            patientId: appointment.patientId,
-            dependantId: appointment.dependantId || undefined,
-            type: 'surgical',
-            tests: [{ name: appointment.procedureName || 'Surgical Procedure' }],
-          };
-          const invRes = await createInvestigationRequestByConsultation(
-            appointment.consultationId,
-            payload,
-          );
-          const createdInv = invRes?.data?.data ?? invRes?.data ?? invRes;
-          invReqId = createdInv?.id || createdInv?._id;
-        } catch {
-          // Fallback gracefully without blocking navigation
-        }
-      }
       onClose();
-      if (invReqId) {
-        navigate(`/dashboard/surgeon/write-surgical-note/${invReqId}`, {
-          state: { from: 'appointment', appointmentSnapshot: appointment },
-        });
-      } else {
-        navigate('/dashboard/surgeon/write-surgical-note', {
-          state: { from: 'appointment', appointmentSnapshot: appointment },
-        });
-      }
+      navigate('/dashboard/surgeon/write-surgical-note', {
+        state: { from: 'appointment', appointmentSnapshot: appointment },
+      });
     } finally {
       setStartingNote(false);
     }

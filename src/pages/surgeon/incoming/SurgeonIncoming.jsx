@@ -15,8 +15,8 @@ import {
   FaClock,
 } from "react-icons/fa";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
-import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getAllAppointments } from "@/services/api/appointmentsAPI";
+import { formatNigeriaDateTime, formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import { getAllSurgeries } from "@/services/api/surgeryAPI";
 
 const SurgeonIncoming = () => {
@@ -26,7 +26,7 @@ const SurgeonIncoming = () => {
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [page, setPage] = useState(0);
   const pageSize = 9;
 
@@ -38,92 +38,70 @@ const SurgeonIncoming = () => {
     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const [investigationResponse, surgeryResponse] = await Promise.all([
-          getInvestigations({ type: "surgical" }),
+        const [appointmentsResponse, surgeryResponse] = await Promise.allSettled([
+          getAllAppointments(),
           getAllSurgeries(),
         ]);
-        const investigations = Array.isArray(investigationResponse?.data?.data)
-          ? investigationResponse.data.data
-          : Array.isArray(investigationResponse?.data)
-          ? investigationResponse.data
-          : Array.isArray(investigationResponse)
-          ? investigationResponse
-          : [];
-        const surgeries = Array.isArray(surgeryResponse?.data?.data)
-          ? surgeryResponse.data.data
-          : Array.isArray(surgeryResponse?.data)
-          ? surgeryResponse.data
-          : Array.isArray(surgeryResponse)
-          ? surgeryResponse
-          : [];
 
-        const sorted = [...investigations].sort((a, b) => {
-          const aTime = new Date(a?.createdAt || 0).getTime();
-          const bTime = new Date(b?.createdAt || 0).getTime();
-          return bTime - aTime;
+        const rawAppointments = appointmentsResponse.status === "fulfilled"
+          ? (appointmentsResponse.value?.data?.data ?? appointmentsResponse.value?.data ?? appointmentsResponse.value ?? [])
+          : [];
+        const appointmentList = Array.isArray(rawAppointments) ? rawAppointments : (rawAppointments?.appointments ?? []);
+
+        const rawSurgeries = surgeryResponse.status === "fulfilled"
+          ? (surgeryResponse.value?.data?.data ?? surgeryResponse.value?.data ?? surgeryResponse.value ?? [])
+          : [];
+        const surgeries = Array.isArray(rawSurgeries) ? rawSurgeries : [];
+
+        // Filter for surgical appointments (created by doctor or frontdesk with service charge)
+        const surgicalAppointments = appointmentList.filter((a) => {
+          const type = String(a?.appointmentType || "").toLowerCase();
+          const dept = String(a?.department || "").toLowerCase();
+          return type === "surgery" || type === "surgical" || dept === "surgeon" || dept === "surgery" || Boolean(a?.procedureName);
         });
 
-        const mapped = await Promise.all(
-          sorted.map(async (inv) => {
-            let patientName = "Unknown Patient";
-            let patientId = "—";
-            if (inv?.patient) {
-              if (inv.patient.fullName) patientName = inv.patient.fullName;
-              else if (inv.patient.firstName || inv.patient.lastName) {
-                patientName = `${inv.patient.firstName || ""} ${
-                  inv.patient.lastName || ""
-                }`.trim();
-              }
-              patientId = inv.patient.hospitalId || inv.patient.id || "—";
-            } else if (inv?.patientName) {
-              patientName = inv.patientName;
-              patientId = inv?.patientId || inv?.patient_id || "—";
-            } else if (inv?.patientId) {
-              try {
-                const patientRes = await getPatientById(inv.patientId);
-                const p = patientRes?.data || patientRes;
-                if (p?.fullName) patientName = p.fullName;
-                else if (p?.firstName || p?.lastName) {
-                  patientName = `${p.firstName || ""} ${p.lastName || ""}`.trim();
-                }
-                patientId = p?.hospitalId || p?.id || inv.patientId;
-              } catch (e) {
-                patientName = inv.patientId;
-                patientId = inv.patientId;
-              }
-            }
+        const mapped = surgicalAppointments.map((appt) => {
+          let patientName = "Unknown Patient";
+          let patientHospitalId = "—";
+          if (appt?.patient) {
+            patientName = appt.patient.fullName || `${appt.patient.firstName || ""} ${appt.patient.lastName || ""}`.trim() || "Unknown Patient";
+            patientHospitalId = appt.patient.hospitalId || appt.patient.id || "—";
+          } else if (appt?.patientName) {
+            patientName = appt.patientName;
+            patientHospitalId = appt.patientId || "—";
+          } else if (appt?.patientId) {
+            patientHospitalId = appt.patientId;
+            patientName = `Patient (${appt.patientId})`;
+          }
 
-            const procedureName =
-              (Array.isArray(inv.tests) && inv.tests[0]?.name) ||
-              inv.type ||
-              inv.title ||
-              "Surgical Investigation";
+          const procedureName = appt.procedureName || "Surgical Procedure";
+          const matchedSurgery = surgeries.find(
+            (s) =>
+              (s?.patientId && String(s.patientId) === String(appt.patientId || appt?.patient?.id)) ||
+              (s?.procedureName && s.procedureName.toLowerCase() === procedureName.toLowerCase())
+          ) || null;
 
-            return {
-              id: inv?._id || inv?.id,
-              patientName,
-              patientId,
-              procedureName,
-              type: inv?.type || "surgical",
-              status: surgeries.find(
-                (surgery) =>
-                  String(surgery?.investigationRequestId) === String(inv?._id || inv?.id),
-              )?.status || inv?.status || "pending",
-              createdAt: inv?.createdAt
-                ? formatNigeriaDateTime(inv.createdAt)
-                : "—",
-              snapshot: inv,
-              surgery: surgeries.find(
-                (surgery) =>
-                  String(surgery?.investigationRequestId) === String(inv?._id || inv?.id),
-              ) || null,
-            };
-          })
-        );
+          return {
+            id: appt?._id || appt?.id,
+            patientName,
+            patientId: patientHospitalId,
+            rawPatientId: appt.patientId || (appt.patient && (appt.patient._id || appt.patient.id)),
+            procedureName,
+            type: "surgical",
+            status: matchedSurgery?.status || appt?.status || "scheduled",
+            createdAt: appt?.appointmentDate
+              ? formatNigeriaDate(appt.appointmentDate)
+              : appt?.createdAt
+              ? formatNigeriaDateTime(appt.createdAt)
+              : "—",
+            snapshot: appt,
+            surgery: matchedSurgery,
+          };
+        });
 
         if (mounted) setItems(mapped);
       } catch (err) {
-        console.error("Surgeon Incoming: investigation fetch error", err);
+        console.error("Surgeon Incoming: fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -231,14 +209,7 @@ const SurgeonIncoming = () => {
             </div>
 
             <div className="join">
-              <button
-                className={`btn btn-xs join-item ${
-                  statusFilter === "all" ? "btn-primary text-white" : "btn-ghost"
-                }`}
-                onClick={() => setStatusFilter("all")}
-              >
-                All ({items.length})
-              </button>
+             
               <button
                 className={`btn btn-xs join-item ${
                   statusFilter === "pending" ? "btn-primary text-white" : "btn-ghost"
@@ -347,25 +318,34 @@ const SurgeonIncoming = () => {
                     <span className="text-xs text-base-content/60 font-medium">
                       Surgical Queue
                     </span>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-primary gap-1.5 font-semibold text-white shadow-xs"
-                      onClick={() =>
-                        navigate(
-                          `/dashboard/surgeon/write-surgical-note/${data.id}`,
-                          {
-                            state: {
-                              from: "incoming",
-                              investigationRequest: data.snapshot,
-                              editSurgery: data.surgery,
-                            },
-                          }
-                        )
-                      }
-                    >
-                      <FaFileMedical className="w-3.5 h-3.5" />
-                      {data.surgery ? "Edit Note" : "Write Note"}
-                    </button>
+                    {String(data.status).toLowerCase() === "completed" ? (
+                      <span className="badge badge-success text-white gap-1.5 py-3">
+                        <FaFileMedical className="w-3.5 h-3.5" />
+                        Note Completed
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary gap-1.5 font-semibold text-white shadow-xs"
+                        onClick={() =>
+                          navigate(
+                            `/dashboard/surgeon/write-surgical-note`,
+                            {
+                              state: {
+                                from: "incoming",
+                                appointmentSnapshot: data.snapshot,
+                                editSurgery: data.surgery,
+                                patientId: data.rawPatientId || (data.patientId !== "—" ? data.patientId : undefined),
+                                patientSnapshot: data.snapshot?.patient || null,
+                              },
+                            }
+                          )
+                        }
+                      >
+                        <FaFileMedical className="w-3.5 h-3.5" />
+                        {data.surgery ? "Edit Note" : "Write Note"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))

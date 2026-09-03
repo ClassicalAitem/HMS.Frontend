@@ -2,16 +2,23 @@
 // Create a new surgery
 import apiClient from './apiClient';
 
-export const createSurgery = async (investigationRequestId, data) => {
+export const createSurgery = async (arg1, arg2) => {
   try {
-    const requiredFields = ['procedureName', 'scheduledDate'];
-    for (const field of requiredFields) {
-      if (!data?.[field]) {
-        throw new Error(`Missing required field: ${field}`);
-      }
+    let payload = arg1;
+    // Support both createSurgery(payload) and legacy createSurgery(investigationRequestId, data)
+    if (arg2 !== undefined && typeof arg1 === 'string') {
+      payload = { ...arg2, investigationRequestId: arg1 };
     }
-    const response = await apiClient.post(`/surgery/${investigationRequestId}`, data);
+    const response = await apiClient.post('/surgery', payload);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
+export const getSurgeryByPatientId = async (patientId) => {
+  try {
+    const response = await apiClient.get(`/surgery/patient/${patientId}`);
     return response.data;
   } catch (error) {
     throw error;
@@ -77,5 +84,6 @@ export default {
   createSurgery,
   deleteSurgery,
   getSurgeryByInvestigationRequestId,
+  getSurgeryByPatientId,
   updateSurgery
 };

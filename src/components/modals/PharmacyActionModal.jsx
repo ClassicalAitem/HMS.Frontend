@@ -11,6 +11,7 @@ const PharmacyActionModal = ({
   currentStatus = '',
   defaultStatus = PATIENT_STATUS.AWAITING_PHARMACY,
   onUpdated,
+  onConfirm,
   itemsCount,
   medicationNames = [],
   patientLabel,
@@ -22,6 +23,9 @@ const PharmacyActionModal = ({
 const handleConfirm = async () => {
   try {
     setIsSending(true);
+    if (onConfirm) {
+      await onConfirm();
+    }
     // ✅ Status is now a single string — just send it directly
     const promise = updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_PHARMACY });
     toast.promise(promise, {

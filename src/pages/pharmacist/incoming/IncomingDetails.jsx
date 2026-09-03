@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
@@ -398,6 +398,7 @@ const getDispenseInfo = (med) => {
         return {
           key: `${p._id}-${m.drugName}`,
           prescriptionId: p._id,
+          inventoryId: m.inventoryId || dispenseInfo.inv?._id || dispenseInfo.inv?.id,
           drugName: m.drugName,
           dosage: m.dosage,
           frequency: m.frequency,
@@ -472,73 +473,105 @@ const getDispenseInfo = (med) => {
       (row) => row?.availabilityInfo?.inStock && Number(row.suggestedQty) > 0
     )
 
+    if (dispensableRows.length === 0) {
+      toast.error('No items available to dispense. Please check stock levels.')
+      setDispenseSubmitting(false)
+      return
+    }
+
     const byPrescription = dispensableRows.reduce((acc, row) => {
       if (!acc[row.prescriptionId]) acc[row.prescriptionId] = []
       acc[row.prescriptionId].push({
+        inventoryId: row.inventoryId,
         drugName: row.drugName,
         quantity: Number(row.suggestedQty) || 0,
       })
       return acc
     }, {})
 
-    const dispenseCalls = Object.entries(byPrescription).map(([prescriptionId, items]) =>
-      dispensesAPI.createDispense(prescriptionId, {
-        items,
-        pharmacistId,
-        status: PRESCRIPTION_STATUS.DISPENSED,
-      })
-    )
+    const isPrescriptionFullyFulfilled = (prescription) => {
+      const meds = prescription.medications || []
+      return meds.every((m) =>
+        dispensableRows.some(
+          (r) =>
+            r.prescriptionId === prescription._id &&
+            r.drugName?.toLowerCase() === m.drugName?.toLowerCase()
+        )
+      )
+    }
+
+    const allFulfilled = targetPrescriptions.every(isPrescriptionFullyFulfilled)
 
     const hasInjection = targetPrescriptions.some((p) =>
       (p.medications || []).some((m) => m.medicationType === 'injection')
     )
 
-    const statusUpdate = hasInjection
-      ? isViewingDependant
-        ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_INJECTION })
-        : updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_INJECTION })
-      : isViewingDependant
-        ? updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
-        : updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
-
-    const promise = Promise.all([
-      ...targetPrescriptions.map((p) =>
-        updatePrescription(p._id, {
-          status: PRESCRIPTION_STATUS.COMPLETED,
+    try {
+      const dispenseCalls = Object.entries(byPrescription).map(([prescriptionId, items]) =>
+        dispensesAPI.createDispense(prescriptionId, {
+          items,
           pharmacistId,
           pharmacistName,
+          status: PRESCRIPTION_STATUS.DISPENSED,
         })
-      ),
-      statusUpdate,
-      ...dispenseCalls,
-    ])
+      )
 
-    toast.promise(promise, {
-      loading: hasInjection ? 'Dispensing & sending to nurse...' : 'Dispensing...',
-      success: hasInjection ? 'Sent to nurse for injection' : 'Prescription completed',
-      error: 'Failed — check stock levels',
-    })
+      await toast.promise(Promise.all(dispenseCalls), {
+        loading: 'Dispensing medication...',
+        success: 'Medication dispensed successfully',
+        error: (err) => err?.response?.data?.message || err?.message || 'Failed to dispense',
+      })
 
-    try {
-      await promise
+      if (allFulfilled) {
+        if (hasInjection) {
+          if (isViewingDependant) {
+            await updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.AWAITING_INJECTION })
+          } else {
+            await updatePatientStatus(pid, { status: PATIENT_STATUS.AWAITING_INJECTION })
+          }
+          toast.success('Sent to nurse for injection')
+        } else {
+          if (isViewingDependant) {
+            await updateDependantStatus(incomingDependantId, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+          } else {
+            await updatePatientStatus(pid, { status: PATIENT_STATUS.PHARMACY_COMPLETED })
+          }
+        }
+      } else {
+        toast('Prescription partially dispensed. Remaining items kept in queue.', { icon: 'ℹ️' })
+      }
 
       const invRes = await getInventories()
       setInventory(invRes?.data ?? [])
 
-      setPrescriptions((prev) => {
-        const stillActive = prev.active.filter((p) => !prescriptionIds.includes(p._id))
-        const movedToHistory = prev.active
-          .filter((p) => prescriptionIds.includes(p._id))
-          .map((p) => ({ ...p, status: PRESCRIPTION_STATUS.COMPLETED, pharmacistId, pharmacistName }))
-        return { ...prev, active: stillActive, history: [...movedToHistory, ...prev.history] }
-      })
+      const presRes = await getPrescriptionByPatientId(patientId)
+      const presData = presRes?.data ?? presRes
+      const list = Array.isArray(presData) ? presData : presData ? [presData] : []
+
+      const filtered = isViewingDependant
+        ? list.filter((p) => p.dependantId === incomingDependantId)
+        : list.filter((p) => !p.dependantId)
+
+      const active = filtered.filter(
+        (p) => ![PRESCRIPTION_STATUS.COMPLETED, PRESCRIPTION_STATUS.CANCELLED].includes(String(p.status).toLowerCase())
+      )
+      const history = filtered
+        .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.COMPLETED)
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+      const cancelled = filtered
+        .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.CANCELLED)
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+
+      setPrescriptions({ active, history, cancelled })
 
       setPatient((prev) =>
         isViewingDependant
           ? prev
           : {
               ...(prev || {}),
-              status: hasInjection ? PATIENT_STATUS.AWAITING_INJECTION : PATIENT_STATUS.PHARMACY_COMPLETED,
+              status: allFulfilled
+                ? (hasInjection ? PATIENT_STATUS.AWAITING_INJECTION : PATIENT_STATUS.PHARMACY_COMPLETED)
+                : prev?.status,
             }
       )
 
