@@ -38,4 +38,16 @@ export const updateDepartment = async(departmentId, departmentData) => {
     console.error('📥 DepartmentsAPI: Error data:', error.response?.data);
     throw error;
   }
-}
+};
+
+export const deleteDepartment = async(departmentId) => {
+  try {
+    const response = await apiClient.delete(`/department/${departmentId}`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ DepartmentsAPI: Delete Department error occurred');
+    console.error('📥 DepartmentsAPI: Error response:', error.response);
+    console.error('📥 DepartmentsAPI: Error data:', error.response?.data);
+    throw error;
+  }
+};
