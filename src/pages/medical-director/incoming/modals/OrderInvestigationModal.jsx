@@ -23,7 +23,7 @@ const OrderInvestigationModal = ({
   patientId,
   dependantId,
   consultationId,
-  investigation, // <-- edit mode
+  investigation, 
   onOrderCreated
 }) => {
 
@@ -340,15 +340,19 @@ const OrderInvestigationModal = ({
                           const availabilityBadge = isBillable ? 'Available' : 'Unavailable';
                           return (
                             <div
-                              key={test.id}
-                              className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
-                             onClick={() => {
-                                setValue(`tests.${index}.name`, test.service);
-                                setValue(`tests.${index}.isCustom`, false);
-                                setTestDropdownIndex(null);
-                                setTestSearch('');
-                              }}
-                            >
+                                key={test.id}
+                                className="px-4 py-2 cursor-pointer flex justify-between hover:bg-gray-100"
+                                onMouseDown={(e) => {
+                                  // preventDefault stops the input from blurring, so we don't race
+                                  // the onBlur close-timeout — selection now works on the first click
+                                  // no matter how much/little the user has typed.
+                                  e.preventDefault();
+                                  setValue(`tests.${index}.name`, test.service);
+                                  setValue(`tests.${index}.isCustom`, false);
+                                  setTestDropdownIndex(null);
+                                  setTestSearch('');
+                                }}
+                              >
                               <div className="flex flex-col">
                                 <span>{test.service}</span>
                                 <span className={`text-xs ${ isBillable ? 'text-green-600' : 'text-error' }`}>
