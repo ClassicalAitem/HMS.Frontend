@@ -42,3 +42,15 @@ export const updateWard = async(wardId, wardData) => {
     throw error;
   }
 };
+
+export const deleteWard = async(wardId) => {
+  try {
+    const response = await apiClient.delete(`/ward/${wardId}`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ WardsAPI: Delete Ward error occurred');
+    console.error('📥 WardsAPI: Error response:', error.response);
+    console.error('📥 WardsAPI: Error data:', error.response?.data);
+    throw error;
+  }
+};

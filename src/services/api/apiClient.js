@@ -57,15 +57,14 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401) {
-      // Check if it's a JWT expiration error or no token error
-      const errorMessage = error.response?.data?.message?.toLowerCase();
-      const isJwtExpired = errorMessage?.includes('jwt expired') ||
-                          errorMessage?.includes('token expired') ||
-                          errorMessage?.includes('jwt malformed') ||
-                          errorMessage?.includes('please log in') ||
-                          errorMessage?.includes('unauthorized') ||
-                          errorMessage?.includes('no token provided') ||
-                          errorMessage?.includes('access denied');
+      // Check if it's a genuine JWT expiration or invalid token error
+      const errorMessage = String(error.response?.data?.message || error.response?.data?.error || '').toLowerCase();
+      const isJwtExpired = errorMessage.includes('jwt expired') ||
+                          errorMessage.includes('token expired') ||
+                          errorMessage.includes('token has expired') ||
+                          errorMessage.includes('jwt malformed') ||
+                          errorMessage.includes('invalid token') ||
+                          errorMessage.includes('no token provided');
 
       if (isJwtExpired) {
         // Clear all authentication data

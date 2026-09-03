@@ -198,22 +198,16 @@ const usersSlice = createSlice({
     builder
       // Fetch users
       .addCase(fetchUsers.pending, (state) => {
-        console.log('⏳ UsersSlice: Fetch users pending - setting loading to true');
         state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-        console.log('✅ UsersSlice: Fetch users fulfilled - updating state');
-        console.log('📦 UsersSlice: Action payload:', action.payload);
         state.isLoading = false;
         state.users = action.payload.users;
         state.pagination = action.payload.pagination;
         state.error = null;
-        console.log('✅ UsersSlice: Users state updated successfully');
       })
       .addCase(fetchUsers.rejected, (state, action) => {
-        console.log('❌ UsersSlice: Fetch users rejected - setting error');
-        console.log('📦 UsersSlice: Rejection payload:', action.payload);
         state.isLoading = false;
         state.error = action.payload;
       })

@@ -133,9 +133,11 @@ const DrugDispensation = () => {
           name: null,
           pharmacist: `${d.pharmacist?.firstName || ''} ${d.pharmacist?.lastName || ''}`.trim() || '—',
           medication: item.drugName || d?.prescription?.medications?.[0]?.drugName || 'Unknown',
-          form: item.form || d?.prescription?.medications?.[0]?.form || 'Unknown',
+          form: item.inventoryId?.form || item.form || d?.prescriptionId?.medications?.[0]?.form || '—',
           quantity: item.quantity?.toString() ?? String(item.qty || '0'),
-          price: item.price ? `₦${Number(item.price).toLocaleString()}` : '—',
+          price: (item.unitPrice ?? item.price ?? item.inventoryId?.sellingPrice) != null
+            ? `₦${Number(item.unitPrice ?? item.price ?? item.inventoryId?.sellingPrice).toLocaleString()}`
+            : '—',
           dispensedAt: d.dispensedAt || d.createdAt || null,
           status: (d.status || 'pending').toLowerCase(),
         }))

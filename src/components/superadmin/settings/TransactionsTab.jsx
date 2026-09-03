@@ -22,14 +22,17 @@ const TransactionsTab = () => {
         const raw = res?.data.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
         const mapped = list.map((a, idx) => ({
-          id: a.id,
-          patient: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'Unknown Patient',
-          service: a.billing.itemDetails && a.billing.itemDetails.length > 0
-            ? `${a.billing.itemDetails[0].description || a.billing.itemDetails[0].code} - ${a.billing.itemDetails[0].quantity}x` : 'Medical Service',
-            amount: a.amountPaid,
-            date: new Date(a.paidAt).toISOString().split('T')[0],
-            paymentMethod: a.paymentMethod,
-            status: a.status
+          id: a.id || a._id || `txn-${idx}`,
+          patient: a.billing?.patient
+            ? `${a.billing.patient.firstName || ''} ${a.billing.patient.lastName || ''}`.trim()
+            : a.patientName || 'Medical Patient',
+          service: a.billing?.itemDetails && a.billing.itemDetails.length > 0
+            ? `${a.billing.itemDetails[0].description || a.billing.itemDetails[0].code || 'Item'} - ${a.billing.itemDetails[0].quantity || 1}x`
+            : 'Medical Service',
+          amount: a.amountPaid || 0,
+          date: a.paidAt ? new Date(a.paidAt).toISOString().split('T')[0] : '—',
+          paymentMethod: a.paymentMethod || 'Cash',
+          status: a.status || 'paid'
         }))
 
         setTransactions(mapped);
