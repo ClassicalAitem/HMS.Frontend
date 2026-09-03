@@ -97,34 +97,41 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
   };
 
   const handleStartSurgicalNote = async () => {
-  if (!appointment?.consultationId) {
-    toast.error('This appointment has no linked consultation.');
-    return;
-  }
-  setStartingNote(true);
-  try {
-    const payload = {
-      patientId: appointment.patientId,
-      dependantId: appointment.dependantId || undefined,
-      type: 'surgical',
-      tests: [{ name: appointment.procedureName || 'Surgical Procedure' }],
-    };
-    await toast.promise(
-      createInvestigationRequestByConsultation(appointment.consultationId, payload),
-      {
-        loading: 'Creating investigation request...',
-        success: 'Investigation request created',
-        error: (e) => e?.response?.data?.message || e?.message || 'Failed to start surgical note',
-      },
-    );
-    onClose();
-    navigate('/dashboard/surgeon/incoming');
-  } catch (err) {
-    console.error('Start surgical note failed', err);
-  } finally {
-    setStartingNote(false);
-  }
-};
+    setStartingNote(true);
+    try {
+      let invReqId = appointment?.investigationRequestId;
+      if (!invReqId && appointment?.consultationId) {
+        try {
+          const payload = {
+            patientId: appointment.patientId,
+            dependantId: appointment.dependantId || undefined,
+            type: 'surgical',
+            tests: [{ name: appointment.procedureName || 'Surgical Procedure' }],
+          };
+          const invRes = await createInvestigationRequestByConsultation(
+            appointment.consultationId,
+            payload,
+          );
+          const createdInv = invRes?.data?.data ?? invRes?.data ?? invRes;
+          invReqId = createdInv?.id || createdInv?._id;
+        } catch {
+          // Fallback gracefully without blocking navigation
+        }
+      }
+      onClose();
+      if (invReqId) {
+        navigate(`/dashboard/surgeon/write-surgical-note/${invReqId}`, {
+          state: { from: 'appointment', appointmentSnapshot: appointment },
+        });
+      } else {
+        navigate('/dashboard/surgeon/write-surgical-note', {
+          state: { from: 'appointment', appointmentSnapshot: appointment },
+        });
+      }
+    } finally {
+      setStartingNote(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -349,11 +356,11 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
               <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
                 Close
               </button>
-              {isSurgery && isSurgeonUser && !isEditing && (
+              {isSurgery && !isEditing && (
                 <button
                   type="button"
                   onClick={handleStartSurgicalNote}
-                  className="btn btn-secondary btn-sm"
+                  className="btn btn-secondary btn-sm gap-1.5 font-semibold"
                   disabled={startingNote}
                 >
                   {startingNote ? (
@@ -362,7 +369,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
                       Starting...
                     </>
                   ) : (
-                    'Start Surgical Note'
+                    'Write Surgical Note'
                   )}
                 </button>
               )}

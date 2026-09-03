@@ -7,6 +7,7 @@ import { useAppSelector } from "@/store/hooks";
 import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { updateDependantStatus } from "@/services/api/dependantAPI";
 import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
@@ -46,12 +47,9 @@ const PatientVitalsDetails = () => {
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
-    console.log('let me see snap:', snap);
     if (snap) {
       setPatient((prev) => prev || snap);
     }
-
-    console.log('PatientVitalsDetails: patientId from params:', patientId);
   }, [location?.state, patientId]);
 
   useEffect(() => {
@@ -109,7 +107,6 @@ const PatientVitalsDetails = () => {
   }, [vitals]);
 
   const patientUUID = patient?.id || location?.state?.patientSnapshot?.id || "";
-  console.log('I want to see patient:', patient);
   const patientHospitalId = patient?.hospitalId || location?.state?.patientSnapshot?.hospitalId || patientId || "";
   const patientName = patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown';
 
@@ -554,16 +551,17 @@ const PatientVitalsDetails = () => {
                       className="btn btn-success"
                       onClick={async () => {
                         try {
-                          const promise = updatePatientStatus(patientUUID || patientId, 'awaiting_consultation');
+                          const targetId = patientUUID || patientId;
+                          const promise = updateDependantStatus(targetId, { status: 'awaiting_consultation' });
                           toast.promise(promise, {
                             loading: 'Sending to doctor...',
-                            success: 'Patient sent to doctor successfully',
+                            success: 'Dependant sent to doctor successfully',
                             error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
                           });
                           await promise;
                           setIsSendDoctorOpen(false);
                         } catch (e) {
-                          console.error("PatientVitalsDetails: send to doctor failed", e);
+                          // handled by toast
                         }
                       }}
                     >

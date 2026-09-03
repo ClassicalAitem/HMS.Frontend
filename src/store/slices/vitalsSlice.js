@@ -7,13 +7,9 @@ export const fetchVitals = createAsyncThunk(
   'vitals/fetchVitals',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('🩺 VitalsSlice: Fetching vitals...');
       const response = await vitalsAPI.getVitals();
-      console.log('✅ VitalsSlice: Vitals fetched successfully');
-      console.log('🩺 VitalsSlice: Response data:', response);
       return response.data;
     } catch (error) {
-      console.error('❌ VitalsSlice: Fetch vitals error:', error);
       return rejectWithValue(getErrorMessage(error, 'Failed to fetch vitals Refresh the page or try again later.'));
     }
   }

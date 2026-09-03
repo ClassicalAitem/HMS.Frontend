@@ -31,18 +31,15 @@ const fetchBilling = async () => {
     if (Array.isArray(data) && data.length > 0) {
       setBillingData(data[0]);
     } else {
-      toast('No bill found for this patient');
       setBillingData(null);
     }
 
   } catch (error) {
-    console.error('DoctorBillModal: Error fetching billing', error);
-    toast.error('Could not load bill data');
     setBillingData(null);
   } finally {
     setLoading(false);
   }
-      };
+};
       fetchBilling();
     }
   }, [isOpen, patientId]);
