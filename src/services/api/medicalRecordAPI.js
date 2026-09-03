@@ -4,7 +4,6 @@ import apiClient from './apiClient';
 export const getAllComplaint = async () => {
   try {
     const response = await apiClient.get('/medicalRecord');
-    console.log('complaintAPI: getAllComplaint response', response.data);
     // Return the actual array of complaints
     return response.data?.data || [];
   } catch (error) {

@@ -2,11 +2,22 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
-import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
-import avatarImg from "@/assets/images/incomingLogo.jpg";
+import {
+  RiSearchLine,
+  RiArrowLeftSLine,
+  RiArrowRightSLine,
+  RiRefreshLine,
+} from "react-icons/ri";
+import {
+  FaProcedures,
+  FaFileMedical,
+  FaUserInjured,
+  FaClock,
+} from "react-icons/fa";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
-import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getAllAppointments } from "@/services/api/appointmentsAPI";
+import { formatNigeriaDateTime, formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { getAllSurgeries } from "@/services/api/surgeryAPI";
 
 const SurgeonIncoming = () => {
   const navigate = useNavigate();
@@ -15,8 +26,9 @@ const SurgeonIncoming = () => {
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [page, setPage] = useState(0);
-  const pageSize = 8;
+  const pageSize = 9;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -26,192 +38,342 @@ const SurgeonIncoming = () => {
     const fetchIncoming = async () => {
       try {
         setLoading(true);
-        const res = await getInvestigations({ type: 'surgical' });
-        const investigations = Array.isArray(res?.data)
-          ? res.data
-          : (Array.isArray(res) ? res : []);
+        const [appointmentsResponse, surgeryResponse] = await Promise.allSettled([
+          getAllAppointments(),
+          getAllSurgeries(),
+        ]);
 
-        const sorted = [...investigations].sort((a, b) => {
-          const aTime = new Date(a?.createdAt || 0).getTime();
-          const bTime = new Date(b?.createdAt || 0).getTime();
-          return bTime - aTime;
+        const rawAppointments = appointmentsResponse.status === "fulfilled"
+          ? (appointmentsResponse.value?.data?.data ?? appointmentsResponse.value?.data ?? appointmentsResponse.value ?? [])
+          : [];
+        const appointmentList = Array.isArray(rawAppointments) ? rawAppointments : (rawAppointments?.appointments ?? []);
+
+        const rawSurgeries = surgeryResponse.status === "fulfilled"
+          ? (surgeryResponse.value?.data?.data ?? surgeryResponse.value?.data ?? surgeryResponse.value ?? [])
+          : [];
+        const surgeries = Array.isArray(rawSurgeries) ? rawSurgeries : [];
+
+        // Filter for surgical appointments (created by doctor or frontdesk with service charge)
+        const surgicalAppointments = appointmentList.filter((a) => {
+          const type = String(a?.appointmentType || "").toLowerCase();
+          const dept = String(a?.department || "").toLowerCase();
+          return type === "surgery" || type === "surgical" || dept === "surgeon" || dept === "surgery" || Boolean(a?.procedureName);
         });
 
-        const mapped = await Promise.all(sorted.map(async (inv) => {
-          let patientName = 'Unknown';
-          let patientId = '—';
-          if (inv?.patient) {
-            if (inv.patient.fullName) patientName = inv.patient.fullName;
-            else if (inv.patient.firstName || inv.patient.lastName) patientName = `${inv.patient.firstName || ''} ${inv.patient.lastName || ''}`.trim();
-            patientId = inv.patient.hospitalId || inv.patient.id || '—';
-          } else if (inv?.patientName) {
-            patientName = inv.patientName;
-            patientId = inv?.patientId || inv?.patient_id || '—';
-          } else if (inv?.patient_id) {
-            patientName = inv.patient_id;
-            patientId = inv.patient_id;
-          } else if (inv?.patientId) {
-            try {
-              const patientRes = await getPatientById(inv.patientId);
-              const p = patientRes?.data || patientRes;
-              if (p?.fullName) patientName = p.fullName;
-              else if (p?.firstName || p?.lastName) patientName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
-              patientId = p?.hospitalId || p?.id || inv.patientId;
-            } catch (e) {
-              patientName = inv.patientId;
-              patientId = inv.patientId;
-            }
+        const mapped = surgicalAppointments.map((appt) => {
+          let patientName = "Unknown Patient";
+          let patientHospitalId = "—";
+          if (appt?.patient) {
+            patientName = appt.patient.fullName || `${appt.patient.firstName || ""} ${appt.patient.lastName || ""}`.trim() || "Unknown Patient";
+            patientHospitalId = appt.patient.hospitalId || appt.patient.id || "—";
+          } else if (appt?.patientName) {
+            patientName = appt.patientName;
+            patientHospitalId = appt.patientId || "—";
+          } else if (appt?.patientId) {
+            patientHospitalId = appt.patientId;
+            patientName = `Patient (${appt.patientId})`;
           }
+
+          const procedureName = appt.procedureName || "Surgical Procedure";
+          const matchedSurgery = surgeries.find(
+            (s) =>
+              (s?.patientId && String(s.patientId) === String(appt.patientId || appt?.patient?.id)) ||
+              (s?.procedureName && s.procedureName.toLowerCase() === procedureName.toLowerCase())
+          ) || null;
+
           return {
-            id: inv?._id || inv?.id,
+            id: appt?._id || appt?.id,
             patientName,
-            patientId,
-            type: inv?.type || inv?.title || 'Investigation',
-            status: inv?.status || 'Pending',
-            createdAt: inv?.createdAt ? formatNigeriaDateTime(inv.createdAt) : '—',
-            snapshot: inv,
+            patientId: patientHospitalId,
+            rawPatientId: appt.patientId || (appt.patient && (appt.patient._id || appt.patient.id)),
+            procedureName,
+            type: "surgical",
+            status: matchedSurgery?.status || appt?.status || "scheduled",
+            createdAt: appt?.appointmentDate
+              ? formatNigeriaDate(appt.appointmentDate)
+              : appt?.createdAt
+              ? formatNigeriaDateTime(appt.createdAt)
+              : "—",
+            snapshot: appt,
+            surgery: matchedSurgery,
           };
-        }));
+        });
 
         if (mounted) setItems(mapped);
       } catch (err) {
-        console.error("Surgeon Incoming: investigation fetch error", err);
+        console.error("Surgeon Incoming: fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
     };
     fetchIncoming();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [refreshKey]);
 
-  useEffect(() => { setPage(0); }, [query, items]);
+  useEffect(() => {
+    setPage(0);
+  }, [query, statusFilter, items]);
+
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
+  const filteredItems = items.filter((d) => {
+    const q = query.trim().toLowerCase();
+    const matchQuery = q
+      ? [d?.patientName, d?.patientId, d?.procedureName, d?.status]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      : true;
+
+    const matchStatus =
+      statusFilter === "all" ? true : d?.status?.toLowerCase() === statusFilter;
+
+    return matchQuery && matchStatus;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const start = page * pageSize;
+  const visible = filteredItems.slice(start, start + pageSize);
+
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-base-200/50">
       {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
+          onClick={closeSidebar}
+        />
       )}
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <Sidebar />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-100">
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <section>
+        <div className="overflow-y-auto flex flex-col gap-6 p-4 sm:p-6 lg:p-8 h-full">
+          {/* TOP BAR */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div>
-                <div className="flex items-center gap-5 ">
-                  <RiArrowLeftRightFill size={25} className="text-primary" />
-                  <h1 className="text-[32px] text-primary ">Incoming</h1>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <FaProcedures className="w-5 h-5" />
                 </div>
-                <p className="text-[12px] text-base-content/70">Check out the investigation requests assigned to you.</p>
+                <h1 className="text-2xl font-black text-base-content tracking-tight">
+                  Incoming Surgical Requests
+                </h1>
               </div>
+              <p className="text-xs text-base-content/60 mt-1">
+                Clinical requests requiring theatre preparation, surgical assessment, and operative notes.
+              </p>
             </div>
 
-            <div className="mt-4 flex items-center gap-2">
-              <div className="relative w-full max-w-xs">
-                <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search requests" className="input input-bordered input-sm pl-9 w-full" />
-              </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onRefresh}
+                className="btn btn-sm btn-ghost gap-1.5 font-medium border border-base-300"
+                title="Refresh requests"
+              >
+                <RiRefreshLine className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* SEARCH & STATUS FILTERS */}
+          <div className="card bg-base-100 p-4 shadow-sm border border-base-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="relative w-full max-w-md">
+              <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 w-4 h-4" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search patient, hospital ID, or procedure..."
+                className="input input-sm input-bordered w-full pl-9"
+              />
               {query && (
-                <button onClick={() => setQuery("")} className="btn btn-ghost btn-xs">Clear</button>
+                <button
+                  onClick={() => setQuery("")}
+                  className="btn btn-ghost btn-xs absolute right-1.5 top-1/2 -translate-y-1/2"
+                >
+                  Clear
+                </button>
               )}
             </div>
 
-            <div className="bg-base-100 mt-10 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-5 rounded-md">
-              {loading ? (
-                Array.from({ length: 6 }).map((_, idx) => (
-                  <div key={idx} className="h-[216px] card bg-base-100 border border-base-300 shadow-sm">
-                    <div className="flex gap-6 items-center p-5">
-                      <div className="w-[52px] h-[52px] rounded-full bg-base-300 animate-pulse" />
-                      <div className="flex-1 grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="animate-pulse h-3 w-40 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="animate-pulse h-3 w-36 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                          <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-between px-7 pb-5">
-                      <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                      <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
-                      <div className="animate-pulse h-6 w-24 rounded bg-base-300" />
+            <div className="join">
+             
+              <button
+                className={`btn btn-xs join-item ${
+                  statusFilter === "pending" ? "btn-primary text-white" : "btn-ghost"
+                }`}
+                onClick={() => setStatusFilter("pending")}
+              >
+                Pending
+              </button>
+              <button
+                className={`btn btn-xs join-item ${
+                  statusFilter === "in_progress" ? "btn-primary text-white" : "btn-ghost"
+                }`}
+                onClick={() => setStatusFilter("in_progress")}
+              >
+                In Progress
+              </button>
+              <button
+                className={`btn btn-xs join-item ${
+                  statusFilter === "completed" ? "btn-primary text-white" : "btn-ghost"
+                }`}
+                onClick={() => setStatusFilter("completed")}
+              >
+                Completed
+              </button>
+            </div>
+          </div>
+
+          {/* REQUESTS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {loading ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="card bg-base-100 border border-base-200 shadow-sm p-5 space-y-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-base-200 animate-pulse" />
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 w-32 bg-base-200 rounded animate-pulse" />
+                      <div className="h-3 w-20 bg-base-200 rounded animate-pulse" />
                     </div>
                   </div>
-                ))
-              ) : (
-                (() => {
-                  const q = query.trim().toLowerCase();
-                  const filtered = q
-                    ? items.filter((d) => [d?.patientName, d?.status].filter(Boolean).join(" ").toLowerCase().includes(q))
-                    : items;
-                  if (filtered.length === 0) {
-                    return (
-                      <div className="col-span-full">
-                        <EmptyState title="No matches found" description="Try a different search or clear the filter." actionLabel={query ? "Clear search" : "Refresh"} onAction={query ? () => setQuery("") : onRefresh} />
-                      </div>
-                    );
+                  <div className="h-10 bg-base-200 rounded animate-pulse" />
+                </div>
+              ))
+            ) : visible.length === 0 ? (
+              <div className="col-span-full">
+                <EmptyState
+                  title="No Incoming Requests Found"
+                  description={
+                    query
+                      ? `No requests match "${query}". Try adjusting your search.`
+                      : "There are currently no surgical requests assigned to this queue."
                   }
-                  const start = page * pageSize;
-                  const end = start + pageSize;
-                  const visible = filtered.slice(start, end);
-                  return visible.map((data, index) => (
-                    <div key={index} className="card bg-base-100 border border-base-300 shadow-sm">
-                      <div className="flex gap-6 items-center p-8">
-                        <img src={avatarImg} alt="" className="w-[52px] h-[52px] object-cover rounded-full" />
-                        <div className="flex-1 grid grid-cols-2 gap-4 text-sm text-base-content">
-                          <div className="space-y-1 xl:space-y-3 col-span-2">
-                            <span className="block whitespace-nowrap overflow-hidden text-ellipsis w-full font-semibold" style={{maxWidth: '100%'}}>
-                              Patient: {data.patientName}
-                            </span>
-                            <span className="block">Patient ID: {data.patientId}</span>
-                            <span className="block">Status: {data.status}</span>
-                          </div>
+                  actionLabel={query ? "Clear search" : "Refresh"}
+                  onAction={query ? () => setQuery("") : onRefresh}
+                />
+              </div>
+            ) : (
+              visible.map((data) => (
+                <div
+                  key={data.id}
+                  className="card bg-base-100 border border-base-200 shadow-xs hover:shadow-md hover:border-primary/40 transition-all flex flex-col justify-between overflow-hidden"
+                >
+                  <div className="p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                          <FaUserInjured className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-base-content line-clamp-1">
+                            {data.patientName}
+                          </h3>
+                          <p className="text-xs text-base-content/50 font-mono">
+                            ID: {data.patientId}
+                          </p>
                         </div>
                       </div>
-                      <div className="flex justify-center px-7 pb-5 gap-2">
-                        <button
-                          className="px-4 py-1 rounded-full bg-primary text-white"
-                          onClick={() => data.id && navigate(`/dashboard/surgeon/write-surgical-note/${data.id}`, { state: { from: 'incoming', investigationRequest: data.snapshot } })}
-                        >
-                          Add Surgical Note
-                        </button>
-                      </div>
-                    </div>
-                  ));
-                })()
-              )}
-            </div>
 
-            {(() => {
-              const q = query.trim().toLowerCase();
-              const filtered = q ? items.filter((d) => [d?.patientName, d?.type, d?.status, d?.createdAt].filter(Boolean).join(" ").toLowerCase().includes(q)) : items;
-              const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-              if (!loading && filtered.length > pageSize) {
-                return (
-                  <div className="mt-6 flex items-center justify-center gap-3">
-                    <button className="btn btn-ghost btn-xs" aria-label="Previous" onClick={() => setPage((p) => Math.max(0, p - 1))}><RiArrowLeftSLine /></button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: totalPages }).map((_, i) => (
-                        <button key={i} onClick={() => setPage(i)} aria-label={`Go to page ${i + 1}`} className={`w-3 h-3 rounded-full ${i === page ? 'bg-success' : 'border border-base-300 bg-transparent'}`} />
-                      ))}
+                      <span
+                        className={`badge badge-sm font-semibold capitalize ${
+                          data.status === "completed"
+                            ? "badge-success text-white"
+                            : data.status === "in_progress"
+                            ? "badge-info text-white"
+                            : "badge-ghost"
+                        }`}
+                      >
+                        {data.status?.replace("_", " ")}
+                      </span>
                     </div>
-                    <button className="btn btn-ghost btn-xs" aria-label="Next" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}><RiArrowRightSLine /></button>
+
+                    <div className="p-3 rounded-xl bg-base-200/50 border border-base-200 space-y-1">
+                      <p className="text-xs font-semibold text-base-content line-clamp-1">
+                        {data.procedureName}
+                      </p>
+                      <p className="text-[11px] text-base-content/50 flex items-center gap-1">
+                        <FaClock className="w-3 h-3" />
+                        Requested: {data.createdAt}
+                      </p>
+                    </div>
                   </div>
-                );
-              }
-              return null;
-            })()}
-          </section>
+
+                  <div className="p-4 bg-base-200/30 border-t border-base-200 flex items-center justify-between">
+                    <span className="text-xs text-base-content/60 font-medium">
+                      Surgical Queue
+                    </span>
+                    {String(data.status).toLowerCase() === "completed" ? (
+                      <span className="badge badge-success text-white gap-1.5 py-3">
+                        <FaFileMedical className="w-3.5 h-3.5" />
+                        Note Completed
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary gap-1.5 font-semibold text-white shadow-xs"
+                        onClick={() =>
+                          navigate(
+                            `/dashboard/surgeon/write-surgical-note`,
+                            {
+                              state: {
+                                from: "incoming",
+                                appointmentSnapshot: data.snapshot,
+                                editSurgery: data.surgery,
+                                patientId: data.rawPatientId || (data.patientId !== "—" ? data.patientId : undefined),
+                                patientSnapshot: data.snapshot?.patient || null,
+                              },
+                            }
+                          )
+                        }
+                      >
+                        <FaFileMedical className="w-3.5 h-3.5" />
+                        {data.surgery ? "Edit Note" : "Write Note"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* PAGINATION */}
+          {!loading && totalPages > 1 && (
+            <div className="mt-2 flex items-center justify-center gap-3">
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={page === 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
+                <RiArrowLeftSLine className="w-4 h-4" /> Previous
+              </button>
+              <div className="text-xs font-medium text-base-content/70">
+                Page {page + 1} of {totalPages}
+              </div>
+              <button
+                className="btn btn-ghost btn-sm"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              >
+                Next <RiArrowRightSLine className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

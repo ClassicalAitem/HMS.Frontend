@@ -64,41 +64,42 @@ const HospitalSetup = () => {
         <Header onToggleSidebar={toggleSidebar} />
         
         {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-6 h-full">
+        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 h-full space-y-5">
           {/* Page Header */}
-          <div className="mb-6">
-            <button
-              onClick={() => navigate('/superadmin/settings')}
-              className="flex items-center text-base-content/70 hover:text-primary transition-colors mb-4"
-            >
-              <FaArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </button>
-            <h1 className="text-3xl font-bold text-primary">Hospital Setup</h1>
-            <p className="text-base-content/70">Configure hospital information, departments, and wards</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <button
+                onClick={() => navigate('/superadmin/settings')}
+                className="flex items-center text-xs font-semibold text-base-content/70 hover:text-primary transition-colors mb-2"
+              >
+                <FaArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+                Back to Settings
+              </button>
+              <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Hospital Setup & Facilities</h1>
+              <p className="text-xs sm:text-sm text-base-content/70">Configure hospital administrative profile, clinical departments, and inpatient wards</p>
+            </div>
           </div>
 
           {/* Tab Navigation */}
-          <div className="mb-6">
-            <div className="flex space-x-1 bg-base-200 p-1 rounded-lg">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-primary text-primary-content'
-                        : 'text-base-content/70 hover:text-base-content hover:bg-base-100'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4 mr-2" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap items-center gap-2 bg-base-200/60 p-1.5 rounded-2xl border border-base-300/60 w-fit">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                    isActive
+                      ? 'bg-primary text-primary-content shadow-sm shadow-primary/30'
+                      : 'text-base-content/70 hover:text-base-content hover:bg-base-100'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 mr-2" />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Tab Content */}

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaSave, FaUndo } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getSystemPreferences, updateSystemPreferences } from '@/services/api/settingsAPI';
 
 const AppointmentsTab = () => {
   const [defaultDuration, setDefaultDuration] = useState('30');
@@ -20,9 +21,47 @@ const AppointmentsTab = () => {
     saturday: false,
     sunday: false
   });
+  const [saving, setSaving] = useState(false);
 
-  const handleSaveSettings = () => {
-    toast.success('Appointment settings saved successfully!');
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await getSystemPreferences();
+        const appts = res?.data?.appointments || {};
+        if (appts.defaultDuration) setDefaultDuration(String(appts.defaultDuration));
+        if (appts.advanceBookingLimit) setAdvanceBookingLimit(String(appts.advanceBookingLimit));
+        if (appts.cancellationWindow) setCancellationWindow(String(appts.cancellationWindow));
+        if (appts.autoConfirmAppointments !== undefined) setAutoConfirmAppointments(appts.autoConfirmAppointments);
+        if (appts.startTime) setStartTime(appts.startTime);
+        if (appts.endTime) setEndTime(appts.endTime);
+        if (appts.workingDays) setWorkingDays(appts.workingDays);
+      } catch (err) {
+        console.error('Failed to load appointment settings:', err);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      await updateSystemPreferences({
+        appointments: {
+          defaultDuration: parseInt(defaultDuration) || 30,
+          advanceBookingLimit: parseInt(advanceBookingLimit) || 30,
+          cancellationWindow: parseInt(cancellationWindow) || 2,
+          autoConfirmAppointments,
+          startTime,
+          endTime,
+          workingDays,
+        },
+      });
+      toast.success('Appointment rules saved to database!');
+    } catch (err) {
+      toast.error('Failed to save appointment rules');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleResetToDefault = () => {

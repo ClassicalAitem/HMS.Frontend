@@ -5,6 +5,7 @@ import { TbCalendarPlus } from "react-icons/tb";
 import { GrTask } from "react-icons/gr";
 import { FiUser } from "react-icons/fi";
 import { BsArrowDownLeft } from "react-icons/bs";
+import { FaFileMedical } from "react-icons/fa";
 import { MdLockOutline } from "react-icons/md";
 import { Link, useLocation } from "react-router-dom";
 import missFolake from "@/assets/images/missFolake.jpg";
@@ -72,6 +73,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Appointments",
       path: "/dashboard/surgeon/appointments",
       active: location.pathname.startsWith("/dashboard/surgeon/appointments"),
+    },
+    {
+      icon: FaFileMedical,
+      label: "Surgical Notes",
+      path: "/dashboard/surgeon/surgical-notes",
+      active: location.pathname.startsWith("/dashboard/surgeon/surgical-notes"),
     },
   ];
 

@@ -22,8 +22,7 @@ import { TbHeartbeat } from "react-icons/tb";
 import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
 import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
 import InjectionModals from "../incoming/modals/InjectionModals";
-import SamplingModals from "../incoming/modals/SamplingModals";
-import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getAllDependantsForPatient, updateDependantStatus } from "@/services/api/dependantAPI";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
@@ -97,12 +96,9 @@ const PatientVitalsDetails = () => {
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
     const snap = location?.state?.patientSnapshot;
-    console.log('let me see snap:', snap);
     if (snap) {
       setPatient((prev) => prev || snap);
     }
-
-    console.log('PatientVitalsDetails: patientId from params:', patientId);
   }, [location?.state, patientId]);
   
 
@@ -167,7 +163,6 @@ useEffect(() => {
       setDependantsLoading(true);
 
       const res = await getAllDependantsForPatient(patientId);
-      console.log('Dependants response:', res);
 
       const raw =
         res?.data?.data?.dependants ??
@@ -386,13 +381,7 @@ useEffect(() => {
     mounted = false;
   };
 }, [patientId, isViewingDependant, dependantId]);
-  // Log state changes for debugging
-  useEffect(() => {
-    console.log('=== PatientVitalsDetails State ===');
-    console.log('prescriptions state:', prescriptions);
-    console.log('investigations state:', investigations);
-    console.log('consultation state:', consultation);
-  }, [prescriptions, investigations, consultation]);
+
 
   // Helper: Normalize API response structure
   const normalizeUserResponse = (response) => {
@@ -1102,16 +1091,19 @@ useEffect(() => {
                       onClick={async () => {
                         try {
                           const newStatus = PATIENT_STATUS.AWAITING_CONSULTATION;
-                          const promise = updatePatientStatus(patientUUID || patientId, newStatus);
+                          const promise = isViewingDependant && dependantId
+                            ? updateDependantStatus(dependantId, { status: newStatus })
+                            : updatePatientStatus(patientUUID || patientId, newStatus);
+
                           toast.promise(promise, {
                             loading: 'Sending to doctor...',
-                            success: 'Patient sent to doctor successfully',
+                            success: isViewingDependant ? 'Dependant sent to doctor successfully' : 'Patient sent to doctor successfully',
                             error: (err) => err?.response?.data?.message || 'Failed to send to doctor',
                           });
                           await promise;
                           setIsSendDoctorOpen(false);
                         } catch (e) {
-                          console.error("PatientVitalsDetails: send to doctor failed", e);
+                          // handled by toast
                         }
                       }}
                     >

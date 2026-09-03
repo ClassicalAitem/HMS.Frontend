@@ -7,13 +7,9 @@ export const fetchServiceCharges = createAsyncThunk(
   'serviceCharges/fetchServiceCharges',
   async (_, { rejectWithValue }) => {
     try {
-      console.log('💰 ServiceChargesSlice: Fetching service charges...');
       const response = await serviceChargesAPI.getServiceCharges();
-      console.log('✅ ServiceChargesSlice: Service charges fetched successfully');
-      console.log('💰 ServiceChargesSlice: Response data:', response);
       return response.data;
     } catch (error) {
-      console.error('❌ ServiceChargesSlice: Fetch service charges error:', error);
       return rejectWithValue(getErrorMessage(error, 'Failed to fetch service charges Refresh the page or try again later.'));
     }
   }
@@ -23,13 +19,9 @@ export const createServiceCharge = createAsyncThunk(
   'serviceCharges/createServiceCharge',
   async (serviceChargeData, { rejectWithValue }) => {
     try {
-      console.log('💰 ServiceChargesSlice: Creating service charge...');
       const response = await serviceChargesAPI.createServiceCharge(serviceChargeData);
-      console.log('✅ ServiceChargesSlice: Service charge created successfully');
-      console.log('💰 ServiceChargesSlice: Create response data:', response);
       return response.data;
     } catch (error) {
-      console.error('❌ ServiceChargesSlice: Create service charge error:', error);
       return rejectWithValue(getErrorMessage(error, 'Failed to create service charge Refresh the page or try again later.'));
     }
   }
@@ -39,13 +31,9 @@ export const updateServiceCharge = createAsyncThunk(
   'serviceCharges/updateServiceCharge',
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      console.log('💰 ServiceChargesSlice: Updating service charge with ID:', id);
       const response = await serviceChargesAPI.updateServiceCharge(id, data);
-      console.log('✅ ServiceChargesSlice: Service charge updated successfully');
-      console.log('💰 ServiceChargesSlice: Update response data:', response);
       return response.data;
     } catch (error) {
-      console.error('❌ ServiceChargesSlice: Update service charge error:', error);
       return rejectWithValue(getErrorMessage(error, 'Failed to update service charge Refresh the page or try again later.'));
     }
   }
@@ -55,13 +43,9 @@ export const deleteServiceCharge = createAsyncThunk(
   'serviceCharges/deleteServiceCharge',
   async (id, { rejectWithValue }) => {
     try {
-      console.log('💰 ServiceChargesSlice: Deleting service charge with ID:', id);
       const response = await serviceChargesAPI.deleteServiceCharge(id);
-      console.log('✅ ServiceChargesSlice: Service charge deleted successfully');
-      console.log('💰 ServiceChargesSlice: Delete response data:', response);
       return { id, data: response.data };
     } catch (error) {
-      console.error('❌ ServiceChargesSlice: Delete service charge error:', error);
       return rejectWithValue(getErrorMessage(error, 'Failed to delete service charge Refresh the page or try again later.'));
     }
   }

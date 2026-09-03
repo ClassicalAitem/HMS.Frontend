@@ -1,21 +1,57 @@
-import React, { useState } from 'react';
-import { FaSave, FaUndo } from 'react-icons/fa';
+import React, { useEffect, useState } from 'react';
+import { FaSave, FaUndo, FaClock, FaCheckCircle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { getSystemPreferences, updateSystemPreferences } from '@/services/api/settingsAPI';
 
 const GeneralTab = () => {
   const [autoLogout, setAutoLogout] = useState(true);
-  const [sessionTimeout, setSessionTimeout] = useState(30);
+  const [sessionTimeout, setSessionTimeout] = useState(180);
   const [defaultLandingPage, setDefaultLandingPage] = useState('dashboard');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSaveSettings = () => {
-    toast.success('General settings saved successfully!');
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await getSystemPreferences();
+        const general = res?.data?.general || {};
+        if (general.sessionTimeout) setSessionTimeout(general.sessionTimeout);
+        if (general.autoLogout !== undefined) setAutoLogout(general.autoLogout);
+        if (general.defaultLandingPage) setDefaultLandingPage(general.defaultLandingPage);
+      } catch (err) {
+        console.error('Failed to load system preferences:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      await updateSystemPreferences({
+        general: {
+          autoLogout,
+          sessionTimeout,
+          defaultLandingPage,
+          hospitalTimezone: 'Africa/Lagos',
+        },
+      });
+      toast.success('General operational preferences saved to database!');
+    } catch (err) {
+      toast.error('Failed to save preferences');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleResetToDefault = () => {
     setAutoLogout(true);
-    setSessionTimeout(30);
+    setSessionTimeout(180);
     setDefaultLandingPage('dashboard');
-    toast.info('Settings reset to default values');
+    toast.info('Settings reset to default values (3 hours)');
   };
 
   return (
@@ -41,21 +77,25 @@ const GeneralTab = () => {
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-medium text-base-content">Session Timeout</h4>
-            <span className="text-sm text-primary font-semibold">{sessionTimeout} minutes</span>
+            <span className="text-sm text-primary font-semibold">
+              {sessionTimeout} minutes ({Math.round(sessionTimeout / 60 * 10) / 10} hours)
+            </span>
           </div>
-          <p className="text-sm text-base-content/70 mb-4">Set the session timeout duration</p>
+          <p className="text-sm text-base-content/70 mb-4">Set the session timeout duration before automatic logout</p>
           <div className="space-y-2">
             <input
               type="range"
-              min="5"
-              max="120"
+              min="15"
+              max="360"
+              step="15"
               value={sessionTimeout}
               onChange={(e) => setSessionTimeout(parseInt(e.target.value))}
               className="range range-primary w-full"
             />
             <div className="flex justify-between text-xs text-base-content/50">
-              <span>5 min</span>
-              <span>120 min</span>
+              <span>15 min</span>
+              <span>180 min (3 hrs)</span>
+              <span>360 min (6 hrs)</span>
             </div>
           </div>
         </div>
