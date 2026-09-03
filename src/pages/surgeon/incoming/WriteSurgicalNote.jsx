@@ -1,6 +1,9 @@
 import React, { useMemo, useState, useEffect } from "react";
 
 import { Header } from "@/components/common";
+import PatientDetailsCard from "@/components/common/PatientDetailsCard";
+import CurrentVitalsCard from "@/components/medical-director/patient/CurrentVitalsCard";
+import SendPatientModal from "@/components/modals/SendPatientModal";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -17,15 +20,12 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { createSurgery, updateSurgery } from "@/services/api/surgeryAPI";
-import {
-  getInvestigationById,
-  createInvestigationRequestByConsultation,
-  createInvestigationRequestForCashier,
-} from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
+import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
 import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
 import toast from "react-hot-toast";
+import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
 
 
 const initialApgarScore = {
@@ -103,78 +103,72 @@ const AddRowButton = ({ onClick, label }) => (
 );
 
 const CreateSurgicalNote = () => {
-  const { investigationRequestId: paramInvestigationRequestId , consultationId} = useParams();
+  const { investigationRequestId: paramInvestigationRequestId, consultationId, patientId: paramPatientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
   const appointmentSnapshot = location?.state?.appointmentSnapshot;
-  const stateInvestigationRequestId = location?.state?.investigationRequestId;
   const editSurgery = location?.state?.editSurgery || null;
   const isEditMode = !!editSurgery;
-  const [investigationRequestId, setInvestigationRequestId] = useState(
-    paramInvestigationRequestId || stateInvestigationRequestId
-  );
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  useEffect(() => {
-    setInvestigationRequestId(paramInvestigationRequestId || stateInvestigationRequestId);
-  }, [paramInvestigationRequestId, stateInvestigationRequestId]);
-  const [investigations, setInvestigations] = useState([]);
-  const [investigationsLoading, setInvestigationsLoading] = useState(false);
-  // Optionally, fetch investigation details if needed (not all for a patient)
-  // If you want to fetch the investigation request details for this ID:
-  const [patientId, setPatientId] = useState(undefined);
-  useEffect(() => {
-    if (!investigationRequestId) return;
-    setInvestigationsLoading(true);
-    getInvestigationById(investigationRequestId)
-      .then(async (data) => {
-        // If the API returns a single object, wrap in array for selector compatibility
-        const list = Array.isArray(data) ? data : (data?.data ? [data.data] : [data]);
-        setInvestigations(list);
-        if (list.length > 0) {
-          const inv = list[0];
-          let pid = inv.patientId || (inv.patient && (inv.patient._id || inv.patient.id));
-          setPatientId(pid);
-          if (inv.patient) {
-            setPatient(inv.patient);
-          } else if (pid) {
-            try {
-              const patientRes = await getPatientById(pid);
-              const p = patientRes?.data || patientRes;
-              setPatient(p);
-            } catch (e) {
-              setPatient(null);
-            }
-          } else {
-            setPatient(null);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('[SurgicalNote] Error fetching investigation request:', err);
-        setInvestigations([]);
-        setPatientId(undefined);
-        setPatient(null);
-      })
-      .finally(() => setInvestigationsLoading(false));
-  }, [investigationRequestId]);
+  const initialPatientId =
+    paramPatientId ||
+    location?.state?.patientId ||
+    appointmentSnapshot?.patientId ||
+    (appointmentSnapshot?.patient && (appointmentSnapshot.patient.id || appointmentSnapshot.patient._id)) ||
+    editSurgery?.patientId ||
+    snapshot?.id ||
+    snapshot?._id ||
+    paramInvestigationRequestId;
 
-
-  const [patient, setPatient] = useState(snapshot || null);
+  const [patientId, setPatientId] = useState(initialPatientId);
+  const [patient, setPatient] = useState(snapshot || appointmentSnapshot?.patient || null);
+  const [patientLoading, setPatientLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [latestVital, setLatestVital] = useState(null);
+  const [vitalsLoading, setVitalsLoading] = useState(false);
+
+  const dependantId = location?.state?.dependantId || appointmentSnapshot?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || appointmentSnapshot?.dependant || null;
+  const isViewingDependant = Boolean(dependantId);
 
   useEffect(() => {
-    if (!editSurgery?.patientId || patient || investigationRequestId) return;
-    setPatientId(editSurgery.patientId);
-    getPatientById(editSurgery.patientId)
-      .then((response) => setPatient(response?.data || response))
-      .catch(() => setPatient(null));
-  }, [editSurgery, investigationRequestId, patient]);
+    if (!patientId || patient) return;
+    setPatientLoading(true);
+    getPatientById(patientId)
+      .then((res) => {
+        setPatient(res?.data || res);
+      })
+      .catch((err) => {
+        console.error('[SurgicalNote] Error fetching patient:', err);
+      })
+      .finally(() => setPatientLoading(false));
+  }, [patientId, patient]);
+
+  useEffect(() => {
+    if (!patientId) return;
+    let mounted = true;
+    setVitalsLoading(true);
+    getVitalsByPatient(patientId)
+      .then((response) => {
+        const vitals = normalizeVitalsResponse(response)
+          .filter((vital) => (isViewingDependant ? vital.dependantId === dependantId : !vital.dependantId));
+        if (mounted) setLatestVital(getLatestVital(vitals));
+      })
+      .catch(() => {
+        if (mounted) setLatestVital(null);
+      })
+      .finally(() => {
+        if (mounted) setVitalsLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [patientId, dependantId, isViewingDependant]);
 
   // Procedure name/code combobox — sourced from past appointments (procedureName+procedureCode are
   // free-text columns on Appointment; there's no dedicated procedure catalog endpoint)
@@ -279,6 +273,27 @@ const CreateSurgicalNote = () => {
     patient?.hospitalId || patient?.id || patientId || "—"
   ), [patient, patientId]);
 
+  const summarySubject = useMemo(() => {
+    const subject = isViewingDependant ? dependantSnapshot || {} : patient || {};
+    const guardian = isViewingDependant ? subject.patient || patient || {} : subject;
+    return {
+      id: subject.id || subject._id || patientId,
+      fullName: patientName || "Unknown Patient",
+      gender: subject.gender || "—",
+      phone: subject.phone || subject.phoneNumber || guardian.phone || guardian.phoneNumber || "—",
+      hospitalId: guardian.hospitalId || patient?.hospitalId || patientId || "—",
+      status: subject.status || guardian.status || "Unknown",
+      dob: subject.dob || subject.dateOfBirth || subject.birthDate,
+      cardType: subject.cardType || guardian.cardType || "personal",
+      familyName: subject.familyName || guardian.familyName || guardian.lastName,
+      companyName: subject.companyName || guardian.companyName,
+      hmos: Array.isArray(guardian.hmos)
+        ? guardian.hmos.filter((hmo) => !isViewingDependant || hmo.dependantId === dependantId)
+        : [],
+      relationshipType: subject.relationshipType,
+    };
+  }, [dependantId, dependantSnapshot, isViewingDependant, patient, patientId, patientName]);
+
   const [form, setForm] = useState({
     procedureName: "",
     procedureCode: "",
@@ -310,20 +325,22 @@ const CreateSurgicalNote = () => {
   });
 
   useEffect(() => {
-    if (investigationRequestId || !appointmentSnapshot) return;
+    if (!appointmentSnapshot) return;
     const appointmentPatientId = appointmentSnapshot.patientId || appointmentSnapshot.patient?.id || appointmentSnapshot.patient?._id;
-    setPatientId(appointmentPatientId);
-    if (appointmentSnapshot.patient) {
+    if (appointmentPatientId && !patientId) {
+      setPatientId(appointmentPatientId);
+    }
+    if (appointmentSnapshot.patient && !patient) {
       setPatient(appointmentSnapshot.patient);
-    } else if (appointmentPatientId) {
+    } else if (appointmentPatientId && !patient) {
       getPatientById(appointmentPatientId)
         .then((res) => setPatient(res?.data || res))
         .catch(() => setPatient(null));
     }
-  }, [appointmentSnapshot, investigationRequestId]);
+  }, [appointmentSnapshot, patientId, patient]);
 
   useEffect(() => {
-    if (!appointmentSnapshot || investigationRequestId) return;
+    if (!appointmentSnapshot) return;
     setForm((prev) => ({
       ...prev,
       procedureName: appointmentSnapshot.procedureName || prev.procedureName,
@@ -332,9 +349,12 @@ const CreateSurgicalNote = () => {
         ? new Date(appointmentSnapshot.appointmentDate).toISOString().split('T')[0]
         : prev.scheduledDate,
       startTime: appointmentSnapshot.appointmentTime || prev.startTime,
+      notes: appointmentSnapshot.notes || prev.notes,
     }));
-    setProcedureSearch(appointmentSnapshot.procedureName || '');
-  }, [appointmentSnapshot, investigationRequestId]);
+    if (appointmentSnapshot.procedureName) {
+      setProcedureSearch(appointmentSnapshot.procedureName);
+    }
+  }, [appointmentSnapshot]);
 
   // Handlers for dynamic fields
   const handleChange = (e) => {
@@ -383,34 +403,8 @@ const CreateSurgicalNote = () => {
   };
 
   const validateForm = () => {
-    if (!form.procedureName.trim()) {
-      toast("Procedure name is required.");
-      return false;
-    }
-
-    if (!form.scheduledDate) {
-      toast("Schedule date is required.");
-      return false;
-    }
-
     if (form.startTime && form.endTime && form.endTime <= form.startTime) {
       toast("End time must be after start time.");
-      return false;
-    }
-
-    const hasValidSurgeon = form.surgeonTeam.some((s) => s.surgeonName.trim());
-    if (!hasValidSurgeon) {
-      toast("At least one surgeon is required.");
-      return false;
-    }
-
-    // Reject rows where only one of the two anesthesia fields was filled
-    const badAnesthesia = form.anesthesiaDosages.some(
-      (a) => (a.anesthesiaType.trim() && !a.dosage.trim()) ||
-             (!a.anesthesiaType.trim() && a.dosage.trim())
-    );
-    if (badAnesthesia) {
-      toast("Each anesthesia entry needs both a type and a dosage.");
       return false;
     }
 
@@ -462,20 +456,30 @@ const CreateSurgicalNote = () => {
     setError("");
     if (!validateForm()) return;
     setSaving(true);
-    if (!investigationRequestId && !appointmentSnapshot?.id && !appointmentSnapshot?._id && !appointmentSnapshot?.appointmentId) {
-      toast("No investigation request or appointment selected. Please go back to Incoming.");
+
+    const effectivePatientId =
+      patientId ||
+      patient?.id ||
+      patient?._id ||
+      appointmentSnapshot?.patientId ||
+      (appointmentSnapshot?.patient && (appointmentSnapshot.patient.id || appointmentSnapshot.patient._id));
+
+    if (!effectivePatientId) {
+      toast.error("No patient selected for this surgical note. Please go back to Incoming.");
       setSaving(false);
       return;
     }
+
     // Prepare payload to match ISurgery
-   // Prepare payload to match ISurgery
     const payload = {
       ...form,
+      patientId: effectivePatientId,
+      dependantId: dependantId || undefined,
       surgeonTeam: form.surgeonTeam.filter((s) => s.surgeonName.trim()),
       surgeonAssistants: form.surgeonAssistants.filter((a) => a.assistantName.trim()),
       anesthesiaDosages: form.anesthesiaDosages.filter((a) => a.anesthesiaType.trim() && a.dosage.trim()),
       estimatedBloodLoss: form.estimatedBloodLoss ? Number(form.estimatedBloodLoss) : undefined,
-      swabsUsed: form.swabUsed ? Number(form.swabUsed) : undefined,
+      swabUsed: form.swabUsed ? Number(form.swabUsed) : undefined,
       babyAssessment: form.showBaby ? form.babyAssessment.map((b) => ({
         ...b,
         weight: b.weight ? Number(b.weight) : undefined,
@@ -502,62 +506,23 @@ const CreateSurgicalNote = () => {
       postOperativeAssessment: form.postOperativeAssessments
         .filter((m) => m.medication?.trim())
         .map((m) => ({ medication: m.medication.trim() })),
-      // , dependantId, surgeonId, investigationRequestId are set by backend
     };
+
     try {
       if (isEditMode) {
-        await updateSurgery(editSurgery._id, payload);
+        await updateSurgery(editSurgery._id || editSurgery.id, payload);
         toast.success("Surgical note updated successfully!");
       } else {
-        let targetInvId = investigationRequestId;
-        if (!targetInvId && appointmentSnapshot) {
-          const invPayload = {
-            patientId:
-              patientId ||
-              appointmentSnapshot.patientId ||
-              (appointmentSnapshot.patient && appointmentSnapshot.patient.id),
-            dependantId: appointmentSnapshot.dependantId || undefined,
-            type: 'surgical',
-            tests: [
-              {
-                name:
-                  form.procedureName ||
-                  appointmentSnapshot.procedureName ||
-                  'Surgical Procedure',
-              },
-            ],
-          };
-          try {
-            let invRes;
-            if (appointmentSnapshot.consultationId) {
-              invRes = await createInvestigationRequestByConsultation(
-                appointmentSnapshot.consultationId,
-                invPayload,
-              );
-            } else {
-              invRes = await createInvestigationRequestForCashier(invPayload);
-            }
-            const createdInv = invRes?.data?.data ?? invRes?.data ?? invRes;
-            targetInvId = createdInv?.id || createdInv?._id;
-          } catch (e) {
-            console.error('Failed to auto-provision surgical investigation request', e);
-          }
-        }
-
-        if (!targetInvId) {
-          throw new Error(
-            "Unable to link surgical note: investigation request could not be established.",
-          );
-        }
-
-        await createSurgery(targetInvId, payload);
+        await createSurgery(payload);
         toast.success("Surgical note submitted successfully!");
       }
 
       navigate(
-        appointmentSnapshot && !investigationRequestId
+        fromIncoming
           ? '/dashboard/surgeon/incoming'
-          : `/dashboard/medical-director/medical-history/${patientId}/consultation/${consultationId}`,
+          : consultationId
+          ? `/dashboard/medical-director/medical-history/${effectivePatientId}/consultation/${consultationId}`
+          : '/dashboard/surgeon/incoming',
         { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } },
       );
     } catch (err) {
@@ -569,11 +534,11 @@ const CreateSurgicalNote = () => {
     }
   };
 
-  const canSubmit = !(
-    !investigationRequestId &&
-    !appointmentSnapshot?.id &&
-    !appointmentSnapshot?._id &&
-    !appointmentSnapshot?.appointmentId
+  const canSubmit = Boolean(
+    patientId ||
+    patient?.id ||
+    patient?._id ||
+    appointmentSnapshot?.patientId
   );
 
   return (
@@ -596,57 +561,15 @@ const CreateSurgicalNote = () => {
       <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="overflow-y-auto flex flex-col gap-6 p-4 sm:p-6 lg:p-8 h-full">
+        <div className="overflow-y-auto flex flex-col gap-4 p-3 sm:p-4 lg:p-5 h-full">
           {/* PAGE HEADER */}
-          <div className="card bg-base-100 border border-base-200 shadow-sm">
-            <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
-                  <FaProcedures className="w-5 h-5" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-black text-base-content tracking-tight">
-                    {isEditMode ? "Edit Surgical Note" : "Write Surgical Note"}
-                  </h1>
-                  <p className="text-xs text-base-content/60 mt-0.5">
-                    {investigationsLoading
-                      ? "Loading patient details..."
-                      : "Operative record for theatre and post-operative care"}
-                  </p>
-                </div>
-              </div>
+          <PatientHeaderActions
+                      title="Surgical Note"
+                      subtitle="Document the procedure, team, and post-operative care"
+                      fromIncoming={fromIncoming}
+                      onBack={() => navigate(fromIncoming ? "/dashboard/surgeon/incoming" : "/dashboard/surgeon/appointments")}
+          />
 
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 pl-4 sm:border-l border-base-200">
-                  <img
-                    src={avatarImg}
-                    alt="avatar"
-                    className="w-10 h-10 object-cover rounded-full border border-base-300"
-                  />
-                  <div className="flex flex-col">
-                    <span
-                      className="text-sm font-semibold text-base-content whitespace-nowrap overflow-hidden text-ellipsis"
-                      style={{ maxWidth: "180px" }}
-                    >
-                      {patientName || patientId || "—"}
-                    </span>
-                    <span className="text-xs text-base-content/50 font-mono">
-                      ID: {displayPatientId}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="btn btn-ghost btn-circle btn-sm text-error"
-                  title="Close"
-                >
-                  <FaTimes className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
 
           {error && (
             <div className="alert alert-error text-sm shadow-sm whitespace-pre-line">
@@ -654,30 +577,32 @@ const CreateSurgicalNote = () => {
             </div>
           )}
 
-          <SectionCard
-            icon={FaUserMd}
-            title="Patient Details"
-            subtitle="Patient linked to this surgical record"
-          >
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-[11px] uppercase font-semibold text-base-content/50">Name</p>
-                <p className="text-sm font-semibold text-base-content">{patientName || "Unknown Patient"}</p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase font-semibold text-base-content/50">Hospital ID</p>
-                <p className="text-sm font-mono text-base-content">{displayPatientId}</p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase font-semibold text-base-content/50">Gender</p>
-                <p className="text-sm text-base-content">{patient?.gender || "—"}</p>
-              </div>
-              <div>
-                <p className="text-[11px] uppercase font-semibold text-base-content/50">Date of Birth</p>
-                <p className="text-sm text-base-content">{patient?.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : "—"}</p>
-              </div>
-            </div>
-          </SectionCard>
+          {/* Patient Info */}
+            <PatientDetailsCard
+              patientId={patientId}
+              patient={patient}
+              summarySubject={summarySubject}
+              isViewingDependant={isViewingDependant}
+            />
+
+{/*           
+            <SendPatientModal
+              patientId={patientId}
+              patient={patient}
+              defaultDependantId={dependantId}
+              defaultDependantLabel={summarySubject?.fullName}
+              lockSubject
+              allowedRoles={["nurse", "doctor", "cashier", "hmo"]}
+              onUpdated={() => toast.success("Patient status updated")}
+            />
+      */}
+
+          <CurrentVitalsCard
+            patient={summarySubject}
+            latest={latestVital}
+            loading={vitalsLoading}
+            buttonHidden
+          />
 
           <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             {/* PROCEDURE & SCHEDULING */}
@@ -1026,7 +951,7 @@ const CreateSurgicalNote = () => {
             </SectionCard>
 
             {/* ACTIONS */}
-            <div className="sticky bottom-0 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-base-200/80 backdrop-blur-sm border-t border-base-300 flex justify-center gap-3">
+            <div className="sticky bottom-0  sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 bg-base-200/80 backdrop-blur-sm border-t border-base-300 flex justify-center gap-3">
               <button
                 type="submit"
                 className="btn btn-primary text-white px-10 font-semibold normal-case shadow-sm"
