@@ -11,5 +11,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    hmr: {
+      // Extend timeout so browser tab throttling doesn't prematurely drop the connection
+      timeout: 120000,
+    },
+  },
   base: '/',
 })

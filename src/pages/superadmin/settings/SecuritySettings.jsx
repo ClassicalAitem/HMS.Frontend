@@ -243,7 +243,7 @@ const SecuritySettings = () => {
 
   const sections = [
     { id: 'password-policy', label: 'Password Policy', icon: FaKey },
-    { id: 'session-management', label: 'Session & Timeout (3 hrs)', icon: FaUserShield },
+    { id: 'session-management', label: 'Session & Timeout', icon: FaUserShield },
     { id: 'two-factor', label: 'Two-Factor Auth (2FA)', icon: FaShieldAlt },
     { id: 'access-control', label: 'Role-Based Access Matrix', icon: FaLock },
   ];
@@ -349,9 +349,9 @@ const SecuritySettings = () => {
       <div className="flex items-center justify-between border-b border-base-200 pb-3">
         <div>
           <h4 className="text-base font-bold text-base-content">Session Lifetime & Timeout Controls</h4>
-          <p className="text-xs text-base-content/60">Configured to 180 minutes (3 hours) for continuous clinical workflows</p>
+          {/* <p className="text-xs text-base-content/60">Configured to 180 minutes (3 hours) for continuous clinical workflows</p> */}
         </div>
-        <span className="badge badge-success badge-sm font-semibold">3 Hours Configured</span>
+        {/* <span className="badge badge-success badge-sm font-semibold">3 Hours Configured</span> */}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

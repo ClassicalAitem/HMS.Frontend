@@ -42,7 +42,12 @@ const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
   if (!isOpen || !item) return null;
 
   const admissionId = item.admission?._id || item.admission?.id;
-  const isBilled = !!item.admission?.isBilled;
+  const paymentInfo = item.paymentInfo || {
+    status: item.admission?.isBilled ? 'unpaid' : 'unbilled',
+    totalAmount: 0,
+    paidAmount: 0,
+    outstandingAmount: 0,
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,9 +92,49 @@ const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
             Confirming admission for <span className="font-semibold">{item.name}</span>
           </p>
 
-          {!isBilled && (
-            <div className="alert alert-warning text-sm py-2">
-              This patient has not been billed yet. Confirm payment before admitting.
+          {paymentInfo.status === 'paid' && (
+            <div className="alert alert-success text-xs py-2.5 rounded-xl border border-success/20">
+              <div>
+                <span className="font-bold">Admission Bill Paid in Full</span>
+                {paymentInfo.totalAmount > 0 && (
+                  <span className="block text-[11px] opacity-90 mt-0.5">
+                    Total amount confirmed: ₦{paymentInfo.totalAmount.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {paymentInfo.status === 'partial' && (
+            <div className="alert alert-info text-xs py-2.5 rounded-xl border border-info/20">
+              <div>
+                <span className="font-bold">Partial Payment Received</span>
+                <span className="block text-[11px] opacity-90 mt-0.5">
+                  Paid: ₦{paymentInfo.paidAmount.toLocaleString()} of ₦{paymentInfo.totalAmount.toLocaleString()} (Remaining: ₦{paymentInfo.outstandingAmount.toLocaleString()}). You may proceed to admit this patient.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {paymentInfo.status === 'unpaid' && (
+            <div className="alert alert-warning text-xs py-2.5 rounded-xl border border-warning/20">
+              <div>
+                <span className="font-bold">Awaiting Payment</span>
+                <span className="block text-[11px] opacity-90 mt-0.5">
+                  Billed amount: ₦{paymentInfo.totalAmount > 0 ? paymentInfo.totalAmount.toLocaleString() : 'Pending'}. You can still assign a bed and admit the patient at clinical discretion.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {paymentInfo.status === 'unbilled' && (
+            <div className="alert alert-warning text-xs py-2.5 rounded-xl border border-warning/20">
+              <div>
+                <span className="font-bold">Admission Not Yet Billed</span>
+                <span className="block text-[11px] opacity-90 mt-0.5">
+                  No bill has been submitted to Cashier or HMO yet. You can still assign a bed and admit the patient at clinical discretion.
+                </span>
+              </div>
             </div>
           )}
 

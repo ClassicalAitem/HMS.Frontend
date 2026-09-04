@@ -143,7 +143,16 @@ const ServiceSearchInput = ({ index, services, loadingServices, value, onSelect,
 };
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
-const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, defaultItems = [] }) => {
+const CreateBillModal = ({
+  isOpen,
+  onClose,
+  patientId,
+  dependantId,
+  onSuccess,
+  defaultItems = [],
+  admissionId = null,
+  consultationId = null,
+}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
@@ -171,18 +180,11 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
       try {
         setLoadingServices(true);
         const res = await getServiceCharges();
-        let list = [];
-        if (Array.isArray(res)) list = res;
-        else if (res?.data) {
-          if (Array.isArray(res.data)) list = res.data;
-          else if (Array.isArray(res.data.data)) list = res.data.data;
-        }
-        const filtered = (Array.isArray(list) ? list : []).filter(
-          (s) => s.category !== SERVICE_CHARGE_CATEGORY.LABORATORY
-        );
-        setServices(filtered);
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        setServices(list);
       } catch {
-        setServices([]);
+        toast.error("Could not load service list");
       } finally {
         setLoadingServices(false);
       }
@@ -259,7 +261,15 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
             const filteredInv = invList.filter(inv => {
               if (dependantId) return String(inv.dependantId || '') === String(dependantId);
               return !inv.dependantId;
-            }).filter(inv => !inv.isBilled && !inv.billId);
+            }).filter(inv => !inv.isBilled && !inv.billId)
+            .filter(inv => {
+              if (consultationId) {
+                const invCId = inv.consultationId || inv.consultation?._id || inv.consultation?.id || inv.consultation;
+                const invAId = inv.admissionId || inv.admission?._id || inv.admission?.id || inv.admission;
+                return String(invCId || '') === String(consultationId) || (admissionId && String(invAId || '') === String(admissionId));
+              }
+              return true;
+            });
 
             filteredInv.forEach(inv => {
               const tests = Array.isArray(inv.tests) ? inv.tests : [];
@@ -307,7 +317,15 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
             const filteredPres = presList.filter(p => {
               if (dependantId) return String(p.dependantId || '') === String(dependantId);
               return !p.dependantId;
-            }).filter(p => !p.isBilled && !p.billId);
+            }).filter(p => !p.isBilled && !p.billId)
+            .filter(p => {
+              if (consultationId) {
+                const pCId = p.consultationId || p.consultation?._id || p.consultation?.id || p.consultation;
+                const pAId = p.admissionId || p.admission?._id || p.admission?.id || p.admission;
+                return String(pCId || '') === String(consultationId) || (admissionId && String(pAId || '') === String(admissionId));
+              }
+              return true;
+            });
 
             filteredPres.forEach(p => {
               const meds = Array.isArray(p.medications) ? p.medications : [];
@@ -338,7 +356,17 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
             const filteredAdm = admList.filter(a => {
               if (dependantId) return String(a.dependantId || '') === String(dependantId);
               return !a.dependantId;
-            }).filter(a => !a.isBilled && !a.billId);
+            }).filter(a => !a.isBilled && !a.billId)
+            .filter(a => {
+              if (admissionId) {
+                return String(a._id || a.id) === String(admissionId);
+              }
+              if (consultationId) {
+                const aCId = a.consultationId || a.consultation?._id || a.consultation?.id || a.consultation;
+                return String(aCId || '') === String(consultationId);
+              }
+              return true;
+            });
 
             filteredAdm.forEach(a => {
               const items = Array.isArray(a.admissions) ? a.admissions : [];
@@ -390,7 +418,14 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
                 return String(a.dependantId || '') === targetDepId;
               }
               return String(a.patientId || '') === targetPid && !a.dependantId;
-            }).filter(a => !a.isBilled && !a.billId);
+            }).filter(a => !a.isBilled && !a.billId)
+            .filter(a => {
+              if (consultationId) {
+                const aCId = a.consultationId || a.consultation?._id || a.consultation?.id || a.consultation;
+                return String(aCId || '') === String(consultationId);
+              }
+              return true;
+            });
 
             surgicalAppts.forEach(proc => {
               const charge = findCharge(proc.procedureName, proc.serviceChargeId);
@@ -426,7 +461,7 @@ const CreateBillModal = ({ isOpen, onClose, patientId, dependantId, onSuccess, d
     }
 
     reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, appointmentId: null, procedureId: null, code: '', description: '', quantity: 1, price: 0 }] });
-  }, [isOpen, defaultItems, patientId, dependantId, reset]);
+  }, [isOpen, defaultItems, patientId, dependantId, admissionId, consultationId, reset]);
 
   const items = watch("items");
 

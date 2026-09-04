@@ -65,6 +65,8 @@ export const updateInvestigation = async (id, updateData) => {
 
 export const createInvestigation = async (data, contextId, contextType = 'consultation') => {
   try {
+    if (!contextId) throw new Error(`A valid ${contextType} ID is required`)
+
     const payload = data?.tests?.[0] || [];
     const requiredFields = ['name'];
     for (const field of requiredFields) {
@@ -111,6 +113,28 @@ export const getInvestigationRequestByOpdPatientId = async (opdPatientId) => {
   }
 }
 
+export const createInvestigationRequestByWardRound = async (wardRoundId, data) => {
+  try {
+    if (!wardRoundId) throw new Error('Ward round ID is required')
+    const response = await apiClient.post(`/investigation/wardRound/${wardRoundId}`, data)
+    return response.data ?? response
+  } catch (err) {
+    console.error('investigationsAPI: createInvestigationRequestByWardRound error', err.response?.data || err.message, err)
+    throw err
+  }
+}
+
+export const getInvestigationRequestsByWardRound = async (wardRoundId) => {
+  try {
+    if (!wardRoundId) throw new Error('Ward round ID is required')
+    const response = await apiClient.get(`/investigation/wardRound/${wardRoundId}`)
+    return response.data ?? response
+  } catch (err) {
+    console.error('investigationsAPI: getInvestigationRequestsByWardRound error', err.response?.data || err.message, err)
+    throw err
+  }
+}
+
 export const deleteInvestigation = async (id) => {
   try {
     const response = await apiClient.delete(`/investigation/${id}`)
@@ -131,6 +155,8 @@ export default {
   createInvestigation,
   createInvestigationRequestByConsultation,
   createInvestigationRequestByAntenatal,
+  createInvestigationRequestByWardRound,
+  getInvestigationRequestsByWardRound,
   createInvestigationRequestForCashier,
   getInvestigationRequestByOpdPatientId,
   deleteInvestigation
