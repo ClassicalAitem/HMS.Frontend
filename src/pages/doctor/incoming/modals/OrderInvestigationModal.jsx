@@ -24,10 +24,12 @@ const OrderInvestigationModal = ({
   dependantId,
   consultationId,
   investigation, // <-- edit mode
-  onOrderCreated
+  onOrderCreated,
+  onQueue,
 }) => {
 
   const isEdit = !!investigation;
+  const isQueueMode = typeof onQueue === 'function';
 
   const [isLoading, setIsLoading] = useState(false);
   const [serviceCharges, setServiceCharges] = useState([]);
@@ -135,6 +137,22 @@ const OrderInvestigationModal = ({
   }, []);
 
   const onSubmit = async (data) => {
+    // Queue mode: hand the order back to the parent, don't touch the API.
+    if (isQueueMode) {
+      onQueue({
+        type: investigationType,
+        priority: data.priority,
+        tests: data.tests,
+      });
+      reset();
+      onClose();
+      return;
+    }
+
+    if (!isEdit && !consultationId) {
+      toast.error('No active consultation found for this admission');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -197,6 +215,8 @@ const OrderInvestigationModal = ({
                 ? investigationType === "radiology"
                   ? "Edit Radiology Investigation"
                   : "Edit Lab Investigation"
+                : isQueueMode
+                ? "Order Labs for this Round"
                 : "Order Further Tests"}
             </h2>
           </div>
@@ -426,6 +446,8 @@ const OrderInvestigationModal = ({
               ? "Saving..."
               : isEdit
               ? "Update Investigation"
+              : isQueueMode
+              ? `Queue ${investigationType === "radiology" ? "Radiology" : "Lab"} Order`
               : `Submit ${investigationType === "radiology" ? "Radiology" : "Lab"} Order`}
 
           </button>
