@@ -220,17 +220,7 @@ const SuperAdminSettings = () => {
               </p>
             </div>
 
-            {/* Quick Status Pill */}
-            <div className="flex items-center gap-2 text-xs bg-base-100 p-2 rounded-xl border border-base-300 shadow-sm">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 text-success font-medium">
-                <FaCheckCircle className="w-3.5 h-3.5" />
-                <span>Session TTL: 3 Hours</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-medium">
-                <FaLock className="w-3.5 h-3.5" />
-                <span>RBAC Active</span>
-              </div>
-            </div>
+          
           </div>
 
           {/* Quick Actions Grid */}

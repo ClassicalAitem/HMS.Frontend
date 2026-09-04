@@ -10,9 +10,12 @@ export const createWardRound = async (payload) => {
   }
 }
 
-export const getWardRoundRelatedByConsultation = async (consultationId) => {
+export const getWardRoundRelatedByConsultation = async (consultationId, params = {}) => {
   try {
-    const res = await apiClient.get(`/wardRound/consultation/${consultationId}/related`)
+    if (!consultationId) throw new Error('Consultation ID is required')
+    const res = await apiClient.get(`/wardRound/consultation/${consultationId}/related`, {
+      params,
+    })
     return res.data ?? res
   } catch (err) {
     console.error('wardRoundApi: getWardRoundRelatedByConsultation error', err)
@@ -30,8 +33,19 @@ export const getAllWardRounds = async () => {
   }
 }
 
+export const getWardRoundsByPatient = async (patientId) => {
+  try {
+    const res = await apiClient.get(`/wardRound/patient/${patientId}`)
+    return res.data ?? res
+  } catch (err) {
+    console.error('wardRoundApi: getWardRoundsByPatient error', err)
+    throw err
+  }
+}
+
 export default {
   createWardRound,
   getWardRoundRelatedByConsultation,
   getAllWardRounds,
+  getWardRoundsByPatient,
 }
