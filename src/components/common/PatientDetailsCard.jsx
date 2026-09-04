@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { PatientCardTypeInfo } from '@/components/common';
+import { formatPatientAge } from '@/utils/formatDateTimeUtils';
 
 const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => {
   const fullName = summarySubject?.fullName || 'Unknown';
@@ -29,22 +30,16 @@ const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => 
     }
 
     const today = new Date();
-    
-    // Calculate Age
-    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      calculatedAge--;
-    }
+    const formattedAge = formatPatientAge(rawDob);
 
-    // Check if Today is Birthday (Same Month & Same Day)
+    const diffDays = Math.floor((today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24));
     const isTodayBirthday =
+      diffDays > 0 &&
       today.getMonth() === birthDate.getMonth() &&
       today.getDate() === birthDate.getDate();
 
     return {
-      age: calculatedAge >= 0 ? `${calculatedAge} yrs` : '—',
+      age: formattedAge,
       isBirthday: isTodayBirthday,
     };
   }, [rawDob, summarySubject?.age, patient?.age]);

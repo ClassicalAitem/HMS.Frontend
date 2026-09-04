@@ -15,9 +15,7 @@ const TransactionsTab = () => {
     const fetchReceipt = async() => {
       try {
         setLoading(true);
-        // Fetch more items to support client-side pagination/filtering for now
-        // In a real app with large data, this should be server-side
-        const res = await getAllReceipts({limit: 100, sort: 'createdAt:desc'});
+        const res = await getAllReceipts({ sort: 'createdAt:desc' });
 
         const raw = res?.data.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);

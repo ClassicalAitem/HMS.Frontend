@@ -38,69 +38,7 @@ import {
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { getDependantById } from '@/services/api/dependantAPI';
 import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
-
-const ConsultationDetailModal = ({ consultation, onClose }) => {
-  const prescriptions = consultation.prescriptions || [];
-  const isDependant = !!consultation.dependantId;
-  const subjectName = isDependant
-    ? `${consultation.dependant?.firstName || ''} ${consultation.dependant?.lastName || ''}`.trim()
-    : `${consultation.patient?.firstName || ''} ${consultation.patient?.lastName || ''}`.trim();
-  const doctorName = `${consultation.doctor?.firstName || ''} ${consultation.doctor?.lastName || ''}`.trim();
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-base-100 shadow-xl sm:rounded-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-base-200 bg-base-100 p-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className={`badge badge-sm shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
-              {isDependant ? consultation.dependant?.relationshipType || 'Dependant' : 'Patient'}
-            </span>
-            {isDependant && <span className="truncate text-sm text-base-content/70">{subjectName}</span>}
-          </div>
-          <button type="button" onClick={onClose} className="btn btn-ghost btn-sm btn-circle">✕</button>
-        </div>
-
-        <div className="space-y-5 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/50">
-            <span>{consultation.createdAt ? formatNigeriaDateTime(consultation.createdAt) : '—'}</span>
-            {consultation.visitReason && <span className="badge badge-ghost badge-xs capitalize">{consultation.visitReason}</span>}
-          </div>
-          {doctorName && <div><h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Doctor</h4><p className="text-sm">Dr. {doctorName}</p></div>}
-          <div><h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Diagnosis</h4><p className="text-sm font-medium">{consultation.diagnosis || 'Pending'}</p></div>
-          <div>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Notes</h4>
-            <p className="whitespace-pre-wrap break-words text-sm text-base-content/80">{consultation.notes || 'None recorded'}</p>
-          </div>
-          <div>
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-base-content/50">Active Prescriptions</h4>
-            {prescriptions.length ? (
-              <div className="divide-y divide-base-200 overflow-hidden rounded-lg border border-base-200">
-                {prescriptions.map((prescription, index) => (
-                  <div key={prescription.id || index} className="space-y-2 p-4">
-                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <span>Prescription Status:</span>
-                      <span className={`badge badge-sm ${prescription.status === 'pending' ? 'badge-warning' : 'badge-success'}`}>{prescription.status || '—'}</span>
-                      <span className="text-xs text-base-content/50">Ordered {prescription.createdAt ? formatNigeriaDate(prescription.createdAt) : '—'}</span>
-                    </div>
-                    {(prescription.medications || []).map((medication, medicationIndex) => (
-                      <div key={medication.id || medicationIndex} className="flex flex-col gap-0.5 border-l-2 border-success/40 pl-3">
-                        <span className="text-sm font-medium">{medication.drugName}</span>
-                        <span className="text-xs text-base-content/60">Dosage: {medication.dosage}</span>
-                        <span className="text-xs text-base-content/60">Frequency: {medication.frequency}</span>
-                        <span className="text-xs text-base-content/60">Duration: {medication.duration}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { ConsultationDetailModal } from '@/components/modals';
 
 const PatientDetails = () => {
   const { patientId } = useParams();

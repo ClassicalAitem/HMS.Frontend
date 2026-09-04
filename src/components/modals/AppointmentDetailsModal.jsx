@@ -190,140 +190,156 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
         ) : appointment ? (
           <div className="p-4 space-y-4">
             {/* Patient Information */}
-            <div className="border border-base-200 rounded-lg p-4">
-              <SectionHeading icon={<FaUser className="text-primary" />}>
-                {patient?.isDependant ? 'Dependant Information' : 'Patient Information'}
-              </SectionHeading>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label={patient?.isDependant ? 'Dependant Hospital ID' : 'Patient Hospital ID'}>
-                  <span className="flex items-center gap-2">
-                    <FaIdBadge className="text-base-content/40 shrink-0" />
-                    {patient?.isDependant
-                      ? (patient?.patient?.hospitalId || 'N/A')
-                      : (patient?.hospitalId || 'N/A')}
-                  </span>
-                </Field>
-                <Field label={patient?.isDependant ? 'Dependant Name' : 'Patient Name'}>
-                  {patient
-                    ? `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim() || 'N/A'
-                    : 'N/A'}
-                </Field>
-                {patient?.isDependant && (
-                  <>
-                    <Field label="Relationship">
-                      <span className="capitalize">{patient.relationshipType || 'N/A'}</span>
-                    </Field>
-                    <Field label="Guardian">
-                      {patient.patient
-                        ? `${patient.patient.firstName || ''} ${patient.patient.lastName || ''}`.trim()
-                        : 'N/A'}
-                    </Field>
-                  </>
+            <details className="collapse collapse-arrow border border-base-200 rounded-xl bg-base-100 overflow-hidden" open>
+              <summary className="collapse-title text-sm font-semibold flex items-center gap-2 cursor-pointer select-none py-3 px-4 bg-base-200/50 hover:bg-base-200 transition-colors">
+                <FaUser className="text-primary w-4 h-4" />
+                <span>{patient?.isDependant ? 'Dependant Information' : 'Patient Information'}</span>
+              </summary>
+              <div className="collapse-content p-4 pt-3 border-t border-base-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label={patient?.isDependant ? 'Dependant Hospital ID' : 'Patient Hospital ID'}>
+                    <span className="flex items-center gap-2">
+                      <FaIdBadge className="text-base-content/40 shrink-0" />
+                      {patient?.isDependant
+                        ? (patient?.patient?.hospitalId || 'N/A')
+                        : (patient?.hospitalId || 'N/A')}
+                    </span>
+                  </Field>
+                  <Field label={patient?.isDependant ? 'Dependant Name' : 'Patient Name'}>
+                    {patient
+                      ? `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim() || 'N/A'
+                      : 'N/A'}
+                  </Field>
+                  {patient?.isDependant && (
+                    <>
+                      <Field label="Relationship">
+                        <span className="capitalize">{patient.relationshipType || 'N/A'}</span>
+                      </Field>
+                      <Field label="Guardian">
+                        {patient.patient
+                          ? `${patient.patient.firstName || ''} ${patient.patient.lastName || ''}`.trim()
+                          : 'N/A'}
+                      </Field>
+                    </>
+                  )}
+                </div>
+                {(patient?.isDependant ? patient.patient : patient) && (
+                  <div className="mt-4">
+                    <PatientCardTypeInfo
+                      cardType={patient?.isDependant ? patient.patient?.cardType : patient?.cardType}
+                      familyName={patient?.isDependant ? patient.patient?.familyName : patient?.familyName}
+                      companyName={patient?.isDependant ? patient.patient?.companyName : patient?.companyName}
+                    />
+                  </div>
                 )}
               </div>
-              {(patient?.isDependant ? patient.patient : patient) && (
-                <div className="mt-4">
-                  <PatientCardTypeInfo
-                    cardType={patient?.isDependant ? patient.patient?.cardType : patient?.cardType}
-                    familyName={patient?.isDependant ? patient.patient?.familyName : patient?.familyName}
-                    companyName={patient?.isDependant ? patient.patient?.companyName : patient?.companyName}
-                  />
-                </div>
-              )}
-            </div>
+            </details>
 
             {/* Appointment Schedule */}
-            <div className="border border-base-200 rounded-lg p-4">
-              <SectionHeading icon={<FaCalendarAlt className="text-primary" />}>
-                Appointment Schedule
-              </SectionHeading>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Date">
-                  <span className="flex items-center gap-2">
-                    <FaCalendarAlt className="text-base-content/40 shrink-0" />
-                    {formatDate(appointment.appointmentDate)}
-                  </span>
-                </Field>
-                <Field label="Time">
-                  <span className="flex items-center gap-2">
-                    <FaClock className="text-base-content/40 shrink-0" />
-                    {formatTime(appointment.appointmentTime)}
-                  </span>
-                </Field>
+            <details className="collapse collapse-arrow border border-base-200 rounded-xl bg-base-100 overflow-hidden" open>
+              <summary className="collapse-title text-sm font-semibold flex items-center gap-2 cursor-pointer select-none py-3 px-4 bg-base-200/50 hover:bg-base-200 transition-colors">
+                <FaCalendarAlt className="text-primary w-4 h-4" />
+                <span>Appointment Schedule</span>
+              </summary>
+              <div className="collapse-content p-4 pt-3 border-t border-base-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Date">
+                    <span className="flex items-center gap-2">
+                      <FaCalendarAlt className="text-base-content/40 shrink-0" />
+                      {formatDate(appointment.appointmentDate)}
+                    </span>
+                  </Field>
+                  <Field label="Time">
+                    <span className="flex items-center gap-2">
+                      <FaClock className="text-base-content/40 shrink-0" />
+                      {formatTime(appointment.appointmentTime)}
+                    </span>
+                  </Field>
+                </div>
               </div>
-            </div>
+            </details>
 
             {/* Appointment Procedure */}
-            <div className="border border-base-200 rounded-lg p-4">
-              <SectionHeading icon={<FaNotesMedical className="text-primary" />}>
-                Appointment Procedure
-              </SectionHeading>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Procedure Name">
-                  <span className="flex items-center gap-2">
-                    <FaNotesMedical className="text-base-content/40 shrink-0" />
-                    {appointment.procedureName || 'N/A'}
-                  </span>
-                </Field>
-                <Field label="Procedure Code">
-                  <span className="flex items-center gap-2">
-                    <FaBarcode className="text-base-content/40 shrink-0" />
-                    {appointment.procedureCode || 'N/A'}
-                  </span>
-                </Field>
+            <details className="collapse collapse-arrow border border-base-200 rounded-xl bg-base-100 overflow-hidden" open>
+              <summary className="collapse-title text-sm font-semibold flex items-center gap-2 cursor-pointer select-none py-3 px-4 bg-base-200/50 hover:bg-base-200 transition-colors">
+                <FaNotesMedical className="text-primary w-4 h-4" />
+                <span>Appointment Procedure</span>
+              </summary>
+              <div className="collapse-content p-4 pt-3 border-t border-base-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Procedure Name">
+                    <span className="flex items-center gap-2">
+                      <FaNotesMedical className="text-base-content/40 shrink-0" />
+                      {appointment.procedureName || 'N/A'}
+                    </span>
+                  </Field>
+                  <Field label="Procedure Code">
+                    <span className="flex items-center gap-2">
+                      <FaBarcode className="text-base-content/40 shrink-0" />
+                      {appointment.procedureCode || 'N/A'}
+                    </span>
+                  </Field>
+                </div>
               </div>
-            </div>
+            </details>
 
             {/* Appointment Details */}
-            <div className="border border-base-200 rounded-lg p-4">
-              <SectionHeading icon={<FaStethoscope className="text-primary" />}>
-                Appointment Details
-              </SectionHeading>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Department/Doctor">
-                  <span className="capitalize">{appointment.department || 'N/A'}</span>
-                </Field>
-                <Field label="Type">
-                  <span className={`badge badge-sm ${getAppointmentTypeBadgeClass(appointment.appointmentType)}`}>
-                    {appointment.appointmentType || 'N/A'}
-                  </span>
-                </Field>
-                <Field label="Status">
-                  {isEditing ? (
-                    <select
-                      value={editStatus || appointment.status || ''}
-                      onChange={(e) => setEditStatus(e.target.value)}
-                      className="select select-bordered select-sm w-full"
-                    >
-                      <option value="scheduled">scheduled</option>
-                      <option value="completed">completed</option>
-                      <option value="cancelled">cancelled</option>
-                    </select>
-                  ) : (
-                    <span className={`badge badge-sm ${getStatusBadgeClass(appointment.status)}`}>
-                      {appointment.status || 'Pending'}
+            <details className="collapse collapse-arrow border border-base-200 rounded-xl bg-base-100 overflow-hidden" open>
+              <summary className="collapse-title text-sm font-semibold flex items-center gap-2 cursor-pointer select-none py-3 px-4 bg-base-200/50 hover:bg-base-200 transition-colors">
+                <FaStethoscope className="text-primary w-4 h-4" />
+                <span>Appointment Details</span>
+              </summary>
+              <div className="collapse-content p-4 pt-3 border-t border-base-200">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Department/Doctor">
+                    <span className="capitalize">{appointment.department || 'N/A'}</span>
+                  </Field>
+                  <Field label="Type">
+                    <span className={`badge badge-sm ${getAppointmentTypeBadgeClass(appointment.appointmentType)}`}>
+                      {appointment.appointmentType || 'N/A'}
                     </span>
-                  )}
-                </Field>
-                <Field label="Created">
-                  <span className="text-base-content/70 font-normal">
-                    {appointment.createdAt ? formatDate(appointment.createdAt) : 'N/A'}
-                  </span>
-                </Field>
+                  </Field>
+                  <Field label="Status">
+                    {isEditing ? (
+                      <select
+                        value={editStatus || appointment.status || ''}
+                        onChange={(e) => setEditStatus(e.target.value)}
+                        className="select select-bordered select-sm w-full"
+                      >
+                        <option value="scheduled">scheduled</option>
+                        <option value="completed">completed</option>
+                        <option value="cancelled">cancelled</option>
+                      </select>
+                    ) : (
+                      <span className={`badge badge-sm ${getStatusBadgeClass(appointment.status)}`}>
+                        {appointment.status || 'Pending'}
+                      </span>
+                    )}
+                  </Field>
+                  <Field label="Created">
+                    <span className="text-base-content/70 font-normal">
+                      {appointment.createdAt ? formatDate(appointment.createdAt) : 'N/A'}
+                    </span>
+                  </Field>
+                </div>
               </div>
-            </div>
+            </details>
 
             {/* Notes */}
             {appointment.notes && (
-              <div className="border border-base-200 rounded-lg p-4">
-                <SectionHeading icon={<FaNotesMedical className="text-primary" />}>
-                  Notes
-                </SectionHeading>
-                <p className="text-sm text-base-content/80 whitespace-pre-wrap break-words">
-                  {appointment.notes}
-                </p>
-              </div>
+              <details className="collapse collapse-arrow border border-base-200 rounded-xl bg-base-100 overflow-hidden" open>
+                <summary className="collapse-title text-sm font-semibold flex items-center gap-2 cursor-pointer select-none py-3 px-4 bg-base-200/50 hover:bg-base-200 transition-colors">
+                  <FaNotesMedical className="text-primary w-4 h-4" />
+                  <span>Notes</span>
+                </summary>
+                <div className="collapse-content p-4 pt-3 border-t border-base-200">
+                  <p className="text-sm text-base-content/80 whitespace-pre-wrap break-words">
+                    {appointment.notes}
+                  </p>
+                </div>
+              </details>
             )}
+
 
             {/* Actions */}
             <div className="flex gap-3 justify-end pt-2 border-t border-base-200 mt-2">
