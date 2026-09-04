@@ -37,7 +37,7 @@ import {
 } from '@/services/api/vitalsAPI';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
-import { AppointmentDetailsModal } from '@/components/modals';
+import { AppointmentDetailsModal, ConsultationDetailModal } from '@/components/modals';
 
 
 // Detect injection-route medications defensively across possible field names,
@@ -66,219 +66,6 @@ const SectionHeading = ({ children }) => (
   </h4>
 );
 
-const ConsultationDetailModal = ({ consultation, onClose }) => {
-  const c = consultation;
-  const isDependant = !!c.dependantId;
-  const subjectName = isDependant
-    ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim()
-    : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim();
-  const doctorName = `${c.doctor?.firstName || ''} ${c.doctor?.lastName || ''}`.trim();
-  const prescriptions = c.prescriptions || [];
-
-  const hasArray = (arr) => Array.isArray(arr) && arr.length > 0;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-2xl bg-base-100 rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-base-100 border-b border-base-200 p-4 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className={`badge badge-sm shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
-              {isDependant ? c.dependant?.relationshipType || 'Dependant' : 'Patient'}
-            </span>
-            {isDependant && (
-              <span className="text-sm text-base-content/70 truncate">{subjectName}</span>
-            )}
-          </div>
-          <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle shrink-0">✕</button>
-        </div>
-
-        <div className="p-4 space-y-5">
-          {/* Meta row */}
-          <div className="flex items-center justify-between text-xs text-base-content/50 flex-wrap gap-1">
-            <span>
-              {c.createdAt ? formatNigeriaDateTime(c.createdAt) : '—'}
-              {c.updatedAt && c.updatedAt !== c.createdAt && (
-                <span className="text-base-content/30"> · updated {formatNigeriaDateTime(c.updatedAt)}</span>
-              )}
-            </span>
-            {c.visitReason && (
-              <span className="badge badge-ghost badge-xs capitalize">{c.visitReason}</span>
-            )}
-          </div>
-
-          {doctorName && (
-            <div>
-              <SectionHeading>Doctor</SectionHeading>
-              <p className="text-sm text-base-content">Dr. {doctorName}</p>
-            </div>
-          )}
-
-          <div>
-            <SectionHeading>Diagnosis</SectionHeading>
-            <p className="text-sm font-medium text-base-content">{c.diagnosis || 'Pending'}</p>
-          </div>
-
-          {/* Complaint */}
-          <div>
-            <SectionHeading>Complaint</SectionHeading>
-            {hasArray(c.complaint) ? (
-              <ul className="space-y-1">
-                {c.complaint.map((cp, idx) => (
-                  <li key={idx} className="text-sm text-base-content/80 flex justify-between border-l-2 border-primary/30 pl-2">
-                    <span>{cp.symptom}</span>
-                    {cp.durationInDays != null && (
-                      <span className="text-xs text-base-content/50 shrink-0">{cp.durationInDays} day{cp.durationInDays === 1 ? '' : 's'}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Complaint History */}
-          <div>
-            <SectionHeading>Complaint History</SectionHeading>
-            {c.complaintHistory ? (
-              <p className="text-sm text-base-content/80 whitespace-pre-wrap break-words">{c.complaintHistory}</p>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Allergic History */}
-          <div>
-            <SectionHeading>Allergic History</SectionHeading>
-            {hasArray(c.allergicHistory) ? (
-              <div className="flex flex-wrap gap-1.5">
-                {c.allergicHistory.map((a, idx) => (
-                  <span key={idx} className="badge badge-outline badge-sm">{a.allergen}</span>
-                ))}
-              </div>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Family History */}
-          <div>
-            <SectionHeading>Family History</SectionHeading>
-            {hasArray(c.familyHistory) ? (
-              <ul className="space-y-1">
-                {c.familyHistory.map((f, idx) => (
-                  <li key={idx} className="text-sm text-base-content/80 border-l-2 border-secondary/30 pl-2">
-                    {f.relation}{f.condition ? ` — ${f.condition}` : ''}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Medical History */}
-          <div>
-            <SectionHeading>Medical History</SectionHeading>
-            {hasArray(c.medicalHistory) ? (
-              <div className="flex flex-wrap gap-1.5">
-                {c.medicalHistory.map((m, idx) => (
-                  <span key={idx} className="badge badge-ghost badge-sm">{m.title}</span>
-                ))}
-              </div>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Social History */}
-          <div>
-            <SectionHeading>Social History</SectionHeading>
-            {hasArray(c.socialHistory) ? (
-              <div className="flex flex-wrap gap-1.5">
-                {c.socialHistory.map((s, idx) => (
-                  <span key={idx} className="badge badge-ghost badge-sm">{s.title}</span>
-                ))}
-              </div>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Surgical History */}
-          <div>
-            <SectionHeading>Surgical History</SectionHeading>
-            {hasArray(c.surgicalHistory) ? (
-              <ul className="space-y-1">
-                {c.surgicalHistory.map((s, idx) => (
-                  <li key={idx} className="text-sm text-base-content/80 flex justify-between border-l-2 border-warning/30 pl-2">
-                    <span>{s.procedureName}</span>
-                    {s.dateOfSurgery && (
-                      <span className="text-xs text-base-content/50 shrink-0">{formatNigeriaDate(s.dateOfSurgery)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-          {/* Notes */}
-          <div>
-            <SectionHeading>Notes</SectionHeading>
-            {c.notes ? (
-              <p className="text-sm text-base-content/80 whitespace-pre-wrap break-words">{c.notes}</p>
-            ) : (
-              <EmptyNote />
-            )}
-          </div>
-
-        
-
-          {/* Prescriptions */}
-          <div>
-            <SectionHeading>Active Prescriptions</SectionHeading>
-            {prescriptions.length > 0 ? (
-              <div className="border border-base-200 rounded-lg overflow-hidden divide-y divide-base-200">
-                {prescriptions.map((pres, idx) => (
-                  <div key={idx} className="p-4">
-                    <div className="flex items-center gap-2 flex-wrap mb-3">
-                      Prescription Status:{' '}
-                      <span className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}>
-                        {pres.status}
-                      </span>
-                      <span className="text-xs text-base-content/50">
-                        Ordered {formatNigeriaDate(pres.createdAt)}
-                        {pres.doctorName && ` by Dr. ${pres.doctorName}`}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {pres.medications?.map((med, mIdx) => (
-                        <div key={mIdx} className="flex flex-col gap-0.5 border-l-2 border-success/40 pl-3">
-                          <span className="text-sm font-medium text-base-content">{med.drugName}</span>
-                          <span className="text-xs text-base-content/60">Dosage:    {med.dosage}</span>
-                          <span className="text-xs text-base-content/60">Frequency:    {med.frequency}</span>
-                          <span className="text-xs text-base-content/60">Duration:     {med.duration}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
-                <p className="text-sm text-base-content/50">No prescriptions ordered yet</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 
 const IncomingHmoDetails = () => {
@@ -287,6 +74,7 @@ const IncomingHmoDetails = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const fromIncoming = location?.state?.from === 'incoming';
   const snapshot = location.state?.patientSnapshot;
   const dependantId = location.state?.dependantId || null;
   const dependantSnapshot = location.state?.dependantSnapshot || null;
@@ -404,20 +192,22 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
         if (labRes.status === 'fulfilled') {
           const rawLabResults =
             labRes.value?.data ?? labRes.value ?? [];
-          const labResults = (Array.isArray(rawLabResults) ? rawLabResults : []).filter(
+          const filteredLabResults = (Array.isArray(rawLabResults) ? rawLabResults : []).filter(
             (result) =>
               isViewingDependant
                 ? result?.dependantId === dependantId
                 : !result?.dependantId,
           );
+          if (mounted) setLabResults(filteredLabResults);
           setLatestLab(
-            labResults.sort(
+            [...filteredLabResults].sort(
               (a, b) =>
                 new Date(b?.createdAt || 0).getTime() -
                 new Date(a?.createdAt || 0).getTime(),
             )[0] || null,
           );
         } else {
+          if (mounted) setLabResults([]);
           setLatestLab(null);
         }
         setLabLoading(false);

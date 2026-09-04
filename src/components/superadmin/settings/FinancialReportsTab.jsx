@@ -28,8 +28,8 @@ const FinancialReportsTab = () => {
     try {
       setLoading(true);
       const [receiptsRes, billingsRes] = await Promise.all([
-        getAllReceipts({ limit: 500, sort: 'createdAt:desc' }),
-        getAllBillings({ limit: 500 }),
+        getAllReceipts({ sort: 'createdAt:desc' }),
+        getAllBillings(),
       ]);
 
       const rawReceipts = receiptsRes?.data?.data ?? receiptsRes?.data ?? [];

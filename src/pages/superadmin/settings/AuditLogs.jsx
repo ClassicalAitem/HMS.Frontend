@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/superadmin/dashboard';
@@ -7,8 +7,6 @@ import {
   FaDownload,
   FaSearch,
   FaCalendarAlt,
-  FaChevronLeft,
-  FaChevronRight,
   FaChevronUp,
   FaChevronDown,
   FaShieldAlt,
@@ -38,6 +36,11 @@ const ROLES_LIST = [
   { value: 'cashier', label: 'Cashier' },
   { value: 'receptionist', label: 'Receptionist' },
   { value: 'hmo', label: 'HMO Officer' },
+  { value: 'front-desk', label: 'Front Desk' },
+  { value: 'sonographer', label: 'Sonographer' },
+  { value: 'human-resource', label: 'Human Resources' },
+  { value: 'other-staff', label: 'Other Staff' },
+  { value: 'account-officer', label: 'Account Officer' },
 ];
 
 const STATUS_LIST = [
@@ -75,20 +78,20 @@ const getRoleBadgeStyle = (role) => {
 };
 
 const getStatusBadge = (status) => {
-  switch (status) {
-    case 'Success':
+  switch (String(status || '').toLowerCase()) {
+    case 'success':
       return (
         <span className="badge badge-success badge-sm font-semibold gap-1">
           <FaCheckCircle className="w-2.5 h-2.5" /> Success
         </span>
       );
-    case 'Warning':
+    case 'warning':
       return (
         <span className="badge badge-warning badge-sm font-semibold gap-1">
           <FaExclamationTriangle className="w-2.5 h-2.5" /> Warning
         </span>
       );
-    case 'Failed':
+    case 'failed':
       return (
         <span className="badge badge-error badge-sm font-semibold gap-1">
           <FaTimesCircle className="w-2.5 h-2.5" /> Failed
@@ -106,8 +109,6 @@ const AuditLogs = () => {
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,23 +125,22 @@ const AuditLogs = () => {
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await getAuditLogStats();
-      if (res?.data) {
-        setStats(res.data);
+      const data = res?.data?.data ?? res?.data ?? res;
+      if (data && typeof data === 'object') {
+        setStats(data);
       }
     } catch (err) {
       console.error('Failed to load audit stats:', err);
     }
-  };
+  }, []);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
-        page: currentPage,
-        limit: 15,
         search: searchTerm.trim() || undefined,
         role: selectedRole !== 'all' ? selectedRole : undefined,
         status: selectedStatus !== 'all' ? selectedStatus : undefined,
@@ -149,33 +149,35 @@ const AuditLogs = () => {
       };
 
       const res = await getAuditLogs(params);
-      const data = res?.data || {};
+      const data = res?.data?.data ?? res?.data ?? res ?? {};
       setLogs(Array.isArray(data.logs) ? data.logs : []);
-      setTotalPages(data.totalPages || 1);
       setTotalCount(data.total || 0);
     } catch (err) {
       showErrorToast(err, 'Failed to fetch audit records');
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchTerm, selectedRole, selectedStatus, selectedDate]);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, [fetchStats]);
 
   useEffect(() => {
     fetchLogs();
-  }, [currentPage, selectedRole, selectedStatus, selectedDate]);
+    const interval = setInterval(fetchLogs, 15000);
+    return () => clearInterval(interval);
+  }, [fetchLogs]);
 
   // Debounced search
   useEffect(() => {
     const handler = setTimeout(() => {
-      setCurrentPage(1);
       fetchLogs();
     }, 400);
     return () => clearTimeout(handler);
-  }, [searchTerm]);
+  }, [searchTerm, fetchLogs]);
 
   const handleExportLogs = () => {
     if (!logs.length) {
@@ -201,7 +203,6 @@ const AuditLogs = () => {
     setSelectedRole('all');
     setSelectedStatus('all');
     setSelectedDate('');
-    setCurrentPage(1);
   };
 
   return (
@@ -321,7 +322,7 @@ const AuditLogs = () => {
                   Active Personnel
                 </span>
                 <span className="text-2xl font-black text-warning">
-                  {(stats.uniqueUsers || 11).toLocaleString()}
+                  {(stats.uniqueUsers || 0).toLocaleString()}
                 </span>
                 <span className="text-[11px] text-warning/80 block mt-1">Actors identified</span>
               </div>
@@ -393,7 +394,6 @@ const AuditLogs = () => {
                   value={selectedRole}
                   onChange={(e) => {
                     setSelectedRole(e.target.value);
-                    setCurrentPage(1);
                   }}
                   className="select select-bordered select-sm rounded-xl w-full"
                 >
@@ -411,7 +411,6 @@ const AuditLogs = () => {
                   value={selectedStatus}
                   onChange={(e) => {
                     setSelectedStatus(e.target.value);
-                    setCurrentPage(1);
                   }}
                   className="select select-bordered select-sm rounded-xl w-full"
                 >
@@ -431,7 +430,6 @@ const AuditLogs = () => {
                   value={selectedDate}
                   onChange={(e) => {
                     setSelectedDate(e.target.value);
-                    setCurrentPage(1);
                   }}
                   className="input input-bordered input-sm rounded-xl pl-9 w-full"
                 />
@@ -447,9 +445,7 @@ const AuditLogs = () => {
                 <h3 className="font-bold text-base text-base-content">
                   Audit Records ({totalCount})
                 </h3>
-                <p className="text-xs text-base-content/60">
-                  Showing page {currentPage} of {totalPages}
-                </p>
+                <p className="text-xs text-base-content/60">Complete filtered audit history</p>
               </div>
             </div>
 
@@ -495,6 +491,9 @@ const AuditLogs = () => {
                         <td className="py-3 px-4 whitespace-nowrap">
                           <div className="font-mono text-xs text-base-content/70">
                             {formatNigeriaDate(log.createdAt || log.timestamp)}
+                            <div className="text-[10px] text-base-content/50">
+                              {log.createdAt || log.timestamp ? new Date(log.createdAt || log.timestamp).toLocaleTimeString() : '—'}
+                            </div>
                           </div>
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
@@ -539,33 +538,9 @@ const AuditLogs = () => {
               </table>
             </div>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="p-4 border-t border-base-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <span className="text-xs text-base-content/60">
-                  Showing {logs.length} of {totalCount} total entries
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="btn btn-outline btn-xs rounded-lg"
-                  >
-                    <FaChevronLeft className="w-3 h-3" />
-                  </button>
-                  <span className="px-3 text-xs font-semibold text-base-content">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="btn btn-outline btn-xs rounded-lg"
-                  >
-                    <FaChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <div className="p-4 border-t border-base-200 text-xs text-base-content/60">
+              Showing all {totalCount} matching audit entries
+            </div>
           </div>
         </div>
       </div>
