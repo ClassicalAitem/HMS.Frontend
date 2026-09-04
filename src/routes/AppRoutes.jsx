@@ -328,6 +328,11 @@ const AppRoutes = () => {
           <Appointmentss />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/admitted" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <AdmittedList />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/nurse/admittedList" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <AdmittedList />
@@ -503,6 +508,16 @@ const AppRoutes = () => {
       <Route path="/dashboard/doctor/payment-records" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <DoctorPaymentRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/admitted" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <DRAdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/doctor/admitted/:patientId" element={
+        <ProtectedRoute allowedRoles={['doctor']}>
+          <DRAdmittedPatient />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/doctor/admittedPatients" element={
@@ -775,7 +790,17 @@ const AppRoutes = () => {
           <ManageUsers />
         </ProtectedRoute>
       } />
-      <Route path="/superadmin/patients/Patients" element={
+      {/* <Route path="/superadmin/patients" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <Navigate to="/superadmin/patients/Patients" replace />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/patients/patients" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <Navigate to="/superadmin/patients/Patients" replace />
+        </ProtectedRoute>
+      } /> */}
+      <Route path="/superadmin/patients" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperAdminPatients />
         </ProtectedRoute>
@@ -785,6 +810,11 @@ const AppRoutes = () => {
           <SuperPatientDetails />
         </ProtectedRoute>
       } />
+      {/* <Route path="/superadmin/patients/:patientId" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SuperPatientDetails />
+        </ProtectedRoute>
+      } /> */}
       <Route path="/superadmin/registration" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperAdminRegistration />

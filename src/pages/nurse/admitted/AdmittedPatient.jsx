@@ -1,659 +1,452 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Header } from '@/components/common'
-import PatientDetailsCard from '@/components/common/PatientDetailsCard'
-import PatientHeaderActions from '@/components/doctor/patient/PatientHeaderActions'
-import DoctorSidebar from '@/components/doctor/dashboard/Sidebar'
 import NurseSidebar from '@/components/nurse/dashboard/Sidebar'
 import { getAdmissionByPatientId } from '@/services/api/admissionApi'
-import { getVitalsByPatient, createVital, updateVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from '@/services/api/vitalsAPI'
+import { getVitalsByPatient, normalizeVitalsResponse } from '@/services/api/vitalsAPI'
 import { getPatientById } from '@/services/api/patientsAPI'
-import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard'
-import VitalsHistoryTable from '@/components/doctor/patient/VitalsHistoryTable'
-import WardRoundForm from '@/components/admitted/WardRoundForm'
-import OrderInvestigationModal from '@/pages/doctor/incoming/modals/OrderInvestigationModal'
-import { getPrescriptionsForConsultation, deletePrescription } from '@/services/api/prescriptionsAPI'
-import { getInvestigationByConsultationId, deleteInvestigation } from '@/services/api/investigationAPI'
-import { getAllDependantsForPatient, getDependantById } from '@/services/api/dependantAPI'
-import wardRoundApi from '@/services/api/wardRoundApi'
-import { useAppSelector } from '@/store/hooks'
+import { getDependantById } from '@/services/api/dependantAPI'
+import PatientDetailsCard from '@/components/common/PatientDetailsCard'
+import VitalsTab from '@/components/admitted/VitalsTab'
+import WardRoundTab from '@/components/admitted/WardRoundTab'
+import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
+import IvFluidTab from '@/components/admitted/IvFluidTab'
+import EbtTab from '@/components/admitted/EbtTab'
+import CreateBillModal from '@/components/modals/CreateBillModal'
+import SendToHmoModal from '@/components/modals/SendToHmoModal'
 import toast from 'react-hot-toast'
-import { FaEdit, FaFlask, FaPrescriptionBottleAlt, FaTrash } from 'react-icons/fa'
-import { formatNigeriaDate } from '@/utils/formatDateTimeUtils'
+import {
+  FaHeartbeat,
+  FaNotesMedical,
+  FaTint,
+  FaExchangeAlt,
+  FaBaby,
+  FaBed,
+  FaArrowLeft,
+  FaCashRegister,
+  FaPaperPlane,
+} from 'react-icons/fa'
 
 const AdmittedPatient = () => {
-  const { patientId } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const fromIncoming = location?.state?.from === 'incoming';
-  const dependantId = location?.state?.dependantId || null;
-  const dependantSnapshot = location?.state?.dependantSnapshot || null;
-  const isViewingDependant = !!dependantId;
-  const { user } = useAppSelector(s => s.auth)
-  const role = String(user?.role || '').toLowerCase()
-  const [loading, setLoading] = useState(true)
-  const [patient, setPatient] = useState(null);
-  const [subject, setSubject] = useState(dependantSnapshot);
-  const [labRequests, setLabRequests] = useState([]);
-  const [recentPrescriptions, setRecentPrescriptions] = useState([]);
+  const { patientId } = useParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const dependantId = location?.state?.dependantId || null
+  const dependantSnapshot = location?.state?.dependantSnapshot || null
+  const isViewingDependant = !!dependantId
 
+  const [loading, setLoading] = useState(true)
+  const [patient, setPatient] = useState(null)
+  const [subject, setSubject] = useState(dependantSnapshot)
+  const [admission, setAdmission] = useState(location?.state?.admission || null)
+  const [vitals, setVitals] = useState([])
+  const [vitalsLoading, setVitalsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('vitals')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [sidebarMounted, setSidebarMounted] = useState(false)
-  const [admission, setAdmission] = useState(null)
-  const [vitals, setVitals] = useState([])
-  const [wardRounds, setWardRounds] = useState([])
-  const [activeTab, setActiveTab] = useState('overview')
-  const [doctorNamesById, setDoctorNamesById] = useState({});
-  const [editingLab, setEditingLab] = useState(null);
-  const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false);
+  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false)
+  const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false)
 
-  // Record Vitals modal state
-  const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [editingVitalId, setEditingVitalId] = useState(null);
-  const [recordForm, setRecordForm] = useState({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
-  const [recordLoading, setRecordLoading] = useState(false);
-  const [recordError, setRecordError] = useState("");
+  const consultationId = admission?.consultationId || admission?.consultation || null
 
-  // The real consultation ID lives on the admission record, not the URL —
-  // this route only has :patientId, so useParams().consultationId is always undefined.
-  const consultationId = admission?.consultationId || admission?.consultation || null;
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setSidebarMounted(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
 
-  useEffect(() => { const id = requestAnimationFrame(() => setSidebarMounted(true)); return () => cancelAnimationFrame(id) }, [])
-
-  const summarySubject = useMemo(() => {
-    const guardian = patient || {};
-    if (!isViewingDependant) {
-      return {
-        ...guardian,
-        fullName: guardian.fullName || `${guardian.firstName || ''} ${guardian.lastName || ''}`.trim() || 'Unknown',
-      };
+  // Load primary patient profile
+  useEffect(() => {
+    let mounted = true
+    const fetchPatient = async () => {
+      try {
+        const res = await getPatientById(patientId)
+        const pData = res?.data?.data ?? res?.data ?? res
+        if (mounted) setPatient(pData)
+      } catch (err) {
+        console.warn('Failed to load patient profile', err)
+      }
     }
-    const dep = subject || dependantSnapshot || {};
-    return {
-      ...dep,
-      fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || 'Dependant',
-      hospitalId: guardian.hospitalId,
-    };
-  }, [isViewingDependant, subject, dependantSnapshot, patient]);
+    if (patientId) fetchPatient()
+    return () => {
+      mounted = false
+    }
+  }, [patientId])
 
-  const patientName = useMemo(
-    () => patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim(),
-    [patient],
-  );
+  // Load dependant profile if applicable
+  useEffect(() => {
+    if (!isViewingDependant || !dependantId || dependantSnapshot) return undefined
+    let mounted = true
+    const loadDependant = async () => {
+      try {
+        const response = await getDependantById(dependantId)
+        const dependant =
+          response?.data?.data?.dependant ??
+          response?.data?.dependant ??
+          response?.data ??
+          response
+        if (mounted) setSubject(dependant)
+      } catch (error) {
+        console.warn('Failed to load dependant', error)
+      }
+    }
+    loadDependant()
+    return () => {
+      mounted = false
+    }
+  }, [dependantId, dependantSnapshot, isViewingDependant])
 
-  const loadData = async () => {
+  // Load admission record
+  const loadAdmission = async () => {
     try {
       setLoading(true)
-      const aRes = await getAdmissionByPatientId(patientId)
-      const aList = aRes?.data ?? aRes ?? []
-      const list = Array.isArray(aList) ? aList : [aList].filter(Boolean)
-      const scoped = list.filter(a =>
-        dependantId ? a.dependantId === dependantId : !a.dependantId
-      )
-      const nonDischarged = scoped.filter(a => a.status !== 'discharged')
-      const confirmed = nonDischarged.filter(a => !!a.confirmedAt)
-      const active = (confirmed.length > 0 ? confirmed : nonDischarged)
-        .sort((a, b) => new Date(b.confirmedAt || b.createdAt || 0) - new Date(a.confirmedAt || a.createdAt || 0))[0]
-        || list[0]
-      setAdmission(active)
-
-      // vitals — scoped to this patient/dependant
-      const vRes = await getVitalsByPatient(patientId)
-      const vList = normalizeVitalsResponse(vRes)
-      const scopedVitals = isViewingDependant
-        ? vList.filter(v => v.dependantId === dependantId)
-        : vList.filter(v => !v.dependantId)
-      setVitals(scopedVitals)
-
-      // load ward rounds for active consultation
-      try {
-        const wr = await wardRoundApi.getAllWardRounds()
-        const all = wr?.data ?? wr ?? []
-        const consultId = active?.consultationId || active?.consultation
-        const filtered = Array.isArray(all) && consultId ? all.filter(w => w.consultationId === consultId) : []
-        setWardRounds(filtered)
-      } catch (e) {
-        console.warn('Failed to load ward rounds', e)
-      }
-
-      // patient details, needed for Prescribe navigation state
-      try {
-        const pRes = await getPatientById(patientId);
-        setPatient(pRes?.data ?? pRes);
-      } catch (e) {
-        console.warn('Failed to load patient', e)
-      }
-
-      // dependant details, if none was passed in via snapshot
-      if (isViewingDependant && !dependantSnapshot) {
-        try {
-          const dRes = await getDependantById(dependantId);
-          const dep = dRes?.data?.data?.dependant ?? dRes?.data?.dependant ?? dRes?.data ?? dRes;
-          setSubject(dep);
-        } catch (e) {
-          console.warn('Failed to load dependant', e)
-        }
-      }
-
-      // lab investigations + prescriptions for this consultation
-      const consultId = active?.consultationId || active?.consultation
-      if (consultId) {
-        const [invRes, presRes] = await Promise.allSettled([
-          getInvestigationByConsultationId(consultId),
-          getPrescriptionsForConsultation(consultId),
-        ]);
-        if (invRes.status === 'fulfilled') {
-          const raw = invRes.value?.data ?? invRes.value ?? [];
-          setLabRequests(Array.isArray(raw) ? raw : []);
-        }
-        if (presRes.status === 'fulfilled') {
-          const raw = presRes.value?.data ?? presRes.value ?? [];
-          setRecentPrescriptions(Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []));
-        }
-      } else {
-        setLabRequests([]);
-        setRecentPrescriptions([]);
-      }
+      const res = await getAdmissionByPatientId(patientId, {
+        ...(dependantId ? { dependantId } : {}),
+      })
+      const adm = res?.data ?? res
+      if (adm) setAdmission(adm)
     } catch (err) {
-      console.error('AdmittedPatient: load error', err)
-      toast.error('Failed to load admission or vitals')
-    } finally { setLoading(false) }
+      console.warn('Failed to load admission record', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { if (patientId) loadData() }, [patientId, dependantId])
+  useEffect(() => {
+    loadAdmission()
+  }, [patientId, dependantId])
 
-  const Sidebar = role === 'nurse' ? NurseSidebar : DoctorSidebar
-
-  const handleWardRoundSubmitted = () => loadData()
-
-  const getDoctorName = (id) =>
-    id ? doctorNamesById[id] || 'Unknown Doctor' : null;
-
-  const handleDeleteLab = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this lab investigation?')) return;
+  // Load vitals
+  const loadVitals = async () => {
     try {
-      await deleteInvestigation(id);
-      await loadData();
-    } catch (error) {
-      console.error('Error deleting investigation', error);
-    }
-  };
-
-  const handleDeletePrescription = async (id) => {
-    if (!window.confirm('Delete this prescription?')) return;
-    try {
-      await deletePrescription(id);
-      await loadData();
-    } catch (error) {
-      console.error('Error deleting prescription', error);
-    }
-  };
-
-  const latest = useMemo(() => getLatestVital(vitals), [vitals]);
-  const sortedVitals = useMemo(() => sortVitalsByTime(vitals), [vitals]);
-
-  const enrichedVitals = useMemo(() =>
-    Array.isArray(sortedVitals)
-      ? sortedVitals.map(vital => ({
-          ...vital,
-          isForDependant: !!vital.dependantId,
-          forName: summarySubject?.fullName || 'Patient',
-        }))
-      : [],
-    [sortedVitals, summarySubject]
-  );
-
-  const enrichedLatest = useMemo(() => enrichedVitals[0] || latest, [enrichedVitals, latest]);
-
-  const openRecordVitals = () => {
-    setEditingVitalId(null);
-    setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
-    setIsRecordOpen(true);
-  };
-
-  const openEditVitals = () => {
-    if (!latest) return;
-    setEditingVitalId(latest?.id || latest?._id || null);
-    setRecordForm({
-      bp: latest?.bp || latest?.bloodPressure || "",
-      pulse: latest?.pulse || latest?.heartRate || "",
-      temperature: latest?.temperature || "",
-      weight: latest?.weight || "",
-      spo2: latest?.spo2 || latest?.oxygenSaturation || latest?.oxygen || "",
-      height: latest?.height || "",
-      respiratoryRate: latest?.respiratoryRate || "",
-      notes: latest?.notes || "",
-    });
-    setIsRecordOpen(true);
-  };
-
-  const handleSaveVitals = async () => {
-    try {
-      setRecordLoading(true);
-      setRecordError("");
-      const payload = {
-        patientId,
-        dependantId: dependantId || undefined,
-        nurseId: user?.id,
-        bp: recordForm.bp,
-        temperature: recordForm.temperature ? Number(recordForm.temperature) : undefined,
-        weight: recordForm.weight ? Number(recordForm.weight) : undefined,
-        pulse: recordForm.pulse ? Number(recordForm.pulse) : undefined,
-        spo2: recordForm.spo2 ? Number(recordForm.spo2) : undefined,
-        height: recordForm.height ? Number(recordForm.height) : undefined,
-        respiratoryRate: recordForm.respiratoryRate ? Number(recordForm.respiratoryRate) : undefined,
-        notes: recordForm.notes || undefined,
-      };
-
-      if (editingVitalId) {
-        await updateVital(editingVitalId, payload);
-      } else {
-        await createVital(payload);
-      }
-
-      setIsRecordOpen(false);
-      setEditingVitalId(null);
-      setRecordForm({ bp: "", pulse: "", temperature: "", weight: "", spo2: "", height: "", respiratoryRate: "", notes: "" });
-      await loadData();
-    } catch (e) {
-      const msg = e?.response?.data?.message || 'Failed to record vitals';
-      setRecordError(msg);
+      setVitalsLoading(true)
+      const res = await getVitalsByPatient(patientId)
+      const list = normalizeVitalsResponse(res)
+      setVitals(list)
+    } catch (err) {
+      console.warn('Failed to load vitals', err)
     } finally {
-      setRecordLoading(false);
+      setVitalsLoading(false)
     }
-  };
+  }
+
+  useEffect(() => {
+    loadVitals()
+  }, [patientId])
+
+  const summarySubject = useMemo(() => {
+    if (!isViewingDependant) {
+      return {
+        ...(patient || {}),
+        fullName:
+          patient?.fullName ||
+          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() ||
+          'Unknown Patient',
+      }
+    }
+    const dep = subject || dependantSnapshot || {}
+    return {
+      ...dep,
+      fullName:
+        dep.fullName ||
+        `${dep.firstName || ''} ${dep.lastName || ''}`.trim() ||
+        'Dependant',
+      hospitalId: patient?.hospitalId,
+    }
+  }, [dependantSnapshot, isViewingDependant, patient, subject])
+
+  // Age calculation for Neonatal Care Tab (Option A: age <= 28 days from DOB)
+  const isNeonatal = useMemo(() => {
+    const dob = summarySubject?.dateOfBirth || summarySubject?.dob
+    if (!dob) return false
+    const birthDate = new Date(dob)
+    if (isNaN(birthDate.getTime())) return false
+    const ageInDays = (Date.now() - birthDate.getTime()) / (1000 * 60 * 60 * 24)
+    return ageInDays >= 0 && ageInDays <= 28
+  }, [summarySubject])
+
+  const SidebarDrawer = () => (
+    <>
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-xs"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      <div
+        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
+          sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
+        } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <NurseSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
+      </div>
+    </>
+  )
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-base-200">
-      <OrderInvestigationModal
-        isOpen={isInvestigationModalOpen}
-        onClose={() => {
-          setIsInvestigationModalOpen(false);
-          setEditingLab(null);
-        }}
+    <div className="flex h-screen bg-base-200">
+      <SidebarDrawer />
+      <div className="flex overflow-hidden flex-col flex-1">
+        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
+        <div className="overflow-y-auto flex-1">
+          <section className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+            {/* Top Navigation & Status Bar */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate('/dashboard/nurse/admitted')}
+                  className="btn btn-sm btn-ghost btn-circle shrink-0"
+                  title="Back to Admitted List"
+                >
+                  <FaArrowLeft className="w-4 h-4" />
+                </button>
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-2xl font-bold text-base-content flex items-center gap-2 truncate">
+                    <FaBed className="text-primary shrink-0" />
+                    <span>Inpatient Nursing Care Record</span>
+                  </h1>
+                  <p className="text-xs text-base-content/60 truncate">
+                    Ward: {admission?.ward || admission?.wardId || 'General Ward'}{' '}
+                    {admission?.bedNumber ? `· Bed ${admission.bedNumber}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Badge & Action Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                {admission?.status === 'discharged' ? (
+                  <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
+                    Discharged Inpatient
+                  </span>
+                ) : (
+                  <span className="badge badge-success badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 text-white font-semibold gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                    Currently Admitted
+                  </span>
+                )}
+
+                {/* Send to Cashier */}
+                <button
+                  type="button"
+                  onClick={() => setIsCreateBillOpen(true)}
+                  className="btn btn-sm btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
+                  title="Generate bill and send to Cashier"
+                >
+                  <FaCashRegister className="w-3.5 h-3.5" />
+                  <span>Send to Cashier</span>
+                </button>
+
+                {/* Send to HMO */}
+                <button
+                  type="button"
+                  onClick={() => setIsSendToHmoOpen(true)}
+                  className="btn btn-sm btn-outline btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
+                  title="Generate bill and send to HMO"
+                >
+                  <FaPaperPlane className="w-3.5 h-3.5" />
+                  <span>Send to HMO</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Patient Overview Card */}
+            <PatientDetailsCard
+                    patient={patient}
+                    summarySubject={summarySubject}
+                    isViewingDependant={isViewingDependant}
+                  guardian={isViewingDependant ? patient : null}
+                  />
+            
+          
+
+            {/* Inpatient Tabs Navigation */}
+            <div className="bg-base-100 p-2 rounded-2xl border border-base-200 shadow-sm overflow-x-auto">
+              <div className="flex items-center gap-1.5 min-w-max">
+                <button
+                  onClick={() => setActiveTab('vitals')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'vitals'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaHeartbeat className="w-4 h-4" />
+                  Vitals Chart
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('ward')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'ward'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaNotesMedical className="w-4 h-4" />
+                  Ward Rounds
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('blood')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'blood'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaTint className="w-4 h-4" />
+                  Blood Transfusion
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('ivfluid')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'ivfluid'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaTint className="w-4 h-4" />
+                  IV Fluid Balance
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('ebt')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'ebt'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaExchangeAlt className="w-4 h-4" />
+                  Exchange Transfusion (EBT)
+                </button>
+
+                {/* Neonatal Care Tab (Option A: age <= 28 days) */}
+                {isNeonatal && (
+                  <button
+                    onClick={() => setActiveTab('neonatal')}
+                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                      activeTab === 'neonatal'
+                        ? 'bg-primary text-primary-content shadow-sm'
+                        : 'text-base-content/70 hover:bg-base-200'
+                    }`}
+                  >
+                    <FaBaby className="w-4 h-4" />
+                    Neonatal Care (SCBU)
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Tab Panels */}
+            {activeTab === 'vitals' && (
+              <VitalsTab
+                patientId={patientId}
+                dependantId={dependantId}
+                consultationId={consultationId}
+                patient={patient}
+                vitals={vitals}
+                loading={vitalsLoading}
+                onRefresh={loadVitals}
+                isDoctor={false}
+                isNurse={true}
+              />
+            )}
+
+            {activeTab === 'ward' && (
+              <WardRoundTab
+                patientId={patientId}
+                dependantId={dependantId}
+                admission={admission}
+                consultationId={consultationId}
+                isDoctor={false}
+                isNurse={true}
+                onRoundSaved={loadAdmission}
+              />
+            )}
+
+            {activeTab === 'blood' && (
+              <BloodTransfusionTab
+                patientId={patientId}
+                dependantId={dependantId}
+                consultationId={consultationId}
+                isDoctor={false}
+                isNurse={true}
+              />
+            )}
+
+            {activeTab === 'ivfluid' && (
+              <IvFluidTab
+                patientId={patientId}
+                dependantId={dependantId}
+                consultationId={consultationId}
+                isDoctor={false}
+                isNurse={true}
+              />
+            )}
+
+            {activeTab === 'ebt' && (
+              <EbtTab
+                patientId={patientId}
+                dependantId={dependantId}
+                consultationId={consultationId}
+                isDoctor={false}
+              />
+            )}
+
+            {activeTab === 'neonatal' && isNeonatal && (
+              <NeonatalCareTab
+                patientId={patientId}
+                dependantId={dependantId}
+                consultationId={consultationId}
+              />
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* Create Bill / Send to Cashier Modal */}
+      <CreateBillModal
+        isOpen={isCreateBillOpen}
+        onClose={() => setIsCreateBillOpen(false)}
         patientId={patientId}
+        dependantId={isViewingDependant ? dependantId : null}
+        admissionId={admission?._id || admission?.id || null}
         consultationId={consultationId}
-        dependantId={dependantId}
-        investigation={editingLab}
-        onOrderCreated={loadData}
+        onSuccess={() => {
+          setIsCreateBillOpen(false)
+          toast.success('Bill submitted to Cashier successfully')
+          loadAdmission()
+        }}
       />
 
-      {isSidebarOpen && <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
-      <div className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 ${sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''} ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {loading ? <div>Loading...</div> : (
-            <div className="space-y-6">
-              {/* Tabs (doctor-only) */}
-              {role === 'doctor' && (
-                <div className="bg-white rounded shadow-sm p-3">
-                  <div className="flex gap-2">
-                    <button className={`px-3 py-2 rounded ${activeTab==='overview' ? 'bg-primary text-primary-content' : 'hover:bg-base-200'}`} onClick={()=>setActiveTab('overview')}>Overview</button>
-                    <button className={`px-3 py-2 rounded ${activeTab==='ward' ? 'bg-primary text-primary-content' : 'hover:bg-base-200'}`} onClick={()=>setActiveTab('ward')}>Ward Round</button>
-                  </div>
-                </div>
-              )}
-               <PatientHeaderActions
-                          title="Patient Details"
-                          subtitle="Vitals overview and history"
-                          fromIncoming={fromIncoming}
-                          onBack={() => navigate(fromIncoming ? "/dashboard/doctor/incoming" : "/dashboard/doctor/patientVitals")}
-                        />
-              
-                         {/* Patient Info */}
-                          <PatientDetailsCard
-                            patientId={patientId}
-                            patient={patient}
-                            summarySubject={summarySubject}
-                            isViewingDependant={isViewingDependant}
-                          />
-              
-                        {isViewingDependant && summarySubject?.fullName && (
-                          <div className="mb-4 text-sm text-base-content/70">
-                            Viewing records for <strong>{summarySubject.fullName}</strong>
-                            {summarySubject.relationshipType ? ` (${summarySubject.relationshipType})` : ""}
-                            {patientName ? <> — Dependant of <strong>{patientName}</strong></> : null}
-                          </div>
-                        )}
-
-              {/* Overview */}
-              {activeTab === 'overview' && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-semibold">Vitals</h3>
-                    <div className="flex gap-2">
-                      <button className="btn btn-sm btn-primary" onClick={openRecordVitals}>
-                        + Record Vitals
-                      </button>
-                      {latest && (
-                        <button className="btn btn-sm btn-outline" onClick={openEditVitals}>
-                          Edit Vitals
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="">
-                    <CurrentVitalsCard
-                      patient={summarySubject}
-                      latest={enrichedLatest}
-                      loading={loading}
-                      onRecordOpen={openRecordVitals}
-                      buttonHidden={true}
-                    />
-                  </div>
-                    <VitalsHistoryTable
-                      sortedVitals={enrichedVitals}
-                      loading={loading}
-                      patientName={summarySubject?.fullName || 'Patient'}
-                      scopedToSingleSubject={true}
-                    />
-                </div>
-              )}
-
-              {/* Ward Round Tab */}
-              {activeTab === 'ward' && role === 'doctor' && (
-                <div className="space-y-4">
-                  <h3 className="text-xl font-semibold">Ward Round</h3>
-                  <WardRoundForm patientId={patientId} dependantId={dependantId} consultationId={consultationId} onSubmitted={handleWardRoundSubmitted} />
-
-                  {/* Treatment Plan Section */}
-                  <div className="card bg-base-100 shadow-sm border border-base-200">
-                    <div className="card-body p-0">
-                      <div className="p-3 sm:p-4 border-b border-base-200 bg-base-50/50 flex flex-col gap-3 sm:gap-0 sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <FaPrescriptionBottleAlt className="text-success w-4 sm:w-5 h-4 sm:h-5 flex-shrink-0" />
-                          <h3 className="font-bold text-base sm:text-lg text-base-content">
-                            Treatment Plan & Orders
-                          </h3>
-                        </div>
-                        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                          <button
-                            className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2 flex-1 sm:flex-none min-w-[120px]"
-                            disabled={!consultationId}
-                            onClick={() => setIsInvestigationModalOpen(true)}
-                          >
-                            <FaFlask className="hidden sm:inline" /> Order Labs
-                          </button>
-                          <button
-                            className="btn btn-sm btn-primary gap-2 flex-1 sm:flex-none min-w-[120px]"
-                            disabled={!consultationId}
-                            onClick={() =>
-                              navigate(
-                                `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
-                                {
-                                  state: {
-                                    dependantId,
-                                    patientSnapshot: patient,
-                                  },
-                                },
-                              )
-                            }
-                          >
-                            <FaPrescriptionBottleAlt className="hidden sm:inline" /> Prescribe
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-3 sm:p-6 space-y-6 sm:space-y-8">
-                        {/* Lab Requests */}
-                        <div>
-                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-info"></span>
-                            Lab Investigations
-                          </h4>
-                          {labRequests.length > 0 ? (
-                            <div className="grid gap-2 sm:gap-3">
-                              {labRequests.map((lab, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-2 gap-2"
-                                >
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className={`badge ${lab.status === 'in_progress' ? 'badge-info' : lab.status === 'completed' ? 'badge-success' : 'badge-ghost'} badge-sm`}
-                                      >
-                                        {lab.status?.replace('_', ' ')}
-                                      </span>
-                                      <span className="text-xs text-base-content/50">
-                                        Requested {formatNigeriaDate(lab.createdAt)}
-                                      </span>
-                                      {lab.doctorId && (
-                                        <span className="text-xs text-base-content/50">
-                                          • by Dr. {getDoctorName(lab.doctorId)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-sm text-base-content/70">
-                                      {lab.tests?.map((test) => test.name).join(', ')}
-                                    </div>
-                                  </div>
-
-                                  {!lab.isBilled && (
-                                    <div className="flex gap-2">
-                                      <button
-                                        type="button"
-                                        className="btn btn-xs btn-ghost text-warning"
-                                        onClick={() => {
-                                          setEditingLab(lab);
-                                          setIsInvestigationModalOpen(true);
-                                        }}
-                                      >
-                                        <FaEdit />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-xs btn-ghost text-error"
-                                        onClick={() => handleDeleteLab(lab._id)}
-                                      >
-                                        <FaTrash />
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
-                              <p className="text-sm text-base-content/50">
-                                No lab investigations ordered yet
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="divider my-0"></div>
-
-                        {/* Prescriptions */}
-                        <div>
-                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-success"></span>
-                            Active Prescriptions
-                          </h4>
-                          {recentPrescriptions.length > 0 ? (
-                            <div className="grid gap-3">
-                              {recentPrescriptions.map((pres, idx) => (
-                                <div
-                                  key={idx}
-                                  className="border border-base-200 rounded-lg p-3 hover:shadow-sm transition-shadow"
-                                >
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span
-                                        className={`badge ${pres.status === 'pending' ? 'badge-warning' : 'badge-success'} badge-sm`}
-                                      >
-                                        {pres.status}
-                                      </span>
-                                      <span className="text-xs text-base-content/50">
-                                        Ordered {formatNigeriaDate(pres.createdAt)}
-                                      </span>
-                                      {pres.doctorId && (
-                                        <span className="text-xs text-base-content/50">
-                                          • by Dr. {getDoctorName(pres.doctorId)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {!pres.isBilled && (
-                                      <div className="flex gap-2">
-                                        <button
-                                          type="button"
-                                          className="btn btn-xs btn-ghost text-warning"
-                                          onClick={() =>
-                                            navigate(
-                                              `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
-                                              { state: { prescription: pres } },
-                                            )
-                                          }
-                                        >
-                                          <FaEdit />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="btn btn-xs btn-ghost text-error"
-                                          onClick={() => handleDeletePrescription(pres._id)}
-                                        >
-                                          <FaTrash />
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="space-y-1">
-                                    {pres.medications?.map((med, mIdx) => (
-                                      <div key={mIdx} className="flex items-center gap-2 text-sm">
-                                        <span className="font-medium text-base-content">{med.drugName}</span>
-                                        <span className="text-base-content/40">•</span>
-                                        <span className="text-base-content/70">{med.dosage}</span>
-                                        <span className="text-base-content/40">•</span>
-                                        <span className="text-base-content/70">{med.frequency}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
-                              <p className="text-sm text-base-content/50">
-                                No prescriptions ordered yet
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <h4 className="text-lg font-medium">Ward Round History</h4>
-                  <div className="bg-white p-4 rounded shadow-sm">
-                    {wardRounds.length === 0 ? <div className="text-sm text-muted">No ward rounds recorded yet.</div> : (
-                      <ul className="space-y-2 text-sm">
-                        {wardRounds.map(w => (
-                          <li key={w._id || w.id} className="border-b py-2">
-                            <div className="text-sm text-gray-700">{formatNigeriaDate(w.createdAt || Date.now())}</div>
-                            <div className="text-sm">{w.note}</div>
-                            {w.isDischargeRound && <div className="text-xs text-red-600">Discharge round</div>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Record Vitals Modal */}
-      {isRecordOpen && (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg">
-              {editingVitalId ? 'Edit Vitals' : 'Record New Vitals'} - {summarySubject?.fullName || 'Patient'}
-            </h3>
-            <p className="py-1 text-sm">Enter the latest vital signs for this patient.</p>
-
-            <div className="mb-4 text-sm text-base-content/70">
-              Recording vitals for <span className="font-medium text-base-content">{summarySubject?.fullName || 'Patient'}</span>
-              {isViewingDependant && summarySubject?.relationshipType ? ` (${summarySubject.relationshipType})` : ''}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">Blood Pressure</label>
-                <input type="text" placeholder="120/80" className="input input-bordered w-full"
-                  value={recordForm.bp}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, bp: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">Pulse</label>
-                <input type="number" placeholder="78" className="input input-bordered w-full"
-                  value={recordForm.pulse}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, pulse: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">Weight</label>
-                <input type="number" placeholder="62" className="input input-bordered w-full"
-                  value={recordForm.weight}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, weight: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">Temperature (°C)</label>
-                <input type="number" placeholder="98.6" className="input input-bordered w-full"
-                  value={recordForm.temperature}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, temperature: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">SpO2</label>
-                <input type="number" placeholder="98" className="input input-bordered w-full"
-                  value={recordForm.spo2}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, spo2: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">Height (cm)</label>
-                <input type="number" placeholder="170" className="input input-bordered w-full"
-                  value={recordForm.height}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, height: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm text-base-content/70">Respiratory Rate (bpm)</label>
-                <input type="number" placeholder="16" className="input input-bordered w-full"
-                  value={recordForm.respiratoryRate}
-                  onChange={(e) => setRecordForm((f) => ({ ...f, respiratoryRate: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {recordError && <p className="mt-2 text-sm text-error">{recordError}</p>}
-
-            <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={() => { setIsRecordOpen(false); setRecordError(""); setEditingVitalId(null); }}
-              >
-                Cancel
-              </button>
-              <button
-                className={`btn btn-primary ${recordLoading ? 'loading' : ''}`}
-                onClick={handleSaveVitals}
-              >
-                {editingVitalId ? 'Save Changes' : 'Record Vitals'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Send to HMO Modal */}
+      <SendToHmoModal
+        isOpen={isSendToHmoOpen}
+        onClose={() => setIsSendToHmoOpen(false)}
+        patientId={patientId}
+        patientName={
+          summarySubject?.fullName ||
+          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
+        }
+        dependantId={isViewingDependant ? dependantId : null}
+        admissionId={admission?._id || admission?.id || null}
+        consultationId={consultationId}
+        doctorName={
+          admission?.doctorName ||
+          (admission?.doctor
+            ? `${admission?.doctor?.firstName || ''} ${admission?.doctor?.lastName || ''}`.trim()
+            : 'Attending Physician')
+        }
+        consultationDate={admission?.admittedAt || admission?.createdAt || new Date().toISOString()}
+        visitReason={admission?.reasonForAdmission || admission?.diagnosis || 'Inpatient Nursing Care & Admission'}
+        diagnosis={admission?.diagnosis || 'Inpatient Admission'}
+        onSentSuccessfully={() => {
+          setIsSendToHmoOpen(false)
+          toast.success('Bill sent to HMO successfully')
+          loadAdmission()
+        }}
+      />
     </div>
   )
 }
