@@ -8,10 +8,12 @@ import { getVitalsByPatient, createVital } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { updateDependantStatus } from "@/services/api/dependantAPI";
-import { CashierActionModal, PharmacyActionModal } from "@/components/modals";
+import { CashierActionModal, PharmacyActionModal, ConsultationDetailModal } from "@/components/modals";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import { getConsultations } from "@/services/api/consultationAPI";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
 import { TbHeartbeat } from "react-icons/tb";
@@ -22,9 +24,10 @@ import SamplingModals from "../incoming/modals/SamplingModals";
 import PatientCardTypeInfo from "@/components/common/PatientCardTypeInfo";
 
 const PatientVitalsDetails = () => {
-  const { patientId } = useParams();
+  const { patientId, dependantId: routeDependantId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const effectiveDependantId = routeDependantId || location?.state?.dependantId;
   const fromIncoming = location?.state?.from === 'incoming';
   const { user } = useAppSelector((state) => state.auth);
   const role = String(user?.role || '').toLowerCase();
@@ -43,6 +46,11 @@ const PatientVitalsDetails = () => {
   const [isSendDoctorOpen, setIsSendDoctorOpen] = useState(false);
   const [isSendPharmacyOpen, setIsSendPharmacyOpen] = useState(false);
   const [isSendCashierOpen, setIsSendCashierOpen] = useState(false);
+
+  // Consultation state
+  const [consultations, setConsultations] = useState([]);
+  const [consultationsLoading, setConsultationsLoading] = useState(false);
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
 
   // Use patient snapshot from navigation if available to render immediately
   useEffect(() => {
@@ -86,6 +94,30 @@ const PatientVitalsDetails = () => {
     load();
     return () => { mounted = false; };
   }, [patientId]);
+
+  // Fetch consultations for this dependant/patient
+  useEffect(() => {
+    let mounted = true;
+    const fetchConsultations = async () => {
+      setConsultationsLoading(true);
+      try {
+        const queryParams = effectiveDependantId ? { dependantId: effectiveDependantId } : { patientId };
+        const res = await getConsultations(queryParams);
+        const raw = res?.data?.data ?? res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : raw?.consultations ?? [];
+        const scoped = list.filter(c => effectiveDependantId ? String(c.dependantId) === String(effectiveDependantId) : true);
+        if (mounted) {
+          setConsultations(scoped.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+        }
+      } catch (err) {
+        console.error("Error fetching dependant consultations:", err);
+      } finally {
+        if (mounted) setConsultationsLoading(false);
+      }
+    };
+    if (patientId || effectiveDependantId) fetchConsultations();
+    return () => { mounted = false; };
+  }, [patientId, effectiveDependantId]);
 
   const latest = useMemo(() => {
     if (!Array.isArray(vitals) || vitals.length === 0) return null;
@@ -391,6 +423,93 @@ const PatientVitalsDetails = () => {
             </div>
           </div>
 
+          {/* Consultations Section */}
+          <details className="group rounded-xl border border-base-300 bg-base-100 shadow-xl mb-4" open>
+            <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content hover:bg-base-200/50 rounded-xl transition-colors">
+              <span className="flex items-center gap-2">
+                <span>Doctor Consultations</span>
+                <span className="badge badge-primary badge-sm">{consultations.length}</span>
+              </span>
+              <span className="text-xs text-base-content/50 group-open:rotate-180 transition-transform">⌄</span>
+            </summary>
+            <div className="border-t border-base-200 p-4">
+              {consultationsLoading ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {Array.from({ length: 2 }).map((_, index) => (
+                    <div key={index} className="skeleton h-28 w-full rounded-xl" />
+                  ))}
+                </div>
+              ) : consultations.length === 0 ? (
+                <div className="py-8 text-center text-sm text-base-content/50 border border-dashed border-base-300 rounded-xl">
+                  No consultations recorded for this dependant yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {consultations.map((item) => {
+                    const docName = item.doctor
+                      ? `${item.doctor.firstName || ''} ${item.doctor.lastName || ''}`.trim()
+                      : item.doctorName || '';
+                    return (
+                      <article
+                        key={item.id || item._id}
+                        className="rounded-xl border border-base-300 bg-base-100 p-4 transition-all hover:border-primary/50 hover:bg-base-200/40 cursor-pointer shadow-sm"
+                        onClick={() => setSelectedConsultation(item)}
+                      >
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="badge badge-primary badge-sm font-medium">Consultation</span>
+                            {docName && (
+                              <span className="text-xs font-medium text-base-content/80">
+                                Dr. {docName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-base-content/50">
+                              {item.createdAt ? formatNigeriaDateTime(item.createdAt) : '—'}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-primary btn-outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedConsultation(item);
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                          <div>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Visit Reason</span>
+                            <p className="font-medium capitalize text-base-content mt-0.5">{item.visitReason || '—'}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Diagnosis</span>
+                            <p className="font-semibold text-primary mt-0.5">{item.diagnosis || 'Pending diagnosis'}</p>
+                          </div>
+                          {item.notes && (
+                            <div className="md:col-span-2">
+                              <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Doctor's Observations</span>
+                              <p className="line-clamp-2 text-xs text-base-content/80 whitespace-pre-wrap mt-0.5">{item.notes}</p>
+                            </div>
+                          )}
+                          {item.additionalNotes && (
+                            <div className="md:col-span-2 bg-warning/10 border border-warning/30 p-2.5 rounded-lg">
+                              <span className="text-xs text-warning-content font-bold uppercase tracking-wider">Doctor's Instructions for Nurse</span>
+                              <p className="line-clamp-2 text-xs text-base-content whitespace-pre-wrap font-medium mt-0.5">{item.additionalNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </details>
+
           {/* Vitals History */}
           <div className="shadow-xl card bg-base-100">
             <div className="p-4 card-body">
@@ -611,12 +730,11 @@ const PatientVitalsDetails = () => {
             />
           )}
 
-          {/* Sampling Modal */}
-          {isRecordSampling && (
-            <SamplingModals
-              setIsRecordSampling={setIsRecordSampling}
-              patientId={patientId}
-              patientData={patient}
+          {/* Consultation Details Modal */}
+          {selectedConsultation && (
+            <ConsultationDetailModal
+              consultation={selectedConsultation}
+              onClose={() => setSelectedConsultation(null)}
             />
           )}
         </div>

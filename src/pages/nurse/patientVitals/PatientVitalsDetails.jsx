@@ -8,13 +8,15 @@ import { getVitalsByPatient, createVital, updateVital, normalizeVitalsResponse, 
 import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
+import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
+import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { usersAPI } from "@/services/api/usersAPI";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import { toast } from "react-hot-toast";
 import { hasStatus, mergePatientStatus } from "@/utils/statusUtils";
-import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 // Use DaisyUI/Tailwind skeletons to match nurse dashboard styling
 import { FiHeart, FiClock } from "react-icons/fi";
@@ -38,6 +40,9 @@ import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import AdmissionHistoryTable from "@/components/doctor/patient/AdmissionHistoryTable";
 import KolakLoader from "@/components/common/KolakLoader";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
+import AppointmentDetailsModal from "@/components/modals/AppointmentDetailsModal";
+import ConsultationDetailModal from "@/components/modals/ConsultationDetailModal";
+
 
 const PatientVitalsDetails = () => {
   const { patientId } = useParams();
@@ -75,7 +80,14 @@ const PatientVitalsDetails = () => {
   const [selectedAntenatalRecord, setSelectedAntenatalRecord] = useState(null);
   const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
   // Doctor's consultation data
+  const [consultations, setConsultations] = useState([]);
   const [consultation, setConsultation] = useState(null);
+  const [selectedConsultation, setSelectedConsultation] = useState(null);
+  const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
+  const [appointments, setAppointments] = useState([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [prescriptions, setPrescriptions] = useState([]);
   const [investigations, setInvestigations] = useState([]);
   const [consultationLoading, setConsultationLoading] = useState(false);
@@ -303,18 +315,35 @@ useEffect(() => {
   const fetchConsultationData = async () => {
     try {
       setConsultationLoading(true);
+      setAppointmentsLoading(true);
 
-      const consultationRes = await getConsultations();
+      const [consultationRes, appointmentRes] = await Promise.all([
+        getConsultations({ patientId }),
+        getAllAppointments({ patientId }),
+      ]);
 
-      const allConsults = Array.isArray(consultationRes?.data)
-        ? consultationRes.data
-        : [];
+      const consultationRaw = consultationRes?.data?.data ?? consultationRes?.data ?? consultationRes ?? [];
+      const allConsults = Array.isArray(consultationRaw) ? consultationRaw : consultationRaw?.consultations ?? [];
+      const scopedConsults = allConsults
+        .filter(c =>
+          String(c.patientId) === String(patientId) &&
+          (isViewingDependant ? String(c.dependantId) === String(dependantId) : !c.dependantId)
+        )
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      if (mounted) {
+        setConsultations(scopedConsults);
+        setConsultation(scopedConsults[0] || null);
+      }
 
-      const patientConsult = allConsults.find(c =>
-        String(c.patientId) === String(patientId) &&
-        (isViewingDependant ? c.dependantId === dependantId : !c.dependantId)
-      );
-      if (mounted) setConsultation(patientConsult || null);
+      const appointmentRaw = appointmentRes?.data?.data ?? appointmentRes?.data ?? appointmentRes ?? [];
+      const allAppointments = Array.isArray(appointmentRaw) ? appointmentRaw : appointmentRaw?.appointments ?? [];
+      const scopedAppointments = allAppointments
+        .filter(a =>
+          String(a.patientId) === String(patientId) &&
+          (isViewingDependant ? String(a.dependantId) === String(dependantId) : !a.dependantId)
+        )
+        .sort((a, b) => new Date(`${b.appointmentDate || ''} ${b.appointmentTime || ''}`) - new Date(`${a.appointmentDate || ''} ${a.appointmentTime || ''}`));
+      if (mounted) setAppointments(scopedAppointments);
 
       const [presRes, invRes] = await Promise.allSettled([
         getPrescriptionByPatientId(patientId),
@@ -369,8 +398,17 @@ useEffect(() => {
       }
     } catch (error) {
       console.error("consultation fetch error", error);
+      if (mounted) {
+        setConsultations([]);
+        setConsultation(null);
+        setPrescriptionsByConsultation({});
+        setAppointments([]);
+      }
     } finally {
-      if (mounted) setConsultationLoading(false);
+      if (mounted) {
+        setConsultationLoading(false);
+        setAppointmentsLoading(false);
+      }
     }
   };
 
@@ -687,129 +725,130 @@ useEffect(() => {
 
           
 
-          {/* Doctor's Consultation Data */}
-          {consultation && (
-            <div className="shadow-xl card bg-base-100 mb-4">
-              <div className="p-4 card-body">
-                <h2 className="text-lg font-semibold text-base-content mb-4">Doctor's Tasks</h2>
-                
-                {/* Diagnosis & Visit Reason */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <span className="text-sm font-medium text-base-content/70">Visit Reason:</span>
-                    <p className="text-base font-medium">{consultation?.visitReason || '—'}</p>
+          <div className="space-y-3 mb-4">
+            <details className="group rounded-lg border border-base-300 bg-base-100" open>
+              <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
+                <span>Consultations ({consultations.length})</span>
+                <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="border-t border-base-200 p-4">
+                {consultationLoading ? (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
                   </div>
-                  <div>
-                    <span className="text-sm font-medium text-base-content/70">Diagnosis:</span>
-                    <p className="text-base font-medium">{consultation?.diagnosis || '—'}</p>
-                  </div>
-                </div>
-
-                {/* Complaints */}
-                {consultation?.complaint?.length > 0 && (
-                  <div className="mb-4">
-                    <span className="text-sm font-medium text-base-content/70">Patient Complaints:</span>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {consultation.complaint.map((item, idx) => (
-                        <span key={idx} className="badge badge-outline">
-                          {item.symptom} ({item.durationInDays} days)
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Clinical Notes from Doctor - Doctor's Observations */}
-                {consultation?.notes && (
-                  <div className="mb-4">
-                    <span className="text-sm font-medium text-base-content/70">Doctor's Observations:</span>
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mt-2 text-sm text-base-content/90">
-                      <p className="text-xs text-blue-600 font-semibold mb-2">Clinical Findings & Assessment</p>
-                      {consultation.notes}
-                    </div>
-                  </div>
-                )}
-
-                {/* Additional Notes for Nurse - What Doctor Wants Nurse to Do */}
-                {consultation?.additionalNotes && (
-                  <div className="mb-4">
-                    <span className="text-sm font-medium text-base-content/70">Doctor's Instructions for Nurse:</span>
-                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mt-2 text-sm text-base-content/90">
-                      <p className="text-xs text-amber-600 font-semibold mb-2">What Doctor Wants You to Do</p>
-                      {consultation.additionalNotes}
-                    </div>
-                  </div>
-                )}
-
-                {/* Medical History */}
-                {(consultation?.medicalHistory?.length > 0 || consultation?.surgicalHistory?.length > 0 || consultation?.familyHistory?.length > 0) && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {consultation?.medicalHistory?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold mb-2">Medical History</h4>
-                        <ul className="text-sm space-y-1">
-                          {consultation.medicalHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? item.title : item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {consultation?.surgicalHistory?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold mb-2">Surgical History</h4>
-                        <ul className="text-sm space-y-1">
-                          {consultation.surgicalHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? item.procedureName : item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {consultation?.familyHistory?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold mb-2">Family History</h4>
-                        <ul className="text-sm space-y-1">
-                          {consultation.familyHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? `${item.relation}: ${item.condition}` : item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {consultation?.allergicHistory?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold mb-2">Allergic History</h4>
-                        <ul className="text-sm space-y-1">
-                          {consultation.allergicHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? (item.allergen || item.reaction || 'Unknown allergy') : item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {consultation?.socialHistory?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold mb-2">Social History</h4>
-                        <ul className="text-sm space-y-1">
-                          {consultation.socialHistory.map((item, idx) => (
-                            <li key={idx} className="text-base-content/80">• {typeof item === 'object' ? (item.title || item.habit || 'Social history item') : item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                ) : consultations.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-base-content/50">No consultations found.</div>
+                ) : (
+                  <div className="space-y-3">
+                    {consultations.map((item) => {
+                      const docName = item.doctor
+                        ? `${item.doctor.firstName || ''} ${item.doctor.lastName || ''}`.trim()
+                        : item.doctorName || '';
+                      return (
+                        <article
+                          key={item.id || item._id}
+                          className="rounded-xl border border-base-300 bg-base-100 p-4 transition-all hover:border-primary/50 hover:bg-base-200/40 cursor-pointer shadow-sm"
+                          onClick={() => setSelectedConsultation(item)}
+                        >
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="badge badge-primary badge-sm font-medium">Consultation</span>
+                              {docName && (
+                                <span className="text-xs font-medium text-base-content/80">
+                                  Dr. {docName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-base-content/50">
+                                {item.createdAt ? formatNigeriaDateTime(item.createdAt) : '—'}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-primary btn-outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedConsultation(item);
+                                }}
+                              >
+                                View Details
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                            <div>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Visit Reason</span>
+                              <p className="font-medium capitalize text-base-content mt-0.5">{item.visitReason || '—'}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Diagnosis</span>
+                              <p className="font-semibold text-primary mt-0.5">{item.diagnosis || 'Pending diagnosis'}</p>
+                            </div>
+                            {item.notes && (
+                              <div className="md:col-span-2">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-base-content/50">Doctor's Observations</span>
+                                <p className="line-clamp-2 text-xs text-base-content/80 whitespace-pre-wrap mt-0.5">{item.notes}</p>
+                              </div>
+                            )}
+                            {item.additionalNotes && (
+                              <div className="md:col-span-2 bg-warning/10 border border-warning/30 p-2.5 rounded-lg">
+                                <span className="text-xs text-warning-content font-bold uppercase tracking-wider">Doctor's Instructions for Nurse</span>
+                                <p className="line-clamp-2 text-xs text-base-content whitespace-pre-wrap font-medium mt-0.5">{item.additionalNotes}</p>
+                              </div>
+                            )}
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            </details>
 
-<PatientOrdersPanel
+            <details className="group rounded-lg border border-base-300 bg-base-100">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
+                <span>Appointments ({appointments.length})</span>
+                <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="border-t border-base-200 p-4">
+                {appointmentsLoading ? (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
+                  </div>
+                ) : appointments.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-base-content/50">No appointments found.</div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    {appointments.map((appointment) => {
+                      const appointmentId = appointment.id || appointment._id || appointment.appointmentId;
+                      const status = String(appointment.status || '').toLowerCase();
+                      const statusClass = status === 'completed' ? 'badge-primary' : status === 'scheduled' ? 'badge-info' : status === 'cancelled' ? 'badge-error' : 'badge-neutral';
+                      return (
+                        <button key={appointmentId} type="button" onClick={() => { if (appointmentId) { setSelectedAppointmentId(appointmentId); setIsAppointmentModalOpen(true); } }} className="rounded-lg border border-base-300 p-4 text-left transition-colors hover:border-primary/50 hover:bg-base-200/60">
+                          <div className="mb-2 flex items-center justify-between gap-2"><span className={`badge badge-sm ${statusClass}`}>{appointment.status || 'Unknown'}</span><span className="text-xs text-base-content/40">{appointment.appointmentDate ? formatNigeriaDate(appointment.appointmentDate) : '—'}{appointment.appointmentTime ? ` · ${appointment.appointmentTime}` : ''}</span></div>
+                          <p className="line-clamp-1 text-sm font-medium">{appointment.procedureName || appointment.appointmentType || 'General appointment'}</p>
+                          {appointment.department && <p className="mt-1 text-xs capitalize text-base-content/60">{appointment.department}</p>}
+                          {appointment.notes && <p className="mt-1 line-clamp-2 text-xs text-base-content/50">{appointment.notes}</p>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
+
+         
+{/* <PatientOrdersPanel
   role="nurse"
   prescriptions={prescriptions}
   investigations={investigations}
   loading={consultationLoading}
   patientName={summarySubject?.fullName || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim() || 'Patient'}
   dependantId={dependantId}
-/>
+/> */}
 
-          <AdmissionHistoryTable
+          {/* <AdmissionHistoryTable
             loading={admissionsLoading}
             rows={useMemo(() => (
               Array.isArray(admissions) ? admissions.map((a) => {
@@ -839,7 +878,7 @@ useEffect(() => {
               state: { dependantId, dependantSnapshot }
             })}
             hidePrice
-          />
+          /> */}
 
           {/* Antenatal Records (Nurse, Female patients only). Read-only, view all/details */}
           {summarySubject?.gender?.toLowerCase() === 'female' && (
@@ -1133,6 +1172,29 @@ useEffect(() => {
             patientId={patientId}
               currentStatus={patient?.status || ''}
 />
+
+          <AppointmentDetailsModal
+            isOpen={isAppointmentModalOpen}
+            onClose={() => setIsAppointmentModalOpen(false)}
+            appointmentId={selectedAppointmentId}
+            onUpdated={(updated) => {
+              const updatedId = updated?.id || updated?._id || updated?.appointmentId;
+              setAppointments((previous) => previous.map((appointment) => (
+                (appointment.id || appointment._id || appointment.appointmentId) === updatedId
+                  ? { ...appointment, status: updated?.status }
+                  : appointment
+              )));
+            }}
+          />
+
+          {selectedConsultation && (
+            <ConsultationDetailModal
+              consultation={selectedConsultation}
+              onClose={() => setSelectedConsultation(null)}
+            />
+          )}
+
+
           {/* Injection Modal */}
         {isRecordInjection && (
             <InjectionModals

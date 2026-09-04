@@ -164,7 +164,10 @@ const DataTable = ({
                 <div
                   key={item.id || index}
                   className={`p-3 ${onRowClick ? 'cursor-pointer active:bg-base-200/60' : ''}`}
-                  onClick={() => onRowClick && onRowClick(item)}
+                  onClick={(e) => {
+                    if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+                    onRowClick && onRowClick(item);
+                  }}
                 >
                   <div className="flex flex-col gap-1.5">
                     {columns.map((column) => (
@@ -219,7 +222,10 @@ const DataTable = ({
                     className={`text-xs transition-colors hover:bg-base-200/50 ${
                       onRowClick ? 'cursor-pointer hover:shadow-md' : ''
                     }`}
-                    onClick={() => onRowClick && onRowClick(item)}
+                    onClick={(e) => {
+                      if (e.target.closest('button, a, input, select, textarea, [role="button"]')) return;
+                      onRowClick && onRowClick(item);
+                    }}
                   >
                     {columns.map((column) => (
                       <td

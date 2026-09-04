@@ -25,6 +25,8 @@ export { default as SendToSonographerModal } from './SendToSonographerModal';
 export { default as CreateBillModal } from './CreateBillModal';
 export { default as DoctorBillModal } from './DoctorBillModal';
 export { default as AppointmentDetailsModal } from './AppointmentDetailsModal';
+export { default as ConsultationDetailModal } from './ConsultationDetailModal';
+export { default as PrescribeDrugsModal } from './PrescribeDrugsModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';

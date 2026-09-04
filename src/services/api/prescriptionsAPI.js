@@ -12,6 +12,7 @@ export const getPrescriptions = async () => {
 
 export const getPrescriptionsForConsultation = async (consultationId) => {
   try {
+    if (!consultationId) throw new Error('Consultation ID is required')
     const response = await apiClient.get(`/prescription/consultation/${consultationId}`)
     return response.data ?? []
   } catch (err) {
@@ -64,6 +65,7 @@ export const updatePrescription = async (id, updateData) => {
 
 export const createPrescription = async (data, contextId, contextType = 'consultation') => {
   try {
+    if (!contextId) throw new Error(`A valid ${contextType} ID is required`)
     const payload = data?.medications?.[0] || []
     const requiredFields = ['drugName', 'frequency', 'duration', 'dosageAmount', 'dosageUnit']
     for (const field of requiredFields) {
@@ -78,6 +80,28 @@ export const createPrescription = async (data, contextId, contextType = 'consult
     return response.data ?? {}
   } catch (err) {
     console.error('prescriptionsAPI: createPrescription error', err.response?.data || err.message, err)
+    throw err
+  }
+}
+
+export const createPrescriptionByWardRound = async (wardRoundId, data) => {
+  try {
+    if (!wardRoundId) throw new Error('Ward round ID is required')
+    const response = await apiClient.post(`/prescription/wardRound/${wardRoundId}`, data)
+    return response.data ?? response
+  } catch (err) {
+    console.error('prescriptionsAPI: createPrescriptionByWardRound error', err.response?.data || err.message, err)
+    throw err
+  }
+}
+
+export const getPrescriptionsByWardRound = async (wardRoundId) => {
+  try {
+    if (!wardRoundId) throw new Error('Ward round ID is required')
+    const response = await apiClient.get(`/prescription/wardRound/${wardRoundId}`)
+    return response.data ?? response
+  } catch (err) {
+    console.error('prescriptionsAPI: getPrescriptionsByWardRound error', err.response?.data || err.message, err)
     throw err
   }
 }
@@ -100,5 +124,7 @@ export default {
   getPrescriptionByPatientId,
   updatePrescription,
   createPrescription,
+  createPrescriptionByWardRound,
+  getPrescriptionsByWardRound,
   deletePrescription
 }
