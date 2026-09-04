@@ -62,8 +62,8 @@ const Sidebar = ({ onCloseSidebar }) => {
     {
       icon: MdSupervisorAccount,
       label: 'Patients',
-      path: '/superadmin/patients/patients',
-      active: location.pathname.startsWith('/superadmin/patients')
+      path: '/superadmin/patients',
+      active: location.pathname === '/superadmin/patients' || location.pathname.startsWith('/superadmin/patients/:patientId')
     },
     {
       icon: MdCalendarMonth,
@@ -101,9 +101,9 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100  2xl:pb-18">
+    <div className="flex flex-col w-64 h-full bg-base-100  2xl:pb-18">
       {/* Logo */}
-      <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
+      <div className="p-3 border-b-4 border-neutral/10 lg:p-1 2xl:p-3">
         <div className="flex justify-center items-center">
           <div className="flex items-center space-x-2">
             <div className="">
