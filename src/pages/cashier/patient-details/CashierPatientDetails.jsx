@@ -492,27 +492,7 @@ const CashierPatientDetails = () => {
           )}
         </div>
 
-        {/* Post-Payment Actions */}
-        {receipts.length > 0 && (
-          <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
-            <h3 className="text-xl font-bold text-primary mb-4">Post-Payment Actions</h3>
-            <p className="text-sm text-base-content/70 mb-4">Payment received. Send patient to:</p>
-            <div className="flex flex-wrap gap-3">
-              <SendPatientModal
-                patientId={patient?.id || patientId}
-                patient={patient}
-                defaultDependantId={dependantId}
-                defaultDependantLabel={fullName}
-                lockSubject
-                onUpdated={() => {
-                  refreshQueueCount();
-                  navigate('/cashier/dashboard');
-                }}
-                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo', 'sonographer']}
-              />
-            </div>
-          </div>
-        )}
+
 
         {/* Receipt Modal */}
         <ReceiptModal

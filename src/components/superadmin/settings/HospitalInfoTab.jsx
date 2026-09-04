@@ -159,12 +159,7 @@ const HospitalInfoTab = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="px-3 py-2 rounded-xl bg-base-100 border border-base-300 text-center">
-            <span className="text-[10px] font-semibold tracking-wider uppercase text-base-content/60 block">System Mode</span>
-            <span className="text-xs font-bold text-success">Live Production</span>
-          </div>
-        </div>
+      
       </div>
 
       <div className="bg-base-100 rounded-2xl shadow-sm border border-base-200 p-6 sm:p-8">
@@ -311,15 +306,7 @@ const HospitalInfoTab = () => {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 pt-4 border-t border-base-200">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="btn btn-outline rounded-xl"
-              disabled={isLoading}
-            >
-              <FaTimes className="w-3.5 h-3.5 mr-1.5" />
-              Reset
-            </button>
+           
             <button
               type="submit"
               className="btn btn-primary rounded-xl px-6 shadow-md shadow-primary/20"
