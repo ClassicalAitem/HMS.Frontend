@@ -659,6 +659,9 @@ const getDispenseInfo = (med) => {
         phone: guardian.phone || guardian.phoneNumber,
         hospitalId: guardian.hospitalId,
         status: guardian.status,
+        statusSenderName: guardian.statusSenderName,
+        statusUser: guardian.statusUser,
+        updatedAt: guardian.updatedAt,
         hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
       }
@@ -677,6 +680,9 @@ const getDispenseInfo = (med) => {
       phone: dep.phone || guardian.phone || guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
       status: dep.status || incomingDependantSnapshot?.status || 'Unknown',
+      statusSenderName: dep.statusSenderName || incomingDependantSnapshot?.statusSenderName,
+      statusUser: dep.statusUser || incomingDependantSnapshot?.statusUser,
+      updatedAt: dep.updatedAt || incomingDependantSnapshot?.updatedAt,
       hmos: ownHmos,
       relationshipType: dep.relationshipType,
     }

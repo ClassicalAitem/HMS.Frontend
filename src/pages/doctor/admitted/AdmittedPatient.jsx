@@ -102,6 +102,30 @@ const DRAdmittedPatient = () => {
     }
   }, [dependantId, dependantSnapshot, isViewingDependant])
 
+  const summarySubject = useMemo(() => {
+    if (!isViewingDependant) {
+      return {
+        ...(patient || {}),
+        fullName:
+          patient?.fullName ||
+          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() ||
+          'Unknown Patient',
+      }
+    }
+    const dep = subject || dependantSnapshot || {}
+    return {
+      ...dep,
+      fullName:
+        dep.fullName ||
+        `${dep.firstName || ''} ${dep.lastName || ''}`.trim() ||
+        'Dependant',
+      hospitalId: patient?.hospitalId,
+      cardType: patient?.cardType,
+      familyName: patient?.familyName,
+      companyName: patient?.companyName,
+    }
+  }, [dependantSnapshot, isViewingDependant, patient, subject])
+
   // Load admission record
   const loadAdmission = async () => {
     try {
@@ -149,27 +173,6 @@ const DRAdmittedPatient = () => {
   useEffect(() => {
     loadVitals()
   }, [patientId])
-
-  const summarySubject = useMemo(() => {
-    if (!isViewingDependant) {
-      return {
-        ...(patient || {}),
-        fullName:
-          patient?.fullName ||
-          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() ||
-          'Unknown Patient',
-      }
-    }
-    const dep = subject || dependantSnapshot || {}
-    return {
-      ...dep,
-      fullName:
-        dep.fullName ||
-        `${dep.firstName || ''} ${dep.lastName || ''}`.trim() ||
-        'Dependant',
-      hospitalId: patient?.hospitalId,
-    }
-  }, [dependantSnapshot, isViewingDependant, patient, subject])
 
   // Age calculation for Neonatal Care Tab (Option A: age <= 28 days from DOB)
   const isNeonatal = useMemo(() => {

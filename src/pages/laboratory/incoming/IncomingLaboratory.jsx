@@ -10,6 +10,7 @@ import { getAllDependantsForPatient, updateDependantStatus } from "@/services/ap
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
 import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
+import { PatientStatusBadge } from "@/components/common";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getAllOpdPatients } from "@/services/api/opdPatientAPI";
 import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
@@ -285,6 +286,8 @@ const IncomingLaboratory = () => {
             patientType,
             investigationStatus: inv.status, // Add investigation status
             patientStatus, // Add patient status
+            statusUser: dependant?.statusUser || patient?.statusUser,
+            statusSenderName: dependant?.statusSenderName || patient?.statusSenderName,
           };
         })
       );
@@ -569,15 +572,12 @@ const IncomingLaboratory = () => {
                               <span className="badge badge-info badge-xs">OPD</span>
                             )}
                             {testCard.patientStatus && (
-                              <span className={`badge badge-xs ${
-                                testCard.patientStatus === 'awaiting_lab' 
-                                  ? 'badge-primary' 
-                                  : testCard.patientStatus === 'sonography_completed'
-                                  ? 'badge-warning'
-                                  : 'badge-neutral'
-                              }`}>
-                                {testCard.patientStatus}
-                              </span>
+                              <PatientStatusBadge
+                                status={testCard.patientStatus}
+                                statusSenderName={testCard.statusSenderName}
+                                statusUser={testCard.statusUser}
+                                tooltipAlign="left"
+                              />
                             )}
                            
                             <div
