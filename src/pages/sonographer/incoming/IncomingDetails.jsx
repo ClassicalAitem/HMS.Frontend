@@ -185,7 +185,7 @@ useEffect(() => {
     mounted = false;
   };
 }, [patientId]);
-   
+
 
   const handleFileChange = (event) => {
     const selectedFiles = Array.from(event.target.files || []);

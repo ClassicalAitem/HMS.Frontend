@@ -224,6 +224,10 @@ const summarySubject = useMemo(() => {
     fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
     gender: dep.gender,
     dob: dep.dob,
+    status: dep.status || dependantSnapshot?.status || 'Unknown',
+    statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+    statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+    updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
     relationshipType: dep.relationshipType,
     hmos: ownHmos,
   };
