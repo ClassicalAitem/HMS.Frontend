@@ -14,7 +14,8 @@ const hospitalInfoSchema = yup.object({
     .min(2, 'Hospital name must be at least 2 characters'),
   hospitalType: yup
     .string()
-    .required('Hospital type is required'),
+    .required('Hospital type is required')
+    .min(2, 'Facility classification must be at least 2 characters'),
   licenseNumber: yup
     .string()
     .required('License number is required'),
@@ -188,23 +189,19 @@ const HospitalInfoTab = () => {
               )}
             </div>
 
-            {/* Hospital Type */}
+            {/* Hospital Type - now a free-text input instead of a fixed dropdown,
+                so the hospital can set/update this to whatever describes them,
+                rather than being limited to a preset list. */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-base-content/70 mb-1.5">
                 Facility Classification
               </label>
-              <select
+              <input
+                type="text"
                 {...register('hospitalType')}
-                className={`select select-bordered w-full rounded-xl ${errors.hospitalType ? 'select-error' : ''}`}
-              >
-                <option value="">Select facility classification</option>
-                <option value="General Hospital">General Hospital</option>
-                <option value="Specialty Hospital">Specialty Hospital</option>
-                <option value="Teaching Hospital">Teaching Hospital</option>
-                <option value="Private Specialist Hospital">Private Specialist Hospital</option>
-                <option value="Diagnostic & Imaging Centre">Diagnostic & Imaging Centre</option>
-                <option value="Tertiary Care Hospital">Tertiary Care Hospital</option>
-              </select>
+                className={`input input-bordered w-full rounded-xl ${errors.hospitalType ? 'input-error' : ''}`}
+                placeholder="e.g. Private Specialist Hospital"
+              />
               {errors.hospitalType && (
                 <p className="text-error text-xs mt-1">{errors.hospitalType.message}</p>
               )}
@@ -235,7 +232,7 @@ const HospitalInfoTab = () => {
                 type="tel"
                 {...register('phoneNumber')}
                 className={`input input-bordered w-full rounded-xl ${errors.phoneNumber ? 'input-error' : ''}`}
-                placeholder="+234-801-234-5678"
+                placeholder="+2348012345678"
               />
               {errors.phoneNumber && (
                 <p className="text-error text-xs mt-1">{errors.phoneNumber.message}</p>
@@ -267,7 +264,7 @@ const HospitalInfoTab = () => {
                 type="text"
                 {...register('emergencyContact')}
                 className="input input-bordered w-full rounded-xl"
-                placeholder="+234-800-EMERGENCY"
+                placeholder="+234800EMERGENCY"
               />
             </div>
           </div>

@@ -261,7 +261,7 @@ const CreateBillModal = ({
             const filteredInv = invList.filter(inv => {
               if (dependantId) return String(inv.dependantId || '') === String(dependantId);
               return !inv.dependantId;
-            }).filter(inv => !inv.isBilled && !inv.billId)
+            }).filter(inv => !inv.isBilled && !inv.billId && String(inv.status || '').toLowerCase() !== 'cancelled')
             .filter(inv => {
               if (consultationId) {
                 const invCId = inv.consultationId || inv.consultation?._id || inv.consultation?.id || inv.consultation;
@@ -317,7 +317,7 @@ const CreateBillModal = ({
             const filteredPres = presList.filter(p => {
               if (dependantId) return String(p.dependantId || '') === String(dependantId);
               return !p.dependantId;
-            }).filter(p => !p.isBilled && !p.billId)
+            }).filter(p => !p.isBilled && !p.billId && String(p.status || '').toLowerCase() !== 'cancelled')
             .filter(p => {
               if (consultationId) {
                 const pCId = p.consultationId || p.consultation?._id || p.consultation?.id || p.consultation;
@@ -356,7 +356,7 @@ const CreateBillModal = ({
             const filteredAdm = admList.filter(a => {
               if (dependantId) return String(a.dependantId || '') === String(dependantId);
               return !a.dependantId;
-            }).filter(a => !a.isBilled && !a.billId)
+            }).filter(a => !a.isBilled && !a.billId && String(a.status || '').toLowerCase() !== 'cancelled')
             .filter(a => {
               if (admissionId) {
                 return String(a._id || a.id) === String(admissionId);
@@ -418,7 +418,7 @@ const CreateBillModal = ({
                 return String(a.dependantId || '') === targetDepId;
               }
               return String(a.patientId || '') === targetPid && !a.dependantId;
-            }).filter(a => !a.isBilled && !a.billId)
+            }).filter(a => !a.isBilled && !a.billId && String(a.status || '').toLowerCase() !== 'cancelled')
             .filter(a => {
               if (consultationId) {
                 const aCId = a.consultationId || a.consultation?._id || a.consultation?.id || a.consultation;

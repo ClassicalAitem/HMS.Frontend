@@ -5,4 +5,5 @@ export { default as ThemeSwitcher } from './ThemeSwitcher';
 export { default as ProtectedRoute } from './ProtectedRoute';
 export { default as EmptyState } from './EmptyState';
 export { default as PatientCardTypeInfo } from './PatientCardTypeInfo';
+export { default as PatientStatusBadge } from './PatientStatusBadge';
 export { default as SearchableNameDropdown } from './SearchableNameDropdown';

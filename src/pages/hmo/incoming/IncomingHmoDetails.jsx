@@ -140,6 +140,17 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
           : hmoList.filter((h) => !h.dependantId);
         if (mounted) setHmos(scopedHmos);
 
+        if (isViewingDependant && dependantId) {
+          try {
+            const { getDependantById } = await import('@/services/api/dependantAPI');
+            const depRes = await getDependantById(dependantId);
+            const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || dependantSnapshot;
+            if (mounted && dep) setSubject(dep);
+          } catch {
+            if (mounted && dependantSnapshot) setSubject(dependantSnapshot);
+          }
+        }
+
         if (!mounted) return;
 
         if (patientRes.status === 'fulfilled') {
@@ -241,6 +252,9 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
         phone: guardian.phone || guardian.phoneNumber,
         hospitalId: guardian.hospitalId,
         status: guardian.status,
+        statusSenderName: guardian.statusSenderName,
+        statusUser: guardian.statusUser,
+        updatedAt: guardian.updatedAt,
         hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
       };
@@ -263,6 +277,9 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
       // Hospital ID always belongs to the parent/guardian patient record
       hospitalId: guardian.hospitalId,
       status: dep.status || dependantSnapshot?.status || 'Unknown',
+      statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+      statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+      updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
       hmos: ownHmos,
       relationshipType:
         dep.relationshipType || dependantSnapshot?.relationshipType,
