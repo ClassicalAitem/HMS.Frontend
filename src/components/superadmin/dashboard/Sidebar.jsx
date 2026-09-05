@@ -1,15 +1,41 @@
 /* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics, MdCalendarMonth } from "react-icons/md";
+import { FaBed } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
+import { getAdmissions } from '@/services/api/admissionApi';
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchAdmittedCount = async () => {
+      try {
+        const res = await getAdmissions();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : [];
+        const active = list.filter((a) => a.status !== 'discharged' && !!a.confirmedAt);
+        if (mounted) {
+          setAdmittedCount(active.length);
+        }
+      } catch (e) {
+        // quiet fallback
+      }
+    };
+    fetchAdmittedCount();
+    const interval = setInterval(fetchAdmittedCount, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Function to generate initials from first and last name
   const generateInitials = (firstName, lastName) => {
@@ -66,6 +92,13 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/superadmin/patients' || location.pathname.startsWith('/superadmin/patients/:patientId')
     },
     {
+      icon: FaBed,
+      label: 'Admitted Patients',
+      path: '/superadmin/admitted',
+      active: location.pathname.startsWith('/superadmin/admitted'),
+      badge: admittedCount > 0 ? admittedCount : null
+    },
+    {
       icon: MdCalendarMonth,
       label: 'Appointments',
       path: '/superadmin/appointments',
@@ -85,7 +118,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   ];
 
-  const MenuItem = ({ icon: Icon, label, path, active }) => (
+  const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
     <Link
       to={path}
       onClick={onCloseSidebar}
@@ -95,8 +128,13 @@ const Sidebar = ({ onCloseSidebar }) => {
           : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
       }`}
     >
-      <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
-      <span className="text-xs 2xl:text-sm">{label}</span>
+      <Icon className="w-4 h-4 2xl:w-5 2xl:h-5 shrink-0" />
+      <span className="text-xs 2xl:text-sm flex-1">{label}</span>
+      {badge ? (
+        <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold leading-none text-white bg-error rounded-full shrink-0">
+          {badge}
+        </span>
+      ) : null}
     </Link>
   );
 
@@ -126,6 +164,7 @@ const Sidebar = ({ onCloseSidebar }) => {
             label={item.label}
             path={item.path}
             active={item.active}
+            badge={item.badge}
           />
         ))}
       </nav>

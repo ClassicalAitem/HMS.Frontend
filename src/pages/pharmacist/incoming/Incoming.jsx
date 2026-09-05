@@ -9,6 +9,7 @@ import KolakLoader from '@/components/common/KolakLoader'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { getDependants, updateDependantStatus } from '@/services/api/dependantAPI'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
+import { PatientStatusBadge } from '@/components/common'
 import ClearItemButton from '@/components/common/ClearIncomingButton'
 const Incoming = () => {
   const [patients, setPatients] = useState([])
@@ -58,6 +59,8 @@ const Incoming = () => {
           familyName: p?.familyName || '',
           companyName: p?.companyName || '',
           snapshot: p,
+          statusUser: p?.statusUser,
+          statusSenderName: p?.statusSenderName,
         }))
 
         
@@ -77,6 +80,8 @@ const Incoming = () => {
           familyName: '',
           companyName: '',
           snapshot: d,
+          statusUser: d?.statusUser,
+          statusSenderName: d?.statusSenderName,
         }))
         const combined = [...mappedPatients, ...mappedDependants].sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime()
@@ -164,7 +169,16 @@ const Incoming = () => {
             </div>
           ) : current.map((p) => (
             <div key={p.id} className="p-4 rounded-xl border shadow-sm bg-base-100">
-              <div className="mb-2 text-sm text-base-content/70">Status: <span className="font-medium">{p.status}</span></div>
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs text-base-content/60">Updated {p.updatedAt ? new Date(p.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                <PatientStatusBadge
+                  status={p.status}
+                  statusSenderName={p.statusSenderName}
+                  statusUser={p.statusUser}
+                  updatedAt={p.updatedAt}
+                  tooltipAlign="right"
+                />
+              </div>
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-14 h-14 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center text-xl font-semibold text-primary">
                   {p.name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]?.toUpperCase()).join('.')}

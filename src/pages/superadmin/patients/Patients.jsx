@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { Skeleton } from '@heroui/skeleton';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import { PatientStatusBadge } from '@/components/common';
 import ViewDependantsModal from '@/components/superadmin/patients/ViewDependantsModal';
 import { FaUserFriends, FaUsers, FaUser, FaChild } from 'react-icons/fa';
 
@@ -315,7 +316,15 @@ const StatusBadge = ({ status }) => {
       key: 'status',
       title: 'Status',
       className: 'text-base-content/70',
-      render: (value) => <StatusBadge status={value} />
+      render: (value, row) => (
+        <PatientStatusBadge
+          status={value}
+          statusSenderName={row?.statusSenderName}
+          statusUser={row?.statusUser}
+          updatedAt={row?.updatedAt}
+          tooltipAlign="right"
+        />
+      )
     }
   ], [navigate]);
 

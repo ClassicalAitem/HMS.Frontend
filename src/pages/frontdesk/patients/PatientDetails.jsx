@@ -178,6 +178,9 @@ const PatientDetails = () => {
           phone: guardian.phone || guardian.phoneNumber,
           hospitalId: guardian.hospitalId,
           status: guardian.status,
+          statusSenderName: guardian.statusSenderName,
+          statusUser: guardian.statusUser,
+          updatedAt: guardian.updatedAt,
           hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
           relationshipType: null,
         };
@@ -199,6 +202,9 @@ const PatientDetails = () => {
         // Hospital ID always belongs to the parent/guardian patient record
         hospitalId: guardian.hospitalId,
         status: dep.status || dependantSnapshot?.status || 'Unknown',
+        statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+        statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+        updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
         hmos: ownHmos,
         relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
       };
@@ -219,6 +225,9 @@ const PatientDetails = () => {
     dob: dep.dob,
     gender: dep.gender,
     status: dep.status || dependantSnapshot?.status,
+    statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+    statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+    updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
     relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
     hospitalId: guardian.hospitalId, // ← stays the guardian's, as you asked
     hmos: Array.isArray(guardian.hmos)

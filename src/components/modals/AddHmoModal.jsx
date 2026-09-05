@@ -81,8 +81,7 @@ const AddHmoModal = ({ isOpen, onClose, patient, dependantId = null, onSuccess }
       <div className="relative z-10 w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-xl card bg-base-100">
         <div className="p-6 card-body">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            {/* <h2 className="text-2xl font-bold text-base-content">Add HMO Plan(s)</h2> */}
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-bold text-base-content">
               {dependantId ? 'Add HMO Plan for Dependant' : 'Add HMO Plan(s)'}
             </h2>
@@ -90,6 +89,14 @@ const AddHmoModal = ({ isOpen, onClose, patient, dependantId = null, onSuccess }
               <FaTimes className="w-4 h-4" />
             </button>
           </div>
+
+          {(!dependantId && String(patient?.cardType || '').toLowerCase() === 'family') && (
+            <div className="alert alert-info text-xs py-2.5 px-3.5 rounded-lg mb-4">
+              <span>
+                <strong>Family Card Notice:</strong> This HMO plan will automatically propagate to all registered dependants with standardized suffix codes (e.g. <code>[MemberID]-</code> for principal, <code>[MemberID]/01</code>, <code>[MemberID]/02</code> for dependants).
+              </span>
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">

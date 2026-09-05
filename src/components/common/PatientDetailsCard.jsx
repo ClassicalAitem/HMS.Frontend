@@ -1,24 +1,67 @@
 import React, { useMemo } from 'react';
-import { PatientCardTypeInfo } from '@/components/common';
+import { PatientCardTypeInfo, PatientStatusBadge } from '@/components/common';
 import { formatPatientAge } from '@/utils/formatDateTimeUtils';
 
-const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => {
-  const fullName = summarySubject?.fullName || 'Unknown';
-  const gender = summarySubject?.gender || '—';
-  const phone = summarySubject?.phone || '—';
-  const patientIdDisplay = summarySubject?.hospitalId || '—';
-  const statusDisplay = summarySubject?.status || 'Unknown';
+const PatientDetailsCard = ({
+  patient,
+  summarySubject,
+  subject,
+  patientData,
+  isViewingDependant,
+  guardian,
+  activeAdmission,
+}) => {
+  // Resolve active subject entity (dependant or patient)
+  const activeSubject =
+    summarySubject || subject || patientData || (isViewingDependant ? null : patient) || patient || {};
+  const parentPatient = guardian || patient || activeSubject?.patient || {};
+
+  const fullName =
+    activeSubject?.fullName ||
+    `${activeSubject?.firstName || ''} ${activeSubject?.lastName || ''}`.trim() ||
+    'Unknown';
+  const gender = activeSubject?.gender || '—';
+  const phone =
+    activeSubject?.phone ||
+    activeSubject?.phoneNumber ||
+    parentPatient?.phone ||
+    parentPatient?.phoneNumber ||
+    '—';
+  const patientIdDisplay = activeSubject?.hospitalId || parentPatient?.hospitalId || '—';
+  const statusDisplay =
+    activeSubject?.status ||
+    (isViewingDependant ? 'awaiting_consultation' : parentPatient?.status) ||
+    'Unknown';
   const prettyStatus = String(statusDisplay).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-  const hmoList = summarySubject?.hmos || [];
+  const hmoList = activeSubject?.hmos || parentPatient?.hmos || [];
 
   // Card type props extraction
-  const cardType = patient?.cardType || summarySubject?.cardType || 'personal';
-  const familyName = patient?.familyName || summarySubject?.familyName || patient?.lastName || '';
-  const companyName = patient?.companyName || summarySubject?.companyName || '';
+  const cardType = parentPatient?.cardType || activeSubject?.cardType || 'personal';
+  const familyName = parentPatient?.familyName || activeSubject?.familyName || parentPatient?.lastName || '';
+  const companyName = parentPatient?.companyName || activeSubject?.companyName || '';
 
-  // Extract DOB from summarySubject or patient
-  const rawDob = summarySubject?.dob || summarySubject?.dateOfBirth || patient?.dob || patient?.dateOfBirth || patient?.birthDate;
+  // Extract DOB from activeSubject or parentPatient
+  const rawDob =
+    activeSubject?.dob ||
+    activeSubject?.dateOfBirth ||
+    activeSubject?.birthDate ||
+    parentPatient?.dob ||
+    parentPatient?.dateOfBirth;
+
+  // Status sender info - prioritize activeSubject (dependant), then parentPatient if not viewing dependant
+  const resolvedStatusSenderName =
+    activeSubject?.statusSenderName ||
+    activeSubject?.statusUser?.name ||
+    (!isViewingDependant ? parentPatient?.statusSenderName : null);
+
+  const resolvedStatusUser =
+    activeSubject?.statusUser ||
+    (!isViewingDependant ? parentPatient?.statusUser : null);
+
+  const resolvedUpdatedAt =
+    activeSubject?.updatedAt ||
+    (!isViewingDependant ? parentPatient?.updatedAt : null);
 
   // Age & Birthday Calculation
   const { age, isBirthday } = useMemo(() => {
@@ -122,11 +165,13 @@ const PatientDetailsCard = ({ patient, summarySubject, isViewingDependant }) => 
         <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between border-t lg:border-t-0 pt-3 lg:pt-0 border-base-200 gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs text-base-content/50">Status:</span>
-            <span className={`badge badge-sm whitespace-nowrap font-medium ${
-              String(statusDisplay).toLowerCase().includes('cashier') ? 'badge-warning' :
-              String(statusDisplay).toLowerCase().includes('completed') ? 'badge-success' :
-              'badge-neutral'
-            }`}>{prettyStatus}</span>
+            <PatientStatusBadge
+              status={statusDisplay}
+              statusSenderName={resolvedStatusSenderName}
+              statusUser={resolvedStatusUser}
+              updatedAt={resolvedUpdatedAt}
+              tooltipAlign="center"
+            />
           </div>
 
           <PatientCardTypeInfo 

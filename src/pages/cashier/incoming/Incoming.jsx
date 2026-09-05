@@ -9,6 +9,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { useNotifications } from '@/contexts/NotificationContext';
 import ClearItemButton from '@/components/common/ClearIncomingButton';
+import { PatientStatusBadge } from '@/components/common';
 
 const Incoming = () => {
   const [incomingPatients, setIncomingPatients] = useState([]);
@@ -71,6 +72,9 @@ const Incoming = () => {
           updatedAtDisplay: (p?.updatedAt || p?.createdAt)
             ? formatNigeriaDateTime(p?.updatedAt || p?.createdAt)
             : '—',
+          status: p?.status,
+          statusUser: p?.statusUser,
+          statusSenderName: p?.statusSenderName,
         }));
 
       const mappedDependants = dependants
@@ -97,6 +101,9 @@ const Incoming = () => {
             updatedAtDisplay: (d?.updatedAt || d?.createdAt)
               ? formatNigeriaDateTime(d?.updatedAt || d?.createdAt)
               : '—',
+            status: d?.status,
+            statusUser: d?.statusUser,
+            statusSenderName: d?.statusSenderName,
           };
         });
 
@@ -252,11 +259,20 @@ const Incoming = () => {
           ))
         ) : currentPatients.map((patient) => (
           <div key={`${patient.type}-${patient.id}`} className="p-4 2xl:p-6 rounded-xl border shadow-lg border-text-content bg-base-100">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-sm text-base-content/70">Updated {patient.updatedAtDisplay}</p>
-              {patient.type === 'dependant' && (
-                <span className="badge badge-sm badge-secondary">{patient.badge}</span>
-              )}
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-base-content/60">Updated {patient.updatedAtDisplay}</span>
+                {patient.type === 'dependant' && (
+                  <span className="badge badge-xs badge-secondary">{patient.badge}</span>
+                )}
+              </div>
+              <PatientStatusBadge
+                status="awaiting_cashier"
+                statusSenderName={patient.statusSenderName}
+                statusUser={patient.statusUser}
+                updatedAt={patient.updatedAt}
+                tooltipAlign="right"
+              />
             </div>
 
             <div className="flex items-center mb-2 2xl:mb-4 space-x-4">

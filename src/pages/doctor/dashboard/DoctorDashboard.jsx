@@ -17,7 +17,7 @@ import {
 } from "react-icons/fa";
 import { RiArrowLeftRightFill, RiArrowRightLine } from "react-icons/ri";
 import { TbCalendarPlus } from "react-icons/tb";
-import { EmptyState } from "@/components/common";
+import { EmptyState, PatientStatusBadge } from "@/components/common";
 
 const DOCTOR_STATUSES = new Set([
   "awaiting_doctor",
@@ -156,15 +156,7 @@ const DoctorDashboard = () => {
       {/* Clinical Welcome & Shift Status Banner */}
       <div className="bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-bold text-base-content">
-              {greeting}, {doctorDisplayName} 👋
-            </h1>
-            <span className="badge badge-success badge-sm text-white font-medium gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              On Duty
-            </span>
-          </div>
+          
           <p className="text-xs sm:text-sm text-base-content/60 flex items-center gap-2">
             <FaCalendarAlt className="w-3.5 h-3.5 text-primary" />
             <span>{currentDateFormatted}</span>
@@ -365,6 +357,13 @@ const DoctorDashboard = () => {
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-base-content/60">
                             <span>Arrived: {patient.time}</span>
+                            <PatientStatusBadge
+                              status={patient.status}
+                              statusSenderName={patient.snapshot?.statusSenderName}
+                              statusUser={patient.snapshot?.statusUser}
+                              updatedAt={patient.snapshot?.updatedAt}
+                              tooltipAlign="left"
+                            />
                             {patient.isDependant && (
                               <span className="badge badge-outline badge-primary badge-xs">
                                 Dependant

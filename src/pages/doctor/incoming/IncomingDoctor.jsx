@@ -9,6 +9,7 @@ import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { PatientStatusBadge } from "@/components/common";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { DoctorLayout } from "@/components/doctor/doctor";
 
@@ -100,6 +101,8 @@ const IncomingDoctor = () => {
               ? Math.floor((Date.now() - new Date(p.dob || p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
               : null,
             badge: null,
+            statusUser: p?.statusUser,
+            statusSenderName: p?.statusSenderName,
           }));
 
         // Map dependants
@@ -132,6 +135,8 @@ const IncomingDoctor = () => {
               ? Math.floor((Date.now() - new Date(d.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
               : null,
             badge: d?.relationshipType || 'Dependant',
+            statusUser: d?.statusUser,
+            statusSenderName: d?.statusSenderName,
           }
         });
 
@@ -356,7 +361,13 @@ const IncomingDoctor = () => {
                       {/* Status + Updated At — flex together on mobile, separate grid cols on desktop */}
                       <div className="col-span-full flex items-center justify-between gap-3 md:contents">
                         <div className="md:col-span-2">
-                          <span className={`badge badge-sm ${statusBadgeClass(data.reason)}`}>{data.reason}</span>
+                          <PatientStatusBadge
+                            status={data.reason || data.status}
+                            statusSenderName={data.statusSenderName}
+                            statusUser={data.statusUser}
+                            updatedAt={data.snapshot?.updatedAt || data.updatedAt}
+                            tooltipAlign="left"
+                          />
                         </div>
                         <div className="md:col-span-2">
                           <span className="text-sm text-base-content/60">{data.updatedAt}</span>

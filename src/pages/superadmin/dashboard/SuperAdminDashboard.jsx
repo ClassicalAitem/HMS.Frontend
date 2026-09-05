@@ -5,7 +5,7 @@ import { PiUsersThreeDuotone } from 'react-icons/pi';
 import { LuUserRoundCheck } from 'react-icons/lu';
 import { MdOutlineStore } from 'react-icons/md';
 import { FiFileText, FiArrowUpRight, FiSettings, FiUserPlus, FiActivity } from 'react-icons/fi';
-import { FaCalendarAlt, FaHospital, FaClipboardCheck, FaUsersCog } from 'react-icons/fa';
+import { FaCalendarAlt, FaHospital, FaClipboardCheck, FaUsersCog, FaBed } from 'react-icons/fa';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
@@ -41,7 +41,8 @@ const SuperAdminDashboard = () => {
   );
 
   const operationalActions = [
-    { label: 'Patient Directory', description: 'Review patients and dependants', path: '/superadmin/patients/Patients', icon: FaHospital, tone: 'text-primary bg-primary/10' },
+    { label: 'Patient Directory', description: 'Review patients and dependants', path: '/superadmin/patients', icon: FaHospital, tone: 'text-primary bg-primary/10' },
+    { label: 'Inpatient Admissions', description: 'Track ward admissions and patient care records', path: '/superadmin/admitted', icon: FaBed, tone: 'text-info bg-info/10' },
     { label: 'Manage Users', description: 'Control staff access and roles', path: '/superadmin/users', icon: FaUsersCog, tone: 'text-secondary bg-secondary/10' },
     { label: 'Appointments', description: 'Review the hospital schedule', path: '/superadmin/appointments', icon: FaCalendarAlt, tone: 'text-info bg-info/10' },
     { label: 'Registration', description: 'Register a new patient', path: '/superadmin/registration', icon: FiUserPlus, tone: 'text-success bg-success/10' },
