@@ -31,8 +31,17 @@ export const getErrorMessage = (error, fallback = 'Something went wrong. Please 
  * Show error toast with throttling to prevent duplicates
  */
 export const showErrorToast = (error, customMessage = null) => {
+  // If error was already displayed by interceptor and no custom override was provided, avoid repeat
+  if (error && typeof error === 'object' && error._toastShown && !customMessage) {
+    return;
+  }
+
   const errorMessage = customMessage || getErrorMessage(error);
   
+  if (error && typeof error === 'object') {
+    error._toastShown = true;
+  }
+
   // Check if this error was shown recently
   const errorKey = errorMessage;
   const now = Date.now();
@@ -51,12 +60,11 @@ export const showErrorToast = (error, customMessage = null) => {
     recentErrors.delete(oldestKey);
   }
   
-  // Show the toast
+  // Show the toast with deterministic ID to prevent duplicates
   toast.error(errorMessage, {
+    id: `error:${errorMessage}`,
     duration: 4000,
-    position: 'top-right',
   });
-  
 };
 
 /**
@@ -64,8 +72,8 @@ export const showErrorToast = (error, customMessage = null) => {
  */
 export const showSuccessToast = (message) => {
   toast.success(message, {
+    id: `success:${message}`,
     duration: 3000,
-    position: 'top-right',
   });
 };
 
