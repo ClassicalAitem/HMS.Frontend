@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
+import { Header, HmoStatusBadge } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { getLabResultById, getLabResultFile } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -796,7 +796,7 @@ const handleComplete = async () => {
 
             <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 lg:p-8 mb-6 min-w-0">
               {/* Patient Information Header */}
-              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 mb-6 lg:mb-8 pb-6 lg:pb-8 border-b-2 border-gray-200">
+              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-5 gap-4 mb-6 lg:mb-8 pb-6 lg:pb-8 border-b-2 border-gray-200">
                 <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Patient Name</p>
                   <p className="text-base sm:text-lg font-bold text-[#00943C] break-words">{patientName}</p>
@@ -804,6 +804,12 @@ const handleComplete = async () => {
                 <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Hospital ID</p>
                   <p className="text-lg font-bold">{patient?.hospitalId || "__"}</p>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-600 uppercase font-semibold">HMO Coverage</p>
+                  <div className="mt-1">
+                    <HmoStatusBadge status={labResult?.hmoStatus || patient?.hmoStatus} size="sm" />
+                  </div>
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
@@ -942,7 +948,7 @@ const handleComplete = async () => {
                   Print Results
                 </button>
                 <button
-                  onClick={() => navigate(-1)}
+                  onClick={() => navigate("/dashboard/laboratory")}
                   className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-all"
                 >
                   Close
