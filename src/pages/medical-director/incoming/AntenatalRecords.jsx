@@ -5,7 +5,7 @@ import { Header } from "@/components/common";
 import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { useAppSelector } from "@/store/hooks";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import {
   createAnteNatalRecord,
@@ -477,7 +477,6 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
   return (
     <div className="flex h-screen bg-base-200/50">
        {loadingData && <KolakLoader fullscreen />}
-      <Toaster position="top-right" />
 
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
