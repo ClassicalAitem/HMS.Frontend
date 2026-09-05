@@ -8,6 +8,7 @@ import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { PatientStatusBadge } from "@/components/common";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { MedicalDirectorLayout } from "@/layouts/medical-director";
 
@@ -87,6 +88,8 @@ const IncomingMD = () => {
             displayId: p?.hospitalId || p?.id || "—",
             reason: prettifyStatus(p?.status) || "Consultation",
             rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
+            statusSenderName: p?.statusSenderName,
+            statusUser: p?.statusUser,
             updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
             gender: p?.gender || null,
             age: p?.dob || p?.dateOfBirth
@@ -119,6 +122,8 @@ const IncomingMD = () => {
             displayId: parentPatient?.hospitalId || d?.patientId || "—",
             reason: prettifyStatus(d?.status) || "Consultation",
             rawStatus: (typeof d?.status === "string" ? d.status : "").toLowerCase(),
+            statusSenderName: d?.statusSenderName,
+            statusUser: d?.statusUser,
             updatedAt: d?.updatedAt ? formatNigeriaDateTime(d.updatedAt) : "—",
             gender: d?.gender || null,
             age: d?.dob
@@ -338,7 +343,13 @@ const IncomingMD = () => {
                       {/* Status + Updated At — flex together on mobile, separate grid cols on desktop */}
                       <div className="col-span-full flex items-center justify-between gap-3 md:contents">
                         <div className="md:col-span-2">
-                          <span className={`badge badge-sm ${statusBadgeClass(data.reason)}`}>{data.reason}</span>
+                          <PatientStatusBadge
+                            status={data.reason || data.rawStatus}
+                            statusSenderName={data.statusSenderName}
+                            statusUser={data.statusUser}
+                            updatedAt={data.snapshot?.updatedAt || data.updatedAt}
+                            tooltipAlign="left"
+                          />
                         </div>
                         <div className="md:col-span-2">
                           <span className="text-sm text-base-content/60">{data.updatedAt}</span>

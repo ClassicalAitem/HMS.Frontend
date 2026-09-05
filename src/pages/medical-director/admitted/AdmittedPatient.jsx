@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Header } from '@/components/common'
-import DoctorSidebar from '@/components/doctor/dashboard/Sidebar'
+import MedicalDirectorSidebar from '@/components/medical-director/dashboard/Sidebar'
 import { getAdmissionByPatientId } from '@/services/api/admissionApi'
 import { getVitalsByPatient, normalizeVitalsResponse } from '@/services/api/vitalsAPI'
 import { getPatientById } from '@/services/api/patientsAPI'
@@ -17,6 +17,7 @@ import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
 import CreateBillModal from '@/components/modals/CreateBillModal'
 import SendToHmoModal from '@/components/modals/SendToHmoModal'
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
 import {
   FaHeartbeat,
@@ -30,7 +31,7 @@ import {
   FaPaperPlane,
 } from 'react-icons/fa'
 
-const DRAdmittedPatient = () => {
+const MDAdmittedPatient = () => {
   const { patientId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -174,15 +175,48 @@ const DRAdmittedPatient = () => {
     loadVitals()
   }, [patientId])
 
-  // Age calculation for Neonatal Care Tab (Option A: age <= 28 days from DOB)
-  const isNeonatal = useMemo(() => {
-    const dob = summarySubject?.dateOfBirth || summarySubject?.dob
-    if (!dob) return false
-    const birthDate = new Date(dob)
-    if (isNaN(birthDate.getTime())) return false
-    const ageInDays = (Date.now() - birthDate.getTime()) / (1000 * 60 * 60 * 24)
-    return ageInDays >= 0 && ageInDays <= 28
-  }, [summarySubject])
+  const subjectData = useMemo(() => {
+    if (isViewingDependant) {
+      return subject || dependantSnapshot || null
+    }
+    return patient
+  }, [isViewingDependant, subject, dependantSnapshot, patient])
+
+  const effectiveAdmissionId = admission?._id || admission?.id || null
+
+  const tabs = [
+    {
+      id: 'vitals',
+      label: 'Vitals Charting',
+      icon: FaHeartbeat,
+      count: vitals.length,
+    },
+    {
+      id: 'ward',
+      label: 'Ward Rounds',
+      icon: FaNotesMedical,
+    },
+    {
+      id: 'blood',
+      label: 'Blood Transfusion',
+      icon: FaTint,
+    },
+    {
+      id: 'ivfluid',
+      label: 'IV Fluid Intake / Output',
+      icon: FaExchangeAlt,
+    },
+    {
+      id: 'ebt',
+      label: 'EBT Monitoring',
+      icon: FaExchangeAlt,
+    },
+    {
+      id: 'neonatal',
+      label: 'Neonatal Care',
+      icon: FaBaby,
+    },
+  ]
 
   const SidebarDrawer = () => (
     <>
@@ -197,7 +231,7 @@ const DRAdmittedPatient = () => {
           sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
         } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <DoctorSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
+        <MedicalDirectorSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
       </div>
     </>
   )
@@ -213,7 +247,7 @@ const DRAdmittedPatient = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => navigate('/dashboard/doctor/admitted')}
+                  onClick={() => navigate('/dashboard/medical-director/admitted')}
                   className="btn btn-sm btn-ghost btn-circle shrink-0"
                   title="Back to Admitted List"
                 >
@@ -224,147 +258,135 @@ const DRAdmittedPatient = () => {
                     <FaBed className="text-primary shrink-0" />
                     <span>Inpatient Clinical Record</span>
                   </h1>
-                  <p className="text-xs text-base-content/60 truncate">
-                    Ward: {admission?.ward || admission?.wardId || 'General Ward'}{' '}
-                    {admission?.bedNumber ? `· Bed ${admission.bedNumber}` : ''}
-                  </p>
+                  
                 </div>
               </div>
 
               {/* Status Badge & Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
-                {admission?.status === 'discharged' ? (
-                  <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
-                    Discharged Inpatient
-                  </span>
-                ) : (
-                  <span className="badge badge-success badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 text-white font-semibold gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                    Currently Admitted
-                  </span>
-                )}
+               
 
-                {/* Send to Cashier */}
+                {/* Create Inpatient Bill */}
                 <button
                   type="button"
                   onClick={() => setIsCreateBillOpen(true)}
-                  className="btn btn-sm btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
-                  title="Generate bill and send to Cashier"
+                  className="btn btn-outline btn-primary btn-sm rounded-xl gap-1.5 font-medium shadow-xs"
                 >
                   <FaCashRegister className="w-3.5 h-3.5" />
-                  <span>Send to Cashier</span>
+                  <span>Create Bill</span>
                 </button>
 
-                {/* Send to HMO */}
+                {/* Send to HMO Modal Trigger */}
                 <button
                   type="button"
                   onClick={() => setIsSendToHmoOpen(true)}
-                  className="btn btn-sm btn-outline btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
-                  title="Generate bill and send to HMO"
+                  className="btn btn-outline btn-warning btn-sm rounded-xl gap-1.5 font-medium shadow-xs"
                 >
                   <FaPaperPlane className="w-3.5 h-3.5" />
                   <span>Send to HMO</span>
                 </button>
+
+                {/* Patient Header Quick Actions (Prescribe, Lab, etc.)
+                <PatientHeaderActions
+                  patientId={patientId}
+                  dependantId={dependantId}
+                  dependantSnapshot={subjectData}
+                  isAdmittedPatient={true}
+                  admissionId={effectiveAdmissionId}
+                  consultationId={consultationId}
+                  patient={patient}
+                  onOpenInvestigationModal={() => setIsInvestigationModalOpen(true)}
+                /> */}
               </div>
             </div>
 
-            {/* Patient Overview Card */}
+            {/* Inpatient Identity & Bed Summary */}
             <PatientDetailsCard
               patient={patient}
               summarySubject={summarySubject}
               isViewingDependant={isViewingDependant}
-              guardian={isViewingDependant ? patient : null}
+              activeAdmission={admission}
             />
 
-            {/* Inpatient Tabs Navigation */}
-            <div className="bg-base-100 p-2 rounded-2xl border border-base-200 shadow-sm overflow-x-auto">
+            {/* Admission Context Banner */}
+            {admission && (
+              <div className="p-4 bg-base-100 rounded-2xl shadow-xs border border-base-200 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div>
+                    <span className="text-base-content/60 font-medium">Assigned Ward:</span>{' '}
+                    <span className="font-bold text-base-content">{admission.ward || admission.wardId || 'General Ward'}</span>
+                  </div>
+                  {admission.bedNumber && (
+                    <div className="border-l border-base-200 pl-3">
+                      <span className="text-base-content/60 font-medium">Bed:</span>{' '}
+                      <span className="font-bold text-primary">#{admission.bedNumber}</span>
+                    </div>
+                  )}
+                  {admission.doctorName && (
+                    <div className="border-l border-base-200 pl-3">
+                      <span className="text-base-content/60 font-medium">Admitting Doctor:</span>{' '}
+                      <span className="font-bold text-base-content">{admission.doctorName}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="text-base-content/60">
+                  Admitted At:{' '}
+                  <span className="font-medium text-base-content">
+                    {admission.confirmedAt
+                      ? formatNigeriaDateTime(admission.confirmedAt)
+                      : admission.admittedAt
+                      ? formatNigeriaDateTime(admission.admittedAt)
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation Tabs Header */}
+            <div className="bg-base-100 p-2 rounded-2xl shadow-xs border border-base-200 overflow-x-auto">
               <div className="flex items-center gap-1.5 min-w-max">
-                <button
-                  onClick={() => setActiveTab('vitals')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                    activeTab === 'vitals'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:bg-base-200'
-                  }`}
-                >
-                  <FaHeartbeat className="w-4 h-4" />
-                  Vitals Chart
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('ward')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                    activeTab === 'ward'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:bg-base-200'
-                  }`}
-                >
-                  <FaNotesMedical className="w-4 h-4" />
-                  Ward Rounds
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('blood')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                    activeTab === 'blood'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:bg-base-200'
-                  }`}
-                >
-                  <FaTint className="w-4 h-4" />
-                  Blood Transfusion
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('ivfluid')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                    activeTab === 'ivfluid'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:bg-base-200'
-                  }`}
-                >
-                  <FaTint className="w-4 h-4" />
-                  IV Fluid Balance
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('ebt')}
-                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                    activeTab === 'ebt'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:bg-base-200'
-                  }`}
-                >
-                  <FaExchangeAlt className="w-4 h-4" />
-                  Exchange Transfusion (EBT)
-                </button>
-
-                {/* Neonatal Care Tab (Option A: age <= 28 days) */}
-                {isNeonatal && (
-                  <button
-                    onClick={() => setActiveTab('neonatal')}
-                    className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                      activeTab === 'neonatal'
-                        ? 'bg-primary text-primary-content shadow-sm'
-                        : 'text-base-content/70 hover:bg-base-200'
-                    }`}
-                  >
-                    <FaBaby className="w-4 h-4" />
-                    Neonatal Care (SCBU)
-                  </button>
-                )}
+                {tabs.map((t) => {
+                  const Icon = t.icon
+                  const isActive = activeTab === t.id
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTab(t.id)}
+                      className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary text-primary-content shadow-xs font-semibold'
+                          : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span>{t.label}</span>
+                      {typeof t.count === 'number' && (
+                        <span
+                          className={`badge badge-xs font-bold ${
+                            isActive
+                              ? 'bg-primary-content/20 text-primary-content'
+                              : 'bg-base-300 text-base-content/70'
+                          }`}
+                        >
+                          {t.count}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            {/* Tab Panels */}
+            {/* Active Tab View Panel */}
             {activeTab === 'vitals' && (
               <VitalsTab
+                vitals={vitals}
+                loading={vitalsLoading}
                 patientId={patientId}
                 dependantId={dependantId}
                 consultationId={consultationId}
-                patient={patient}
-                vitals={vitals}
-                loading={vitalsLoading}
+                admissionId={effectiveAdmissionId}
                 onRefresh={loadVitals}
                 isDoctor={true}
                 isNurse={false}
@@ -409,21 +431,24 @@ const DRAdmittedPatient = () => {
                 dependantId={dependantId}
                 consultationId={consultationId}
                 isDoctor={true}
+                isNurse={false}
               />
             )}
 
-            {activeTab === 'neonatal' && isNeonatal && (
+            {activeTab === 'neonatal' && (
               <NeonatalCareTab
                 patientId={patientId}
                 dependantId={dependantId}
                 consultationId={consultationId}
+                isDoctor={true}
+                isNurse={false}
               />
             )}
           </section>
         </div>
       </div>
 
-      {/* Investigation / Lab Order Modal */}
+      {/* Investigation Order Modal */}
       {isInvestigationModalOpen && (
         <OrderInvestigationModal
           isOpen={isInvestigationModalOpen}
@@ -431,57 +456,45 @@ const DRAdmittedPatient = () => {
           patientId={patientId}
           dependantId={dependantId}
           consultationId={consultationId}
-          onSaved={() => {
-            setIsInvestigationModalOpen(false)
-            toast.success('Lab investigation order placed')
+          admissionId={effectiveAdmissionId}
+        />
+      )}
+
+      {/* Create Inpatient Bill Modal */}
+      {isCreateBillOpen && (
+        <CreateBillModal
+          isOpen={isCreateBillOpen}
+          onClose={() => setIsCreateBillOpen(false)}
+          patientId={patientId}
+          dependantId={dependantId}
+          admissionId={effectiveAdmissionId}
+          consultationId={consultationId}
+          onSuccess={() => {
+            setIsCreateBillOpen(false)
+            loadAdmission()
+            toast.success('Inpatient bill generated successfully')
           }}
         />
       )}
 
-      {/* Create Bill / Send to Cashier Modal */}
-      <CreateBillModal
-        isOpen={isCreateBillOpen}
-        onClose={() => setIsCreateBillOpen(false)}
-        patientId={patientId}
-        dependantId={isViewingDependant ? dependantId : null}
-        admissionId={admission?._id || admission?.id || null}
-        consultationId={consultationId}
-        onSuccess={() => {
-          setIsCreateBillOpen(false)
-          toast.success('Bill submitted to Cashier successfully')
-          loadAdmission()
-        }}
-      />
-
       {/* Send to HMO Modal */}
-      <SendToHmoModal
-        isOpen={isSendToHmoOpen}
-        onClose={() => setIsSendToHmoOpen(false)}
-        patientId={patientId}
-        patientName={
-          summarySubject?.fullName ||
-          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
-        }
-        dependantId={isViewingDependant ? dependantId : null}
-        admissionId={admission?._id || admission?.id || null}
-        consultationId={consultationId}
-        doctorName={
-          admission?.doctorName ||
-          (admission?.doctor
-            ? `${admission?.doctor?.firstName || ''} ${admission?.doctor?.lastName || ''}`.trim()
-            : 'Attending Physician')
-        }
-        consultationDate={admission?.admittedAt || admission?.createdAt || new Date().toISOString()}
-        visitReason={admission?.reasonForAdmission || admission?.diagnosis || 'Inpatient Clinical Care & Admission'}
-        diagnosis={admission?.diagnosis || 'Inpatient Admission'}
-        onSentSuccessfully={() => {
-          setIsSendToHmoOpen(false)
-          toast.success('Bill sent to HMO successfully')
-          loadAdmission()
-        }}
-      />
+      {isSendToHmoOpen && (
+        <SendToHmoModal
+          isOpen={isSendToHmoOpen}
+          onClose={() => setIsSendToHmoOpen(false)}
+          patientId={patientId}
+          dependantId={dependantId}
+          patient={patient}
+          dependant={isViewingDependant ? subjectData : null}
+          consultationId={consultationId}
+          onSuccess={() => {
+            setIsSendToHmoOpen(false)
+            toast.success('Patient request successfully routed to HMO Desk')
+          }}
+        />
+      )}
     </div>
   )
 }
 
-export default DRAdmittedPatient
+export default MDAdmittedPatient
