@@ -99,12 +99,6 @@ const Sidebar = ({ onCloseSidebar }) => {
         location.pathname.startsWith("/dashboard/doctor/patient"),
     },
     {
-      icon: IoReceiptOutline,
-      label: "Payment Records",
-      path: "/dashboard/doctor/payment-records",
-      active: location.pathname.startsWith("/dashboard/doctor/payment-records"),
-    },
-    {
       icon: TbCalendarPlus,
       label: "Appointments",
       path: "/dashboard/doctor/appointments",
@@ -115,6 +109,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Attended Today",
       path: "/dashboard/doctor/attended-today",
       active: location.pathname === "/dashboard/doctor/attended-today",
+    },
+    {
+      icon: IoReceiptOutline,
+      label: "Payment Records",
+      path: "/dashboard/doctor/payment-records",
+      active: location.pathname.startsWith("/dashboard/doctor/payment-records"),
     },
   ];
 
