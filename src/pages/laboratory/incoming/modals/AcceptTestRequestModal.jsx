@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { updateInvestigation } from "@/services/api/investigationRequestAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
+import HmoStatusBadge from "@/components/common/HmoStatusBadge";
 
 const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
   const [completionTime, setCompletionTime] = useState("");
@@ -8,7 +9,6 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,49 +22,36 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
       setLoading(true);
       setError(null);
 
-      console.log("Submitting investigation update with:", {
-        id: data.id,
-        status: "processing",
-        processingNote: note,
-        estimatedCompletionTime: completionTime,
-      });
-
       // Update the investigation request status to "processing"
-      const response = await updateInvestigation(data.id, {
+      await updateInvestigation(data.id, {
         status: "processing",
         processingNote: note,
         estimatedCompletionTime: completionTime,
       });
-
-      console.log("Investigation updated successfully:", response);
 
       // Update patient status to awaiting_lab if not already
       if (data?.userId) {
         try {
           await updatePatientStatus(data.userId, "awaiting_lab");
-          console.log("Patient status updated to awaiting_lab");
         } catch (statusErr) {
           console.error("Error updating patient status:", statusErr);
-          // Don't fail the whole operation if status update fails
         }
       }
 
       setSuccess(true);
       
-      // Call the callback to refresh the list if provided
       if (onAcceptSuccess) {
         setTimeout(() => {
           onAcceptSuccess();
           setShowModal(false);
-        }, 1500);
+        }, 1200);
       } else {
         setTimeout(() => {
           setShowModal(false);
-        }, 1500);
+        }, 1200);
       }
     } catch (err) {
       console.error("Error accepting test request:", err);
-      console.error("Error details:", err.response?.data || err.message);
       setError(
         err.response?.data?.message ||
         err.message ||
@@ -75,57 +62,70 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 p-3  bg-black/10 backdrop-blur-sm bg-opacity-40 flex items-center justify-center">
-      <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[588px] h-[686px] w-full overflow-y-auto">
-        <p className="text-[#00943C] text-[24px]">Accept Test Request</p>
-        <p className="mt-5 text-[#605D66] text-[12px]">
-          Confirm acceptance and provide initial details for processing
-        </p>
+    <div className="fixed inset-0 z-50 p-3 bg-black/40 backdrop-blur-xs flex items-center justify-center overflow-y-auto">
+      <div className="bg-base-100 text-base-content border border-base-200 shadow-2xl rounded-2xl p-6 max-w-[520px] w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-3 border-b border-base-200 pb-3">
+          <div>
+            <h3 className="text-primary text-xl font-bold">Accept Test Request</h3>
+            <p className="mt-0.5 text-base-content/70 text-xs">
+              Confirm acceptance and provide initial details for lab processing
+            </p>
+          </div>
+          {data?.hmoStatus && (
+            <HmoStatusBadge
+              hmoStatus={data.hmoStatus}
+              approvedBy={data.hmoApprovedBy}
+              approvedAt={data.hmoApprovedAt}
+              size="sm"
+            />
+          )}
+        </div>
 
         {success && (
-          <div className="mt-4 p-4 bg-green-100 text-green-700 rounded">
+          <div className="mt-4 p-3 bg-success/15 border border-success/30 text-success rounded-xl text-sm font-medium">
             Test request accepted successfully!
           </div>
         )}
 
         {error && (
-          <div className="mt-4 p-4 bg-red-100 text-red-700 rounded">
+          <div className="mt-4 p-3 bg-error/15 border border-error/30 text-error rounded-xl text-sm font-medium">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="mt-5">
-            <label className="block font-semibold">Patient Name</label>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div>
+            <label className="block text-xs font-semibold text-base-content/70 mb-1">Patient Name</label>
             <input
               type="text"
               value={data?.name || ""}
               disabled
-              className="input w-full py-7 mt-3 bg-gray-100"
+              className="input input-bordered w-full bg-base-200/50 text-base-content font-medium"
             />
           </div>
-          <div className="mt-5">
-            <label className="block font-semibold">Test Type</label>
+
+          <div>
+            <label className="block text-xs font-semibold text-base-content/70 mb-1">Test Type / Requested Tests</label>
             <input
               type="text"
               value={data?.test || ""}
               disabled
-              className="input py-7 w-full mt-3 bg-gray-100"
+              className="input input-bordered w-full bg-base-200/50 text-base-content font-medium"
             />
           </div>
 
-          <div className="mt-5">
-            <label className="block font-semibold">
-              Estimated Completion Time
+          <div>
+            <label className="block text-xs font-semibold text-base-content/70 mb-1">
+              Estimated Completion Time <span className="text-error">*</span>
             </label>
             <select
               id="completionTime"
               value={completionTime}
               onChange={(e) => setCompletionTime(e.target.value)}
               disabled={loading}
-              className="h-[56px] border border-[#AEAAAE] rounded-[6px] bg-[#F7F7F7] px-3 w-full appearance-auto text-black"
+              className="select select-bordered w-full bg-base-100 text-base-content"
             >
-              <option value="">-- Select an option --</option>
+              <option value="">-- Select an estimated time --</option>
               <option value="1 hour">1 hour</option>
               <option value="2 hours">2 hours</option>
               <option value="4 hours">4 hours</option>
@@ -134,35 +134,43 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
             </select>
           </div>
 
-          <div className="mt-5">
-            <label className="block font-semibold">Note (Optional)</label>
+          <div>
+            <label className="block text-xs font-semibold text-base-content/70 mb-1">Note (Optional)</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Add any relevant note about this test"
+              placeholder="Add any relevant notes or specimen remarks..."
               disabled={loading}
               rows="3"
-              className="w-full p-3 border border-[#AEAAAE] rounded-[6px] mt-3"
+              className="textarea textarea-bordered w-full bg-base-100 text-base-content"
             />
           </div>
-        </form>
 
-        <div className="flex gap-5 mt-10 ">
-          <button
-            onClick={() => setShowModal(false)}
-            disabled={loading}
-            className="w-[254px] h-[54px] border rounded-[6px] cursor-pointer disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-[254px] h-[52px] text-[#FFFFFF] bg-[#00943C] rounded-[6px] cursor-pointer disabled:opacity-50"
-          >
-            {loading ? "Processing..." : "Confirm & Send"}
-          </button>
-        </div>
+          <div className="flex items-center gap-3 pt-4 border-t border-base-200">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              disabled={loading}
+              className="btn btn-outline flex-1"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary flex-1"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="loading loading-spinner loading-xs" />
+                  Processing...
+                </span>
+              ) : (
+                "Confirm & Process"
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
