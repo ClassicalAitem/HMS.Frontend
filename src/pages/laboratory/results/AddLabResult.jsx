@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
+import { Header, HmoStatusBadge } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -556,28 +556,24 @@ useEffect(() => {
       if (investigationId) {
         let foundInvestigation = null;
 
-        // Try regular investigations first
+        // Fetch investigation directly by ID first (fast)
         try {
-          const res = await getInvestigations();
-          const list = Array.isArray(res) ? res : res?.data || [];
-
-          foundInvestigation = list.find(
-            (inv) => inv._id === investigationId || inv.id === investigationId
-          );
+          const res = await getInvestigationById(investigationId);
+          foundInvestigation = res?.data || res;
         } catch {
-          console.warn("Failed to load investigations list");
+          console.warn("Failed to load investigation directly by ID, trying fallback");
         }
 
-        // If not found, try to fetch directly by investigation ID (might work for OPD too)
-        if (!foundInvestigation) {
+        // Fallback if not found
+        if (!foundInvestigation || (!foundInvestigation._id && !foundInvestigation.id)) {
           try {
-            // Try to get investigation by ID directly
-            const res = await getInvestigationById(investigationId);
-            if (res?.data || res) {
-              foundInvestigation = res?.data || res;
-            }
+            const res = await getInvestigations();
+            const list = Array.isArray(res) ? res : res?.data || [];
+            foundInvestigation = list.find(
+              (inv) => inv._id === investigationId || inv.id === investigationId
+            );
           } catch {
-            console.warn("Failed to load investigation by ID");
+            console.warn("Failed to load investigations fallback list");
           }
         }
 
@@ -588,45 +584,53 @@ useEffect(() => {
 
         setInvestigation(foundInvestigation);
 
-        // doctor name
-      let referralName = "";
-      if (foundInvestigation.doctorId) {
-        try {
-        const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
-        const doc = docRes?.data?.data || docRes?.data || docRes;
-        referralName = doc?.name || `${doc?.firstName || ""} ${doc?.lastName || ""}`.trim();
-        console.log('Final referralName:', referralName);
-        } catch {
-          console.warn("Failed to load doctor data for referral name");
+        // Doctor / referral name
+        let referralName =
+          foundInvestigation.doctorName ||
+          foundInvestigation.doctor?.name ||
+          (foundInvestigation.doctor?.firstName
+            ? `${foundInvestigation.doctor.firstName} ${foundInvestigation.doctor.lastName || ""}`.trim()
+            : "");
+
+        if (!referralName && foundInvestigation.doctorId) {
+          try {
+            const docRes = await usersAPI.getUserById(foundInvestigation.doctorId);
+            const doc = docRes?.data?.data || docRes?.data || docRes;
+            referralName = doc?.name || `${doc?.firstName || ""} ${doc?.lastName || ""}`.trim();
+          } catch {
+            console.warn("Failed to load doctor data for referral name");
+          }
         }
-      }
 
-      // Set referral immediately so it's not lost
-      setFormData(prev => ({ ...prev, referral: referralName }));
+        setFormData((prev) => ({ ...prev, referral: referralName }));
 
+        // Resolve patient: check enriched fields first before falling back to API
+        if (foundInvestigation.dependantId) {
+          let dependant = foundInvestigation.dependant;
+          if (!dependant) {
+            const depRes = await getDependantById(foundInvestigation.dependantId);
+            dependant = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.data || depRes;
+          }
 
-      if (foundInvestigation.dependantId) {
-        const depRes = await getDependantById(foundInvestigation.dependantId);
-        const dependant = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.data || depRes;
-
-        setPatient(dependant);
-        setIsDependant(true);
-        setMainPatientId(foundInvestigation.patientId);
-        mapToForm(dependant , referralName);
-
-        return;
+          setPatient(dependant);
+          setIsDependant(true);
+          setMainPatientId(foundInvestigation.patientId);
+          mapToForm(dependant, referralName);
+          return;
         } else {
-          let patientData = null;
+          let patientData = foundInvestigation.opdPatient || foundInvestigation.patient;
 
-          if (foundInvestigation.opdPatientId) {
-            try {
-              const res = await getOpdPatientById(foundInvestigation.opdPatientId);
-              patientData = res?.data || res;
-            } catch (err) {
-              console.warn("Failed to load OPD patient:", err);
+          if (!patientData) {
+            if (foundInvestigation.opdPatientId) {
+              try {
+                const res = await getOpdPatientById(foundInvestigation.opdPatientId);
+                patientData = res?.data || res;
+              } catch (err) {
+                console.warn("Failed to load OPD patient:", err);
+              }
+            } else if (foundInvestigation.patientId) {
+              patientData = await loadPatientData(foundInvestigation.patientId);
             }
-          } else if (foundInvestigation.patientId) {
-            patientData = await loadPatientData(foundInvestigation.patientId);
           }
 
           if (patientData) {
@@ -635,8 +639,7 @@ useEffect(() => {
           }
         }
 
-        // shared fields
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           clinicalDiagnosis: foundInvestigation?.clinicalDiagnosis || "",
           referral: referralName,
@@ -942,6 +945,7 @@ const SidebarDrawer = () => (
                       onChange={(val) => handleInputChange("date", null, val)}
                       type="date"
                     />
+                    
                     <InputField
                       label="Referral/Doctor"
                       value={formData.referral}
