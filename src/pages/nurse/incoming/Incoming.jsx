@@ -5,8 +5,9 @@ import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
 import { hasAnyStatus } from "@/utils/statusUtils";
+import { PatientStatusBadge } from "@/components/common";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDateTime, formatNigeriaDateTimeShort } from "@/utils/formatDateTimeUtils";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
@@ -103,6 +104,8 @@ const Incoming = () => {
               illness: prettifyStatus(latestStatus),
               updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
               status: latestStatus.toLowerCase(),
+              statusUser: p?.statusUser,
+              statusSenderName: p?.statusSenderName,
             };
           });
 
@@ -126,6 +129,8 @@ const Incoming = () => {
               illness: prettifyStatus(latestStatus),
               updatedAt: d?.updatedAt ? formatNigeriaDateTime(d.updatedAt) : "—",
               status: latestStatus.toLowerCase(),
+              statusUser: d?.statusUser,
+              statusSenderName: d?.statusSenderName,
             };
           });
 
@@ -344,9 +349,9 @@ const Incoming = () => {
                 <div className="col-span-3">Patient</div>
                 <div className="col-span-2">Patient ID</div>
                 <div className="col-span-2">Type</div>
-                <div className="col-span-2">Care Task</div>
-                <div className="col-span-2">Routed Time</div>
-                <div className="col-span-1 text-right">Action</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-2">Time and Date</div>
+                <div className="col-span-2 text-right">Action</div>
               </div>
             )}
 
@@ -432,25 +437,25 @@ const Incoming = () => {
                           )}
                         </div>
                         <div className="md:col-span-2">
-                          <span
-                            className={`badge badge-sm ${statusBadgeClass(
-                              data.illness
-                            )}`}
-                          >
-                            {data.illness}
-                          </span>
+                          <PatientStatusBadge
+                            status={data.illness}
+                            statusSenderName={data.statusSenderName}
+                            statusUser={data.statusUser}
+                            updatedAt={data.snapshot?.updatedAt || data.updatedAt}
+                            tooltipAlign="left"
+                          />
                         </div>
                       </div>
 
-                      <div className="md:col-span-2">
+                      <div className="md:col-span-1">
                         <span className="text-xs text-base-content/60 md:text-sm">
-                          {data.updatedAt}
+                          {formatNigeriaDateTimeShort(data.snapshot?.updatedAt || data.updatedAt)}
                         </span>
                       </div>
 
-                      <div className="md:col-span-1 flex items-center justify-end gap-2">
+                      <div className="md:col-span-2 flex flex-wrap items-center justify-end gap-2">
                         <button
-                          className="btn btn-xs sm:btn-sm btn-primary rounded-xl font-medium shadow-2xs"
+                          className="btn btn-xs sm:btn-sm btn-primary rounded-xl font-medium shadow-2xs min-w-16"
                           onClick={() =>
                             data.id &&
                             navigate(`/dashboard/nurse/patient/${data.patientId}`, {

@@ -123,7 +123,7 @@ const VitalsChart = ({ data = [], vitals }) => {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
-                Continuous Clinical Vitals Observation Chart
+                Continuous Vitals Observation Chart
               </h3>
               {sorted.length > 0 && (
                 <span className="badge badge-primary badge-outline badge-xs sm:badge-sm font-semibold">

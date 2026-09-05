@@ -14,7 +14,7 @@ const MedicalDirectorLayout = ({ children }) => {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-base-300/20">
+    <div className="flex h-screen max-h-screen w-full overflow-hidden bg-base-200">
       {isSidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -30,10 +30,10 @@ const MedicalDirectorLayout = ({ children }) => {
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
+      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden bg-base-200">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-2 py-1 sm:p-4 lg:p-6">
+        <div className="flex-1 h-full min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-5">
           {children}
         </div>
       </div>

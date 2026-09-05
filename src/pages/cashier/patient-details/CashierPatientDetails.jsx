@@ -88,6 +88,9 @@ const CashierPatientDetails = () => {
         phone: guardian.phone || guardian.phoneNumber,
         hospitalId: guardian.hospitalId,
         status: guardian.status,
+        statusSenderName: guardian.statusSenderName,
+        statusUser: guardian.statusUser,
+        updatedAt: guardian.updatedAt,
         hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
       };
@@ -109,6 +112,9 @@ const CashierPatientDetails = () => {
       // Hospital ID always belongs to the parent/guardian patient record
       hospitalId: guardian.hospitalId,
       status: dep.status || dependantSnapshot?.status || 'Unknown',
+      statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+      statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+      updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
       hmos: ownHmos,
       relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
     };

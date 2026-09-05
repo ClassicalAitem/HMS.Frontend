@@ -152,6 +152,9 @@ const summarySubject = useMemo(() => {
       phone: guardian.phone || guardian.phoneNumber || '—',
       hospitalId: guardian.hospitalId || '—',
       status: guardian.status || 'Unknown',
+      statusSenderName: guardian.statusSenderName,
+      statusUser: guardian.statusUser,
+      updatedAt: guardian.updatedAt,
       dob: guardian.dob || guardian.dateOfBirth || guardian.birthDate,
       cardType: guardian.cardType || 'personal',
       familyName: guardian.familyName || guardian.lastName,
@@ -175,6 +178,9 @@ const summarySubject = useMemo(() => {
     phone: dep.phone || guardian.phone || guardian.phoneNumber || '—',
     hospitalId: guardian.hospitalId || '—',
     status: dep.status || dependantSnapshot?.status || 'Unknown',
+    statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+    statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+    updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
     dob: dep.dob || dep.dateOfBirth || dep.birthDate,
     cardType: dep.cardType || guardian.cardType || 'personal',
     familyName: dep.familyName || guardian.familyName || dep.lastName || guardian.lastName,
@@ -720,7 +726,7 @@ const latestLab = useMemo(() => {
     const getLabInvestigationBillItems = () => {
       if (!Array.isArray(investigations)) return [];
 
-      const unbilledInvestigations = investigations.filter(inv => !inv.isBilled && !inv.billId);
+      const unbilledInvestigations = investigations.filter(inv => !inv.isBilled && !inv.billId && String(inv.status || '').toLowerCase() !== 'cancelled');
 
       return unbilledInvestigations.flatMap(inv => {
         const serviceCharge = serviceCharges.find(sc => sc.id === inv.serviceChargeId);
@@ -756,7 +762,7 @@ const latestLab = useMemo(() => {
     const getPrescriptionBillItems = () => {
   if (!Array.isArray(prescriptions)) return [];
 
-  const unbilledPrescriptions = prescriptions.filter(pres => !pres.isBilled && !pres.billId);
+  const unbilledPrescriptions = prescriptions.filter(pres => !pres.isBilled && !pres.billId && String(pres.status || '').toLowerCase() !== 'cancelled');
 
   return unbilledPrescriptions.flatMap(pres => {
     const serviceCharge = serviceCharges.find(sc => sc.id === pres.serviceChargeId);
@@ -810,7 +816,7 @@ const latestLab = useMemo(() => {
     const getAdmissionBillItems = () => {
       if (!Array.isArray(admissions)) return [];
 
-      const unbilledAdmissions = admissions.filter(adm => !adm.isBilled && !adm.billId);
+      const unbilledAdmissions = admissions.filter(adm => !adm.isBilled && !adm.billId && String(adm.status || '').toLowerCase() !== 'cancelled');
 
       return unbilledAdmissions.flatMap(adm => {
         const items = Array.isArray(adm.admissions) ? adm.admissions : [];
@@ -846,7 +852,7 @@ const latestLab = useMemo(() => {
       if (!Array.isArray(procedures)) return [];
 
       const unbilledProcedures = procedures.filter(
-        (proc) => !proc.isBilled && !proc.billId && !billedItemIds.has(proc.id || proc._id || proc.appointmentId)
+        (proc) => !proc.isBilled && !proc.billId && !billedItemIds.has(proc.id || proc._id || proc.appointmentId) && String(proc.status || '').toLowerCase() !== 'cancelled'
       );
 
       return unbilledProcedures.map((proc) => {
