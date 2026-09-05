@@ -81,6 +81,8 @@ import MDPatients from "@/pages/medical-director/patients/Patients";
 import MDAppointment from "@/pages/medical-director/appiontments/Appointment";
 import MDPaymentRecords from "@/pages/medical-director/payment-records/ReceiptRecord";
 import MDTask from "@/pages/medical-director/assignTask/Task";
+import MDAdmittedList from "@/pages/medical-director/admitted/AdmittedList";
+import MDAdmittedPatient from "@/pages/medical-director/admitted/AdmittedPatient";
 
 // Admin Dashboard
 import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
@@ -107,6 +109,8 @@ import GenerateReports from "@/pages/superadmin/reports/GenerateReports";
 import ManageUsers from "@/pages/superadmin/users/ManageUsers";
 import SuperAdminPatients from "@/pages/superadmin/patients/Patients";
 import SuperPatientDetails from "@/pages/superadmin/patients/PatientDetails";
+import SuperAdminAdmittedList from "@/pages/superadmin/admitted/SuperAdminAdmittedList";
+import SuperAdminAdmittedPatient from "@/pages/superadmin/admitted/SuperAdminAdmittedPatient";
 import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
 import SuperAdminAppointments from "@/pages/superadmin/appointments/Appointments";
 import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
@@ -684,6 +688,26 @@ const AppRoutes = () => {
           <MDPaymentRecords />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/medical-director/admitted" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/admitted/:patientId" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAdmittedPatient />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/admittedPatients" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/medical-director/admittedPatients/:patientId" element={
+        <ProtectedRoute allowedRoles={['medical-director']}>
+          <MDAdmittedPatient />
+        </ProtectedRoute>
+      } />
 
       {/* HMO Dashboard Routes */}
       <Route path="/dashboard/hmo" element={
@@ -808,6 +832,26 @@ const AppRoutes = () => {
       <Route path="/superadmin/patients/patientDetails/:patientId" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperPatientDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/admitted" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SuperAdminAdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/admitted/patient/:patientId" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SuperAdminAdmittedPatient />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/admitted/patient/:patientId/dependant/:dependantId" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SuperAdminAdmittedPatient />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/admitted/dependant/:dependantId" element={
+        <ProtectedRoute allowedRoles={['super-admin']}>
+          <SuperAdminAdmittedPatient />
         </ProtectedRoute>
       } />
       {/* <Route path="/superadmin/patients/:patientId" element={

@@ -27,6 +27,7 @@ import {
   FaTimes,
   FaHospital,
   FaStethoscope,
+  FaLock,
 } from 'react-icons/fa';
 import AddDiagnosisModal from './modals/AddDiagnosisModal';
 import OrderInvestigationModal from './modals/OrderInvestigationModal';
@@ -217,13 +218,15 @@ const ViewConsultation = () => {
     };
   }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 
-  const canEdit = useMemo(() => {
+  const isConsultationExpired = useMemo(() => {
     if (!consultation?.createdAt) return false;
     return (
-      Date.now() - new Date(consultation.createdAt).getTime() <
+      Date.now() - new Date(consultation.createdAt).getTime() >=
       24 * 60 * 60 * 1000
     );
-  }, [consultation]);
+  }, [consultation?.createdAt]);
+
+  const canEdit = !isConsultationExpired;
 
   const loadData = async () => {
     try {
@@ -767,7 +770,7 @@ const getInventoryMatch = (medication) => {
 
  const getBillItems = () => {
   const labItems = labRequests
-    .filter((lab) => !lab.isBilled && !lab.billId)
+    .filter((lab) => !lab.isBilled && !lab.billId && String(lab.status || '').toLowerCase() !== 'cancelled')
     .flatMap((lab) =>
       (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
         const testName =
@@ -927,7 +930,8 @@ const getInventoryMatch = (medication) => {
     .filter(
       (admission) =>
         !admission.isBilled &&
-        !admission.billId
+        !admission.billId &&
+        String(admission.status || '').toLowerCase() !== 'cancelled'
     )
     .flatMap((admission) =>
       (
@@ -957,7 +961,7 @@ const getInventoryMatch = (medication) => {
     );
 
   const procedureItems = procedures
-    .filter((proc) => !proc.isBilled && !proc.billId)
+    .filter((proc) => !proc.isBilled && !proc.billId && String(proc.status || '').toLowerCase() !== 'cancelled')
     .map((proc) => {
       const matchingCharge = serviceCharges.find(
         (sc) =>
@@ -1444,6 +1448,11 @@ const getInventoryMatch = (medication) => {
               (of {patientName})
             </span>
           )}
+          {isConsultationExpired && (
+            <span className="badge badge-error badge-xs sm:badge-sm gap-1 font-semibold">
+              <FaLock className="w-3 h-3" /> Expired (24h+)
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -1558,15 +1567,17 @@ const getInventoryMatch = (medication) => {
                         Consultation Overview
                       </h3>
                     </div>
-                    <button
-                      className="btn btn-sm btn-outline btn-success gap-2 w-full sm:w-auto"
-                      onClick={() => setIsDiagnosisModalOpen(true)}
-                    >
-                      <FaPlus className="w-3 h-3" />
-                      {!diagnosis || diagnosis.toLowerCase().includes('pending')
-                        ? 'Add Diagnosis'
-                        : 'Edit Diagnoses'}
-                    </button>
+                    {canEdit && (
+                      <button
+                        className="btn btn-sm btn-outline btn-success gap-2 w-full sm:w-auto"
+                        onClick={() => setIsDiagnosisModalOpen(true)}
+                      >
+                        <FaPlus className="w-3 h-3" />
+                        {!diagnosis || diagnosis.toLowerCase().includes('pending')
+                          ? 'Add Diagnosis'
+                          : 'Edit Diagnoses'}
+                      </button>
+                    )}
                   </div>
 
                   <div className="p-3 sm:p-6 grid gap-3 sm:gap-6">
@@ -1992,44 +2003,50 @@ const getInventoryMatch = (medication) => {
                         Treatment Plan & Orders
                       </h3>
                     </div>
-                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                      <button
-                        className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2 flex-1 sm:flex-none min-w-[120px]"
-                        onClick={() => setIsInvestigationModalOpen(true)}
-                      >
-                        <FaFlask className="hidden sm:inline" /> Order Labs
-                      </button>
-                      <button
-                        className="btn btn-sm btn-primary gap-2 flex-1 sm:flex-none min-w-[120px]"
-                        onClick={() =>
-                          navigate(
-                            `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
-                            {
-                              state: {
-                                dependantId: consultation?.dependantId || null,
-                                dependantSnapshot:
-                                  consultation?.dependant || null,
-                                patientSnapshot: patient,
+                    {canEdit ? (
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                        <button
+                          className="btn btn-sm btn-ghost text-primary hover:bg-primary/10 gap-2 flex-1 sm:flex-none min-w-[120px]"
+                          onClick={() => setIsInvestigationModalOpen(true)}
+                        >
+                          <FaFlask className="hidden sm:inline" /> Order Labs
+                        </button>
+                        <button
+                          className="btn btn-sm btn-primary gap-2 flex-1 sm:flex-none min-w-[120px]"
+                          onClick={() =>
+                            navigate(
+                              `/dashboard/doctor/medical-history/${patientId}/consultation/${consultationId}/prescription`,
+                              {
+                                state: {
+                                  dependantId: consultation?.dependantId || null,
+                                  dependantSnapshot:
+                                    consultation?.dependant || null,
+                                  patientSnapshot: patient,
+                                },
                               },
-                            },
-                          )
-                        }
-                      >
-                        <FaPrescriptionBottleAlt className="hidden sm:inline" /> Prescribe
-                      </button>
-                      <button
-                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200 gap-2 flex-1 sm:flex-none min-w-[120px]"
-                        onClick={() => setIsAdmissionModalOpen(true)}
-                      >
-                        <FaHospital className="hidden sm:inline" /> Admit
-                      </button>
-                      <button
-                        className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200 gap-2 flex-1 sm:flex-none min-w-[120px]"
-                        onClick={handleAddProcedureClick}
-                      >
-                        <FaHospital className="hidden sm:inline" /> Procedure
-                      </button>
-                    </div>
+                            )
+                          }
+                        >
+                          <FaPrescriptionBottleAlt className="hidden sm:inline" /> Prescribe
+                        </button>
+                        <button
+                          className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200 gap-2 flex-1 sm:flex-none min-w-[120px]"
+                          onClick={() => setIsAdmissionModalOpen(true)}
+                        >
+                          <FaHospital className="hidden sm:inline" /> Admit
+                        </button>
+                        <button
+                          className="btn btn-sm btn-ghost text-base-content/70 hover:bg-base-200 gap-2 flex-1 sm:flex-none min-w-[120px]"
+                          onClick={handleAddProcedureClick}
+                        >
+                          <FaHospital className="hidden sm:inline" /> Procedure
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="badge badge-error badge-sm gap-1 font-semibold py-2 px-3">
+                        <FaLock className="w-3 h-3" /> Actions Locked (24h+ Expired)
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-3 sm:p-6 space-y-6 sm:space-y-8">
@@ -2072,8 +2089,7 @@ const getInventoryMatch = (medication) => {
                               </div>
 
                               {/* ACTION BUTTONS */}
-                              {/* ACTION BUTTONS */}
-                              {!lab.isBilled && (
+                              {!lab.isBilled && canEdit && (
                                 <div className="flex gap-2">
                                   <button
                                     type="button"
@@ -2361,7 +2377,7 @@ const getInventoryMatch = (medication) => {
                                 </div>
 
                                 {/* ACTION BUTTONS */}
-                                {!pres.isBilled && (
+                                {!pres.isBilled && canEdit && (
                                   <div className="flex gap-2">
                                     <button
                                       type="button"
@@ -2489,7 +2505,7 @@ const getInventoryMatch = (medication) => {
                                   )}
                                 </div>
 
-                                {!admission.isBilled && (
+                                {!admission.isBilled && canEdit && (
                                   <button
                                     type="button"
                                     className="btn btn-xs btn-ghost text-error"

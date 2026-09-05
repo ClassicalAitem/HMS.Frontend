@@ -6,6 +6,7 @@ import { RiSuitcaseLine, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } fro
 import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { normalizeStatus, getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
+import { PatientStatusBadge } from "@/components/common";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import KolakLoader from "@/components/common/KolakLoader";
@@ -67,6 +68,8 @@ const IncomingHmo = () => {
             insurance: p?.hmos?.provider || "—",
             updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
             snapshot: p,
+            statusUser: p?.statusUser,
+            statusSenderName: p?.statusSenderName,
           }));
 
         const patientMap = new Map(allPatients.map(p => [p.id || p._id, p]));
@@ -87,6 +90,8 @@ const IncomingHmo = () => {
               insurance: d?.hmos?.provider || "—",
               updatedAt: d?.updatedAt ? formatNigeriaDateTime(d.updatedAt) : "—",
               snapshot: d,
+              statusUser: d?.statusUser,
+              statusSenderName: d?.statusSenderName,
             };
           });
 
@@ -279,7 +284,13 @@ const IncomingHmo = () => {
                             )}
                           </div>
                           <div className="md:col-span-2">
-                            <span className={`badge badge-sm ${badgeClass}`}>{displayStatus}</span>
+                            <PatientStatusBadge
+                              status={item.status}
+                              statusSenderName={item.statusSenderName}
+                              statusUser={item.statusUser}
+                              updatedAt={item.updatedAt}
+                              tooltipAlign="left"
+                            />
                           </div>
                         </div>
 
