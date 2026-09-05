@@ -36,8 +36,10 @@ import {
 } from '@/services/api/vitalsAPI';
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { getDependantById } from '@/services/api/dependantAPI';
+import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
 import { ConsultationDetailModal } from '@/components/modals';
+import { FaBed } from 'react-icons/fa';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -68,6 +70,8 @@ const PatientDetails = () => {
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [latestVital, setLatestVital] = useState(null);
   const [vitalsLoading, setVitalsLoading] = useState(true);
+  const [admissions, setAdmissions] = useState([]);
+  const [admissionsLoading, setAdmissionsLoading] = useState(true);
 
   // Prefer snapshot passed from Incoming; fallback to store
   const snapshot = location?.state?.patientSnapshot || null;
@@ -83,10 +87,12 @@ const PatientDetails = () => {
       setConsultationsLoading(true);
       setAppointmentsLoading(true);
       setVitalsLoading(true);
-      const [consultationResult, appointmentResult, vitalResult] = await Promise.allSettled([
+      setAdmissionsLoading(true);
+      const [consultationResult, appointmentResult, vitalResult, admissionResult] = await Promise.allSettled([
         getConsultations({ patientId }),
         getAllAppointments({ patientId }),
         getVitalsByPatient(patientId),
+        getAdmissionByPatientId(patientId, { ...(dependantId ? { dependantId } : {}) }),
       ]);
 
       if (!mounted) return;
@@ -111,6 +117,14 @@ const PatientDetails = () => {
         setLatestVital(getLatestVital(vitals));
       } else setLatestVital(null);
       setVitalsLoading(false);
+
+      if (admissionResult.status === 'fulfilled') {
+        const raw = admissionResult.value?.data?.data ?? admissionResult.value?.data ?? admissionResult.value ?? [];
+        const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+        const scoped = list.filter((item) => (isViewingDependant ? String(item.dependantId) === String(dependantId) : !item.dependantId));
+        setAdmissions([...scoped].sort((a, b) => new Date(b.admittedAt || b.createdAt || 0) - new Date(a.admittedAt || a.createdAt || 0)));
+      } else setAdmissions([]);
+      setAdmissionsLoading(false);
     };
     loadClinicalData();
     return () => { mounted = false; };
@@ -168,6 +182,9 @@ const PatientDetails = () => {
         phone: guardian.phone || guardian.phoneNumber,
         hospitalId: guardian.hospitalId,
         status: guardian.status,
+        statusSenderName: guardian.statusSenderName,
+        statusUser: guardian.statusUser,
+        updatedAt: guardian.updatedAt,
         hmos: Array.isArray(guardian.hmos) ? guardian.hmos.filter((h) => !h.dependantId) : [],
         relationshipType: null,
       };
@@ -186,6 +203,9 @@ const PatientDetails = () => {
       phone: dep.phone || guardian.phone || guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
       status: dep.status || dependantSnapshot?.status || 'Unknown',
+      statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+      statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+      updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
       hmos: ownHmos,
       relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
     };
@@ -206,6 +226,9 @@ const PatientDetails = () => {
       dob: dep.dob,
       gender: dep.gender,
       status: dep.status || dependantSnapshot?.status,
+      statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
+      statusUser: dep.statusUser || dependantSnapshot?.statusUser,
+      updatedAt: dep.updatedAt || dependantSnapshot?.updatedAt,
       relationshipType: dep.relationshipType || dependantSnapshot?.relationshipType,
       hospitalId: guardian.hospitalId,
       hmos: Array.isArray(guardian.hmos)
@@ -430,6 +453,119 @@ const PatientDetails = () => {
                                         {appointment.department && <p className="mt-1 text-xs capitalize text-base-content/60">{appointment.department}</p>}
                                         {appointment.notes && <p className="mt-1 line-clamp-2 text-xs text-base-content/50">{appointment.notes}</p>}
                                       </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </details>
+
+                          <details className="group rounded-lg border border-base-300 bg-base-100">
+                            <summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold text-base-content">
+                              <span className="flex items-center gap-2">
+                                <FaBed className="text-primary w-4 h-4" />
+                                <span>Admissions & Inpatient Records ({admissions.length})</span>
+                              </span>
+                              <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
+                            </summary>
+                            <div className="border-t border-base-200 p-4">
+                              {admissionsLoading ? (
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                  {Array.from({ length: 2 }).map((_, index) => (
+                                    <div key={index} className="skeleton h-28 w-full rounded-lg" />
+                                  ))}
+                                </div>
+                              ) : admissions.length === 0 ? (
+                                <div className="py-6 text-center text-sm text-base-content/50">
+                                  No admission history found for this patient.
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                  {admissions.map((adm) => {
+                                    const admId = adm.id || adm._id;
+                                    const isDischarged = adm.status === 'discharged';
+                                    const wardName = adm.ward?.name || adm.wardName || 'Ward Unassigned';
+                                    const bedNum = adm.bedNumber || adm.bed?.bedNumber || 'Pending Bed';
+                                    const docName =
+                                      adm.admittedByDoctor?.name ||
+                                      adm.doctorName ||
+                                      (adm.doctor
+                                        ? `Dr. ${adm.doctor.firstName || ''} ${adm.doctor.lastName || ''}`.trim()
+                                        : 'Attending Doctor');
+
+                                    return (
+                                      <article
+                                        key={admId}
+                                        className="rounded-xl border border-base-300 bg-base-100 p-4 transition-all hover:border-primary/50 hover:bg-base-200/40 shadow-sm"
+                                      >
+                                        <div className="mb-2 flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-2">
+                                            <span
+                                              className={`badge badge-sm font-semibold ${
+                                                isDischarged
+                                                  ? 'badge-success'
+                                                  : adm.confirmedAt
+                                                  ? 'badge-primary'
+                                                  : 'badge-warning'
+                                              }`}
+                                            >
+                                              {isDischarged
+                                                ? 'Discharged'
+                                                : adm.confirmedAt
+                                                ? 'Admitted'
+                                                : 'Awaiting Ward'}
+                                            </span>
+                                            <span className="text-xs text-base-content/70 font-semibold">
+                                              {wardName} {bedNum ? `· Bed ${bedNum}` : ''}
+                                            </span>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (isViewingDependant) {
+                                                navigate(
+                                                  `/superadmin/admitted/patient/${patientId}/dependant/${dependantId}`,
+                                                  {
+                                                    state: {
+                                                      patientSnapshot: patient,
+                                                      dependantSnapshot: subject || dependantSnapshot,
+                                                      dependantId,
+                                                      admission: adm,
+                                                    },
+                                                  }
+                                                );
+                                              } else {
+                                                navigate(`/superadmin/admitted/patient/${patientId}`, {
+                                                  state: {
+                                                    patientSnapshot: patient,
+                                                    admission: adm,
+                                                  },
+                                                });
+                                              }
+                                            }}
+                                            className="btn btn-xs btn-primary btn-outline"
+                                          >
+                                            View Inpatient Record
+                                          </button>
+                                        </div>
+                                        <div className="text-xs space-y-1 mt-2">
+                                          <p className="text-base-content/80">
+                                            <span className="font-semibold text-base-content/50 uppercase tracking-wider text-[10px] block">
+                                              Diagnosis / Reason:
+                                            </span>
+                                            {adm.diagnosis || adm.reason || 'General inpatient care'}
+                                          </p>
+                                          <div className="flex items-center justify-between text-base-content/60 pt-2 border-t border-base-200 mt-2">
+                                            <span>Doctor: {docName}</span>
+                                            <span>
+                                              Admitted:{' '}
+                                              {adm.admittedAt || adm.createdAt
+                                                ? formatNigeriaDate(adm.admittedAt || adm.createdAt)
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </article>
                                     );
                                   })}
                                 </div>

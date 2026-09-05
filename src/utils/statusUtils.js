@@ -148,3 +148,69 @@ export const mergePatientStatus = (currentStatus, completingRole, newStatus) => 
   const normalizedNew = normalizeStatus(newStatus);
   return normalizedNew;
 };
+
+/**
+ * Format status sender short name for hover tooltip display (From: Surname .AA)
+ * Accepts either (statusUser, statusSenderName) or (statusSenderName, statusUser) or single arguments.
+ * @param {object|string} arg1 - Status user object or sender string
+ * @param {string|object} arg2 - Sender string or status user object
+ * @returns {string|null} - "From: Dr.Surname" or null
+ */
+export const formatSenderShortName = (arg1, arg2) => {
+  // 1. Check if either argument is a valid sender name string
+  const rawString =
+    typeof arg1 === 'string' && arg1.trim()
+      ? arg1.trim()
+      : typeof arg2 === 'string' && arg2.trim()
+      ? arg2.trim()
+      : null;
+
+  // 2. Check if either argument is a user object
+  const user =
+    arg1 && typeof arg1 === 'object'
+      ? arg1
+      : arg2 && typeof arg2 === 'object'
+      ? arg2
+      : null;
+
+  const role = user?.accountType || user?.role;
+  const rolePrefix = (() => {
+    const normalizedRole = String(role || '').toLowerCase().replace(/[_\s-]/g, '');
+    if (normalizedRole === 'doctor') return 'Dr.';
+    if (normalizedRole === 'nurse') return 'Nurse.';
+    if (normalizedRole === 'medicaldirector' || normalizedRole === 'md') return 'MD.';
+    if (normalizedRole === 'hmo') return 'HMO.';
+    if (normalizedRole === 'pharmacist') return 'Pharm.';
+    if (normalizedRole === 'laboratory' || normalizedRole === 'labtechnician') return 'Lab.';
+    if (normalizedRole === 'sonographer') return 'Sono.';
+    return '';
+  })();
+
+  if (rawString) {
+    const cleanName = user?.lastName?.trim() || rawString.replace(/^From:\s*/i, '').trim();
+    const prefixedName = rolePrefix && !cleanName.startsWith(`${rolePrefix}`)
+      ? `${rolePrefix}${cleanName}`
+      : cleanName;
+    return `From: ${prefixedName}`;
+  }
+
+  if (!user) return null;
+
+  const lastName = (user.lastName || '').trim();
+  const firstName = (user.firstName || '').trim();
+
+  if (!lastName && !firstName) {
+    if (user.name && typeof user.name === 'string' && user.name.trim()) {
+      const name = user.name.trim();
+      return name.startsWith('From:') ? name : `From: ${name}`;
+    }
+    return null;
+  }
+
+  const surname = lastName
+    ? lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase()
+    : 'Staff';
+
+  return `From: ${rolePrefix || ''}${surname}`.trim();
+};
+

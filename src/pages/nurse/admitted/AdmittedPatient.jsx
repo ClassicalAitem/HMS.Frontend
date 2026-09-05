@@ -224,27 +224,7 @@ const AdmittedPatient = () => {
                   </span>
                 )}
 
-                {/* Send to Cashier */}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateBillOpen(true)}
-                  className="btn btn-sm btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
-                  title="Generate bill and send to Cashier"
-                >
-                  <FaCashRegister className="w-3.5 h-3.5" />
-                  <span>Send to Cashier</span>
-                </button>
-
-                {/* Send to HMO */}
-                <button
-                  type="button"
-                  onClick={() => setIsSendToHmoOpen(true)}
-                  className="btn btn-sm btn-outline btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
-                  title="Generate bill and send to HMO"
-                >
-                  <FaPaperPlane className="w-3.5 h-3.5" />
-                  <span>Send to HMO</span>
-                </button>
+                
               </div>
             </div>
 

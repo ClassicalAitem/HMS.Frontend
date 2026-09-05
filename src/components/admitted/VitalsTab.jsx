@@ -123,9 +123,9 @@ const VitalsTab = ({
             <h4 className="font-bold text-base text-base-content flex items-center gap-2">
               <FaHistory className="text-primary" /> History Ledger ({sortedVitals.length})
             </h4>
-            <p className="text-xs text-base-content/60">
+            {/* <p className="text-xs text-base-content/60">
               Chronological timeline of nurse evaluations logged during this admission
-            </p>
+            </p> */}
           </div>
         </div>
 
