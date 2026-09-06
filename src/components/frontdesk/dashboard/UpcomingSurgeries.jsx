@@ -104,7 +104,7 @@ const UpcomingSurgeries = () => {
 
   if (loading) {
     return (
-      <div className="shadow-xl shadow-secondary/10 card bg-base-100">
+      <div className="shadow-sm border border-base-200 card bg-base-100">
         <div className="py-2 2xl:py-4 card-body">
           {/* Header Skeleton */}
           <div className="flex justify-between items-center 2xl:mb-6">
@@ -143,7 +143,7 @@ const UpcomingSurgeries = () => {
 
   if (error) {
     return (
-      <div className="shadow-xl shadow-secondary/10 card bg-base-100">
+      <div className="shadow-sm border border-base-200 card bg-base-100">
         <div className="py-2 2xl:py-4 card-body">
           <div className="text-center text-error">
             <p>{error}</p>
@@ -160,7 +160,7 @@ const UpcomingSurgeries = () => {
   }
 
   return (
-    <div className="shadow-xl shadow-secondary/10 card bg-base-100">
+    <div className="shadow-sm border border-base-200 card bg-base-100">
       <div className="py-2 2xl:py-4 card-body">
         {/* Header */}
         <div className="flex justify-between items-center 2xl:mb-6">

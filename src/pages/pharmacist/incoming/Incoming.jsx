@@ -11,6 +11,7 @@ import { getDependants, updateDependantStatus } from '@/services/api/dependantAP
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import { PatientStatusBadge } from '@/components/common'
 import ClearItemButton from '@/components/common/ClearIncomingButton'
+import ClearAllButton from '@/components/common/ClearAllButton'
 const Incoming = () => {
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
@@ -145,8 +146,12 @@ const Incoming = () => {
           <p className="text-xs text-base-content/70">Patients awaiting or completed in pharmacy.</p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center justify-between mb-4">
           <input type="text" placeholder="Search by name or ID" className="input input-bordered w-full sm:max-w-xs" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} />
+          <div className="flex gap-2 self-end sm:self-auto">
+            <button className="btn btn-outline btn-sm" onClick={fetchIncoming}>Refresh</button>
+            <ClearAllButton items={patients} updateStatusFn={handleClear} onCleared={fetchIncoming} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">

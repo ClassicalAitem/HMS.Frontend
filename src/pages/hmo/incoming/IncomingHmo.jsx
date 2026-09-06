@@ -11,6 +11,7 @@ import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
+import ClearAllButton from "@/components/common/ClearAllButton";
 import { useNotifications } from "@/contexts/NotificationContext";
 
 const IncomingHmo = () => {
@@ -206,9 +207,12 @@ const IncomingHmo = () => {
                   Clear
                 </button>
               )}
-              <button onClick={onRefresh} className="btn btn-outline btn-sm sm:ml-auto" disabled={loading}>
-                Refresh
-              </button>
+              <div className="flex gap-2 sm:ml-auto">
+                <button onClick={onRefresh} className="btn btn-outline btn-sm" disabled={loading}>
+                  Refresh
+                </button>
+                <ClearAllButton items={items} updateStatusFn={handleClear} onCleared={onRefresh} />
+              </div>
             </div>
 
             <div className="card overflow-hidden border border-base-200 bg-base-100 shadow-sm">

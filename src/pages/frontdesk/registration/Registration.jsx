@@ -18,6 +18,7 @@ const Registration = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hmoExpanded, setHmoExpanded] = useState(false);
   const [dependentExpanded, setDependentExpanded] = useState(false);
+  const [isHmoPatient, setIsHmoPatient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [familyNames, setFamilyNames] = useState([]);
   const [companyNames, setCompanyNames] = useState([]);
@@ -66,7 +67,13 @@ const Registration = () => {
       dob: '',
       gender: '',
       relationshipType: '',
-      phone: ''
+      phone: '',
+      hmo: {
+        provider: '',
+        memberId: '',
+        plan: '',
+        expiresAt: ''
+      }
     }
   });
 
@@ -132,6 +139,18 @@ const Registration = () => {
           index === 0 ? { ...hmo, [field]: value } : hmo
         )
       }));
+    } else if (name.startsWith('dependants.hmo.')) {
+      const field = name.split('.')[2];
+      setFormData(prev => ({
+        ...prev,
+        dependants: {
+          ...prev.dependants,
+          hmo: {
+            ...prev.dependants.hmo,
+            [field]: value
+          }
+        }
+      }));
     } else if (name.startsWith('dependants.')) {
       const field = name.split('.')[1];
       setFormData(prev => ({
@@ -147,6 +166,27 @@ const Registration = () => {
         [name]: value
       }));
     }
+  };
+
+  const handleCopyGuardianHmo = () => {
+    const guardianHmo = formData.hmos[0];
+    if (!guardianHmo.provider && !guardianHmo.plan) {
+      toast.error('Please enter guardian HMO details first.');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      dependants: {
+        ...prev.dependants,
+        hmo: {
+          ...prev.dependants.hmo,
+          provider: guardianHmo.provider || '',
+          plan: guardianHmo.plan || '',
+          expiresAt: guardianHmo.expiresAt || '',
+        },
+      },
+    }));
+    toast.success("Guardian's HMO provider, plan & expiry copied. Please enter dependant Member ID.");
   };
 
   const handleFileChange = (e) => {
@@ -217,25 +257,23 @@ const Registration = () => {
       return false;
     }
 
-    // HMO — backend requires provider, memberId, plan, AND expiresAt together.
-    // If the user started filling any HMO field, all four must be present.
-    const hmo = formData.hmos[0];
-    const hmoTouched = hmo.provider || hmo.memberId || hmo.plan || hmo.expiresAt;
-    if (hmoTouched) {
+    // HMO Validation: If isHmoPatient toggle is ON, ALL four HMO fields are strictly required!
+    if (isHmoPatient) {
+      const hmo = formData.hmos[0];
       if (!hmo.provider.trim()) {
-        toast.error("HMO provider is required if adding HMO details.");
+        toast.error("HMO provider is required when HMO is enabled for this patient.");
         return false;
       }
       if (!hmo.memberId.trim()) {
-        toast.error("HMO member ID is required if adding HMO details.");
+        toast.error("HMO member ID is required when HMO is enabled for this patient.");
         return false;
       }
       if (!hmo.plan.trim()) {
-        toast.error("HMO plan is required if adding HMO details.");
+        toast.error("HMO plan is required when HMO is enabled for this patient.");
         return false;
       }
       if (!hmo.expiresAt) {
-        toast.error("HMO expiry date is required if adding HMO details.");
+        toast.error("HMO expiry date is required when HMO is enabled for this patient.");
         return false;
       }
       if (new Date(hmo.expiresAt) < new Date()) {
@@ -245,7 +283,15 @@ const Registration = () => {
     }
 
     const dependant = formData.dependants;
-    const dependantTouched = Object.values(dependant).some((value) => String(value || '').trim());
+    const dependantTouched =
+      dependant.firstName ||
+      dependant.lastName ||
+      dependant.dob ||
+      dependant.gender ||
+      dependant.relationshipType ||
+      dependant.phone ||
+      isHmoPatient;
+
     if (dependantTouched) {
       if (!dependant.firstName.trim()) {
         toast.error('Dependant first name is required if adding a dependant.');
@@ -267,10 +313,32 @@ const Registration = () => {
         toast.error('Dependant relationship type is required if adding a dependant.');
         return false;
       }
+
+      // Dependant HMO Validation: If isHmoPatient is ON, ALL four HMO fields are strictly required!
+      if (isHmoPatient) {
+        const depHmo = dependant.hmo || {};
+        if (!depHmo.provider?.trim()) {
+          toast.error('Dependant HMO provider is required when patient has HMO.');
+          return false;
+        }
+        if (!depHmo.memberId?.trim()) {
+          toast.error('Dependant HMO member ID is required when patient has HMO.');
+          return false;
+        }
+        if (!depHmo.plan?.trim()) {
+          toast.error('Dependant HMO plan is required when patient has HMO.');
+          return false;
+        }
+        if (!depHmo.expiresAt) {
+          toast.error('Dependant HMO expiry date is required when patient has HMO.');
+          return false;
+        }
+        if (new Date(depHmo.expiresAt) < new Date()) {
+          toast.error('Dependant HMO expiry date has already passed — please confirm this is correct before saving.');
+          return false;
+        }
+      }
     }
-
-
-    
 
     return true;
   };
@@ -281,13 +349,12 @@ const Registration = () => {
     setIsLoading(true);
     
     try {
-      // Prepare data for API (only include HMO if provider is provided)
+      // Prepare data for API (only include HMO if toggle is ON and provider is filled)
       const nextOfKinTouched = Object.values(formData.nextOfKin).some((value) => String(value || '').trim());
       const patientData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         middleName: formData.middleName || undefined,
-        // fullName: `${formData.firstName} ${formData.lastName}`,
         phone: formData.phone,
         address: formData.address || undefined,
         dob: formData.dob,
@@ -296,12 +363,11 @@ const Registration = () => {
         cardType: formData.cardType || 'personal',
         ...(formData.cardType === 'family' && formData.familyName && { familyName: formatCardName(formData.familyName) }),
         ...(formData.cardType === 'company' && formData.companyName && { companyName: formatCardName(formData.companyName) }),
-        // Only include optional fields if they have values
         ...(formData.email && { email: formData.email }),
         ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
         ...(formData.town && { town: formData.town }),
         ...(formData.LGA && { LGA: formData.LGA }),
-        ...(formData.hmos[0].provider && {
+        ...(isHmoPatient && formData.hmos[0].provider && {
           hmos: formData.hmos.filter(hmo => hmo.provider)
         }),
         ...(formData.dependants.firstName && {
@@ -312,7 +378,15 @@ const Registration = () => {
             dob: formData.dependants.dob,
             gender: formData.dependants.gender,
             relationshipType: formData.dependants.relationshipType,
-            phone: formData.dependants.phone
+            phone: formData.dependants.phone,
+            ...(isHmoPatient && formData.dependants.hmo?.provider && {
+              hmos: [{
+                provider: formData.dependants.hmo.provider,
+                memberId: formData.dependants.hmo.memberId,
+                plan: formData.dependants.hmo.plan,
+                expiresAt: formData.dependants.hmo.expiresAt,
+              }]
+            })
           }]
         })
       };
@@ -359,9 +433,18 @@ const Registration = () => {
             dob: '',
             gender: '',
             relationshipType: '',
-            phone: ''
+            phone: '',
+            hmo: {
+              provider: '',
+              memberId: '',
+              plan: '',
+              expiresAt: ''
+            }
           }
         });
+        setIsHmoPatient(false);
+        setHmoExpanded(false);
+        setDependentExpanded(false);
         
         // Navigate to patients list
         navigate('/frontdesk/patients');
@@ -758,34 +841,69 @@ const Registration = () => {
               </div>
             </div>
 
-            {/* Connect To HMO */}
-            <div className="shadow-xl card bg-base-100">
+            {/* Connect To HMO with Toggle */}
+            <div className="shadow-xl card bg-base-100 border border-base-200">
               <div className="p-6 card-body">
-                <button
-                  type="button"
-                  onClick={() => setHmoExpanded(!hmoExpanded)}
-                  className="flex justify-between items-center mb-4 w-full text-lg font-semibold text-left text-base-content"
-                >
-                  Connect To HMO
-                  {hmoExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                </button>
-                
-                {hmoExpanded && (
-                  <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-base-200">
+                  <div>
+                    <h3 className="text-lg font-bold text-base-content flex items-center gap-2">
+                      Connect To HMO / Health Insurance
+                      {isHmoPatient ? (
+                        <span className="badge badge-primary text-xs font-semibold">HMO Active</span>
+                      ) : (
+                        <span className="badge badge-ghost text-xs font-normal">Self-Pay</span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-base-content/60 mt-0.5">
+                      Toggle ON if this patient is an HMO user. All HMO fields become mandatory before registering.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold text-base-content/70">
+                      {isHmoPatient ? 'HMO Patient' : 'Self-Pay (No HMO)'}
+                    </span>
+                    <input
+                      type="checkbox"
+                      id="patientHmoToggle"
+                      className="toggle toggle-primary"
+                      checked={isHmoPatient}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsHmoPatient(checked);
+                        if (checked) setHmoExpanded(true);
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {isHmoPatient && (
+                  <div className="mt-4 space-y-4">
+                    <div className="alert alert-info/10 text-xs py-2 px-4 rounded-xl text-info border border-info/20 flex items-center justify-between">
+                      <span>
+                        <strong>HMO Mode Active:</strong> Patient cannot be created until Provider, Member ID, Plan, and Expiry Date are provided.
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="block mb-1 text-sm text-base-content/70">HMO Provider</label>
+                        <label className="block mb-1 text-sm font-medium text-base-content/80">
+                          HMO Provider <span className="text-error">*</span>
+                        </label>
                         <input
                           type="text"
                           name="hmo.provider"
                           value={formData.hmos[0].provider}
                           onChange={handleInputChange}
-                          placeholder="e.g., Bastion, Avon"
+                          placeholder="e.g., Bastion, Avon, Hygeia"
                           className="w-full input input-bordered"
+                          required={isHmoPatient}
                         />
                       </div>
                       <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Member ID</label>
+                        <label className="block mb-1 text-sm font-medium text-base-content/80">
+                          Member ID <span className="text-error">*</span>
+                        </label>
                         <input
                           type="text"
                           name="hmo.memberId"
@@ -793,29 +911,36 @@ const Registration = () => {
                           onChange={handleInputChange}
                           placeholder="e.g., 34758H90938"
                           className="w-full input input-bordered"
+                          required={isHmoPatient}
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Plan</label>
+                        <label className="block mb-1 text-sm font-medium text-base-content/80">
+                          Plan <span className="text-error">*</span>
+                        </label>
                         <input
                           type="text"
                           name="hmo.plan"
                           value={formData.hmos[0].plan}
                           onChange={handleInputChange}
-                          placeholder="e.g., Diamond, Premium"
+                          placeholder="e.g., Diamond, Gold, Premium"
                           className="w-full input input-bordered"
+                          required={isHmoPatient}
                         />
                       </div>
                       <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Expiry Date</label>
+                        <label className="block mb-1 text-sm font-medium text-base-content/80">
+                          Expiry Date <span className="text-error">*</span>
+                        </label>
                         <input
                           type="date"
                           name="hmo.expiresAt"
                           value={formData.hmos[0].expiresAt}
                           onChange={handleInputChange}
                           className="w-full input input-bordered"
+                          required={isHmoPatient}
                         />
                       </div>
                     </div>
@@ -824,20 +949,25 @@ const Registration = () => {
               </div>
             </div>
 
-            {/* Add Dependent */}
-            <div className="shadow-xl card bg-base-100">
+            {/* Add Dependent with HMO Toggle */}
+            <div className="shadow-xl card bg-base-100 border border-base-200">
               <div className="p-6 card-body">
                 <button
                   type="button"
                   onClick={() => setDependentExpanded(!dependentExpanded)}
                   className="flex justify-between items-center mb-4 w-full text-lg font-semibold text-left text-base-content"
                 >
-                  Add Dependent
+                  <span className="flex items-center gap-2">
+                    Add Dependant
+                    {formData.dependants.firstName && (
+                      <span className="badge badge-sm badge-info">1 In Progress</span>
+                    )}
+                  </span>
                   {dependentExpanded ? <FaChevronUp /> : <FaChevronDown />}
                 </button>
                 
                 {dependentExpanded && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                       <div>
                         <label className="block mb-1 text-sm text-base-content/70">First Name</label>
@@ -896,11 +1026,11 @@ const Registration = () => {
                         >
                           <option value="">Select Relationship</option>
                           <option value="father">Father</option>
-                        <option value="mother">Mother</option>
-                        <option value="child">Child</option>
-                        <option value="others">Others</option>
-                        <option value="spouse">Spouse</option>
-                        <option value="sibling">Sibling</option>
+                          <option value="mother">Mother</option>
+                          <option value="child">Child</option>
+                          <option value="others">Others</option>
+                          <option value="spouse">Spouse</option>
+                          <option value="sibling">Sibling</option>
                         </select>
                       </div>
                       <div>
@@ -914,6 +1044,9 @@ const Registration = () => {
                           className="w-full input input-bordered"
                         />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                       <div>
                         <label className="block mb-1 text-sm text-base-content/70">Gender</label>
                         <select
@@ -928,6 +1061,94 @@ const Registration = () => {
                           <option value="other">Other</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* Dependant HMO Toggle & Validation Section */}
+                    <div className="pt-4 border-t border-base-200">
+                      {isHmoPatient && (
+                        <div className="mt-4 space-y-4">
+                          {/* <div className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-secondary/20">
+                            <div className="text-xs">
+                              <span className="font-semibold text-secondary">Guardian HMO: </span>
+                              <span>{formData.hmos[0].provider || '—'} ({formData.hmos[0].plan || '—'})</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleCopyGuardianHmo}
+                              className="btn btn-xs btn-secondary text-white"
+                            >
+                              Copy Guardian HMO Details
+                            </button>
+                          </div> */}
+
+                          {/* <div className="alert alert-warning/10 text-xs py-2 px-4 rounded-xl text-warning border border-warning/20">
+                            <span>
+                              <strong>Dependant HMO Required:</strong> Because the patient has an active HMO, the dependant must also have HMO details provided.
+                            </span>
+                          </div> */}
+
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                Dependant HMO Provider <span className="text-error">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="dependants.hmo.provider"
+                                value={formData.dependants.hmo.provider}
+                                onChange={handleInputChange}
+                                placeholder="e.g., Bastion, Avon"
+                                className="w-full input input-bordered"
+                                required={isHmoPatient}
+                              />
+                            </div>
+                            <div>
+                              <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                Dependant Member ID <span className="text-error">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="dependants.hmo.memberId"
+                                value={formData.dependants.hmo.memberId}
+                                onChange={handleInputChange}
+                                placeholder="e.g., 34758H90938/01"
+                                className="w-full input input-bordered"
+                                required={isHmoPatient}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                Dependant Plan <span className="text-error">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="dependants.hmo.plan"
+                                value={formData.dependants.hmo.plan}
+                                onChange={handleInputChange}
+                                placeholder="e.g., Diamond, Family Gold"
+                                className="w-full input input-bordered"
+                                required={isHmoPatient}
+                              />
+                            </div>
+                            <div>
+                              <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                Dependant Expiry Date <span className="text-error">*</span>
+                              </label>
+                              <input
+                                type="date"
+                                name="dependants.hmo.expiresAt"
+                                value={formData.dependants.hmo.expiresAt}
+                                onChange={handleInputChange}
+                                className="w-full input input-bordered"
+                                required={isHmoPatient}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

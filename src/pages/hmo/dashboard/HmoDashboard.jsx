@@ -5,6 +5,8 @@ import { getAllHmos } from "@/services/api/hmoAPI";
 import { useAppSelector } from "@/store/hooks";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
+import { Link } from "react-router-dom";
+import { FaPlus, FaListUl, FaRegClock } from "react-icons/fa";
 
 const HmoDashboard = () => {
   const { user } = useAppSelector((state) => state.auth);
@@ -79,16 +81,26 @@ const HmoDashboard = () => {
 
         <div className="flex-1 overflow-y-auto">
           <section className="p-4 sm:p-6 lg:p-7">
-            <div className="w-full md:w-[687px]">
-              <h1 className="text-3xl font-regular sm:text-4xl">
-                Welcome, HMO <span className="font-bold text-primary">{`${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</span>
-              </h1>
-              <p className="text-sm">This dashboard provides a quick summary of your HMO claims and approvals.</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="w-full md:w-2/3">
+                <h1 className="text-2xl sm:text-3xl font-regular">
+                  Welcome, HMO <span className="font-bold text-primary">{`${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</span>
+                </h1>
+                <p className="text-sm mt-1 text-base-content/70">Manage HMO claims, track active plans, and monitor expirations.</p>
+              </div>
+              <div className="flex gap-2">
+                <Link to="/dashboard/hmo/incoming" className="btn btn-primary btn-sm shadow-sm">
+                  <FaRegClock className="mr-1" /> View Incoming
+                </Link>
+                <Link to="/dashboard/hmo/patients" className="btn btn-outline btn-sm bg-base-100">
+                  <FaListUl className="mr-1" /> HMO Patients
+                </Link>
+              </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:justify-between">
               {cards.map((c, idx) => (
-                <div key={idx} className="h-[152px] w-full rounded-[10px] border bg-base-100 p-5 shadow shadow-lg lg:w-[30%]">
+                <div key={idx} className="h-[152px] w-full rounded-[10px] border border-base-200 bg-base-100 p-5 shadow-sm lg:w-[30%]">
                   <div className="flex justify-between">
                     <p className="text-lg font-semibold">{c.label}</p>
                     <img src="/src/assets/images/users.png" alt="..." />
