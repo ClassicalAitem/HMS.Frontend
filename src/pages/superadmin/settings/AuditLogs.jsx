@@ -19,9 +19,11 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { getAuditLogs, getAuditLogStats } from '@/services/api/auditLogAPI';
+import { getAttendanceLogs } from '@/services/api/attendanceAPI';
 import { exportRowsToCsv } from '../reports/reportUtils';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { showErrorToast } from '@/utils/errorHandler';
+import { FaClock, FaIdBadge } from 'react-icons/fa';
 
 const ROLES_LIST = [
   { value: 'all', label: 'All Hospital Roles' },
@@ -112,6 +114,10 @@ const AuditLogs = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('audit'); // 'audit' or 'attendance'
+  const [attendanceLogs, setAttendanceLogs] = useState([]);
+  const [attendanceTotal, setAttendanceTotal] = useState(0);
+  const [loadingAttendance, setLoadingAttendance] = useState(true);
   const [stats, setStats] = useState({
     totalLogs: 0,
     successfulActions: 0,
@@ -159,6 +165,24 @@ const AuditLogs = () => {
     }
   }, [searchTerm, selectedRole, selectedStatus, selectedDate]);
 
+  const fetchAttendance = useCallback(async () => {
+    try {
+      setLoadingAttendance(true);
+      const params = {
+        date: selectedDate || undefined,
+        limit: 50,
+      };
+      const res = await getAttendanceLogs(params);
+      const data = res?.data?.data ?? res?.data ?? res ?? {};
+      setAttendanceLogs(Array.isArray(data.items) ? data.items : []);
+      setAttendanceTotal(data.totalItems || 0);
+    } catch (err) {
+      showErrorToast(err, 'Failed to fetch attendance records');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  }, [selectedDate]);
+
   useEffect(() => {
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
@@ -171,6 +195,12 @@ const AuditLogs = () => {
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
+  useEffect(() => {
+    fetchAttendance();
+    const interval = setInterval(fetchAttendance, 15000);
+    return () => clearInterval(interval);
+  }, [fetchAttendance]);
+
   // Debounced search
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -180,22 +210,38 @@ const AuditLogs = () => {
   }, [searchTerm, fetchLogs]);
 
   const handleExportLogs = () => {
-    if (!logs.length) {
-      toast.error('No logs available to export.');
-      return;
+    if (activeTab === 'audit') {
+      if (!logs.length) {
+        toast.error('No logs available to export.');
+        return;
+      }
+      const columns = [
+        { key: 'createdAt', label: 'Timestamp' },
+        { key: 'userName', label: 'User Name' },
+        { key: 'userRole', label: 'Role' },
+        { key: 'action', label: 'Action' },
+        { key: 'resource', label: 'Resource' },
+        { key: 'status', label: 'Status' },
+        { key: 'description', label: 'Description' },
+        { key: 'ipAddress', label: 'IP Address' },
+      ];
+      exportRowsToCsv(logs, columns, `hospital_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success('Audit logs downloaded as CSV');
+    } else {
+      if (!attendanceLogs.length) {
+        toast.error('No attendance logs available to export.');
+        return;
+      }
+      const columns = [
+        { key: 'date', label: 'Date' },
+        { key: 'userName', label: 'User Name' },
+        { key: 'userRole', label: 'Role' },
+        { key: 'checkInTime', label: 'Check-In Time' },
+        { key: 'checkOutTime', label: 'Check-Out Time' },
+      ];
+      exportRowsToCsv(attendanceLogs, columns, `staff_attendance_${new Date().toISOString().slice(0, 10)}.csv`);
+      toast.success('Attendance logs downloaded as CSV');
     }
-    const columns = [
-      { key: 'createdAt', label: 'Timestamp' },
-      { key: 'userName', label: 'User Name' },
-      { key: 'userRole', label: 'Role' },
-      { key: 'action', label: 'Action' },
-      { key: 'resource', label: 'Resource' },
-      { key: 'status', label: 'Status' },
-      { key: 'description', label: 'Description' },
-      { key: 'ipAddress', label: 'IP Address' },
-    ];
-    exportRowsToCsv(logs, columns, `hospital_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
-    toast.success('Audit logs downloaded as CSV');
   };
 
   const resetFilters = () => {
@@ -238,12 +284,12 @@ const AuditLogs = () => {
               </button>
               <div className="flex items-center gap-2.5">
                 <h1 className="text-2xl sm:text-3xl font-bold text-base-content">
-                  System Audit & Role Activity
+                  System Audit & Attendance
                 </h1>
-                <span className="badge badge-primary badge-sm font-bold">Every-Role Trail</span>
+                <span className="badge badge-primary badge-sm font-bold">Logs Trail</span>
               </div>
               <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">
-                Monitor clinical, administrative, financial, and diagnostic operations across all hospital personnel
+                Monitor clinical operations and staff check-in/out records
               </p>
             </div>
 
@@ -330,6 +376,22 @@ const AuditLogs = () => {
                 <FaUserShield />
               </div>
             </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="tabs tabs-boxed bg-base-100 border border-base-200 p-1 w-full max-w-sm">
+            <button 
+              className={`tab tab-sm font-semibold h-9 rounded-xl flex-1 ${activeTab === 'audit' ? 'tab-active bg-primary text-primary-content' : 'text-base-content/70'}`}
+              onClick={() => setActiveTab('audit')}
+            >
+              <FaShieldAlt className="mr-2 w-3.5 h-3.5" /> System Audit
+            </button>
+            <button 
+              className={`tab tab-sm font-semibold h-9 rounded-xl flex-1 ${activeTab === 'attendance' ? 'tab-active bg-primary text-primary-content' : 'text-base-content/70'}`}
+              onClick={() => setActiveTab('attendance')}
+            >
+              <FaIdBadge className="mr-2 w-3.5 h-3.5" /> Staff Attendance
+            </button>
           </div>
 
           {/* Filter Bar */}
@@ -438,7 +500,8 @@ const AuditLogs = () => {
             )}
           </div>
 
-          {/* Activity Logs Table */}
+          {/* Dynamic Table Content */}
+          {activeTab === 'audit' ? (
           <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden flex flex-col">
             <div className="p-4 sm:p-5 border-b border-base-200 flex items-center justify-between">
               <div>
@@ -542,6 +605,110 @@ const AuditLogs = () => {
               Showing all {totalCount} matching audit entries
             </div>
           </div>
+          ) : (
+          <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="p-4 sm:p-5 border-b border-base-200 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-base text-base-content">
+                  Staff Attendance Records ({attendanceTotal})
+                </h3>
+                <p className="text-xs text-base-content/60">Silently tracked login/last-active records</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="table table-zebra w-full">
+                <thead className="bg-base-200/50 text-xs font-semibold uppercase tracking-wider text-base-content/70">
+                  <tr>
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Staff Name</th>
+                    <th className="py-3 px-4">Role</th>
+                    <th className="py-3 px-4">Check-In Time (First Login)</th>
+                    <th className="py-3 px-4">Check-Out Time (Last Active)</th>
+                    <th className="py-3 px-4">Total Hours</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm divide-y divide-base-200">
+                  {loadingAttendance ? (
+                    [...Array(6)].map((_, i) => (
+                      <tr key={i} className="animate-pulse">
+                        <td className="py-3.5 px-4"><div className="h-4 bg-base-300 rounded w-24"></div></td>
+                        <td className="py-3.5 px-4"><div className="h-4 bg-base-300 rounded w-32"></div></td>
+                        <td className="py-3.5 px-4"><div className="h-5 bg-base-300 rounded-full w-20"></div></td>
+                        <td className="py-3.5 px-4"><div className="h-4 bg-base-300 rounded w-28"></div></td>
+                        <td className="py-3.5 px-4"><div className="h-4 bg-base-300 rounded w-28"></div></td>
+                        <td className="py-3.5 px-4"><div className="h-5 bg-base-300 rounded-full w-16"></div></td>
+                      </tr>
+                    ))
+                  ) : attendanceLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-base-content/60">
+                        <FaClock className="w-10 h-10 mx-auto text-base-content/20 mb-2" />
+                        <p className="font-semibold text-sm">No attendance records found</p>
+                        <p className="text-xs text-base-content/40 mt-1">
+                          Staff check-in logs for this date will appear here
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    attendanceLogs.map((log) => {
+                      const checkIn = new Date(log.checkInTime);
+                      const checkOut = new Date(log.checkOutTime);
+                      const diffMs = checkOut - checkIn;
+                      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+                      return (
+                      <tr key={log._id || log.id} className="hover:bg-base-200/40 transition-colors">
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-semibold text-xs text-base-content/80">
+                            {formatNigeriaDate(log.date)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-bold text-base-content text-xs">
+                            {log.userName}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span
+                            className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${getRoleBadgeStyle(
+                              log.userRole
+                            )}`}
+                          >
+                            {log.userRole}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-mono text-xs text-success font-semibold flex items-center gap-1.5">
+                            <FaClock className="w-3 h-3 opacity-60" />
+                            {checkIn.toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="font-mono text-xs text-error font-semibold flex items-center gap-1.5">
+                            <FaClock className="w-3 h-3 opacity-60" />
+                            {checkOut.toLocaleTimeString()}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <span className="font-bold text-xs text-base-content">
+                            {hours}h {mins}m
+                          </span>
+                        </td>
+                      </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-4 border-t border-base-200 text-xs text-base-content/60">
+              Showing all {attendanceTotal} attendance entries
+            </div>
+          </div>
+          )}
         </div>
       </div>
     </div>

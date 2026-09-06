@@ -44,6 +44,7 @@ const RecentlyAddedPatients = () => {
 
   const processedPatients = useMemo(() => patients.map(p => ({
     id: p?.id || p?.patientId || p?.uuid || p?.hospitalId || '',
+    hospitalId:  p?.hospitalId ,
     name: (`${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`).trim() || p?.fullName || p?.name || 'Unknown',
     gender: (p?.gender || '—').toLowerCase(),
     age: calculateAge(p?.dob),
@@ -100,7 +101,7 @@ const RecentlyAddedPatients = () => {
   // Define table columns
   const columns = useMemo(() => [
     {
-      key: 'id',
+      key: 'hospitalId',
       title: 'S/n',
       className: 'text-base-content'
     },
@@ -169,7 +170,7 @@ const RecentlyAddedPatients = () => {
   ], []);
 
   return (
-    <div className="h-[--webkit-fill-available] bg-base-100  shadow-xl card flex w-full 2xl:pb-2 pb-8">
+    <div className="h-[--webkit-fill-available] bg-base-100 shadow-sm border border-base-200 card flex w-full 2xl:pb-2 pb-8">
       {/* Header */}
       <div className="flex pb-8 h-full card-body 2xl:pb-0">
         <div className="flex justify-between items-center mb-2">
