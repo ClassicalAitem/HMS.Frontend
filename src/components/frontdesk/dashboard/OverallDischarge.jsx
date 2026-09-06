@@ -119,7 +119,7 @@ const OverallDischarge = () => {
   };
 
   return (
-    <div className="shadow-2xl card bg-base-100 shadow-secondary/20">
+    <div className="shadow-sm border border-base-200 card bg-base-100">
       <div className="py-2 2xl:py-4 card-body">
       {/* Header */}
       <div className="flex justify-between items-center 2xl:mb-6">

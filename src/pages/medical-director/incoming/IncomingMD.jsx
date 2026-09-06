@@ -7,6 +7,7 @@ import { getDependants, updateDependantStatus } from "@/services/api/dependantAP
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
+import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { PatientStatusBadge } from "@/components/common";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -270,6 +271,7 @@ const IncomingMD = () => {
                 <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm">Clear</button>
               )}
               <button onClick={onRefresh} className="btn btn-outline btn-sm">Refresh</button>
+              <ClearAllButton items={items} updateStatusFn={handleClear} onCleared={onRefresh} />
             </div>
           </div>
 

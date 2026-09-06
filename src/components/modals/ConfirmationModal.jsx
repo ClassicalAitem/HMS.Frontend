@@ -1,7 +1,7 @@
 import React from 'react';
 import { IoCloseCircleOutline } from "react-icons/io5";
 
-const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel" }) => {
+const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel", children }) => {
   if (!isOpen) return null;
 
   return (
@@ -21,6 +21,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
             <p className="text-sm text-gray-500">
               {message}
             </p>
+            {children && <div className="mt-4">{children}</div>}
           </div>
 
           <div className="flex gap-3 mt-6 justify-end">

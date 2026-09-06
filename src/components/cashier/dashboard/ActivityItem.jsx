@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom';
 
 const ActivityItem = ({ activity }) => {
-  const { patientName, time, service, status, hmo, amount } = activity || {};
+  const { patientName, time, service, status, hmo, amount, patientId } = activity || {};
   const initials = (patientName || '')
     .split(' ')
     .filter(Boolean)
@@ -27,10 +28,20 @@ const ActivityItem = ({ activity }) => {
           <p className="text-xs mt-1 text-primary">Status: {status}</p>
         </div>
 
-        {/* Right: HMO & Amount */}
-        <div className="col-span-12 md:col-span-3 text-right">
-          <p className="text-xs 2xl:text-sm text-base-content/70 font-regular">{hmo}</p>
-          <p className="text-sm 2xl:text-lg font-bold text-primary">{amount}</p>
+        {/* Right: HMO, Amount, and View Action */}
+        <div className="col-span-12 md:col-span-3 text-right flex flex-col justify-center items-end gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs 2xl:text-sm text-base-content/70 font-regular">{hmo}</span>
+            <span className="text-sm 2xl:text-lg font-bold text-primary">{amount}</span>
+          </div>
+          {patientId && (
+            <Link 
+              to={`/cashier/patient-details/${patientId}`}
+              className="btn btn-xs btn-outline btn-primary mt-1"
+            >
+              View
+            </Link>
+          )}
         </div>
       </div>
     </div>

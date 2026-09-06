@@ -102,8 +102,15 @@ const CashierDashboard = () => {
                 ? receipt.billing.opdPatient.fullName || `${receipt.billing.opdPatient.firstName || ''} ${receipt.billing.opdPatient.lastName || ''}`.trim()
                 : 'N/A';
 
+            const patientId = receipt.billing.patient
+              ? receipt.billing.patient._id || receipt.billing.patient.id
+              : receipt.billing.opdPatient
+                ? receipt.billing.opdPatient._id || receipt.billing.opdPatient.id
+                : null;
+
             return {
               id: receipt.id || index,
+              patientId,
               patientName: patientName || 'N/A',
               service: serviceDescription,
               status: receipt.status,
@@ -145,14 +152,21 @@ const CashierDashboard = () => {
     <CashierLayout>
       {billingLoading && <KolakLoader fullscreen />}
       {/* Page Header: actions */}
-      <div className="flex items-center justify-between mb-2 2xl:mb-6">
-        <div className="mb-2">
-          <h1 className="text-lg 2xl:text-2xl font-semibold 2xl:font-regular text-primary">{`Welcome, Cashier: ${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</h1>
-          <p className="text-xs text-base-content/70">Manage hospital finances, process payments, and track transactions.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 2xl:mb-8 gap-4">
+        <div className="w-full md:w-2/3">
+          <h1 className="text-2xl sm:text-3xl font-regular">
+            Welcome, Cashier <span className="font-bold text-primary">{`${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</span>
+          </h1>
+          <p className="text-sm mt-1 text-base-content/70">Manage hospital finances, process payments, and track transactions.</p>
         </div>
-        <Link to="/cashier/patients" className=" hidden btn btn-outline btn-sm">
-          All Patients
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/cashier/incoming" className="btn btn-primary btn-sm shadow-sm">
+             Process Incoming
+          </Link>
+          <Link to="/cashier/billing-records" className="btn btn-outline btn-sm bg-base-100">
+             Billing Records
+          </Link>
+        </div>
       </div>
 
       {/* Metrics Cards */}
