@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { FaSearch } from "react-icons/fa";
 import { GiUltrasound } from "react-icons/gi";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
+import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
 
@@ -266,15 +267,18 @@ const SonographerIncoming = () => {
               </div>
             </div>
 
-            <div className="relative w-full sm:w-72">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
-              <input
-                type="text"
-                placeholder="Search by name or ID"
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="input input-bordered input-sm sm:input-md w-full pl-9 rounded-full bg-base-100"
-              />
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
+                <input
+                  type="text"
+                  placeholder="Search by name or ID"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="input input-bordered input-sm sm:input-md w-full pl-9 rounded-full bg-base-100"
+                />
+              </div>
+              <ClearAllButton items={patients} updateStatusFn={handleClear} onCleared={fetchIncomingPatients} />
             </div>
           </div>
 

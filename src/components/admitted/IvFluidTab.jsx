@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import ivFluidApi from '@/services/api/ivFluidApi'
+import { getServiceCharges } from '@/services/api/serviceChargesAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaTint,
@@ -14,6 +15,11 @@ import {
   FaUserNurse,
   FaCheckCircle,
   FaPrescriptionBottleAlt,
+  FaShieldAlt,
+  FaClock,
+  FaSearch,
+  FaExclamationTriangle,
+  FaMoneyBillWave,
 } from 'react-icons/fa'
 
 const COMMON_FLUIDS = [
@@ -48,6 +54,12 @@ const IvFluidTab = ({
   const [saving, setSaving] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState(null)
 
+  // Laboratory service charges
+  const [labServices, setLabServices] = useState([])
+  const [loadingServices, setLoadingServices] = useState(false)
+  const [serviceSearch, setServiceSearch] = useState('')
+  const [selectedService, setSelectedService] = useState(null)
+
   // Doctor order form
   const [orderForm, setOrderForm] = useState({
     fluidName: 'Normal Saline 0.9%',
@@ -55,6 +67,9 @@ const IvFluidTab = ({
     volumeMl: 500,
     rateOrFrequency: '500ml 8-hourly',
     instructions: '',
+    units: 1,
+    unitPrice: 0,
+    amount: 0,
   })
 
   // Nurse intake/output form
@@ -90,9 +105,74 @@ const IvFluidTab = ({
     }
   }
 
+  const loadLabServices = async () => {
+    try {
+      setLoadingServices(true)
+      const res = await getServiceCharges()
+      const raw = res?.data ?? res ?? []
+      const list = Array.isArray(raw) ? raw : raw?.data ?? []
+      const filtered = list.filter((s) => {
+        const cat = String(s?.category || '').toLowerCase()
+        return cat.includes('lab') || cat.includes('laboratory')
+      })
+      setLabServices(filtered.length > 0 ? filtered : list)
+    } catch (err) {
+      console.error('Failed to load lab services for IV fluids', err)
+    } finally {
+      setLoadingServices(false)
+    }
+  }
+
   useEffect(() => {
     loadData(selectedDate)
   }, [patientId, dependantId, selectedDate])
+
+  useEffect(() => {
+    if (showOrderModal && labServices.length === 0) {
+      loadLabServices()
+    }
+  }, [showOrderModal])
+
+  const filteredLabServices = useMemo(() => {
+    const q = serviceSearch.trim().toLowerCase()
+    if (!q) {
+      return [...labServices].sort((a, b) => {
+        const aName = (a.service || a.name || '').toLowerCase()
+        const bName = (b.service || b.name || '').toLowerCase()
+        const aIsFluid = aName.includes('saline') || aName.includes('dextrose') || aName.includes('fluid') || aName.includes('infusion')
+        const bIsFluid = bName.includes('saline') || bName.includes('dextrose') || bName.includes('fluid') || bName.includes('infusion')
+        if (aIsFluid && !bIsFluid) return -1
+        if (!aIsFluid && bIsFluid) return 1
+        return 0
+      })
+    }
+    return labServices.filter((s) => {
+      const name = String(s?.service || s?.name || '').toLowerCase()
+      const code = String(s?.code || '').toLowerCase()
+      return name.includes(q) || code.includes(q)
+    })
+  }, [labServices, serviceSearch])
+
+  const handleSelectService = (service) => {
+    setSelectedService(service)
+    const unitPrice = Number(service?.amount || 0)
+    const currentUnits = Number(orderForm.units || 1)
+    setOrderForm((prev) => ({
+      ...prev,
+      fluidName: service.service || service.name || prev.fluidName,
+      unitPrice,
+      amount: unitPrice * currentUnits,
+    }))
+  }
+
+  const handleUnitsChange = (newUnits) => {
+    const units = Math.max(1, Number(newUnits) || 1)
+    setOrderForm((prev) => ({
+      ...prev,
+      units,
+      amount: prev.unitPrice ? prev.unitPrice * units : prev.amount,
+    }))
+  }
 
   const handleOrderChange = (e) => {
     const { name, value } = e.target
@@ -120,6 +200,9 @@ const IvFluidTab = ({
 
     setSaving(true)
     try {
+      const units = Number(orderForm.units || 1)
+      const calculatedAmount = orderForm.amount || (orderForm.unitPrice ? orderForm.unitPrice * units : 0)
+
       await ivFluidApi.createIvFluidOrder({
         patientId,
         ...(dependantId ? { dependantId } : {}),
@@ -128,9 +211,12 @@ const IvFluidTab = ({
         volumeMl: Number(orderForm.volumeMl || 500),
         rateOrFrequency: orderForm.rateOrFrequency.trim(),
         instructions: orderForm.instructions.trim(),
+        serviceChargeId: selectedService?.id || selectedService?._id || undefined,
+        amount: calculatedAmount > 0 ? calculatedAmount : undefined,
+        units,
       })
 
-      toast.success('IV fluid regimen prescribed successfully')
+      toast.success('IV fluid regimen prescribed and billed to Laboratory')
       setShowOrderModal(false)
       setOrderForm({
         fluidName: 'Normal Saline 0.9%',
@@ -138,7 +224,12 @@ const IvFluidTab = ({
         volumeMl: 500,
         rateOrFrequency: '500ml 8-hourly',
         instructions: '',
+        units: 1,
+        unitPrice: 0,
+        amount: 0,
       })
+      setSelectedService(null)
+      setServiceSearch('')
       await loadData(selectedDate)
     } catch (err) {
       console.error('Failed to prescribe fluid', err)
@@ -148,7 +239,17 @@ const IvFluidTab = ({
     }
   }
 
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+  const handleUpdateOrderStatus = async (orderId, newStatus, ord) => {
+    if (newStatus === 'completed' && ord) {
+      const isCleared = ord.isPaid || ord.paymentStatus === 'paid' || ord.paymentStatus === 'approved'
+      if (!isCleared) {
+        const confirm = window.confirm(
+          '⚠️ Warning: This IV fluid regimen is pending payment or HMO approval.\n\nDo you want to proceed with completing it?'
+        )
+        if (!confirm) return
+      }
+    }
+
     setUpdatingOrderId(orderId)
     try {
       await ivFluidApi.updateIvFluidOrderStatus(orderId, newStatus)
@@ -160,6 +261,29 @@ const IvFluidTab = ({
     } finally {
       setUpdatingOrderId(null)
     }
+  }
+
+  const renderPaymentBadge = (ord) => {
+    const status = ord.paymentStatus || (ord.isPaid ? 'paid' : 'pending')
+    if (status === 'paid' || ord.isPaid) {
+      return (
+        <span className="badge badge-success text-white font-bold text-xs py-1.5 px-2.5 flex items-center gap-1 shadow-xs">
+          <FaCheckCircle className="w-2.5 h-2.5" /> Paid
+        </span>
+      )
+    }
+    if (status === 'approved') {
+      return (
+        <span className="badge badge-info text-white font-bold text-xs py-1.5 px-2.5 flex items-center gap-1 shadow-xs">
+          <FaShieldAlt className="w-2.5 h-2.5" /> HMO Approved
+        </span>
+      )
+    }
+    return (
+      <span className="badge badge-warning text-base-content font-bold text-xs py-1.5 px-2.5 flex items-center gap-1 shadow-xs">
+        <FaClock className="w-2.5 h-2.5" /> Awaiting Payment / Approval
+      </span>
+    )
   }
 
   const handleSaveEntry = async (e) => {
@@ -294,60 +418,99 @@ const IvFluidTab = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {activeOrders.map((ord) => (
-              <div
-                key={ord._id || ord.id}
-                className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 flex flex-col justify-between gap-2"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-sm text-base-content">
-                      {ord.fluidName} ({ord.volumeMl || 500}ml)
-                    </span>
-                    <span className="badge badge-primary badge-xs font-bold uppercase">
-                      {ord.rateOrFrequency}
-                    </span>
-                  </div>
-                  {ord.instructions && (
-                    <p className="text-xs text-base-content/70 mt-1 italic">
-                      &quot;{ord.instructions}&quot;
-                    </p>
-                  )}
-                  <div className="text-[11px] text-base-content/60 mt-2 flex flex-wrap items-center gap-3">
-                    <span className="flex items-center gap-1 font-medium">
-                      <FaUserMd className="text-primary w-3 h-3" />
-                      {ord.doctorName || 'Attending Physician'}
-                    </span>
-                    <span>{formatNigeriaDateTimeShort(ord.orderedAt || ord.createdAt)}</span>
-                  </div>
-                </div>
+            {activeOrders.map((ord) => {
+              const isCleared = ord.isPaid || ord.paymentStatus === 'paid' || ord.paymentStatus === 'approved'
 
-                {isNurse && (
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-primary/10">
-                    <button
-                      onClick={() => {
-                        setEntryForm((prev) => ({
-                          ...prev,
-                          inputFluid: ord.fluidName,
-                          inputAmountMl: ord.volumeMl || 500,
-                        }))
-                        setShowAddModal(true)
-                      }}
-                      className="btn btn-xs btn-success text-white rounded-lg gap-1"
-                    >
-                      <FaTint className="w-2.5 h-2.5" /> Log Infusion
-                    </button>
-                    <button
-                      onClick={() => handleUpdateOrderStatus(ord._id || ord.id, 'completed')}
-                      disabled={updatingOrderId === (ord._id || ord.id)}
-                      className="btn btn-xs btn-outline rounded-lg gap-1"
-                    >
-                      <FaCheckCircle className="w-2.5 h-2.5" /> Mark Completed
-                    </button>
+              return (
+                <div
+                  key={ord._id || ord.id}
+                  className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-col justify-between gap-3"
+                >
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-sm text-base-content">
+                        {ord.fluidName} ({ord.volumeMl || 500}ml)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="badge badge-primary badge-xs font-bold uppercase">
+                          {ord.rateOrFrequency}
+                        </span>
+                        {renderPaymentBadge(ord)}
+                      </div>
+                    </div>
+
+                    {ord.instructions && (
+                      <p className="text-xs text-base-content/70 italic bg-base-100/60 p-2 rounded-lg border border-base-200">
+                        &quot;{ord.instructions}&quot;
+                      </p>
+                    )}
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/70 pt-1">
+                      <span className="flex items-center gap-1 font-medium">
+                        <FaUserMd className="text-primary w-3 h-3" />
+                        {ord.doctorName || 'Attending Physician'}
+                      </span>
+                      {ord.amount !== undefined && ord.amount !== null && (
+                        <div className="flex items-center gap-1 font-semibold text-base-content">
+                          <FaMoneyBillWave className="w-3 h-3 text-success" />
+                          <span>Billed: ₦{Number(ord.amount).toLocaleString()}</span>
+                          {ord.units && <span className="text-[11px] text-base-content/60">({ord.units} unit{ord.units > 1 ? 's' : ''})</span>}
+                        </div>
+                      )}
+                      <span>{formatNigeriaDateTimeShort(ord.orderedAt || ord.createdAt)}</span>
+                    </div>
+
+                    {/* Nurse Clearance Status Indicator */}
+                    {isNurse && (
+                      <div className="pt-1">
+                        {isCleared ? (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/10 text-success text-[11px] font-semibold border border-success/20">
+                            <FaCheckCircle className="w-3 h-3" /> Payment Cleared: Approved for infusion administration
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-warning/10 text-warning-content text-[11px] font-semibold border border-warning/30">
+                            <FaExclamationTriangle className="w-3 h-3 text-warning" /> Payment Pending: Awaiting Cashier receipt or HMO authorization
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {isNurse && (
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-primary/10">
+                      <button
+                        onClick={() => {
+                          if (!isCleared) {
+                            const proceed = window.confirm(
+                              '⚠️ Warning: This IV fluid regimen is awaiting payment or HMO approval.\n\nDo you want to proceed and log an infusion?'
+                            )
+                            if (!proceed) return
+                          }
+                          setEntryForm((prev) => ({
+                            ...prev,
+                            inputFluid: ord.fluidName,
+                            inputAmountMl: ord.volumeMl || 500,
+                          }))
+                          setShowAddModal(true)
+                        }}
+                        className={`btn btn-xs text-white rounded-lg gap-1 ${
+                          isCleared ? 'btn-success' : 'btn-warning text-black'
+                        }`}
+                      >
+                        <FaTint className="w-2.5 h-2.5" /> Log Infusion
+                      </button>
+                      <button
+                        onClick={() => handleUpdateOrderStatus(ord._id || ord.id, 'completed', ord)}
+                        disabled={updatingOrderId === (ord._id || ord.id)}
+                        className="btn btn-xs btn-outline rounded-lg gap-1"
+                      >
+                        <FaCheckCircle className="w-2.5 h-2.5" /> Mark Completed
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -484,10 +647,10 @@ const IvFluidTab = ({
       {/* Doctor Prescribe IV Fluid Regimen Modal */}
       {showOrderModal && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-base-300 space-y-4">
+          <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
-                <FaPrescriptionBottleAlt className="text-primary" /> Prescribe IV Fluid Regimen
+                <FaPrescriptionBottleAlt className="text-primary" /> Prescribe IV Fluid Regimen (Laboratory Charge)
               </h3>
               <button
                 type="button"
@@ -499,9 +662,74 @@ const IvFluidTab = ({
             </div>
 
             <form onSubmit={handleSaveOrder} className="space-y-4">
+              {/* Laboratory Service Charge Selection */}
+              <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-2">
+                <label className="block text-xs font-bold text-base-content flex items-center justify-between">
+                  <span>Pick from Laboratory Service Charges *</span>
+                  <span className="text-[11px] text-primary font-normal">Billed under Laboratory</span>
+                </label>
+
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-2.5 text-base-content/40 text-xs" />
+                  <input
+                    type="text"
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    placeholder="Search IV fluids or lab charges..."
+                    className="input input-bordered input-sm w-full pl-8 rounded-xl text-xs"
+                  />
+                </div>
+
+                <div className="max-h-32 overflow-y-auto border border-base-300 rounded-xl bg-base-100 divide-y divide-base-200 text-xs">
+                  {loadingServices ? (
+                    <div className="p-3 text-center text-xs text-base-content/50">
+                      Loading Laboratory charges...
+                    </div>
+                  ) : filteredLabServices.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-base-content/50">
+                      No matching laboratory service charges found
+                    </div>
+                  ) : (
+                    filteredLabServices.map((srv) => {
+                      const isSel = (selectedService?.id || selectedService?._id) === (srv.id || srv._id)
+                      return (
+                        <div
+                          key={srv.id || srv._id}
+                          onClick={() => handleSelectService(srv)}
+                          className={`p-2.5 cursor-pointer flex items-center justify-between transition-colors ${
+                            isSel ? 'bg-primary/10 text-primary font-bold' : 'hover:bg-base-200/60'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="truncate font-medium">{srv.service || srv.name}</div>
+                            <div className="text-[10px] text-base-content/50 uppercase">{srv.category || 'Laboratory'}</div>
+                          </div>
+                          <div className="font-bold text-xs whitespace-nowrap">
+                            ₦{Number(srv.amount || 0).toLocaleString()}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+
+                {selectedService && (
+                  <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-semibold text-primary">Selected: </span>
+                      <span className="font-medium text-base-content">{selectedService.service || selectedService.name}</span>
+                    </div>
+                    <div className="font-bold text-primary">
+                      ₦{Number(selectedService.amount || 0).toLocaleString()} / unit
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Standard Fluid Selection / Override */}
               <div>
                 <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                  Fluid Selection *
+                  Fluid Description / Classification *
                 </label>
                 <select
                   name="fluidName"
@@ -514,6 +742,11 @@ const IvFluidTab = ({
                       {f}
                     </option>
                   ))}
+                  {selectedService && !COMMON_FLUIDS.includes(selectedService.service || selectedService.name) && (
+                    <option value={selectedService.service || selectedService.name}>
+                      {selectedService.service || selectedService.name}
+                    </option>
+                  )}
                 </select>
               </div>
 
@@ -534,7 +767,22 @@ const IvFluidTab = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-base-content/70 mb-1">
+                    Units / Bottles *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    name="units"
+                    value={orderForm.units}
+                    onChange={(e) => handleUnitsChange(e.target.value)}
+                    className="input input-bordered input-sm w-full rounded-xl text-xs"
+                    required
+                  />
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-base-content/70 mb-1">
                     Volume (ml) *
@@ -558,7 +806,7 @@ const IvFluidTab = ({
                     name="rateOrFrequency"
                     value={orderForm.rateOrFrequency}
                     onChange={handleOrderChange}
-                    placeholder="e.g. 500ml 8-hourly, 30 drops/min"
+                    placeholder="e.g. 500ml 8-hourly"
                     className="input input-bordered input-sm w-full rounded-xl text-xs"
                     required
                   />
@@ -574,8 +822,19 @@ const IvFluidTab = ({
                   value={orderForm.instructions}
                   onChange={handleOrderChange}
                   placeholder="Special instructions for nursing administration, cannula site, additives..."
-                  className="textarea textarea-bordered textarea-sm w-full rounded-xl text-xs h-20"
+                  className="textarea textarea-bordered textarea-sm w-full rounded-xl text-xs h-18"
                 />
+              </div>
+
+              {/* Total Billed Display */}
+              <div className="p-3 rounded-xl bg-base-200/60 border border-base-300 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-semibold text-base-content/80">Total Billed to Laboratory:</span>
+                  <p className="text-[11px] text-base-content/50">Sent to HMO or Cashier for payment/approval</p>
+                </div>
+                <div className="text-base font-black text-primary">
+                  ₦{Number(orderForm.amount || 0).toLocaleString()}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -592,7 +851,7 @@ const IvFluidTab = ({
                   disabled={saving}
                   className="btn btn-sm btn-primary rounded-xl font-semibold"
                 >
-                  {saving ? 'Prescribing...' : 'Prescribe Regimen'}
+                  {saving ? 'Prescribing...' : 'Prescribe & Bill Regimen'}
                 </button>
               </div>
             </form>
