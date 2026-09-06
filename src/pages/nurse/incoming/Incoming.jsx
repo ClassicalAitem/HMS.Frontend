@@ -11,6 +11,7 @@ import { formatNigeriaDateTime, formatNigeriaDateTimeShort } from "@/utils/forma
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
+import ClearAllButton from "@/components/common/ClearAllButton";
 import { useNotifications } from "@/contexts/NotificationContext";
 
 const Incoming = () => {
@@ -285,12 +286,15 @@ const Incoming = () => {
               </div>
             </div>
 
-            <button
-              onClick={onRefresh}
-              className="btn btn-outline btn-primary btn-sm rounded-xl self-end sm:self-center font-medium shadow-2xs"
-            >
-              Refresh Queue
-            </button>
+            <div className="flex gap-2 self-end sm:self-center">
+              <button
+                onClick={onRefresh}
+                className="btn btn-outline btn-primary btn-sm rounded-xl font-medium shadow-2xs"
+              >
+                Refresh Queue
+              </button>
+              <ClearAllButton items={items} updateStatusFn={handleClear} onCleared={onRefresh} />
+            </div>
           </div>
 
           {/* Filter Tabs Bar */}

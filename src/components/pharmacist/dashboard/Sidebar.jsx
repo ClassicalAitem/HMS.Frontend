@@ -109,7 +109,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       onClick={onCloseSidebar}
       className={`flex items-center space-x-3 px-4 2xl:py-3 py-2 text-sm font-medium rounded-lg transition-colors ${
         active
-          ? 'bg-primary text-primary-content'
+          ? 'bg-primary/10 text-primary font-semibold'
           : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
       }`}
     >
@@ -145,7 +145,7 @@ const Sidebar = ({ onCloseSidebar }) => {
           onClick={onCloseSidebar}
           className={`flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors ${
             location.pathname === '/change-password'
-              ? 'bg-primary text-primary-content'
+              ? 'bg-primary/10 text-primary font-semibold'
               : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
           }`}
         >
