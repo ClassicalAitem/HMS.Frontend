@@ -18,6 +18,12 @@ import { getPatientById } from "@/services/api/patientsAPI";
 import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import { formatNigeriaDateTime, formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import { getAllSurgeries } from "@/services/api/surgeryAPI";
+import { updatePatientStatus } from "@/services/api/patientsAPI";
+import { updateAppointment } from "@/services/api/appointmentsAPI";
+import ClearItemButton from "@/components/common/ClearIncomingButton";
+import ClearAllButton from "@/components/common/ClearAllButton";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 const SurgeonIncoming = () => {
   const navigate = useNavigate();
@@ -116,6 +122,23 @@ const SurgeonIncoming = () => {
     setPage(0);
   }, [query, statusFilter, items]);
 
+  const { refreshQueueCount } = useNotifications();
+
+  const handleClear = async (data) => {
+    try {
+      if (data.rawPatientId) {
+        await updatePatientStatus(data.rawPatientId, { status: PATIENT_STATUS.CANCELLED });
+      }
+      if (data.id) {
+        await updateAppointment(data.id, { status: 'cancelled' });
+      }
+      localStorage.setItem('refreshIncoming', Date.now().toString());
+      refreshQueueCount();
+    } catch (err) {
+      console.error('Failed to clear request', err);
+    }
+  };
+
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
   const filteredItems = items.filter((d) => {
@@ -175,7 +198,7 @@ const SurgeonIncoming = () => {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center gap-3">
               <button
                 onClick={onRefresh}
                 className="btn btn-sm btn-ghost gap-1.5 font-medium border border-base-300"
@@ -184,6 +207,7 @@ const SurgeonIncoming = () => {
                 <RiRefreshLine className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </button>
+              <ClearAllButton items={items} updateStatusFn={handleClear} onCleared={onRefresh} />
             </div>
           </div>
 
@@ -324,27 +348,30 @@ const SurgeonIncoming = () => {
                         Note Completed
                       </span>
                     ) : (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary gap-1.5 font-semibold text-white shadow-xs"
-                        onClick={() =>
-                          navigate(
-                            `/dashboard/surgeon/write-surgical-note`,
-                            {
-                              state: {
-                                from: "incoming",
-                                appointmentSnapshot: data.snapshot,
-                                editSurgery: data.surgery,
-                                patientId: data.rawPatientId || (data.patientId !== "—" ? data.patientId : undefined),
-                                patientSnapshot: data.snapshot?.patient || null,
-                              },
-                            }
-                          )
-                        }
-                      >
-                        <FaFileMedical className="w-3.5 h-3.5" />
-                        {data.surgery ? "Edit Note" : "Write Note"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary gap-1.5 font-semibold text-white shadow-xs"
+                          onClick={() =>
+                            navigate(
+                              `/dashboard/surgeon/write-surgical-note`,
+                              {
+                                state: {
+                                  from: "incoming",
+                                  appointmentSnapshot: data.snapshot,
+                                  editSurgery: data.surgery,
+                                  patientId: data.rawPatientId || (data.patientId !== "—" ? data.patientId : undefined),
+                                  patientSnapshot: data.snapshot?.patient || null,
+                                },
+                              }
+                            )
+                          }
+                        >
+                          <FaFileMedical className="w-3.5 h-3.5" />
+                          {data.surgery ? "Edit Note" : "Write Note"}
+                        </button>
+                        <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                      </div>
                     )}
                   </div>
                 </div>

@@ -9,6 +9,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { useNotifications } from '@/contexts/NotificationContext';
 import ClearItemButton from '@/components/common/ClearIncomingButton';
+import ClearAllButton from '@/components/common/ClearAllButton';
 import { PatientStatusBadge } from '@/components/common';
 
 const Incoming = () => {
@@ -234,6 +235,10 @@ const Incoming = () => {
           <option value="desc">Descending</option>
           <option value="asc">Ascending</option>
         </select>
+        
+        <div className="ml-auto">
+          <ClearAllButton items={incomingPatients} updateStatusFn={handleClear} onCleared={fetchIncoming} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
