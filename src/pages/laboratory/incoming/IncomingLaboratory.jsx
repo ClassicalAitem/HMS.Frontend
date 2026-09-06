@@ -13,6 +13,7 @@ import { hasStatus } from "@/utils/statusUtils";
 import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
+import ClearAllButton from "@/components/common/ClearAllButton";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { FiSearch, FiAlertCircle, FiRefreshCw, FiUser, FiCalendar, FiClock } from "react-icons/fi";
 import { FaFlask, FaStethoscope } from "react-icons/fa";
@@ -328,7 +329,7 @@ const IncomingLaboratory = () => {
                 <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
-             
+              <ClearAllButton items={testRequests} updateStatusFn={handleClear} onCleared={fetchTestRequests} />
             </div>
           </div>
 

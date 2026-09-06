@@ -15,7 +15,7 @@ export const addDependantForPatient = async (patientId, dependant) => {
   if (!dependant || typeof dependant !== 'object') throw new Error('dependant must be an object');
 
   // Only send supported keys
-  const allowedKeys = ['firstName', 'middleName', 'lastName', 'dob', 'gender', 'relationshipType'];
+  const allowedKeys = ['firstName', 'middleName', 'lastName', 'dob', 'gender', 'relationshipType', 'hmos'];
   const payload = {};
   allowedKeys.forEach((k) => {
     if (dependant[k] !== undefined && dependant[k] !== null && dependant[k] !== '') payload[k] = dependant[k];
