@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/frontdesk/dashboard';
-import { FaUpload, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaUpload, FaChevronDown, FaChevronUp, FaUser, FaUsers, FaImage, FaHeartbeat, FaUserPlus } from 'react-icons/fa';
 import { useAppDispatch } from '../../../store/hooks';
 import { addPatient } from '../../../store/slices/patientsSlice';
 import { getUniqueFamilyNames, getUniqueCompanyNames } from '@/services/api/patientsAPI';
@@ -289,8 +289,7 @@ const Registration = () => {
       dependant.dob ||
       dependant.gender ||
       dependant.relationshipType ||
-      dependant.phone ||
-      isHmoPatient;
+      dependant.phone;
 
     if (dependantTouched) {
       if (!dependant.firstName.trim()) {
@@ -487,15 +486,22 @@ const Registration = () => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
           <div className="mb-6 px-2 sm:px-0">
-            <h1 className="text-2xl font-normal text-primary sm:pl-6 2xl:text-3xl">Add Patients Information</h1>
+            <h1 className="text-2xl font-bold text-primary sm:pl-6 2xl:text-3xl flex items-center gap-3">
+              <FaUserPlus className="text-primary/80" />
+              Patient Registration
+            </h1>
+            <p className="text-sm text-base-content/60 sm:pl-6 mt-1">Fill in the details below to register a new patient in the system.</p>
           </div>
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} className="w-full space-y-6">
             {/* First Section */}
-            <div className="shadow-xl card bg-base-100">
+            <div className="shadow-sm border border-base-200 card bg-base-100">
               <div className="p-4 card-body sm:p-6">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">First Section</h2>
+                <div className="flex items-center gap-2 mb-6 pb-2 border-b border-base-200">
+                  <FaUser className="text-primary" />
+                  <h2 className="text-lg font-bold text-base-content">Patient Details</h2>
+                </div>
                 
                 {/* Names Row */}
                 <div className="mb-6">
@@ -740,9 +746,12 @@ const Registration = () => {
             </div>
 
             {/* Second Section */}
-            <div className="shadow-xl card bg-base-100">
+            <div className="shadow-sm border border-base-200 card bg-base-100">
               <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">Second Section</h2>
+                <div className="flex items-center gap-2 mb-6 pb-2 border-b border-base-200">
+                  <FaUsers className="text-primary" />
+                  <h2 className="text-lg font-bold text-base-content">Next of Kin</h2>
+                </div>
                 
                 {/* Next of Kin */}
                 <div className="mb-6">
@@ -811,9 +820,12 @@ const Registration = () => {
             </div>
 
             {/* Patient Photo Upload */}
-            <div className="shadow-xl card bg-base-100">
+            <div className="shadow-sm border border-base-200 card bg-base-100">
               <div className="p-6 card-body">
-                <h2 className="mb-4 text-lg font-semibold text-base-content">Patient Photo Upload</h2>
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-base-200">
+                  <FaImage className="text-primary" />
+                  <h2 className="text-lg font-bold text-base-content">Patient Photo Upload</h2>
+                </div>
                 <p className="mb-4 text-sm text-base-content/70">
                   Upload a clear photo of the patient (.JPG/.PNG). This will be attached to the patient record.
                 </p>
@@ -842,12 +854,13 @@ const Registration = () => {
             </div>
 
             {/* Connect To HMO with Toggle */}
-            <div className="shadow-xl card bg-base-100 border border-base-200">
+            <div className="shadow-sm card bg-base-100 border border-base-200">
               <div className="p-6 card-body">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-base-200">
                   <div>
                     <h3 className="text-lg font-bold text-base-content flex items-center gap-2">
-                      Connect To HMO / Health Insurance
+                      <FaHeartbeat className="text-primary" />
+                      Health Insurance (HMO)
                       {isHmoPatient ? (
                         <span className="badge badge-primary text-xs font-semibold">HMO Active</span>
                       ) : (
@@ -950,14 +963,15 @@ const Registration = () => {
             </div>
 
             {/* Add Dependent with HMO Toggle */}
-            <div className="shadow-xl card bg-base-100 border border-base-200">
+            <div className="shadow-sm card bg-base-100 border border-base-200">
               <div className="p-6 card-body">
                 <button
                   type="button"
                   onClick={() => setDependentExpanded(!dependentExpanded)}
-                  className="flex justify-between items-center mb-4 w-full text-lg font-semibold text-left text-base-content"
+                  className="flex justify-between items-center w-full text-lg font-semibold text-left text-base-content pb-2 mb-4 border-b border-base-200"
                 >
                   <span className="flex items-center gap-2">
+                    <FaUsers className="text-primary" />
                     Add Dependant
                     {formData.dependants.firstName && (
                       <span className="badge badge-sm badge-info">1 In Progress</span>
@@ -1099,7 +1113,6 @@ const Registration = () => {
                                 onChange={handleInputChange}
                                 placeholder="e.g., Bastion, Avon"
                                 className="w-full input input-bordered"
-                                required={isHmoPatient}
                               />
                             </div>
                             <div>
@@ -1113,7 +1126,6 @@ const Registration = () => {
                                 onChange={handleInputChange}
                                 placeholder="e.g., 34758H90938/01"
                                 className="w-full input input-bordered"
-                                required={isHmoPatient}
                               />
                             </div>
                           </div>
@@ -1130,7 +1142,6 @@ const Registration = () => {
                                 onChange={handleInputChange}
                                 placeholder="e.g., Diamond, Family Gold"
                                 className="w-full input input-bordered"
-                                required={isHmoPatient}
                               />
                             </div>
                             <div>
@@ -1143,7 +1154,6 @@ const Registration = () => {
                                 value={formData.dependants.hmo.expiresAt}
                                 onChange={handleInputChange}
                                 className="w-full input input-bordered"
-                                required={isHmoPatient}
                               />
                             </div>
                           </div>

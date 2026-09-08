@@ -67,26 +67,8 @@ apiClient.interceptors.response.use(
                           errorMessage.includes('no token provided');
 
       if (isJwtExpired) {
-        // Clear all authentication data
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('persist:root');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-
-        // Show user-friendly error message
-        if (typeof window !== 'undefined' && window.dispatchEvent) {
-          window.dispatchEvent(new CustomEvent('auth:token-expired', {
-            detail: { message: 'Your session has expired. Please log in again.' }
-          }));
-        }
-
-        // Redirect to login page
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 1000);
-
-        return Promise.reject(new Error('Session expired. Please log in again.'));
+        // Auto-logout removed as requested
+        return Promise.reject(new Error('Session expired.'));
       }
 
       // For other 401 errors, try token refresh if available
@@ -110,17 +92,7 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
           }
         } catch (refreshError) {
-          // Refresh failed, clear auth data and redirect
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('persist:root');
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 1000);
-
+          // Refresh failed, auto-logout removed as requested
           return Promise.reject(refreshError);
         }
       }
