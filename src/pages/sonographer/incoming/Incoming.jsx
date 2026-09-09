@@ -21,7 +21,7 @@ const SonographerIncoming = () => {
   const [patients, setPatients] = useState([]);
   const [error, setError] = useState(null);
   const [searchValue, setSearchValue] = useState("");
-  const { refreshQueueCount } = useNotifications();
+  const { refreshQueueCount, lastUpdate } = useNotifications();
 
   const fetchIncomingPatients = useCallback(async () => {
     try {

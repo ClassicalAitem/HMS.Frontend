@@ -16,7 +16,6 @@ import { MedicalDirectorLayout } from "@/layouts/medical-director";
 const DOCTOR_STATUSES = new Set([
  "awaiting_md"
 ]);
-
 const prettifyStatus = (status) =>
   (Array.isArray(status) ? status : [status])
     .filter((s) => DOCTOR_STATUSES.has(String(s).toLowerCase()))
@@ -45,6 +44,7 @@ const IncomingMD = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
+  const { refreshQueueCount, lastUpdate } = useNotifications();
 
   useEffect(() => {
     let mounted = true;
@@ -150,7 +150,7 @@ const IncomingMD = () => {
 
     fetchIncoming();
     return () => { mounted = false; };
-  }, [refreshKey]);
+  }, [refreshKey, lastUpdate]);
 
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -216,7 +216,6 @@ const IncomingMD = () => {
     }
   };
 
-    const { refreshQueueCount } = useNotifications();
   
 
 
