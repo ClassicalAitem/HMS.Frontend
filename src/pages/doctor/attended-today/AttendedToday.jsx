@@ -81,8 +81,10 @@ const AttendedToday = () => {
           .filter((c) => String(getRecordDoctorId(c)) === String(doctorId) && isToday(c?.createdAt))
           .map((c) => ({
             source: "Consultation",
-            patientId: c.patientId,
-            dependantId: c.dependantId || null,
+            patientId: typeof c.patientId === 'object' ? (c.patientId?.id || c.patientId?._id) : c.patientId,
+            dependantId: typeof c.dependantId === 'object' ? (c.dependantId?.id || c.dependantId?._id) : (c.dependantId || null),
+            patient: c.patient || (typeof c.patientId === 'object' ? c.patientId : null),
+            dependant: c.dependant || (typeof c.dependantId === 'object' ? c.dependantId : null),
             createdAt: c.createdAt,
             diagnosis: c?.diagnosis || "—",
           }));
@@ -91,8 +93,10 @@ const AttendedToday = () => {
           .filter((r) => String(getRecordDoctorId(r)) === String(doctorId) && isToday(r?.createdAt))
           .map((r) => ({
             source: "Antenatal",
-            patientId: r.patientId,
-            dependantId: r.dependantId || null,
+            patientId: typeof r.patientId === 'object' ? (r.patientId?.id || r.patientId?._id) : r.patientId,
+            dependantId: typeof r.dependantId === 'object' ? (r.dependantId?.id || r.dependantId?._id) : (r.dependantId || null),
+            patient: r.patient || (typeof r.patientId === 'object' ? r.patientId : null),
+            dependant: r.dependant || (typeof r.dependantId === 'object' ? r.dependantId : null),
             createdAt: r.createdAt,
             diagnosis: "Antenatal visit",
           }));
