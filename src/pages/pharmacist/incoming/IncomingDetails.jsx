@@ -127,43 +127,19 @@ const IncomingDetails = () => {
     }
   }, [patientId, patient?.hmos])
 
+  // Doctors are now enriched by the backend (doc.doctorName)
   useEffect(() => {
-  let mounted = true
-
-  const loadDoctors = async () => {
+    let mounted = true
     const allPrescriptions = [...prescriptions.active, ...prescriptions.history]
-    const doctorIds = [...new Set(allPrescriptions.map((p) => p.doctorId).filter(Boolean))]
-    const missingIds = doctorIds.filter((id) => !doctors[id])
-
-    if (!missingIds.length) return
-
-    try {
-      const entries = await Promise.all(
-        missingIds.map((id) =>
-          usersAPI.getUserById(id)
-            .then((res) => {
-              const user = res?.data?.data ?? res?.data ?? res
-              const name = user
-                ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown Doctor'
-                : 'Unknown Doctor'
-              return [id, name]
-            })
-            .catch(() => [id, 'Unknown Doctor'])
-        )
-      )
-      if (mounted) {
-        setDoctors((prev) => ({ ...prev, ...Object.fromEntries(entries) }))
+    const docs = {}
+    allPrescriptions.forEach(p => {
+      if (p.doctorId) {
+        docs[p.doctorId] = p.doctorName || (p.doctor ? `${p.doctor.firstName || ''} ${p.doctor.lastName || ''}`.trim() : 'Unknown Doctor');
       }
-    } catch (err) {
-      console.error('Failed to load doctor names', err)
-    }
-  }
-
-  loadDoctors()
-  return () => {
-    mounted = false
-  }
-}, [prescriptions])
+    });
+    if (mounted) setDoctors(docs);
+    return () => { mounted = false }
+  }, [prescriptions])
 
 const formatQty = (n) => {
   const num = Number(n) || 0

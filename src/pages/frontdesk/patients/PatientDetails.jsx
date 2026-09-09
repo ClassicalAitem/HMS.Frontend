@@ -28,7 +28,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
 import { AppointmentDetailsModal } from '@/components/modals';
 import { getConsultations } from '@/services/api/consultationAPI';
-import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI';
+import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
 import {
   getVitalsByPatient,
@@ -129,19 +129,41 @@ const PatientDetails = () => {
     useEffect(() => {
       let mounted = true;
       const loadPrescriptions = async () => {
-        const results = await Promise.all(consultations.map(async (consultation) => {
-          try {
-            const response = await getPrescriptionsForConsultation(consultation.id);
-            const raw = response?.data ?? response ?? [];
-            return [consultation.id, Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? [raw] : []];
-          } catch { return [consultation.id, []]; }
-        }));
-        if (mounted) setPrescriptionsByConsultation(Object.fromEntries(results));
+        if (!consultations.length) {
+          if (mounted) setPrescriptionsByConsultation({});
+          return;
+        }
+
+        try {
+          const res = await getPrescriptionByPatientId(patientId);
+          const raw = res?.data ?? res ?? [];
+          const allPrescriptions = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+          
+          const grouped = {};
+          allPrescriptions.forEach((p) => {
+            if (p.consultationId) {
+              if (!grouped[p.consultationId]) grouped[p.consultationId] = [];
+              grouped[p.consultationId].push(p);
+            }
+          });
+
+          consultations.forEach((c) => {
+            if (!grouped[c.id]) grouped[c.id] = [];
+          });
+
+          if (mounted) setPrescriptionsByConsultation(grouped);
+        } catch (err) {
+          if (mounted) {
+            const fallbackGroup = {};
+            consultations.forEach((c) => { fallbackGroup[c.id] = []; });
+            setPrescriptionsByConsultation(fallbackGroup);
+          }
+        }
       };
-      if (consultations.length) loadPrescriptions();
-      else setPrescriptionsByConsultation({});
+      
+      loadPrescriptions();
       return () => { mounted = false; };
-    }, [consultations]);
+    }, [consultations, patientId]);
   
     useEffect(() => {
       let mounted = true;

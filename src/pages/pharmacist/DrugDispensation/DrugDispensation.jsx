@@ -28,50 +28,7 @@ const Badge = ({ children, variant }) => {
   return <span className={`${base} ${cls}`}>{children}</span>
 }
 
-const patientCache = new Map();
-
-const resolvePatientName = async (patientId, dependantId) => {
-  if (!patientId && !dependantId) return 'Unknown';
-
-  const cacheKey = dependantId ? `dep:${dependantId}` : `pt:${patientId}`;
-  if (patientCache.has(cacheKey)) return patientCache.get(cacheKey);
-
-  // Case 1: we already know it's a dependant
-  if (dependantId) {
-    try {
-      const res = await getDependantById(dependantId);
-      const dep = res?.data?.data?.dependant || res?.data?.dependant || res?.data;
-      const name = `${dep?.firstName || ''} ${dep?.lastName || ''}`.trim() || 'Dependant';
-      patientCache.set(cacheKey, name);
-      return name;
-    } catch {
-      patientCache.set(cacheKey, 'Unknown');
-      return 'Unknown';
-    }
-  }
-
-  // Case 2: only patientId is present — but it might actually BE a dependant id
-  // (some records don't separate the two), so try patient first, then fall back
-  try {
-    const res = await getPatientById(patientId);
-    const p = res?.data ?? res;
-    const name = `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown Patient';
-    patientCache.set(cacheKey, name);
-    return name;
-  } catch {
-    // patientId lookup failed — try it as a dependant id before giving up
-    try {
-      const depRes = await getDependantById(patientId);
-      const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.data;
-      const name = `${dep?.firstName || ''} ${dep?.lastName || ''}`.trim() || 'Dependant';
-      patientCache.set(cacheKey, name);
-      return name;
-    } catch {
-      patientCache.set(cacheKey, 'Unknown');
-      return 'Unknown';
-    }
-  }
-};
+// Deprecated: using backend populated fields now
 const ITEMS_PER_PAGE = 10;
 
 const DrugDispensation = () => {
@@ -143,29 +100,30 @@ const DrugDispensation = () => {
         }))
       })
 
-        // Resolve unique patient/dependant names in parallel, then apply
-        const uniqueSubjects = new Map();
-        flatRows.forEach(r => {
-          const key = r.dependantId ? `dep:${r.dependantId}` : `pt:${r.patientId}`;
-          if (!uniqueSubjects.has(key)) {
-            uniqueSubjects.set(key, { patientId: r.patientId, dependantId: r.dependantId });
+        // Name resolution happens using populated fields
+        const finalRows = flatRows.map(row => {
+          let name = 'Unknown Patient';
+          const d = dispenseList.find(disp => disp._id === row.id);
+          
+          if (d) {
+            if (d.dependant) {
+              name = `${d.dependant.firstName || ''} ${d.dependant.lastName || ''}`.trim() || d.dependant.fullName || 'Dependant';
+            } else if (d.patient) {
+              name = `${d.patient.firstName || ''} ${d.patient.lastName || ''}`.trim() || d.patient.fullName || 'Unknown Patient';
+            } else if (d.opdPatient) {
+              name = `${d.opdPatient.firstName || ''} ${d.opdPatient.lastName || ''}`.trim() || d.opdPatient.fullName || 'Unknown Patient';
+            }
           }
+          
+          return {
+            ...row,
+            name
+          };
         });
 
-        const nameEntries = await Promise.all(
-          Array.from(uniqueSubjects.entries()).map(async ([key, { patientId, dependantId }]) => {
-            const name = await resolvePatientName(patientId, dependantId);
-            return [key, name];
-          })
-        );
-        const nameMap = Object.fromEntries(nameEntries);
-
-        const enrichedRows = flatRows.map(r => {
-          const key = r.dependantId ? `dep:${r.dependantId}` : `pt:${r.patientId}`;
-          return { ...r, name: nameMap[key] || 'Unknown' };
-        });
-
-        if (mounted) setRows(enrichedRows)
+        if (mounted) {
+          setRows(finalRows.sort((a,b) => new Date(b.dispensedAt) - new Date(a.dispensedAt)))
+        }
       } catch (err) {
         console.error('DrugDispensation: fetchDispenses error', err)
         const status = err?.response?.status

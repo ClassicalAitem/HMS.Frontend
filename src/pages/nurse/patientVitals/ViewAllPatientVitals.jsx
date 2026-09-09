@@ -112,10 +112,15 @@ const ViewAllPatientVitals = () => {
     Array.isArray(vitals)
       ? vitals.map((vital) => {
           const nurseId = vital.nurseId || vital.nurse?.id || vital.nurse?._id || vital.createdBy;
+          let resolvedNurseName = 'Unknown Nurse';
+          if (vital.nurseName) resolvedNurseName = vital.nurseName;
+          else if (vital.nurse && vital.nurse.firstName) resolvedNurseName = `${vital.nurse.firstName} ${vital.nurse.lastName || ''}`.trim();
+          else if (vital.nurse && vital.nurse.fullName) resolvedNurseName = vital.nurse.fullName;
+
           return {
             _id: vital._id || vital.id,
             forName: subjectName,
-            nurseName: vital.nurseName || (nurseId ? (nurseNameById[nurseId] || 'Unknown Nurse') : 'Unknown Nurse'),
+            nurseName: resolvedNurseName,
             bp: vital.bp || '—',
             pulse: vital.pulse || '—',
             temperature: vital.temperature || '—',
@@ -137,35 +142,7 @@ const ViewAllPatientVitals = () => {
     return candidate?.user ?? candidate;
   };
 
-  // Load nurse names when vitals change
-  useEffect(() => {
-    const loadNurses = async () => {
-      if (!Array.isArray(vitals) || vitals.length === 0) return;
-      const ids = new Set();
-      vitals.forEach((v) => {
-        const id = v.nurseId || v.nurse?.id || v.nurse?._id || v.createdBy;
-        if (id && !nurseNameById[id]) ids.add(id);
-      });
-      if (ids.size === 0) return;
-      try {
-        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
-        const newNames = {};
-        Array.from(ids).forEach((id, idx) => {
-          const res = responses[idx];
-          if (res?.status === 'fulfilled') {
-            const userData = normalizeUserResponse(res.value);
-            newNames[id] = userData?.fullName || `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'Unknown Nurse';
-          } else {
-            newNames[id] = 'Unknown Nurse';
-          }
-        });
-        setNurseNameById(prev => ({ ...prev, ...newNames }));
-      } catch (e) {
-        console.error('Failed loading nurse names', e);
-      }
-    };
-    loadNurses();
-  }, [vitals]);
+  // Nurse names are populated directly by the backend
 
   // Pagination
   const paginationData = useMemo(() => {
