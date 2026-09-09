@@ -53,32 +53,19 @@ const UpcomingAppointments = () => {
 
   useEffect(() => {
     let mounted = true;
-    const missingIds = pageItems
-      .map((i) => i?.patientId)
-      .filter((id) => id && !patientsById[id]);
-    const unique = Array.from(new Set(missingIds));
-    const fetchNames = async () => {
-      try {
-        const entries = await Promise.all(unique.map(async (id) => {
-          try {
-            const r = await getPatientById(id);
-            const d = r?.data || {};
-            const name = (d?.fullName || `${d?.firstName || ""} ${d?.lastName || ""}`.trim() || d?.name || "").trim() || "Unknown";
-            return [id, name];
-          } catch {
-            return [id, "Unknown"];
-          }
-        }));
-        const map = { ...patientsById };
-        entries.forEach(([id, name]) => { map[id] = name; });
-        if (mounted) setPatientsById(map);
-      } catch (err) {
-        console.error("UpcomingAppointments: patient names fetch error", err);
+    const map = { ...patientsById };
+    pageItems.forEach((item) => {
+      if (item.dependantId && item.dependant) {
+        map[item.dependantId] = item.dependant.fullName || `${item.dependant.firstName || ""} ${item.dependant.lastName || ""}`.trim() || "Dependant";
+      } else if (item.patientId && item.patient) {
+        map[item.patientId] = item.patient.fullName || `${item.patient.firstName || ""} ${item.patient.lastName || ""}`.trim() || "Unknown";
+      } else if (item.patientId) {
+        map[item.patientId] = map[item.patientId] || "Unknown";
       }
-    };
-    if (unique.length > 0) fetchNames();
+    });
+    setPatientsById(map);
     return () => { mounted = false; };
-  }, [pageItems, patientsById]);
+  }, [pageItems]);
 
   const totalPages = Math.ceil(items.length / pageSize) || 1;
 
@@ -138,7 +125,12 @@ const UpcomingAppointments = () => {
                   <tr key={index} className="border-b last:border-b-0 text-center ">
                     <td className="py-7">{dateStr}</td>
                     <td className="py-7">{timeStr}</td>
-                    <td>{patientName}</td>
+                    <td>
+                      <div className="flex flex-col">
+                        <span>{patientName}</span>
+                        <span className="text-[10px] text-base-content/50 font-mono">ID: {a.dependantId || a.patientId || "—"}</span>
+                      </div>
+                    </td>
                     <td>{type}</td>
                     <td>
                       <span className="inline-block w-[150px] rounded-[6px] bg-[#8AD3A8]  h-[24px]">{statusLabel}</span>

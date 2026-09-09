@@ -26,30 +26,18 @@ const Surgeries = () => {
       const surgeryResponse = await getAllSurgeries();
       const surgeryData = surgeryResponse?.data || [];
 
-      // Resolve patient names for all surgeries
-      const surgeriesWithPatientNames = await Promise.all(
-        surgeryData.map(async (surgery) => {
-          try {
-            const patientResponse = await getPatientById(surgery.patientId);
-            const patientData = patientResponse?.data || {};
-            const patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Unknown Patient';
-            
-            return {
-              ...surgery,
-              patientName,
-              formattedDate: formatDate(surgery.scheduledDate),
-              isUpcoming: new Date(surgery.scheduledDate) >= new Date()
-            };
-          } catch {
-            return {
-              ...surgery,
-              patientName: 'Unknown Patient',
-              formattedDate: formatDate(surgery.scheduledDate),
-              isUpcoming: new Date(surgery.scheduledDate) >= new Date()
-            };
-          }
-        })
-      );
+      // Resolve patient names for all surgeries from backend populated data
+      const surgeriesWithPatientNames = surgeryData.map((surgery) => {
+        const patientData = surgery.patient || {};
+        const patientName = `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Unknown Patient';
+        
+        return {
+          ...surgery,
+          patientName,
+          formattedDate: formatDate(surgery.scheduledDate),
+          isUpcoming: new Date(surgery.scheduledDate) >= new Date()
+        };
+      });
 
       setSurgeries(surgeriesWithPatientNames);
     } catch (error) {
