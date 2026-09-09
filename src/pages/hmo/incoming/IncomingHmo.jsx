@@ -27,6 +27,8 @@ const IncomingHmo = () => {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
+    const { refreshQueueCount, lastUpdate } = useNotifications();
+
 
   useEffect(() => {
     let mounted = true;
@@ -106,7 +108,7 @@ const IncomingHmo = () => {
     };
     loadPatients();
     return () => { mounted = false; };
-  }, [refreshKey]);
+  }, [refreshKey, lastUpdate]);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -142,7 +144,6 @@ const IncomingHmo = () => {
   const visible = filtered.slice(start, start + pageSize);
   
 
-    const { refreshQueueCount } = useNotifications();
 
 
 
