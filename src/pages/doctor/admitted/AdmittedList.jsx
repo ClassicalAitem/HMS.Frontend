@@ -35,25 +35,12 @@ const DRAdmittedList = () => {
       setLoading(true)
       setError(null)
 
-      const [patientsRes, dependantsRes, admissionsRes, vitalsRes, billingsRes, receiptsRes] = await Promise.allSettled([
-        getPatients(),
-        getDependants(),
+      const [admissionsRes, vitalsRes, billingsRes, receiptsRes] = await Promise.allSettled([
         getAdmissions(),
         getVitals(),
         getAllBillings({ skipErrorToast: true }),
         getAllReceipts({ skipErrorToast: true }),
       ])
-
-      const patients = patientsRes.status === 'fulfilled'
-        ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
-        : []
-
-      const dependants = dependantsRes.status === 'fulfilled'
-        ? (() => {
-            const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? []
-            return Array.isArray(raw) ? raw : (raw?.dependants ?? [])
-          })()
-        : []
 
       const allAdmissions = admissionsRes.status === 'fulfilled'
         ? (() => {
@@ -83,12 +70,7 @@ const DRAdmittedList = () => {
           })()
         : []
 
-      if (patientsRes.status === 'rejected') console.error('DRAdmittedList: getPatients failed', patientsRes.reason)
-      if (dependantsRes.status === 'rejected') console.error('DRAdmittedList: getDependants failed', dependantsRes.reason)
       if (admissionsRes.status === 'rejected') console.error('DRAdmittedList: getAdmissions failed', admissionsRes.reason)
-
-      const patientMap = new Map(patients.map(p => [p.id, p]))
-      const dependantMap = new Map(dependants.map(d => [d.id, d]))
       const activeAdmissions = allAdmissions.filter(a => a.status !== 'discharged')
 
       // Map latest vitals per patient/dependant ID
@@ -105,10 +87,8 @@ const DRAdmittedList = () => {
 
       const buildItem = (admission) => {
         const isDependant = !!admission.dependantId
-        const source = isDependant
-          ? dependantMap.get(admission.dependantId)
-          : patientMap.get(admission.patientId)
-        const parentPatient = isDependant ? patientMap.get(admission.patientId) : null
+        const source = isDependant ? admission.dependant : admission.patient
+        const parentPatient = isDependant ? admission.patient : null
         const targetId = admission.dependantId || admission.patientId
         const latestVitalInfo = vitalsMap.get(targetId)
 

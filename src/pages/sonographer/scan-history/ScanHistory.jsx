@@ -140,104 +140,53 @@ const SonographerScanHistory = () => {
           (r) => r.attachedFiles && r.attachedFiles.some((f) => f?.data || f?.name)
         );
 
-        const enriched = await Promise.all(
-          scanOnly.map(async (result) => {
-            let patientData = null;
-            let patientType = "regular";
-            let displayId = null;
-            let hospitalId = null;
+        const enriched = scanOnly.map((result) => {
+          let patientData = null;
+          let patientType = "regular";
+          let displayId = null;
+          let hospitalId = null;
 
-            try {
-              if (result.dependantId) {
-                patientType = "dependant";
-                displayId = result.dependantId;
+          if (result.dependantId && result.dependant) {
+            patientType = "dependant";
+            displayId = result.dependantId;
+            const dep = result.dependant;
+            const fullName = `${dep.firstName || ""} ${dep.lastName || ""}`.trim() || dep.fullName || dep.name;
+            
+            // Get parent hospitalId if available
+            hospitalId = result.patient?.hospitalId || null;
+            patientData = { fullName, id: dep.id || dep._id, hospitalId };
+          } else if (result.opdPatientId && result.opdPatient) {
+            patientType = "opd";
+            displayId = result.opdPatientId;
+            const opd = result.opdPatient;
+            patientData = {
+              fullName: opd.fullName || `${opd.firstName || ""} ${opd.lastName || ""}`.trim(),
+              id: opd.id || opd._id,
+              hospitalId: null, // OPD patients have no hospitalId
+            };
+          } else if (result.patientId && result.patient) {
+            patientType = "regular";
+            displayId = result.patientId;
+            const pat = result.patient;
+            hospitalId = pat.hospitalId || null;
+            patientData = {
+              fullName: pat.fullName || `${pat.firstName || ""} ${pat.lastName || ""}`.trim(),
+              id: pat.id || pat._id,
+              hospitalId,
+            };
+          } else {
+             // Fallbacks if not populated
+             displayId = result.dependantId || result.opdPatientId || result.patientId;
+             patientData = { fullName: "Unknown Patient", id: displayId, hospitalId: null };
+          }
 
-                try {
-                  const depRes = await getDependantById(result.dependantId);
-                  const dep =
-                    depRes?.data?.data?.dependant ||
-                    depRes?.data?.dependant ||
-                    depRes?.dependant;
-
-                  if (dep) {
-                    const fullName =
-                      `${dep.firstName || ""} ${dep.lastName || ""}`.trim() ||
-                      dep.fullName ||
-                      dep.name;
-
-                    // ✅ For dependants, fetch parent patient to get hospitalId
-                    const parentPatientId = dep.patientId || result.patientId;
-                    if (parentPatientId) {
-                      try {
-                        const parentRes = await getPatientById(parentPatientId);
-                        const parent = parentRes?.data || parentRes;
-                        hospitalId = parent?.hospitalId || null;
-                      } catch { /* silent */ }
-                    }
-
-                    patientData = { fullName, id: dep.id || dep._id, hospitalId };
-                  }
-                } catch (err) {
-                  console.warn("Failed to load dependant:", err);
-                }
-              } else if (result.opdPatientId) {
-                patientType = "opd";
-                displayId = result.opdPatientId;
-
-                try {
-                  const opdRes = await getOpdPatientById(result.opdPatientId);
-                  const opd = opdRes?.data || opdRes;
-                  if (opd) {
-                    patientData = {
-                      fullName:
-                        opd.fullName ||
-                        `${opd.firstName || ""} ${opd.lastName || ""}`.trim(),
-                      id: opd.id || opd._id,
-                      hospitalId: null, // OPD patients have no hospitalId
-                    };
-                  }
-                } catch (err) {
-                  console.warn("Failed to load OPD patient:", err);
-                }
-              } else if (result.patientId) {
-                patientType = "regular";
-                displayId = result.patientId;
-
-                try {
-                  const patRes = await getPatientById(result.patientId);
-                  const pat = Array.isArray(patRes) ? patRes[0] : patRes?.data || patRes;
-                  if (pat) {
-                    hospitalId = pat.hospitalId || null;
-                    patientData = {
-                      fullName:
-                        pat.fullName ||
-                        `${pat.firstName || ""} ${pat.lastName || ""}`.trim(),
-                      id: pat.id || pat._id,
-                      hospitalId,
-                    };
-                  }
-                } catch (err) {
-                  console.warn("Failed to load patient:", err);
-                }
-              }
-
-              return {
-                ...result,
-                patientData: patientData || { fullName: "Unknown Patient", id: displayId, hospitalId: null },
-                patientType,
-                displayId: displayId || "—",
-              };
-            } catch (err) {
-              console.warn("Error enriching scan result:", err);
-              return {
-                ...result,
-                patientData: { fullName: "Unknown Patient", id: displayId, hospitalId: null },
-                patientType: "unknown",
-                displayId: displayId || "—",
-              };
-            }
-          })
-        );
+          return {
+            ...result,
+            patientData,
+            patientType,
+            displayId: displayId || "—",
+          };
+        });
 
         if (mounted) setScanResults(enriched);
       } catch (err) {
