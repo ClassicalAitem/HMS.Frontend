@@ -87,7 +87,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
     {
       icon: FaBed,
-      label: "Admitted Patients",
+      label: "Admission",
       path: "/dashboard/medical-director/admitted",
       active: isAdmittedActive,
       badge: isAdmittedActive ? 0 : admittedCount,

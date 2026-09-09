@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getDependantById } from "@/services/api/dependantAPI";
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import { Header, PatientCardTypeInfo } from '@/components/common';
@@ -29,7 +30,7 @@ import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard';
 import PatientHmoHistory from './PatientHmoHistory';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI';
+import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import {
   getVitalsByPatient,
   getLatestVital,
@@ -142,7 +143,6 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
         if (isViewingDependant && dependantId) {
           try {
-            const { getDependantById } = await import('@/services/api/dependantAPI');
             const depRes = await getDependantById(dependantId);
             const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || dependantSnapshot;
             if (mounted && dep) setSubject(dep);
@@ -321,38 +321,48 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   }, [patientId, isViewingDependant, dependantId]);
 
   useEffect(() => {
-  let mounted = true;
-  const fetchPrescriptions = async () => {
-    if (!consultations.length) {
-      if (mounted) setPrescriptionsByConsultation({});
-      return;
-    }
-
-    try {
-      const results = await Promise.all(
-        consultations.map(async (c) => {
-          try {
-            const res = await getPrescriptionsForConsultation(c.id);
-            const raw = res?.data ?? res ?? [];
-            const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
-            return [c.id, list];
-          } catch {
-            return [c.id, []];
-          }
-        })
-      );
-
-      if (mounted) {
-        setPrescriptionsByConsultation(Object.fromEntries(results));
+    let mounted = true;
+    const fetchPrescriptions = async () => {
+      if (!consultations.length) {
+        if (mounted) setPrescriptionsByConsultation({});
+        return;
       }
-    } catch (err) {
-      console.error('Failed to load consultation prescriptions', err);
-    }
-  };
 
-  fetchPrescriptions();
-  return () => { mounted = false; };
-}, [consultations]);
+      try {
+        const res = await getPrescriptionByPatientId(patientId);
+        const raw = res?.data ?? res ?? [];
+        const allPrescriptions = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+        
+        // Group by consultationId
+        const grouped = {};
+        allPrescriptions.forEach((p) => {
+          if (p.consultationId) {
+            if (!grouped[p.consultationId]) grouped[p.consultationId] = [];
+            grouped[p.consultationId].push(p);
+          }
+        });
+
+        // Ensure every consultation has at least an empty array
+        consultations.forEach((c) => {
+          if (!grouped[c.id]) grouped[c.id] = [];
+        });
+
+        if (mounted) {
+          setPrescriptionsByConsultation(grouped);
+        }
+      } catch (err) {
+        console.error('Failed to load patient prescriptions', err);
+        if (mounted) {
+          const fallbackGroup = {};
+          consultations.forEach((c) => { fallbackGroup[c.id] = []; });
+          setPrescriptionsByConsultation(fallbackGroup);
+        }
+      }
+    };
+
+    fetchPrescriptions();
+    return () => { mounted = false; };
+  }, [consultations, patientId]);
 
 useEffect(() => {
   let mounted = true;
