@@ -185,27 +185,12 @@ const GenerateReports = () => {
           const payload = await getPrescriptions();
           const prescriptions = extractArrayFromPayload(payload);
 
-          const patientIds = prescriptions.map((r) => resolveIdString(r?.patientId)).filter(Boolean);
-          const dependantIds = prescriptions.map((r) => resolveIdString(r?.dependantId)).filter(Boolean);
-          const pharmacistIds = prescriptions.map((r) => resolveIdString(r?.pharmacistId)).filter(Boolean);
-
-          const [patientMap, dependantMap, pharmacistMap] = await Promise.all([
-            fetchEntityMap(patientIds, getPatientById),
-            fetchEntityMap(dependantIds, getDependantById),
-            fetchEntityMap(pharmacistIds, usersAPI.getUserById),
-          ]);
-
           rows = prescriptions.map((record, index) => {
             const medications = Array.isArray(record?.medications) ? record.medications : [];
             const medication = medications[0] || {};
-            const parentPatient =
-              resolveEmbeddedEntity(record?.patientId) || patientMap.get(resolveIdString(record?.patientId));
-            const subject = record?.dependantId
-              ? resolveEmbeddedEntity(record.dependantId) || dependantMap.get(resolveIdString(record.dependantId))
-              : parentPatient;
-            const pharmacist =
-              resolveEmbeddedEntity(record?.pharmacistId) ||
-              (record?.pharmacistId ? pharmacistMap.get(resolveIdString(record.pharmacistId)) : null);
+            const parentPatient = record?.patient || resolveEmbeddedEntity(record?.patientId);
+            const subject = record?.dependant || (record?.dependantId ? resolveEmbeddedEntity(record.dependantId) : parentPatient) || parentPatient;
+            const pharmacist = record?.pharmacist || resolveEmbeddedEntity(record?.pharmacistId) || null;
 
             return {
               id: record?._id || record?.id || `${reportType}-${index}`,
@@ -224,13 +209,6 @@ const GenerateReports = () => {
         } else if (reportType === 'Billing Report') {
           const payload = await getAllBillings();
           const billings = extractArrayFromPayload(payload);
-          const patientIds = billings.map((r) => resolveIdString(r?.patientId)).filter(Boolean);
-          const dependantIds = billings.map((r) => resolveIdString(r?.dependantId)).filter(Boolean);
-
-          const [patientMap, dependantMap] = await Promise.all([
-            fetchEntityMap(patientIds, getPatientById),
-            fetchEntityMap(dependantIds, getDependantById),
-          ]);
 
           rows = billings.map((record, index) => {
             const amount = Number(record?.totalAmount || 0);
@@ -241,12 +219,9 @@ const GenerateReports = () => {
                 : outstanding < amount
                 ? 'Partial'
                 : 'Pending';
-            const patient = record?.patient || {};
-            const parentPatient =
-              resolveEmbeddedEntity(record?.patientId) || patientMap.get(resolveIdString(record?.patientId));
-            const subject = record?.dependantId
-              ? resolveEmbeddedEntity(record.dependantId) || dependantMap.get(resolveIdString(record.dependantId))
-              : parentPatient;
+            
+            const parentPatient = record?.patient || resolveEmbeddedEntity(record?.patientId);
+            const subject = record?.dependant || (record?.dependantId ? resolveEmbeddedEntity(record.dependantId) : parentPatient) || parentPatient;
 
             return {
               id: record?._id || record?.id || `${reportType}-${index}`,
@@ -267,17 +242,8 @@ const GenerateReports = () => {
         } else if (reportType === 'Lab Report') {
           const payload = await getLabResults();
           const results = extractArrayFromPayload(payload);
-          const patientIds = results.map((r) => resolveIdString(r?.patientId)).filter(Boolean);
-          const dependantIds = results.map((r) => resolveIdString(r?.dependantId)).filter(Boolean);
-          const technicianIds = results.map((r) => resolveIdString(r?.labTechnicianId)).filter(Boolean);
-
-          const [patientMap, dependantMap, technicianMap, investigationsPayload] = await Promise.all([
-            fetchEntityMap(patientIds, getPatientById),
-            fetchEntityMap(dependantIds, getDependantById),
-            fetchEntityMap(technicianIds, usersAPI.getUserById),
-            getInvestigations(),
-          ]);
-
+          
+          const investigationsPayload = await getInvestigations();
           const allInvestigations = extractArrayFromPayload(investigationsPayload);
           const investigationMap = new Map();
           allInvestigations.forEach((inv) => {
@@ -286,14 +252,9 @@ const GenerateReports = () => {
           });
 
           rows = results.map((record, index) => {
-            const parentPatient =
-              resolveEmbeddedEntity(record?.patientId) || patientMap.get(resolveIdString(record?.patientId));
-            const subject = record?.dependantId
-              ? resolveEmbeddedEntity(record.dependantId) || dependantMap.get(resolveIdString(record.dependantId))
-              : parentPatient;
-            const technician =
-              resolveEmbeddedEntity(record?.labTechnicianId) ||
-              (record?.labTechnicianId ? technicianMap.get(resolveIdString(record.labTechnicianId)) : null);
+            const parentPatient = record?.patient || resolveEmbeddedEntity(record?.patientId);
+            const subject = record?.dependant || (record?.dependantId ? resolveEmbeddedEntity(record.dependantId) : parentPatient) || parentPatient;
+            const technician = record?.technician || resolveEmbeddedEntity(record?.labTechnicianId) || null;
 
             const matchedInvestigation = investigationMap.get(record?.investigationRequestId);
             const firstTest = Array.isArray(matchedInvestigation?.tests) ? matchedInvestigation.tests[0] : null;

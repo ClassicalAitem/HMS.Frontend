@@ -99,7 +99,6 @@ const AttendedToday = () => {
 
         const allEvents = [...consultEvents, ...antenatalEvents];
 
-        // Dedupe per patient/dependant, keep the most recent event, note if both happened
         const byKey = new Map();
         allEvents.forEach((e) => {
           const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
@@ -110,6 +109,34 @@ const AttendedToday = () => {
             existing.sources = [...new Set([...existing.sources, e.source])];
           }
         });
+        
+        const finalResolved = {};
+        allEvents.forEach((e) => {
+          const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
+          if (!finalResolved[key]) {
+            if (e.dependantId && e.dependant) {
+              const dep = e.dependant;
+              const guardian = e.patient || {};
+              finalResolved[key] = {
+                name: `${dep.firstName || ""} ${dep.lastName || ""}`.trim() || dep.fullName || "Dependant",
+                type: "Dependant",
+                displayId: dep.hospitalId || guardian.hospitalId || e.patientId,
+                guardianName: `${guardian.firstName || ""} ${guardian.lastName || ""}`.trim() || null,
+                guardianHospitalId: guardian.hospitalId || null,
+              };
+            } else if (e.patient) {
+              const pat = e.patient;
+              finalResolved[key] = {
+                name: `${pat.firstName || ""} ${pat.lastName || ""}`.trim() || pat.fullName || "Unknown",
+                type: "Patient",
+                displayId: pat.hospitalId || e.patientId,
+              };
+            } else {
+              finalResolved[key] = { name: "Unknown", type: e.dependantId ? "Dependant" : "Patient", displayId: e.patientId };
+            }
+          }
+        });
+        if (mounted) setResolved((prev) => ({ ...prev, ...finalResolved }));
 
         const merged = Array.from(byKey.values()).sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -126,62 +153,6 @@ const AttendedToday = () => {
     load();
     return () => { mounted = false; };
   }, [refreshKey, doctorId]);
-
-  // Resolve display names
-  useEffect(() => {
-    if (!events.length) return;
-    let mounted = true;
-
- const resolveNames = async () => {
-  const updates = {};
-  for (const e of events) {
-    const key = e.dependantId ? `dep-${e.dependantId}` : `pat-${e.patientId}`;
-    if (resolved[key]) continue;
-
-    try {
-      if (e.dependantId) {
-        // Fetch both dependant and guardian patient in parallel
-        const [depRes, patientRes] = await Promise.allSettled([
-          getDependantById(e.dependantId),
-          getPatientById(e.patientId),
-        ]);
-
-        const dep = depRes.status === "fulfilled"
-          ? (depRes.value?.data?.data?.dependant || depRes.value?.data?.dependant || depRes.value?.data || {})
-          : {};
-
-        const guardian = patientRes.status === "fulfilled"
-          ? (patientRes.value?.data ?? patientRes.value ?? {})
-          : {};
-
-        updates[key] = {
-          name: `${dep?.firstName || ""} ${dep?.lastName || ""}`.trim() || "Unknown",
-          type: "Dependant",
-          displayId: dep?.hospitalId || guardian?.hospitalId || e.patientId,
-          guardianName: `${guardian?.firstName || ""} ${guardian?.lastName || ""}`.trim() || null,
-          guardianHospitalId: guardian?.hospitalId || null,
-        };
-      } else {
-        const res = await getPatientById(e.patientId);
-        const p = res?.data ?? res;
-        updates[key] = {
-          name: p?.fullName || `${p?.firstName || ""} ${p?.lastName || ""}`.trim() || "Unknown",
-          type: "Patient",
-          displayId: p?.hospitalId || e.patientId,
-        };
-      }
-    } catch {
-      updates[key] = { name: "Unknown", type: e.dependantId ? "Dependant" : "Patient", displayId: e.patientId };
-    }
-  }
-  if (mounted && Object.keys(updates).length) {
-    setResolved((prev) => ({ ...prev, ...updates }));
-  }
-};
-
-    resolveNames();
-    return () => { mounted = false; };
-  }, [events]);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 const enriched = useMemo(
