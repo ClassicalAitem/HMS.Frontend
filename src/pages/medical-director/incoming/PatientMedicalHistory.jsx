@@ -12,7 +12,7 @@ import LabInvestigationRequestTable from "@/components/medical-director/patient/
 import RecordVitalsModal from "@/components/medical-director/patient/RecordVitalsModal";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getDependantById } from "@/services/api/dependantAPI";
+import { getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
 import { usersAPI } from "@/services/api/usersAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
@@ -105,7 +105,6 @@ const safeNavigate = (path, options) => {
 const lockPatientForConsultation = async () => {
   try {
     if (isViewingDependant && dependantId) {
-      const { updateDependantStatus } = await import('@/services/api/dependantAPI');
       await updateDependantStatus(dependantId, { status: 'in_consultation' });
     } else if (patientId) {
       await updatePatientStatus(patientId, { status: 'in_consultation' });
@@ -360,21 +359,19 @@ useEffect(() => {
 useEffect(() => {
   return () => {
     if (isViewingDependant && dependantId) {
-      import('@/services/api/dependantAPI').then(({ getDependantById, updateDependantStatus }) => {
-        getDependantById(dependantId)
-          .then((res) => {
-            const currentStatus = (
-              res?.data?.data?.dependant?.status ??
-              res?.data?.dependant?.status ??
-              res?.data?.status ??
-              ''
-            ).toString().toLowerCase();
-            if (currentStatus === 'in_consultation') {
-              updateDependantStatus(dependantId, { status: 'awaiting_doctor' }).catch(() => {});
-            }
-          })
-          .catch(() => {});
-      });
+      getDependantById(dependantId)
+        .then((res) => {
+          const currentStatus = (
+            res?.data?.data?.dependant?.status ??
+            res?.data?.dependant?.status ??
+            res?.data?.status ??
+            ''
+          ).toString().toLowerCase();
+          if (currentStatus === 'in_consultation') {
+            updateDependantStatus(dependantId, { status: 'awaiting_doctor' }).catch(() => {});
+          }
+        })
+        .catch(() => {});
     } else if (patientId) {
       getPatientById(patientId).then((res) => {
         const currentStatus = res?.data?.status ?? '';
