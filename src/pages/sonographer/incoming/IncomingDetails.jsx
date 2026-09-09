@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
@@ -107,7 +108,6 @@ useEffect(() => {
         }
 
         try {
-            const { getDependantById } = await import('@/services/api/dependantAPI');
             const depRes = await getDependantById(investigationData.dependantId);
             const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant || depRes?.data;
             if (mounted && dep) setDependantInfo(dep);
@@ -302,7 +302,6 @@ useEffect(() => {
       if (patientType === "opd" && opdPatientId) {
         await updateOpdPatient(opdPatientId, { status: PATIENT_STATUS.SONOGRAPHY });
       } else if (patientType === "dependant" && dependantId) {
-        const { updateDependantStatus } = await import('@/services/api/dependantAPI');
         await updateDependantStatus(dependantId, { status: PATIENT_STATUS.SONOGRAPHY });
       } else if (patient?.id) {
         await updatePatientStatus(patient.id || patient._id, { status: PATIENT_STATUS.SONOGRAPHY });
