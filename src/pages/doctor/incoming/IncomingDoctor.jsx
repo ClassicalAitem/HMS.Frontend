@@ -5,7 +5,7 @@ import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
-import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDateTime, formatNigeriaDateTimeShort } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import ClearAllButton from "@/components/common/ClearAllButton";
@@ -52,6 +52,8 @@ const IncomingDoctor = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
+  const { refreshQueueCount, lastUpdate } = useNotifications();
+
 
   useEffect(() => {
     let mounted = true;
@@ -96,7 +98,7 @@ const IncomingDoctor = () => {
             displayId: p?.hospitalId || p?.id || "—",
             reason: prettifyStatus(p?.status) || "Consultation",
             rawStatus: (typeof p?.status === "string" ? p.status : "").toLowerCase(),
-            updatedAt: p?.updatedAt ? formatNigeriaDateTime(p.updatedAt) : "—",
+            updatedAt: p?.updatedAt ? formatNigeriaDateTimeShort(p.updatedAt) : "—",
             gender: p?.gender || null,
             age: p?.dob || p?.dateOfBirth
               ? Math.floor((Date.now() - new Date(p.dob || p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
@@ -130,7 +132,7 @@ const IncomingDoctor = () => {
             displayId: parentPatient?.hospitalId || d?.patientId || "—",
             reason: prettifyStatus(d?.status) || "Consultation",
             rawStatus: (typeof d?.status === "string" ? d.status : "").toLowerCase(),
-            updatedAt: d?.updatedAt ? formatNigeriaDateTime(d.updatedAt) : "—",
+            updatedAt: d?.updatedAt ? formatNigeriaDateTimeShort(d.updatedAt) : "—",
             gender: d?.gender || null,
             age: d?.dob
               ? Math.floor((Date.now() - new Date(d.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
@@ -157,7 +159,7 @@ const IncomingDoctor = () => {
 
     fetchIncoming();
     return () => { mounted = false; };
-  }, [refreshKey]);
+  }, [refreshKey, lastUpdate]);
 
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -234,7 +236,6 @@ const IncomingDoctor = () => {
     }
   };
 
-    const { refreshQueueCount } = useNotifications();
   
 
 
@@ -298,7 +299,7 @@ const IncomingDoctor = () => {
               <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
                 <div className="col-span-3">Name</div>
                 <div className="col-span-2">Type</div>
-                <div className="col-span-2">Status</div>
+                <div className="col-span-3">Status</div>
                 <div className="col-span-2">Updated At</div>
                 <div className="col-span-2 text-right">Action</div>
               </div>
@@ -313,7 +314,7 @@ const IncomingDoctor = () => {
                       <div className="skeleton h-3 w-20 rounded" />
                     </div>
                     <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
-                    <div className="col-span-2"><div className="skeleton h-5 w-28 rounded-full" /></div>
+                    <div className="col-span-3"><div className="skeleton h-5 w-28 rounded-full" /></div>
                     <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
                     <div className="col-span-2 flex justify-end"><div className="skeleton h-8 w-16 rounded" /></div>
                   </div>
@@ -362,7 +363,7 @@ const IncomingDoctor = () => {
 
                       {/* Status + Updated At — flex together on mobile, separate grid cols on desktop */}
                       <div className="col-span-full flex items-center justify-between gap-3 md:contents">
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-3">
                           <PatientStatusBadge
                             status={data.reason || data.status}
                             statusSenderName={data.statusSenderName}
@@ -377,11 +378,9 @@ const IncomingDoctor = () => {
                       </div>
 
                     {/* Action — full width below on mobile */}
-                    <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
-                    
-                        <div className="flex flex-col items-end gap-2 w-full">
+                    <div className="col-span-full md:col-span-2 flex items-center justify-end gap-2 mt-2 md:mt-0">
                           <button
-                            className="btn btn-sm btn-primary w-full md:w-auto"
+                            className="btn btn-sm btn-primary w-full md:w-auto px-4"
                             disabled={navigatingId === data.id}
                             onClick={() => handleView(data)}
                           >
@@ -389,9 +388,9 @@ const IncomingDoctor = () => {
                               ? <span className="loading loading-spinner loading-xs" />
                               : 'View'}
                           </button>
-                          <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
-                        </div>
-                    
+                          <div className="w-full md:w-auto">
+                            <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                          </div>
                     </div>
                     </div>
                   );

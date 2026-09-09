@@ -38,6 +38,8 @@ const SurgeonIncoming = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
+  const { refreshQueueCount, lastUpdate } = useNotifications();
+
 
   useEffect(() => {
     let mounted = true;
@@ -116,13 +118,12 @@ const SurgeonIncoming = () => {
     return () => {
       mounted = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, lastUpdate]);
 
   useEffect(() => {
     setPage(0);
   }, [query, statusFilter, items]);
 
-  const { refreshQueueCount } = useNotifications();
 
   const handleClear = async (data) => {
     try {

@@ -212,7 +212,7 @@ const AdmittedPatient = () => {
               </div>
 
               {/* Status Badge & Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* <div className="flex flex-wrap items-center gap-2">
                 {admission?.status === 'discharged' ? (
                   <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
                     Discharged Inpatient
@@ -225,7 +225,7 @@ const AdmittedPatient = () => {
                 )}
 
                 
-              </div>
+              </div> */}
             </div>
 
             {/* Patient Overview Card */}

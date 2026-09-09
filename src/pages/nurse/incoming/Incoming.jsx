@@ -39,6 +39,9 @@ const Incoming = () => {
     return status.replace(/\s+/g, "_").toLowerCase();
   };
 
+  const { refreshQueueCount, lastUpdate } = useNotifications();
+
+
   useEffect(() => {
     let mounted = true;
     const fetchIncoming = async () => {
@@ -152,9 +155,8 @@ const Incoming = () => {
     return () => {
       mounted = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, lastUpdate]);
 
-  const { refreshQueueCount } = useNotifications();
 
   const handleClear = async (data) => {
     if (data.type === "dependant") {
@@ -352,7 +354,7 @@ const Incoming = () => {
               <div className="hidden min-w-[700px] grid-cols-12 gap-2 border-b border-base-200 bg-base-200/40 px-5 py-3 text-xs font-bold uppercase tracking-wider text-base-content/60 md:grid">
                 <div className="col-span-3">Patient</div>
                 <div className="col-span-2">Patient ID</div>
-                <div className="col-span-2">Type</div>
+                <div className="col-span-1">Type</div>
                 <div className="col-span-2">Status</div>
                 <div className="col-span-2">Time and Date</div>
                 <div className="col-span-2 text-right">Action</div>
@@ -429,9 +431,9 @@ const Incoming = () => {
 
                       {/* Type badge + Care Task status badge */}
                       <div className="flex items-center justify-between gap-2 md:contents">
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-1">
                           {data.type === "dependant" ? (
-                            <span className="badge badge-sm badge-outline badge-primary font-medium">
+                            <span className="badge badge-sm badge-outline badge-secondary font-medium">
                               {data.badge}
                             </span>
                           ) : (
@@ -451,7 +453,7 @@ const Incoming = () => {
                         </div>
                       </div>
 
-                      <div className="md:col-span-1">
+                      <div className="md:col-span-2">
                         <span className="text-xs text-base-content/60 md:text-sm">
                           {formatNigeriaDateTimeShort(data.snapshot?.updatedAt || data.updatedAt)}
                         </span>
