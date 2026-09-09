@@ -54,35 +54,7 @@ const NurseAntenatalRecords = () => {
     return 'Unknown Doctor';
   };
 
-  useEffect(() => {
-    const loadDoctorNames = async () => {
-      if (!Array.isArray(records) || records.length === 0) return;
-      const ids = new Set();
-      records.forEach((r) => {
-        const id = getDoctorId(r);
-        if (id && !doctorNameById[id]) ids.add(id);
-      });
-      if (ids.size === 0) return;
-      try {
-        const responses = await Promise.allSettled(Array.from(ids).map(id => usersAPI.getUserById(id)));
-        const newNames = {};
-        Array.from(ids).forEach((id, idx) => {
-          const res = responses[idx];
-          if (res?.status === 'fulfilled') {
-            const userData = normalizeUserResponse(res.value);
-            newNames[id] = getDoctorDisplayName(userData) || 'Unknown Doctor';
-          } else {
-            newNames[id] = 'Unknown Doctor';
-          }
-        });
-        setDoctorNameById(prev => ({ ...prev, ...newNames }));
-      } catch (e) {
-        console.error('Failed loading doctor names', e);
-      }
-    };
-
-    loadDoctorNames();
-  }, [records]);
+  // Doctor names are now populated by the backend in the 'doctor' object
 
   useEffect(() => {
     let mounted = true;

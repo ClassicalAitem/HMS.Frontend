@@ -501,27 +501,27 @@ const ViewConsultation = () => {
       visitReason: consultation.visitReason || '',
       notes: consultation.notes || '',
       complaintHistory: consultation.complaintHistory || '',
-      complaints: (consultation.complaint || []).map((c) => ({
-        name: c.symptom,
-        duration: (c.durationInDays || 0).toString(),
-        unit: 'Day(s)',
-      })),
-      medicalHistory: (consultation.medicalHistory || []).map((m) =>
+      complaints: Array.isArray(consultation.complaint) ? consultation.complaint.map((c) => ({
+        name: c.symptom || c.name,
+        duration: (c.durationInDays || c.duration || 0).toString(),
+        unit: c.unit || 'Day(s)',
+      })) : [],
+      medicalHistory: Array.isArray(consultation.medicalHistory) ? consultation.medicalHistory.map((m) =>
         typeof m === 'object' ? m.title || m.name || '' : m,
-      ),
-      surgicalHistory: (consultation.surgicalHistory || []).map((s) =>
+      ) : [],
+      surgicalHistory: Array.isArray(consultation.surgicalHistory) ? consultation.surgicalHistory.map((s) =>
         typeof s === 'object' ? s.procedureName || s.procedure || '' : s,
-      ),
-      familyHistory: (consultation.familyHistory || []).map((f) => ({
+      ) : [],
+      familyHistory: Array.isArray(consultation.familyHistory) ? consultation.familyHistory.map((f) => ({
         title: f.relation || f.title || '',
         value: f.condition || f.value || '',
-      })),
-      socialHistory: (consultation.socialHistory || []).map((s) =>
+      })) : [],
+      socialHistory: Array.isArray(consultation.socialHistory) ? consultation.socialHistory.map((s) =>
         typeof s === 'object' ? s.title || s.habit || '' : s,
-      ),
-      allergyHistory: (consultation.allergicHistory || []).map((a) =>
+      ) : [],
+      allergyHistory: Array.isArray(consultation.allergicHistory) ? consultation.allergicHistory.map((a) =>
         typeof a === 'object' ? a.allergen || a.title || '' : a,
-      ),
+      ) : [],
     });
   }, [consultation]);
 

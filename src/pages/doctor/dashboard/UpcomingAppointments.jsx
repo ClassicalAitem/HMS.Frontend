@@ -63,43 +63,26 @@ const UpcomingAppointments = () => {
 
   useEffect(() => {
     let mounted = true;
-    const missingIds = pageItems
-      .map((i) => i?.patientId)
-      .filter((id) => id && !patientsById[id]);
-    const unique = Array.from(new Set(missingIds));
-    const fetchNames = async () => {
-      try {
-        const entries = await Promise.all(
-          unique.map(async (id) => {
-            try {
-              const r = await getPatientById(id);
-              const d = r?.data || {};
-              const name = (
-                d?.fullName ||
-                `${d?.firstName || ""} ${d?.lastName || ""}`.trim() ||
-                d?.name ||
-                ""
-              ).trim() || "Unknown";
-              return [id, name];
-            } catch {
-              return [id, "Unknown"];
-            }
-          })
-        );
-        const map = { ...patientsById };
-        entries.forEach(([id, name]) => {
-          map[id] = name;
-        });
-        if (mounted) setPatientsById(map);
-      } catch (err) {
-        console.error("UpcomingAppointments: patient names fetch error", err);
+    
+    // Names are already populated by the backend in 'patient' or 'dependant' fields
+    const map = { ...patientsById };
+    pageItems.forEach((item) => {
+      if (item.dependantId && item.dependant) {
+        map[item.dependantId] = item.dependant.fullName || `${item.dependant.firstName || ""} ${item.dependant.lastName || ""}`.trim() || "Dependant";
+      } else if (item.patientId && item.patient) {
+        map[item.patientId] = item.patient.fullName || `${item.patient.firstName || ""} ${item.patient.lastName || ""}`.trim() || "Unknown";
+      } else if (item.patientId) {
+        // Use any existing mapped name or fallback
+        map[item.patientId] = map[item.patientId] || "Unknown";
       }
-    };
-    if (unique.length > 0) fetchNames();
+    });
+    
+    setPatientsById(map);
+
     return () => {
       mounted = false;
     };
-  }, [pageItems, patientsById]);
+  }, [pageItems]);
 
   const totalPages = Math.ceil(items.length / pageSize) || 1;
 
@@ -192,8 +175,15 @@ const UpcomingAppointments = () => {
                     <td className="py-3.5 px-4 text-base-content/70">
                       {timeStr}
                     </td>
-                    <td className="py-3.5 px-4 font-bold text-base-content">
-                      {patientName}
+                    <td className="py-3 px-4">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-base-content text-sm sm:text-base whitespace-nowrap">
+                          {patientName}
+                        </span>
+                        <span className="text-[10px] sm:text-xs text-base-content/50 font-mono">
+                          ID: {a.dependantId || a.patientId || "—"}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-base-content/80 capitalize">
                       {type}

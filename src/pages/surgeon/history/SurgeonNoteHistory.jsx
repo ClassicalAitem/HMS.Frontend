@@ -28,16 +28,19 @@ const SurgeonNoteHistory = () => {
     setError("");
     try {
       const records = responseList(await getAllSurgeries());
-      const uniquePatientIds = [...new Set(records.map((note) => note.patientId).filter(Boolean))];
-      const patientEntries = await Promise.all(uniquePatientIds.map(async (id) => {
-        try {
-          const response = await getPatientById(id);
-          return [id, response?.data || response];
-        } catch {
-          return [id, null];
+      
+      const patientsMap = {};
+      records.forEach(note => {
+        if (note.patientId && note.patient) {
+          patientsMap[note.patientId] = note.patient;
+        } else if (note.dependantId && note.dependant) {
+          patientsMap[note.dependantId] = note.dependant;
+        } else if (note.opdPatientId && note.opdPatient) {
+          patientsMap[note.opdPatientId] = note.opdPatient;
         }
-      }));
-      setPatients(Object.fromEntries(patientEntries));
+      });
+      
+      setPatients(patientsMap);
       setNotes(records);
     } catch (err) {
       setError(err?.response?.data?.message || "Unable to load surgical note history.");
@@ -51,8 +54,9 @@ const SurgeonNoteHistory = () => {
   const filteredNotes = useMemo(() => {
     const value = query.trim().toLowerCase();
     return notes.filter((note) => {
-      const patient = patients[note.patientId];
-      return !value || [patientName(patient), note.patientId, note.procedureName, note.status]
+      const pId = note.dependantId || note.opdPatientId || note.patientId;
+      const patient = patients[pId];
+      return !value || [patientName(patient), pId, note.procedureName, note.status]
         .filter(Boolean).join(" ").toLowerCase().includes(value);
     });
   }, [notes, patients, query]);
@@ -90,9 +94,10 @@ const SurgeonNoteHistory = () => {
                 <thead><tr><th>Patient</th><th>Procedure</th><th>Date & Time</th><th>Status</th><th className="text-right">Action</th></tr></thead>
                 <tbody>
                   {filteredNotes.map((note) => {
-                    const patient = patients[note.patientId];
+                    const pId = note.dependantId || note.opdPatientId || note.patientId;
+                    const patient = patients[pId];
                     return <tr key={note._id || note.id} className="hover:bg-base-200/40">
-                      <td><div className="flex items-center gap-2"><FaUserInjured className="text-primary" /><div><div className="font-semibold">{patientName(patient)}</div><div className="text-xs text-base-content/50 font-mono">ID: {patient?.hospitalId || note.patientId || "—"}</div></div></div></td>
+                      <td><div className="flex items-center gap-2"><FaUserInjured className="text-primary" /><div><div className="font-semibold">{patientName(patient)}</div><div className="text-xs text-base-content/50 font-mono">ID: {patient?.hospitalId || pId || "—"}</div></div></div></td>
                       <td><div className="font-medium">{note.procedureName || "Surgical Procedure"}</div><div className="text-xs text-base-content/50 font-mono">{note.procedureCode || "No procedure code"}</div></td>
                       <td><div className="text-xs">{note.scheduledDate ? formatNigeriaDate(note.scheduledDate) : "—"}</div><div className="text-xs text-base-content/50">{note.startTime ? formatNigeriaTime(note.startTime) : "—"}</div></td>
                       <td><span className={`badge badge-sm capitalize ${note.status === "completed" ? "badge-success text-white" : note.status === "cancelled" ? "badge-error text-white" : "badge-warning"}`}>{note.status || "scheduled"}</span></td>
