@@ -17,7 +17,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
-  const { incomingCount } = useNotifications();
+  const { incomingCount, labReadyCount } = useNotifications();
 
   useEffect(() => {
     let mounted = true;
@@ -90,7 +90,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Admission",
       path: "/dashboard/medical-director/admitted",
       active: isAdmittedActive,
-      badge: isAdmittedActive ? 0 : admittedCount,
+      badge: admittedCount,
     },
     {
       icon: FaUserCheck,
@@ -111,6 +111,13 @@ const Sidebar = ({ onCloseSidebar }) => {
       active:
         location.pathname === "/dashboard/medical-director/patients" ||
         location.pathname.startsWith("/dashboard/medical-director/patient"),
+    },
+    {
+      icon: IoReceiptOutline,
+      label: "Lab results",
+      path: "/dashboard/medical-director/labResults",
+      active: location.pathname.startsWith("/dashboard/medical-director/labResults"),
+      badge: labReadyCount,
     },
     {
       icon: IoReceiptOutline,

@@ -15,11 +15,8 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { DoctorLayout } from "@/components/doctor/doctor";
 
 const DOCTOR_STATUSES = new Set([
-  "awaiting_consultation",
-  "awaiting_doctor",
-  "in_consultation",
-  "consultation_completed",
-  "awaiting_surgery"
+  "lab_completed",
+  "sonography_completed"
 ]);
 
 const prettifyStatus = (status) =>
@@ -37,7 +34,7 @@ const statusBadgeClass = (reason = "") => {
   return "badge-neutral";
 };
 
-const IncomingDoctor = () => {
+const IncomingLabResults = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -149,7 +146,7 @@ const IncomingDoctor = () => {
 
         if (mounted) setItems(merged);
       } catch (err) {
-        console.error("IncomingDoctor: fetch error", err);
+        console.error("IncomingLabResults: fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -421,4 +418,4 @@ const IncomingDoctor = () => {
   );
 };
 
-export default IncomingDoctor;
+export default IncomingLabResults;

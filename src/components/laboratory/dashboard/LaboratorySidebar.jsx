@@ -68,7 +68,7 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
       label: "Incoming",
       path: "/dashboard/laboratory/incoming",
       active: isOnIncoming,
-      badge: isOnIncoming ? 0 : incomingCount,
+      badge: incomingCount,
     },
     {
       icon: LuListChecks,
