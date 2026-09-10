@@ -7,8 +7,10 @@ import { getPatients } from '@/services/api/patientsAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { LabResultDetailsModal } from '@/components/modals';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { useNotifications } from '@/contexts/NotificationContext';
 
 const LabResults = () => {
+  const { clearLabReadyCount } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [labResults, setLabResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,6 +21,10 @@ const LabResults = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedLabId, setSelectedLabId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    clearLabReadyCount();
+  }, [clearLabReadyCount]);
 
   useEffect(() => {
     const load = async () => {
