@@ -15,8 +15,6 @@ import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
-import CreateBillModal from '@/components/modals/CreateBillModal'
-import SendToHmoModal from '@/components/modals/SendToHmoModal'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
 import {
@@ -49,8 +47,6 @@ const MDAdmittedPatient = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [sidebarMounted, setSidebarMounted] = useState(false)
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false)
-  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false)
-  const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false)
 
   const consultation = admission?.consultationId || admission?.consultation || null
   const consultationId = typeof consultation === 'object'
@@ -264,39 +260,6 @@ const MDAdmittedPatient = () => {
 
               {/* Status Badge & Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
-               
-
-                {/* Create Inpatient Bill */}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateBillOpen(true)}
-                  className="btn btn-outline btn-primary btn-sm rounded-xl gap-1.5 font-medium shadow-xs"
-                >
-                  <FaCashRegister className="w-3.5 h-3.5" />
-                  <span>Create Bill</span>
-                </button>
-
-                {/* Send to HMO Modal Trigger */}
-                <button
-                  type="button"
-                  onClick={() => setIsSendToHmoOpen(true)}
-                  className="btn btn-outline btn-warning btn-sm rounded-xl gap-1.5 font-medium shadow-xs"
-                >
-                  <FaPaperPlane className="w-3.5 h-3.5" />
-                  <span>Send to HMO</span>
-                </button>
-
-                {/* Patient Header Quick Actions (Prescribe, Lab, etc.)
-                <PatientHeaderActions
-                  patientId={patientId}
-                  dependantId={dependantId}
-                  dependantSnapshot={subjectData}
-                  isAdmittedPatient={true}
-                  admissionId={effectiveAdmissionId}
-                  consultationId={consultationId}
-                  patient={patient}
-                  onOpenInvestigationModal={() => setIsInvestigationModalOpen(true)}
-                /> */}
               </div>
             </div>
 
@@ -460,39 +423,6 @@ const MDAdmittedPatient = () => {
         />
       )}
 
-      {/* Create Inpatient Bill Modal */}
-      {isCreateBillOpen && (
-        <CreateBillModal
-          isOpen={isCreateBillOpen}
-          onClose={() => setIsCreateBillOpen(false)}
-          patientId={patientId}
-          dependantId={dependantId}
-          admissionId={effectiveAdmissionId}
-          consultationId={consultationId}
-          onSuccess={() => {
-            setIsCreateBillOpen(false)
-            loadAdmission()
-            toast.success('Inpatient bill generated successfully')
-          }}
-        />
-      )}
-
-      {/* Send to HMO Modal */}
-      {isSendToHmoOpen && (
-        <SendToHmoModal
-          isOpen={isSendToHmoOpen}
-          onClose={() => setIsSendToHmoOpen(false)}
-          patientId={patientId}
-          dependantId={dependantId}
-          patient={patient}
-          dependant={isViewingDependant ? subjectData : null}
-          consultationId={consultationId}
-          onSuccess={() => {
-            setIsSendToHmoOpen(false)
-            toast.success('Patient request successfully routed to HMO Desk')
-          }}
-        />
-      )}
     </div>
   )
 }
