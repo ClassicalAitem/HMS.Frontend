@@ -17,7 +17,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
-  const { incomingCount } = useNotifications();
+  const { incomingCount, labReadyCount } = useNotifications();
 
   useEffect(() => {
     let mounted = true;
@@ -88,7 +88,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Admission",
       path: "/dashboard/doctor/admitted",
       active: isAdmittedActive,
-      badge: isAdmittedActive ? 0 : admittedCount,
+      badge: admittedCount,
     },
     {
       icon: FaUsers,
@@ -99,10 +99,11 @@ const Sidebar = ({ onCloseSidebar }) => {
         location.pathname.startsWith("/dashboard/doctor/patient"),
     },
     {
-      icon: TbCalendarPlus,
-      label: "Appointments",
-      path: "/dashboard/doctor/appointments",
-      active: location.pathname.startsWith("/dashboard/doctor/appointments"),
+      icon: IoReceiptOutline,
+      label: "Lab results",
+      path: "/dashboard/doctor/lab-results",
+      active: location.pathname.startsWith("/dashboard/doctor/lab-results"),
+      badge: labReadyCount,
     },
     {
       icon: FaUserCheck,
@@ -111,10 +112,10 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === "/dashboard/doctor/attended-today",
     },
     {
-      icon: IoReceiptOutline,
-      label: "Payment Records",
-      path: "/dashboard/doctor/payment-records",
-      active: location.pathname.startsWith("/dashboard/doctor/payment-records"),
+      icon: TbCalendarPlus,
+      label: "Appointments",
+      path: "/dashboard/doctor/appointments",
+      active: location.pathname.startsWith("/dashboard/doctor/appointments"),
     },
   ];
 

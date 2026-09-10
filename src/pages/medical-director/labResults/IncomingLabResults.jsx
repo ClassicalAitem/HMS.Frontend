@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
@@ -12,14 +11,11 @@ import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { PatientStatusBadge } from "@/components/common";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { DoctorLayout } from "@/components/doctor/doctor";
+import { MedicalDirectorLayout } from "@/layouts/medical-director";
 
 const DOCTOR_STATUSES = new Set([
-  "awaiting_consultation",
-  "awaiting_doctor",
-  "in_consultation",
-  "consultation_completed",
-  "awaiting_surgery"
+  "lab_completed",
+  "sonography_completed"
 ]);
 
 const prettifyStatus = (status) =>
@@ -37,7 +33,7 @@ const statusBadgeClass = (reason = "") => {
   return "badge-neutral";
 };
 
-const IncomingDoctor = () => {
+const IncomingLabResults = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -149,7 +145,7 @@ const IncomingDoctor = () => {
 
         if (mounted) setItems(merged);
       } catch (err) {
-        console.error("IncomingDoctor: fetch error", err);
+        console.error("IncomingLabResults: fetch error", err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -205,7 +201,7 @@ const IncomingDoctor = () => {
 
       // localStorage.setItem('refreshIncoming', Date.now().toString());
 
-      navigate(`/dashboard/doctor/medical-history/${data.patientId}`, {
+      navigate(`/dashboard/medical-director/medical-history/${data.patientId}`, {
         state: {
           from: "incoming",
           patientSnapshot: data.snapshot,
@@ -247,7 +243,7 @@ const IncomingDoctor = () => {
     refreshQueueCount();
 };
   return (
-    <DoctorLayout >
+    <MedicalDirectorLayout>
 
     <div className="">
        {loading && <KolakLoader fullscreen />}
@@ -416,9 +412,9 @@ const IncomingDoctor = () => {
         </div>
       </div>
     </div>
-    </DoctorLayout>
+    </MedicalDirectorLayout>
 
   );
 };
 
-export default IncomingDoctor;
+export default IncomingLabResults;

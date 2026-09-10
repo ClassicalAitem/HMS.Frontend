@@ -55,7 +55,7 @@ const Sidebar = ({ onCloseSidebar }) => {
 
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/hmo",  active: location.pathname === '/dashboard/hmo' },
-    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming", active: isOnIncoming, badge: isOnIncoming ? 0 : incomingCount },
+    { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming", active: isOnIncoming, badge: incomingCount },
     { icon: FaClipboardCheck, label: "Hmo Patients", path: '/dashboard/hmo/patients', active: location.pathname === '/dashboard/hmo/patients' }
   ];
   const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
