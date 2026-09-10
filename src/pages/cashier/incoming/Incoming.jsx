@@ -22,7 +22,7 @@ const Incoming = () => {
   const [dateFilter, setDateFilter] = useState('all');
   const [sortField, setSortField] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
-  const { refreshQueueCount } = useNotifications();
+  const { refreshQueueCount, lastUpdate } = useNotifications();
 
   const fetchIncoming = useCallback(async () => {
     try {

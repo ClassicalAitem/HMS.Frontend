@@ -32,7 +32,7 @@ const IncomingLaboratory = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { refreshQueueCount } = useNotifications();
+  const { refreshQueueCount, lastUpdate } = useNotifications();
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);

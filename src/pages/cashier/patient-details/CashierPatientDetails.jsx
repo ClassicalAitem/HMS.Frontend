@@ -330,7 +330,7 @@ const CashierPatientDetails = () => {
 
                       <td className="font-medium">{bill.id}</td>
                       <td> ₦ {bill.totalAmount.toLocaleString()}</td>
-                      <td> ₦ {bill.outstandingBill.toLocaleString()}</td>
+                      <td> ₦ {(bill.isCleared ? 0 : (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0)).toLocaleString()}</td>
                       <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
                       <td className="text-success">{bill.raisedBy.accountType}</td>
                       <td>
@@ -362,8 +362,13 @@ const CashierPatientDetails = () => {
                       <tr>
                         <td colSpan={7} className="bg-base-200">
                           <div className="p-3">
-                            <div className="mb-3 text-sm space-y-1">
+                            <div className="mb-3 text-sm flex items-center justify-between">
                               <p>Total:  ₦{Number(bill.totalAmount).toLocaleString()}</p>
+                              {bill.itemDetails?.some(item => !!item.admissionId) && (
+                                <span className="badge badge-primary font-semibold text-xs ml-4">
+                                  🏥 Inpatient / Admission Bill
+                                </span>
+                              )}
                             </div>
                             <h4 className="font-semibold mb-2">Item Details</h4>
                             <table className="table w-full">
