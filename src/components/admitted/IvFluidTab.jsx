@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import ivFluidApi from '@/services/api/ivFluidApi'
-import { getServiceCharges } from '@/services/api/serviceChargesAPI'
+import { getInventories } from '@/services/api/inventoryAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaTint,
@@ -22,15 +22,6 @@ import {
   FaMoneyBillWave,
 } from 'react-icons/fa'
 
-const COMMON_FLUIDS = [
-  'Normal Saline 0.9%',
-  '5% Dextrose in Water (D5W)',
-  '5% Dextrose in Normal Saline (DNS)',
-  'Ringer\'s Lactate (Hartmann\'s)',
-  '10% Dextrose in Water (D10W)',
-  '0.45% Sodium Chloride (Half Normal Saline)',
-  'Custom / Other Fluid',
-]
 
 const IvFluidTab = ({
   patientId,
@@ -62,10 +53,10 @@ const IvFluidTab = ({
 
   // Doctor order form
   const [orderForm, setOrderForm] = useState({
-    fluidName: 'Normal Saline 0.9%',
+    fluidName: '',
     customFluidName: '',
     volumeMl: 500,
-    rateOrFrequency: '500ml 8-hourly',
+    rateOrFrequency: '',
     instructions: '',
     units: 1,
     unitPrice: 0,
@@ -105,19 +96,15 @@ const IvFluidTab = ({
     }
   }
 
-  const loadLabServices = async () => {
+  const loadPharmacyInventory = async () => {
     try {
       setLoadingServices(true)
-      const res = await getServiceCharges()
+      const res = await getInventories()
       const raw = res?.data ?? res ?? []
       const list = Array.isArray(raw) ? raw : raw?.data ?? []
-      const filtered = list.filter((s) => {
-        const cat = String(s?.category || '').toLowerCase()
-        return cat.includes('lab') || cat.includes('laboratory')
-      })
-      setLabServices(filtered.length > 0 ? filtered : list)
+      setLabServices(list)
     } catch (err) {
-      console.error('Failed to load lab services for IV fluids', err)
+      console.error('Failed to load pharmacy inventory for IV fluids', err)
     } finally {
       setLoadingServices(false)
     }
@@ -129,7 +116,7 @@ const IvFluidTab = ({
 
   useEffect(() => {
     if (showOrderModal && labServices.length === 0) {
-      loadLabServices()
+      loadPharmacyInventory()
     }
   }, [showOrderModal])
 
@@ -137,29 +124,25 @@ const IvFluidTab = ({
     const q = serviceSearch.trim().toLowerCase()
     if (!q) {
       return [...labServices].sort((a, b) => {
-        const aName = (a.service || a.name || '').toLowerCase()
-        const bName = (b.service || b.name || '').toLowerCase()
-        const aIsFluid = aName.includes('saline') || aName.includes('dextrose') || aName.includes('fluid') || aName.includes('infusion')
-        const bIsFluid = bName.includes('saline') || bName.includes('dextrose') || bName.includes('fluid') || bName.includes('infusion')
-        if (aIsFluid && !bIsFluid) return -1
-        if (!aIsFluid && bIsFluid) return 1
-        return 0
+        const aName = (a.name || '').toLowerCase()
+        const bName = (b.name || '').toLowerCase()
+        return aName.localeCompare(bName)
       })
     }
     return labServices.filter((s) => {
-      const name = String(s?.service || s?.name || '').toLowerCase()
-      const code = String(s?.code || '').toLowerCase()
-      return name.includes(q) || code.includes(q)
+      const name = String(s?.name || '').toLowerCase()
+      const batch = String(s?.batchNumber || '').toLowerCase()
+      return name.includes(q) || batch.includes(q)
     })
   }, [labServices, serviceSearch])
 
   const handleSelectService = (service) => {
     setSelectedService(service)
-    const unitPrice = Number(service?.amount || 0)
+    const unitPrice = Number(service?.sellingPrice || 0)
     const currentUnits = Number(orderForm.units || 1)
     setOrderForm((prev) => ({
       ...prev,
-      fluidName: service.service || service.name || prev.fluidName,
+      fluidName: service.name || prev.fluidName,
       unitPrice,
       amount: unitPrice * currentUnits,
     }))
@@ -186,13 +169,10 @@ const IvFluidTab = ({
 
   const handleSaveOrder = async (e) => {
     e.preventDefault()
-    const fluidToPrescribe =
-      orderForm.fluidName === 'Custom / Other Fluid'
-        ? orderForm.customFluidName.trim()
-        : orderForm.fluidName
+    const fluidToPrescribe = orderForm.fluidName?.trim() || ''
 
     if (!fluidToPrescribe) {
-      return toast.error('Please select or specify an IV fluid name')
+      return toast.error('Please specify an IV fluid description')
     }
     if (!orderForm.rateOrFrequency.trim()) {
       return toast.error('Please specify the rate or infusion frequency')
@@ -650,7 +630,7 @@ const IvFluidTab = ({
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
-                <FaPrescriptionBottleAlt className="text-primary" /> Prescribe IV Fluid Regimen (Laboratory Charge)
+                <FaPrescriptionBottleAlt className="text-primary" /> Prescribe IV Fluid Regimen (Pharmacy Inventory)
               </h3>
               <button
                 type="button"
@@ -665,8 +645,8 @@ const IvFluidTab = ({
               {/* Laboratory Service Charge Selection */}
               <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-2">
                 <label className="block text-xs font-bold text-base-content flex items-center justify-between">
-                  <span>Pick from Laboratory Service Charges *</span>
-                  <span className="text-[11px] text-primary font-normal">Billed under Laboratory</span>
+                  <span>Pick from Pharmacy Inventory *</span>
+                  <span className="text-[11px] text-primary font-normal">Billed under Pharmacy</span>
                 </label>
 
                 <div className="relative">
@@ -675,7 +655,7 @@ const IvFluidTab = ({
                     type="text"
                     value={serviceSearch}
                     onChange={(e) => setServiceSearch(e.target.value)}
-                    placeholder="Search IV fluids or lab charges..."
+                    placeholder="Search IV fluids or pharmacy items..."
                     className="input input-bordered input-sm w-full pl-8 rounded-xl text-xs"
                   />
                 </div>
@@ -683,11 +663,11 @@ const IvFluidTab = ({
                 <div className="max-h-32 overflow-y-auto border border-base-300 rounded-xl bg-base-100 divide-y divide-base-200 text-xs">
                   {loadingServices ? (
                     <div className="p-3 text-center text-xs text-base-content/50">
-                      Loading Laboratory charges...
+                      Loading Pharmacy inventory...
                     </div>
                   ) : filteredLabServices.length === 0 ? (
                     <div className="p-3 text-center text-xs text-base-content/50">
-                      No matching laboratory service charges found
+                      No matching pharmacy inventory items found
                     </div>
                   ) : (
                     filteredLabServices.map((srv) => {
@@ -701,11 +681,15 @@ const IvFluidTab = ({
                           }`}
                         >
                           <div className="min-w-0 pr-2">
-                            <div className="truncate font-medium">{srv.service || srv.name}</div>
-                            <div className="text-[10px] text-base-content/50 uppercase">{srv.category || 'Laboratory'}</div>
+                            <div className="truncate font-medium">
+                              {srv.name} {srv.strength ? `(${srv.strength})` : ''}
+                            </div>
+                            <div className="text-[10px] text-base-content/50 uppercase">
+                              {srv.form || 'General'} · Stock: {srv.stock ?? 0} {srv.unit || ''}
+                            </div>
                           </div>
                           <div className="font-bold text-xs whitespace-nowrap">
-                            ₦{Number(srv.amount || 0).toLocaleString()}
+                             ₦{Number(srv.sellingPrice || 0).toLocaleString()}
                           </div>
                         </div>
                       )
@@ -717,10 +701,12 @@ const IvFluidTab = ({
                   <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
                     <div>
                       <span className="font-semibold text-primary">Selected: </span>
-                      <span className="font-medium text-base-content">{selectedService.service || selectedService.name}</span>
+                      <span className="font-medium text-base-content">
+                        {selectedService.name}{selectedService.strength ? ` (${selectedService.strength})` : ''}
+                      </span>
                     </div>
                     <div className="font-bold text-primary">
-                      ₦{Number(selectedService.amount || 0).toLocaleString()} / unit
+                      ₦{Number(selectedService.sellingPrice || 0).toLocaleString()} / unit
                     </div>
                   </div>
                 )}
@@ -731,41 +717,18 @@ const IvFluidTab = ({
                 <label className="block text-xs font-semibold text-base-content/70 mb-1">
                   Fluid Description / Classification *
                 </label>
-                <select
+                <input
+                  type="text"
                   name="fluidName"
                   value={orderForm.fluidName}
                   onChange={handleOrderChange}
-                  className="select select-bordered select-sm w-full rounded-xl text-xs"
-                >
-                  {COMMON_FLUIDS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                  {selectedService && !COMMON_FLUIDS.includes(selectedService.service || selectedService.name) && (
-                    <option value={selectedService.service || selectedService.name}>
-                      {selectedService.service || selectedService.name}
-                    </option>
-                  )}
-                </select>
+                  placeholder="e.g. 5% Dextrose in Normal Saline"
+                  className="input input-bordered input-sm w-full rounded-xl text-xs"
+                  required
+                />
               </div>
 
-              {orderForm.fluidName === 'Custom / Other Fluid' && (
-                <div>
-                  <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                    Custom Fluid Formulation *
-                  </label>
-                  <input
-                    type="text"
-                    name="customFluidName"
-                    value={orderForm.customFluidName}
-                    onChange={handleOrderChange}
-                    placeholder="e.g. 5% Dextrose in 0.45% Saline + 20mEq KCl"
-                    className="input input-bordered input-sm w-full rounded-xl text-xs"
-                    required
-                  />
-                </div>
-              )}
+              {/* Custom fluid input removed since description is now free text */}
 
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
