@@ -7,7 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
-
+import ShiftCountdown from './components/common/ShiftCountdown';
 
 function App() {
   return (
@@ -17,10 +17,8 @@ function App() {
           <Router>
             <NotificationProvider>
               <div className="App">
+                <ShiftCountdown />
                 <AppRoutes />
-
-
-
                 <Toaster
                   position="top-right"
                   gutter={8}
