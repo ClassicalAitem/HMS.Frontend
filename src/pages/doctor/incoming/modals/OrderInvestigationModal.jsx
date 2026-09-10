@@ -93,26 +93,24 @@ const OrderInvestigationModal = ({
 
   // Prefill when editing
   useEffect(() => {
-    if (investigation && isOpen) {
+    if (!isOpen) return;
 
-      const tests = investigation.tests?.length
-      ? investigation.tests.map(t => ({ ...t, isCustom: t.isCustom || false }))
+    const tests = investigation?.tests?.length
+      ? investigation.tests.map((test) => ({
+          ...test,
+          name: test.name || "",
+          isCustom: Boolean(test.isCustom),
+        }))
       : [{ name: "", isCustom: false }];
 
-      replace(tests);
-
-      reset({ tests: [{ name: "", isCustom: false }], priority: "normal" });
-
-      setInvestigationType(investigation.type === "radiology" ? "radiology" : "lab");
-
-    } else if (isOpen) {
-      reset({
-        tests: [{ name: "" }],
-        priority: "normal"
-      });
-      setInvestigationType("lab");
-    }
-  }, [investigation, isOpen]);
+    reset({
+      tests,
+      priority: investigation?.priority || "normal",
+    });
+    setInvestigationType(investigation?.type === "radiology" ? "radiology" : "lab");
+    setTestSearch("");
+    setTestDropdownIndex(null);
+  }, [investigation, isOpen, reset]);
 
   // Reset selected tests whenever the category is switched, so stale
   // selections from the other category don't get submitted silently.
@@ -169,7 +167,7 @@ const OrderInvestigationModal = ({
 
       if (isEdit) {
 
-        await updateInvestigation(investigation._id, payload);
+        await updateInvestigation(investigation._id || investigation.id, payload);
         toast.success("Investigation updated successfully");
 
       } else {
