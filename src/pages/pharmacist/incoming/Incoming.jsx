@@ -21,7 +21,7 @@ const Incoming = () => {
   const patientsPerPage = 9
   const navigate = useNavigate()
 
-  const { refreshQueueCount } = useNotifications()
+  const { refreshQueueCount, lastUpdate } = useNotifications()
 
   const fetchIncoming = useCallback(async () => {
     setLoading(true)
@@ -101,7 +101,7 @@ const Incoming = () => {
 
   useEffect(() => {
     fetchIncoming()
-  }, [fetchIncoming])
+  }, [fetchIncoming, lastUpdate])
 
   const processed = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
