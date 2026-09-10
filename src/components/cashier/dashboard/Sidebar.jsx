@@ -60,7 +60,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Incoming',
       path: '/cashier/incoming',
       active: isOnIncoming,
-      badge: isOnIncoming ? 0 : incomingCount,
+      badge: incomingCount,
     },
     {
       icon: GoPerson,
