@@ -68,7 +68,8 @@ const ManageUsers = () => {
     const matchesSearch = searchTerm === '' ||
       user.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.shift?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesRole = selectedRole === 'all' || user.accountType === selectedRole;
     const matchesStatus = selectedStatus === 'all' ||
@@ -234,6 +235,20 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
       title: 'Created',
       sortable: true,
       className: 'text-base-content/70'
+    },
+    {
+      key: 'shift',
+      title: 'Shift',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => {
+        if (!value) return <span className="text-gray-400 text-sm italic">None</span>;
+        return (
+          <span className={`badge badge-sm ${value === 'morning' ? 'badge-primary' : 'badge-neutral'}`}>
+            {value.charAt(0).toUpperCase() + value.slice(1)}
+          </span>
+        );
+      }
     },
     {
       key: 'actions',
