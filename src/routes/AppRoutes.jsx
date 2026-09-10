@@ -48,7 +48,6 @@ import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
 import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
 import AllPatients from "@/pages/doctor/allPatients/AllPatients";
 import Appointment from "@/pages/doctor/appiontments/Appointment";
-import DoctorPaymentRecords from "@/pages/doctor/payment-records/ReceiptRecord";
 import MedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
 import DRAdmittedList from "@/pages/doctor/admitted/AdmittedList";
 import DRAdmittedPatient from "@/pages/doctor/admitted/AdmittedPatient";
@@ -62,7 +61,7 @@ import MDViewAllInvestigations from "@/pages/medical-director/incoming/ViewAllIn
 import MDViewAllLabResults from "@/pages/medical-director/incoming/ViewAllLabResults";
 import MDMedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
 import MDViewAllVitals from "@/pages/medical-director/incoming/ViewAllVitals";
-import MDLabResults from "@/pages/medical-director/labResults/LabResults";
+import MDIncomingLabResults from "@/pages/medical-director/labResults/IncomingLabResults";
 import MDLabResultDetails from "@/pages/medical-director/labResults/LabResultDetails";
 import IncomingMD from "@/pages/medical-director/incoming/IncomingMD";
 import MDAntenatalRecords from "@/pages/medical-director/incoming/AntenatalRecords";
@@ -191,6 +190,7 @@ import HMOPatients from "@/pages/hmo/HmoPatients/HmoPatients";
 import PatientHmoHistoryFull from "@/pages/hmo/incoming/PatientHmoHistoryFull";
 import PharmacyPatients from "@/pages/pharmacist/PharmacyPatients/PharmacyPatients";
 import HMOLabResultDetails from "@/pages/hmo/incoming/labResult";
+import IncomingLabResults from "@/pages/doctor/labResults/IncomingLabResult";
 
 
 const AppRoutes = () => {
@@ -509,9 +509,9 @@ const AppRoutes = () => {
           <Task />
         </ProtectedRoute>
       } />
-      <Route path="/dashboard/doctor/payment-records" element={
+      <Route path="/dashboard/doctor/lab-results" element={
         <ProtectedRoute allowedRoles={['doctor']}>
-          <DoctorPaymentRecords />
+          <IncomingLabResults />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/doctor/admitted" element={
@@ -649,7 +649,7 @@ const AppRoutes = () => {
   } />
       <Route path="/dashboard/medical-director/labResults" element={
         <ProtectedRoute allowedRoles={['medical-director']}>
-          <MDLabResults />
+          <MDIncomingLabResults />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/medical-director/labResults/:labResultId" element={

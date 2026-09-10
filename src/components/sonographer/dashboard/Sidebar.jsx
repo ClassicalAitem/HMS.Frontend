@@ -40,7 +40,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/sonographer" },
     { icon: FaInbox, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
-      badge: isOnIncoming ? 0 : incomingCount, },
+      badge: incomingCount, },
     { icon: FaUsers, label: "Patients", path: "/dashboard/sonographer/patients", active: isOnPatients },
     { icon: FaHistory, label: "Scan History", path: "/dashboard/sonographer/scan-history" },
   ];

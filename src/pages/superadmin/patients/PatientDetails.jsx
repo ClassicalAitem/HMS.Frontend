@@ -61,7 +61,7 @@ const PatientDetails = () => {
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
   const [consultations, setConsultations] = useState([]);
-  const [consultationLoading, setConsultationLoading] = useState(true);
+  const [consultationsLoading, setConsultationsLoading] = useState(true);
   const [selectedConsultation, setSelectedConsultation] = useState(null);
   const [prescriptionsByConsultation, setPrescriptionsByConsultation] = useState({});
   const [appointments, setAppointments] = useState([]);
@@ -355,7 +355,7 @@ const PatientDetails = () => {
                               <span className="text-xs text-base-content/50 group-open:rotate-180">⌄</span>
                             </summary>
                             <div className="border-t border-base-200 p-4">
-                              {consultationLoading ? (
+                              {consultationsLoading ? (
                                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                                   {Array.from({ length: 3 }).map((_, index) => <div key={index} className="skeleton h-28 w-full rounded-lg" />)}
                                 </div>
