@@ -28,6 +28,10 @@ const editUserSchema = yup.object({
   departmentId: yup
     .string()
     .notRequired(),
+  shift: yup
+    .string()
+    .nullable()
+    .notRequired(),
 });
 
 const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
@@ -64,6 +68,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       email: '',
       role: '',
       departmentId: '',
+      shift: '',
     },
   });
 
@@ -77,6 +82,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       setValue('email', user.email || '');
       setValue('role', user.accountType || '');
       setValue('departmentId', '');
+      setValue('shift', user.shift || '');
       setValue('confirmPassword', '');
     }
   }, [user, isOpen, setValue]);
@@ -95,6 +101,12 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       // Only add departmentId if it's selected
       if (data.departmentId && data.departmentId.trim()) {
         updateData.departmentId = data.departmentId;
+      }
+
+      if (data.shift) {
+        updateData.shift = data.shift;
+      } else {
+        updateData.shift = null; // Clear shift if not selected
       }
 
       // Call the update user API
@@ -262,6 +274,27 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
               </select>
               {errors.department && (
                 <p className="text-error text-xs mt-1">{errors.department.message}</p>
+              )}
+            </div>
+
+            {/* Shift */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium">Shift (Optional)</span>
+              </label>
+              <select
+                className={`select select-bordered w-full ${errors.shift ? 'select-error' : ''}`}
+                {...register('shift')}
+                disabled={isLoading}
+              >
+                <option value="">None (Can login anytime)</option>
+                <option value="morning">Morning (08:00 - 19:59)</option>
+                <option value="night">Night (20:00 - 07:59)</option>
+              </select>
+              {errors.shift && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{errors.shift.message}</span>
+                </label>
               )}
             </div>
 
