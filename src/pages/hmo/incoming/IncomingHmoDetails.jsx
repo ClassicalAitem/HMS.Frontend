@@ -708,10 +708,15 @@ useEffect(() => {
                     {/* Bill Header */}
                     <div className="px-5 py-3 bg-base-200/40 border-b border-base-200 flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-semibold">
+                        <p className="text-sm font-semibold flex items-center">
                           Bill #{bill.id?.slice(-8)}
+                          {bill.itemDetails?.some(item => !!item.admissionId) && (
+                            <span className="badge badge-primary font-semibold text-xs ml-4">
+                              🏥 Inpatient / Admission Bill
+                            </span>
+                          )}
                         </p>
-                        <p className="text-xs text-base-content/50">
+                        <p className="text-xs text-base-content/50 mt-1">
                           By {bill.raisedBy?.firstName}{' '}
                           {bill.raisedBy?.lastName} ·{' '}
                           {bill.raisedBy?.accountType}
