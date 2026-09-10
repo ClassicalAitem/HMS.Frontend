@@ -84,14 +84,14 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Incoming",
       path: "/dashboard/nurse/incoming",
       active: isIncomingActive,
-      badge: isIncomingActive ? 0 : incomingCount,
+      badge: incomingCount,
     },
     {
       icon: FaBed,
       label: "Admission",
       path: "/dashboard/nurse/admitted",
       active: isAdmittedActive,
-      badge: isAdmittedActive ? 0 : admittedCount,
+      badge: admittedCount,
     },
     {
       icon: FiUser,
