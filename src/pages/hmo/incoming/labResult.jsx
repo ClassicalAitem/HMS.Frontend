@@ -11,7 +11,7 @@ import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage, FaFileWord } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import { usersAPI } from "@/services/api/usersAPI";
-
+import { getLabResultColor, ranges } from "@/utils/labResultHelper";
 const HMOLabResultDetails = () => {
   const { labResultId } = useParams();
   const navigate = useNavigate();
@@ -208,13 +208,19 @@ const HMOLabResultDetails = () => {
           {Object.entries(data).map(([key, value]) => {
             if (!value) return null;
             if (typeof value === "object") return null;
+            const rangeText = ranges[key] ? ` ${ranges[key]}` : ' ';
             return (
               <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 border-b border-gray-200 last:border-b-0">
                 <div className="font-semibold text-gray-700 break-words">{key}</div>
                 <div className="sm:col-span-2 text-gray-600 break-words">
-                  {typeof value === "string" || typeof value === "number"
-                    ? value
-                    : JSON.stringify(value)}
+                  {typeof value === "string" || typeof value === "number" ? (
+                    <span>
+                      <span className={getLabResultColor(value, rangeText)}>{value}</span>
+                      <span className="text-gray-500 ml-1">{rangeText}</span>
+                    </span>
+                  ) : (
+                    JSON.stringify(value)
+                  )}
                 </div>
               </div>
             );

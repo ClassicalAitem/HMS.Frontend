@@ -7,6 +7,7 @@ import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { getLabResultColor, ranges } from "@/utils/labResultHelper";
 import { MedicalDirectorLayout } from "@/layouts/medical-director";
 
 const LabResultDetails = () => {
@@ -189,13 +190,19 @@ const LabResultDetails = () => {
           {Object.entries(data).map(([key, value]) => {
             if (!value) return null;
             if (typeof value === "object") return null;
+            const rangeText = ranges[key] ? ` ${ranges[key]}` : ' ';
             return (
               <div key={key} className="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-4 py-2 border-b border-gray-200 last:border-b-0">
                 <div className="font-semibold text-gray-700">{key}</div>
                 <div className="sm:col-span-2 text-gray-600 break-words">
-                  {typeof value === "string" || typeof value === "number"
-                    ? value
-                    : JSON.stringify(value)}
+                  {typeof value === "string" || typeof value === "number" ? (
+                    <span>
+                      <span className={getLabResultColor(value, rangeText)}>{value}</span>
+                      <span className="text-gray-500 ml-1">{rangeText}</span>
+                    </span>
+                  ) : (
+                    JSON.stringify(value)
+                  )}
                 </div>
               </div>
             );
