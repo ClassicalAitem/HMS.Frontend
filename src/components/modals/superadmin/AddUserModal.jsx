@@ -23,10 +23,18 @@ const addUserSchema = yup.object({
     .string()
     .required('Email is required')
     .email('Please enter a valid email address'),
+  phoneNumber: yup
+    .string()
+    .required('Phone number is required')
+    .matches(/^[0-9]+$/, 'Must be only digits'),
   role: yup
     .string()
     .required('Role is required')
     .oneOf(['admin', 'doctor','medical-director', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'lab-technician', 'hmo', 'surgeon', 'sonographer'], 'Please select a valid role'),
+  shift: yup
+    .string()
+    .nullable()
+    .notRequired(),
   password: yup
     .string()
     .required('Password is required')
@@ -55,9 +63,11 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
       firstName: '',
       lastName: '',
       email: '',
+      phoneNumber: '',
       role: '',
       password: '',
       confirmPassword: '',
+      shift: '',
     },
   });
 
@@ -72,8 +82,10 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         email: data.email.trim().toLowerCase(),
+        phoneNumber: Number(data.phoneNumber),
         role: data.role,
         password: data.password,
+        ...(data.shift && { shift: data.shift }),
       };
 
       // Call the appropriate API based on role
@@ -191,6 +203,25 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
               )}
             </div>
 
+            {/* Phone Number */}
+            <div className="form-control">
+              <label className="label">
+                <span className="font-medium label-text text-base-content">Phone Number</span>
+              </label>
+              <input
+                type="tel"
+                placeholder="Enter phone number"
+                className={`input input-bordered w-full ${errors.phoneNumber ? 'input-error' : ''}`}
+                {...register('phoneNumber')}
+                disabled={isLoading}
+              />
+              {errors.phoneNumber && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{errors.phoneNumber.message}</span>
+                </label>
+              )}
+            </div>
+
             {/* Role */}
             <div className="form-control">
               <label className="label">
@@ -220,6 +251,29 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 </label>
               )}
             </div>
+
+            {/* Shift */}
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text font-medium">Shift (Optional)</span>
+              </label>
+              <select
+                className={`select select-bordered w-full ${errors.shift ? 'select-error' : ''}`}
+                {...register('shift')}
+                disabled={isLoading}
+              >
+                <option value="">None (Can login anytime)</option>
+                <option value="morning">Morning (08:00 - 19:59)</option>
+                <option value="night">Night (20:00 - 07:59)</option>
+              </select>
+              {errors.shift && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{errors.shift.message}</span>
+                </label>
+              )}
+            </div>
+
+        
 
             {/* Password */}
             <div className="form-control">

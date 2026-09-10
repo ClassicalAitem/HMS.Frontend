@@ -49,6 +49,7 @@ export const fetchUsers = createAsyncThunk(
           loginCount: user.loginCount,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
+          shift: user.shift,
         }));
 
         return {

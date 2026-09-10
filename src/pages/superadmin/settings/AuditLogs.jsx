@@ -27,7 +27,7 @@ import { FaClock, FaIdBadge } from 'react-icons/fa';
 
 const ROLES_LIST = [
   { value: 'all', label: 'All Hospital Roles' },
-  { value: 'super-admin', label: 'Super Admin' },
+  // { value: 'super-admin', label: 'Super Admin' },
   { value: 'admin', label: 'Administrator' },
   { value: 'doctor', label: 'Doctor' },
   { value: 'medical-director', label: 'Medical Director' },
@@ -67,9 +67,9 @@ const getRoleBadgeStyle = (role) => {
       return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20';
     case 'cashier':
       return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20';
-    case 'super-admin':
-    case 'admin':
-      return 'bg-primary/10 text-primary border border-primary/20 font-bold';
+    // case 'super-admin':
+    // case 'admin':
+    //   return 'bg-primary/10 text-primary border border-primary/20 font-bold';
     case 'receptionist':
       return 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20';
     case 'hmo':
@@ -220,9 +220,9 @@ const AuditLogs = () => {
         { key: 'userName', label: 'User Name' },
         { key: 'userRole', label: 'Role' },
         { key: 'action', label: 'Action' },
-        { key: 'resource', label: 'Resource' },
+        // { key: 'resource', label: 'Resource' },
         { key: 'status', label: 'Status' },
-        { key: 'description', label: 'Description' },
+        // { key: 'description', label: 'Description' },
         { key: 'ipAddress', label: 'IP Address' },
       ];
       exportRowsToCsv(logs, columns, `hospital_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
@@ -520,9 +520,9 @@ const AuditLogs = () => {
                     <th className="py-3 px-4">Actor / User</th>
                     <th className="py-3 px-4">Role</th>
                     <th className="py-3 px-4">Action</th>
-                    <th className="py-3 px-4">Resource</th>
+                    {/* <th className="py-3 px-4">Resource</th> */}
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Description</th>
+                    {/* <th className="py-3 px-4">Description</th> */}
                   </tr>
                 </thead>
                 <tbody className="text-sm divide-y divide-base-200">
@@ -583,17 +583,17 @@ const AuditLogs = () => {
                             {log.action}
                           </span>
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
+                        {/* <td className="py-3 px-4 whitespace-nowrap">
                           <span className="badge badge-ghost badge-sm text-[11px] font-mono">
                             {log.resource || 'System'}
                           </span>
-                        </td>
+                        </td> */}
                         <td className="py-3 px-4 whitespace-nowrap">
                           {getStatusBadge(log.status)}
                         </td>
-                        <td className="py-3 px-4 min-w-[200px] text-xs text-base-content/70">
+                        {/* <td className="py-3 px-4 min-w-[200px] text-xs text-base-content/70">
                           {log.description}
-                        </td>
+                        </td> */}
                       </tr>
                     ))
                   )}
