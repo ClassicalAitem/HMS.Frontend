@@ -15,8 +15,6 @@ import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
-import CreateBillModal from '@/components/modals/CreateBillModal'
-import SendToHmoModal from '@/components/modals/SendToHmoModal'
 import toast from 'react-hot-toast'
 import {
   FaHeartbeat,
@@ -48,8 +46,6 @@ const DRAdmittedPatient = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [sidebarMounted, setSidebarMounted] = useState(false)
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false)
-  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false)
-  const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false)
 
   const consultation = admission?.consultationId || admission?.consultation || null
   const consultationId = typeof consultation === 'object'
@@ -232,7 +228,7 @@ const DRAdmittedPatient = () => {
               </div>
 
               {/* Status Badge & Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* <div className="flex flex-wrap items-center gap-2">
                 {admission?.status === 'discharged' ? (
                   <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
                     Discharged Inpatient
@@ -243,29 +239,7 @@ const DRAdmittedPatient = () => {
                     Currently Admitted
                   </span>
                 )}
-
-                {/* Send to Cashier */}
-                <button
-                  type="button"
-                  onClick={() => setIsCreateBillOpen(true)}
-                  className="btn btn-sm btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
-                  title="Generate bill and send to Cashier"
-                >
-                  <FaCashRegister className="w-3.5 h-3.5" />
-                  <span>Send to Cashier</span>
-                </button>
-
-                {/* Send to HMO */}
-                <button
-                  type="button"
-                  onClick={() => setIsSendToHmoOpen(true)}
-                  className="btn btn-sm btn-outline btn-primary rounded-xl gap-1.5 font-semibold shadow-sm"
-                  title="Generate bill and send to HMO"
-                >
-                  <FaPaperPlane className="w-3.5 h-3.5" />
-                  <span>Send to HMO</span>
-                </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Patient Overview Card */}
@@ -438,48 +412,6 @@ const DRAdmittedPatient = () => {
         />
       )}
 
-      {/* Create Bill / Send to Cashier Modal */}
-      <CreateBillModal
-        isOpen={isCreateBillOpen}
-        onClose={() => setIsCreateBillOpen(false)}
-        patientId={patientId}
-        dependantId={isViewingDependant ? dependantId : null}
-        admissionId={admission?._id || admission?.id || null}
-        consultationId={consultationId}
-        onSuccess={() => {
-          setIsCreateBillOpen(false)
-          toast.success('Bill submitted to Cashier successfully')
-          loadAdmission()
-        }}
-      />
-
-      {/* Send to HMO Modal */}
-      <SendToHmoModal
-        isOpen={isSendToHmoOpen}
-        onClose={() => setIsSendToHmoOpen(false)}
-        patientId={patientId}
-        patientName={
-          summarySubject?.fullName ||
-          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
-        }
-        dependantId={isViewingDependant ? dependantId : null}
-        admissionId={admission?._id || admission?.id || null}
-        consultationId={consultationId}
-        doctorName={
-          admission?.doctorName ||
-          (admission?.doctor
-            ? `${admission?.doctor?.firstName || ''} ${admission?.doctor?.lastName || ''}`.trim()
-            : 'Attending Physician')
-        }
-        consultationDate={admission?.admittedAt || admission?.createdAt || new Date().toISOString()}
-        visitReason={admission?.reasonForAdmission || admission?.diagnosis || 'Inpatient Clinical Care & Admission'}
-        diagnosis={admission?.diagnosis || 'Inpatient Admission'}
-        onSentSuccessfully={() => {
-          setIsSendToHmoOpen(false)
-          toast.success('Bill sent to HMO successfully')
-          loadAdmission()
-        }}
-      />
     </div>
   )
 }

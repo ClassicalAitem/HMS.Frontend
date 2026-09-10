@@ -12,8 +12,7 @@ import WardRoundTab from '@/components/admitted/WardRoundTab'
 import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
-import CreateBillModal from '@/components/modals/CreateBillModal'
-import SendToHmoModal from '@/components/modals/SendToHmoModal'
+import AdmissionBillingModal from '@/components/modals/AdmissionBillingModal'
 import toast from 'react-hot-toast'
 import {
   FaHeartbeat,
@@ -44,8 +43,7 @@ const AdmittedPatient = () => {
   const [activeTab, setActiveTab] = useState('vitals')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [sidebarMounted, setSidebarMounted] = useState(false)
-  const [isCreateBillOpen, setIsCreateBillOpen] = useState(false)
-  const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false)
+  const [isBillingModalOpen, setIsBillingModalOpen] = useState(false)
 
   const consultationId = admission?.consultationId || admission?.consultation || null
 
@@ -212,20 +210,27 @@ const AdmittedPatient = () => {
               </div>
 
               {/* Status Badge & Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* <div className="flex flex-wrap items-center gap-2">
                 {admission?.status === 'discharged' ? (
                   <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
                     Discharged Inpatient
                   </span>
                 ) : (
-                  <span className="badge badge-success badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 text-white font-semibold gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                    Currently Admitted
-                  </span>
+                  <>
+                    <span className="badge badge-success badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 text-white font-semibold gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                      Currently Admitted
+                    </span>
+                    <button 
+                      className="btn btn-sm sm:btn-md btn-primary gap-2"
+                      onClick={() => setIsBillingModalOpen(true)}
+                    >
+                      <FaCashRegister className="w-4 h-4" />
+                      Generate Bill
+                    </button>
+                  </>
                 )}
-
-                
-              </div>
+              </div> */}
             </div>
 
             {/* Patient Overview Card */}
@@ -385,45 +390,15 @@ const AdmittedPatient = () => {
         </div>
       </div>
 
-      {/* Create Bill / Send to Cashier Modal */}
-      <CreateBillModal
-        isOpen={isCreateBillOpen}
-        onClose={() => setIsCreateBillOpen(false)}
+      <AdmissionBillingModal
+        isOpen={isBillingModalOpen}
+        onClose={() => setIsBillingModalOpen(false)}
         patientId={patientId}
         dependantId={isViewingDependant ? dependantId : null}
         admissionId={admission?._id || admission?.id || null}
         consultationId={consultationId}
         onSuccess={() => {
-          setIsCreateBillOpen(false)
-          toast.success('Bill submitted to Cashier successfully')
-          loadAdmission()
-        }}
-      />
-
-      {/* Send to HMO Modal */}
-      <SendToHmoModal
-        isOpen={isSendToHmoOpen}
-        onClose={() => setIsSendToHmoOpen(false)}
-        patientId={patientId}
-        patientName={
-          summarySubject?.fullName ||
-          `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
-        }
-        dependantId={isViewingDependant ? dependantId : null}
-        admissionId={admission?._id || admission?.id || null}
-        consultationId={consultationId}
-        doctorName={
-          admission?.doctorName ||
-          (admission?.doctor
-            ? `${admission?.doctor?.firstName || ''} ${admission?.doctor?.lastName || ''}`.trim()
-            : 'Attending Physician')
-        }
-        consultationDate={admission?.admittedAt || admission?.createdAt || new Date().toISOString()}
-        visitReason={admission?.reasonForAdmission || admission?.diagnosis || 'Inpatient Nursing Care & Admission'}
-        diagnosis={admission?.diagnosis || 'Inpatient Admission'}
-        onSentSuccessfully={() => {
-          setIsSendToHmoOpen(false)
-          toast.success('Bill sent to HMO successfully')
+          setIsBillingModalOpen(false)
           loadAdmission()
         }}
       />
