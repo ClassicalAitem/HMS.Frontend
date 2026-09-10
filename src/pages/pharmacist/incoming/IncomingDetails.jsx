@@ -3,11 +3,13 @@ import { useAppSelector } from '@/store/hooks'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { getPrescriptionByPatientId, updatePrescription } from '@/services/api/prescriptionsAPI'
+import { getPrescriptionsForConsultation } from '@/services/api/prescriptionsAPI'
+import { getConsultations } from '@/services/api/consultationAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
 import { getInventories } from '@/services/api/inventoryAPI'
-import { AddDrugModal, DispenseConfirmModal } from '@/components/modals'
+import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal } from '@/components/modals'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
@@ -42,12 +44,70 @@ const IncomingDetails = () => {
   const [doctors, setDoctors] = useState({}) 
   const [dependants, setDependants] = useState([])
   const [billings, setBillings] = useState([])
+  const [consultations, setConsultations] = useState([])
+  const [consultationsLoading, setConsultationsLoading] = useState(true)
+  const [selectedConsultation, setSelectedConsultation] = useState(null)
   const { refreshQueueCount } = useNotifications()
   const currentUser = useAppSelector((state) => state.auth.user)
   const isSuperAdmin = currentUser?.role === 'super-admin'
 
   const pharmacistId = currentUser?.id || currentUser?._id
   const pharmacistName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim()
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadConsultations = async () => {
+      if (!patientId) {
+        setConsultations([])
+        setConsultationsLoading(false)
+        return
+      }
+
+      setConsultationsLoading(true)
+      try {
+        const response = await getConsultations({ patientId })
+        const raw = response?.data?.data ?? response?.data ?? response ?? []
+        const list = Array.isArray(raw) ? raw : raw?.consultations ?? []
+        const scoped = list.filter((consultation) => (
+          isViewingDependant
+            ? String(consultation.dependantId) === String(incomingDependantId)
+            : !consultation.dependantId
+        ))
+        const withPrescriptions = await Promise.all(scoped.map(async (consultation) => {
+          const consultationId = consultation.id || consultation._id
+          try {
+            const prescriptionResponse = await getPrescriptionsForConsultation(consultationId)
+            const prescriptionData = prescriptionResponse?.data ?? prescriptionResponse ?? []
+            return {
+              ...consultation,
+              prescriptions: Array.isArray(prescriptionData)
+                ? prescriptionData
+                : prescriptionData ? [prescriptionData] : [],
+            }
+          } catch {
+            return { ...consultation, prescriptions: [] }
+          }
+        }))
+
+        if (mounted) {
+          setConsultations(withPrescriptions.sort(
+            (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+          ))
+        }
+      } catch (error) {
+        console.error('Failed to load consultations:', error)
+        if (mounted) setConsultations([])
+      } finally {
+        if (mounted) setConsultationsLoading(false)
+      }
+    }
+
+    loadConsultations()
+    return () => {
+      mounted = false
+    }
+  }, [patientId, incomingDependantId, isViewingDependant])
 
   useEffect(() => {
     let mounted = true
@@ -684,6 +744,50 @@ const getDispenseInfo = (med) => {
             isViewingDependant={isViewingDependant}
           />
 
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-base-content">Consultations</h2>
+            {consultationsLoading ? (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="skeleton h-28 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : consultations.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">
+                No consultations found.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {consultations.map((consultation) => {
+                  const consultationId = consultation.id || consultation._id
+                  return (
+                    <button
+                      key={consultationId}
+                      type="button"
+                      onClick={() => setSelectedConsultation(consultation)}
+                      className="rounded-lg border border-base-300 bg-base-100 p-4 text-left transition-colors hover:border-primary/50 hover:bg-base-200/60"
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="badge badge-primary badge-sm">Consultation</span>
+                        <span className="text-xs text-base-content/40">
+                          {consultation.createdAt ? formatNigeriaDateTime(consultation.createdAt) : '—'}
+                        </span>
+                      </div>
+                      <p className="line-clamp-1 text-sm font-medium">
+                        {consultation.diagnosis || 'Pending diagnosis'}
+                      </p>
+                      {consultation.visitReason && (
+                        <span className="badge badge-ghost badge-xs mt-2 capitalize">
+                          {consultation.visitReason}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+
           {isViewingDependant && incomingDependantSnapshot && (
             <div className="text-sm text-base-content/70 mb-3">
               Viewing prescriptions for <strong>{`${incomingDependantSnapshot.firstName || ''} ${incomingDependantSnapshot.lastName || ''}`.trim()}</strong>
@@ -753,6 +857,14 @@ const getDispenseInfo = (med) => {
             isSuperAdmin={isSuperAdmin}
             onCancel={() => setDispenseModalRows(null)}
             onConfirm={(finalRows) => submitDispense(finalRows, pendingAction)}
+          />
+        )}
+
+        {selectedConsultation && (
+          <ConsultationDetailModal
+            consultation={selectedConsultation}
+            prescriptions={selectedConsultation.prescriptions || []}
+            onClose={() => setSelectedConsultation(null)}
           />
         )}
       </div>
