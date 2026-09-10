@@ -93,7 +93,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
     {
       icon: FaBed,
-      label: 'Admittion',
+      label: 'Admission',
       path: '/superadmin/admitted',
       active: location.pathname.startsWith('/superadmin/admitted'),
       badge: admittedCount > 0 ? admittedCount : null
