@@ -63,7 +63,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Incoming',
       path: '/dashboard/pharmacist/incoming',
       active: isOnIncoming,
-      badge: isOnIncoming ? 0 : incomingCount,
+      badge: incomingCount,
     },
     {
       icon: IoPauseCircleSharp,

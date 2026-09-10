@@ -19,9 +19,7 @@ const DOCTOR_STATUSES = new Set([
   "awaiting_doctor",
   "in_consultation",
   "consultation_completed",
-  "awaiting_surgery",
-  "lab_completed",
-  "sonography_completed"
+  "awaiting_surgery"
 ]);
 
 const prettifyStatus = (status) =>
