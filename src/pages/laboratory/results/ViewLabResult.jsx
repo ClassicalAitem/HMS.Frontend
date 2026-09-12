@@ -9,7 +9,7 @@ import { getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, upd
 import { updatePatient } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import {  getDependantById } from '@/services/api/dependantAPI';
+import {  getDependantById, updateDependantStatus } from '@/services/api/dependantAPI';
 import { usersAPI } from "@/services/api/usersAPI";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
@@ -633,7 +633,9 @@ const patientName =
       }
 
       // Update patient status for regular patients and dependants
-      if (patientId && labResult) {
+      if (isDependant && labResult?.dependantId) {
+        await updateDependantStatus(labResult.dependantId, PATIENT_STATUS.LAB_COMPLETED);
+      } else if (patientId && labResult) {
         await updatePatientStatus(patientId, PATIENT_STATUS.LAB_COMPLETED);
       }
 
@@ -721,8 +723,8 @@ const handleComplete = async () => {
                 <SendPatientModal
                     patientId={patientId}
                     patient={patient}
-                    defaultDependantId={dependantId}
-                    defaultDependantLabel={summarySubject?.fullName}
+                    defaultDependantId={dependantId || labResult?.dependantId}
+                    defaultDependantLabel={summarySubject?.fullName || patientInfo?.name}
                     lockSubject
                      onUpdated={() => {
                                 refreshQueueCount();
