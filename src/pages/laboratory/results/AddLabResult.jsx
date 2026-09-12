@@ -224,8 +224,6 @@ const AddLabResult = () => {
       "PT/INR": "",
       LeCells: "",
       Microfilaria: "",
-      Genotype: "",
-      BloodGroup: "",
       RhD: "",
       SicklingTest: "",
       OccultBlood: "",
@@ -257,6 +255,8 @@ const AddLabResult = () => {
       BigDonor: "",
       ExpiryDate: "",
       Compatibility: "",
+      Genotype: "",
+      BloodGroup: "",
     },
 
     hormoneProfile: {
@@ -478,8 +478,27 @@ useEffect(() => {
 
         if (!data) return;
 
+        const formToLoad = { ...data.form };
+        
+        if (formToLoad?.wbcDifferential) {
+          if (formToLoad.wbcDifferential.Genotype !== undefined) {
+             formToLoad.bloodCrossmaching = {
+               ...formToLoad.bloodCrossmaching,
+               Genotype: formToLoad.wbcDifferential.Genotype
+             };
+             delete formToLoad.wbcDifferential.Genotype;
+          }
+          if (formToLoad.wbcDifferential.BloodGroup !== undefined) {
+             formToLoad.bloodCrossmaching = {
+               ...formToLoad.bloodCrossmaching,
+               BloodGroup: formToLoad.wbcDifferential.BloodGroup
+             };
+             delete formToLoad.wbcDifferential.BloodGroup;
+          }
+        }
+
         // load saved form
-        setFormData(prev => ({ ...prev, ...data.form }));
+        setFormData(prev => ({ ...prev, ...formToLoad }));
 
         // Load investigation if exists
         let loadedInvestigation = null;
@@ -989,7 +1008,7 @@ const SidebarDrawer = () => (
 
               {/* WBC DIFFERENTIAL SECTION */}
               <div className="bg-white rounded-lg shadow">
-                <SectionHeader title="WBC Differential" id="wbcDifferential" count={20} expandedSection={expandedSection} toggleSection={toggleSection} />
+                <SectionHeader title="WBC Differential" id="wbcDifferential" count={18} expandedSection={expandedSection} toggleSection={toggleSection} />
                 {expandedSection === "wbcDifferential" && (
                   <SectionContent>
                     {Object.entries(formData.wbcDifferential).map(([key, value]) => (
@@ -1041,7 +1060,7 @@ const SidebarDrawer = () => (
                 )}
               </div>
               <div className="bg-white rounded-lg shadow">
-                <SectionHeader title="Blood Cross-Matching" id="bloodCrossmaching" count={6} expandedSection={expandedSection} toggleSection={toggleSection} />
+                <SectionHeader title="Blood Cross Matching and Blood Group" id="bloodCrossmaching" count={8} expandedSection={expandedSection} toggleSection={toggleSection} />
                 {expandedSection === "bloodCrossmaching" && (
                   <SectionContent>
                     {Object.entries(formData.bloodCrossmaching).map(([key, value]) => (
