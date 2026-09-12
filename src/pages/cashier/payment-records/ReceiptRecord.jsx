@@ -102,9 +102,8 @@ const PaymentRecords = () => {
           status: a.status || 'pending',
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
           dateTime: formatNigeriaDateTime(a.paidAt),
-          cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
+          cashierName: a.cashier ? a.cashier.id : 'N/A',
           bankName: a.bankName || 'N/A',
-          senderName: a.senderName || 'N/A',
         };
       });
       setPaymentRecords(mapped);
@@ -254,11 +253,8 @@ const handlePrintReceipt = (payment) => {
 
   const columns = useMemo(() => [
     {
-      key: 'receiptId'
-    },
-    {
       key: 'transactionId',
-      title: 'Transaction ID',
+      title: 'HospitalId',
       sortable: true,
       className: 'text-base-content font-medium'
     },
@@ -295,12 +291,6 @@ const handlePrintReceipt = (payment) => {
       className: 'text-base-content font-medium'
     },
     {
-      key: 'paidBy',
-      title: 'Paid By',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
       key: 'dateTime',
       title: 'Date & Time',
       sortable: true,
@@ -313,8 +303,8 @@ const handlePrintReceipt = (payment) => {
       className: 'text-base-content/70'
     },
     {
-      key: 'senderName',
-      title: "Sender's Name",
+      key: 'cashierName',
+      title: 'Cashier ID',
       sortable: true,
       className: 'text-base-content/70'
     },
