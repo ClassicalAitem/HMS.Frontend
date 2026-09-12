@@ -543,6 +543,15 @@ const LabResultDetails = () => {
                   -webkit-print-color-adjust: exact;
                   print-color-adjust: exact;
                 }
+                .mb-6 { page-break-inside: avoid; }
+                h3 { page-break-after: avoid; }
+                table { page-break-inside: avoid; }
+                
+                /* Overrides for page breaking */
+                .h-screen, .max-h-screen, .h-full { height: auto !important; max-height: none !important; }
+                .overflow-y-auto, .overflow-hidden { overflow: visible !important; height: auto !important; }
+                .flex-1 { flex: none !important; }
+                
                 @page {
                   margin: 0;
                   size: A4;

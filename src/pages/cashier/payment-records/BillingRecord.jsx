@@ -69,7 +69,7 @@ useEffect(() => {
           itemDetails: a.itemDetails,
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
           dateTime: formatNigeriaDateTime(a.createdAt),
-          cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
+          cashierName: a.cashier ? a.cashier.id : 'N/A',
         };
       });
       setPaymentRecords(mapped);
@@ -239,12 +239,6 @@ const handlePrintReceipt = (billing) => {
 
   const columns = useMemo(() => [
     {
-      key: 'billingId',
-      title: 'Billing ID',
-      sortable: true,
-      className: 'text-base-content font-medium'
-    },
-    {
       key: 'name',
       title: 'Name',
       sortable: true,
@@ -278,7 +272,7 @@ const handlePrintReceipt = (billing) => {
     },
     {
       key: 'cashierName',
-      title: 'Cashier Name',
+      title: 'Cashier ID',
       sortable: true,
       className: 'text-base-content/70',
     },

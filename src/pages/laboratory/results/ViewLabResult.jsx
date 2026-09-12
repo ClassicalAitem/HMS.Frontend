@@ -886,9 +886,9 @@ const handleComplete = async () => {
                 @media print {
                   body { background: white !important; margin: 0; padding: 0; }
                   body.printable-lab { background: white !important; }
-                  .lab-container { display: flex !important; }
-                  .lab-sidebar { display: none !important; width: 0 !important; }
-                  .lab-main { width: 100% !important; }
+                  .lab-container { display: block !important; height: auto !important; overflow: visible !important; }
+                  .lab-sidebar { display: none !important; }
+                  .lab-main { display: block !important; width: 100% !important; height: auto !important; overflow: visible !important; }
                   .no-print { display: none !important; }
                   .rounded-lg { border-radius: 0 !important; }
                   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -899,7 +899,9 @@ const handleComplete = async () => {
                   table { page-break-inside: avoid; }
                   
                   /* Force page breaks for long content */
-                  .overflow-y-auto { overflow: visible !important; height: auto !important; }
+                  .h-screen, .max-h-screen, .h-full { height: auto !important; max-height: none !important; }
+                  .overflow-y-auto, .overflow-hidden { overflow: visible !important; height: auto !important; }
+                  .flex-1 { flex: none !important; }
                 }
               `}</style>
             </div>
