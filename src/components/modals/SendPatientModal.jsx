@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { updatePatientStatus } from '@/services/api/patientsAPI';
-import { updateDependantStatus } from '@/services/api/dependantAPI';
+import { useLocation } from 'react-router-dom';
+import { updatePatient, updatePatientStatus } from '@/services/api/patientsAPI';
+import { updateDependant, updateDependantStatus } from '@/services/api/dependantAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 
 const STEP = { SUBJECT: 'subject', ROLE: 'role', STATUS: 'status' };
@@ -72,16 +73,47 @@ const SendPatientModal = ({
   defaultDependantLabel = null,
   lockSubject = false,
 }) => {
+  const location = useLocation();
+  const isFrontDesk = location.pathname.includes('/frontdesk/');
+  const isCashier = location.pathname.includes('/cashier/');
+  const isNurse = location.pathname.includes('/nurse/');
+
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(STEP.SUBJECT);
   const [selectedSubject, setSelectedSubject] = useState(null); // { type: 'patient'|'dependant', id, label }
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  
+  const [notForConsultation, setNotForConsultation] = useState(false);
+  const [consultationType, setConsultationType] = useState('Doctor');
 
   const dependants = patient?.dependants || [];
   const hasDependants = dependants.length > 0;
-  const visibleRoles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
+  
+  const activeConsultationType = useMemo(() => {
+    const activeSubjectEntity = hasDependants && defaultDependantId 
+      ? dependants.find(d => d.id === defaultDependantId) 
+      : patient;
+    return activeSubjectEntity?.consultationType;
+  }, [dependants, defaultDependantId, patient, hasDependants]);
+  
+  const visibleRoles = useMemo(() => {
+    let roles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
+    if (isFrontDesk && !notForConsultation) {
+      // Restrict frontdesk to Cashier or HMO if they are here for consultation
+      roles = roles.filter(r => r === 'cashier' || r === 'hmo');
+    }
+    
+    if (isNurse && activeConsultationType) {
+      if (activeConsultationType === 'Medical Director') {
+        roles = roles.filter(r => r !== 'doctor');
+      } else if (activeConsultationType === 'Doctor') {
+        roles = roles.filter(r => r !== 'medical-director');
+      }
+    }
+    return roles;
+  }, [allowedRoles, isFrontDesk, notForConsultation, isNurse, activeConsultationType]);
 
     // Resolve the locked subject once, if we're scoped to a dependant
 const lockedSubject = useMemo(() => {
@@ -109,6 +141,8 @@ const lockedSubject = useMemo(() => {
   return null;
 }, [defaultDependantId, dependants, defaultDependantLabel, lockSubject, patientId, patient]);
   const open = () => {
+    setNotForConsultation(false);
+    setConsultationType('Doctor');
     if (lockedSubject) {
       setSelectedSubject(lockedSubject);
       setStep(STEP.ROLE);
@@ -186,6 +220,14 @@ const lockedSubject = useMemo(() => {
     setIsSending(true);
     try {
       const isDependent = subject.type === 'dependant';
+
+      if (isCashier && role === 'nurse') {
+        const updatePromise = isDependent
+          ? updateDependant(subject.id, { consultationType })
+          : updatePatient(subject.id, { consultationType });
+        await updatePromise;
+      }
+
       const promise = isDependent
         ? updateDependantStatus(subject.id, { status })
         : updatePatientStatus(subject.id, { status });
@@ -328,8 +370,36 @@ const lockedSubject = useMemo(() => {
 
               {/* STEP 2 — Role selection */}
               {step === STEP.ROLE && (
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  {visibleRoles.map(role => {
+                <div className="space-y-4 mt-2">
+                  {isFrontDesk && (
+                    <label className="flex items-center gap-2 cursor-pointer p-3 bg-base-200 rounded-lg">
+                      <input
+                        type="checkbox"
+                        className="checkbox checkbox-primary"
+                        checked={notForConsultation}
+                        onChange={(e) => setNotForConsultation(e.target.checked)}
+                      />
+                      <span className="text-sm font-medium">Patient is NOT here for consultation</span>
+                    </label>
+                  )}
+                  {isCashier && (
+                    <div className="form-control w-full bg-base-200 p-3 rounded-lg">
+                      <label className="label pt-0">
+                        <span className="label-text font-medium text-base">Select Consultation Type</span>
+                      </label>
+                      <select
+                        className="select select-bordered w-full"
+                        value={consultationType}
+                        onChange={(e) => setConsultationType(e.target.value)}
+                      >
+                        <option value="Doctor">Doctor (₦3,000)</option>
+                        <option value="Medical Director">Medical Director (₦5,000)</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {visibleRoles.map(role => {
                     const config = roleConfig[role];
                     return (
                       <button
@@ -352,6 +422,7 @@ const lockedSubject = useMemo(() => {
                     ✅ Mark as Completed
                   </button>
                 </div>
+                  </div>
                 </div>
               )}
 
