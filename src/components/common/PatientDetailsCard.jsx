@@ -63,6 +63,8 @@ const PatientDetailsCard = ({
     activeSubject?.updatedAt ||
     (!isViewingDependant ? parentPatient?.updatedAt : null);
 
+  const consultationType = activeSubject?.consultationType || parentPatient?.consultationType;
+
   // Age & Birthday Calculation
   const { age, isBirthday } = useMemo(() => {
     if (!rawDob) return { age: summarySubject?.age || patient?.age || '—', isBirthday: false };
@@ -163,6 +165,13 @@ const PatientDetailsCard = ({
 
         {/* Right Side: Status + Card Type */}
         <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between border-t lg:border-t-0 pt-3 lg:pt-0 border-base-200 gap-2 shrink-0">
+          {consultationType && (
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`badge badge-sm font-bold ${consultationType === 'Medical Director' ? 'badge-secondary' : 'badge-primary'}`}>
+                Consulting {consultationType}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <span className="text-xs text-base-content/50">Status:</span>
             <PatientStatusBadge
