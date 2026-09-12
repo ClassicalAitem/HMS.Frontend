@@ -578,27 +578,24 @@ const displayAttachments = () => {
                     print-color-adjust: exact;
                   }
                   .lab-container { 
-                    display: flex !important; 
+                    display: block !important; 
                     height: auto !important;
+                    overflow: visible !important;
                   }
                   .lab-sidebar { 
                     display: none !important; 
-                    width: 0 !important; 
                   }
                   .lab-main { 
+                    display: block !important;
                     width: 100% !important;
-                    display: flex;
-                    flex-direction: column;
+                    height: auto !important;
+                    overflow: visible !important;
                   }
                   .lab-main > *:first-child {
                     display: none !important;
                   }
                   .no-print { 
                     display: none !important; 
-                  }
-                  .overflow-y-auto {
-                    overflow: visible !important;
-                    height: auto !important;
                   }
                   section { 
                     padding: 0 !important;
@@ -611,6 +608,15 @@ const displayAttachments = () => {
                     -webkit-print-color-adjust: exact; 
                     print-color-adjust: exact; 
                   }
+                  .mb-6 { page-break-inside: avoid; }
+                  h3 { page-break-after: avoid; }
+                  table { page-break-inside: avoid; }
+                  
+                  /* Overrides for page breaking */
+                  .h-screen, .max-h-screen, .h-full { height: auto !important; max-height: none !important; }
+                  .overflow-y-auto, .overflow-hidden { overflow: visible !important; height: auto !important; }
+                  .flex-1 { flex: none !important; }
+                  
                   @page {
                     margin: 0;
                     size: A4;
