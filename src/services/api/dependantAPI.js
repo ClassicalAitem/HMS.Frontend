@@ -57,9 +57,19 @@ export const getDependantById = async (dependantId) => {
 };
 
 
-export const updateDependantStatus = async (dependantId, statusData) => {
+export const updateDependantStatus = async (dependantId, statusOrOptions) => {
   if (!dependantId) throw new Error('Dependant ID is required');
-  return apiClient.patch(`/dependant/dependantStatus/${dependantId}`, statusData);
+
+  let payload;
+  if (typeof statusOrOptions === 'string') {
+    payload = { status: statusOrOptions };
+  } else if (Array.isArray(statusOrOptions)) {
+    payload = { status: statusOrOptions };
+  } else {
+    payload = statusOrOptions;
+  }
+
+  return apiClient.patch(`/dependant/dependantStatus/${dependantId}`, payload);
 };
 
 export const getDependants = async (params = {}) => {
