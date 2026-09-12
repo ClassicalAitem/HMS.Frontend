@@ -31,7 +31,7 @@ const Appointments = () => {
 
       const mapped = list.map((a, idx) => ({
         id: a?.id || a?._id || a?.appointmentId || idx + 1,
-        patientId: a?.patientId,
+        patientId: a?.patient?.hospitalId || a?.patientId,
         dependantId: a?.dependantId || null,
         dependant: a?.dependant || null,
         patient: a?.patient || null,

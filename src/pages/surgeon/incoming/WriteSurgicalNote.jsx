@@ -2,7 +2,8 @@ import React, { useMemo, useState, useEffect } from "react";
 
 import { Header } from "@/components/common";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
-import CurrentVitalsCard from "@/components/medical-director/patient/CurrentVitalsCard";
+import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
+import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -21,7 +22,7 @@ import {
 } from "react-icons/fa";
 import { createSurgery, updateSurgery } from "@/services/api/surgeryAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
+import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
 import toast from "react-hot-toast";
@@ -133,23 +134,29 @@ const CreateSurgicalNote = () => {
   const [error, setError] = useState("");
   const [latestVital, setLatestVital] = useState(null);
   const [vitalsLoading, setVitalsLoading] = useState(false);
+  const [vitals, setVitals] = useState([]);
+  const [sortedVitals, setSortedVitals] = useState([]);
 
   const dependantId = location?.state?.dependantId || appointmentSnapshot?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || appointmentSnapshot?.dependant || null;
   const isViewingDependant = Boolean(dependantId);
 
   useEffect(() => {
-    if (!patientId || patient) return;
+    if (!patientId) return;
+    let mounted = true;
     setPatientLoading(true);
     getPatientById(patientId)
       .then((res) => {
-        setPatient(res?.data || res);
+        if (mounted) setPatient(res?.data || res);
       })
       .catch((err) => {
         console.error('[SurgicalNote] Error fetching patient:', err);
       })
-      .finally(() => setPatientLoading(false));
-  }, [patientId, patient]);
+      .finally(() => {
+        if (mounted) setPatientLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [patientId]);
 
   useEffect(() => {
     if (!patientId) return;
@@ -157,18 +164,46 @@ const CreateSurgicalNote = () => {
     setVitalsLoading(true);
     getVitalsByPatient(patientId)
       .then((response) => {
-        const vitals = normalizeVitalsResponse(response)
+        const list = normalizeVitalsResponse(response)
           .filter((vital) => (isViewingDependant ? vital.dependantId === dependantId : !vital.dependantId));
-        if (mounted) setLatestVital(getLatestVital(vitals));
+        if (mounted) {
+          setVitals(list);
+          setLatestVital(getLatestVital(list));
+        }
       })
       .catch(() => {
-        if (mounted) setLatestVital(null);
+        if (mounted) {
+          setVitals([]);
+          setLatestVital(null);
+        }
       })
       .finally(() => {
         if (mounted) setVitalsLoading(false);
       });
     return () => { mounted = false; };
   }, [patientId, dependantId, isViewingDependant]);
+
+  useEffect(() => {
+    if (vitals.length > 0) {
+      setSortedVitals(sortVitalsByTime([...vitals]));
+    } else {
+      setSortedVitals([]);
+    }
+  }, [vitals]);
+
+  const enrichedVitals = useMemo(() =>
+    Array.isArray(sortedVitals)
+      ? sortedVitals.map(vital => ({
+          ...vital,
+          date: vital.date || vital.createdAt,
+          recordedByName: vital.nurseName || vital.recordedBy || 'Unknown',
+          isForDependant: isViewingDependant,
+        }))
+      : [],
+    [sortedVitals, isViewingDependant]
+  );
+
+  const enrichedLatest = useMemo(() => enrichedVitals[0] || latestVital, [enrichedVitals, latestVital]);
 
   // Procedure name/code combobox — sourced from past appointments (procedureName+procedureCode are
   // free-text columns on Appointment; there's no dedicated procedure catalog endpoint)
@@ -224,7 +259,7 @@ const CreateSurgicalNote = () => {
       outcomes: editSurgery.outcomes || "",
       surgeonTeam: editSurgery.surgeonTeam?.length ? editSurgery.surgeonTeam : [{ surgeonName: "" }],
       surgeonAssistants: editSurgery.surgeonAssistants?.length ? editSurgery.surgeonAssistants : [{ assistantName: "" }],
-      anesthesiaDosages: editSurgery.anesthesiaDosages?.length ? editSurgery.anesthesiaDosages : [{ anesthesiaType: "", dosage: "" }],
+      anesthesiaDosages: editSurgery.anesthesiaDosages?.length ? editSurgery.anesthesiaDosages : [{ anesthesiaType: "", dosage: "", anestheticName: "", anestheticNote: "" }],
       vitalSigns: editSurgery.vitalSigns?.length ? editSurgery.vitalSigns : [{
         bloodPressure: '', heartRate: '', respiratoryRate: '', temperature: '', oxygenSaturation: '',
       }],
@@ -309,7 +344,7 @@ const CreateSurgicalNote = () => {
     outcomes: "",
     surgeonTeam: [{ surgeonName: "" }],
     surgeonAssistants: [{ assistantName: "" }],
-    anesthesiaDosages: [{ anesthesiaType: "", dosage: "" }],
+    anesthesiaDosages: [{ anesthesiaType: "", dosage: "", anestheticName: "", anestheticNote: "" }],
     vitalSigns: [{
       bloodPressure: '',
       heartRate: '',
@@ -476,11 +511,18 @@ const CreateSurgicalNote = () => {
     // Prepare payload to match ISurgery
     const payload = {
       ...form,
+      appointmentId: appointmentSnapshot?._id || appointmentSnapshot?.id || undefined,
       patientId: effectivePatientId,
       dependantId: dependantId || undefined,
       surgeonTeam: form.surgeonTeam.filter((s) => s.surgeonName.trim()),
       surgeonAssistants: form.surgeonAssistants.filter((a) => a.assistantName.trim()),
-      anesthesiaDosages: form.anesthesiaDosages.filter((a) => a.anesthesiaType.trim() && a.dosage.trim()),
+      anesthesiaDosages: form.anesthesiaDosages.map(a => ({
+        ...a,
+        anesthesiaType: a.anesthesiaType.trim(),
+        dosage: a.dosage.trim(),
+        anestheticName: a.anestheticName?.trim(),
+        anestheticNote: a.anestheticNote?.trim()
+      })).filter((a) => a.anesthesiaType || a.dosage || a.anestheticName || a.anestheticNote),
       estimatedBloodLoss: form.estimatedBloodLoss ? Number(form.estimatedBloodLoss) : undefined,
       swabUsed: form.swabUsed ? Number(form.swabUsed) : undefined,
       babyAssessment: form.showBaby ? form.babyAssessment.map((b) => ({
@@ -600,12 +642,28 @@ const CreateSurgicalNote = () => {
             />
       */}
 
-          <CurrentVitalsCard
-            patient={summarySubject}
-            latest={latestVital}
-            loading={vitalsLoading}
-            buttonHidden
-          />
+          {/* Vitals Overview */}
+          <div className="grid grid-cols-1 gap-6">
+            <CurrentVitalsCard
+              patient={summarySubject}
+              latest={enrichedLatest}
+              loading={vitalsLoading}
+              buttonHidden={true}
+            />
+            
+            {/* <VitalsHistoryTable 
+              sortedVitals={enrichedVitals} 
+              loading={vitalsLoading}
+              patientName={summarySubject?.fullName || "Patient"}
+              onViewAll={() => navigate(`/dashboard/surgeon/view-vitals/${patientId}`, {
+                state: {
+                  from: fromIncoming ? "incoming" : "patients",
+                  dependantId,
+                  dependantSnapshot: isViewingDependant ? (dependantSnapshot) : null,
+                },
+              })}
+            /> */}
+          </div>
 
           <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             {/* PROCEDURE & SCHEDULING */}
@@ -759,21 +817,29 @@ const CreateSurgicalNote = () => {
             <SectionCard
               icon={FaSyringe}
               title="Anesthesia"
-              subtitle="Type and dosage administered"
+              subtitle="Type, name, and dosage administered"
               tone="secondary"
             >
-              <div className="space-y-2">
+              <div className="space-y-4">
                 {form.anesthesiaDosages.map((a, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input required placeholder="Anesthesia type" value={a.anesthesiaType} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anesthesiaType')} className="input input-bordered flex-1" />
-                    <input required placeholder="Dosage" value={a.dosage} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'dosage')} className="input input-bordered flex-1" />
+                  <div key={i} className="flex flex-col gap-2 p-3 rounded-xl bg-base-200/40 border border-base-200 relative">
                     {form.anesthesiaDosages.length > 1 && (
-                      <RemoveRowButton onClick={() => removeFromList('anesthesiaDosages', i)} />
+                      <div className="absolute top-2 right-2">
+                        <RemoveRowButton onClick={() => removeFromList('anesthesiaDosages', i)} />
+                      </div>
                     )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                      <input placeholder="Anesthesia type (e.g. General, Local)" value={a.anesthesiaType || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anesthesiaType')} className="input input-bordered w-full" />
+                      <input placeholder="Dosage" value={a.dosage || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'dosage')} className="input input-bordered w-full" />
+                      <input placeholder="Anesthetic Name" value={a.anestheticName || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anestheticName')} className="input input-bordered w-full" />
+                      <input placeholder="Anesthetic Note" value={a.anestheticNote || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anestheticNote')} className="input input-bordered w-full" />
+                    </div>
                   </div>
                 ))}
               </div>
-              <AddRowButton label="Add Anesthesia" onClick={() => addToList('anesthesiaDosages', { anesthesiaType: "", dosage: "" })} />
+              <div className="mt-2">
+                <AddRowButton label="Add Anesthesia" onClick={() => addToList('anesthesiaDosages', { anesthesiaType: "", dosage: "", anestheticName: "", anestheticNote: "" })} />
+              </div>
             </SectionCard>
 
             {/* VITAL SIGNS */}
