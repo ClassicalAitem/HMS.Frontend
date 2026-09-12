@@ -3,14 +3,14 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
 import { FaFileInvoice } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchPatientById, clearPatientsError } from '../../../store/slices/patientsSlice';
+import { fetchPatientById, clearPatientsError, clearCurrentPatient } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
-import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -28,7 +28,6 @@ const CashierPatientDetails = () => {
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
-  const [selectedPatientId] = useState(patientId || (currentPatient ? currentPatient.id : null));
   const { refreshQueueCount } = useNotifications();
 
   const toggleRow = (id) => {
@@ -126,6 +125,9 @@ const CashierPatientDetails = () => {
     if (patientId && !location?.state?.patientSnapshot) {
       dispatch(fetchPatientById(patientId));
     }
+    return () => {
+      dispatch(clearCurrentPatient());
+    };
   }, [dispatch, patientId, location?.state?.patientSnapshot]);
 
   useEffect(() => {
@@ -298,7 +300,7 @@ const CashierPatientDetails = () => {
               <thead>
                 <tr>
                   <th></th>
-                  <th>Billing ID</th>
+                  <th>Date & Time</th>
                   <th>Total amount</th>
                   <th>Outstanding Bills</th>
                   <th>Raised By</th>
@@ -328,7 +330,7 @@ const CashierPatientDetails = () => {
                       </td>
 
 
-                      <td className="font-medium">{bill.id}</td>
+                      <td className="font-medium">{formatNigeriaDateTime(bill.createdAt)}</td>
                       <td> ₦ {bill.totalAmount.toLocaleString()}</td>
                       <td> ₦ {(bill.isCleared ? 0 : (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0)).toLocaleString()}</td>
                       <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
@@ -438,6 +440,7 @@ const CashierPatientDetails = () => {
                   <th>Destination</th>
                   <th>Status</th>
                   <th>Paid By</th>
+                  <th>Cashier</th>
                   <th>Time</th>
                 </tr>
               </thead>
@@ -470,6 +473,7 @@ const CashierPatientDetails = () => {
                         </span>
                       </td>
                       <td>{payment.paidBy}</td>
+                      <td>{payment.cashier?.firstName} {payment.cashier?.lastName}</td>
                       <td>{time}</td>
                     </tr>
                   );
@@ -510,7 +514,7 @@ const CashierPatientDetails = () => {
           isOpen={isReceiptModalOpen}
           onClose={() => setIsReceiptModalOpen(false)}
           billingId={selectedBillingId}
-          patientId={selectedPatientId}
+          patientId={patientId}
           onSubmit={handleReceiptSubmit}
         />
       </div>

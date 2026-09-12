@@ -92,6 +92,7 @@ const IncomingHmoDetails = () => {
     Pharmacy: false,
   });
   const [billings, setBillings] = useState([]);
+  const [rawBillings, setRawBillings] = useState([]);
   const [hmos, setHmos] = useState([]);
   const [itemDecisions, setItemDecisions] = useState({});
   const [consultations, setConsultations] = useState([]);
@@ -162,29 +163,38 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
             billingsRes.value?.data?.data ?? billingsRes.value?.data ?? [];
           const list = Array.isArray(raw) ? raw : [];
 
-          // ✅ Initialize decisions from existing hmoStatus or default to 'pending'
+          const relevantBills = list.filter((bill) => {
+            const matchesSubject = isViewingDependant
+              ? bill.dependantId === dependantId
+              : !bill.dependantId;
+            return matchesSubject;
+          });
+          setRawBillings(relevantBills);
+
+          const pendingBillings = relevantBills
+            .map((bill) => {
+              const pendingItemsWithIndex = (bill.itemDetails || [])
+                .map((item, idx) => ({ ...item, originalIdx: idx }))
+                .filter(
+                  (item) => !item.hmoStatus || item.hmoStatus === 'pending'
+                );
+              return { ...bill, itemDetails: pendingItemsWithIndex };
+            })
+            .filter((bill) => bill.itemDetails.length > 0);
+
           const initial = {};
-          list.forEach((bill) => {
+          pendingBillings.forEach((bill) => {
             initial[bill.id] = {};
-            (bill.itemDetails || []).forEach((item, idx) => {
-              initial[bill.id][idx] = {
+            (bill.itemDetails || []).forEach((item) => {
+              initial[bill.id][item.originalIdx] = {
                 status: item.hmoStatus || 'pending',
                 hmoCovered: Number(item.hmoCovered || 0),
+                isClaimed: !!item.isClaimed,
               };
             });
           });
           setItemDecisions(initial);
-
-          const unreviewedBills = list.filter((bill) => {
-            const hasUnreviewedItems = (bill.itemDetails || []).some(
-              (item) => !item.hmoStatus || item.hmoStatus === 'pending',
-            );
-            const matchesSubject = isViewingDependant
-              ? bill.dependantId === dependantId
-              : !bill.dependantId;
-            return hasUnreviewedItems && !bill.isCleared && matchesSubject;
-          });
-          setBillings(unreviewedBills);
+          setBillings(pendingBillings);
         }
 
         if (vitalsRes.status === 'fulfilled') {
@@ -397,12 +407,26 @@ useEffect(() => {
 }, [patientId, isViewingDependant, dependantId]);
 
 
-  const setDecision = (billingId, itemIdx, status, hmoCovered = 0) => {
+  const setDecision = (billingId, itemIdx, status, hmoCovered = 0, isClaimed = false) => {
     setItemDecisions((prev) => ({
       ...prev,
       [billingId]: {
         ...prev[billingId],
-        [itemIdx]: { status, hmoCovered: Number(hmoCovered) || 0 },
+        [itemIdx]: { ...prev[billingId][itemIdx], status, hmoCovered: Number(hmoCovered) || 0, isClaimed },
+      },
+    }));
+    setHasSavedDecisions(false);
+  };
+
+  const toggleClaimed = (billingId, itemIdx) => {
+    setItemDecisions((prev) => ({
+      ...prev,
+      [billingId]: {
+        ...prev[billingId],
+        [itemIdx]: {
+          ...prev[billingId][itemIdx],
+          isClaimed: !prev[billingId][itemIdx]?.isClaimed,
+        },
       },
     }));
     setHasSavedDecisions(false);
@@ -429,8 +453,8 @@ useEffect(() => {
   const approvedTotal = useMemo(() => {
     let total = 0;
     billings.forEach((bill) => {
-      (bill.itemDetails || []).forEach((item, idx) => {
-        const decision = itemDecisions[bill.id]?.[idx];
+      (bill.itemDetails || []).forEach((item) => {
+        const decision = itemDecisions[bill.id]?.[item.originalIdx];
         if (decision?.status === 'approved') {
           total += Number(item.total || 0);
         } else if (decision?.status === 'partial') {
@@ -445,8 +469,8 @@ useEffect(() => {
   const patientPaysTotal = useMemo(() => {
     let total = 0;
     billings.forEach((bill) => {
-      (bill.itemDetails || []).forEach((item, idx) => {
-        const decision = itemDecisions[bill.id]?.[idx];
+      (bill.itemDetails || []).forEach((item) => {
+        const decision = itemDecisions[bill.id]?.[item.originalIdx];
         const itemTotal = Number(item.total || 0);
         if (decision?.status === 'rejected') {
           total += itemTotal;
@@ -460,12 +484,16 @@ useEffect(() => {
 
   const saveDecisions = async () => {
     await Promise.all(
-      billings.map(async (bill) => {
-        const updatedItems = (bill.itemDetails || []).map((item, idx) => {
-          const decision = itemDecisions[bill.id]?.[idx] || {
-            status: 'pending',
-            hmoCovered: 0,
-          };
+      billings.map(async (pendingBill) => {
+        const rawBill = rawBillings.find((b) => b.id === pendingBill.id);
+        if (!rawBill) return;
+
+        const updatedItems = (rawBill.itemDetails || []).map((item, idx) => {
+          const decision = itemDecisions[pendingBill.id]?.[idx];
+          if (!decision) {
+            return item;
+          }
+
           const itemTotal = Number(item.total || 0);
 
           let hmoCovered = 0;
@@ -481,6 +509,7 @@ useEffect(() => {
             hmoStatus: decision.status,
             hmoCovered,
             patientOwes: patientPays,
+            isClaimed: decision.isClaimed || false,
           };
         });
 
@@ -494,7 +523,7 @@ useEffect(() => {
           0,
         );
 
-        await updateBilling(bill.id, {
+        await updateBilling(pendingBill.id, {
           itemDetails: updatedItems,
           outstandingBill,
           hmoCoveredAmount,
@@ -748,8 +777,8 @@ useEffect(() => {
                           </tr>
                         </thead>
                         <tbody>
-                          {(bill.itemDetails || []).map((item, idx) => {
-                            // ✅ was comparing object to string before; now reads .status
+                          {(bill.itemDetails || []).map((item) => {
+                            const idx = item.originalIdx;
                             const decisionStatus =
                               itemDecisions[bill.id]?.[idx]?.status ||
                               'pending';
@@ -966,11 +995,18 @@ useEffect(() => {
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="space-y-1">
                       <p className="text-sm text-base-content/60">
-                        Total Bill:{' '}
+                        Total Pending Bill:{' '}
                         <span className="font-medium text-base-content">
                           ₦
                           {billings
-                            .reduce((s, b) => s + Number(b.totalAmount || 0), 0)
+                            .reduce((sum, b) => {
+                              const bTotal = (b.itemDetails || []).reduce(
+                                (itemSum, i) =>
+                                  itemSum + Number(i.total || 0),
+                                0
+                              );
+                              return sum + bTotal;
+                            }, 0)
                             .toLocaleString()}
                         </span>
                       </p>
@@ -991,9 +1027,9 @@ useEffect(() => {
                       {(() => {
                         const hasPending = billings.some((bill) =>
                           (bill.itemDetails || []).some(
-                            (_, idx) =>
-                              !itemDecisions[bill.id]?.[idx] ||
-                              itemDecisions[bill.id]?.[idx]?.status ===
+                            (item) =>
+                              !itemDecisions[bill.id]?.[item.originalIdx] ||
+                              itemDecisions[bill.id]?.[item.originalIdx]?.status ===
                                 'pending',
                           ),
                         );
