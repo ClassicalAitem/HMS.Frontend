@@ -48,6 +48,24 @@ const LabResultDetails = () => {
 
         const labRes = await getLabResultById(labResultId);
         const labData = labRes?.data || labRes;
+        
+        if (labData?.form?.wbcDifferential) {
+          if (labData.form.wbcDifferential.Genotype !== undefined) {
+             labData.form.bloodCrossmaching = {
+               ...labData.form.bloodCrossmaching,
+               Genotype: labData.form.wbcDifferential.Genotype
+             };
+             delete labData.form.wbcDifferential.Genotype;
+          }
+          if (labData.form.wbcDifferential.BloodGroup !== undefined) {
+             labData.form.bloodCrossmaching = {
+               ...labData.form.bloodCrossmaching,
+               BloodGroup: labData.form.wbcDifferential.BloodGroup
+             };
+             delete labData.form.wbcDifferential.BloodGroup;
+          }
+        }
+        
         setLabResult(labData);
 
         if (!investigationIdState && labData?.investigationId) {
@@ -473,7 +491,7 @@ const displayAttachments = () => {
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
               {displaySection("PT  Test || Malaria Parasite", labResult?.form?.ptTest)}
-              {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
+              {displaySection("Blood Cross Matching and Blood Group", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
               {displaySection("Urinalysis", labResult?.form?.urinalysis)}
