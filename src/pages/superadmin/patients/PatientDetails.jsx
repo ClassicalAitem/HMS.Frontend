@@ -35,11 +35,13 @@ import {
   normalizeVitalsResponse,
 } from '@/services/api/vitalsAPI';
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
-import { getDependantById } from '@/services/api/dependantAPI';
+import { getDependantById, deleteDependant } from '@/services/api/dependantAPI';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
 import { ConsultationDetailModal } from '@/components/modals';
 import { FaBed } from 'react-icons/fa';
+import { deletePatient } from '@/services/api/patientsAPI';
+import { deleteHmo } from '@/services/api/hmoAPI';
 
 const PatientDetails = () => {
   const { patientId } = useParams();
@@ -269,6 +271,39 @@ const PatientDetails = () => {
     setIsEditModalOpen(false);
   };
 
+  const handleDeletePatient = async () => {
+    if (!window.confirm('Are you sure you want to delete this patient? This action cannot be undone.')) return;
+    try {
+      await deletePatient(patientId);
+      toast.success('Patient deleted successfully');
+      navigate('/superadmin/patients/Patients');
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to delete patient');
+    }
+  };
+
+  const handleDeleteDependant = async (dep) => {
+    if (!window.confirm(`Are you sure you want to delete the dependant ${dep.firstName}?`)) return;
+    try {
+      await deleteDependant(dep.id);
+      toast.success('Dependant deleted successfully');
+      if (patientId) dispatch(fetchPatientById(patientId));
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to delete dependant');
+    }
+  };
+
+  const handleDeleteHmo = async (hmo) => {
+    if (!window.confirm(`Are you sure you want to delete this HMO?`)) return;
+    try {
+      await deleteHmo(hmo.id);
+      toast.success('HMO deleted successfully');
+      if (patientId) dispatch(fetchPatientById(patientId));
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Failed to delete HMO');
+    }
+  };
+
   const isTransitionLoading = isLoading || (currentPatient && String(currentPatient.id) !== String(patientId));
 
   // Show error state or redirect if no patient (only when not loading)
@@ -317,7 +352,11 @@ const PatientDetails = () => {
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-4 lg:p-6">
           {/* Page Header */}
-          <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/superadmin/patients/Patients')} />
+          <PatientPageHeader 
+            onEdit={() => setIsEditModalOpen(true)} 
+            onDelete={handleDeletePatient}
+            onClose={() => navigate('/superadmin/patients/Patients')} 
+          />
 
           {/* Patient Information */}
           <div className="space-y-6">
@@ -596,6 +635,8 @@ const PatientDetails = () => {
                   setHmoTargetDependantId(dep.id);
                   setIsAddHmoOpen(true);
                 }}
+                onDeleteHmo={handleDeleteHmo}
+                onDeleteDependant={handleDeleteDependant}
               />
             </div>
 
