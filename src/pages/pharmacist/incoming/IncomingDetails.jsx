@@ -21,6 +21,12 @@ import { calculatePrescriptionLine } from '@/utils/prescriptionsCalculator'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import { usersAPI } from '@/services/api/usersAPI'
 import { PRESCRIPTION_STATUS } from '@/constants/prescriptionStatus'
+import {
+  getVitalsByPatient,
+  getLatestVital,
+  normalizeVitalsResponse,
+} from '@/services/api/vitalsAPI'
+import CurrentVitalsCard from '@/components/doctor/patient/CurrentVitalsCard'
 
 const IncomingDetails = () => {
   const { patientId } = useParams()
@@ -47,6 +53,8 @@ const IncomingDetails = () => {
   const [consultations, setConsultations] = useState([])
   const [consultationsLoading, setConsultationsLoading] = useState(true)
   const [selectedConsultation, setSelectedConsultation] = useState(null)
+  const [latestVital, setLatestVital] = useState(null)
+  const [vitalsLoading, setVitalsLoading] = useState(true)
   const { refreshQueueCount } = useNotifications()
   const currentUser = useAppSelector((state) => state.auth.user)
   const isSuperAdmin = currentUser?.role === 'super-admin'
@@ -104,6 +112,33 @@ const IncomingDetails = () => {
     }
 
     loadConsultations()
+    return () => {
+      mounted = false
+    }
+  }, [patientId, incomingDependantId, isViewingDependant])
+
+  useEffect(() => {
+    let mounted = true
+    const loadVitals = async () => {
+      if (!patientId) {
+        setLatestVital(null)
+        setVitalsLoading(false)
+        return
+      }
+      setVitalsLoading(true)
+      try {
+        const vitalResult = await getVitalsByPatient(patientId)
+        const vitals = normalizeVitalsResponse(vitalResult).filter((item) =>
+          isViewingDependant ? item.dependantId === incomingDependantId : !item.dependantId
+        )
+        if (mounted) setLatestVital(getLatestVital(vitals))
+      } catch (err) {
+        if (mounted) setLatestVital(null)
+      } finally {
+        if (mounted) setVitalsLoading(false)
+      }
+    }
+    loadVitals()
     return () => {
       mounted = false
     }
@@ -742,6 +777,13 @@ const getDispenseInfo = (med) => {
             patient={patient}
             summarySubject={summarySubject}
             isViewingDependant={isViewingDependant}
+          />
+
+          <CurrentVitalsCard
+            patient={summarySubject}
+            latest={latestVital}
+            loading={vitalsLoading}
+            buttonHidden
           />
 
           <section className="space-y-3">
