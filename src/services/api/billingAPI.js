@@ -149,6 +149,54 @@ export const getBillingbypatientId = async (patientId) => {
   }
 };
 
+export const getPatientBillHistory = async (patientId) => {
+  if (!patientId) return [];
+
+  try {
+    const url = `/billing/patient/${patientId}`;
+    const response = await apiClient.get(url, { skipErrorToast: true });
+    
+    let billingsList = [];
+    if (Array.isArray(response?.data)) {
+      billingsList = response.data;
+    } else if (Array.isArray(response?.data?.data)) {
+      billingsList = response.data.data;
+    } else if (response?.data && typeof response.data === 'object') {
+      billingsList = [response.data];
+    } else if (Array.isArray(response)) {
+      billingsList = response;
+    }
+
+    if (billingsList.length > 0) {
+       return billingsList.sort((a, b) => new Date(b?.createdAt || b?.created_at || 0) - new Date(a?.createdAt || a?.created_at || 0));
+    }
+  } catch (e) {
+  }
+
+  try {
+    const allBillings = await getAllBillings({ skipErrorToast: true });
+    let billingsList = [];
+    if (Array.isArray(allBillings?.data)) {
+      billingsList = allBillings.data;
+    } else if (Array.isArray(allBillings?.data?.data)) {
+      billingsList = allBillings.data.data;
+    } else if (allBillings?.data && typeof allBillings.data === 'object') {
+      billingsList = [allBillings.data];
+    } else if (Array.isArray(allBillings)) {
+      billingsList = allBillings;
+    }
+
+    const patientBillings = billingsList.filter((b) => {
+      const bPatientId = b?.patientId || b?.patient?.id || b?.patient?._id;
+      return String(bPatientId) === String(patientId);
+    });
+
+    return patientBillings.sort((a, b) => new Date(b?.createdAt || b?.created_at || 0) - new Date(a?.createdAt || a?.created_at || 0));
+  } catch (error) {
+    return [];
+  }
+};
+
 export const getBillingsByOpdPatientId = async (opdPatientId) => {
   if (!opdPatientId) throw new Error('OpD Patient ID is required');
   const url = `/billing/opd-patient/${opdPatientId}`;
@@ -274,6 +322,7 @@ export default {
   createBilling,
   getBillingById,
   getBillingbypatientId,
+  getPatientBillHistory,
   getBillingsByOpdPatientId,
   getAllBillings,
   getAllReceipts,

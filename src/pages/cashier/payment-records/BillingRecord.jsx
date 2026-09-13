@@ -69,7 +69,7 @@ useEffect(() => {
           itemDetails: a.itemDetails,
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
           dateTime: formatNigeriaDateTime(a.createdAt),
-          cashierName: a.cashier ? a.cashier.id : 'N/A',
+          raisedBy: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
         };
       });
       setPaymentRecords(mapped);
@@ -271,8 +271,8 @@ const handlePrintReceipt = (billing) => {
       className: 'text-base-content/70'
     },
     {
-      key: 'cashierName',
-      title: 'Cashier ID',
+      key: 'raisedBy',
+      title: 'Raised By',
       sortable: true,
       className: 'text-base-content/70',
     },

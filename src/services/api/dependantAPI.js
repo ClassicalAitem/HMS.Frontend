@@ -78,6 +78,11 @@ export const getDependants = async (params = {}) => {
   return apiClient.get(url);
 };
 
+export const deleteDependant = async (dependantId) => {
+  if (!dependantId) throw new Error('Dependant ID is required');
+  return apiClient.delete(`/dependant/${dependantId}`);
+};
+
 export default {
   addDependantForPatient,
   updateDependant,
@@ -85,4 +90,5 @@ export default {
   updateDependantStatus,
   getDependants,
   getDependantById,
+  deleteDependant,
 };
