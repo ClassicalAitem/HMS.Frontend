@@ -9,12 +9,13 @@ const initials = (firstName, lastName) =>
   `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase() || '—';
 
 const HmoPlanChip = ({ hmo, onDeleteHmo }) => (
-  <div className="p-2 mt-2 rounded-lg bg-success/10 relative group">
+  <div className="p-2 mt-2 rounded-lg bg-success/10 relative group border border-success/20">
     {onDeleteHmo && (
       <button 
         type="button" 
         onClick={() => onDeleteHmo(hmo)}
-        className="absolute top-2 right-2 text-error/70 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute top-1 right-1 p-1 rounded-full text-error/70 hover:bg-error/10 hover:text-error transition-colors"
+        title="Delete HMO Plan"
       >
         <MdDeleteOutline size={16} />
       </button>
@@ -31,14 +32,17 @@ const HmoPlanChip = ({ hmo, onDeleteHmo }) => (
 const HmoDependantsSection = ({
   patient,
   isTransitionLoading,
+  viewingDependantId,
   onAddHmo,
   onEditHmo,
   onAddDependant,
   onEditDependant,
   onAddHmoForDependant,
+  onEditHmoForDependant,
   onDeleteHmo,
   onDeleteDependant,
 }) => {
+  const isViewingDependant = !!viewingDependantId;
 
    if (!patient) {
     return (
@@ -66,21 +70,25 @@ const HmoDependantsSection = ({
         <h3 className="flex items-center justify-between mb-4 text-lg font-medium text-primary">
           HMO & Dependants Information
           <span className="flex items-center gap-2">
-            <label className="text-sm label text-base-content">HMO</label>
-            <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
-              <IoAddCircleOutline className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onAddHmo} />
-            </div>
-            <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit HMO Plan">
-              <MdEditNote className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onEditHmo} />
-            </div>
-            <label className="text-sm label text-base-content">: | :</label>
-            <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add Dependant">
-              <RiUserAddLine className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onAddDependant} />
-            </div>
-            <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit Dependant">
-              <CiEdit className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onEditDependant} />
-            </div>
-            <label className="text-sm label text-base-content">Dependants</label>
+            {!isViewingDependant && (
+              <>
+                <label className="text-sm label text-base-content">HMO</label>
+                <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
+                  <IoAddCircleOutline className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onAddHmo} />
+                </div>
+                <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit HMO Plan">
+                  <MdEditNote className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onEditHmo} />
+                </div>
+                <label className="text-sm label text-base-content">: | :</label>
+                <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add Dependant">
+                  <RiUserAddLine className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onAddDependant} />
+                </div>
+                <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Edit Dependant">
+                  <CiEdit className="text-xl font-bold transition-colors duration-300 cursor-pointer hover:text-primary" onClick={onEditDependant} />
+                </div>
+                <label className="text-sm label text-base-content">Dependants</label>
+              </>
+            )}
           </span>
         </h3>
 
@@ -137,14 +145,17 @@ const HmoDependantsSection = ({
                     const depHmos = hmosByDependantId[dep.id] || [];
 
                     return (
-                      <div key={dep.id} className="p-4 rounded-lg border border-base-300 relative group">
+                      <div key={dep.id} className={`p-4 rounded-lg border relative group transition-all ${dep.id === viewingDependantId ? 'border-primary ring-1 ring-primary/50 bg-primary/5' : 'border-base-300'}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
                             <div className="flex items-center justify-center w-8 h-8 text-xs font-semibold rounded-full bg-primary/10 text-primary shrink-0">
                               {initials(dep.firstName, dep.lastName)}
                             </div>
                             <div>
-                              <div className="text-sm font-semibold">{fullName}</div>
+                              <div className="text-sm font-semibold flex items-center gap-2">
+                                {fullName}
+                                {dep.id === viewingDependantId && <span className="badge badge-primary badge-xs text-[10px]">Viewing</span>}
+                              </div>
                               <div className="text-xs capitalize text-base-content/50">{relationship}</div>
                             </div>
                           </div>
@@ -157,6 +168,15 @@ const HmoDependantsSection = ({
                                 onClick={() => onAddHmoForDependant(dep)}
                               >
                                 <IoAddCircleOutline className="text-base" />
+                              </button>
+                            </div>
+                            <div className="tooltip tooltip-primary tooltip-left" data-tip={`Edit HMO for ${dep.firstName || 'dependant'}`}>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs btn-circle text-primary"
+                                onClick={() => onEditHmoForDependant && onEditHmoForDependant(dep)}
+                              >
+                                <MdEditNote className="text-base" />
                               </button>
                             </div>
                             {onDeleteDependant && (
