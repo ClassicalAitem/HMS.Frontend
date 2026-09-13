@@ -20,6 +20,7 @@ import PatientIdentificationCard from '@/components/frontdesk/patients/PatientId
 import GeneralInfoCard from '@/components/frontdesk/patients/GeneralInfoCard';
 import AdditionalInfoCard from '@/components/frontdesk/patients/AdditionalInfoCard';
 import HmoDependantsSection  from '@/components/frontdesk/patients/HmoDependantsSection';
+import PatientBillsHistory from '@/components/frontdesk/patients/PatientBillsHistory';
 import AdditionalInformationCard from '@/components/frontdesk/patients/AdditionalInformationCard';
 import ActionButtons from '@/components/frontdesk/patients/ActionButtons';
 import SendPatientModal from '@/components/modals/SendPatientModal';
@@ -482,8 +483,8 @@ const PatientDetails = () => {
               />
             </div>
 
-            {/* Additional Information */}
-            <AdditionalInformationCard patient={displayPatient} isLoading={isLoading} />
+            {/* Patient Bills History */}
+            <PatientBillsHistory patientId={patientId} />
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {/* Action Buttons */}
@@ -509,7 +510,7 @@ const PatientDetails = () => {
           setIsAddHmoOpen(false);
           setHmoTargetDependantId(null);
         }}
-        patient={displayPatient}
+        patient={patient}
         dependantId={hmoTargetDependantId}
         onSuccess={() => {
           if (patientId) {

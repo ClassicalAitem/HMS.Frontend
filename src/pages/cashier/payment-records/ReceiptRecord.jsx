@@ -319,6 +319,12 @@ const handlePrintReceipt = (payment) => {
       className: 'text-base-content/70'
     },
     {
+      key: 'cashierName',
+      title: 'Cashier Name',
+      sortable: true,
+      className: 'text-base-content/70'
+    },
+    {
       key: 'status',
       title: 'Status',
       sortable: true,
