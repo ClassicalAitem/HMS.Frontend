@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppSelector } from '../../store/hooks';
 
 const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
   const user = useAppSelector((state) => state.auth.user);
