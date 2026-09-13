@@ -210,17 +210,17 @@ const AdmittedPatient = () => {
               </div>
 
               {/* Status Badge & Action Buttons */}
-              {/* <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {admission?.status === 'discharged' ? (
                   <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
                     Discharged Inpatient
                   </span>
                 ) : (
                   <>
-                    <span className="badge badge-success badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 text-white font-semibold gap-1.5">
+                    {/* <span className="badge badge-success badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 text-white font-semibold gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
                       Currently Admitted
-                    </span>
+                    </span> */}
                     <button 
                       className="btn btn-sm sm:btn-md btn-primary gap-2"
                       onClick={() => setIsBillingModalOpen(true)}
@@ -230,7 +230,7 @@ const AdmittedPatient = () => {
                     </button>
                   </>
                 )}
-              </div> */}
+              </div>
             </div>
 
             {/* Patient Overview Card */}
