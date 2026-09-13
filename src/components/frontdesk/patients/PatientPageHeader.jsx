@@ -1,8 +1,9 @@
 import React from 'react';
 import { LuPencilLine } from 'react-icons/lu';
 import { IoIosCloseCircleOutline } from 'react-icons/io';
+import { MdDeleteOutline } from 'react-icons/md';
 
-const PatientPageHeader = ({ onEdit, onClose }) => (
+const PatientPageHeader = ({ onEdit, onDelete, onClose }) => (
   <div className="flex justify-between items-center mb-6">
     <div className="flex items-center space-x-4">
       <div>
@@ -10,10 +11,15 @@ const PatientPageHeader = ({ onEdit, onClose }) => (
       </div>
     </div>
     <div className="flex items-center">
-      <button onClick={onEdit} className="btn btn-ghost btn-sm">
+      {onDelete && (
+        <button onClick={onDelete} className="btn btn-ghost btn-sm text-error/70 hover:text-error" title="Delete Patient">
+          <MdDeleteOutline className="w-4 h-4 2xl:w-6 2xl:h-6" />
+        </button>
+      )}
+      <button onClick={onEdit} className="btn btn-ghost btn-sm" title="Edit Patient">
         <LuPencilLine className="w-4 h-4 2xl:w-6 2xl:h-6" />
       </button>
-      <button onClick={onClose} className="btn btn-ghost btn-sm">
+      <button onClick={onClose} className="btn btn-ghost btn-sm" title="Close">
         <IoIosCloseCircleOutline className="w-4 h-4 2xl:w-6 2xl:h-6" />
       </button>
     </div>
