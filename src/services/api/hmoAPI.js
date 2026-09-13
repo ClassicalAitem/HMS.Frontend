@@ -59,9 +59,15 @@ export const getAllHmos = async (params = {}) => {
   return response;
 }
 
+export const deleteHmo = async (hmoId) => {
+  if (!hmoId) throw new Error('Hmo ID is required');
+  return apiClient.delete(`/hmo/${hmoId}`);
+};
+
 export default {
   addHmoForPatient,
   updateHmo,
   updateHmoExpiry,
   getAllHmos,
+  deleteHmo,
 };
