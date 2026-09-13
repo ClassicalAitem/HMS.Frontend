@@ -83,6 +83,15 @@ const HMOPatients = () => {
         else if (hasRejected) overallDecision = 'rejected';
         else if (hasApproved) overallDecision = 'approved';
 
+        const approvedItems = items.filter(i => i.hmoStatus === 'approved' || i.hmoStatus === 'partial');
+        const claimedItems = approvedItems.filter(i => i.isClaimed);
+        let claimStatus = 'N/A';
+        if (approvedItems.length > 0) {
+          if (claimedItems.length === approvedItems.length) claimStatus = 'Fully Claimed';
+          else if (claimedItems.length > 0) claimStatus = 'Partially Claimed';
+          else claimStatus = 'Pending Claim';
+        }
+
         const hmoCoveredTotal = items.reduce((s, i) => s + Number(i.hmoCovered || 0), 0);
         const patientOwesTotal = items.reduce(
           (s, i) => s + Number(i.patientOwes ?? (Number(i.total || 0) - Number(i.hmoCovered || 0))),
@@ -98,6 +107,7 @@ const HMOPatients = () => {
           name,
           displayId: patient?.hospitalId || patientMap.get(bill.patientId)?.hospitalId || '—',
           decision: overallDecision,
+          claimStatus,
           totalAmount: Number(bill.totalAmount || 0),
           hmoCovered: hmoCoveredTotal,
           patientOwes: patientOwesTotal,
@@ -240,6 +250,17 @@ const HMOPatients = () => {
       title: 'Status',
       sortable: true,
       render: (value) => <DecisionBadge decision={value} />,
+    },
+    {
+      key: 'claimStatus',
+      title: 'Claims',
+      sortable: true,
+      render: (value) => {
+        if (value === 'Fully Claimed') return <span className="badge badge-success badge-sm text-white">{value}</span>;
+        if (value === 'Partially Claimed') return <span className="badge badge-warning badge-sm">{value}</span>;
+        if (value === 'Pending Claim') return <span className="badge badge-error badge-sm text-white">{value}</span>;
+        return <span className="text-xs text-base-content/50">—</span>;
+      }
     },
     {
       key: 'approvedBy',

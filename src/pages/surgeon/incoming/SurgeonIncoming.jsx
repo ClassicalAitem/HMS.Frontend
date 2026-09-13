@@ -32,7 +32,7 @@ const SurgeonIncoming = () => {
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("pending");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(0);
   const pageSize = 9;
 
@@ -83,11 +83,17 @@ const SurgeonIncoming = () => {
           }
 
           const procedureName = appt.procedureName || "Surgical Procedure";
-          const matchedSurgery = surgeries.find(
-            (s) =>
-              (s?.patientId && String(s.patientId) === String(appt.patientId || appt?.patient?.id)) ||
-              (s?.procedureName && s.procedureName.toLowerCase() === procedureName.toLowerCase())
-          ) || null;
+          const matchedSurgery = surgeries.find((s) => {
+            if (s.appointmentId && String(s.appointmentId) === String(appt._id || appt.id)) {
+              return true;
+            }
+            if (s.appointmentId) {
+              return false;
+            }
+            const ptMatch = s.patientId && String(s.patientId) === String(appt.patientId || appt?.patient?.id);
+            const procMatch = s.procedureName && s.procedureName.toLowerCase() === procedureName.toLowerCase();
+            return ptMatch && procMatch;
+          }) || null;
 
           return {
             id: appt?._id || appt?.id,
@@ -154,6 +160,9 @@ const SurgeonIncoming = () => {
 
     const matchStatus =
       statusFilter === "all" ? true : d?.status?.toLowerCase() === statusFilter;
+
+    // Remove completed notes from incoming page entirely
+    if (d?.status?.toLowerCase() === "completed") return false;
 
     return matchQuery && matchStatus;
   });
@@ -234,7 +243,14 @@ const SurgeonIncoming = () => {
             </div>
 
             <div className="join">
-             
+              <button
+                className={`btn btn-xs join-item ${
+                  statusFilter === "all" ? "btn-primary text-white" : "btn-ghost"
+                }`}
+                onClick={() => setStatusFilter("all")}
+              >
+                All
+              </button>
               <button
                 className={`btn btn-xs join-item ${
                   statusFilter === "pending" ? "btn-primary text-white" : "btn-ghost"
@@ -250,14 +266,6 @@ const SurgeonIncoming = () => {
                 onClick={() => setStatusFilter("in_progress")}
               >
                 In Progress
-              </button>
-              <button
-                className={`btn btn-xs join-item ${
-                  statusFilter === "completed" ? "btn-primary text-white" : "btn-ghost"
-                }`}
-                onClick={() => setStatusFilter("completed")}
-              >
-                Completed
               </button>
             </div>
           </div>
@@ -349,11 +357,12 @@ const SurgeonIncoming = () => {
                         Note Completed
                       </span>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className="btn btn-sm btn-primary gap-1.5 font-semibold text-white shadow-xs"
-                          onClick={() =>
+                          onClick={(e) => {
+                            e.stopPropagation();
                             navigate(
                               `/dashboard/surgeon/write-surgical-note`,
                               {
@@ -365,8 +374,8 @@ const SurgeonIncoming = () => {
                                   patientSnapshot: data.snapshot?.patient || null,
                                 },
                               }
-                            )
-                          }
+                            );
+                          }}
                         >
                           <FaFileMedical className="w-3.5 h-3.5" />
                           {data.surgery ? "Edit Note" : "Write Note"}
@@ -402,6 +411,7 @@ const SurgeonIncoming = () => {
               </button>
             </div>
           )}
+
         </div>
       </div>
     </div>
