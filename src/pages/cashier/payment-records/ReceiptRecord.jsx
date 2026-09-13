@@ -102,7 +102,7 @@ const PaymentRecords = () => {
           status: a.status || 'pending',
           amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
           dateTime: formatNigeriaDateTime(a.paidAt),
-          cashierName: a.cashier ? a.cashier.id : 'N/A',
+          cashierName: a.cashier ? `${a.cashier.firstName || ''} ${a.cashier.lastName || ''}`.trim() : 'N/A',
           bankName: a.bankName || 'N/A',
         };
       });
@@ -299,12 +299,6 @@ const handlePrintReceipt = (payment) => {
     {
       key: 'bankName',
       title: 'Bank Name',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'cashierName',
-      title: 'Cashier ID',
       sortable: true,
       className: 'text-base-content/70'
     },
