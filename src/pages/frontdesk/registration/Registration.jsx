@@ -60,21 +60,7 @@ const Registration = () => {
       }
     ],
     
-    dependants: {
-      firstName: '',
-      middleName: '',
-      lastName: '',
-      dob: '',
-      gender: '',
-      relationshipType: '',
-      phone: '',
-      hmo: {
-        provider: '',
-        memberId: '',
-        plan: '',
-        expiresAt: ''
-      }
-    }
+    dependants: []
   });
 
   function formatCardName(value) {
@@ -139,27 +125,34 @@ const Registration = () => {
           index === 0 ? { ...hmo, [field]: value } : hmo
         )
       }));
-    } else if (name.startsWith('dependants.hmo.')) {
-      const field = name.split('.')[2];
-      setFormData(prev => ({
-        ...prev,
-        dependants: {
-          ...prev.dependants,
-          hmo: {
-            ...prev.dependants.hmo,
-            [field]: value
-          }
-        }
-      }));
     } else if (name.startsWith('dependants.')) {
-      const field = name.split('.')[1];
-      setFormData(prev => ({
-        ...prev,
-        dependants: {
-          ...prev.dependants,
-          [field]: value
-        }
-      }));
+      const parts = name.split('.'); 
+      const index = parseInt(parts[1], 10);
+      
+      if (parts[2] === 'hmo') {
+        const field = parts[3];
+        setFormData(prev => {
+          const newDependants = [...prev.dependants];
+          newDependants[index] = {
+            ...newDependants[index],
+            hmo: {
+              ...newDependants[index].hmo,
+              [field]: value
+            }
+          };
+          return { ...prev, dependants: newDependants };
+        });
+      } else {
+        const field = parts[2];
+        setFormData(prev => {
+          const newDependants = [...prev.dependants];
+          newDependants[index] = {
+            ...newDependants[index],
+            [field]: value
+          };
+          return { ...prev, dependants: newDependants };
+        });
+      }
     } else {
       setFormData(prev => ({
         ...prev,
@@ -176,15 +169,15 @@ const Registration = () => {
     }
     setFormData((prev) => ({
       ...prev,
-      dependants: {
-        ...prev.dependants,
+      dependants: prev.dependants.map(dep => ({
+        ...dep,
         hmo: {
-          ...prev.dependants.hmo,
+          ...dep.hmo,
           provider: guardianHmo.provider || '',
           plan: guardianHmo.plan || '',
           expiresAt: guardianHmo.expiresAt || '',
-        },
-      },
+        }
+      }))
     }));
     toast.success("Guardian's HMO provider, plan & expiry copied. Please enter dependant Member ID.");
   };
@@ -282,59 +275,60 @@ const Registration = () => {
       }
     }
 
-    const dependant = formData.dependants;
-    const dependantTouched =
-      dependant.firstName ||
-      dependant.lastName ||
-      dependant.dob ||
-      dependant.gender ||
-      dependant.relationshipType ||
-      dependant.phone;
+    for (const dependant of formData.dependants) {
+      const dependantTouched =
+        dependant.firstName ||
+        dependant.lastName ||
+        dependant.dob ||
+        dependant.gender ||
+        dependant.relationshipType ||
+        dependant.phone;
 
-    if (dependantTouched) {
-      if (!dependant.firstName.trim()) {
-        toast.error('Dependant first name is required if adding a dependant.');
-        return false;
-      }
-      if (!dependant.lastName.trim()) {
-        toast.error('Dependant last name is required if adding a dependant.');
-        return false;
-      }
-      if (!dependant.dob) {
-        toast.error('Dependant date of birth is required if adding a dependant.');
-        return false;
-      }
-      if (!dependant.gender) {
-        toast.error('Dependant gender is required if adding a dependant.');
-        return false;
-      }
-      if (!dependant.relationshipType) {
-        toast.error('Dependant relationship type is required if adding a dependant.');
-        return false;
-      }
+      if (dependantTouched) {
+        if (!dependant.firstName.trim()) {
+          toast.error('Dependant first name is required if adding a dependant.');
+          return false;
+        }
+        if (!dependant.lastName.trim()) {
+          toast.error('Dependant last name is required if adding a dependant.');
+          return false;
+        }
+        if (!dependant.dob) {
+          toast.error('Dependant date of birth is required if adding a dependant.');
+          return false;
+        }
+        if (!dependant.gender) {
+          toast.error('Dependant gender is required if adding a dependant.');
+          return false;
+        }
+        if (!dependant.relationshipType) {
+          toast.error('Dependant relationship type is required if adding a dependant.');
+          return false;
+        }
 
-      // Dependant HMO Validation: If isHmoPatient is ON, ALL four HMO fields are strictly required!
-      if (isHmoPatient) {
-        const depHmo = dependant.hmo || {};
-        if (!depHmo.provider?.trim()) {
-          toast.error('Dependant HMO provider is required when patient has HMO.');
-          return false;
-        }
-        if (!depHmo.memberId?.trim()) {
-          toast.error('Dependant HMO member ID is required when patient has HMO.');
-          return false;
-        }
-        if (!depHmo.plan?.trim()) {
-          toast.error('Dependant HMO plan is required when patient has HMO.');
-          return false;
-        }
-        if (!depHmo.expiresAt) {
-          toast.error('Dependant HMO expiry date is required when patient has HMO.');
-          return false;
-        }
-        if (new Date(depHmo.expiresAt) < new Date()) {
-          toast.error('Dependant HMO expiry date has already passed — please confirm this is correct before saving.');
-          return false;
+        // Dependant HMO Validation: If isHmoPatient is ON, ALL four HMO fields are strictly required!
+        if (isHmoPatient) {
+          const depHmo = dependant.hmo || {};
+          if (!depHmo.provider?.trim()) {
+            toast.error('Dependant HMO provider is required when patient has HMO.');
+            return false;
+          }
+          if (!depHmo.memberId?.trim()) {
+            toast.error('Dependant HMO member ID is required when patient has HMO.');
+            return false;
+          }
+          if (!depHmo.plan?.trim()) {
+            toast.error('Dependant HMO plan is required when patient has HMO.');
+            return false;
+          }
+          if (!depHmo.expiresAt) {
+            toast.error('Dependant HMO expiry date is required when patient has HMO.');
+            return false;
+          }
+          if (new Date(depHmo.expiresAt) < new Date()) {
+            toast.error('Dependant HMO expiry date has already passed — please confirm this is correct before saving.');
+            return false;
+          }
         }
       }
     }
@@ -369,24 +363,24 @@ const Registration = () => {
         ...(isHmoPatient && formData.hmos[0].provider && {
           hmos: formData.hmos.filter(hmo => hmo.provider)
         }),
-        ...(formData.dependants.firstName && {
-          dependants: [{
-            firstName: formData.dependants.firstName,
-            middleName: formData.dependants.middleName,
-            lastName: formData.dependants.lastName,
-            dob: formData.dependants.dob,
-            gender: formData.dependants.gender,
-            relationshipType: formData.dependants.relationshipType,
-            phone: formData.dependants.phone,
-            ...(isHmoPatient && formData.dependants.hmo?.provider && {
+        ...(formData.dependants.some(d => d.firstName) && {
+          dependants: formData.dependants.filter(d => d.firstName).map(d => ({
+            firstName: d.firstName,
+            middleName: d.middleName,
+            lastName: d.lastName,
+            dob: d.dob,
+            gender: d.gender,
+            relationshipType: d.relationshipType,
+            phone: d.phone,
+            ...(isHmoPatient && d.hmo?.provider && {
               hmos: [{
-                provider: formData.dependants.hmo.provider,
-                memberId: formData.dependants.hmo.memberId,
-                plan: formData.dependants.hmo.plan,
-                expiresAt: formData.dependants.hmo.expiresAt,
+                provider: d.hmo.provider,
+                memberId: d.hmo.memberId,
+                plan: d.hmo.plan,
+                expiresAt: d.hmo.expiresAt,
               }]
             })
-          }]
+          }))
         })
       };
 
@@ -425,21 +419,7 @@ const Registration = () => {
               expiresAt: ''
             }
           ],
-          dependants: {
-            firstName: '',
-            middleName: '',
-            lastName: '',
-            dob: '',
-            gender: '',
-            relationshipType: '',
-            phone: '',
-            hmo: {
-              provider: '',
-              memberId: '',
-              plan: '',
-              expiresAt: ''
-            }
-          }
+          dependants: []
         });
         setIsHmoPatient(false);
         setHmoExpanded(false);
@@ -965,201 +945,222 @@ const Registration = () => {
             {/* Add Dependent with HMO Toggle */}
             <div className="shadow-sm card bg-base-100 border border-base-200">
               <div className="p-6 card-body">
-                <button
-                  type="button"
-                  onClick={() => setDependentExpanded(!dependentExpanded)}
-                  className="flex justify-between items-center w-full text-lg font-semibold text-left text-base-content pb-2 mb-4 border-b border-base-200"
-                >
-                  <span className="flex items-center gap-2">
+                <div className="flex justify-between items-center w-full pb-2 mb-4 border-b border-base-200">
+                  <button
+                    type="button"
+                    onClick={() => setDependentExpanded(!dependentExpanded)}
+                    className="flex flex-1 items-center gap-2 text-lg font-semibold text-left text-base-content"
+                  >
                     <FaUsers className="text-primary" />
-                    Add Dependant
-                    {formData.dependants.firstName && (
-                      <span className="badge badge-sm badge-info">1 In Progress</span>
+                    Dependants
+                    {formData.dependants.length > 0 && (
+                      <span className="badge badge-sm badge-info">{formData.dependants.length}</span>
                     )}
-                  </span>
-                  {dependentExpanded ? <FaChevronUp /> : <FaChevronDown />}
-                </button>
+                    {dependentExpanded ? <FaChevronUp className="ml-2" /> : <FaChevronDown className="ml-2" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDependentExpanded(true);
+                      setFormData(prev => ({
+                        ...prev,
+                        dependants: [
+                          ...prev.dependants,
+                          {
+                            firstName: '', middleName: '', lastName: '', dob: '', gender: '', relationshipType: '', phone: '',
+                            hmo: { provider: '', memberId: '', plan: '', expiresAt: '' }
+                          }
+                        ]
+                      }));
+                    }}
+                    className="btn btn-sm btn-primary btn-outline"
+                  >
+                    Add Dependant
+                  </button>
+                </div>
                 
-                {dependentExpanded && (
-                  <div className="space-y-5">
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">First Name</label>
-                        <input
-                          type="text"
-                          name="dependants.firstName"
-                          value={formData.dependants.firstName}
-                          onChange={handleInputChange}
-                          placeholder="Enter first name"
-                          className="w-full input input-bordered"
-                        />
-                      </div>
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Middle Name</label>
-                        <input
-                          type="text"
-                          name="dependants.middleName"
-                          value={formData.dependants.middleName}
-                          onChange={handleInputChange}
-                          placeholder="Enter middle name"
-                          className="w-full input input-bordered"
-                        />
-                      </div>
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
-                        <input
-                          type="text"
-                          name="dependants.lastName"
-                          value={formData.dependants.lastName}
-                          onChange={handleInputChange}
-                          placeholder="Enter last name"
-                          className="w-full input input-bordered"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Date of Birth</label>
-                        <input
-                          type="date"
-                          name="dependants.dob"
-                          value={formData.dependants.dob}
-                          onChange={handleInputChange}
-                          className="w-full input input-bordered"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
-                        <select
-                          name="dependants.relationshipType"
-                          value={formData.dependants.relationshipType}
-                          onChange={handleInputChange}
-                          className="w-full select select-bordered"
-                        >
-                          <option value="">Select Relationship</option>
-                          <option value="father">Father</option>
-                          <option value="mother">Mother</option>
-                          <option value="child">Child</option>
-                          <option value="others">Others</option>
-                          <option value="spouse">Spouse</option>
-                          <option value="sibling">Sibling</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
-                        <input
-                          type="tel"
-                          name="dependants.phone"
-                          value={formData.dependants.phone}
-                          onChange={handleInputChange}
-                          placeholder="Enter phone number"
-                          className="w-full input input-bordered"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                      <div>
-                        <label className="block mb-1 text-sm text-base-content/70">Gender</label>
-                        <select
-                          name="dependants.gender"
-                          value={formData.dependants.gender}
-                          onChange={handleInputChange}
-                          className="w-full select select-bordered"
-                        >
-                          <option value="">Select Gender</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Dependant HMO Toggle & Validation Section */}
-                    <div className="pt-4 border-t border-base-200">
-                      {isHmoPatient && (
-                        <div className="mt-4 space-y-4">
-                          {/* <div className="flex items-center justify-between p-3 bg-secondary/10 rounded-xl border border-secondary/20">
-                            <div className="text-xs">
-                              <span className="font-semibold text-secondary">Guardian HMO: </span>
-                              <span>{formData.hmos[0].provider || '—'} ({formData.hmos[0].plan || '—'})</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleCopyGuardianHmo}
-                              className="btn btn-xs btn-secondary text-white"
-                            >
-                              Copy Guardian HMO Details
-                            </button>
-                          </div> */}
-
-                          {/* <div className="alert alert-warning/10 text-xs py-2 px-4 rounded-xl text-warning border border-warning/20">
-                            <span>
-                              <strong>Dependant HMO Required:</strong> Because the patient has an active HMO, the dependant must also have HMO details provided.
-                            </span>
-                          </div> */}
-
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {dependentExpanded && formData.dependants.length > 0 && (
+                  <div className="space-y-8">
+                    {formData.dependants.map((dependant, index) => (
+                      <div key={index} className="p-5 border border-base-200 rounded-xl bg-base-200/20">
+                        <div className="flex justify-between items-center mb-5 pb-2 border-b border-base-200">
+                          <h4 className="font-semibold text-base-content/80">Dependant #{index + 1}</h4>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                dependants: prev.dependants.filter((_, i) => i !== index)
+                              }));
+                            }}
+                            className="btn btn-xs btn-error btn-outline"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        
+                        <div className="space-y-5">
+                          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                             <div>
-                              <label className="block mb-1 text-sm font-medium text-base-content/80">
-                                Dependant HMO Provider <span className="text-error">*</span>
-                              </label>
+                              <label className="block mb-1 text-sm text-base-content/70">First Name</label>
                               <input
                                 type="text"
-                                name="dependants.hmo.provider"
-                                value={formData.dependants.hmo.provider}
+                                name={`dependants.${index}.firstName`}
+                                value={dependant.firstName}
                                 onChange={handleInputChange}
-                                placeholder="e.g., Bastion, Avon"
+                                placeholder="Enter first name"
                                 className="w-full input input-bordered"
                               />
                             </div>
                             <div>
-                              <label className="block mb-1 text-sm font-medium text-base-content/80">
-                                Dependant Member ID <span className="text-error">*</span>
-                              </label>
+                              <label className="block mb-1 text-sm text-base-content/70">Middle Name</label>
                               <input
                                 type="text"
-                                name="dependants.hmo.memberId"
-                                value={formData.dependants.hmo.memberId}
+                                name={`dependants.${index}.middleName`}
+                                value={dependant.middleName}
                                 onChange={handleInputChange}
-                                placeholder="e.g., 34758H90938/01"
+                                placeholder="Enter middle name"
+                                className="w-full input input-bordered"
+                              />
+                            </div>
+                            <div>
+                              <label className="block mb-1 text-sm text-base-content/70">Last Name</label>
+                              <input
+                                type="text"
+                                name={`dependants.${index}.lastName`}
+                                value={dependant.lastName}
+                                onChange={handleInputChange}
+                                placeholder="Enter last name"
                                 className="w-full input input-bordered"
                               />
                             </div>
                           </div>
-
-                          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          
+                          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                             <div>
-                              <label className="block mb-1 text-sm font-medium text-base-content/80">
-                                Dependant Plan <span className="text-error">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                name="dependants.hmo.plan"
-                                value={formData.dependants.hmo.plan}
-                                onChange={handleInputChange}
-                                placeholder="e.g., Diamond, Family Gold"
-                                className="w-full input input-bordered"
-                              />
-                            </div>
-                            <div>
-                              <label className="block mb-1 text-sm font-medium text-base-content/80">
-                                Dependant Expiry Date <span className="text-error">*</span>
-                              </label>
+                              <label className="block mb-1 text-sm text-base-content/70">Date of Birth</label>
                               <input
                                 type="date"
-                                name="dependants.hmo.expiresAt"
-                                value={formData.dependants.hmo.expiresAt}
+                                name={`dependants.${index}.dob`}
+                                value={dependant.dob}
                                 onChange={handleInputChange}
                                 className="w-full input input-bordered"
                               />
                             </div>
+
+                            <div>
+                              <label className="block mb-1 text-sm text-base-content/70">Relationship</label>
+                              <select
+                                name={`dependants.${index}.relationshipType`}
+                                value={dependant.relationshipType}
+                                onChange={handleInputChange}
+                                className="w-full select select-bordered"
+                              >
+                                <option value="">Select Relationship</option>
+                                <option value="father">Father</option>
+                                <option value="mother">Mother</option>
+                                <option value="child">Child</option>
+                                <option value="others">Others</option>
+                                <option value="spouse">Spouse</option>
+                                <option value="sibling">Sibling</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block mb-1 text-sm text-base-content/70">Phone Number</label>
+                              <input
+                                type="tel"
+                                name={`dependants.${index}.phone`}
+                                value={dependant.phone}
+                                onChange={handleInputChange}
+                                placeholder="Enter phone number"
+                                className="w-full input input-bordered"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                            <div>
+                              <label className="block mb-1 text-sm text-base-content/70">Gender</label>
+                              <select
+                                name={`dependants.${index}.gender`}
+                                value={dependant.gender}
+                                onChange={handleInputChange}
+                                className="w-full select select-bordered"
+                              >
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Dependant HMO Toggle & Validation Section */}
+                          <div className="pt-4 border-t border-base-200">
+                            {isHmoPatient && (
+                              <div className="mt-2 space-y-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                  <div>
+                                    <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                      Dependant HMO Provider <span className="text-error">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      name={`dependants.${index}.hmo.provider`}
+                                      value={dependant.hmo?.provider || ''}
+                                      onChange={handleInputChange}
+                                      placeholder="e.g., Bastion, Avon"
+                                      className="w-full input input-bordered"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                      Dependant Member ID <span className="text-error">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      name={`dependants.${index}.hmo.memberId`}
+                                      value={dependant.hmo?.memberId || ''}
+                                      onChange={handleInputChange}
+                                      placeholder="e.g., 34758H90938/01"
+                                      className="w-full input input-bordered"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                  <div>
+                                    <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                      Dependant Plan <span className="text-error">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      name={`dependants.${index}.hmo.plan`}
+                                      value={dependant.hmo?.plan || ''}
+                                      onChange={handleInputChange}
+                                      placeholder="e.g., Diamond, Family Gold"
+                                      className="w-full input input-bordered"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block mb-1 text-sm font-medium text-base-content/80">
+                                      Dependant Expiry Date <span className="text-error">*</span>
+                                    </label>
+                                    <input
+                                      type="date"
+                                      name={`dependants.${index}.hmo.expiresAt`}
+                                      value={dependant.hmo?.expiresAt || ''}
+                                      onChange={handleInputChange}
+                                      className="w-full input input-bordered"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
