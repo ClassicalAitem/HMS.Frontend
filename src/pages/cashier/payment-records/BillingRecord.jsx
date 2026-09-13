@@ -239,12 +239,6 @@ const handlePrintReceipt = (billing) => {
 
   const columns = useMemo(() => [
     {
-      key: 'billingId',
-      title: 'Billing ID',
-      sortable: true,
-      className: 'text-base-content font-medium'
-    },
-    {
       key: 'name',
       title: 'Name',
       sortable: true,

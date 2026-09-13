@@ -99,12 +99,12 @@ const Sidebar = ({ onCloseSidebar }) => {
 
   return (
     <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
-      <div className="p-6 border-b border-base-300">
+      <div className="p-4 border-b border-base-300">
         <div className="flex justify-center items-center">
           <img
             src="/src/assets/images/logo.png"
             alt="Kolak"
-            className="hidden w-auto h-10"
+            className="hidden w-auto h-8"
           />
 
           {/* Kolak logo adaptive*/}
@@ -113,19 +113,19 @@ const Sidebar = ({ onCloseSidebar }) => {
               <img
                 src={HospitalFavicon}
                 alt="Kolak logo"
-                className="w-auto h-12"
+                className="w-auto h-10"
               />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-2xl font-bold">Kolak</span>
-              <span className="text-sm text-base-content/70">- Hospital -</span>
+              <span className="text-xl font-bold">Kolak</span>
+              <span className="text-xs text-base-content/70">- Hospital -</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
+      <nav className="flex-1 px-4 py-4 space-y-2 lg:py-6 overflow-y-auto min-h-0">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
