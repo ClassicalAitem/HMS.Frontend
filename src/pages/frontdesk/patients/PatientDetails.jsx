@@ -300,6 +300,23 @@ const PatientDetails = () => {
     setIsEditModalOpen(false);
   };
 
+  const handleDeleteHmo = async (hmo) => {
+    if (!window.confirm(`Are you sure you want to delete HMO plan ${hmo.provider}?`)) return;
+    try {
+      const { deleteHmo } = await import('@/services/api/hmoAPI');
+      const promise = deleteHmo(hmo.id);
+      toast.promise(promise, {
+        loading: 'Deleting HMO...',
+        success: 'HMO deleted successfully',
+        error: 'Failed to delete HMO',
+      });
+      await promise;
+      if (patientId) dispatch(fetchPatientById(patientId));
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   // Removed unused helpers to keep file lean
 
   // Debug logging
@@ -467,19 +484,28 @@ const PatientDetails = () => {
 
               {/* HMO & Dependants Info */}
               <HmoDependantsSection
-                patient={displayPatient}
+                patient={patient}
                 isTransitionLoading={isTransitionLoading}
+                viewingDependantId={isViewingDependant ? dependantId : null}
                 onAddHmo={() => {
-                  setHmoTargetDependantId(null); // patient-level HMO
+                  setHmoTargetDependantId(null);
                   setIsAddHmoOpen(true);
                 }}
-                onEditHmo={() => setIsEditHmoOpen(true)}
+                onEditHmo={() => {
+                  setHmoTargetDependantId(null);
+                  setIsEditHmoOpen(true);
+                }}
                 onAddDependant={() => setIsAddDependantOpen(true)}
                 onEditDependant={() => setIsEditDependantOpen(true)}
                 onAddHmoForDependant={(dep) => {
                   setHmoTargetDependantId(dep.id);
                   setIsAddHmoOpen(true);
                 }}
+                onEditHmoForDependant={(dep) => {
+                  setHmoTargetDependantId(dep.id);
+                  setIsEditHmoOpen(true);
+                }}
+                onDeleteHmo={handleDeleteHmo}
               />
             </div>
 
@@ -522,8 +548,16 @@ const PatientDetails = () => {
       />
       <EditHmoModal
         isOpen={isEditHmoOpen}
-        onClose={() => setIsEditHmoOpen(false)}
-        patient={displayPatient}
+        onClose={() => {
+          setIsEditHmoOpen(false);
+          setHmoTargetDependantId(null);
+        }}
+        patient={{
+          ...patient,
+          hmos: hmoTargetDependantId
+            ? (patient?.hmos || []).filter(h => h.dependantId === hmoTargetDependantId)
+            : (patient?.hmos || []).filter(h => !h.dependantId)
+        }}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
