@@ -756,6 +756,7 @@ const getDispenseInfo = (med) => {
       updatedAt: dep.updatedAt || incomingDependantSnapshot?.updatedAt,
       hmos: ownHmos,
       relationshipType: dep.relationshipType,
+      isDependant: true,
     }
   }, [isViewingDependant, patient, incomingDependantSnapshot, dependantId])
 
