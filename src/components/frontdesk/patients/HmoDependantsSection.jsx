@@ -1,6 +1,6 @@
 import React from 'react';
 import { IoAddCircleOutline } from 'react-icons/io5';
-import { MdEditNote } from 'react-icons/md';
+import { MdEditNote, MdDeleteOutline } from 'react-icons/md';
 import { RiUserAddLine } from 'react-icons/ri';
 import { CiEdit } from 'react-icons/ci';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
@@ -8,9 +8,18 @@ import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 const initials = (firstName, lastName) =>
   `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase() || '—';
 
-const HmoPlanChip = ({ hmo }) => (
-  <div className="p-2 mt-2 rounded-lg bg-success/10">
-    <div className="text-xs font-semibold text-success">{hmo.provider || 'Unknown provider'}</div>
+const HmoPlanChip = ({ hmo, onDeleteHmo }) => (
+  <div className="p-2 mt-2 rounded-lg bg-success/10 relative group">
+    {onDeleteHmo && (
+      <button 
+        type="button" 
+        onClick={() => onDeleteHmo(hmo)}
+        className="absolute top-2 right-2 text-error/70 hover:text-error opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <MdDeleteOutline size={16} />
+      </button>
+    )}
+    <div className="text-xs font-semibold text-success pr-6">{hmo.provider || 'Unknown provider'}</div>
     <div className="mt-1 space-y-0.5 text-xs text-base-content/70">
       <div>Member ID: {hmo.memberId || '—'}</div>
       {hmo.plan && <div>Plan: {hmo.plan}</div>}
@@ -27,6 +36,8 @@ const HmoDependantsSection = ({
   onAddDependant,
   onEditDependant,
   onAddHmoForDependant,
+  onDeleteHmo,
+  onDeleteDependant,
 }) => {
 
    if (!patient) {
@@ -98,7 +109,7 @@ const HmoDependantsSection = ({
                     {patientHmos.length === 0 ? (
                       <div className="text-xs text-base-content/50">No HMO plan on file</div>
                     ) : (
-                      patientHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} />)
+                      patientHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} onDeleteHmo={onDeleteHmo} />)
                     )}
                   </div>
                 </div>
@@ -126,7 +137,7 @@ const HmoDependantsSection = ({
                     const depHmos = hmosByDependantId[dep.id] || [];
 
                     return (
-                      <div key={dep.id} className="p-4 rounded-lg border border-base-300">
+                      <div key={dep.id} className="p-4 rounded-lg border border-base-300 relative group">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
                             <div className="flex items-center justify-center w-8 h-8 text-xs font-semibold rounded-full bg-primary/10 text-primary shrink-0">
@@ -137,15 +148,28 @@ const HmoDependantsSection = ({
                               <div className="text-xs capitalize text-base-content/50">{relationship}</div>
                             </div>
                           </div>
-                          <div className="tooltip tooltip-primary tooltip-left" data-tip={`Add HMO for ${dep.firstName || 'dependant'}`}>
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-xs btn-circle"
-                              onClick={() => onAddHmoForDependant(dep)}
-                              aria-label={`Add HMO for ${dep.firstName || 'dependant'}`}
-                            >
-                              <IoAddCircleOutline className="text-base" />
-                            </button>
+                          
+                          <div className="flex items-center gap-1">
+                            <div className="tooltip tooltip-primary tooltip-left" data-tip={`Add HMO for ${dep.firstName || 'dependant'}`}>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-xs btn-circle text-primary"
+                                onClick={() => onAddHmoForDependant(dep)}
+                              >
+                                <IoAddCircleOutline className="text-base" />
+                              </button>
+                            </div>
+                            {onDeleteDependant && (
+                              <div className="tooltip tooltip-error tooltip-left" data-tip="Delete Dependant">
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs btn-circle text-error/70 hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => onDeleteDependant(dep)}
+                                >
+                                  <MdDeleteOutline className="text-base" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -158,7 +182,7 @@ const HmoDependantsSection = ({
                           {depHmos.length === 0 ? (
                             <div className="text-xs text-base-content/50">No HMO plan</div>
                           ) : (
-                            depHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} />)
+                            depHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} onDeleteHmo={onDeleteHmo} />)
                           )}
                         </div>
                       </div>

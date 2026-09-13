@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
+import { useAppSelector } from '../../store/hooks';
 
 const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
+  const user = useAppSelector((state) => state.auth.user);
+  const userFullName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
+
   const [formData, setFormData] = useState({
     amountPaid: '',
     paymentMethod: 'Select payment method',
@@ -12,6 +16,15 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
     senderName: '',
     sessionId: '',
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(prev => ({
+        ...prev,
+        senderName: prev.senderName || userFullName
+      }));
+    }
+  }, [isOpen, userFullName]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -34,7 +47,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
         paidBy: 'self',
         paymentDestination: 'Select Destination',
         bankName: '',
-        senderName: '',
+        senderName: userFullName,
         sessionId: '',
       });
   };
@@ -48,7 +61,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
       paidBy: 'self',
       paymentDestination: 'Select Destination',
       bankName: '',
-      senderName: '',
+      senderName: userFullName,
       sessionId: '',
     });
   };
