@@ -48,6 +48,24 @@ const LabResultDetails = () => {
 
         const labRes = await getLabResultById(labResultId);
         const labData = labRes?.data || labRes;
+        
+        if (labData?.form?.wbcDifferential) {
+          if (labData.form.wbcDifferential.Genotype !== undefined) {
+             labData.form.bloodCrossmaching = {
+               ...labData.form.bloodCrossmaching,
+               Genotype: labData.form.wbcDifferential.Genotype
+             };
+             delete labData.form.wbcDifferential.Genotype;
+          }
+          if (labData.form.wbcDifferential.BloodGroup !== undefined) {
+             labData.form.bloodCrossmaching = {
+               ...labData.form.bloodCrossmaching,
+               BloodGroup: labData.form.wbcDifferential.BloodGroup
+             };
+             delete labData.form.wbcDifferential.BloodGroup;
+          }
+        }
+        
         setLabResult(labData);
 
         if (!investigationIdState && labData?.investigationId) {
@@ -473,7 +491,7 @@ const displayAttachments = () => {
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
               {displaySection("PT  Test || Malaria Parasite", labResult?.form?.ptTest)}
-              {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
+              {displaySection("Blood Cross Matching and Blood Group", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
               {displaySection("Urinalysis", labResult?.form?.urinalysis)}
@@ -578,27 +596,24 @@ const displayAttachments = () => {
                     print-color-adjust: exact;
                   }
                   .lab-container { 
-                    display: flex !important; 
+                    display: block !important; 
                     height: auto !important;
+                    overflow: visible !important;
                   }
                   .lab-sidebar { 
                     display: none !important; 
-                    width: 0 !important; 
                   }
                   .lab-main { 
+                    display: block !important;
                     width: 100% !important;
-                    display: flex;
-                    flex-direction: column;
+                    height: auto !important;
+                    overflow: visible !important;
                   }
                   .lab-main > *:first-child {
                     display: none !important;
                   }
                   .no-print { 
                     display: none !important; 
-                  }
-                  .overflow-y-auto {
-                    overflow: visible !important;
-                    height: auto !important;
                   }
                   section { 
                     padding: 0 !important;
@@ -611,6 +626,15 @@ const displayAttachments = () => {
                     -webkit-print-color-adjust: exact; 
                     print-color-adjust: exact; 
                   }
+                  .mb-6 { page-break-inside: avoid; }
+                  h3 { page-break-after: avoid; }
+                  table { page-break-inside: avoid; }
+                  
+                  /* Overrides for page breaking */
+                  .h-screen, .max-h-screen, .h-full { height: auto !important; max-height: none !important; }
+                  .overflow-y-auto, .overflow-hidden { overflow: visible !important; height: auto !important; }
+                  .flex-1 { flex: none !important; }
+                  
                   @page {
                     margin: 0;
                     size: A4;

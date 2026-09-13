@@ -9,7 +9,7 @@ import { getInvestigationRequestByOpdPatientId, getInvestigationByPatientId, upd
 import { updatePatient } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import {  getDependantById } from '@/services/api/dependantAPI';
+import {  getDependantById, updateDependantStatus } from '@/services/api/dependantAPI';
 import { usersAPI } from "@/services/api/usersAPI";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { FaFileImage } from "react-icons/fa";
@@ -163,6 +163,24 @@ const fetchData = useCallback(async () => {
 
     const labRes = await getLabResultById(labResultId);
     const labData = labRes?.data || labRes;
+    
+    if (labData?.form?.wbcDifferential) {
+      if (labData.form.wbcDifferential.Genotype !== undefined) {
+         labData.form.bloodCrossmaching = {
+           ...labData.form.bloodCrossmaching,
+           Genotype: labData.form.wbcDifferential.Genotype
+         };
+         delete labData.form.wbcDifferential.Genotype;
+      }
+      if (labData.form.wbcDifferential.BloodGroup !== undefined) {
+         labData.form.bloodCrossmaching = {
+           ...labData.form.bloodCrossmaching,
+           BloodGroup: labData.form.wbcDifferential.BloodGroup
+         };
+         delete labData.form.wbcDifferential.BloodGroup;
+      }
+    }
+    
     setLabResult(labData);
 
     const patientIdToUse =
@@ -615,7 +633,9 @@ const patientName =
       }
 
       // Update patient status for regular patients and dependants
-      if (patientId && labResult) {
+      if (isDependant && labResult?.dependantId) {
+        await updateDependantStatus(labResult.dependantId, PATIENT_STATUS.LAB_COMPLETED);
+      } else if (patientId && labResult) {
         await updatePatientStatus(patientId, PATIENT_STATUS.LAB_COMPLETED);
       }
 
@@ -703,8 +723,8 @@ const handleComplete = async () => {
                 <SendPatientModal
                     patientId={patientId}
                     patient={patient}
-                    defaultDependantId={dependantId}
-                    defaultDependantLabel={summarySubject?.fullName}
+                    defaultDependantId={dependantId || labResult?.dependantId}
+                    defaultDependantLabel={summarySubject?.fullName || patientInfo?.name}
                     lockSubject
                      onUpdated={() => {
                                 refreshQueueCount();
@@ -763,7 +783,7 @@ const handleComplete = async () => {
               {displaySection("WBC Differential", labResult?.form?.wbcDifferential)}
               {displaySection("Serology", labResult?.form?.serology)}
               {displaySection("PT  Test || Malaria Parasite", labResult?.form?.ptTest)}
-              {displaySection("Blood Cross-Matching", labResult?.form?.bloodCrossmaching)}
+              {displaySection("Blood Cross Matching and Blood Group", labResult?.form?.bloodCrossmaching)}
               {displaySection("Hormone Profile", labResult?.form?.hormoneProfile)}
               {displaySection("Oestrogen", labResult?.form?.oestrogen)}
               {displaySection("Urinalysis", labResult?.form?.urinalysis)}
@@ -884,22 +904,57 @@ const handleComplete = async () => {
               </div>
               <style>{`
                 @media print {
-                  body { background: white !important; margin: 0; padding: 0; }
-                  body.printable-lab { background: white !important; }
-                  .lab-container { display: flex !important; }
-                  .lab-sidebar { display: none !important; width: 0 !important; }
-                  .lab-main { width: 100% !important; }
-                  .no-print { display: none !important; }
-                  .rounded-lg { border-radius: 0 !important; }
-                  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                  
-                  /* Ensure sections don't break awkwardly */
+                  body { 
+                    background: white !important; 
+                    margin: 0; 
+                    padding: 0; 
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                  }
+                  .lab-container { 
+                    display: block !important; 
+                    height: auto !important;
+                    overflow: visible !important;
+                  }
+                  .lab-sidebar { 
+                    display: none !important; 
+                  }
+                  .lab-main { 
+                    display: block !important;
+                    width: 100% !important;
+                    height: auto !important;
+                    overflow: visible !important;
+                  }
+                  .lab-main > *:first-child {
+                    display: none !important;
+                  }
+                  .no-print { 
+                    display: none !important; 
+                  }
+                  section { 
+                    padding: 0 !important;
+                    margin: 0 !important;
+                  }
+                  .rounded-lg { 
+                    border-radius: 0 !important; 
+                  }
+                  * { 
+                    -webkit-print-color-adjust: exact; 
+                    print-color-adjust: exact; 
+                  }
                   .mb-6 { page-break-inside: avoid; }
                   h3 { page-break-after: avoid; }
                   table { page-break-inside: avoid; }
                   
-                  /* Force page breaks for long content */
-                  .overflow-y-auto { overflow: visible !important; height: auto !important; }
+                  /* Overrides for page breaking */
+                  .h-screen, .max-h-screen, .h-full { height: auto !important; max-height: none !important; }
+                  .overflow-y-auto, .overflow-hidden { overflow: visible !important; height: auto !important; }
+                  .flex-1 { flex: none !important; }
+                  
+                  @page {
+                    margin: 0;
+                    size: A4;
+                  }
                 }
               `}</style>
             </div>
