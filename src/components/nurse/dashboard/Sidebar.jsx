@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { FaThLarge, FaSignOutAlt, FaBed } from "react-icons/fa";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 import { FiUser } from "react-icons/fi";
+import { FaVials } from "react-icons/fa6";
 import { IoReceiptOutline } from "react-icons/io5";
 import { TbCalendarPlus } from "react-icons/tb";
 import { MdLockOutline } from "react-icons/md";
@@ -18,7 +19,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
-  const { incomingCount } = useNotifications();
+  const { incomingCount, labReadyCount } = useNotifications();
 
   useEffect(() => {
     let mounted = true;
@@ -104,6 +105,13 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Payment Records",
       path: "/dashboard/nurse/payment-records",
       active: location.pathname.startsWith("/dashboard/nurse/payment-records"),
+    },
+    {
+      icon: FaVials,
+      label: "Lab Results",
+      path: "/dashboard/nurse/lab-results",
+      active: location.pathname.startsWith("/dashboard/nurse/lab-results"),
+      badge: labReadyCount,
     },
     {
       icon: TbCalendarPlus,

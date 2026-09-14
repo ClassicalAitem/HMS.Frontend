@@ -106,11 +106,12 @@ const Appointments = () => {
     }));
 
     if (typeFilter === 'surgery') {
-      return mapped.filter(
-        (a) =>
-          a.appointmentType === 'surgery' ||
-          String(a.department || '').toLowerCase() === 'surgeon',
-      );
+      return mapped.filter((a) => {
+        const type = String(a.appointmentType || '').toLowerCase();
+        if (type.includes('injection')) return false;
+        
+        return type === 'surgery' || String(a.department || '').toLowerCase() === 'surgeon';
+      });
     }
     if (typeFilter === 'today') {
       return mapped.filter((a) => a.date && a.date.includes(todayStr));
