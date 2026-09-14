@@ -35,6 +35,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
   const [updating, setUpdating] = useState(false);
 
   const isSurgery = (appointment?.appointmentType || '').toLowerCase() === 'surgery';
+  const isInjectionFollowup = (appointment?.appointmentType || '').toLowerCase().replace(/[\s-]/g, '_') === 'injection_followup';
 
   useEffect(() => {
     if (isOpen && appointmentId) {
@@ -104,6 +105,15 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
       });
     } finally {
       setStartingNote(false);
+    }
+  };
+
+  const handleViewInjection = () => {
+    onClose();
+    if (patient?.isDependant) {
+      navigate(`/dashboard/nurse/dependant/${appointment.dependantId}`);
+    } else {
+      navigate(`/dashboard/nurse/patient/${appointment.patientId}`);
     }
   };
 
@@ -347,7 +357,16 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
               <button type="button" onClick={onClose} className="btn btn-outline btn-sm">
                 Close
               </button>
-              {isSurgery && !isEditing && (
+              {isInjectionFollowup && (
+                <button
+                  type="button"
+                  onClick={handleViewInjection}
+                  className="btn btn-accent btn-sm text-white"
+                >
+                  View Injection
+                </button>
+              )}
+              {isSurgery && !isEditing && isSurgeonUser && (
                 <button
                   type="button"
                   onClick={handleStartSurgicalNote}

@@ -7,8 +7,11 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef(null);
-  const [value, setValue] = useState("");
   const [localData, setLocalData] = useState(data);
+
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
   const [queuedItems, setQueuedItems] = useState([]);
 
   // Map display type to API category enum
@@ -19,7 +22,9 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
       "Family": "family",
       "Social": "social",
       "Allergic": "allergic",
+      "Medical": "medical_history",
       "Medical History": "medical_history",
+      "Medical_History": "medical_history",
       "Diagnosis": "diagnosis",
     };
     return categoryMap[typeStr] || typeStr.toLowerCase().replace(/\s+/g, "_");
@@ -27,9 +32,7 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
 
   useEffect(() => {
     setSearch("");
-    setValue("");
     setQueuedItems([]);
-    setLocalData(data);
   }, [isOpen, data]);
 
   useEffect(() => {
@@ -46,24 +49,22 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   if (!isOpen) return null;
 
   // Pushes an item into the local queue (does NOT close the modal)
-  const queueItem = (titleVal, valueVal) => {
+  const queueItem = (titleVal) => {
     const trimmedTitle = (titleVal || "").trim();
-    const trimmedValue = (valueVal || "").trim();
-    if (!trimmedTitle || !trimmedValue) return;
+    if (!trimmedTitle) return;
 
-    setQueuedItems(prev => [...prev, { title: trimmedTitle, value: trimmedValue }]);
+    setQueuedItems(prev => [...prev, { title: trimmedTitle }]);
 
     // Reset the input fields so the user can add the next one
     setSearch("");
-    setValue("");
   };
 
   const handleAddToQueue = () => {
-    if (!search.trim() || !value) {
-      toast.error("Select a relation and enter a value first");
+    if (!search.trim()) {
+      toast.error("Select a family history first");
       return;
     }
-    queueItem(search, value);
+    queueItem(search);
   };
 
   const removeQueuedItem = (idx) => {
@@ -71,17 +72,15 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   };
 
   const handleDone = () => {
-    queuedItems.forEach(item => onAdd({ title: item.title, value: item.value }));
+    queuedItems.forEach(item => onAdd({ title: item.title }));
     setQueuedItems([]);
     setSearch("");
-    setValue("");
     onClose();
   };
 
   const handleCancel = () => {
     setQueuedItems([]);
     setSearch("");
-    setValue("");
     onClose();
   };
 
@@ -99,18 +98,27 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
           <div>
             <label className="block text-sm font-medium text-base-content mb-1">Title</label>
             <div ref={wrapperRef} className="relative w-full">
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder="Search family relation..."
-                value={search}
-                onChange={e => {
-                  setSearch(e.target.value);
-                  setDropdownOpen(true);
-                }}
-                onFocus={() => setDropdownOpen(true)}
-                autoComplete="off"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input input-bordered w-full"
+                  placeholder="Search family relation..."
+                  value={search}
+                  onChange={e => {
+                    setSearch(e.target.value);
+                    setDropdownOpen(true);
+                  }}
+                  onFocus={() => setDropdownOpen(true)}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary btn-square shrink-0"
+                  onClick={handleAddToQueue}
+                >
+                  <MdAdd className="text-xl" />
+                </button>
+              </div>
               {dropdownOpen && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                   {(() => {
@@ -186,25 +194,7 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-base-content mb-1">Value</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                className="input input-bordered w-full"
-                placeholder="e.g. 3"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-              />
-              <button
-                type="button"
-                className="btn btn-primary btn-square shrink-0"
-                onClick={handleAddToQueue}
-              >
-                <MdAdd className="text-xl" />
-              </button>
-            </div>
-          </div>
+
 
           {/* QUEUED ITEMS */}
           <div>
@@ -224,14 +214,7 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                     key={idx}
                     className="flex items-center justify-between px-3 py-2 bg-base-200/50 rounded-lg"
                   >
-                    <div className="min-w-0">
-                      <span className="text-sm font-medium text-base-content truncate block">
-                        {item.title}
-                      </span>
-                      <span className="text-xs text-base-content/60">
-                        {item.value}
-                      </span>
-                    </div>
+                    <span className="text-sm font-medium text-base-content">{item.title}</span>
                     <button
                       type="button"
                       onClick={() => removeQueuedItem(idx)}

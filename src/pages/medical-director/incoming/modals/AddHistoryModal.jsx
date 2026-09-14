@@ -4,11 +4,14 @@ import { createMedicalRecord } from "@/services/api/medicalRecordAPI";
 import toast from "react-hot-toast";
 
 const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
-  const [value, setValue] = useState("");
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef(null);
   const [localData, setLocalData] = useState(data);
+
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
   const [queuedItems, setQueuedItems] = useState([]);
 
   // Map display type to API category enum
@@ -19,7 +22,9 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
       "Family": "family",
       "Social": "social",
       "Allergic": "allergic",
+      "Medical": "medical_history",
       "Medical History": "medical_history",
+      "Medical_History": "medical_history",
       "Diagnosis": "diagnosis",
     };
     return categoryMap[typeStr] || typeStr.toLowerCase().replace(/\s+/g, "_");
@@ -27,9 +32,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
 
   useEffect(() => {
     setSearch("");
-    setValue("");
     setQueuedItems([]);
-    setLocalData(data);
   }, [isOpen, data]);
 
   useEffect(() => {
@@ -53,16 +56,15 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
     setQueuedItems(prev => [...prev, { name: trimmed }]);
 
     // Reset the input fields so the user can add the next one
-    setValue("");
     setSearch("");
   };
 
   const handleAddToQueue = () => {
-    if (!value) {
+    if (!search.trim()) {
       toast.error(`Select or enter a ${type.toLowerCase()} first`);
       return;
     }
-    queueItem(value);
+    queueItem(search);
   };
 
   const removeQueuedItem = (idx) => {
@@ -72,14 +74,12 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
   const handleDone = () => {
     queuedItems.forEach(item => onAdd(item.name));
     setQueuedItems([]);
-    setValue("");
     setSearch("");
     onClose();
   };
 
   const handleCancel = () => {
     setQueuedItems([]);
-    setValue("");
     setSearch("");
     onClose();
   };
@@ -103,7 +103,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
                   type="text"
                   className="input input-bordered w-full"
                   placeholder={`Search ${type.toLowerCase()}...`}
-                  value={search || value}
+                  value={search}
                   onChange={e => {
                     setSearch(e.target.value);
                     setDropdownOpen(true);
@@ -122,7 +122,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
               {dropdownOpen && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                   {(() => {
-                    const query = (search || value).trim();
+                    const query = search.trim();
                     const filteredItems = Array.isArray(localData) ? (localData.filter(item =>
                       query
                         ? item.name.toLowerCase().includes(query.toLowerCase())
@@ -170,7 +170,6 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
                               <li
                                 key={item.id || item._id}
                                 onClick={() => {
-                                  setValue(item.name);
                                   setSearch(item.name);
                                   setDropdownOpen(false);
                                 }}

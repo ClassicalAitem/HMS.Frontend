@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck, FaBed } from "react-icons/fa";
+import { FaVials } from "react-icons/fa6";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 import { IoReceiptOutline } from "react-icons/io5";
 import { TbCalendarPlus } from "react-icons/tb";
@@ -113,7 +114,7 @@ const Sidebar = ({ onCloseSidebar }) => {
         location.pathname.startsWith("/dashboard/medical-director/patient"),
     },
     {
-      icon: IoReceiptOutline,
+      icon: FaVials,
       label: "Lab results",
       path: "/dashboard/medical-director/labResults",
       active: location.pathname.startsWith("/dashboard/medical-director/labResults"),
