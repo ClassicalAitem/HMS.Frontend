@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/doctor/dashboard/Sidebar";
+import Sidebar from "@/components/nurse/dashboard/Sidebar";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
@@ -13,7 +13,6 @@ import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { PatientStatusBadge } from "@/components/common";
 import { FaVials } from "react-icons/fa6";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { DoctorLayout } from "@/components/doctor/doctor";
 
 const DOCTOR_STATUSES = new Set([
   "lab_completed",
@@ -203,11 +202,10 @@ const IncomingLabResults = () => {
 
       // localStorage.setItem('refreshIncoming', Date.now().toString());
 
-      navigate(`/dashboard/doctor/medical-history/${data.patientId}`, {
+      navigate(`/dashboard/nurse/patient/${data.patientId}`, {
         state: {
           from: "incoming",
           patientSnapshot: data.snapshot,
-          // key prop — PatientMedicalHistory reads this to scope to dependant
           dependantId: data.dependantId,
           dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
         },
@@ -247,22 +245,20 @@ const IncomingLabResults = () => {
     refreshLabReadyCount();
 };
   return (
-    <DoctorLayout >
-
-    <div className="">
-       {loading && <KolakLoader fullscreen />}
-      {/* {isSidebarOpen && (
+    <div className="flex h-screen max-h-screen w-full overflow-hidden bg-base-100">
+      {loading && <KolakLoader fullscreen />}
+      {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar />
-      </div> */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <Sidebar onCloseSidebar={closeSidebar} />
+      </div>
 
-      <div className="flex flex-1 flex-col ">
-        {/* <Header onToggleSidebar={toggleSidebar} /> */}
+      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden bg-base-100">
+        <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="overflow-y-auto flex-1  ">
+        <main className="flex-1 h-full min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
           <div className="mb-6">
             <div className="flex items-center gap-3">
               <FaVials size={24} className="text-primary" />
@@ -413,11 +409,9 @@ const IncomingLabResults = () => {
               </div>
             </div>
           )}
-        </div>
+        </main>
       </div>
     </div>
-    </DoctorLayout>
-
   );
 };
 

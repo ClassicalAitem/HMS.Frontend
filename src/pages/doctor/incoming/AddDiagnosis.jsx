@@ -80,6 +80,7 @@ const [createdConsultationId, setCreatedConsultationId] = useState(null);
     social: [],
     allergic: [],
     diagnosis: [],
+    medicalHistory: [],
   });
 
     const enrichedVitals = useMemo(() =>
@@ -187,6 +188,7 @@ const [createdConsultationId, setCreatedConsultationId] = useState(null);
             social: records.filter(r => r.category === "social"),
             allergic: records.filter(r => r.category === "allergic"),
             diagnosis: records.filter(r => r.category === "diagnosis"),
+            medicalHistory: records.filter(r => r.category === "medical_history"),
           }));
         }
       } catch (err) {
@@ -348,8 +350,6 @@ const handleConfirmSave = async () => {
       })),
       familyHistory: familyHistory.map(f => ({
         relation: f.title,
-        condition: f.value,
-        value: "1",
       })),
       medicalHistory: medicalHistory.map(m => ({
         title: m,
@@ -364,23 +364,25 @@ const handleConfirmSave = async () => {
 
 
   setSaving(true);
-  toast.promise(
-    createConsultation(payload),
-    {
-      loading: "Saving consultation...",
-      success: (res) => {
-        const data = res?.data ?? res;
-        const newConsultationId = data.id || data._id;
-        setCid(newConsultationId);
-        setCreatedConsultationId(newConsultationId);   
-        setClinicalStep('reviewOfSystems');             
-        
-        return "Consultation saved successfully";
-      },
-      error: (err) =>
-        err?.response?.data?.message || "Failed to save consultation",
-    }
-  ).finally(() => setSaving(false));
+  setSaving(true);
+  const toastId = toast.loading("Saving consultation...");
+  
+  try {
+    const res = await createConsultation(payload);
+    const data = res?.data ?? res;
+    const newConsultationId = data.id || data._id;
+    setCid(newConsultationId);
+    setCreatedConsultationId(newConsultationId);   
+    
+    toast.success("Consultation saved successfully", { id: toastId });
+    
+    setClinicalStep('reviewOfSystems');
+  } catch (err) {
+    const errorMsg = err?.response?.data?.message || "Failed to save consultation";
+    toast.error(errorMsg, { id: toastId });
+  } finally {
+    setSaving(false);
+  }
 };
   return (
     <DoctorLayout>
@@ -564,8 +566,7 @@ const handleConfirmSave = async () => {
                 <table className="table w-full">
                   <thead>
                     <tr className="border-b border-base-200">
-                      <th className="font-medium text-base-content/70 py-4 pl-6 w-1/2">Title</th>
-                      <th className="font-medium text-base-content/70 py-4 w-1/2">Value</th>
+                      <th className="font-medium text-base-content/70 py-4 pl-6">Title</th>
                       <th className="w-16"></th>
                     </tr>
                   </thead>
@@ -574,7 +575,6 @@ const handleConfirmSave = async () => {
                       familyHistory.map((item, idx) => (
                         <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/50">
                           <td className="py-4 pl-6 font-medium text-base-content">{item.title}</td>
-                          <td className="py-4 text-base-content/80">{item.value}</td>
                           <td className="py-4 pr-6 text-right">
                             <button onClick={() => removeFamily(idx)} className="btn btn-ghost btn-xs text-error">
                               <span className="text-lg font-bold">−</span>
@@ -720,7 +720,7 @@ const handleConfirmSave = async () => {
       {/* Modals */}
       <AddComplaintModal isOpen={activeModal === "complaint"} onClose={() => setActiveModal(null)} onAdd={handleAddComplaint} data={medicalRecords.symptoms} />
       <AddFamilyHistoryModal isOpen={activeModal === "family"} onClose={() => setActiveModal(null)} onAdd={handleAddFamily} data={medicalRecords.family} />
-      <AddHistoryModal isOpen={activeModal === "medical"} onClose={() => setActiveModal(null)} onAdd={handleAddMedical} type="Medical History" data={medicalRecords.symptoms} />
+      <AddHistoryModal isOpen={activeModal === "medical"} onClose={() => setActiveModal(null)} onAdd={handleAddMedical} type="Medical History" data={medicalRecords.medicalHistory} />
       <AddHistoryModal isOpen={activeModal === "surgical"} onClose={() => setActiveModal(null)} onAdd={handleAddSurgical} type="Surgical" data={medicalRecords.surgical} />
       <AddHistoryModal isOpen={activeModal === "social"} onClose={() => setActiveModal(null)} onAdd={handleAddSocial} type="Social" data={medicalRecords.social} />
       <AddHistoryModal isOpen={activeModal === "allergic"} onClose={() => setActiveModal(null)} onAdd={handleAddAllergic} type="Allergic" data={medicalRecords.allergic} />

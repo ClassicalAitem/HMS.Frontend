@@ -191,6 +191,8 @@ import PatientHmoHistoryFull from "@/pages/hmo/incoming/PatientHmoHistoryFull";
 import PharmacyPatients from "@/pages/pharmacist/PharmacyPatients/PharmacyPatients";
 import HMOLabResultDetails from "@/pages/hmo/incoming/labResult";
 import IncomingLabResults from "@/pages/doctor/labResults/IncomingLabResult";
+import NurseIncomingLabResults from "@/pages/nurse/labResults/IncomingLabResult";
+import HmoIncomingLabResults from "@/pages/hmo/labResults/IncomingLabResult";
 
 
 const AppRoutes = () => {
@@ -355,6 +357,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/nurse/payment-records" element={
         <ProtectedRoute allowedRoles={['nurse']}>
           <NursePaymentRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/lab-results" element={
+        <ProtectedRoute allowedRoles={['nurse']}>
+          <NurseIncomingLabResults />
         </ProtectedRoute>
       } />
 
@@ -754,6 +761,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/hmo/consultations/:id" element={
         <ProtectedRoute allowedRoles={['hmo']}>
           <HmoConsultationDetail />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hmo/lab-results" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <HmoIncomingLabResults />
         </ProtectedRoute>
       } />
       {/*==============================================================================================================
