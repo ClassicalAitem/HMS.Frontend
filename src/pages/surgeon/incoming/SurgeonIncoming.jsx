@@ -61,9 +61,11 @@ const SurgeonIncoming = () => {
           : [];
         const surgeries = Array.isArray(rawSurgeries) ? rawSurgeries : [];
 
-        // Filter for surgical appointments (created by doctor or frontdesk with service charge)
+        // Filter for surgical appointments, exclude injection followups
         const surgicalAppointments = appointmentList.filter((a) => {
           const type = String(a?.appointmentType || "").toLowerCase();
+          if (type.includes("injection")) return false;
+          
           const dept = String(a?.department || "").toLowerCase();
           return type === "surgery" || type === "surgical" || dept === "surgeon" || dept === "surgery" || Boolean(a?.procedureName);
         });
@@ -111,6 +113,13 @@ const SurgeonIncoming = () => {
             snapshot: appt,
             surgery: matchedSurgery,
           };
+        }).filter(item => {
+          // Only show items that are actually in progress or have a surgical note started.
+          // Hide items that are merely 'scheduled' without a surgical note.
+          if (item.status === 'scheduled' && !item.surgery) {
+            return false;
+          }
+          return true;
         });
 
         if (mounted) setItems(mapped);

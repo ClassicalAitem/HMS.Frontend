@@ -411,11 +411,11 @@ useEffect(() => {
       {
         loading: isEditing ? 'Updating record...' : 'Saving record...',
         success: (data) => {
-          if (!isEditing) {
-            setSavedRecord(data);
-          } else {
-            navigate(-1);
-          }
+      if (!isEditing) {
+        setSavedRecord(data);
+      } else {
+        navigate(-1);
+      }
           return isEditing ? 'Record updated successfully!' : 'Record created successfully!';
         },
         error: (err) => err?.message || 'Failed to save record',

@@ -30,6 +30,7 @@ const AddExaminationModal = ({
   onSkip,
   onSaved,
 }) => {
+
   const [saving, setSaving] = useState(false);
   const [generalAppearance, setGeneralAppearance] = useState('');
   const [generalNotes, setGeneralNotes] = useState('');

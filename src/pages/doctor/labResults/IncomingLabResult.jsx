@@ -11,6 +11,7 @@ import ClearItemButton from "@/components/common/ClearIncomingButton";
 import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { PatientStatusBadge } from "@/components/common";
+import { FaVials } from "react-icons/fa6";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { DoctorLayout } from "@/components/doctor/doctor";
 
@@ -47,7 +48,7 @@ const IncomingLabResults = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
-  const { refreshQueueCount, lastUpdate } = useNotifications();
+  const { refreshQueueCount, refreshLabReadyCount, lastUpdate } = useNotifications();
 
 
   useEffect(() => {
@@ -226,6 +227,7 @@ const IncomingLabResults = () => {
       }
       localStorage.setItem('refreshIncoming', Date.now().toString());
       onRefresh();
+      refreshLabReadyCount();
     } catch (err) {
       console.error('Failed to reset status', err);
     }
@@ -242,6 +244,7 @@ const IncomingLabResults = () => {
   }
   localStorage.setItem('refreshIncoming', Date.now().toString());
     refreshQueueCount();
+    refreshLabReadyCount();
 };
   return (
     <DoctorLayout >
@@ -262,11 +265,11 @@ const IncomingLabResults = () => {
         <div className="overflow-y-auto flex-1  ">
           <div className="mb-6">
             <div className="flex items-center gap-3">
-              <RiArrowLeftRightFill size={24} className="text-primary" />
-              <h1 className="text-2xl font-bold text-primary">Incoming</h1>
+              <FaVials size={24} className="text-primary" />
+              <h1 className="text-2xl font-bold text-primary">Lab Results</h1>
             </div>
             <p className="text-sm text-base-content/60 mt-1">
-              Patients and dependants assigned and waiting for consultation.
+              Patients and dependants with completed lab results ready for review.
             </p>
           </div>
 
