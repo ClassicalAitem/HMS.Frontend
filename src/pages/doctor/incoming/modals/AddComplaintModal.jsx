@@ -4,13 +4,15 @@ import { createMedicalRecord } from "@/services/api/medicalRecordAPI";
 import toast from "react-hot-toast";
 
 const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
-  const [symptom, setSymptom] = useState("");
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const wrapperRef = useRef(null);
   const [duration, setDuration] = useState("");
-  const [durationUnit, setDurationUnit] = useState("Hour(s)");
   const [localData, setLocalData] = useState(data);
+
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
   const [queuedComplaints, setQueuedComplaints] = useState([]);
 
   const getCategoryFromType = (typeStr) => {
@@ -20,7 +22,9 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
       "Family": "family",
       "Social": "social",
       "Allergic": "allergic",
+      "Medical": "medical_history",
       "Medical History": "medical_history",
+      "Medical_History": "medical_history",
       "Diagnosis": "diagnosis",
     };
     return categoryMap[typeStr] || typeStr.toLowerCase().replace(/\s+/g, "_");
@@ -28,11 +32,8 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
 
   useEffect(() => {
     setSearch("");
-    setSymptom("");
     setDuration("");
-    setDurationUnit("Hour(s)");
     setQueuedComplaints([]);
-    setLocalData(data);
   }, [isOpen, data]);
 
   useEffect(() => {
@@ -52,29 +53,25 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
     const trimmed = (name || "").trim();
     if (!trimmed) return;
 
-    const finalDuration = duration || "1";
+    const finalDuration = duration.trim() || "1 Hour(s)";
     setQueuedComplaints(prev => [
       ...prev,
       {
         name: trimmed,
-        duration: `${finalDuration} ${durationUnit}`,
-        value: parseInt(finalDuration),
-        unit: durationUnit,
+        duration: finalDuration,
       },
     ]);
 
-    setSymptom("");
     setSearch("");
     setDuration("");
-    setDurationUnit("Hour(s)");
   };
 
   const handleAddToQueue = () => {
-    if (!symptom) {
+    if (!search.trim()) {
       toast.error("Select or enter a symptom first");
       return;
     }
-    queueComplaint(symptom);
+    queueComplaint(search);
   };
 
   const removeQueuedItem = (idx) => {
@@ -84,19 +81,15 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
   const handleDone = () => {
     queuedComplaints.forEach(item => onAdd(item));
     setQueuedComplaints([]);
-    setSymptom("");
     setSearch("");
     setDuration("");
-    setDurationUnit("Hour(s)");
     onClose();
   };
 
   const handleCancel = () => {
     setQueuedComplaints([]);
-    setSymptom("");
     setSearch("");
     setDuration("");
-    setDurationUnit("Hour(s)");
     onClose();
   };
 
@@ -118,7 +111,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                 type="text"
                 className="input input-bordered w-full"
                 placeholder="Search symptoms..."
-                value={search || symptom}
+                value={search}
                 onChange={e => {
                   setSearch(e.target.value);
                   setDropdownOpen(true);
@@ -129,7 +122,7 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
               {dropdownOpen && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-20 overflow-auto">
                   {(() => {
-                    const query = (search || symptom).trim();
+                    const query = search.trim();
                     const filteredItems = Array.isArray(localData) ? (localData.filter(item =>
                       query
                         ? item.name.toLowerCase().includes(query.toLowerCase())
@@ -177,7 +170,6 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                               <li
                                 key={item.id || item._id}
                                 onClick={() => {
-                                  setSymptom(item.name);
                                   setSearch(item.name);
                                   setDropdownOpen(false);
                                 }}
@@ -208,24 +200,12 @@ const AddComplaintModal = ({ isOpen, onClose, onAdd, data = [] }) => {
             <label className="block text-sm font-medium text-base-content mb-1">Duration</label>
             <div className="flex gap-2">
               <input
-                type="number"
-                min="1"
-                className="input input-bordered w-24"
+                type="text"
+                className="input input-bordered flex-1"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                placeholder="1"
+                placeholder="e.g. 2 days, 1 week"
               />
-              <select
-                className="select select-bordered flex-1"
-                value={durationUnit}
-                onChange={(e) => setDurationUnit(e.target.value)}
-              >
-                <option value="Hour(s)">Hour(s)</option>
-                <option value="Day(s)">Day(s)</option>
-                <option value="Week(s)">Week(s)</option>
-                <option value="Month(s)">Month(s)</option>
-                <option value="Year(s)">Year(s)</option>
-              </select>
               <button
                 type="button"
                 className="btn btn-primary btn-square shrink-0"

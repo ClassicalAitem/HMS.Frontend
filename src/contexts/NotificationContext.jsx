@@ -83,6 +83,7 @@ export const NotificationProvider = ({ children }) => {
     const handleIncoming = (payload) => {
       setLastUpdate(Date.now());
       refreshQueueCount();
+      refreshLabReadyCount();
 
       const name = payload?.subjectName || "Unknown Patient";
       const status = payload?.status || "Unknown Status";
@@ -135,10 +136,15 @@ export const NotificationProvider = ({ children }) => {
 
     socket.on('patient:incoming', handleIncoming);
     socket.on('patient:labResultReady', handleLabReady);
+    socket.on('patient:statusChanged', () => {
+      refreshQueueCount();
+      refreshLabReadyCount();
+    });
 
     return () => {
       socket.off('patient:incoming', handleIncoming);
       socket.off('patient:labResultReady', handleLabReady);
+      socket.off('patient:statusChanged');
     };
   }, [isAuthenticated, user, refreshLabReadyCount, refreshQueueCount]);
 

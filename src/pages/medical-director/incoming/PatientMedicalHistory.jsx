@@ -5,7 +5,7 @@ import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import PatientHeaderActions from "@/components/medical-director/patient/PatientHeaderActions";
 import PatientSummaryCard from "@/components/medical-director/patient/PatientSummaryCard";
 import MedicalHistoryTable from "@/components/medical-director/patient/MedicalHistoryTable";
-import CurrentVitalsCard from "@/components/medical-director/patient/CurrentVitalsCard";
+import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/medical-director/patient/VitalsHistoryTable";
 import LabHistoryTable from "@/components/medical-director/patient/LabHistoryTable";
 import LabInvestigationRequestTable from "@/components/medical-director/patient/LabInvestigationRequestTable";
