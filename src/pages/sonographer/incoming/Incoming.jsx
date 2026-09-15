@@ -27,7 +27,7 @@ const SonographerIncoming = () => {
     try {
       setLoading(true);
       setError(null);
-      const investigationsRes = await getInvestigations();
+      const investigationsRes = await getInvestigations({ type: 'radiology' });
       const allInvestigations = Array.isArray(investigationsRes) ? investigationsRes : (investigationsRes?.data || []);
 
       // Only radiology investigations belong on the sonographer's queue
