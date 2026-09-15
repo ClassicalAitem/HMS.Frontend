@@ -193,6 +193,7 @@ import HMOLabResultDetails from "@/pages/hmo/incoming/labResult";
 import IncomingLabResults from "@/pages/doctor/labResults/IncomingLabResult";
 import NurseIncomingLabResults from "@/pages/nurse/labResults/IncomingLabResult";
 import HmoIncomingLabResults from "@/pages/hmo/labResults/IncomingLabResult";
+import PharmacistAttendedToday from "@/pages/pharmacist/attendedToday/AttendedToday";
 
 
 const AppRoutes = () => {
@@ -1045,6 +1046,11 @@ const AppRoutes = () => {
       <Route path="/dashboard/pharmacist/incoming/:patientId" element={
         <ProtectedRoute allowedRoles={['pharmacist']}>
           <PharmacistIncomingDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/attended-today" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacistAttendedToday />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/pharmacist/Inventory&stocks" element={
