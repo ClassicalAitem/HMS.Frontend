@@ -13,6 +13,7 @@ import ClearItemButton from "@/components/common/ClearIncomingButton";
 import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
+import HmoStatusBadge from "@/components/common/HmoStatusBadge";
 
 const SonographerIncoming = () => {
   const navigate = useNavigate();
@@ -112,7 +113,15 @@ const SonographerIncoming = () => {
           };
         });
 
-      const allIncomingPatients = [...enrichedPatients, ...uniqueDependants, ...enrichedOpdPatients]
+      const uniquePatients = Array.from(
+        new Map(enrichedPatients.map(p => [p.id || p._id, p])).values()
+      );
+
+      const uniqueOpdPatients = Array.from(
+        new Map(enrichedOpdPatients.map(p => [p.opdPatientId || p.id || p._id, p])).values()
+      );
+
+      const allIncomingPatients = [...uniquePatients, ...uniqueDependants, ...uniqueOpdPatients]
         .sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime();
           const bTime = new Date(b.updatedAt || 0).getTime();
@@ -344,12 +353,19 @@ const SonographerIncoming = () => {
                       <div className="mt-3 p-3 bg-base-200/50 rounded-xl">
                         <p className="text-[10px] uppercase text-base-content/40 mb-1.5 font-semibold tracking-wider">Ordered Tests</p>
                         {patient.investigation?.tests && patient.investigation.tests.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5">
-                            {patient.investigation.tests.map((test, idx) => (
-                              <span key={idx} className="badge badge-ghost badge-sm bg-base-100">
-                                {test.name || test}
-                              </span>
-                            ))}
+                          <div className="flex flex-col gap-1.5">
+                            {patient.investigation.tests.map((test, idx) => {
+                               const testName = typeof test === 'object' ? (test.name || test.code) : test;
+                               const hmoStatus = typeof test === 'object' ? test.hmoStatus : null;
+                               return (
+                                 <div key={idx} className="flex items-center justify-between bg-base-100 px-2.5 py-1.5 rounded-lg border border-base-300 shadow-sm">
+                                   <span className="text-xs font-medium text-base-content capitalize">{testName}</span>
+                                   {hmoStatus && (
+                                     <HmoStatusBadge hmoStatus={hmoStatus} size="xs" />
+                                   )}
+                                 </div>
+                               );
+                            })}
                           </div>
                         ) : (
                           <span className="badge badge-ghost badge-sm bg-base-100">

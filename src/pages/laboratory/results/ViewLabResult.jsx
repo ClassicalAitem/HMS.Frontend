@@ -43,6 +43,10 @@ const ViewLabResult = () => {
     const [subject, setSubject] = useState(null);
   const isViewingDependant = !!dependantId;
   const [investigation, setInvestigation] = useState(null);
+  
+  // New states for pending investigations modal
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [pendingInvestigationsList, setPendingInvestigationsList] = useState([]);
   const [technicianName, setTechnicianName] = useState('Unknown Technician');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarMounted, setSidebarMounted] = useState(false);
@@ -617,12 +621,12 @@ const patientName =
   };
 
 
-  const handleSendToDoctor = async () => {
+  const proceedSendToDoctor = async () => {
     try {
+      setSendingToDoctor(true);
+      setShowPendingModal(false);
 
       const investigationId = labResult?.investigationRequestId || investigation?._id;
-
-      setSendingToDoctor(true);
 
       // Update investigation status to awaiting_doctor
       if (effectiveInvestigationId) {
@@ -663,6 +667,88 @@ const patientName =
       console.error("Error sending lab results:", err);
       toast.error("Failed to send lab results to doctor");
     } finally {
+      setSendingToDoctor(false);
+    }
+  };
+
+  const handleSendToSonographer = async () => {
+    try {
+      setSendingToDoctor(true); // Reusing this loading state to disable buttons
+      setShowPendingModal(false);
+      
+      const investigationId = labResult?.investigationRequestId || investigation?._id;
+
+      // Update current investigation as completed
+      if (effectiveInvestigationId) {
+        await updateInvestigation(effectiveInvestigationId, {
+          status: "completed",
+          labResultId: labResultId,
+        });
+      }
+
+      // Route the patient to sonographer queue
+      if (isDependant && labResult?.dependantId) {
+        await updateDependantStatus(labResult.dependantId, PATIENT_STATUS.AWAITING_SONOGRAPHER);
+      } else if (patientId && labResult) {
+        await updatePatientStatus(patientId, PATIENT_STATUS.AWAITING_SONOGRAPHER);
+      }
+
+      toast.success("Patient routed to Sonographer successfully!");
+      navigate("/dashboard/laboratory");
+    } catch (err) {
+      console.error("Error sending to sonographer:", err);
+      toast.error("Failed to send to sonographer");
+    } finally {
+      setSendingToDoctor(false);
+    }
+  };
+
+  const handleSendToDoctor = async () => {
+    try {
+      setSendingToDoctor(true);
+
+      // Check for pending investigations today
+      let pendingInvestigations = [];
+      try {
+        if (isOpdLabResult && labResult?.opdPatientId) {
+          const res = await getInvestigationRequestByOpdPatientId(labResult.opdPatientId);
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          pendingInvestigations = list.filter(inv => inv.status !== 'completed' && String(inv._id || inv.id) !== String(effectiveInvestigationId));
+        } else if (patientId) {
+          const res = await getInvestigationByPatientId(patientId);
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          pendingInvestigations = list.filter(inv => {
+            const isMatch = isDependant 
+              ? String(inv.dependantId) === String(labResult?.dependantId)
+              : !inv.dependantId;
+            return isMatch && inv.status !== 'completed' && String(inv._id || inv.id) !== String(effectiveInvestigationId);
+          });
+        }
+        
+        const today = new Date();
+        const pendingToday = pendingInvestigations.filter(inv => {
+          if (!inv.createdAt) return false;
+          const invDate = new Date(inv.createdAt);
+          return invDate.getDate() === today.getDate() && 
+                 invDate.getMonth() === today.getMonth() && 
+                 invDate.getFullYear() === today.getFullYear();
+        });
+
+        if (pendingToday.length > 0) {
+          setPendingInvestigationsList(pendingToday);
+          setShowPendingModal(true);
+          setSendingToDoctor(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Failed to check pending investigations:", err);
+      }
+
+      // If no pending investigations for today, proceed directly
+      await proceedSendToDoctor();
+    } catch (err) {
+      console.error("Error processing send to doctor request:", err);
+      toast.error("Failed to process request");
       setSendingToDoctor(false);
     }
   };
@@ -968,6 +1054,55 @@ const handleComplete = async () => {
         initialIndex={currentFileIndex}
         title="Lab Result Attachments"
       />
+
+      {showPendingModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setShowPendingModal(false)} />
+          <div className="relative z-[110] w-full max-w-lg bg-base-100 rounded-xl shadow-2xl p-6">
+            <div className="mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Pending Investigations</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                This patient has the following incomplete investigations today:
+              </p>
+            </div>
+            
+            <div className="max-h-60 overflow-y-auto mb-6 bg-base-200/50 rounded-lg p-3">
+              <ul className="space-y-3">
+                {pendingInvestigationsList.map(inv => (
+                  <li key={inv._id || inv.id} className="p-3 bg-base-100 border border-base-300 rounded-lg shadow-sm">
+                    <div className="font-semibold text-gray-700 capitalize">{inv.type || "Investigation"}</div>
+                    <div className="text-xs text-gray-500 mt-1">Status: <span className="text-warning font-medium">{inv.status || "Pending"}</span></div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-base-200">
+              <button
+                className="btn btn-ghost order-3 sm:order-1"
+                onClick={() => setShowPendingModal(false)}
+                disabled={sendingToDoctor}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary order-2"
+                onClick={handleSendToSonographer}
+                disabled={sendingToDoctor}
+              >
+                Send to Sonographer
+              </button>
+              <button
+                className="btn btn-success order-1 sm:order-3 text-white"
+                onClick={proceedSendToDoctor}
+                disabled={sendingToDoctor}
+              >
+                Send to Doctor Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

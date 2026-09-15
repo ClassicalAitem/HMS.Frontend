@@ -202,10 +202,10 @@ const IncomingLabResults = () => {
 
       // localStorage.setItem('refreshIncoming', Date.now().toString());
 
-      navigate(`/dashboard/hmo/patient-history/${data.patientId}`, {
+      navigate(`/dashboard/hmo/incoming/${data.patientId}`, {
         state: {
           from: "incoming",
-          patientSnapshot: data.snapshot,
+          patientSnapshot: data.type === 'dependant' ? null : data.snapshot,
           dependantId: data.dependantId,
           dependantSnapshot: data.type === 'dependant' ? data.snapshot : null,
         },
