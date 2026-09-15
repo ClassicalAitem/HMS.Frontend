@@ -1498,12 +1498,7 @@ const getInventoryMatch = (medication) => {
                   navigate('/dashboard/doctor');
                 }}
       allowedRoles={[
-        'nurse',
-        'labtechnician',
-        'pharmacist',
-        'cashier',
-        'hmo',
-        'sonographer',
+        'nurse'
       ]}
     />
     <button
