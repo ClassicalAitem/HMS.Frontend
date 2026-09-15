@@ -19,7 +19,7 @@ const isToday = (dateValue) => {
   );
 };
 
-const AttendedToday = () => {
+const PharmacistAttendedToday = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
   
@@ -306,4 +306,4 @@ const AttendedToday = () => {
   );
 };
 
-export default AttendedToday;
+export default PharmacistAttendedToday;
