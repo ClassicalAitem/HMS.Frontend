@@ -110,17 +110,19 @@ export function parseStrengthConcentration(strength) {
   if (!strength) return null;
   const str = String(strength).trim();
 
-  const ratioMatch = str.match(/^([\d.]+)\s*mg\s*\/\s*([\d.]+)\s*ml$/i);
+  const ratioMatch = str.match(/^([\d.]+)\s*(g|mg|mcg)\s*\/\s*([\d.]+)\s*ml$/i);
   if (ratioMatch) {
     const amount = Number(ratioMatch[1]);
-    const per = Number(ratioMatch[2]);
-    return amount > 0 && per > 0 ? { amount, per } : null;
+    const unit = ratioMatch[2].toLowerCase();
+    const per = Number(ratioMatch[3]);
+    return amount > 0 && per > 0 ? { amount, per, unit } : null;
   }
 
-  const simpleMatch = str.match(/^([\d.]+)\s*mg$/i);
+  const simpleMatch = str.match(/^([\d.]+)\s*(g|mg|mcg)$/i);
   if (simpleMatch) {
     const amount = Number(simpleMatch[1]);
-    return amount > 0 ? { amount, per: 1 } : null;
+    const unit = simpleMatch[2].toLowerCase();
+    return amount > 0 ? { amount, per: 1, unit } : null;
   }
 
   return null;
@@ -180,6 +182,9 @@ export function parseDosageString(dosage) {
       teaspoons: 'ml',
       tablespoon: 'ml',
       tablespoons: 'ml',
+      g: 'g',
+      gram: 'g',
+      grams: 'g',
     };
 
     if (!rawUnit) return '';
@@ -194,9 +199,15 @@ export function parseDosageString(dosage) {
 // back to parsing `strength` when those aren't set.
 function getConcentration(inventory) {
   if (inventory?.concentrationAmount && inventory?.concentrationPer) {
+    let savedUnit = (inventory.concentrationUnit || 'mg').toLowerCase();
+    // Fix for old corrupted data that incorrectly saved the volume unit as the weight unit
+    if (['ml', 'tablet', 'ampoule', 'iu', 'tube', 'unit'].includes(savedUnit)) {
+      savedUnit = 'mg'; 
+    }
     return {
       amount: Number(inventory.concentrationAmount),
       per: Number(inventory.concentrationPer),
+      unit: savedUnit,
     };
   }
   return parseStrengthConcentration(inventory?.strength);
@@ -208,6 +219,13 @@ export function hasConcentrationData(inventory) {
   return !!getConcentration(inventory);
 }
 
+function getBaseMgWeight(amount, unit) {
+  if (unit === 'g') return amount * 1000;
+  if (unit === 'mg') return amount;
+  if (unit === 'mcg') return amount / 1000;
+  return null;
+}
+
 // Converts a dosage entered in `dosageUnit` into the inventory item's own
 // `unit`. Returns null if the conversion isn't possible (e.g. mg requested
 // but the drug has no concentration set in inventory).
@@ -215,11 +233,18 @@ function convertToInventoryUnit(amount, dosageUnit, inventory) {
   if (!inventory || !inventory.unit) return null;
   const invUnit = inventory.unit;
   if (dosageUnit === invUnit) return amount;
-  if (dosageUnit === 'mg') {
+  
+  const dosageMg = getBaseMgWeight(amount, dosageUnit);
+  if (dosageMg !== null) {
     const concentration = getConcentration(inventory);
     if (!concentration) return null;
-    return (amount / concentration.amount) * concentration.per;
+    
+    const concMg = getBaseMgWeight(concentration.amount, concentration.unit || 'mg');
+    if (concMg !== null && concMg > 0) {
+      return (dosageMg / concMg) * concentration.per;
+    }
   }
+  
   return null;
 }
 
@@ -281,7 +306,7 @@ export function calculatePrescriptionLine({
   const raw = inventory?.unit;
 
   if (medicationType === 'tablet' || medicationType === 'cream') {
-    return 'tablet';
+    return raw === 'tube' ? 'tube' : 'tablet';
   }
   if (medicationType === 'syrup' || medicationType === 'gutt' || medicationType === 'infusion') {
     return 'ml';

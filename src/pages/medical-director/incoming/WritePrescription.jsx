@@ -51,21 +51,26 @@ const getUnitOptions = (medicationType, selectedDrug) => {
 
   if (medicationType === 'tablet') {
     return hasConcentration
-      ? [{ value: 'mg', label: 'mg' }, { value: 'tablet', label: 'tablet(s)/cap(s)' }]
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'tablet', label: 'tablet(s)/cap(s)' }]
       : [{ value: 'tablet', label: 'tablet(s)/cap(s)' }];
   }
   if (medicationType === 'syrup') {
     return hasConcentration
-      ? [{ value: 'mg', label: 'mg' }, { value: 'ml', label: 'ml' }]
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'ml', label: 'ml' }]
       : [{ value: 'ml', label: 'ml' }];
   }
-  if (medicationType === 'gutt') return [{ value: 'ml', label: 'ml' }];
+  if (medicationType === 'gutt') return [{ value: 'ml', label: 'drops' }];
   if (medicationType === 'infusion') return [{ value: 'ml', label: 'ml' }];
-  if (medicationType === 'cream') return [{ value: 'tablet', label: 'tube(s)' }];
+  if (medicationType === 'cream') {
+    const invUnit = selectedDrug?.unit === 'tube' ? 'tube' : 'tablet';
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: invUnit, label: invUnit === 'tube' ? 'tube(s)' : 'tablet(s)' }]
+      : [{ value: invUnit, label: invUnit === 'tube' ? 'tube(s)' : 'tablet(s)' }];
+  }
   if (medicationType === 'injection') {
     const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
     const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
-    return hasConcentration ? [{ value: 'mg', label: 'mg' }, physicalOpt] : [physicalOpt];
+    return hasConcentration ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, physicalOpt] : [physicalOpt];
   }
   return [{ value: 'unit', label: 'unit' }];
 };
