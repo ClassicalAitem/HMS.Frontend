@@ -417,6 +417,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
     unit: item?.unit || 'tablet',
     concentrationAmount: item?.concentrationAmount || '',
     concentrationPer: item?.concentrationPer || '',
+    concentrationUnit: ['ml', 'tablet', 'ampoule', 'iu', 'tube', 'unit'].includes(item?.concentrationUnit) ? 'mg' : (item?.concentrationUnit || 'mg'),
     batchNumber: item?.batchNumber || '',
     expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '',
     description: item?.description || '',
@@ -452,7 +453,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
 
     payload.packSize = packSizeValue
     payload.unit = form.unit
-    payload.concentrationUnit = form.unit
+    payload.concentrationUnit = form.concentrationUnit
     if (safeNumber(form.concentrationAmount) !== undefined) payload.concentrationAmount = safeNumber(form.concentrationAmount)
     if (safeNumber(form.concentrationPer) !== undefined) payload.concentrationPer = safeNumber(form.concentrationPer)
 
@@ -499,7 +500,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
                   const nextForm = e.target.value
                   // Keep unit sensible when form changes; cream uses the discrete tube model,
                   // while gutt/infusion behave like liquid bottles.
-                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : nextForm === 'Cream' ? 'tablet' : nextForm === 'Gutt' || nextForm === 'Infusion' ? 'ml' : nextForm === 'Syrup' ? 'ml' : nextForm === 'Injection' ? (form.unit === 'tablet' ? 'ml' : form.unit) : form.unit
+                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : nextForm === 'Cream' ? 'tube' : nextForm === 'Gutt' || nextForm === 'Infusion' ? 'ml' : nextForm === 'Syrup' ? 'ml' : nextForm === 'Injection' ? (form.unit === 'tablet' || form.unit === 'tube' ? 'ml' : form.unit) : form.unit
                   setForm({ ...form, form: nextForm, unit: nextUnit })
                 }}
               >
@@ -518,6 +519,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
             <input className="input input-bordered flex-1" placeholder="Strength" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
             <select className="select select-bordered flex-1" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
                 <option value="tablet">Tablet (counted individually)</option>
+                <option value="tube">Tube (counted individually)</option>
                 <option value="ml">Liquid — ml (syrup, injection)</option>
                 <option value="iu">IU (injection)</option>
                 <option value="ampoule">Ampoule (injection, counted individually)</option>
@@ -527,15 +529,20 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-xs text-base-content/60 block mb-1">
-                {form.unit === 'ampoule' ? 'Pack size — ampoules per pack' : form.unit === 'tablet' ? 'Pack size — tablets per pack (usually 1)' : 'Pack size — volume of ONE bottle/vial'}
+                {form.unit === 'ampoule' ? 'Pack size — ampoules per pack' : form.unit === 'tablet' ? 'Pack size — tablets per pack (usually 1)' : form.unit === 'tube' ? 'Pack size — tubes per pack (usually 1)' : 'Pack size — volume of ONE bottle/vial'}
               </label>
-              <input className="input input-bordered w-full" placeholder={form.unit === 'tablet' ? 'e.g. 1' : 'e.g. 75 = 75ml bottle'} value={form.packSize} onChange={(e) => setForm({ ...form, packSize: e.target.value })} />
+              <input className="input input-bordered w-full" placeholder={form.unit === 'tablet' || form.unit === 'tube' ? 'e.g. 1' : 'e.g. 75 = 75ml bottle'} value={form.packSize} onChange={(e) => setForm({ ...form, packSize: e.target.value })} />
             </div>
             <div className="flex-1">
               <label className="text-xs text-base-content/60 block mb-1">Concentration (optional, for mg dosing)</label>
               <div className="flex items-center gap-1">
-                <input className="input input-bordered input-sm flex-1" placeholder="mg e.g. 500" value={form.concentrationAmount} onChange={(e) => setForm({ ...form, concentrationAmount: e.target.value })} />
-                <span className="text-xs whitespace-nowrap">mg per</span>
+                <input className="input input-bordered input-sm flex-1" placeholder="Amount e.g. 500" value={form.concentrationAmount} onChange={(e) => setForm({ ...form, concentrationAmount: e.target.value })} />
+                <select className="select select-bordered select-sm w-20 px-1" value={form.concentrationUnit || 'mg'} onChange={(e) => setForm({ ...form, concentrationUnit: e.target.value })}>
+                  <option value="mg">mg</option>
+                  <option value="g">g</option>
+                  <option value="mcg">mcg</option>
+                </select>
+                <span className="text-xs whitespace-nowrap">per</span>
                 <input className="input input-bordered input-sm w-16" placeholder="1" value={form.concentrationPer} onChange={(e) => setForm({ ...form, concentrationPer: e.target.value })} />
                 <span className="text-xs">{form.unit}</span>
               </div>
@@ -550,7 +557,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
           ) : (
             <div>
               <label className="text-xs text-base-content/60 block mb-1">
-                {form.unit === 'tablet' ? 'Number of tablets' : form.unit === 'ampoule' ? 'Number of ampoules' : `Number of ${form.unit === 'ml' ? 'bottles/vials' : 'packs'}`}
+                {form.unit === 'tablet' ? 'Number of tablets' : form.unit === 'tube' ? 'Number of tubes' : form.unit === 'ampoule' ? 'Number of ampoules' : `Number of ${form.unit === 'ml' ? 'bottles/vials' : 'packs'}`}
               </label>
               <input className="input input-bordered w-full" placeholder="e.g. 10" value={form.packs} onChange={(e) => setForm({ ...form, packs: e.target.value })} />
             </div>
