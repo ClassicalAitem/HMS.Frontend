@@ -18,16 +18,35 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
     return "#111215";
   };
 
-  // Return an array of individual test names instead of one joined string,
-  // so each test can render as its own chip and won't collide with layout.
+  // Return an array of individual test objects containing name and hmo info
   const getTestList = () => {
     if (!data) return [];
     if (Array.isArray(data?.tests) && data.tests.length) {
-      return data.tests.map((t) => (typeof t === "object" ? t.name || t.code : t)).filter(Boolean);
+      return data.tests.map((t) => {
+        if (typeof t === "object") {
+          return {
+            name: t.name || t.code,
+            hmoStatus: t.hmoStatus || data.hmoStatus,
+            hmoApprovedBy: t.hmoApprovedBy || data.hmoApprovedBy,
+            hmoApprovedAt: t.hmoApprovedAt || data.hmoApprovedAt
+          };
+        }
+        return { 
+          name: t, 
+          hmoStatus: data.hmoStatus, 
+          hmoApprovedBy: data.hmoApprovedBy, 
+          hmoApprovedAt: data.hmoApprovedAt 
+        };
+      }).filter((t) => Boolean(t.name));
     }
     if (data?.test) {
       // fallback for old comma-joined string format
-      return String(data.test).split(",").map((s) => s.trim()).filter(Boolean);
+      return String(data.test).split(",").map((s) => ({
+        name: s.trim(),
+        hmoStatus: data.hmoStatus,
+        hmoApprovedBy: data.hmoApprovedBy,
+        hmoApprovedAt: data.hmoApprovedAt
+      })).filter((t) => Boolean(t.name));
     }
     return [];
   };
@@ -74,14 +93,6 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
               Complete clinical information about the laboratory request
             </p>
           </div>
-          {data?.hmoStatus && (
-            <HmoStatusBadge
-              hmoStatus={data.hmoStatus}
-              approvedBy={data.hmoApprovedBy}
-              approvedAt={data.hmoApprovedAt}
-              size="sm"
-            />
-          )}
         </div>
 
         {/* Patient Information */}
@@ -111,37 +122,49 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
           </h6>
           <div className="w-full bg-base-200/60 p-3.5 rounded-xl mt-1.5 flex flex-col gap-3.5">
 
-            {/* Test type chips + priority */}
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-                <p className="text-xs text-base-content/60">Ordered Tests</p>
-                {testList.length ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {testList.map((name, i) => (
-                      <span
-                        key={i}
-                        className="bg-base-100 border border-base-300 text-base-content text-xs font-medium px-2.5 py-1 rounded-lg shadow-2xs"
-                      >
-                        {name}
-                      </span>
-                    ))}
+            {/* Test type list + priority */}
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between w-full gap-4">
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-base-content/60">Ordered Tests</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-base-content/60">Priority:</p>
+                    <span
+                      style={{
+                        backgroundColor: getPriorityBgColor(data?.status),
+                        color: getPriorityTextColor(data?.status),
+                      }}
+                      className="inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-[10px] font-bold uppercase w-fit"
+                    >
+                      {data?.status || "Normal"}
+                    </span>
                   </div>
+                </div>
+
+                {testList.length ? (
+                  <ul className="flex flex-col gap-2 w-full">
+                    {testList.map((test, i) => (
+                      <li
+                        key={i}
+                        className="flex items-center justify-between bg-base-100 border border-base-300 px-3 py-2.5 rounded-lg shadow-sm"
+                      >
+                        <span className="text-sm font-medium text-base-content capitalize">{test.name}</span>
+                        {test.hmoStatus && (
+                           <div className="shrink-0 ml-3">
+                             <HmoStatusBadge
+                               hmoStatus={test.hmoStatus}
+                               approvedBy={test.hmoApprovedBy || data?.hmoApprovedBy}
+                               approvedAt={test.hmoApprovedAt || data?.hmoApprovedAt}
+                               size="xs"
+                             />
+                           </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
                   <p className="text-base-content text-sm">N/A</p>
                 )}
-              </div>
-
-              <div className="flex flex-col gap-1 shrink-0">
-                <p className="text-xs text-base-content/60">Priority</p>
-                <span
-                  style={{
-                    backgroundColor: getPriorityBgColor(data?.status),
-                    color: getPriorityTextColor(data?.status),
-                  }}
-                  className="inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-xs font-semibold w-fit"
-                >
-                  {data?.status || "Normal"}
-                </span>
               </div>
             </div>
 
