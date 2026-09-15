@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getInvestigations, updateInvestigation, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId } from "@/services/api/investigationRequestAPI";
 import { createLabResult, getLabResults, updateLabResult } from "@/services/api/labResultsAPI";
-import { updateInvestigation } from "@/services/api/investigationRequestAPI";
 import { getOpdPatientById, updateOpdPatient } from "@/services/api/opdPatientAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import toast from "react-hot-toast";
@@ -18,6 +17,7 @@ import { useAppSelector } from "@/store/hooks";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import mammoth from "mammoth";
 import { FaFileWord } from "react-icons/fa";
+import HmoStatusBadge from "@/components/common/HmoStatusBadge";
 
 const investigationStatusBadge = (status) => {
   const s = String(status || '').toLowerCase();
@@ -31,6 +31,8 @@ const investigationStatusBadge = (status) => {
 const SonographerIncomingDetails = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const passedDependantId = location.state?.dependantId;
   const { user } = useAppSelector((state) => state.auth);
   const [patient, setPatient] = useState(null);
   const [investigation, setInvestigation] = useState(null);
@@ -51,6 +53,8 @@ const SonographerIncomingDetails = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [docPreviewHtml, setDocPreviewHtml] = useState(null);
   const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [pendingInvestigationsList, setPendingInvestigationsList] = useState([]);
 
 
 useEffect(() => {
@@ -73,10 +77,31 @@ useEffect(() => {
       );
 
       // Determine patient type from investigation — search radiology-only list
-      let investigationData = radiologyInvestigations.find(inv =>
-        String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) ||
-        String(inv.opdPatientId) === String(patientId)
-      );
+      let investigationData = null;
+      if (passedDependantId) {
+        investigationData = radiologyInvestigations.find(inv => 
+          String(inv.dependantId) === String(passedDependantId) && 
+          String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && 
+          inv.status !== 'completed'
+        );
+        if (!investigationData) {
+          investigationData = radiologyInvestigations.find(inv => 
+            String(inv.dependantId) === String(passedDependantId) && 
+            String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId)
+          );
+        }
+      } else {
+        investigationData = radiologyInvestigations.find(inv =>
+          (String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId && inv.status !== 'completed') ||
+          (String(inv.opdPatientId) === String(patientId) && inv.status !== 'completed')
+        );
+        if (!investigationData) {
+          investigationData = radiologyInvestigations.find(inv =>
+            (String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId) ||
+            String(inv.opdPatientId) === String(patientId)
+          );
+        }
+      }
 
       let patientData = null;
       let detectedPatientType = "regular";
@@ -294,28 +319,79 @@ useEffect(() => {
     }
   };
 
+  const proceedSendPatient = async (targetStatus) => {
+    try {
+      setActionLoading(true);
+      setShowPendingModal(false);
+
+      if (patientType === "opd" && opdPatientId) {
+        await updateOpdPatient(opdPatientId, { status: targetStatus });
+      } else if (patientType === "dependant" && dependantId) {
+        await updateDependantStatus(dependantId, { status: targetStatus });
+      } else if (patient?.id) {
+        await updatePatientStatus(patient.id || patient._id, { status: targetStatus });
+      }
+
+      toast.success("Patient routed successfully!");
+      navigate('/dashboard/sonographer/incoming');
+    } catch (error) {
+      console.error("Send patient error:", error);
+      toast.error("Failed to route patient");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Routes the patient/dependant/OPD patient to the doctor's queue
   const handleSendToDoctor = async () => {
     try {
       setActionLoading(true);
 
-      if (patientType === "opd" && opdPatientId) {
-        await updateOpdPatient(opdPatientId, { status: PATIENT_STATUS.SONOGRAPHY });
-      } else if (patientType === "dependant" && dependantId) {
-        await updateDependantStatus(dependantId, { status: PATIENT_STATUS.SONOGRAPHY });
-      } else if (patient?.id) {
-        await updatePatientStatus(patient.id || patient._id, { status: PATIENT_STATUS.SONOGRAPHY });
+      const effectiveInvestigationId = investigation?._id || investigation?.id;
+
+      let pendingInvestigations = [];
+      try {
+        if (patientType === "opd" && opdPatientId) {
+          const res = await getInvestigationRequestByOpdPatientId(opdPatientId);
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          pendingInvestigations = list.filter(inv => inv.status !== 'completed' && String(inv._id || inv.id) !== String(effectiveInvestigationId));
+        } else if (patient?.id || patientId) {
+          const res = await getInvestigationByPatientId(patient?.id || patientId);
+          const list = Array.isArray(res) ? res : (res?.data ?? []);
+          pendingInvestigations = list.filter(inv => {
+            const isMatch = patientType === "dependant"
+              ? String(inv.dependantId) === String(dependantId)
+              : !inv.dependantId;
+            return isMatch && inv.status !== 'completed' && String(inv._id || inv.id) !== String(effectiveInvestigationId);
+          });
+        }
+
+        const today = new Date();
+        const pendingToday = pendingInvestigations.filter(inv => {
+          if (!inv.createdAt) return false;
+          const invDate = new Date(inv.createdAt);
+          return invDate.getDate() === today.getDate() && 
+                 invDate.getMonth() === today.getMonth() && 
+                 invDate.getFullYear() === today.getFullYear();
+        });
+
+        if (pendingToday.length > 0) {
+          setPendingInvestigationsList(pendingToday);
+          setShowPendingModal(true);
+          setActionLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Failed to check pending investigations:", err);
       }
 
-      toast.success("Patient sent to doctor successfully!");
-      navigate('/dashboard/sonographer/incoming');
+      await proceedSendPatient(PATIENT_STATUS.SONOGRAPHY);
     } catch (error) {
       console.error("Send to doctor error:", error);
-      toast.error("Failed to send patient to doctor");
-    } finally {
+      toast.error("Failed to process request");
       setActionLoading(false);
     }
-  }
+  };
     const isInvestigationCompleted = String(investigation?.status || '').toLowerCase() === 'completed';
 
 
@@ -458,10 +534,19 @@ useEffect(() => {
                                 <span className="badge badge-outline badge-primary badge-xs">Viewing</span>
                               )}
                             </div>
-                            <div className="flex flex-wrap gap-1 mb-1.5">
-                              {(inv.tests || []).map((t, i) => (
-                                <span key={i} className="badge badge-ghost badge-xs">{t.name || t}</span>
-                              ))}
+                            <div className="flex flex-col gap-1.5 mb-1.5 mt-1">
+                              {(inv.tests || []).map((t, i) => {
+                                const testName = typeof t === 'object' ? (t.name || t.code) : t;
+                                const hmoStatus = typeof t === 'object' ? t.hmoStatus : null;
+                                return (
+                                  <div key={i} className="flex items-center justify-between bg-base-100 px-2 py-1 rounded border border-base-200">
+                                    <span className="text-xs text-base-content/80 capitalize">{testName}</span>
+                                    {hmoStatus && (
+                                      <HmoStatusBadge hmoStatus={hmoStatus} size="xs" />
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                             <p className="text-xs text-base-content/50">
                               Ordered {inv.createdAt ? formatNigeriaDate(inv.createdAt) : '—'}
@@ -533,6 +618,13 @@ useEffect(() => {
                           onClick={() => navigate('/dashboard/sonographer/incoming')}
                         >
                           Back to Incoming
+                        </button>
+                        <button
+                          onClick={handleSendToDoctor}
+                          disabled={actionLoading}
+                          className="btn btn-info w-full sm:w-auto gap-2"
+                        >
+                          {actionLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send to Doctor</>}
                         </button>
                       </div>
                     </div>
@@ -666,6 +758,75 @@ useEffect(() => {
           </div>
         </div>
       )}
+    {/* Pending Investigations Modal */}
+    {showPendingModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
+        <div className="bg-base-100 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="p-5 border-b border-base-200 flex justify-between items-center bg-base-100">
+            <h3 className="font-bold text-lg text-warning flex items-center gap-2">
+              <span className="text-xl">⚠️</span> Pending Investigations Found
+            </h3>
+            <button onClick={() => setShowPendingModal(false)} className="btn btn-ghost btn-sm btn-circle">
+              <FaTimes />
+            </button>
+          </div>
+          
+          <div className="p-5 overflow-y-auto">
+            <p className="text-sm text-base-content/80 mb-4">
+              This patient still has the following pending or in-progress investigations requested today. Are you sure you want to send them back to the doctor now?
+            </p>
+            
+            <div className="space-y-3 mb-2">
+              {pendingInvestigationsList.map(inv => (
+                <div key={inv._id || inv.id} className="p-3 bg-base-200/50 rounded-lg border border-base-200">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="badge badge-primary badge-sm uppercase text-[10px] font-bold">
+                      {inv.type || 'Unknown Type'}
+                    </span>
+                    <span className="text-xs text-base-content/50">
+                      {inv.createdAt ? formatNigeriaDateTime(inv.createdAt) : ''}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(inv.tests || []).map((t, idx) => (
+                      <span key={idx} className="badge badge-ghost badge-sm bg-base-100">
+                        {typeof t === 'object' ? (t.name || t.code) : t}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex justify-between items-center">
+                     <span className="text-xs font-medium text-base-content/70">
+                       Status: <span className="uppercase text-[10px] font-bold text-warning">{String(inv.status || '').replace(/_/g, ' ')}</span>
+                     </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 border-t border-base-200 bg-base-50 flex flex-wrap justify-end gap-3">
+            <button 
+              onClick={() => setShowPendingModal(false)} 
+              className="btn btn-ghost"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => proceedSendPatient(PATIENT_STATUS.AWAITING_LAB)} 
+              className="btn btn-primary"
+            >
+              Send to Lab
+            </button>
+            <button 
+              onClick={() => proceedSendPatient(PATIENT_STATUS.SONOGRAPHY)} 
+              className="btn btn-info"
+            >
+              Send to Doctor
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   );
 };
