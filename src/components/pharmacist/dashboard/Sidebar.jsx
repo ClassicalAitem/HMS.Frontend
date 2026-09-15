@@ -6,6 +6,7 @@ import { GiMedicines } from "react-icons/gi";
 import { PiWarehouseLight } from "react-icons/pi";
 import { IoPauseCircleSharp, IoReceiptOutline } from "react-icons/io5";
 import { TbReportAnalytics } from "react-icons/tb";
+import { FaUserCheck } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -70,6 +71,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Patients',
       path: '/dashboard/pharmacist/patients',
       active: location.pathname === '/dashboard/pharmacist/patients'
+    },
+    {
+      icon: FaUserCheck,
+      label: 'Attended Today',
+      path: '/dashboard/pharmacist/attended-today',
+      active: location.pathname === '/dashboard/pharmacist/attended-today'
     },
     {
       icon: PiWarehouseLight,
