@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getInvestigationByPatientId, getInvestigations } from "@/services/api/investigationAPI";
+import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { createLabResult, getLabResults, updateLabResult } from "@/services/api/labResultsAPI";
 import { updateInvestigation } from "@/services/api/investigationRequestAPI";
 import { getOpdPatientById, updateOpdPatient } from "@/services/api/opdPatientAPI";
@@ -61,7 +61,7 @@ useEffect(() => {
       setLoading(true);
 
       // Step 1: Check if this is an OPD patient by looking at all investigations
-      const investigationsResponse = await getInvestigations();
+      const investigationsResponse = await getInvestigations({ type: 'radiology' });
       const allInvestigations = Array.isArray(investigationsResponse)
         ? investigationsResponse
         : (investigationsResponse?.data || []);
