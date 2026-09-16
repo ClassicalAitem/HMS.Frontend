@@ -55,6 +55,7 @@ const SonographerIncomingDetails = () => {
   const [docPreviewLoading, setDocPreviewLoading] = useState(false);
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [pendingInvestigationsList, setPendingInvestigationsList] = useState([]);
+  const [pendingLabCount, setPendingLabCount] = useState(0);
 
 
 useEffect(() => {
@@ -64,16 +65,21 @@ useEffect(() => {
     try {
       setLoading(true);
 
-      // Step 1: Check if this is an OPD patient by looking at all investigations
-      const investigationsResponse = await getInvestigations({ type: 'radiology' });
+      // OPD requests must be loaded by OPD patient ID; regular and dependant requests use the patient endpoint.
+      const investigationsResponse = location.state?.patientType === 'opd'
+        ? await getInvestigationRequestByOpdPatientId(patientId)
+        : await getInvestigations({ type: 'radiology' });
       const allInvestigations = Array.isArray(investigationsResponse)
         ? investigationsResponse
         : (investigationsResponse?.data || []);
 
       // Sonographer only ever deals with radiology-type investigations —
-      // filter to that first so we never accidentally pick up a lab order.
+      // check for both 'radiology' and 'imaging' to support old and new enums.
       const radiologyInvestigations = allInvestigations.filter(
-        (inv) => String(inv.type || '').toLowerCase() === 'radiology'
+        (inv) => {
+          const type = String(inv.type || '').toLowerCase();
+          return type === 'radiology' || type === 'imaging';
+        }
       );
 
       // Determine patient type from investigation — search radiology-only list
@@ -108,22 +114,22 @@ useEffect(() => {
       let detectedOpdPatientId = null;
       let detectedDependantId = null;
 
-      // Step 2: Fetch the correct patient based on investigation data
-      if (investigationData?.opdPatientId) {
+      // Step 2: Fetch the correct patient based on investigation data or navigation state
+      if (location.state?.patientType === 'opd' || investigationData?.opdPatientId) {
         // This is an OPD patient
         detectedPatientType = "opd";
-        detectedOpdPatientId = investigationData.opdPatientId;
+        detectedOpdPatientId = location.state?.patientType === 'opd' ? patientId : investigationData.opdPatientId;
         try {
-          const opdRes = await getOpdPatientById(patientId);
+          const opdRes = await getOpdPatientById(detectedOpdPatientId);
           patientData = opdRes?.data || opdRes;
         } catch (err) {
           console.warn("Failed to load OPD patient:", err);
-          patientData = { id: patientId, fullName: "OPD Patient" };
+          patientData = { id: detectedOpdPatientId, fullName: "OPD Patient" };
         }
-      } else if (investigationData?.dependantId) {
+      } else if (passedDependantId || investigationData?.dependantId) {
         // This is a dependant
         detectedPatientType = "dependant";
-        detectedDependantId = investigationData.dependantId;
+        detectedDependantId = passedDependantId || investigationData.dependantId;
         try {
           const res = await getPatientById(patientId);
           patientData = Array.isArray(res) ? res[0] : res?.data || res;
@@ -133,7 +139,7 @@ useEffect(() => {
         }
 
         try {
-            const depRes = await getDependantById(investigationData.dependantId);
+            const depRes = await getDependantById(detectedDependantId);
             const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant || depRes?.data;
             if (mounted && dep) setDependantInfo(dep);
           } catch (err) {
@@ -195,6 +201,31 @@ useEffect(() => {
             console.warn("Could not check for existing lab results:", error);
           }
         }
+
+        // Check for pending lab tests
+        try {
+          let invs = [];
+          if (detectedPatientType === 'opd') {
+            const res = await getInvestigationRequestByOpdPatientId(detectedOpdPatientId);
+            invs = Array.isArray(res) ? res : (res?.data || []);
+          } else {
+            const res = await getInvestigationByPatientId(patientId);
+            invs = Array.isArray(res) ? res : (res?.data || []);
+          }
+          
+          const pendingLab = invs.filter(inv => {
+            const isMatch = detectedPatientType === 'dependant'
+              ? String(inv.dependantId) === String(detectedDependantId)
+              : !inv.dependantId;
+            const invType = String(inv.type || '').toLowerCase();
+            const isLab = invType === 'laboratory' || invType === 'lab';
+            const isPending = inv.status !== 'completed' && inv.status !== 'cancelled';
+            return isMatch && isLab && isPending;
+          });
+          if (mounted) setPendingLabCount(pendingLab.length);
+        } catch (error) {
+          console.warn("Could not check for pending lab tests:", error);
+        }
       }
     }  catch (error) {
       console.error("SonographerIncomingDetails: fetch error", error);
@@ -209,7 +240,7 @@ useEffect(() => {
   return () => {
     mounted = false;
   };
-}, [patientId]);
+}, [patientId, location.state?.patientType, passedDependantId]);
 
 
   const handleFileChange = (event) => {
@@ -304,10 +335,24 @@ useEffect(() => {
 
       if (investigation?._id) {
         await updateInvestigation(investigation._id, { status: 'completed' });
+        
+        if (patientType === 'opd' && opdPatientId) {
+          try {
+            await updateOpdPatient(opdPatientId, { status: 'completed' });
+          } catch (e) {
+            console.warn("Failed to update OPD patient status:", e);
+          }
+        }
+
         toast.success("Investigation marked as completed!");
         setRadiologyHistory((prev) =>
           prev.map((inv) => (inv._id === investigation._id ? { ...inv, status: 'completed' } : inv))
         );
+
+        if (patientType === 'opd') {
+          navigate('/dashboard/sonographer/incoming');
+          return;
+        }
       } else {
         toast.error("Investigation ID not found");
       }
@@ -488,11 +533,23 @@ useEffect(() => {
                   patient={patient}
                   defaultDependantId={dependantId}
                   lockSubject
+                  isOpdPatient={patientType === 'opd'}
                   onUpdated={() => navigate('/dashboard/sonographer/incoming')}
-                  allowedRoles={['doctor', 'medical-director', 'labtechnician']}
+                  allowedRoles={
+                    patientType === 'opd'
+                      ? ['labtechnician']
+                      : ['doctor', 'medical-director', 'labtechnician']
+                  }
                 />
               </div>
             </div>
+
+            {pendingLabCount > 0 && (
+              <div className="alert alert-warning shadow-sm rounded-xl py-3 px-4 mb-4 flex items-center gap-3">
+                <span className="text-2xl">⚠️</span>
+                <span className="text-sm text-warning-content font-medium">This patient has <strong>{pendingLabCount}</strong> pending laboratory test request(s).</span>
+              </div>
+            )}
           </div>
            <PatientDetailsCard
                 patient={patient}
@@ -584,13 +641,15 @@ useEffect(() => {
                           >
                             {actionLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Complete This Order</>}
                           </button>
-                          <button
-                            onClick={handleSendToDoctor}
-                            disabled={actionLoading}
-                            className="btn btn-info gap-2"
-                          >
-                            {actionLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send to Doctor</>}
-                          </button>
+                          {patientType !== 'opd' && (
+                            <button
+                              onClick={handleSendToDoctor}
+                              disabled={actionLoading}
+                              className="btn btn-info gap-2"
+                            >
+                              {actionLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send to Doctor</>}
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -619,13 +678,15 @@ useEffect(() => {
                         >
                           Back to Incoming
                         </button>
-                        <button
-                          onClick={handleSendToDoctor}
-                          disabled={actionLoading}
-                          className="btn btn-info w-full sm:w-auto gap-2"
-                        >
-                          {actionLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send to Doctor</>}
-                        </button>
+                        {patientType !== 'opd' && (
+                          <button
+                            onClick={handleSendToDoctor}
+                            disabled={actionLoading}
+                            className="btn btn-info w-full sm:w-auto gap-2"
+                          >
+                            {actionLoading ? <span className="loading loading-spinner loading-sm"></span> : <>Send to Doctor</>}
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : (

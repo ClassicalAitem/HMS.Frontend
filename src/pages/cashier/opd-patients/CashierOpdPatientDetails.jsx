@@ -6,7 +6,7 @@ import { getOpdPatientById } from '@/services/api/opdPatientAPI';
 import { getBillingsByOpdPatientId, getReceiptsByOpdPatientId, createReceipt, createBillForOpd } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { createInvestigationRequestForCashier, getInvestigationRequestByOpdPatientId } from '@/services/api/investigationRequestAPI';
-import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
+import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { FaArrowLeft, FaPlus, FaTrash } from 'react-icons/fa';
 import ReceiptModal from '@/components/modals/ReceiptModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
@@ -95,7 +95,8 @@ const CashierOpdPatientDetails = () => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [openRow, setOpenRow] = useState(null);
-  const [serviceCharges, setServiceCharges] = useState([]);
+  const [labServiceCharges, setLabServiceCharges] = useState([]);
+  const [radServiceCharges, setRadServiceCharges] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
   const [priority, setPriority] = useState('normal');
 
@@ -113,13 +114,17 @@ const CashierOpdPatientDetails = () => {
         setPatient(patientRes.value?.data ?? patientRes.value);
       }
       if (billingsRes.status === 'fulfilled') {
-        setBillings(billingsRes.value?.data?.data ?? []);
+        const val = billingsRes.value;
+        setBillings(Array.isArray(val) ? val : (Array.isArray(val?.data) ? val.data : (Array.isArray(val?.data?.data) ? val.data.data : [])));
       }
       if (receiptsRes.status === 'fulfilled') {
-        setReceipts(receiptsRes.value?.data?.data ?? []);
+        const val = receiptsRes.value;
+        setReceipts(Array.isArray(val) ? val : (Array.isArray(val?.data) ? val.data : (Array.isArray(val?.data?.data) ? val.data.data : [])));
       }
       if (investigationsRes.status === 'fulfilled') {
-        setInvestigationRequests(investigationsRes.value?.data ?? investigationsRes.value ?? []);
+        const val = investigationsRes.value;
+        const invs = Array.isArray(val) ? val : (Array.isArray(val?.data) ? val.data : (Array.isArray(val?.data?.data) ? val.data.data : []));
+        setInvestigationRequests(invs);
       }
     } catch (err) {
       toast.error('Failed to load patient details');
@@ -137,8 +142,12 @@ const CashierOpdPatientDetails = () => {
       try {
         const res = await getServiceCharges();
         const data = res?.data ?? res ?? [];
+        
         const labs = data.filter((i) => (i.category || '').toLowerCase() === 'laboratory');
-        setServiceCharges(labs);
+        const rads = data.filter((i) => (i.category || '').toLowerCase() === 'radiology');
+        
+        setLabServiceCharges(labs);
+        setRadServiceCharges(rads);
       } catch (err) {
         console.error('Failed to load service charges', err);
       }
@@ -187,20 +196,35 @@ const CashierOpdPatientDetails = () => {
         }
       );
 
-      const investigationData = {
-        opdPatientId: patientId,
-        priority,
-        tests: selectedTests.map((t) => ({ name: t.charge.service })),
-      };
+      // Group tests by category (laboratory vs radiology)
+      const groupedTests = selectedTests.reduce((acc, t) => {
+        const type = (t.charge.category || 'laboratory').toLowerCase();
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(t);
+        return acc;
+      }, {});
 
-      await toast.promise(
-        createInvestigationRequestForCashier(investigationData),
-        {
-          loading: 'Creating investigation request...',
-          success: 'Investigation request created successfully!',
-          error: (e) => e?.response?.data?.message || 'Failed to create investigation request',
-        }
-      );
+      for (const [category, tests] of Object.entries(groupedTests)) {
+        let backendType = category;
+        if (category === 'laboratory') backendType = 'lab';
+        else if (category === 'radiology') backendType = 'imaging';
+
+        const investigationData = {
+          opdPatientId: patientId,
+          priority,
+          type: backendType, // Pass the explicit type ('lab' or 'imaging') expected by the backend
+          tests: tests.map((t) => ({ name: t.charge.service })),
+        };
+
+        await toast.promise(
+          createInvestigationRequestForCashier(investigationData),
+          {
+            loading: `Creating ${category} request...`,
+            success: `${category.charAt(0).toUpperCase() + category.slice(1)} request created successfully!`,
+            error: (e) => e?.response?.data?.message || `Failed to create ${category} request`,
+          }
+        );
+      }
 
       setSelectedTests([]);
       await loadAll();
@@ -343,16 +367,36 @@ const CashierOpdPatientDetails = () => {
 
       <div className="card bg-base-100 shadow-xl mb-6">
         <div className="card-body">
-          <h2 className="card-title text-lg">Add Additional Lab Tests</h2>
+          <h2 className="card-title text-lg">Add Additional Tests</h2>
           <p className="text-sm text-base-content/60 mb-4">Add more tests if the patient needs additional investigations.</p>
 
-          <TestSearchInput
-            serviceCharges={serviceCharges}
-            onSelect={handleAddTest}
-            placeholder="Search and add additional lab test..."
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Laboratory Search */}
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Laboratory Tests</span>
+              </label>
+              <TestSearchInput
+                serviceCharges={labServiceCharges}
+                onSelect={handleAddTest}
+                placeholder="Search and add lab test..."
+              />
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            {/* Radiology Search */}
+            <div>
+              <label className="label">
+                <span className="label-text font-semibold">Radiology (Scan) Tests</span>
+              </label>
+              <TestSearchInput
+                serviceCharges={radServiceCharges}
+                onSelect={handleAddTest}
+                placeholder="Search and add radiology test..."
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="form-control w-full">
               <label className="label">
                 <span className="label-text">Investigation Priority</span>
@@ -376,6 +420,9 @@ const CashierOpdPatientDetails = () => {
                 <div key={idx} className="flex items-center justify-between gap-3 border border-base-200 rounded-lg px-3 py-2">
                   <div className="flex-1">
                     <span className="font-medium text-sm">{t.charge.service}</span>
+                    <span className={`badge badge-xs ml-2 ${String(t.charge.category).toLowerCase() === 'radiology' ? 'badge-secondary' : 'badge-primary'}`}>
+                      {t.charge.category}
+                    </span>
                     <span className="text-xs text-base-content/50 ml-2">₦{Number(t.charge.amount || 0).toLocaleString()} each</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -429,7 +476,7 @@ const CashierOpdPatientDetails = () => {
                 <thead>
                   <tr>
                     <th></th>
-                    <th>Billing ID</th>
+                    <th>Date & Time</th>
                     <th>Total</th>
                     <th>Outstanding</th>
                     <th>Actions</th>
@@ -445,7 +492,9 @@ const CashierOpdPatientDetails = () => {
                         >
                           {openRow === bill.id ? '▼' : '▶'}
                         </td>
-                        <td className="font-medium font-mono text-xs">{bill.id?.slice(-12)}</td>
+                        <td className="font-medium font-mono text-xs text-base-content/70">
+                          {bill.createdAt ? formatNigeriaDateTime(bill.createdAt) : 'N/A'}
+                        </td>
                         <td>₦{Number(bill.totalAmount).toLocaleString()}</td>
                         <td>
                           {(() => {
@@ -579,7 +628,7 @@ const CashierOpdPatientDetails = () => {
             patient={patient}
             lockSubject
             onUpdated={() => navigate('/cashier/opd-patients')}
-            allowedRoles={['labtechnician']}
+            allowedRoles={['labtechnician', 'sonographer']}
             isOpdPatient={true}
           />
         </div>
