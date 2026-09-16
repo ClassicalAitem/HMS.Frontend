@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
 import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getInvestigations, getInvestigationRequestByOpdPatientId } from "@/services/api/investigationRequestAPI";
 import { getAllDependantsForPatient, getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
 import { getOpdPatientById, getAllOpdPatients, updateOpdPatient } from "@/services/api/opdPatientAPI";
 import toast from "react-hot-toast";
@@ -28,23 +28,72 @@ const SonographerIncoming = () => {
     try {
       setLoading(true);
       setError(null);
-      const investigationsRes = await getInvestigations({ type: 'radiology' });
+      const [investigationsRes, opdResponse] = await Promise.all([
+        getInvestigations({ type: 'radiology' }),
+        getAllOpdPatients().catch(() => [])
+      ]);
+      const allOpdPatients = Array.isArray(opdResponse) ? opdResponse : (opdResponse?.data || []);
+      const opdPatientsAwaitingSonographer = allOpdPatients.filter((patient) => {
+        const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
+        return statusList.some((status) => String(status || "").toLowerCase() === "awaiting_sonographer");
+      });
+      const opdInvestigationResponses = await Promise.all(
+        opdPatientsAwaitingSonographer.map(async (patient) => {
+          const opdPatientId = patient.id || patient._id;
+          try {
+            return await getInvestigationRequestByOpdPatientId(opdPatientId);
+          } catch (error) {
+            return [];
+          }
+        })
+      );
       const allInvestigations = Array.isArray(investigationsRes) ? investigationsRes : (investigationsRes?.data || []);
+      const opdInvestigations = opdInvestigationResponses.flatMap((response) => (
+        Array.isArray(response) ? response : (response?.data || [])
+      ));
 
       // Only radiology investigations belong on the sonographer's queue
       const radiologyInvestigations = allInvestigations.filter(
-        (inv) => String(inv.type || '').toLowerCase() === 'radiology'
+        (inv) => {
+          const type = String(inv.type || '').toLowerCase();
+          return type === 'radiology' || type === 'imaging';
+        }
+      );
+      
+      const laboratoryInvestigations = [...allInvestigations, ...opdInvestigations].filter(
+        (inv) => {
+          const type = String(inv.type || '').toLowerCase();
+          return (type === 'laboratory' || type === 'lab') && inv.status !== 'completed' && inv.status !== 'cancelled';
+        }
       );
 
       const isAwaitingSonographer = (status) => {
         const statusList = Array.isArray(status) ? status : [status];
-        return statusList.some((s) => String(s || "").toLowerCase() === "awaiting_sonographer");
+        return statusList.some((s) => {
+          const val = String(s || "").toLowerCase();
+          return val === "awaiting_sonographer" ;
+        });
+      };
+
+      const getPendingLabCount = (pType, pid, did) => {
+        return laboratoryInvestigations.filter(inv => {
+          if (pType === 'opd') return String(inv.opdPatientId) === String(pid);
+          if (pType === 'dependant') return String(inv.dependantId) === String(did);
+          return String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(pid) && !inv.dependantId;
+        }).length;
       };
 
       const enrichedPatients = radiologyInvestigations
-        .filter((inv) => inv.patient && !inv.dependantId && isAwaitingSonographer(inv.patient.status))
+        .filter((inv) => (
+          inv.patient &&
+          !inv.dependantId &&
+          !inv.opdPatientId &&
+          !inv.opdPatient &&
+          isAwaitingSonographer(inv.patient.status)
+        ))
         .map((inv) => {
           const patient = inv.patient;
+          const pid = patient.id || patient._id;
           return {
             ...patient,
             patientType: "regular",
@@ -57,6 +106,7 @@ const SonographerIncoming = () => {
             cardType: patient.cardType || 'personal',
             familyName: patient.familyName || '',
             companyName: patient.companyName || '',
+            pendingLabCount: getPendingLabCount('regular', pid, null)
           };
         });
 
@@ -65,15 +115,16 @@ const SonographerIncoming = () => {
         .map((inv) => {
           const dep = inv.dependant;
           const parentPatient = inv.patient;
+          const did = dep.id || dep._id;
           return {
             ...dep,
             status: dep.status,
             hospitalId: parentPatient?.hospitalId,
             patientId: dep.patientId || inv.patientId,
             patientType: "dependant",
-            dependantId: dep.id || dep._id,
+            dependantId: did,
             dependantInfo: {
-              id: dep.id || dep._id,
+              id: did,
               name: `${dep.firstName || ""} ${dep.lastName || ""}`.trim() || dep.fullName,
             },
             opdPatientId: null,
@@ -83,6 +134,7 @@ const SonographerIncoming = () => {
             cardType: parentPatient?.cardType || 'personal',
             familyName: parentPatient?.familyName || '',
             companyName: parentPatient?.companyName || '',
+            pendingLabCount: getPendingLabCount('dependant', null, did)
           };
         });
 
@@ -90,7 +142,14 @@ const SonographerIncoming = () => {
         new Map(enrichedDependants.map(d => [d.dependantId, d])).values()
       );
 
-      const enrichedOpdPatients = radiologyInvestigations
+      const opdRadiologyInvestigations = opdInvestigations.filter(
+        (inv) => {
+          const type = String(inv.type || '').toLowerCase();
+          return type === 'radiology' || type === 'imaging';
+        }
+      );
+
+      const enrichedOpdPatients = opdRadiologyInvestigations
         .filter((inv) => inv.opdPatient && isAwaitingSonographer(inv.opdPatient.status))
         .map((inv) => {
           const patient = inv.opdPatient;
@@ -110,6 +169,7 @@ const SonographerIncoming = () => {
             cardType: patient.cardType || 'personal',
             familyName: patient.familyName || '',
             companyName: patient.companyName || '',
+            pendingLabCount: getPendingLabCount('opd', patientId, null)
           };
         });
 
@@ -121,7 +181,31 @@ const SonographerIncoming = () => {
         new Map(enrichedOpdPatients.map(p => [p.opdPatientId || p.id || p._id, p])).values()
       );
 
-      const allIncomingPatients = [...uniquePatients, ...uniqueDependants, ...uniqueOpdPatients]
+      const standaloneOpdPatients = allOpdPatients
+        .filter(p => isAwaitingSonographer(p.status))
+        .filter(p => !uniqueOpdPatients.some(up => String(up.opdPatientId) === String(p.id || p._id)))
+        .map(p => {
+          const pid = p.id || p._id;
+          return {
+            ...p,
+            patientType: "opd",
+            dependantId: null,
+            dependantInfo: null,
+            opdPatientId: pid,
+            opdPatientInfo: {
+              id: pid,
+              name: p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim(),
+            },
+            investigationId: null,
+            investigation: null,
+            cardType: p.cardType || 'personal',
+            familyName: p.familyName || '',
+            companyName: p.companyName || '',
+            pendingLabCount: getPendingLabCount('opd', pid, null)
+          };
+        });
+
+      const allIncomingPatients = [...uniquePatients, ...uniqueDependants, ...uniqueOpdPatients, ...standaloneOpdPatients]
         .sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime();
           const bTime = new Date(b.updatedAt || 0).getTime();
@@ -172,7 +256,9 @@ const SonographerIncoming = () => {
   const handleNavigate = (patient) => {
     const patientIdValue = patient?.id || patient?._id;
     if (patient.patientType === "opd") {
-      navigate(`/dashboard/sonographer/incoming/${patient.opdPatientInfo?.id || patientIdValue}`);
+      navigate(`/dashboard/sonographer/incoming/${patient.opdPatientInfo?.id || patientIdValue}`, {
+        state: { patientType: "opd" }
+      });
     } else if (patient.patientType === "dependant") {
       navigate(`/dashboard/sonographer/incoming/${patient.patientId}`, {
         state: { dependantId: patient.dependantId, dependantSnapshot: patient }
@@ -337,6 +423,11 @@ const SonographerIncoming = () => {
                             )}
                           </div>
                           <p className="text-xs text-base-content/50 font-mono mt-0.5">{displayId}</p>
+                          {patient.pendingLabCount > 0 && (
+                            <span className="badge badge-warning badge-sm badge-outline mt-1 font-semibold text-[10px]">
+                              🧪 {patient.pendingLabCount} PENDING LAB TEST(S)
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className="badge badge-primary badge-outline badge-sm shrink-0 group-hover:badge-primary transition-colors">
