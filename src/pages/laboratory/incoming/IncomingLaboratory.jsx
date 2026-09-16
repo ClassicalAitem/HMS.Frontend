@@ -44,9 +44,9 @@ const IncomingLaboratory = () => {
 
       // Fetch investigations and OPD patients concurrently (NO N+1 loops)
       const [invResponse, opdResponse] = await Promise.all([
-        getInvestigations({ type: 'lab' }).catch((err) => {
-          console.warn("Failed to fetch lab investigations, falling back to all:", err);
-          return getInvestigations();
+        getInvestigations().catch((err) => {
+          console.warn("Failed to fetch investigations:", err);
+          return [];
         }),
         getAllOpdPatients().catch((err) => {
           console.warn("Failed to fetch OPD patients:", err);
@@ -66,11 +66,28 @@ const IncomingLaboratory = () => {
         hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
       );
 
+      // Separate into lab and radiology investigations
+      const laboratoryInvestigations = allInvestigations.filter(inv => {
+        const type = String(inv.type || "").toLowerCase();
+        return type === "lab" || type === "laboratory";
+      });
+
+      const radiologyInvestigations = allInvestigations.filter(inv => {
+        const type = String(inv.type || "").toLowerCase();
+        return (type === "radiology" || type === "imaging") && inv.status !== 'completed' && inv.status !== 'cancelled';
+      });
+
+      const getPendingRadiologyCount = (pType, pid, did) => {
+        return radiologyInvestigations.filter(inv => {
+          if (pType === 'opd') return String(inv.opdPatientId) === String(pid);
+          if (pType === 'dependant') return String(inv.dependantId) === String(did);
+          return String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(pid) && !inv.dependantId;
+        }).length;
+      };
+
       // Map investigation requests using backend enriched patient, dependant, opdPatient, and hmoStatus
-      const investigationCards = allInvestigations
+      const investigationCards = laboratoryInvestigations
         .filter((inv) => {
-          const invType = String(inv.type || "").toLowerCase();
-          if (invType && invType !== "lab") return false;
 
           const pStatus = inv.dependant?.status || inv.patient?.status || inv.opdPatient?.status;
           const invStatus = String(inv.status || "").toLowerCase();
@@ -145,7 +162,8 @@ const IncomingLaboratory = () => {
             statusSenderName: dependant?.statusSenderName || patient?.statusSenderName,
             hmoStatus: inv.hmoStatus || null,
             tests: inv.tests || [],
-            investigation: inv
+            investigation: inv,
+            pendingRadiologyCount: getPendingRadiologyCount(patientType, displayId, inv.dependantId)
           };
         });
 
@@ -173,6 +191,7 @@ const IncomingLaboratory = () => {
           patientType: "opd",
           patientStatus: opdPatient.status || "unknown",
           hmoStatus: null,
+          pendingRadiologyCount: getPendingRadiologyCount('opd', opdPatient.id, null)
         }));
 
       const formattedRequests = [...investigationCards, ...opdPatientCards];
@@ -485,6 +504,12 @@ const IncomingLaboratory = () => {
                           >
                             {testCard.status}
                           </span>
+                          
+                          {testCard.pendingRadiologyCount > 0 && (
+                            <span className="badge badge-warning badge-sm badge-outline font-semibold text-[10px]">
+                              ⚠️ {testCard.pendingRadiologyCount} PENDING RADIOLOGY(SCAN)
+                            </span>
+                          )}
                         </div>
 
                         {/* Test details & timestamps */}

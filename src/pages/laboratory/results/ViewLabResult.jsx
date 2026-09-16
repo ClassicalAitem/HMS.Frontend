@@ -40,9 +40,10 @@ const ViewLabResult = () => {
     const dependantId = location?.state?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   
-    const [subject, setSubject] = useState(null);
+  const [subject, setSubject] = useState(null);
   const isViewingDependant = !!dependantId;
   const [investigation, setInvestigation] = useState(null);
+  const [pendingRadiologyCount, setPendingRadiologyCount] = useState(0);
   
   // New states for pending investigations modal
   const [showPendingModal, setShowPendingModal] = useState(false);
@@ -302,6 +303,31 @@ const fetchData = useCallback(async () => {
       setInvestigation(foundInvestigation);
       const invId = foundInvestigation._id || foundInvestigation.id;
       if (invId) setInvestigationIdState(invId);
+    }
+
+    // Check for pending radiology tests
+    try {
+      let invs = [];
+      if (labData?.opdPatientId) {
+        const res = await getInvestigationRequestByOpdPatientId(labData.opdPatientId);
+        invs = Array.isArray(res) ? res : (res?.data || []);
+      } else if (patientIdToUse) {
+        const res = await getInvestigationByPatientId(patientIdToUse);
+        invs = Array.isArray(res) ? res : (res?.data || []);
+      }
+      
+      const pendingRad = invs.filter(inv => {
+        const isMatch = labData?.dependantId 
+          ? String(inv.dependantId) === String(labData.dependantId)
+          : !inv.dependantId;
+        const invType = String(inv.type || '').toLowerCase();
+        const isRad = invType === 'radiology' || invType === 'imaging';
+        const isPending = inv.status !== 'completed' && inv.status !== 'cancelled';
+        return isMatch && isRad && isPending;
+      });
+      setPendingRadiologyCount(pendingRad.length);
+    } catch (e) {
+      console.warn("Failed to fetch pending radiology", e);
     }
 
     setError(null);
@@ -637,14 +663,16 @@ const patientName =
       }
 
       // Update patient status for regular patients and dependants
-      if (isDependant && labResult?.dependantId) {
+      if (labResult?.opdPatientId) {
+        // Handled below
+      } else if (isDependant && labResult?.dependantId) {
         await updateDependantStatus(labResult.dependantId, PATIENT_STATUS.LAB_COMPLETED);
       } else if (patientId && labResult) {
         await updatePatientStatus(patientId, PATIENT_STATUS.LAB_COMPLETED);
       }
 
       // Update OPD patient status
-      if (isOpdLabResult && labResult?.opdPatientId) {
+      if (labResult?.opdPatientId) {
         await updateOpdPatient(labResult.opdPatientId, { status: "awaiting_cashier" });
       }
       // Update investigation status for regular patients and dependants
@@ -654,7 +682,7 @@ const patientName =
           labResultId: labResultId,
         });
       }
-       if (isOpdLabResult && investigationId) {
+       if (labResult?.opdPatientId && investigationId) {
         await updateInvestigation(investigationId, {
           status: "completed",
           labResultId: labResultId,
@@ -687,7 +715,9 @@ const patientName =
       }
 
       // Route the patient to sonographer queue
-      if (isDependant && labResult?.dependantId) {
+      if (labResult?.opdPatientId) {
+        await updateOpdPatient(labResult.opdPatientId, { status: PATIENT_STATUS.AWAITING_SONOGRAPHER });
+      } else if (isDependant && labResult?.dependantId) {
         await updateDependantStatus(labResult.dependantId, PATIENT_STATUS.AWAITING_SONOGRAPHER);
       } else if (patientId && labResult) {
         await updatePatientStatus(patientId, PATIENT_STATUS.AWAITING_SONOGRAPHER);
@@ -710,7 +740,7 @@ const patientName =
       // Check for pending investigations today
       let pendingInvestigations = [];
       try {
-        if (isOpdLabResult && labResult?.opdPatientId) {
+        if (labResult?.opdPatientId) {
           const res = await getInvestigationRequestByOpdPatientId(labResult.opdPatientId);
           const list = Array.isArray(res) ? res : (res?.data ?? []);
           pendingInvestigations = list.filter(inv => inv.status !== 'completed' && String(inv._id || inv.id) !== String(effectiveInvestigationId));
@@ -762,8 +792,21 @@ const handleComplete = async () => {
   try {
     setCompleting(true);
     await updateInvestigation(effectiveInvestigationId, { status: "completed" });
+    
+    if (labResult?.opdPatientId) {
+      try {
+        await updateOpdPatient(labResult.opdPatientId, { status: "completed" });
+      } catch (e) {
+        console.warn("Failed to update OPD patient status:", e);
+      }
+    }
+
     toast.success("Investigation marked as completed");
     await fetchData(); 
+    
+    if (labResult?.opdPatientId) {
+      navigate('/dashboard/laboratory/incoming');
+    }
   } catch (err) {
     console.error("Error completing investigation:", err);
     toast.error("Failed to complete investigation");
@@ -805,28 +848,40 @@ const handleComplete = async () => {
                 >
                   Edit
                 </button>
-              </div>
                 <SendPatientModal
                     patientId={patientId}
                     patient={patient}
                     defaultDependantId={dependantId || labResult?.dependantId}
                     defaultDependantLabel={summarySubject?.fullName || patientInfo?.name}
                     lockSubject
-                     onUpdated={() => {
-                                refreshQueueCount();
-                                navigate('/dashboard/laboratory/incoming');
-                              }}
-                    allowedRoles={[
-                      'nurse',
-                      'labtechnician',
-                      'pharmacist',
-                      'cashier',
-                      'doctor',
-                      'medical-director',
-                      'sonographer',
-                    ]}
+                    isOpdPatient={!!labResult?.opdPatientId}
+                    onUpdated={() => {
+                      refreshQueueCount();
+                      navigate('/dashboard/laboratory/incoming');
+                    }}
+                    allowedRoles={
+                      labResult?.opdPatientId
+                        ? ['sonographer']
+                        : [
+                            'nurse',
+                            'labtechnician',
+                            'pharmacist',
+                            'cashier',
+                            'doctor',
+                            'medical-director',
+                            'sonographer',
+                          ]
+                    }
                   />
+              </div>
             </div>
+
+            {pendingRadiologyCount > 0 && (
+              <div className="alert alert-warning shadow-sm rounded-xl py-3 px-4 mb-6 flex items-center gap-3">
+                <span className="text-2xl">⚠️</span>
+                <span className="text-sm text-warning-content font-medium">This patient has <strong>{pendingRadiologyCount}</strong> pending radiology (scan) request(s).</span>
+              </div>
+            )}
 
             <div className="bg-white rounded-lg shadow-lg p-3 sm:p-6 lg:p-8 mb-6 min-w-0">
               {/* Patient Information Header */}
@@ -953,13 +1008,15 @@ const handleComplete = async () => {
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 mt-8 pt-8 border-t-2 border-gray-200 no-print">
                
            
-                 <button
-                  onClick={handleSendToDoctor}
-                  disabled={sendingToDoctor}
-                  className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
-                >
-                  {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
-                </button>
+                 {!labResult?.opdPatientId && (
+                   <button
+                    onClick={handleSendToDoctor}
+                    disabled={sendingToDoctor}
+                    className="w-full sm:flex-1 sm:min-w-[160px] px-6 py-3 bg-[#00943C] text-white font-semibold rounded-lg hover:bg-[#007a31] disabled:bg-gray-400 disabled:cursor-not-allowed transition-all"
+                  >
+                    {sendingToDoctor ? "Sending to Doctor..." : "Send to Doctor"}
+                  </button>
+                 )}
 
                 <button
                   onClick={handleComplete}
@@ -1044,6 +1101,7 @@ const handleComplete = async () => {
                 }
               `}</style>
             </div>
+            
           </section>
         </div>
       </div>

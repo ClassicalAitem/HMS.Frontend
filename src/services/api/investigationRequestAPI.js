@@ -104,7 +104,7 @@ export const createInvestigationRequestForCashier = async (data) => {
 export const getInvestigationRequestByOpdPatientId = async (opdPatientId) => {
   try {
     const response = await apiClient.get(`/investigation/getInvestigationRequestByOpdPatientId/${opdPatientId}`)
-    return response.data ?? []
+    return response.data?.data ?? response.data ?? []
   } catch (err) {
     if (err?.response?.status !== 404) {
       console.error('investigationsAPI: getInvestigationRequestByOpdPatientId error', err)
