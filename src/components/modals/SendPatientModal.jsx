@@ -3,9 +3,12 @@ import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import { updatePatient, updatePatientStatus } from '@/services/api/patientsAPI';
 import { updateDependant, updateDependantStatus } from '@/services/api/dependantAPI';
+import { updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
+import { getInvestigationByPatientId, getInvestigationRequestByOpdPatientId } from '@/services/api/investigationRequestAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 
-const STEP = { SUBJECT: 'subject', ROLE: 'role', STATUS: 'status' };
+const STEP = { SUBJECT: 'subject', ROLE: 'role', STATUS: 'status', WARNING: 'warning' };
 
 const roleConfig = {
   nurse: {
@@ -87,6 +90,8 @@ const SendPatientModal = ({
   
   const [notForConsultation, setNotForConsultation] = useState(false);
   const [consultationType, setConsultationType] = useState('Doctor');
+  const [pendingInvestigationsList, setPendingInvestigationsList] = useState([]);
+  const [pendingActionParams, setPendingActionParams] = useState(null);
 
   const dependants = patient?.dependants || [];
   const hasDependants = dependants.length > 0;
@@ -140,21 +145,86 @@ const lockedSubject = useMemo(() => {
 
   return null;
 }, [defaultDependantId, dependants, defaultDependantLabel, lockSubject, patientId, patient]);
-  const open = () => {
+  const shouldCheckInvestigationWarnings = () => {
+    const currentPath = (location.pathname || '').toLowerCase();
+    return currentPath.includes('/cashier/') || currentPath.includes('/hmo/') || currentPath.includes('/laboratory/') || currentPath.includes('/sonographer/');
+  };
+
+  const fetchPendingInvestigationWarnings = async (subject) => {
+    if (!subject?.id || !shouldCheckInvestigationWarnings()) return [];
+
+    try {
+      let list = [];
+
+      if (isOpdPatient) {
+        const res = await getInvestigationRequestByOpdPatientId(patientId);
+        list = Array.isArray(res) ? res : (res?.data ?? []);
+      } else {
+        const res = await getInvestigationByPatientId(patientId);
+        list = Array.isArray(res) ? res : (res?.data ?? []);
+      }
+
+      const normalized = (value = '') => String(value).trim().toLowerCase();
+      const pendingStatuses = new Set(['pending', 'in_progress', 'in progress', 'processing']);
+      
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      return list.filter((inv) => {
+        const isMatch = subject.type === 'dependant'
+          ? String(inv.dependantId) === String(subject.id)
+          : !inv.dependantId && (!inv.patientId || String(inv.patientId) === String(patientId));
+
+        if (!isMatch) return false;
+        
+        const invDate = new Date(inv.createdAt || inv.date);
+        if (isNaN(invDate.getTime()) || invDate < twentyFourHoursAgo) return false;
+
+        const status = normalized(inv.status);
+        return pendingStatuses.has(status);
+      });
+    } catch (err) {
+      console.warn('Failed to check pending investigations for send modal:', err);
+      return [];
+    }
+  };
+
+  const open = async () => {
     setNotForConsultation(false);
     setConsultationType('Doctor');
+    setPendingInvestigationsList([]);
+    setPendingActionParams(null);
+
+    let initialSubject = null;
     if (lockedSubject) {
-      setSelectedSubject(lockedSubject);
-      setStep(STEP.ROLE);
+      initialSubject = lockedSubject;
     } else if (!hasDependants) {
-      setSelectedSubject({ type: 'patient', id: patientId, label: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient' });
-      setStep(STEP.ROLE);
-    } else {
-      setStep(STEP.SUBJECT);
-      setSelectedSubject(null);
+      initialSubject = {
+        type: 'patient',
+        id: patientId,
+        label: `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient',
+      };
     }
-    setSelectedRole(null);
-    setSelectedStatus(null);
+
+    if (initialSubject) {
+      setIsSending(true);
+      setSelectedSubject(initialSubject);
+      
+      const warnings = await fetchPendingInvestigationWarnings(initialSubject);
+      
+      if (warnings.length > 0) {
+        setPendingInvestigationsList(warnings);
+        setStep(STEP.WARNING);
+      } else {
+        setStep(STEP.ROLE);
+      }
+      setIsSending(false);
+      setIsOpen(true);
+      return;
+    }
+
+    setSelectedSubject(null);
+    setStep(STEP.SUBJECT);
     setIsOpen(true);
   };
 
@@ -164,11 +234,27 @@ const lockedSubject = useMemo(() => {
     setSelectedSubject(null);
     setSelectedRole(null);
     setSelectedStatus(null);
+    setPendingActionParams(null);
   };
 
-  const handleSelectSubject = (subject) => {
+  const handleSelectSubject = async (subject) => {
+    setIsSending(true);
     setSelectedSubject(subject);
+    setPendingInvestigationsList([]);
+    setPendingActionParams(null);
+
+    if (shouldCheckInvestigationWarnings()) {
+      const warnings = await fetchPendingInvestigationWarnings(subject);
+      if (warnings.length > 0) {
+        setPendingInvestigationsList(warnings);
+        setStep(STEP.WARNING);
+        setIsSending(false);
+        return;
+      }
+    }
+
     setStep(STEP.ROLE);
+    setIsSending(false);
   };
 
   const handleSelectRole = (role) => {
@@ -183,18 +269,57 @@ const lockedSubject = useMemo(() => {
     }
   };
 
-  const handleComplete = async (subject) => {
+  const verifyNoPending = async (subject, targetRole) => {
+    const isLab = location.pathname.includes('/laboratory');
+    const isSonographer = location.pathname.includes('/sonographer');
+    const isCashierRoute = location.pathname.includes('/cashier');
+    const isHmo = location.pathname.includes('/hmo');
+
+    if (!(isLab || isSonographer || isCashierRoute || isHmo)) return true;
+    if (targetRole !== 'doctor' && targetRole !== 'medical-director' && targetRole !== 'completed') return true;
+
+    setIsSending(true);
+    try {
+      const pendingInvestigations = await fetchPendingInvestigationWarnings(subject);
+      if (pendingInvestigations.length > 0) {
+        setPendingInvestigationsList(pendingInvestigations);
+        setStep(STEP.WARNING);
+        setIsSending(false);
+        return false;
+      }
+    } catch (err) {
+      console.warn("Failed to check pending investigations:", err);
+    }
+    setIsSending(false);
+    return true;
+  };
+
+  const handleComplete = async (subject, force = false) => {
   if (!subject?.id) {
     toast.error('No subject selected');
     return;
   }
 
+  if (!force) {
+    const canProceed = await verifyNoPending(subject, 'completed');
+    if (!canProceed) {
+      setPendingActionParams({ type: 'complete', subject });
+      return;
+    }
+  }
+
   setIsSending(true);
   try {
     const isDependent = subject.type === 'dependant';
-    const promise = isDependent
-      ? updateDependantStatus(subject.id, { status: PATIENT_STATUS.COMPLETED })
-      : updatePatientStatus(subject.id, { status: PATIENT_STATUS.COMPLETED });
+    
+    let promise;
+    if (isOpdPatient) {
+      promise = updateOpdPatient(subject.id, { status: PATIENT_STATUS.COMPLETED });
+    } else if (isDependent) {
+      promise = updateDependantStatus(subject.id, { status: PATIENT_STATUS.COMPLETED });
+    } else {
+      promise = updatePatientStatus(subject.id, { status: PATIENT_STATUS.COMPLETED });
+    }
 
     toast.promise(promise, {
       loading: `Marking ${subject.label} as completed...`,
@@ -211,10 +336,18 @@ const lockedSubject = useMemo(() => {
     setIsSending(false);
   }
 };
-  const handleSend = async (role, status, subject) => {
+  const handleSend = async (role, status, subject, force = false) => {
     if (!subject?.id) {
       toast.error('No subject selected');
       return;
+    }
+
+    if (!force) {
+      const canProceed = await verifyNoPending(subject, role);
+      if (!canProceed) {
+        setPendingActionParams({ type: 'send', role, status, subject });
+        return;
+      }
     }
 
     setIsSending(true);
@@ -222,15 +355,25 @@ const lockedSubject = useMemo(() => {
       const isDependent = subject.type === 'dependant';
 
       if (isCashier && role === 'nurse') {
-        const updatePromise = isDependent
-          ? updateDependant(subject.id, { consultationType })
-          : updatePatient(subject.id, { consultationType });
+        let updatePromise;
+        if (isOpdPatient) {
+          updatePromise = updateOpdPatient(subject.id, { consultationType });
+        } else if (isDependent) {
+          updatePromise = updateDependant(subject.id, { consultationType });
+        } else {
+          updatePromise = updatePatient(subject.id, { consultationType });
+        }
         await updatePromise;
       }
 
-      const promise = isDependent
-        ? updateDependantStatus(subject.id, { status })
-        : updatePatientStatus(subject.id, { status });
+      let promise;
+      if (isOpdPatient) {
+        promise = updateOpdPatient(subject.id, { status });
+      } else if (isDependent) {
+        promise = updateDependantStatus(subject.id, { status });
+      } else {
+        promise = updatePatientStatus(subject.id, { status });
+      }
 
       toast.promise(promise, {
         loading: `Sending ${subject.label} to ${roleConfig[role].label}...`,
@@ -257,13 +400,15 @@ const lockedSubject = useMemo(() => {
     [STEP.SUBJECT]: 'Who are you sending?',
     [STEP.ROLE]: `Send ${selectedSubject?.label || ''} to...`,
     [STEP.STATUS]: `Select task for ${roleConfig[selectedRole]?.label || ''}`,
+    [STEP.WARNING]: '⚠️ Pending Investigations Found',
   };
 
   return (
     <>
       {/* Trigger button(s) — kept same as before for backward compat */}
       <div className={containerClass}>
-        <button className="btn btn-primary m-3" onClick={open} disabled={isSending}>
+        <button className="btn btn-primary m-3 flex items-center gap-2" onClick={open} disabled={isSending}>
+          {isSending && !isOpen && <span className="loading loading-spinner loading-sm" />}
           {lockedSubject ? `Send ${lockedSubject.label}` : 'Send Patient'}
         </button>
       </div>
@@ -461,6 +606,70 @@ const lockedSubject = useMemo(() => {
                       onClick={handleConfirmStatus}
                     >
                       {isSending ? <span className="loading loading-spinner loading-sm" /> : 'Send'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4 — Warning for Pending Investigations */}
+              {step === STEP.WARNING && (
+                <div className="space-y-4 mt-2">
+                  <p className="text-sm text-base-content/80">
+                    This patient still has the following pending or in-progress investigations requested today. Are you sure you want to proceed?
+                  </p>
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {pendingInvestigationsList.map(inv => (
+                      <div key={inv._id || inv.id} className="p-3 bg-base-200/50 rounded-lg border border-base-200">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="badge badge-primary badge-sm uppercase text-[10px] font-bold">
+                            {inv.type || 'Unknown Type'}
+                          </span>
+                          <span className="text-xs text-base-content/50">
+                            {inv.createdAt ? formatNigeriaDateTime(inv.createdAt) : ''}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(inv.tests || []).map((t, idx) => (
+                            <span key={idx} className="badge badge-ghost badge-sm bg-base-100">
+                              {typeof t === 'object' ? (t.name || t.code) : t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-3 border-t border-base-200">
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => {
+                        if (pendingActionParams) {
+                          setStep(pendingActionParams.role ? STEP.ROLE : STEP.SUBJECT);
+                          setPendingActionParams(null);
+                        } else {
+                          close();
+                        }
+                      }}
+                      disabled={isSending}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="btn btn-warning btn-sm"
+                      onClick={() => {
+                        if (pendingActionParams?.type === 'complete') {
+                          handleComplete(pendingActionParams.subject, true);
+                        } else if (pendingActionParams?.type === 'send') {
+                          handleSend(pendingActionParams.role, pendingActionParams.status, pendingActionParams.subject, true);
+                        } else {
+                          // Warning was shown proactively on open — just proceed to role selection
+                          setStep(STEP.ROLE);
+                        }
+                      }}
+                      disabled={isSending}
+                    >
+                      {isSending ? <span className="loading loading-spinner loading-sm" /> : 'Proceed Anyway'}
                     </button>
                   </div>
                 </div>
