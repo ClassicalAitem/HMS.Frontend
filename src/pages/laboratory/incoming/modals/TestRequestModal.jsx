@@ -1,10 +1,42 @@
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getInvestigationByPatientId, getInvestigationRequestByOpdPatientId } from "@/services/api/investigationRequestAPI";
 import { useNavigate } from "react-router-dom";
 import HmoStatusBadge from "@/components/common/HmoStatusBadge";
 
 const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLabResultId }) => {
   const navigate = useNavigate();
+  const [pendingRadiologyCount, setPendingRadiologyCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        let invs = [];
+        if (data?.opdPatientId) {
+          const res = await getInvestigationRequestByOpdPatientId(data.opdPatientId);
+          invs = Array.isArray(res) ? res : (res?.data || []);
+        } else if (data?.patientId || data?.patient?._id || data?.patient?.id) {
+          const pId = data.patientId || data.patient?._id || data.patient?.id;
+          const res = await getInvestigationByPatientId(pId);
+          invs = Array.isArray(res) ? res : (res?.data || []);
+        }
+        
+        const pendingRad = invs.filter(inv => {
+          const isMatch = data?.dependantId 
+            ? String(inv.dependantId) === String(data.dependantId)
+            : !inv.dependantId;
+          const invType = String(inv.type || '').toLowerCase();
+          const isRad = invType === 'radiology' || invType === 'imaging';
+          const isPending = inv.status !== 'completed' && inv.status !== 'cancelled';
+          return isMatch && isRad && isPending;
+        });
+        setPendingRadiologyCount(pendingRad.length);
+      } catch (e) {
+        console.warn("Failed to fetch pending radiology", e);
+      }
+    };
+    fetchPending();
+  }, [data]);
 
   const getPriorityBgColor = (status) => {
     if (status === "Urgent") return "#FFE2E2";
@@ -94,6 +126,13 @@ const TestRequestModal = ({ data, setShowModal2, onAcceptFromDetails, existingLa
             </p>
           </div>
         </div>
+
+        {pendingRadiologyCount > 0 && (
+          <div className="alert alert-warning shadow-sm rounded-xl py-2 px-3 mt-4 flex items-center gap-2">
+            <span className="text-xl">⚠️</span>
+            <span className="text-xs text-warning-content font-medium">This patient has <strong>{pendingRadiologyCount}</strong> pending radiology (scan) request(s).</span>
+          </div>
+        )}
 
         {/* Patient Information */}
         <div className="w-full mt-4">

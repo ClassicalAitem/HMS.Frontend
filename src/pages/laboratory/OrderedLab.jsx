@@ -436,13 +436,15 @@ const OrderedLab = () => {
                                 View Result
                               </button>
                             )}
-                            <button
-                              onClick={() => handleSendToDoctor(inv)}
-                              disabled={isSending}
-                              className="btn btn-xs btn-outline flex-1"
-                            >
-                              {isSending ? "Sending..." : "Send to Doctor"}
-                            </button>
+                            {!inv.opdPatientId && !inv.opdPatient && (
+                              <button
+                                onClick={() => handleSendToDoctor(inv)}
+                                disabled={isSending}
+                                className="btn btn-xs btn-outline flex-1"
+                              >
+                                {isSending ? "Sending..." : "Send to Doctor"}
+                              </button>
+                            )}
                           </>
                         ) : (
                           <>
@@ -452,13 +454,15 @@ const OrderedLab = () => {
                             >
                               Process Test
                             </button>
-                            <button
-                              onClick={() => handleSendToDoctor(inv)}
-                              disabled={isSending}
-                              className="btn btn-xs btn-outline flex-1"
-                            >
-                              {isSending ? "Sending..." : "Send to Doctor"}
-                            </button>
+                            {!inv.opdPatientId && !inv.opdPatient && (
+                              <button
+                                onClick={() => handleSendToDoctor(inv)}
+                                disabled={isSending}
+                                className="btn btn-xs btn-outline flex-1"
+                              >
+                                {isSending ? "Sending..." : "Send to Doctor"}
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
