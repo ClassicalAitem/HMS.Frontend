@@ -19,6 +19,23 @@ const isToday = (dateValue) => {
   );
 };
 
+const getId = (value) =>
+  value && typeof value === "object" ? value.id || value._id : value;
+
+const calculateAge = (dob) => {
+  if (!dob) return null;
+  const birthDate = new Date(dob);
+  if (Number.isNaN(birthDate.getTime())) return null;
+
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age -= 1;
+  }
+  return age >= 0 ? age : null;
+};
+
 const PharmacistAttendedToday = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
@@ -27,6 +44,8 @@ const PharmacistAttendedToday = () => {
   const [events, setEvents] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [ageFilter, setAgeFilter] = useState("all");
   const [page, setPage] = useState(0);
   const pageSize = 10;
 
@@ -47,20 +66,13 @@ const PharmacistAttendedToday = () => {
         const byKey = new Map();
         
         todaysDispenses.forEach((d) => {
-          const patientId =
-            d?.prescriptionId?.patientId ||
-            d?.patientId ||
-            d?.patient?.id ||
-            d?.patient?._id ||
-            d?.patientId?._id ||
-            null;
+          const patientId = getId(
+            d?.prescriptionId?.patientId || d?.patientId || d?.patient
+          ) || null;
 
-          const dependantId =
-            d?.prescriptionId?.dependantId ||
-            d?.dependantId ||
-            d?.dependant?.id ||
-            d?.dependant?._id ||
-            null;
+          const dependantId = getId(
+            d?.prescriptionId?.dependantId || d?.dependantId || d?.dependant
+          ) || null;
 
           const key = dependantId ? `dep-${dependantId}` : `pat-${patientId}`;
           
@@ -69,13 +81,13 @@ const PharmacistAttendedToday = () => {
             let name = "Unknown";
             let type = dependantId ? "Dependant" : "Patient";
             let displayId = "N/A";
+            const person = dependantId
+              ? d.dependant || (typeof d.dependantId === "object" ? d.dependantId : null)
+              : d.patient || (typeof d.patientId === "object" ? d.patientId : null) || d.opdPatient;
             
-            if (dependantId && d.dependant) {
-              name = `${d.dependant.firstName || ""} ${d.dependant.lastName || ""}`.trim() || "Dependant";
-              displayId = d.dependant.hospitalId || (d.patient ? d.patient.hospitalId : null) || patientId;
-            } else if (d.patient) {
-              name = `${d.patient.firstName || ""} ${d.patient.lastName || ""}`.trim() || "Patient";
-              displayId = d.patient.hospitalId || patientId;
+            if (person) {
+              name = `${person.firstName || ""} ${person.lastName || ""}`.trim() || (dependantId ? "Dependant" : "Patient");
+              displayId = person.hospitalId || (d.patient ? d.patient.hospitalId : null) || patientId;
             }
 
             byKey.set(key, {
@@ -85,6 +97,8 @@ const PharmacistAttendedToday = () => {
               name,
               type,
               displayId,
+              gender: person?.gender || "",
+              age: calculateAge(person?.dob || person?.dateOfBirth),
               medications: (d.items || []).map(item => item.drugName || 'Drug').join(', '),
               time: d.dispensedAt || d.createdAt
             });
@@ -128,14 +142,21 @@ const PharmacistAttendedToday = () => {
     [events]
   );
 
-  useEffect(() => { setPage(0); }, [query, enriched.length]);
+  useEffect(() => { setPage(0); }, [query, genderFilter, ageFilter, enriched.length]);
 
   const q = query.trim().toLowerCase();
-  const filteredItems = q
-    ? enriched.filter((d) =>
-        [d?.name, d?.displayId, d?.medications].filter(Boolean).join(" ").toLowerCase().includes(q)
-      )
-    : enriched;
+  const filteredItems = enriched.filter((d) => {
+    const matchesQuery = !q || [d?.name, d?.displayId, d?.medications]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+    const matchesGender = genderFilter === "all" || String(d.gender).toLowerCase() === genderFilter;
+    const matchesAge = ageFilter === "all"
+      || (ageFilter === "adult" && d.age !== null && d.age >= 18)
+      || (ageFilter === "child" && d.age !== null && d.age < 18);
+    return matchesQuery && matchesGender && matchesAge;
+  });
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const visible = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
@@ -170,9 +191,32 @@ const PharmacistAttendedToday = () => {
                 className="input input-bordered input-sm pl-9 w-full"
               />
             </div>
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
+              className="select select-bordered select-sm w-full sm:w-auto"
+              aria-label="Filter by gender"
+            >
+              <option value="all">All genders</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+            <select
+              value={ageFilter}
+              onChange={(e) => setAgeFilter(e.target.value)}
+              className="select select-bordered select-sm w-full sm:w-auto"
+              aria-label="Filter by age group"
+            >
+              <option value="all">All ages</option>
+              <option value="adult">Adults (18+)</option>
+              <option value="child">Kids (0-17)</option>
+            </select>
             <div className="flex items-center gap-2 justify-between sm:justify-start">
-              {query && (
-                <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm flex-1 sm:flex-none">
+              {(query || genderFilter !== "all" || ageFilter !== "all") && (
+                <button
+                  onClick={() => { setQuery(""); setGenderFilter("all"); setAgeFilter("all"); }}
+                  className="btn btn-ghost btn-sm flex-1 sm:flex-none"
+                >
                   Clear
                 </button>
               )}
@@ -206,9 +250,11 @@ const PharmacistAttendedToday = () => {
                 <div className="py-16">
                   <EmptyState
                     title="No patients attended yet"
-                    description={query ? "No matches for your search." : "No drugs dispensed today."}
-                    actionLabel={query ? "Clear search" : "Refresh"}
-                    onAction={query ? () => setQuery("") : onRefresh}
+                    description={query || genderFilter !== "all" || ageFilter !== "all" ? "No matches for the selected filters." : "No drugs dispensed today."}
+                    actionLabel={query || genderFilter !== "all" || ageFilter !== "all" ? "Clear filters" : "Refresh"}
+                    onAction={query || genderFilter !== "all" || ageFilter !== "all"
+                      ? () => { setQuery(""); setGenderFilter("all"); setAgeFilter("all"); }
+                      : onRefresh}
                   />
                 </div>
               ) : (
