@@ -107,16 +107,21 @@ export const refreshToken = createAsyncThunk(
 
 export const changePassword = createAsyncThunk(
   'auth/changePassword',
-  async (passwordData, { rejectWithValue }) => {
+  async (passwordData, { getState, rejectWithValue }) => {
     try {
-      // Get user ID from localStorage (stored during login redirect)
-      const userId = localStorage.getItem('changePasswordUserId');
+      const { auth } = getState();
+      // Get user ID either from active session OR localStorage (stored during login redirect)
+      const userId = auth?.user?.id || auth?.user?._id || localStorage.getItem('changePasswordUserId');
       
       if (!userId) {
         throw new Error('User ID not found. Please log in again.');
       }
+      const apiPayload = {
+        oldPassword: passwordData.currentPassword || passwordData.oldPassword,
+        newPassword: passwordData.newPassword
+      };
       
-      const response = await authAPI.changePassword(passwordData, userId);
+      const response = await authAPI.changePassword(apiPayload, userId);
       
       if (response.data.success) {
         localStorage.removeItem('changePasswordUserId');

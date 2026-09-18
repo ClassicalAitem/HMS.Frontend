@@ -9,9 +9,11 @@ import { getDependantById } from '@/services/api/dependantAPI'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import VitalsTab from '@/components/admitted/VitalsTab'
 import WardRoundTab from '@/components/admitted/WardRoundTab'
+import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
 import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
+import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
 import AdmissionBillingModal from '@/components/modals/AdmissionBillingModal'
 import toast from 'react-hot-toast'
 import {
@@ -23,6 +25,7 @@ import {
   FaBed,
   FaArrowLeft,
   FaCashRegister,
+  FaPills,
   FaPaperPlane,
 } from 'react-icons/fa'
 
@@ -101,7 +104,12 @@ const AdmittedPatient = () => {
         ...(dependantId ? { dependantId } : {}),
       })
       const adm = res?.data ?? res
-      if (adm) setAdmission(adm)
+      if (Array.isArray(adm)) {
+        const active = adm.find(a => a.status !== 'discharged') || adm[0];
+        if (active) setAdmission(active);
+      } else if (adm) {
+        setAdmission(adm);
+      }
     } catch (err) {
       console.warn('Failed to load admission record', err)
     } finally {
@@ -271,6 +279,18 @@ const AdmittedPatient = () => {
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('treatment')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'treatment'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaPills className="w-4 h-4" />
+                  Treatment Plan
+                </button>
+
+                <button
                   onClick={() => setActiveTab('blood')}
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'blood'
@@ -350,11 +370,20 @@ const AdmittedPatient = () => {
               />
             )}
 
+            {activeTab === 'treatment' && (
+              <TreatmentPlanTab
+                admissionId={admission?._id || admission?.id}
+                isPharmacy={false}
+                isNurse={true}
+              />
+            )}
+
             {activeTab === 'blood' && (
               <BloodTransfusionTab
                 patientId={patientId}
                 dependantId={dependantId}
                 consultationId={consultationId}
+                admissionId={admission?.id || admission?._id}
                 isDoctor={false}
                 isNurse={true}
               />
