@@ -51,9 +51,33 @@ export const updateDispense = async (id, payload) => {
   }
 }
 
+export const dispenseMedicationSlot = async (admissionId, payload) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.post(
+    `/dispense/slot/${admissionId}`,
+    payload
+  )
+  return response.data ?? response
+}
+
+export const getMedicationDispenseSlots = async (admissionId) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.get(`/dispense/slots/${admissionId}`)
+  return response.data?.data ?? response.data ?? response
+}
+
+export const createTreatmentBill = async (admissionId) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.post(`/dispense/treatment-bill/${admissionId}`)
+  return response.data ?? response
+}
+
 export default {
   getDispenses,
   getDispense,
   createDispense,
-  updateDispense
+  updateDispense,
+  dispenseMedicationSlot,
+  getMedicationDispenseSlots,
+  createTreatmentBill
 }

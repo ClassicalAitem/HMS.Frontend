@@ -676,9 +676,9 @@ const handleOrderCreated = () => {
                           <div className="flex gap-2 shrink-0">
                             <button
                               className="btn btn-sm btn-outline flex-1 sm:flex-none"
-                              onClick={() => setSelectedRecord(selectedRecord?._id === record._id ? null : record)}
+                              onClick={() => setSelectedRecord(getAntenatalRecordId(selectedRecord) === getAntenatalRecordId(record) ? null : record)}
                             >
-                              {selectedRecord?._id === record._id ? 'Hide Details' : 'View Details'}
+                              {getAntenatalRecordId(selectedRecord) === getAntenatalRecordId(record) ? 'Hide Details' : 'View Details'}
                             </button>
                            <button
                             className="btn btn-sm btn-primary flex-1 sm:flex-none"
@@ -695,20 +695,14 @@ const handleOrderCreated = () => {
                             Edit
                           </button>
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  </div>
-                </div>
-              </div>
+                          </div>
 
-              {/* Selected Record Details */}
-              {selectedRecord && (
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="px-2 sm:px-6">
-                    <p className="text-sm text-base-content/70">Created by: Dr  {getRecordDoctorName(selectedRecord)}</p>
-                  </div>
+                        {/* Selected Record Details rendered inside the record card */}
+                        {selectedRecord && getAntenatalRecordId(selectedRecord) === getAntenatalRecordId(record) && (
+                          <div className="mt-4 pt-4 border-t border-base-200 space-y-4 sm:space-y-6">
+                            <div className="px-2 sm:px-6">
+                              <p className="text-sm text-base-content/70">Created by: Dr  {getRecordDoctorName(selectedRecord)}</p>
+                            </div>
                   {/* Present Pregnancy */}
                   {selectedRecord.presentPregnancyHistories && selectedRecord.presentPregnancyHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
@@ -1170,22 +1164,24 @@ const handleOrderCreated = () => {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex gap-1 sm:gap-2 shrink-0">
-                                      <button
-                                        className="btn btn-xs btn-ghost text-info"
-                                        onClick={() => handleEditLab(lab)}
-                                        disabled={loadingTreatmentData}
-                                      >
-                                        ✏️
-                                      </button>
-                                      <button
-                                        className="btn btn-xs btn-ghost text-error"
-                                        onClick={() => handleDeleteLab(lab._id)}
-                                        disabled={loadingTreatmentData}
-                                      >
-                                        🗑️
-                                      </button>
-                                    </div>
+                                    {!(lab.isBilled || lab.paymentStatus === 'paid') && (
+                                      <div className="flex gap-1 sm:gap-2 shrink-0">
+                                        <button
+                                          className="btn btn-xs btn-ghost text-info"
+                                          onClick={() => handleEditLab(lab)}
+                                          disabled={loadingTreatmentData}
+                                        >
+                                          ✏️
+                                        </button>
+                                        <button
+                                          className="btn btn-xs btn-ghost text-error"
+                                          onClick={() => handleDeleteLab(lab._id)}
+                                          disabled={loadingTreatmentData}
+                                        >
+                                          🗑️
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -1268,22 +1264,24 @@ const handleOrderCreated = () => {
                                         Prescribed: {prescription.createdAt ? formatNigeriaDate(prescription.createdAt) : 'N/A'}
                                       </p>
                                     </div>
-                                    <div className="flex gap-1 sm:gap-2 shrink-0">
-                                      <button
-                                        className="btn btn-xs btn-ghost text-info"
-                                        onClick={() => handleEditPrescription(prescription)}
-                                        disabled={loadingTreatmentData}
-                                      >
-                                        ✏️
-                                      </button>
-                                      <button
-                                        className="btn btn-xs btn-ghost text-error"
-                                        onClick={() => handleDeletePrescription(prescription._id)}
-                                        disabled={loadingTreatmentData}
-                                      >
-                                        🗑️
-                                      </button>
-                                    </div>
+                                    {!(prescription.isBilled || prescription.paymentStatus === 'paid') && (
+                                      <div className="flex gap-1 sm:gap-2 shrink-0">
+                                        <button
+                                          className="btn btn-xs btn-ghost text-info"
+                                          onClick={() => handleEditPrescription(prescription)}
+                                          disabled={loadingTreatmentData}
+                                        >
+                                          ✏️
+                                        </button>
+                                        <button
+                                          className="btn btn-xs btn-ghost text-error"
+                                          onClick={() => handleDeletePrescription(prescription._id)}
+                                          disabled={loadingTreatmentData}
+                                        >
+                                          🗑️
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -1298,8 +1296,14 @@ const handleOrderCreated = () => {
                       </div>
                     </div>
                   </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           ) : (
             <div className="card bg-base-100 shadow-sm">

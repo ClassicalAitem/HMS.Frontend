@@ -25,10 +25,22 @@ export const deleteIvFluidEntry = async (id) => {
   return res.data ?? res
 }
 
+export const orderIvFluidConsumables = async (orderId, payload) => {
+  const res = await apiClient.post(`/iv-fluid/order/${orderId}/consumables`, payload)
+  return res.data ?? res
+}
+
+export const dispenseIvFluidConsumables = async (orderId, consumableId) => {
+  const res = await apiClient.patch(`/iv-fluid/order/${orderId}/consumables/${consumableId}/dispense`)
+  return res.data ?? res
+}
+
 export default {
   createIvFluidOrder,
   updateIvFluidOrderStatus,
   createIvFluidEntry,
   getIvFluidByPatient,
   deleteIvFluidEntry,
+  orderIvFluidConsumables,
+  dispenseIvFluidConsumables,
 }
