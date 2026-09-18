@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { FaThLarge, FaSignOutAlt, FaBed } from "react-icons/fa";
+import { FaThLarge, FaSignOutAlt, FaBed, FaClipboardList } from "react-icons/fa";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 import { FiUser } from "react-icons/fi";
 import { FaVials } from "react-icons/fa6";
@@ -12,37 +12,12 @@ import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg";
 import NotificationBadge from "@/components/common/NotificationBadge";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { getAdmissions } from "@/services/api/admissionApi";
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
   const { incomingCount, labReadyCount } = useNotifications();
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchAdmittedCount = async () => {
-      try {
-        const res = await getAdmissions();
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : [];
-        const active = list.filter((a) => a.status !== "discharged" && !!a.confirmedAt);
-        if (mounted) {
-          setAdmittedCount(active.length);
-        }
-      } catch (e) {
-        // quiet fallback
-      }
-    };
-    fetchAdmittedCount();
-    const interval = setInterval(fetchAdmittedCount, 30000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
 
   const generateInitials = (firstName, lastName) => {
     if (!firstName && !lastName) return "N";
@@ -92,7 +67,6 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Admission",
       path: "/dashboard/nurse/admitted",
       active: isAdmittedActive,
-      badge: admittedCount,
     },
     {
       icon: FiUser,
@@ -118,6 +92,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Appointments",
       path: "/dashboard/nurse/appointments",
       active: location.pathname.startsWith("/dashboard/nurse/appointments"),
+    },
+    {
+      icon: FaClipboardList,
+      label: "Assigned Tasks",
+      path: "/dashboard/nurse/assignedTask",
+      active: location.pathname.startsWith("/dashboard/nurse/assignedTask"),
     },
   ];
 

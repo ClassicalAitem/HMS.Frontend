@@ -6,36 +6,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
-import { getAdmissions } from '@/services/api/admissionApi';
+
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchAdmittedCount = async () => {
-      try {
-        const res = await getAdmissions();
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : [];
-        const active = list.filter((a) => a.status !== 'discharged' && !!a.confirmedAt);
-        if (mounted) {
-          setAdmittedCount(active.length);
-        }
-      } catch (e) {
-        // quiet fallback
-      }
-    };
-    fetchAdmittedCount();
-    const interval = setInterval(fetchAdmittedCount, 30000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
 
   // Function to generate initials from first and last name
   const generateInitials = (firstName, lastName) => {
@@ -95,8 +71,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: FaBed,
       label: 'Admission',
       path: '/superadmin/admitted',
-      active: location.pathname.startsWith('/superadmin/admitted'),
-      badge: admittedCount > 0 ? admittedCount : null
+      active: location.pathname.startsWith('/superadmin/admitted')
     },
     {
       icon: MdCalendarMonth,
@@ -156,7 +131,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
+      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12 overflow-y-auto min-h-0">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
