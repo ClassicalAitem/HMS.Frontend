@@ -15,8 +15,26 @@ export const deleteEbtRecord = async (id) => {
   return res.data ?? res
 }
 
+export const updateEbtStatus = async (id, status, nurseNote) => {
+  const res = await apiClient.patch(`/ebt/${id}/status`, { status, nurseNote })
+  return res.data ?? res
+}
+
+export const orderEbtConsumables = async (id, payload) => {
+  const res = await apiClient.post(`/ebt/${id}/consumables`, payload)
+  return res.data ?? res
+}
+
+export const dispenseEbtConsumables = async (id, consumableId) => {
+  const res = await apiClient.patch(`/ebt/${id}/consumables/${consumableId}/dispense`)
+  return res.data ?? res
+}
+
 export default {
   createEbtRecord,
   getEbtByPatient,
   deleteEbtRecord,
+  updateEbtStatus,
+  orderEbtConsumables,
+  dispenseEbtConsumables,
 }

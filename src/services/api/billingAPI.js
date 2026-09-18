@@ -204,6 +204,13 @@ export const getBillingsByOpdPatientId = async (opdPatientId) => {
   return response;
 };
 
+export const getBillingsByAdmissionId = async (admissionId) => {
+  if (!admissionId) throw new Error('Admission ID is required');
+  const url = `/billing/admission/${admissionId}`;
+  const response = await apiClient.get(url);
+  return response;
+};
+
 export const createBilling = async (patientId, billData) => {
   if (!patientId) throw new Error('Patient ID is required:');
 
@@ -324,6 +331,7 @@ export default {
   getBillingbypatientId,
   getPatientBillHistory,
   getBillingsByOpdPatientId,
+  getBillingsByAdmissionId,
   getAllBillings,
   getAllReceipts,
   getAllReceiptByPatientId,
