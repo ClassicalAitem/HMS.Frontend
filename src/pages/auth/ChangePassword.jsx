@@ -2,7 +2,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import FrontdeskSidebar from '@/components/frontdesk/dashboard/Sidebar';
+import PharmacistSidebar from '@/components/pharmacist/dashboard/Sidebar';
+import DoctorSidebar from '@/components/doctor/dashboard/Sidebar';
+import NurseSidebar from '@/components/nurse/dashboard/Sidebar';
+import CashierSidebar from '@/components/cashier/dashboard/Sidebar';
+import AdminSidebar from '@/components/admin/dashboard/Sidebar';
+import SuperadminSidebar from '@/components/superadmin/dashboard/Sidebar';
+import MedicalDirectorSidebar from '@/components/medical-director/dashboard/Sidebar';
+import HmoSidebar from '@/components/hmo/dashboard/Sidebar';
+import SurgeonSidebar from '@/components/surgeon/dashboard/Sidebar';
+import SonographerSidebar from '@/components/sonographer/dashboard/Sidebar';
 import { FaEye, FaEyeSlash, FaLock, FaCheck } from 'react-icons/fa';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -33,6 +43,27 @@ const ChangePassword = () => {
   const closeSidebar = () => {
     setIsSidebarOpen(false);
   };
+
+  const getSidebarComponent = (role) => {
+    switch (role) {
+      case 'pharmacist': return PharmacistSidebar;
+      case 'doctor': return DoctorSidebar;
+      case 'nurse': return NurseSidebar;
+      case 'cashier': return CashierSidebar;
+      case 'admin': return AdminSidebar;
+      case 'super-admin':
+      case 'superadmin': return SuperadminSidebar;
+      case 'medical-director': return MedicalDirectorSidebar;
+      case 'hmo': return HmoSidebar;
+      case 'surgeon': return SurgeonSidebar;
+      case 'sonographer': return SonographerSidebar;
+      case 'frontdesk':
+      case 'front-desk':
+      default: return FrontdeskSidebar;
+    }
+  };
+
+  const SidebarComponent = getSidebarComponent(user?.role);
 
   const togglePasswordVisibility = (field) => {
     setShowPasswords(prev => ({
@@ -161,7 +192,7 @@ const ChangePassword = () => {
         fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
+        <SidebarComponent onCloseSidebar={closeSidebar} />
       </div>
       
       {/* Main Content */}
