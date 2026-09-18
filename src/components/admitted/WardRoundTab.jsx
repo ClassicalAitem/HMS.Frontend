@@ -67,8 +67,8 @@ const WardRoundTab = ({
   })
   const [loadingRelated, setLoadingRelated] = useState(false)
 
-  // Track which historical rounds are expanded (set of round IDs)
-  const [expandedRounds, setExpandedRounds] = useState(new Set())
+  // Track which historical round is selected for the side drawer
+  const [selectedRound, setSelectedRound] = useState(null)
 
   // Ensure effective consultation ID is always a string, never an object
   const effectiveConsultationId = useMemo(() => {
@@ -161,16 +161,9 @@ const WardRoundTab = ({
         wardRounds: sorted,
       })
 
-      // By default, expand the newest round
+      // By default, do not select any round
       if (sorted.length > 0) {
-        const newestId = String(sorted[0]?.id || sorted[0]?._id)
-        if (newestId) {
-          setExpandedRounds((prev) => {
-            const next = new Set(prev)
-            next.add(newestId)
-            return next
-          })
-        }
+        // const newestId = String(sorted[0]?.id || sorted[0]?._id)
       }
     } catch (err) {
       console.warn('Failed to load related records', err)
@@ -191,16 +184,8 @@ const WardRoundTab = ({
     }))
   }
 
-  const toggleRoundExpand = (roundId) => {
-    setExpandedRounds((prev) => {
-      const next = new Set(prev)
-      if (next.has(roundId)) {
-        next.delete(roundId)
-      } else {
-        next.add(roundId)
-      }
-      return next
-    })
+  const handleRoundClick = (round) => {
+    setSelectedRound(round)
   }
 
   const handlePreSubmit = (e) => {
@@ -715,18 +700,10 @@ const WardRoundTab = ({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => {
-                  if (expandedRounds.size === sortedRounds.length) {
-                    setExpandedRounds(new Set())
-                  } else {
-                    setExpandedRounds(
-                      new Set(sortedRounds.map((r) => String(r.id || r._id)).filter(Boolean))
-                    )
-                  }
-                }}
+                onClick={() => setSelectedRound(null)}
                 className="btn btn-ghost btn-xs text-primary font-medium"
               >
-                {expandedRounds.size === sortedRounds.length ? 'Collapse All' : 'Expand All'}
+                {selectedRound ? 'Close Details' : ''}
               </button>
             </div>
           )}
@@ -745,31 +722,28 @@ const WardRoundTab = ({
           <div className="space-y-3">
             {sortedRounds.map((round, idx) => {
               const roundId = String(round.id || round._id || idx)
-              const isExpanded = expandedRounds.has(roundId)
-
               const isNurseAuthor = round.doctor?.accountType === 'nurse'
               const clinicianName = round.doctor
                 ? `${isNurseAuthor ? 'Nurse' : 'Dr.'} ${round.doctor.firstName || ''} ${
                     round.doctor.lastName || ''
                   }`.trim()
                 : 'Attending Clinician'
-
               const roundPrescriptions = getRoundPrescriptions(round)
               const roundInvestigations = getRoundInvestigations(round)
 
               return (
                 <div
                   key={roundId}
-                  className={`rounded-xl border transition-all duration-200 ${
+                  onClick={() => handleRoundClick(round)}
+                  className={`rounded-xl border transition-all duration-200 cursor-pointer select-none ${
                     round.isDischargeRound
                       ? 'bg-warning/5 border-warning/30 hover:border-warning'
                       : 'bg-base-200/20 border-base-200 hover:border-primary/40'
                   }`}
                 >
-                  {/* Round Card Header (Clickable to toggle expand) */}
+                  {/* Round Card Header */}
                   <div
-                    onClick={() => toggleRoundExpand(roundId)}
-                    className="p-3.5 sm:p-4 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 select-none"
+                    className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -821,161 +795,139 @@ const WardRoundTab = ({
 
                       <button
                         type="button"
-                        className="btn btn-ghost btn-xs btn-circle text-base-content/60"
-                        title={isExpanded ? 'Collapse' : 'Expand'}
+                        className="btn btn-ghost btn-xs text-primary hover:bg-primary/10"
                       >
-                        {isExpanded ? (
-                          <FaChevronUp className="w-3 h-3" />
-                        ) : (
-                          <FaChevronDown className="w-3 h-3" />
-                        )}
+                        View Full Details
                       </button>
                     </div>
                   </div>
 
-                  {/* Round Card Expanded Body */}
-                  {isExpanded && (
-                    <div className="p-4 pt-1 sm:p-5 sm:pt-2 border-t border-base-200/70 space-y-4 animate-fadeIn">
-                      {/* Note Content */}
-                      <div className="space-y-1">
-                        <span className="text-[11px] uppercase tracking-wider font-bold text-base-content/60">
-                          Clinical Progress Note
-                        </span>
-                        <p className="text-xs sm:text-sm text-base-content leading-relaxed whitespace-pre-wrap bg-base-100 p-3 rounded-xl border border-base-200">
-                          {round.note}
-                        </p>
-                      </div>
-
-                      {/* Discharge Instructions (if discharge round) */}
-                      {round.dischargeNote && (
-                        <div className="bg-warning/10 p-3 rounded-xl border border-warning/20 space-y-1">
-                          <span className="text-xs font-bold text-warning flex items-center gap-1.5">
-                            <FaSignOutAlt className="w-3 h-3" /> Discharge Instructions & Regimen
-                          </span>
-                          <p className="text-xs text-base-content/90 whitespace-pre-wrap leading-relaxed">
-                            {round.dischargeNote}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Direct Inline Prescriptions List */}
-                      {roundPrescriptions.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-primary flex items-center gap-1.5">
-                              <FaPrescriptionBottleAlt className="w-3.5 h-3.5" />
-                              Prescribed Medications ({roundPrescriptions.length})
-                            </span>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            {roundPrescriptions.map((rx, rxIdx) => (
-                              <div
-                                key={rx._id || rx.id || rxIdx}
-                                className="bg-base-100 p-3 rounded-xl border border-base-200 text-xs space-y-1.5 shadow-2xs"
-                              >
-                                <div className="flex items-center justify-between font-bold text-base-content border-b border-base-200/60 pb-1">
-                                  <span>Prescription #{String(rx._id || rx.id).slice(-6)}</span>
-                                  <span className="badge badge-outline badge-xs capitalize">
-                                    {rx.status || 'Pending'}
-                                  </span>
-                                </div>
-                                <div className="space-y-1 pt-0.5">
-                                  {(rx.medications || []).map((med, mIdx) => (
-                                    <div
-                                      key={mIdx}
-                                      className="flex flex-col sm:flex-row sm:items-center justify-between text-base-content/90 font-medium gap-1"
-                                    >
-                                      <div>
-                                        • <span className="font-bold">{med.drugName}</span> -{' '}
-                                        <span className="badge badge-ghost badge-xs font-semibold">{med.dosage}</span>{' '}
-                                        ({med.frequency}, {med.duration})
-                                        {med.instructions && (
-                                          <span className="text-base-content/60 italic ml-1">
-                                            — {med.instructions}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {med.lineTotal ? (
-                                        <span className="text-primary font-semibold text-[11px]">
-                                          ₦{Number(med.lineTotal).toLocaleString()}
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Direct Inline Investigations List */}
-                      {roundInvestigations.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-primary flex items-center gap-1.5">
-                              <FaFlask className="w-3.5 h-3.5" />
-                              Ordered Investigations ({roundInvestigations.length})
-                            </span>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            {roundInvestigations.map((inv, invIdx) => {
-                              const isRad = inv.type === 'radiology'
-                              return (
-                                <div
-                                  key={inv._id || inv.id || invIdx}
-                                  className="bg-base-100 p-3 rounded-xl border border-base-200 text-xs space-y-1.5 shadow-2xs"
-                                >
-                                  <div className="flex items-center justify-between font-bold text-base-content border-b border-base-200/60 pb-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="badge badge-outline badge-xs capitalize">
-                                        {isRad ? 'Radiology' : 'Laboratory'}
-                                      </span>
-                                      <span>Order #{String(inv._id || inv.id).slice(-6)}</span>
-                                      {inv.priority && (
-                                        <span className="badge badge-ghost badge-xs uppercase font-bold text-[10px]">
-                                          {inv.priority}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <span className="badge badge-outline badge-xs capitalize">
-                                      {inv.status || 'Requested'}
-                                    </span>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                    {(inv.tests || []).map((t, tIdx) => (
-                                      <span
-                                        key={tIdx}
-                                        className="badge badge-ghost badge-sm text-xs gap-1 font-medium bg-base-200"
-                                      >
-                                        {t.name || t}
-                                        {t.isCustom && <span className="text-warning">*</span>}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Fallback if round has neither meds nor labs */}
-                      {roundPrescriptions.length === 0 && roundInvestigations.length === 0 && (
-                        <div className="text-[11px] text-base-content/50 italic">
-                          No prescriptions or laboratory investigations ordered during this assessment.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Expanded Body removed in favor of side drawer */}
                 </div>
               )
             })}
           </div>
         )}
       </div>
+
+      {/* Side Drawer for Selected Ward Round Details */}
+      {selectedRound && (
+        <div className="fixed inset-0 z-[100] flex justify-end bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedRound(null)}>
+          <div className="w-full max-w-lg h-full bg-base-100 shadow-2xl flex flex-col animate-slideInRight" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 sm:p-6 border-b border-base-200 flex items-center justify-between bg-base-200/50">
+              <div>
+                <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
+                  <FaNotesMedical className="text-primary w-5 h-5" />
+                  Ward Round Details
+                </h3>
+                <p className="text-xs text-base-content/60 mt-1">
+                  {formatNigeriaDateTimeShort(selectedRound.createdAt)}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedRound(null)}
+                className="btn btn-circle btn-ghost btn-sm"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+              {(() => {
+                const roundPrescriptions = getRoundPrescriptions(selectedRound)
+                const roundInvestigations = getRoundInvestigations(selectedRound)
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <span className="text-xs uppercase tracking-wider font-bold text-base-content/60">
+                        Clinical Progress Note
+                      </span>
+                      <p className="text-sm text-base-content leading-relaxed whitespace-pre-wrap bg-base-200/30 p-4 rounded-xl border border-base-200">
+                        {selectedRound.note}
+                      </p>
+                    </div>
+
+                    {selectedRound.dischargeNote && (
+                      <div className="bg-warning/10 p-4 rounded-xl border border-warning/20 space-y-2">
+                        <span className="text-sm font-bold text-warning flex items-center gap-1.5">
+                          <FaSignOutAlt className="w-4 h-4" /> Discharge Instructions
+                        </span>
+                        <p className="text-sm text-base-content/90 whitespace-pre-wrap leading-relaxed">
+                          {selectedRound.dischargeNote}
+                        </p>
+                      </div>
+                    )}
+
+                    {roundPrescriptions.length > 0 && (
+                      <div className="space-y-3">
+                        <span className="text-sm font-bold text-primary flex items-center gap-1.5 border-b border-base-200 pb-2">
+                          <FaPrescriptionBottleAlt className="w-4 h-4" />
+                          Prescribed Medications ({roundPrescriptions.length})
+                        </span>
+                        <div className="space-y-2">
+                          {roundPrescriptions.map((rx, rxIdx) => (
+                            <div key={rxIdx} className="bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm space-y-2">
+                              <div className="flex justify-between font-bold text-sm border-b border-base-200/60 pb-2">
+                                <span>Rx #{String(rx._id || rx.id).slice(-6)}</span>
+                                <span className="badge badge-outline badge-sm capitalize">{rx.status || 'Pending'}</span>
+                              </div>
+                              <div className="space-y-2 pt-1 text-sm">
+                                {(rx.medications || []).map((med, mIdx) => (
+                                  <div key={mIdx} className="flex flex-col sm:flex-row sm:items-center justify-between text-base-content/90 font-medium gap-1">
+                                    <div>
+                                      • <span className="font-bold">{med.drugName}</span> -{' '}
+                                      <span className="badge badge-ghost badge-sm">{med.dosage}</span> ({med.frequency}, {med.duration})
+                                      {med.instructions && <span className="text-base-content/60 italic ml-1">— {med.instructions}</span>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {roundInvestigations.length > 0 && (
+                      <div className="space-y-3 pt-2">
+                        <span className="text-sm font-bold text-primary flex items-center gap-1.5 border-b border-base-200 pb-2">
+                          <FaFlask className="w-4 h-4" />
+                          Ordered Investigations ({roundInvestigations.length})
+                        </span>
+                        <div className="space-y-2">
+                          {roundInvestigations.map((inv, invIdx) => (
+                            <div key={invIdx} className="bg-base-100 p-4 rounded-xl border border-base-200 shadow-sm space-y-2">
+                              <div className="flex justify-between font-bold text-sm border-b border-base-200/60 pb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="badge badge-outline badge-sm capitalize">{inv.type === 'radiology' ? 'Radiology' : 'Lab'}</span>
+                                  <span>Order #{String(inv._id || inv.id).slice(-6)}</span>
+                                </div>
+                                <span className="badge badge-outline badge-sm capitalize">{inv.status || 'Requested'}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {(inv.tests || []).map((t, tIdx) => (
+                                  <span key={tIdx} className="badge badge-ghost badge-sm gap-1 bg-base-200">
+                                    {t.name || t}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+            <div className="p-4 sm:p-6 border-t border-base-200 bg-base-200/50">
+              <button onClick={() => setSelectedRound(null)} className="btn btn-primary w-full rounded-xl">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Discharge Confirmation Modal */}
       {showDischargeConfirm && (
