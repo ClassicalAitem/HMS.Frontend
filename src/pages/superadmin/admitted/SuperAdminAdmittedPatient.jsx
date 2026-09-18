@@ -429,6 +429,7 @@ const SuperAdminAdmittedPatient = () => {
             patientId={patientId}
             dependantId={dependantId}
             consultationId={consultationId}
+            admissionId={admission?.id || admission?._id}
             isDoctor={false}
             isNurse={false}
           />
