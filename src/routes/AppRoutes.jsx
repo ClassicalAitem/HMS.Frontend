@@ -137,6 +137,8 @@ import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
 import CashierOpdPatients from '@/pages/cashier/opd-patients/CashierOpdPatients';
 import CashierOpdPatientDetails from '@/pages/cashier/opd-patients/CashierOpdPatientDetails';
 import CreateOpdPatient from '@/pages/cashier/opd-patients/CreateOpdPatient';
+import CashierAdmissions from "@/pages/cashier/admissions/CashierAdmissions";
+import CashierAdmissionDetails from "@/pages/cashier/admissions/CashierAdmissionDetails";
 
 // Modals
 import { BookAppointmentModal } from "@/components/modals";
@@ -194,6 +196,8 @@ import IncomingLabResults from "@/pages/doctor/labResults/IncomingLabResult";
 import NurseIncomingLabResults from "@/pages/nurse/labResults/IncomingLabResult";
 import HmoIncomingLabResults from "@/pages/hmo/labResults/IncomingLabResult";
 import PharmacistAttendedToday from "@/pages/pharmacist/attendedToday/AttendedToday";
+import PharmacyAdmissions from "@/pages/pharmacist/admissions/PharmacyAdmissions";
+import PharmacyAdmittedPatient from "@/pages/pharmacist/admissions/PharmacyAdmittedPatient";
 
 
 const AppRoutes = () => {
@@ -1016,6 +1020,27 @@ const AppRoutes = () => {
           <CreateOpdPatient />
         </ProtectedRoute>
       } />
+      <Route path="/cashier/admissions" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierAdmissions />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/admissions/:admissionId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <CashierAdmissionDetails />
+        </ProtectedRoute>
+      } />
+ 
+      <Route path="/cashier/generate-bill/:patientId" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <GenerateBill />
+        </ProtectedRoute>
+      } />
+      <Route path="/cashier/billing/:id" element={
+        <ProtectedRoute allowedRoles={['cashier']}>
+          <BillingRecords />
+        </ProtectedRoute>
+      } />
      
 
       {/*==============================================================================================================
@@ -1051,6 +1076,16 @@ const AppRoutes = () => {
       <Route path="/dashboard/pharmacist/attended-today" element={
         <ProtectedRoute allowedRoles={['pharmacist']}>
           <PharmacistAttendedToday />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/admissions" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacyAdmissions />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/pharmacist/admissions/:patientId" element={
+        <ProtectedRoute allowedRoles={['pharmacist']}>
+          <PharmacyAdmittedPatient />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/pharmacist/Inventory&stocks" element={
