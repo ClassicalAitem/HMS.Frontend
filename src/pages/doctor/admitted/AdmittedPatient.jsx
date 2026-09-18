@@ -362,6 +362,7 @@ const DRAdmittedPatient = () => {
                 patientId={patientId}
                 dependantId={dependantId}
                 consultationId={consultationId}
+                admissionId={admission?.id || admission?._id}
                 isDoctor={true}
                 isNurse={false}
               />

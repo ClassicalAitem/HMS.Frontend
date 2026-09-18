@@ -9,121 +9,161 @@ import {
   FaClipboardList,
   FaClock,
   FaExclamationCircle,
+  FaUserInjured,
 } from "react-icons/fa";
 import { RiMentalHealthFill } from "react-icons/ri";
 import toast from "react-hot-toast";
-
-const INITIAL_SURGICAL_TASKS = [
-  {
-    id: "task-1",
-    title: "Verify pre-op anesthesia clearance and informed consent for Theater 1",
-    category: "Pre-Operative",
-    priority: "High",
-    dueTime: "08:30 AM",
-    completed: false,
-  },
-  {
-    id: "task-2",
-    title: "Review blood cross-match and emergency packed RBC reserves with Blood Bank",
-    category: "Theatre Prep",
-    priority: "Urgent",
-    dueTime: "09:00 AM",
-    completed: true,
-  },
-  {
-    id: "task-3",
-    title: "Complete WHO Surgical Safety Checklist (Sign-in / Time-out / Sign-out)",
-    category: "Intra-Operative",
-    priority: "High",
-    dueTime: "10:15 AM",
-    completed: false,
-  },
-  {
-    id: "task-4",
-    title: "Dispatch surgical pathology specimens with request forms to Histopathology",
-    category: "Post-Operative",
-    priority: "Normal",
-    dueTime: "01:30 PM",
-    completed: false,
-  },
-  {
-    id: "task-5",
-    title: "Post-operative surgical ward rounds: check surgical drains & vitals",
-    category: "Ward Round",
-    priority: "Normal",
-    dueTime: "04:00 PM",
-    completed: false,
-  },
-];
+import { getAllAppointments } from "@/services/api/appointmentsAPI";
+import taskAPI from "@/services/api/taskAPI";
 
 const AssignedTask = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [tasks, setTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem("hms_surgeon_assigned_tasks");
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // fallback
-    }
-    return INITIAL_SURGICAL_TASKS;
-  });
+  const [tasks, setTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(true);
 
   const [activeFilter, setActiveFilter] = useState("all"); // "all" | "pending" | "completed"
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [patients, setPatients] = useState([]);
   const [newTask, setNewTask] = useState({
     title: "",
     category: "Pre-Operative",
     priority: "Normal",
-    dueTime: "09:00 AM",
+    dueTime: "09:00",
+    selectedSubjectId: "",
   });
 
-  useEffect(() => {
+  const fetchTasks = async () => {
     try {
-      localStorage.setItem("hms_surgeon_assigned_tasks", JSON.stringify(tasks));
-    } catch {
-      // ignore
+      setLoadingTasks(true);
+      const res = await taskAPI.getAllTasks({ taskType: "SURGICAL" });
+      const tasksData = res?.data?.data ?? res?.data ?? [];
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+    } catch (err) {
+      console.error("Failed to load tasks", err);
+    } finally {
+      setLoadingTasks(false);
     }
-  }, [tasks]);
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchPatients = async () => {
+      try {
+        const res = await getAllAppointments();
+        const rawAppts = res?.data?.data ?? res?.data ?? [];
+        const apptList = Array.isArray(rawAppts) ? rawAppts : (rawAppts.appointments ?? []);
+        
+        const surgicalAppts = apptList.filter(
+          (a) =>
+            a.appointmentType === "surgery" ||
+            String(a.department || "").toLowerCase() === "surgeon" ||
+            String(a.department || "").toLowerCase() === "theatre",
+        );
+
+        const uniquePatients = [];
+        const patientIds = new Set();
+        
+        surgicalAppts.forEach((appt) => {
+          const isDep = !!appt.dependantId;
+          const patientName =
+            appt.patientName ||
+            (isDep
+              ? `${appt.dependant?.firstName || ""} ${appt.dependant?.lastName || ""}`.trim()
+              : `${appt.patient?.firstName || ""} ${appt.patient?.lastName || ""}`.trim()) ||
+            "Unknown Patient";
+            
+          const patientId = appt.patient?.id || appt.patientId || appt.patient?._id;
+          const dependantId = appt.dependant?.id || appt.dependantId || appt.dependant?._id;
+          
+          const uniqueId = isDep ? dependantId : patientId;
+          
+          if (uniqueId && !patientIds.has(uniqueId)) {
+            patientIds.add(uniqueId);
+            uniquePatients.push({ 
+                id: uniqueId, 
+                patientId: patientId,
+                dependantId: dependantId,
+                name: patientName,
+                isDep
+            });
+          }
+        });
+
+        if (mounted) setPatients(uniquePatients);
+      } catch (err) {
+        console.error("Failed to load patients for surgical tasks", err);
+      }
+    };
+    fetchPatients();
+    return () => { mounted = false; };
+  }, []);
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const toggleTask = (id) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-    );
+  const toggleTask = async (id, currentStatus) => {
+    try {
+      await taskAPI.updateTask(id, { completed: !currentStatus });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, completed: !currentStatus } : t))
+      );
+    } catch (error) {
+      toast.error("Failed to update task");
+    }
   };
 
-  const deleteTask = (id) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    toast.success("Task removed");
+  const deleteTask = async (id) => {
+    try {
+      await taskAPI.deleteTask(id);
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      toast.success("Task removed");
+    } catch (error) {
+      toast.error("Failed to delete task");
+    }
   };
 
-  const handleCreateTask = (e) => {
+  const handleCreateTask = async (e) => {
     e.preventDefault();
     if (!newTask.title.trim()) {
       toast.error("Please enter a task description");
       return;
     }
 
-    const created = {
-      id: `task-${Date.now()}`,
-      title: newTask.title.trim(),
-      category: newTask.category,
-      priority: newTask.priority,
-      dueTime: newTask.dueTime || "12:00 PM",
-      completed: false,
-    };
+    try {
+      const selectedSubject = patients.find(p => p.id === newTask.selectedSubjectId);
+      
+      const payload = {
+        title: newTask.title.trim(),
+        taskType: "SURGICAL",
+        assignedToRole: "nurse",
+        dueTime: newTask.dueTime,
+        patientId: selectedSubject?.patientId || undefined,
+        dependantId: selectedSubject?.dependantId || undefined,
+        details: {
+          category: newTask.category,
+          priority: newTask.priority,
+        },
+      };
 
-    setTasks((prev) => [created, ...prev]);
-    setNewTask({
-      title: "",
-      category: "Pre-Operative",
-      priority: "Normal",
-      dueTime: "09:00 AM",
-    });
-    setIsCreateModalOpen(false);
-    toast.success("Surgical task created");
+      await taskAPI.createTask(payload);
+      fetchTasks();
+      
+      setNewTask({
+        title: "",
+        category: "Pre-Operative",
+        priority: "Normal",
+        dueTime: "09:00",
+        selectedSubjectId: "",
+      });
+      setIsCreateModalOpen(false);
+      toast.success("Surgical task created");
+    } catch (error) {
+      toast.error("Failed to create task");
+    }
   };
 
   const totalTasks = tasks.length;
@@ -232,7 +272,11 @@ const AssignedTask = () => {
               </div>
 
               <div className="p-4 sm:p-5">
-                {filteredTasks.length === 0 ? (
+                {loadingTasks ? (
+                  <div className="py-12 flex justify-center items-center">
+                    <span className="loading loading-spinner text-primary loading-md"></span>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
                   <div className="py-12 text-center text-base-content/50 space-y-2">
                     <FaCheckCircle className="w-8 h-8 mx-auto text-success/50" />
                     <p className="text-sm font-medium">No tasks found in this view</p>
@@ -240,7 +284,14 @@ const AssignedTask = () => {
                   </div>
                 ) : (
                   <ul className="divide-y divide-base-200">
-                    {filteredTasks.map((task) => (
+                    {filteredTasks.map((task) => {
+                      const patientName = task.dependant
+                        ? `${task.dependant.firstName || ""} ${task.dependant.lastName || ""}`.trim()
+                        : task.patient 
+                        ? `${task.patient.firstName || ""} ${task.patient.lastName || ""}`.trim() 
+                        : null;
+                        
+                      return (
                       <li
                         key={task.id}
                         className={`py-3.5 px-3 rounded-xl transition-all flex items-center justify-between gap-4 group hover:bg-base-200/50 ${
@@ -251,7 +302,7 @@ const AssignedTask = () => {
                           <input
                             type="checkbox"
                             checked={task.completed}
-                            onChange={() => toggleTask(task.id)}
+                            onChange={() => toggleTask(task.id, task.completed)}
                             className="checkbox checkbox-primary checkbox-sm mt-0.5"
                           />
 
@@ -266,26 +317,34 @@ const AssignedTask = () => {
                               {task.title}
                             </span>
 
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="badge badge-xs badge-outline font-medium">
-                                {task.category}
+                            <div className="flex items-center gap-2 flex-wrap mt-1">
+                              {patientName && (
+                                <span className="badge badge-xs bg-base-200 text-base-content/70 font-medium flex items-center gap-1 py-2">
+                                  <FaUserInjured className="w-2.5 h-2.5" />
+                                  {patientName}
+                               </span>
+                              )}
+                              <span className="badge badge-xs badge-outline font-medium py-2">
+                                {task.details?.category || "General"}
                               </span>
 
-                              {task.priority === "Urgent" && (
-                                <span className="badge badge-xs badge-error text-white font-bold">
+                              {task.details?.priority === "Urgent" && (
+                                <span className="badge badge-xs badge-error text-white font-bold py-2">
                                   Urgent
                                 </span>
                               )}
-                              {task.priority === "High" && (
-                                <span className="badge badge-xs badge-warning text-white font-bold">
+                              {task.details?.priority === "High" && (
+                                <span className="badge badge-xs badge-warning text-white font-bold py-2">
                                   High
                                 </span>
                               )}
 
-                              <span className="text-[11px] text-base-content/50 flex items-center gap-1">
-                                <FaClock className="w-2.5 h-2.5" />
-                                Due: {task.dueTime}
-                              </span>
+                              {task.dueTime && (
+                                <span className="text-[11px] text-base-content/50 flex items-center gap-1 ml-1">
+                                  <FaClock className="w-2.5 h-2.5" />
+                                  Due: {task.dueTime}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -299,7 +358,7 @@ const AssignedTask = () => {
                           <FaTrash className="w-3 h-3" />
                         </button>
                       </li>
-                    ))}
+                    )})}
                   </ul>
                 )}
               </div>
@@ -438,19 +497,39 @@ const AssignedTask = () => {
                 </div>
               </div>
 
-              <div className="form-control w-full">
-                <label className="label py-1">
-                  <span className="label-text text-xs font-semibold">Due Time</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 10:30 AM"
-                  className="input input-bordered input-sm w-full text-xs"
-                  value={newTask.dueTime}
-                  onChange={(e) =>
-                    setNewTask((prev) => ({ ...prev, dueTime: e.target.value }))
-                  }
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="form-control w-full">
+                  <label className="label py-1">
+                    <span className="label-text text-xs font-semibold">Patient (Optional)</span>
+                  </label>
+                  <select
+                    className="select select-bordered select-sm w-full text-xs"
+                    value={newTask.selectedSubjectId}
+                    onChange={(e) =>
+                      setNewTask((prev) => ({ ...prev, selectedSubjectId: e.target.value }))
+                    }
+                  >
+                    <option value="">Select a patient...</option>
+                    {patients.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.isDep ? "(Dependant)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-control w-full">
+                  <label className="label py-1">
+                    <span className="label-text text-xs font-semibold">Due Time</span>
+                  </label>
+                  <input
+                    type="time"
+                    className="input input-bordered input-sm w-full text-xs"
+                    value={newTask.dueTime}
+                    onChange={(e) =>
+                      setNewTask((prev) => ({ ...prev, dueTime: e.target.value }))
+                    }
+                  />
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

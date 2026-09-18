@@ -11,37 +11,11 @@ import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg";
 import NotificationBadge from "@/components/common/NotificationBadge";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { getAdmissions } from "@/services/api/admissionApi";
-
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [admittedCount, setAdmittedCount] = useState(0);
   const { user } = useAppSelector((state) => state.auth);
   const { incomingCount, labReadyCount } = useNotifications();
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchAdmittedCount = async () => {
-      try {
-        const res = await getAdmissions();
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : [];
-        const active = list.filter((a) => a.status !== "discharged" && !!a.confirmedAt);
-        if (mounted) {
-          setAdmittedCount(active.length);
-        }
-      } catch (e) {
-        // quiet fallback
-      }
-    };
-    fetchAdmittedCount();
-    const interval = setInterval(fetchAdmittedCount, 30000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
 
   const generateInitials = (firstName, lastName) => {
     if (!firstName && !lastName) return "MD";
@@ -91,7 +65,6 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Admission",
       path: "/dashboard/medical-director/admitted",
       active: isAdmittedActive,
-      badge: admittedCount,
     },
     {
       icon: FaUserCheck,
@@ -160,7 +133,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-3 py-4 space-y-1.5">
+      <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto min-h-0">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}

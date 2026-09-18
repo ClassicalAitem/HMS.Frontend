@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { MdOutlineDashboard } from "react-icons/md";
 import { GoArrowDownLeft, GoPerson, GoCreditCard } from "react-icons/go";
 import { IoReceiptOutline } from "react-icons/io5";
-import { FaUserInjured } from "react-icons/fa";
+import { FaUserInjured, FaBed } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -69,6 +69,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/cashier/patients'
     },
     {
+      icon: FaBed,
+      label: 'Admissions',
+      path: '/cashier/admissions',
+      active: location.pathname === '/cashier/admissions' || location.pathname.startsWith('/cashier/admissions/')
+    },
+    {
       icon: FaUserInjured,
       label: 'OPD Patients',
       path: '/cashier/opd-patients',
@@ -122,7 +128,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
+      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12 overflow-y-auto min-h-0">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
