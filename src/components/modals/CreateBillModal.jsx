@@ -182,7 +182,11 @@ const CreateBillModal = ({
         const res = await getServiceCharges();
         const raw = res?.data ?? res ?? [];
         const list = Array.isArray(raw) ? raw : (raw?.data ?? []);
-        setServices(list);
+        const filteredList = list.filter(s => {
+          const cat = String(s.category || '').toLowerCase().trim();
+          return !cat.includes('lab') && !cat.includes('surgical') && !cat.includes('radiology') && !cat.includes('admission');
+        });
+        setServices(filteredList);
       } catch {
         toast.error("Could not load service list");
       } finally {

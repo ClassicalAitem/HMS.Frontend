@@ -29,6 +29,7 @@ const IvFluidTab = ({
   consultationId,
   isDoctor = false,
   isNurse = false,
+  isPharmacist = false,
 }) => {
   const todayStr = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState(todayStr)
@@ -42,8 +43,19 @@ const IvFluidTab = ({
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showOrderModal, setShowOrderModal] = useState(false)
+  const [showConsumablesModal, setShowConsumablesModal] = useState(null)
+  const [confirmLogInfusionModal, setConfirmLogInfusionModal] = useState(null)
+  const [confirmCompleteModal, setConfirmCompleteModal] = useState(null)
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState(null)
   const [saving, setSaving] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState(null)
+  const [dispensingId, setDispensingId] = useState(null)
+
+  // Consumables ordering
+  const [consumableSearch, setConsumableSearch] = useState('')
+  const [selectedConsumables, setSelectedConsumables] = useState([])
+  const [inventoryList, setInventoryList] = useState([])
+  const [loadingInventory, setLoadingInventory] = useState(false)
 
   // Laboratory service charges
   const [labServices, setLabServices] = useState([])
@@ -72,6 +84,41 @@ const IvFluidTab = ({
     outputAmountMl: '',
     notes: '',
   })
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      const res = await ivFluidApi.getIvFluidByPatient(patientId)
+      setData(prev => ({ ...prev, orders: res?.data?.orders || (Array.isArray(res?.data) ? res.data : []) }))
+    } catch (err) {
+      console.error('Failed to load IV fluid orders', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const searchInventory = async (term) => {
+    try {
+      setLoadingInventory(true)
+      const res = await getInventories({ search: term, limit: 10 })
+      setInventoryList(res?.data?.inventories || res?.data || [])
+    } catch (error) {
+      console.error('Error fetching inventory:', error)
+    } finally {
+      setLoadingInventory(false)
+    }
+  }
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (consumableSearch.trim().length > 1) {
+        searchInventory(consumableSearch)
+      } else {
+        setInventoryList([])
+      }
+    }, 500)
+    return () => clearTimeout(timeoutId)
+  }, [consumableSearch])
 
   const loadData = async (dateToFetch = selectedDate) => {
     try {
@@ -223,23 +270,68 @@ const IvFluidTab = ({
     if (newStatus === 'completed' && ord) {
       const isCleared = ord.isPaid || ord.paymentStatus === 'paid' || ord.paymentStatus === 'approved'
       if (!isCleared) {
-        const confirm = window.confirm(
-          '⚠️ Warning: This IV fluid regimen is pending payment or HMO approval.\n\nDo you want to proceed with completing it?'
-        )
-        if (!confirm) return
+        setConfirmCompleteModal(ord)
+        return
       }
     }
+    executeUpdateOrderStatus(orderId, newStatus)
+  }
 
+  const executeUpdateOrderStatus = async (orderId, newStatus) => {
     setUpdatingOrderId(orderId)
     try {
       await ivFluidApi.updateIvFluidOrderStatus(orderId, newStatus)
       toast.success(`Fluid regimen marked as ${newStatus}`)
+      setConfirmCompleteModal(null)
       await loadData(selectedDate)
     } catch (err) {
       console.error('Failed to update status', err)
       toast.error('Failed to update regimen status')
     } finally {
       setUpdatingOrderId(null)
+    }
+  }
+
+  const handleOrderConsumables = async (e) => {
+    e.preventDefault();
+    if (!showConsumablesModal) return;
+    if (selectedConsumables.length === 0) {
+      return toast.error('Please select at least one consumable item');
+    }
+
+    setSaving(true);
+    const orderId = showConsumablesModal._id || showConsumablesModal.id;
+    try {
+      const items = selectedConsumables.map(c => ({
+        itemName: c.name || c.itemName,
+        quantity: c.quantity || 1
+      }));
+      
+      await ivFluidApi.orderIvFluidConsumables(orderId, { items });
+      toast.success('Consumables ordered and sent to Pharmacy');
+      setShowConsumablesModal(null);
+      setSelectedConsumables([]);
+      setConsumableSearch('');
+      await loadData(selectedDate);
+    } catch (err) {
+      console.error('Failed to order consumables', err);
+      toast.error(err?.response?.data?.error || 'Failed to order consumables');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDispenseConsumable = async (orderId, consumableId) => {
+    setDispensingId(consumableId)
+    try {
+      await ivFluidApi.dispenseIvFluidConsumables(orderId, consumableId)
+      toast.success('Consumables marked as dispensed')
+      await loadOrders()
+    } catch (err) {
+      console.error('Failed to dispense consumables', err)
+      toast.error(err?.response?.data?.error || 'Failed to dispense')
+    } finally {
+      setDispensingId(null)
     }
   }
 
@@ -309,10 +401,15 @@ const IvFluidTab = ({
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this fluid chart entry?')) return
+    setConfirmDeleteModal(id)
+  }
+
+  const executeDelete = async () => {
+    if (!confirmDeleteModal) return
     try {
-      await ivFluidApi.deleteIvFluidEntry(id)
+      await ivFluidApi.deleteIvFluidEntry(confirmDeleteModal)
       toast.success('Entry removed')
+      setConfirmDeleteModal(null)
       await loadData(selectedDate)
     } catch (err) {
       console.error('Failed to delete fluid entry', err)
@@ -454,17 +551,68 @@ const IvFluidTab = ({
                         )}
                       </div>
                     )}
+
+                    {/* Consumables History Display */}
+                    {ord.consumableOrders && ord.consumableOrders.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {ord.consumableOrders.map((cons) => (
+                          <div key={cons._id || cons.id} className="p-2.5 rounded-xl bg-base-200/50 border border-base-300 text-xs">
+                            <div className="flex items-center justify-between mb-1.5 border-b border-base-200 pb-1.5">
+                              <span className="font-semibold text-primary flex items-center gap-1.5">
+                                <FaPlus className="w-3 h-3" /> Consumables Order
+                              </span>
+                              {cons.isDispensed ? (
+                                <span className="badge badge-success text-white badge-xs font-bold gap-1">
+                                  <FaCheckCircle className="w-2.5 h-2.5" /> Dispensed
+                                </span>
+                              ) : (
+                                <span className="badge badge-warning badge-xs font-bold gap-1">
+                                  <FaClock className="w-2.5 h-2.5" /> Pending Pharmacy
+                                </span>
+                              )}
+                            </div>
+                            <ul className="space-y-1 pl-1">
+                              {cons.items.map((item, idx) => (
+                                <li key={idx} className="font-medium text-base-content/80">• {item.quantity}x {item.itemName}</li>
+                              ))}
+                            </ul>
+                            <div className="mt-1.5 pt-1.5 border-t border-base-200/50 text-[10px] text-base-content/60 flex flex-wrap justify-between gap-2">
+                              <span>Ordered by {cons.orderedByName}</span>
+                              {cons.isDispensed && <span className="text-success">Dispensed by {cons.dispensedByName}</span>}
+                            </div>
+                            
+                            {/* Pharmacist Action */}
+                            {isPharmacist && !cons.isDispensed && (
+                              <div className="mt-2 pt-2 border-t border-base-200 flex justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDispenseConsumable(ord._id || ord.id, cons._id || cons.id)}
+                                  disabled={dispensingId === (cons._id || cons.id)}
+                                  className="btn btn-xs btn-primary rounded-lg font-bold shadow-sm"
+                                >
+                                  {dispensingId === (cons._id || cons.id) ? 'Marking...' : 'Mark Dispensed'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {isNurse && (
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-primary/10">
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-primary/10">
+                      <button
+                        onClick={() => setShowConsumablesModal(ord)}
+                        className="btn btn-xs btn-outline rounded-lg gap-1"
+                      >
+                        <FaPlus className="w-2.5 h-2.5" /> Order Consumables
+                      </button>
                       <button
                         onClick={() => {
                           if (!isCleared) {
-                            const proceed = window.confirm(
-                              '⚠️ Warning: This IV fluid regimen is awaiting payment or HMO approval.\n\nDo you want to proceed and log an infusion?'
-                            )
-                            if (!proceed) return
+                            setConfirmLogInfusionModal(ord)
+                            return
                           }
                           setEntryForm((prev) => ({
                             ...prev,
@@ -949,6 +1097,282 @@ const IvFluidTab = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Consumables Order Modal */}
+      {showConsumablesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-base-100 rounded-2xl max-w-lg w-full shadow-2xl border border-base-300 flex flex-col max-h-[90vh] animate-scaleUp">
+            <div className="flex items-center justify-between p-4 border-b border-base-200">
+              <div>
+                <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
+                  <FaPlus className="text-primary w-4 h-4" /> Order Consumables
+                </h3>
+                <p className="text-xs text-base-content/60 mt-0.5">
+                  For IV Fluid: {showConsumablesModal.fluidName} ({showConsumablesModal.volumeMl}ml)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConsumablesModal(null)
+                  setSelectedConsumables([])
+                  setConsumableSearch('')
+                }}
+                className="btn btn-ghost btn-circle btn-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Search Items */}
+              <div>
+                <label className="block text-xs font-semibold text-base-content/70 mb-1">
+                  Search Pharmacy/Inventory Items
+                </label>
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 w-3.5 h-3.5" />
+                  <input
+                    type="text"
+                    value={consumableSearch}
+                    onChange={(e) => setConsumableSearch(e.target.value)}
+                    placeholder="e.g. IV Cannula 20G, Giving Set, Syringe..."
+                    className="input input-bordered input-sm w-full pl-9 rounded-xl text-sm"
+                  />
+                  {loadingInventory && (
+                    <span className="loading loading-spinner loading-xs absolute right-3 top-1/2 -translate-y-1/2 text-primary"></span>
+                  )}
+                </div>
+
+                {/* Search Results */}
+                {consumableSearch.length > 1 && inventoryList.length > 0 && (
+                  <div className="mt-2 border border-base-200 rounded-xl overflow-hidden shadow-sm max-h-40 overflow-y-auto">
+                    {inventoryList.map((item) => (
+                      <div
+                        key={item._id || item.id}
+                        className="p-2 hover:bg-base-200/50 cursor-pointer text-sm flex items-center justify-between border-b border-base-200 last:border-0"
+                        onClick={() => {
+                          if (!selectedConsumables.find(c => (c.id || c._id) === (item.id || item._id))) {
+                            setSelectedConsumables([...selectedConsumables, { ...item, quantity: 1 }])
+                          }
+                          setConsumableSearch('')
+                        }}
+                      >
+                        <span className="font-medium text-base-content">{item.itemName || item.name}</span>
+                        <FaPlus className="w-3 h-3 text-primary" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Items */}
+              {selectedConsumables.length > 0 && (
+                <div className="bg-base-200/30 p-3 rounded-xl border border-base-200 space-y-2">
+                  <h4 className="text-xs font-bold text-base-content uppercase tracking-wider">
+                    Selected Items
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedConsumables.map((item, idx) => (
+                      <div key={item._id || item.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-base-100 p-2.5 rounded-lg border border-base-200 shadow-sm gap-2">
+                        <div className="text-sm font-medium text-base-content truncate">
+                          {item.itemName || item.name}
+                        </div>
+                        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+                          <input
+                            type="number"
+                            min="1"
+                            className="input input-bordered input-xs w-16 text-center"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const newQty = parseInt(e.target.value) || 1
+                              const updated = [...selectedConsumables]
+                              updated[idx].quantity = newQty
+                              setSelectedConsumables(updated)
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...selectedConsumables]
+                              updated.splice(idx, 1)
+                              setSelectedConsumables(updated)
+                            }}
+                            className="btn btn-ghost btn-xs text-error p-1"
+                          >
+                            <FaTrashAlt className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Manual Entry Fallback */}
+                  <div className="pt-2 border-t border-base-200 mt-2">
+                    <p className="text-[10px] text-base-content/50 italic text-center">
+                      Note: You are currently ordering consumables without billing attached. 
+                      Once confirmed, they will be sent to the Pharmacist for dispensing.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-base-200 bg-base-200/30 flex justify-end gap-3 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConsumablesModal(null)
+                  setSelectedConsumables([])
+                  setConsumableSearch('')
+                }}
+                className="btn btn-sm btn-ghost rounded-xl"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleOrderConsumables}
+                disabled={saving || selectedConsumables.length === 0}
+                className="btn btn-sm btn-primary text-white rounded-xl font-bold shadow-sm"
+              >
+                {saving ? 'Placing Order...' : 'Place Consumables Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Warning Modal for Logging Infusion on Unpaid Order */}
+      {confirmLogInfusionModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-warning/30 space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-warning">
+              <div className="p-3 bg-warning/10 rounded-xl">
+                <FaExclamationTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-base-content">Payment Pending</h3>
+                <p className="text-xs text-base-content/60">
+                  IV Fluid Regimen is awaiting clearance
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-base-content/80 leading-relaxed">
+              This IV fluid regimen has not been paid for or approved by the HMO yet. Are you sure you want to proceed and log an infusion?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmLogInfusionModal(null)}
+                className="btn btn-sm btn-ghost rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEntryForm((prev) => ({
+                    ...prev,
+                    inputFluid: confirmLogInfusionModal.fluidName,
+                    inputAmountMl: confirmLogInfusionModal.volumeMl || 500,
+                  }))
+                  setConfirmLogInfusionModal(null)
+                  setShowAddModal(true)
+                }}
+                className="btn btn-sm btn-warning text-black rounded-xl font-semibold gap-2"
+              >
+                Proceed & Log
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Warning Modal for Completing Unpaid Order */}
+      {confirmCompleteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-warning/30 space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-warning">
+              <div className="p-3 bg-warning/10 rounded-xl">
+                <FaExclamationTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-base-content">Payment Pending</h3>
+                <p className="text-xs text-base-content/60">
+                  Are you sure you want to mark this complete?
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-base-content/80 leading-relaxed">
+              This IV fluid regimen is pending payment or HMO approval. Do you want to proceed with completing it anyway?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCompleteModal(null)}
+                className="btn btn-sm btn-ghost rounded-xl"
+                disabled={updatingOrderId === (confirmCompleteModal._id || confirmCompleteModal.id)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeUpdateOrderStatus(confirmCompleteModal._id || confirmCompleteModal.id, 'completed')}
+                disabled={updatingOrderId === (confirmCompleteModal._id || confirmCompleteModal.id)}
+                className="btn btn-sm btn-warning text-black rounded-xl font-semibold gap-2"
+              >
+                {updatingOrderId === (confirmCompleteModal._id || confirmCompleteModal.id) ? 'Completing...' : 'Mark Completed'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Entry Modal */}
+      {confirmDeleteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-base-100 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-error/30 space-y-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-error">
+              <div className="p-3 bg-error/10 rounded-xl">
+                <FaTrashAlt className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-base-content">Delete Entry?</h3>
+                <p className="text-xs text-base-content/60">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-base-content/80 leading-relaxed">
+              Are you sure you want to delete this fluid chart entry? The net balance will be recalculated.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteModal(null)}
+                className="btn btn-sm btn-ghost rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeDelete}
+                className="btn btn-sm btn-error text-white rounded-xl font-semibold gap-2"
+              >
+                Delete Entry
+              </button>
+            </div>
           </div>
         </div>
       )}
