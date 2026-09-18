@@ -6,7 +6,7 @@ import { GiMedicines } from "react-icons/gi";
 import { PiWarehouseLight } from "react-icons/pi";
 import { IoPauseCircleSharp, IoReceiptOutline } from "react-icons/io5";
 import { TbReportAnalytics } from "react-icons/tb";
-import { FaUserCheck } from "react-icons/fa";
+import { FaUserCheck, FaBed } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -71,6 +71,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Patients',
       path: '/dashboard/pharmacist/patients',
       active: location.pathname === '/dashboard/pharmacist/patients'
+    },
+    {
+      icon: FaBed,
+      label: 'Admissions',
+      path: '/dashboard/pharmacist/admissions',
+      active: location.pathname === '/dashboard/pharmacist/admissions' || location.pathname.startsWith('/dashboard/pharmacist/admissions/')
     },
     {
       icon: FaUserCheck,
@@ -140,7 +146,7 @@ const Sidebar = ({ onCloseSidebar }) => {
         </div>
       </div>
 
-      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
+      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12 overflow-y-auto min-h-0">
         {menuItems.map((item, index) => (
           <MenuItem key={index} icon={item.icon} label={item.label} path={item.path} active={item.active} badge={item.badge} />
         ))}
