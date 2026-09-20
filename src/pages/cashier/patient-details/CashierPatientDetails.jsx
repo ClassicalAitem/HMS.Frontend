@@ -28,6 +28,7 @@ const CashierPatientDetails = () => {
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
+  const [selectedBilling, setSelectedBilling] = useState(null);
   const { refreshQueueCount } = useNotifications();
 
   const toggleRow = (id) => {
@@ -346,8 +347,9 @@ const CashierPatientDetails = () => {
                         ) : (
                           <button
                             onClick={() => {
-                              setIsReceiptModalOpen(true);
                               setSelectedBillingId(bill.id);
+                              setSelectedBilling(bill);
+                              setIsReceiptModalOpen(true);
                             }}
                             className="btn btn-sm btn-ghost"
                           >
@@ -376,21 +378,29 @@ const CashierPatientDetails = () => {
                             <table className="table w-full">
                               <thead>
                                 <tr>
-                                  <th>Description</th>
-                                  <th>Code</th>
-                                  <th>Price</th>
-                                  <th>Qty</th>
-                                  <th>Total</th>
+                                  <th className="font-semibold px-4">Description</th>
+                                  <th className="font-semibold px-4">Code</th>
+                                  <th className="font-semibold px-4">Price</th>
+                                  <th className="font-semibold px-4">Qty</th>
+                                  <th className="font-semibold px-4">Total</th>
+                                  <th className="font-semibold px-4">Status</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {bill.itemDetails.map((item, idx) => (
-                                  <tr key={idx}>
-                                    <td>{item.description}</td>
-                                    <td>{item.code}</td>
-                                    <td> ₦ {Number(item.price).toLocaleString()}</td>
-                                    <td>{item.quantity}</td>
-                                    <td>₦ {Number(item.total).toLocaleString()}</td>
+                                {bill.itemDetails?.map((item, index) => (
+                                  <tr key={index} className="border-b border-base-300 hover:bg-base-100">
+                                    <td className="px-4 py-3">{item.description}</td>
+                                    <td className="px-4 py-3 text-base-content/70">{item.code}</td>
+                                    <td className="px-4 py-3">₦{Number(item.price).toLocaleString()}</td>
+                                    <td className="px-4 py-3">{item.quantity}</td>
+                                    <td className="font-medium px-4 py-3">₦{Number(item.total).toLocaleString()}</td>
+                                    <td className="px-4 py-3">
+                                      {item.paymentStatus === 'paid' || item.hmoStatus === 'approved' || item.isCleared || bill.isCleared ? (
+                                        <span className="badge badge-success badge-sm text-white">Paid</span>
+                                      ) : (
+                                        <span className="badge badge-warning badge-sm">Unpaid</span>
+                                      )}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -514,6 +524,7 @@ const CashierPatientDetails = () => {
           isOpen={isReceiptModalOpen}
           onClose={() => setIsReceiptModalOpen(false)}
           billingId={selectedBillingId}
+          billing={selectedBilling}
           patientId={patientId}
           onSubmit={handleReceiptSubmit}
         />
