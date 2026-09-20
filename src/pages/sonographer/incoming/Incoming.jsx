@@ -52,15 +52,28 @@ const SonographerIncoming = () => {
         Array.isArray(response) ? response : (response?.data || [])
       ));
 
+      // Filter out tests that are unpaid and not approved by HMO
+      const paidInvestigations = allInvestigations.map(inv => {
+        if (!inv.tests) return inv;
+        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
+        return { ...inv, tests: validTests };
+      }).filter(inv => inv.tests && inv.tests.length > 0);
+
+      const paidOpdInvestigations = opdInvestigations.map(inv => {
+        if (!inv.tests) return inv;
+        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
+        return { ...inv, tests: validTests };
+      }).filter(inv => inv.tests && inv.tests.length > 0);
+
       // Only radiology investigations belong on the sonographer's queue
-      const radiologyInvestigations = allInvestigations.filter(
+      const radiologyInvestigations = paidInvestigations.filter(
         (inv) => {
           const type = String(inv.type || '').toLowerCase();
           return type === 'radiology' || type === 'imaging';
         }
       );
       
-      const laboratoryInvestigations = [...allInvestigations, ...opdInvestigations].filter(
+      const laboratoryInvestigations = [...paidInvestigations, ...paidOpdInvestigations].filter(
         (inv) => {
           const type = String(inv.type || '').toLowerCase();
           return (type === 'laboratory' || type === 'lab') && inv.status !== 'completed' && inv.status !== 'cancelled';
@@ -142,7 +155,7 @@ const SonographerIncoming = () => {
         new Map(enrichedDependants.map(d => [d.dependantId, d])).values()
       );
 
-      const opdRadiologyInvestigations = opdInvestigations.filter(
+      const opdRadiologyInvestigations = paidOpdInvestigations.filter(
         (inv) => {
           const type = String(inv.type || '').toLowerCase();
           return type === 'radiology' || type === 'imaging';
