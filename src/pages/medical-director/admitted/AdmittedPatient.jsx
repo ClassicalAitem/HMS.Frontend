@@ -11,6 +11,7 @@ import PatientDetailsCard from '@/components/common/PatientDetailsCard'
 import PatientHeaderActions from '@/components/doctor/patient/PatientHeaderActions'
 import VitalsTab from '@/components/admitted/VitalsTab'
 import WardRoundTab from '@/components/admitted/WardRoundTab'
+import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
 import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
@@ -27,6 +28,7 @@ import {
   FaArrowLeft,
   FaCashRegister,
   FaPaperPlane,
+  FaClipboardList,
 } from 'react-icons/fa'
 
 const MDAdmittedPatient = () => {
@@ -191,6 +193,11 @@ const MDAdmittedPatient = () => {
       id: 'ward',
       label: 'Ward Rounds',
       icon: FaNotesMedical,
+    },
+    {
+      id: 'treatment-plan',
+      label: 'Treatment Plan',
+      icon: FaClipboardList,
     },
     {
       id: 'blood',
@@ -365,6 +372,15 @@ const MDAdmittedPatient = () => {
                 isDoctor={true}
                 isNurse={false}
                 onRoundSaved={loadAdmission}
+              />
+            )}
+
+            {activeTab === 'treatment-plan' && (
+              <TreatmentPlanTab
+                admissionId={effectiveAdmissionId}
+                isDoctor={true}
+                isPharmacy={false}
+                isNurse={false}
               />
             )}
 

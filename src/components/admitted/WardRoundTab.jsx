@@ -235,6 +235,7 @@ const WardRoundTab = ({
             patientId,
             ...(dependantId ? { dependantId } : {}),
             consultationId: effectiveConsultationId,
+            admissionId: admissionId || undefined,
             medications: inlineMedications,
             status: 'pending',
           })
@@ -252,6 +253,7 @@ const WardRoundTab = ({
               patientId,
               ...(dependantId ? { dependantId } : {}),
               consultationId: effectiveConsultationId,
+              admissionId: admissionId || undefined,
               type: order.type || 'lab',
               priority: order.priority || 'normal',
               tests: order.tests,
