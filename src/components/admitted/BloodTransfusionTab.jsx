@@ -32,6 +32,7 @@ const BloodTransfusionTab = ({
   const [saving, setSaving] = useState(false)
   const [completingId, setCompletingId] = useState(null)
   const [dispensingId, setDispensingId] = useState(null)
+  const [administeringId, setAdministeringId] = useState(null)
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState(null)
   const [startOrderModal, setStartOrderModal] = useState(null)
   const [completeOrderModal, setCompleteOrderModal] = useState(null)
@@ -289,6 +290,20 @@ const BloodTransfusionTab = ({
     }
   }
 
+  const handleAdministerPreps = async (orderId) => {
+    setAdministeringId(orderId)
+    try {
+      await bloodTransfusionApi.administerBloodTransfusionPreps(orderId)
+      toast.success('Pre-transfusion medications marked as administered')
+      await loadOrders()
+    } catch (err) {
+      console.error('Failed to administer preps', err)
+      toast.error(err?.response?.data?.error || 'Failed to administer medications')
+    } finally {
+      setAdministeringId(null)
+    }
+  }
+
   const renderPaymentBadge = (order) => {
     const status = order.paymentStatus || (order.isPaid ? 'paid' : 'pending')
     if (status === 'paid' || order.isPaid) {
@@ -334,14 +349,16 @@ const BloodTransfusionTab = ({
         </div>
 
         {/* Doctor-Only Order Button */}
-        {isDoctor && (
-          <button
-            onClick={() => setShowOrderModal(true)}
-            className="btn btn-sm btn-error rounded-xl text-white gap-2 font-semibold shadow-sm"
-          >
-            <FaPlus className="w-3 h-3" /> Order Blood Transfusion
-          </button>
-        )}
+        <div className="flex gap-2">
+          {isDoctor && (
+            <button
+              onClick={() => setShowOrderModal(true)}
+              className="btn btn-sm btn-error rounded-xl text-white gap-2 font-semibold shadow-sm"
+            >
+              <FaPlus className="w-3 h-3" /> Order Blood Transfusion
+            </button>
+          )}
+        </div>
       </div>
 
       {/* KPI Counters */}
@@ -451,6 +468,11 @@ const BloodTransfusionTab = ({
                               <FaClock className="w-2.5 h-2.5" /> Pending Pharmacy
                             </span>
                           )}
+                          {order.isPrepsAdministered && (
+                            <span className="badge badge-success text-white badge-xs font-bold gap-1">
+                              <FaCheckCircle className="w-2.5 h-2.5" /> Administered
+                            </span>
+                          )}
                         </div>
                         <ul className="text-[11px] space-y-1">
                           {order.preppingMedications.map((med, idx) => (
@@ -511,6 +533,17 @@ const BloodTransfusionTab = ({
                   {/* Nurse Action Button */}
                   {isNurse && (
                     <div className="shrink-0 flex flex-col gap-2">
+                      {order.preppingMedications && order.preppingMedications.length > 0 && order.isPrepsDispensed && !order.isPrepsAdministered && (
+                        <button
+                          type="button"
+                          onClick={() => handleAdministerPreps(order._id || order.id)}
+                          disabled={administeringId === (order._id || order.id)}
+                          className="btn btn-sm btn-success text-white rounded-xl font-bold shadow-sm"
+                        >
+                          {administeringId === (order._id || order.id) ? 'Marking...' : 'Mark Preps Administered'}
+                        </button>
+                      )}
+                      
                       {order.status !== 'in_progress' ? (
                         <button
                           onClick={() => handleStartOrder(order)}
@@ -1129,4 +1162,3 @@ const BloodTransfusionTab = ({
 }
 
 export default BloodTransfusionTab
-

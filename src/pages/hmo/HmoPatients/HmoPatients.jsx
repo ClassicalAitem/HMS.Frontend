@@ -170,7 +170,7 @@ const HMOPatients = () => {
   const filteredRecords = useMemo(() => {
     const now = new Date();
 
-    if (customFrom || customTo) {
+    if (dateFilter === 'custom' && (customFrom || customTo)) {
       const fromTs = customFrom ? new Date(customFrom).setUTCHours(0, 0, 0, 0) : 0;
       const toTs = customTo ? new Date(customTo).setUTCHours(23, 59, 59, 999) : Infinity;
 
@@ -189,13 +189,16 @@ const HMOPatients = () => {
         return nowNigeria.getTime() - 60 * 60 * 1000;
       }
       if (dateFilter === 'week') return now.getTime() - 7 * 24 * 60 * 60 * 1000;
+      if (dateFilter === 'two_weeks') return now.getTime() - 14 * 24 * 60 * 60 * 1000;
       if (dateFilter === 'month') return now.getTime() - 30 * 24 * 60 * 60 * 1000;
+      if (dateFilter === 'three_months') return now.getTime() - 90 * 24 * 60 * 60 * 1000;
+      if (dateFilter === 'six_months') return now.getTime() - 180 * 24 * 60 * 60 * 1000;
       return 0;
     })();
 
     return records.filter((r) => {
       const ts = r.approvedAt ? new Date(r.approvedAt).getTime() : 0;
-      const inRange = dateFilter === 'all' ? true : ts >= start;
+      const inRange = (dateFilter === 'all' || dateFilter === 'custom') ? true : ts >= start;
       const matchesDecision = decisionFilter === 'all' ? true : r.decision === decisionFilter;
       return inRange && matchesDecision;
     });
@@ -441,36 +444,44 @@ const HMOPatients = () => {
                     >
                       <option value="all">All Time</option>
                       <option value="today">Today</option>
-                      <option value="week">This Week</option>
-                      <option value="month">This Month</option>
+                      <option value="week">Past 1 Week</option>
+                      <option value="two_weeks">Past 2 Weeks</option>
+                      <option value="month">Past 1 Month</option>
+                      <option value="three_months">Past 3 Months</option>
+                      <option value="six_months">Past 6 Months</option>
+                      <option value="custom">Custom Date Range</option>
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-base-content/60 mb-1">
-                      From
-                    </label>
-                    <input
-                      type="date"
-                      className="input input-bordered input-sm w-full"
-                      value={customFrom}
-                      onChange={(e) => setCustomFrom(e.target.value)}
-                      max={customTo || undefined}
-                    />
-                  </div>
+                  {dateFilter === 'custom' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-base-content/60 mb-1">
+                          From
+                        </label>
+                        <input
+                          type="date"
+                          className="input input-bordered input-sm w-full"
+                          value={customFrom}
+                          onChange={(e) => setCustomFrom(e.target.value)}
+                          max={customTo || undefined}
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-base-content/60 mb-1">
-                      To
-                    </label>
-                    <input
-                      type="date"
-                      className="input input-bordered input-sm w-full"
-                      value={customTo}
-                      onChange={(e) => setCustomTo(e.target.value)}
-                      min={customFrom || undefined}
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-xs font-medium text-base-content/60 mb-1">
+                          To
+                        </label>
+                        <input
+                          type="date"
+                          className="input input-bordered input-sm w-full"
+                          value={customTo}
+                          onChange={(e) => setCustomTo(e.target.value)}
+                          min={customFrom || undefined}
+                        />
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-xs font-medium text-base-content/60 mb-1">

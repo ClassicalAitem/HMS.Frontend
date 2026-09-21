@@ -4,7 +4,7 @@ import { Header } from '@/components/common';
 import PharmacistSidebar from '@/components/pharmacist/dashboard/Sidebar';
 import api from '@/services/api/apiClient';
 import toast from 'react-hot-toast';
-import { FaArrowLeft, FaBed, FaTint, FaExchangeAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaBed, FaTint, FaExchangeAlt, FaFileInvoiceDollar } from 'react-icons/fa';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getVitalsByPatient, normalizeVitalsResponse } from '@/services/api/vitalsAPI';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';

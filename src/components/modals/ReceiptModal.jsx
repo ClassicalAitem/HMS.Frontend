@@ -3,7 +3,7 @@ import { FaTimes } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { useAppSelector } from '../../store/hooks';
 
-const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
+const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit }) => {
   const user = useAppSelector((state) => state.auth.user);
   const userFullName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
 
@@ -16,6 +16,31 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
     senderName: '',
     sessionId: '',
   });
+
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  // Initialize selected items (unpaid items)
+  useEffect(() => {
+    if (isOpen && billing?.itemDetails) {
+      const unpaidIndices = billing.itemDetails
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved' && item.isCleared !== true)
+        .map(({ index }) => index);
+      setSelectedItems(unpaidIndices);
+    } else {
+      setSelectedItems([]);
+    }
+  }, [isOpen, billing]);
+
+  // Update amountPaid when selected items change
+  useEffect(() => {
+    if (billing?.itemDetails && selectedItems.length > 0) {
+      const total = selectedItems.reduce((sum, idx) => sum + Number(billing.itemDetails[idx].total || 0), 0);
+      setFormData(prev => ({ ...prev, amountPaid: total.toString() }));
+    } else if (selectedItems.length === 0 && isOpen && billing) {
+       setFormData(prev => ({ ...prev, amountPaid: '' }));
+    }
+  }, [selectedItems, billing, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,7 +63,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
   const handleSubmit = (e) => {
     console.log('get data', formData)
     e.preventDefault();
-      onSubmit(formData);
+      onSubmit({ ...formData, paidItemIndices: selectedItems });
       onClose();
       // Reset form
       setFormData({
@@ -91,6 +116,70 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Items to Pay */}
+            {billing && billing.itemDetails && billing.itemDetails.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-base-content">
+                    Items to Pay
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-primary">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs checkbox-primary"
+                      checked={
+                        billing.itemDetails.filter(item => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved').length > 0 &&
+                        selectedItems.length === billing.itemDetails.filter(item => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved').length
+                      }
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const unpaidIndices = billing.itemDetails
+                            .map((item, index) => ({ item, index }))
+                            .filter(({ item }) => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved' && item.isCleared !== true)
+                            .map(({ index }) => index);
+                          setSelectedItems(unpaidIndices);
+                        } else {
+                          setSelectedItems([]);
+                        }
+                      }}
+                    />
+                    Select All
+                  </label>
+                </div>
+                <div className="bg-base-200 rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
+                  {billing.itemDetails.map((item, index) => {
+                    const isPaid = item.paymentStatus === 'paid' || item.hmoStatus === 'approved' || item.isCleared === true || billing.isCleared;
+                    return (
+                      <label key={index} className={`flex items-center justify-between p-2 rounded-md ${isPaid ? 'opacity-50' : 'cursor-pointer hover:bg-base-100'}`}>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-sm checkbox-primary"
+                            checked={selectedItems.includes(index) || isPaid}
+                            disabled={isPaid}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedItems(prev => [...prev, index]);
+                              } else {
+                                setSelectedItems(prev => prev.filter(i => i !== index));
+                              }
+                            }}
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{item.description} {item.code ? `(${item.code})` : ''}</span>
+                            <span className="text-xs opacity-70">Qty: {item.quantity}</span>
+                          </div>
+                        </div>
+                        <div className="text-sm font-bold">
+                          ₦{Number(item.total).toLocaleString()}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* amount paid & paid by*/}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -103,7 +192,8 @@ const ReceiptModal = ({ isOpen, onClose, billingId, patientId, onSubmit }) => {
                   value={formData.amountPaid}
                   onChange={handleInputChange}
                   placeholder="Type the amount paid"
-                  className="w-full select select-bordered"
+                  className="w-full input input-bordered"
+                  readOnly={selectedItems.length > 0}
                   required
                 />
               </div>

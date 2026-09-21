@@ -62,17 +62,24 @@ const IncomingLaboratory = () => {
         ? opdResponse
         : (opdResponse?.data || []);
 
+      // Filter out tests that are unpaid and not approved by HMO
+      const paidInvestigations = allInvestigations.map(inv => {
+        if (!inv.tests) return inv;
+        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
+        return { ...inv, tests: validTests };
+      }).filter(inv => inv.tests && inv.tests.length > 0);
+
       const awaitingLabOpdPatients = allOpdPatients.filter((p) =>
         hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
       );
 
       // Separate into lab and radiology investigations
-      const laboratoryInvestigations = allInvestigations.filter(inv => {
+      const laboratoryInvestigations = paidInvestigations.filter(inv => {
         const type = String(inv.type || "").toLowerCase();
         return type === "lab" || type === "laboratory";
       });
 
-      const radiologyInvestigations = allInvestigations.filter(inv => {
+      const radiologyInvestigations = paidInvestigations.filter(inv => {
         const type = String(inv.type || "").toLowerCase();
         return (type === "radiology" || type === "imaging") && inv.status !== 'completed' && inv.status !== 'cancelled';
       });

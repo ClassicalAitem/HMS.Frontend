@@ -546,27 +546,32 @@ const lockedSubject = useMemo(() => {
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     {visibleRoles.map(role => {
                     const config = roleConfig[role];
+                    const isDoctorRole = role === 'doctor' || role === 'medical-director';
+                    const isBlocked = isDoctorRole && pendingInvestigationsList.length > 0;
                     return (
-                      <button
-                        key={role}
-                        className={`btn btn-sm ${config.color} btn-outline`}
-                        onClick={() => handleSelectRole(role)}
-                        disabled={isSending}
-                      >
-                        <span>{config.icon}</span>
-                        <span>{config.label}</span>
-                      </button>
+                      <div key={role} className={isBlocked ? "tooltip tooltip-bottom z-50 w-full" : "w-full"} data-tip={isBlocked ? "Pending tests must be completed first" : ""}>
+                        <button
+                          className={`btn btn-sm w-full ${config.color} ${isBlocked ? 'btn-disabled opacity-50' : 'btn-outline'}`}
+                          onClick={() => handleSelectRole(role)}
+                          disabled={isSending || isBlocked}
+                        >
+                          <span>{config.icon}</span>
+                          <span>{config.label}</span>
+                        </button>
+                      </div>
                     );
                   })}
-                  <div className="pt-2 border-t border-base-200">
-                  <button
-                    className="btn btn-sm btn-success w-full"
-                    onClick={() => handleComplete(selectedSubject)}
-                    disabled={isSending}
-                  >
-                    ✅ Mark as Completed
-                  </button>
-                </div>
+                  <div className="pt-2 border-t border-base-200 col-span-2">
+                    <div className={pendingInvestigationsList.length > 0 ? "tooltip tooltip-bottom z-50 w-full" : "w-full"} data-tip={pendingInvestigationsList.length > 0 ? "Pending tests must be completed first" : ""}>
+                      <button
+                        className={`btn btn-sm btn-success w-full ${pendingInvestigationsList.length > 0 ? 'btn-disabled opacity-50' : ''}`}
+                        onClick={() => handleComplete(selectedSubject)}
+                        disabled={isSending || pendingInvestigationsList.length > 0}
+                      >
+                        ✅ Mark as Completed
+                      </button>
+                    </div>
+                  </div>
                   </div>
                 </div>
               )}
@@ -669,7 +674,7 @@ const lockedSubject = useMemo(() => {
                       }}
                       disabled={isSending}
                     >
-                      {isSending ? <span className="loading loading-spinner loading-sm" /> : 'Proceed Anyway'}
+                      {isSending ? <span className="loading loading-spinner loading-sm" /> : (!pendingActionParams ? 'Continue to Roles' : 'Proceed Anyway')}
                     </button>
                   </div>
                 </div>
