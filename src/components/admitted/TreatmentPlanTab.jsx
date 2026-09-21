@@ -3,10 +3,21 @@ import { FaPills, FaCheckCircle, FaNotesMedical, FaSyringe, FaCalendarDay, FaFil
 import api from '@/services/api/apiClient';
 import toast from 'react-hot-toast';
 import { administerMedication, getMedicationAdministrations } from '@/services/api/nurseAPI';
-import { dispenseMedicationSlot, getMedicationDispenseSlots, createTreatmentBill } from '@/services/api/dispensesAPI';
+import { dispenseMedicationSlot, getMedicationDispenseSlots } from '@/services/api/dispensesAPI';
 
-const DOSE_SLOTS_PER_DAY = 5;
+const TIME_SLOTS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 const MAX_CHART_DAYS = 14;
+
+const getFrequencyCount = (frequency) => {
+  const normalized = String(frequency || '').toLowerCase();
+  if (normalized === 'stat') return 1;
+  if (normalized === 'dly' || normalized === 'mane' || normalized === 'nocte') return 1;
+  if (normalized === 'b.d' || normalized === 'bd') return 2;
+  if (normalized === 'tds') return 3;
+  if (normalized === 'qds') return 4;
+  const number = Number.parseInt(normalized.match(/\d+/)?.[0] || '', 10);
+  return Number.isFinite(number) ? Math.min(number, TIME_SLOTS.length) : TIME_SLOTS.length;
+};
 
 // "5 days" -> 5, "1 week" -> 7, unparseable -> fallback
 const parseDurationDays = (duration) => {
@@ -50,14 +61,13 @@ const getDose = (medication) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 };
 
-const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) => {
+const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isDoctor = false }) => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSlot, setActiveSlot] = useState(null);
   const [doseGiven, setDoseGiven] = useState(1);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [generatingBill, setGeneratingBill] = useState(false);
 
   // State for dispense/administer records tracking
   const [administrations, setAdministrations] = useState([]);
@@ -71,7 +81,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
     try {
       setLoading(true);
       // Fetch prescriptions (use appropriate endpoint if needed, but standard is fine)
-      const endpoint = isPharmacy 
+      const endpoint = (isPharmacy || isDoctor)
         ? `/admission/${admissionId}/prescriptions` 
         : `/nurse/admissions/${admissionId}/prescriptions`;
       const response = await api.get(endpoint);
@@ -97,7 +107,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
 
   useEffect(() => {
     fetchData();
-  }, [admissionId, isPharmacy, isNurse]);
+  }, [admissionId, isPharmacy, isNurse, isDoctor]);
 
   const handleLogAction = async (e) => {
     e.preventDefault();
@@ -111,7 +121,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
         ...(activeSlot.medicationId ? { medicationId: activeSlot.medicationId } : { medicationIndex: activeSlot.medicationIndex }),
         ...(isPharmacy ? { doseDispensed: Number(doseGiven) } : { doseGiven: Number(doseGiven) }),
         notes: `${isPharmacy ? 'Dispensed' : 'Administered'} ${activeSlot.slotName}, day ${activeSlot.dayIdx + 1}${notes.trim() ? ` - ${notes.trim()}` : ''}`,
-        ...(isPharmacy ? { dispensedAt: activeSlot.date.toISOString() } : { administeredAt: activeSlot.date.toISOString() })
+        ...(isPharmacy ? { dispensedAt: new Date().toISOString() } : { administeredAt: new Date().toISOString() })
       };
 
       if (isPharmacy) {
@@ -134,18 +144,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
     }
   };
 
-  const handleGenerateBill = async () => {
-    if (!admissionId) return;
-    setGeneratingBill(true);
-    try {
-      await createTreatmentBill(admissionId);
-      toast.success('Treatment bill generated successfully');
-    } catch (error) {
-      toast.error(error?.response?.data?.error || error?.message || 'Failed to generate treatment bill');
-    } finally {
-      setGeneratingBill(false);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -175,37 +174,26 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
             <FaBed className="text-primary" /> 
             {isPharmacy ? 'Pharmacy Ward Dispense Chart' : 'Active Treatment Plans'}
           </h2>
-          
-          {isPharmacy && (
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              onClick={handleGenerateBill}
-              disabled={generatingBill}
-            >
-              <FaFileInvoiceDollar />
-              {generatingBill ? 'Generating...' : 'Generate Treatment Bill'}
-            </button>
-          )}
         </div>
 
         <div className="p-4 space-y-6">
           {prescriptions.map((prescription, pIdx) => {
             const prescriptionId = getId(prescription) || `rx-${pIdx}`;
             return (
-            <div key={prescriptionId} className="border border-base-200 rounded-xl overflow-hidden shadow-sm hover:border-primary/20 transition-all">
-              <div className="bg-base-200/50 p-3 px-4 flex justify-between items-center border-b border-base-200">
-                <div>
+            <div key={prescriptionId} className="collapse collapse-arrow border border-base-200 rounded-xl overflow-hidden shadow-sm hover:border-primary/20 transition-all bg-base-100">
+              <input type="checkbox" defaultChecked={pIdx === 0} className="peer" />
+              <div className="collapse-title bg-base-200/50 p-3 px-4 flex justify-between items-center border-b border-base-200">
+                <div className="pr-8">
                   <p className="text-xs font-semibold text-base-content/70 uppercase tracking-wider">Prescription Details</p>
                   <p className="text-sm font-medium mt-0.5">
                     Prescribed by {prescription.doctorName || 'Doctor'} •{' '}
                     {new Date(prescription.createdAt || Date.now()).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
-                <div className="badge badge-primary badge-outline font-semibold">{prescription.status || 'Active'}</div>
+                <div className="badge badge-primary badge-outline font-semibold z-10">{prescription.status || 'Active'}</div>
               </div>
 
-              <div className="divide-y divide-base-200">
+              <div className="collapse-content p-0 m-0 divide-y divide-base-200">
                 {(prescription.medications || []).map((med, mIdx) => {
                   const medicationId = getId(med);
                   const totalDays = parseDurationDays(med.duration);
@@ -263,9 +251,9 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
                               <th className="text-[10px] font-bold uppercase text-base-content/60 sticky left-0 bg-base-200/60 w-28">
                                 <FaCalendarDay className="inline w-3 h-3 mr-1" /> Day
                               </th>
-                              {Array.from({ length: DOSE_SLOTS_PER_DAY }).map((_, i) => (
+                              {TIME_SLOTS.map((slotName, i) => (
                                 <th key={i} className="text-center text-[10px] font-bold text-base-content/60 w-16">
-                                  Dose {i + 1}
+                                  {slotName}
                                 </th>
                               ))}
                             </tr>
@@ -285,13 +273,15 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
                                 isSameDay(d.dispensedAt || d.createdAt, dayDate)
                               );
                               
-                              const adminCount = Math.min(adminsOnDay.length, DOSE_SLOTS_PER_DAY);
-                              const dispensedCount = Math.min(dispensesOnDay.length, DOSE_SLOTS_PER_DAY);
+                              const adminCount = adminsOnDay.length;
+                              const dispensedCount = dispensesOnDay.length;
                               
                               // Check for overflow doses
                               const overflow = isPharmacy 
-                                ? dispensesOnDay.length - DOSE_SLOTS_PER_DAY 
-                                : adminsOnDay.length - DOSE_SLOTS_PER_DAY;
+                                ? Math.max(0, dispensesOnDay.length - TIME_SLOTS.length) 
+                                : Math.max(0, adminsOnDay.length - TIME_SLOTS.length);
+                                
+                              const frequencyCount = getFrequencyCount(med.frequency);
 
                               return (
                                 <tr key={dayIdx} className={isToday ? 'bg-primary/5' : ''}>
@@ -301,16 +291,21 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
                                       {isToday && <span className="badge badge-primary badge-xs mt-0.5 shadow-sm">Today</span>}
                                     </div>
                                   </td>
-                                  {Array.from({ length: DOSE_SLOTS_PER_DAY }).map((_, slotIdx) => {
-                                    const isDispensed = slotIdx < dispensedCount;
-                                    const isAdministered = slotIdx < adminCount;
+                                  {TIME_SLOTS.map((slotName, slotIdx) => {
+                                    const matchesSlot = (record, sName, sIdx) => {
+                                      const notes = record.notes || '';
+                                      return notes.includes(sName) || notes.includes(`Dose ${sIdx + 1}`);
+                                    };
                                     
-                                    const adminRecord = adminsOnDay[slotIdx];
-                                    const dispenseRecord = dispensesOnDay[slotIdx];
+                                    const dispenseRecord = dispensesOnDay.find(d => matchesSlot(d, slotName, slotIdx));
+                                    const adminRecord = adminsOnDay.find(a => matchesSlot(a, slotName, slotIdx));
+                                    
+                                    const isDispensed = !!dispenseRecord;
+                                    const isAdministered = !!adminRecord;
 
                                     // Permission Logic
-                                    const pharmacyTappable = isPharmacy && (isToday || dayDate < today) && !isDispensed && (slotIdx === dispensedCount);
-                                    const nurseTappable = isNurse && (isToday || dayDate < today) && isDispensed && !isAdministered && (slotIdx === adminCount);
+                                    const pharmacyTappable = isPharmacy && (isToday || dayDate < today) && !isDispensed && (dispensedCount < frequencyCount);
+                                    const nurseTappable = isNurse && (isToday || dayDate < today) && isDispensed && !isAdministered && (adminCount < frequencyCount);
                                     const tappable = isPharmacy ? pharmacyTappable : nurseTappable;
 
                                     let btnClass = 'w-6 h-6 rounded-lg border-2 flex items-center justify-center mx-auto transition-all duration-200 shadow-sm ';
@@ -324,15 +319,15 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
                                         showCheck = true;
                                       } else if (pharmacyTappable) {
                                         btnClass += 'border-primary/40 hover:bg-primary/20 hover:border-primary cursor-pointer text-primary bg-base-100';
-                                        title = 'Tap to dispense this dose';
+                                        title = `Tap to dispense ${slotName} dose`;
                                       } else if (isFuture) {
                                         btnClass += 'border-base-300 opacity-30 bg-base-200/50 cursor-not-allowed shadow-none';
                                         title = 'Not yet due';
                                       } else {
                                         btnClass += 'border-base-300 opacity-30 bg-base-200/50 cursor-not-allowed shadow-none';
-                                        title = 'Must dispense previous doses first';
+                                        title = dispensedCount >= frequencyCount ? 'Daily dispensing limit reached' : 'Cannot dispense';
                                       }
-                                    } else if (isNurse) {
+                                    } else {
                                       if (isAdministered) {
                                         btnClass += 'bg-success border-success text-white cursor-default shadow-md';
                                         title = `Administered at ${adminRecord?.administeredAt ? new Date(adminRecord.administeredAt).toLocaleTimeString() : 'Unknown'}`;
@@ -340,10 +335,10 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
                                       } else if (isDispensed) {
                                         if (nurseTappable) {
                                           btnClass += 'border-success/40 hover:bg-success/20 hover:border-success cursor-pointer text-success bg-base-100';
-                                          title = 'Tap to log administration';
+                                          title = `Tap to log ${slotName} administration`;
                                         } else {
                                           btnClass += 'border-success/30 text-success/40 bg-success/5 cursor-not-allowed shadow-none';
-                                          title = 'Awaiting previous doses to be administered';
+                                          title = isDoctor ? 'Dispensed, pending administration' : (adminCount >= frequencyCount ? 'Daily administration limit reached' : 'Cannot administer');
                                         }
                                       } else if (isFuture) {
                                         btnClass += 'border-base-300 opacity-30 bg-base-200/50 cursor-not-allowed shadow-none';
@@ -369,7 +364,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
                                               date: dayDate,
                                               dayIdx: dayIdx,
                                               slotIdx: slotIdx,
-                                              slotName: `Dose ${slotIdx + 1}`,
+                                              slotName: slotName,
                                               defaultDose: getDose(med)
                                             })
                                           }
@@ -473,6 +468,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true }) =
           <div className="modal-backdrop bg-black/60 backdrop-blur-sm" onClick={() => !isSubmitting && setActiveSlot(null)}></div>
         </div>
       )}
+      {/* Action Modal */}
     </div>
   );
 };

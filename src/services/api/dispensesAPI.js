@@ -72,6 +72,12 @@ export const createTreatmentBill = async (admissionId) => {
   return response.data ?? response
 }
 
+export const previewTreatmentBill = async (admissionId) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.get(`/dispense/treatment-bill/preview/${admissionId}`)
+  return response.data?.data ?? response.data ?? response
+}
+
 export default {
   getDispenses,
   getDispense,
@@ -79,5 +85,6 @@ export default {
   updateDispense,
   dispenseMedicationSlot,
   getMedicationDispenseSlots,
-  createTreatmentBill
+  createTreatmentBill,
+  previewTreatmentBill
 }

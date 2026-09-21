@@ -193,7 +193,7 @@ const MDAdmittedList = () => {
 
   useEffect(() => { loadData() }, [])
 
-  const list = activeTab === 'pending admissions' ? pending : admitted
+  const list = activeTab === 'pending' ? pending : admitted
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
