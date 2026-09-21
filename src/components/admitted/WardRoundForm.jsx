@@ -135,7 +135,7 @@ const WardRoundForm = ({ patientId, dependantId, doctorId, consultationId: provi
             {inlineMedications.map((m, i) => (
               <div key={i} className="flex items-center justify-between bg-base-100 p-2 rounded-lg text-xs border border-base-300">
                 <span className="font-semibold text-base-content">
-                  {m.drugName} - {m.dosage} ({m.frequency}, {m.duration})
+                  {m.drugName} - {m.dosage} ({m.frequency})
                 </span>
                 <button
                   type="button"
@@ -151,7 +151,7 @@ const WardRoundForm = ({ patientId, dependantId, doctorId, consultationId: provi
 
         {showAddMed && (
           <div className="p-3 bg-base-100 rounded-xl border border-base-300 space-y-2 mt-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <input
                 type="text"
                 placeholder="Drug name (e.g. IV Ceftriaxone 1g)"
@@ -172,13 +172,6 @@ const WardRoundForm = ({ patientId, dependantId, doctorId, consultationId: provi
                 className="input input-bordered input-xs rounded-lg"
                 value={medForm.frequency}
                 onChange={(e) => setMedForm({ ...medForm, frequency: e.target.value })}
-              />
-              <input
-                type="text"
-                placeholder="Duration (e.g. 5 days)"
-                className="input input-bordered input-xs rounded-lg"
-                value={medForm.duration}
-                onChange={(e) => setMedForm({ ...medForm, duration: e.target.value })}
               />
             </div>
             <div className="flex justify-end gap-2 pt-1">

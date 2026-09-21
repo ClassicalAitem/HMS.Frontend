@@ -25,10 +25,16 @@ export const dispenseBloodTransfusionPreps = async (id) => {
   return res.data ?? res
 }
 
+export const administerBloodTransfusionPreps = async (id) => {
+  const res = await apiClient.patch(`/blood-transfusion/${id}/administer-preps`)
+  return res.data ?? res
+}
+
 export default {
   createBloodTransfusionOrder,
   startBloodTransfusionOrder,
   completeBloodTransfusionOrder,
   getBloodTransfusionsByPatient,
   dispenseBloodTransfusionPreps,
+  administerBloodTransfusionPreps,
 }

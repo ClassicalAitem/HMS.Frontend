@@ -450,7 +450,7 @@ const WardRoundTab = ({
 
                         <div className="text-[11px] text-base-content/70 space-y-0.5">
                           <div>
-                            <span className="font-medium text-base-content/90">Regimen:</span> {m.frequency} · {m.duration}
+                            <span className="font-medium text-base-content/90">Regimen:</span> {m.frequency}
                           </div>
                           {m.instructions && (
                             <div className="italic text-base-content/60">
@@ -876,7 +876,7 @@ const WardRoundTab = ({
                                   <div key={mIdx} className="flex flex-col sm:flex-row sm:items-center justify-between text-base-content/90 font-medium gap-1">
                                     <div>
                                       • <span className="font-bold">{med.drugName}</span> -{' '}
-                                      <span className="badge badge-ghost badge-sm">{med.dosage}</span> ({med.frequency}, {med.duration})
+                                      <span className="badge badge-ghost badge-sm">{med.dosage}</span> ({med.frequency})
                                       {med.instructions && <span className="text-base-content/60 italic ml-1">— {med.instructions}</span>}
                                     </div>
                                   </div>

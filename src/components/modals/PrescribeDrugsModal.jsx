@@ -64,9 +64,6 @@ const medicationSchema = yup.object().shape({
   dosageAmount: yup.number().typeError('Enter a number').positive('Must be greater than 0').required('Dose amount is required'),
   dosageUnit: yup.string().required('Select a unit'),
   frequency: yup.string().required('Frequency is required'),
-  duration: yup.string().required('Duration is required'),
-  durationAmount: yup.number().typeError('Enter a number').positive('Must be greater than 0').required('Duration amount is required'),
-  durationUnit: yup.string().required('Duration unit is required'),
   instructions: yup.string(),
   inventoryId: yup.string().nullable(),
   availability: yup.string().oneOf(['available', 'unavailable']).required('Please select the drug from the list or mark it unavailable'),
@@ -82,9 +79,6 @@ const emptyMedication = {
   dosageAmount: '',
   dosageUnit: 'tablet',
   frequency: '',
-  duration: '',
-  durationAmount: '',
-  durationUnit: 'day',
   instructions: '',
   inventoryId: null,
   _selectedDrug: null,
@@ -148,7 +142,7 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
     const availability = watch(`medications.${index}.availability`);
     const selectedDrug = watch(`medications.${index}._selectedDrug`);
 
-    if (availability === 'unavailable' || !selectedDrug || !dosageAmount || !frequency || !duration) return null;
+    if (availability === 'unavailable' || !selectedDrug || !dosageAmount || !frequency) return null;
 
     return calculatePrescriptionLine({
       medicationType, dosageAmount, dosageUnit, frequency, duration, inventory: selectedDrug,
@@ -180,7 +174,6 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
 
       return {
         ...medData,
-        duration: normalizedDuration,
         dosage: `${medData.dosageAmount} ${dosageUnitLabel}`,
         instructions: medData.instructions || undefined,
         prescribedQuantity: preview?.prescribedQuantity ?? null,
@@ -379,39 +372,7 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                       </select>
                     </div>
 
-                    <div className="form-control">
-                      <label className="label"><span className="label-text">Duration</span></label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="e.g. 5"
-                          className="input input-bordered w-full"
-                          value={watch(`medications.${index}.durationAmount`) || ''}
-                          onChange={(e) => {
-                            const amount = e.target.value;
-                            const unit = watch(`medications.${index}.durationUnit`) || 'day';
-                            setValue(`medications.${index}.durationAmount`, amount);
-                            setValue(`medications.${index}.duration`, buildDurationString(amount, unit));
-                          }}
-                        />
-                        <select
-                          className="select select-bordered w-32"
-                          value={watch(`medications.${index}.durationUnit`) || 'day'}
-                          onChange={(e) => {
-                            const unit = e.target.value;
-                            const amount = watch(`medications.${index}.durationAmount`);
-                            setValue(`medications.${index}.durationUnit`, unit);
-                            setValue(`medications.${index}.duration`, buildDurationString(amount, unit));
-                          }}
-                        >
-                          <option value="day">Day(s)</option>
-                          <option value="week">Week(s)</option>
-                          <option value="month">Month(s)</option>
-                          <option value="year">Year(s)</option>
-                        </select>
-                      </div>
-                    </div>
+
 
                     <div className="form-control md:col-span-2">
                       <label className="label"><span className="label-text">Instructions (Optional)</span></label>
