@@ -9,8 +9,6 @@ const PrescriptionModal = ({ isOpen, onClose, consultationId, patientId, onCreat
   const [dosageAmount, setDosageAmount] = useState('')
   const [dosageUnit, setDosageUnit] = useState('tablet')
   const [frequency, setFrequency] = useState('b.d')
-  const [durationAmount, setDurationAmount] = useState('3')
-  const [durationUnit, setDurationUnit] = useState('day')
   const [instructions, setInstructions] = useState('')
 
   useEffect(() => {
@@ -20,8 +18,6 @@ const PrescriptionModal = ({ isOpen, onClose, consultationId, patientId, onCreat
       setDosageAmount('')
       setDosageUnit('tablet')
       setFrequency('b.d')
-      setDurationAmount('3')
-      setDurationUnit('day')
       setInstructions('')
     }
   }, [isOpen])
@@ -33,15 +29,6 @@ const PrescriptionModal = ({ isOpen, onClose, consultationId, patientId, onCreat
 
     setLoading(true)
     try {
-      const normalizedDuration =
-        durationUnit === 'week'
-          ? `${durationAmount}/52`
-          : durationUnit === 'month'
-          ? `${durationAmount}/12`
-          : durationUnit === 'year'
-          ? `${durationAmount}yr`
-          : `${durationAmount}/7`
-
       const payload = {
         patientId,
         consultationId,
@@ -53,7 +40,6 @@ const PrescriptionModal = ({ isOpen, onClose, consultationId, patientId, onCreat
             dosageAmount: Number(dosageAmount),
             dosageUnit,
             frequency,
-            duration: normalizedDuration,
             instructions: instructions || undefined,
             availability: 'available',
           },
@@ -139,48 +125,23 @@ const PrescriptionModal = ({ isOpen, onClose, consultationId, patientId, onCreat
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Frequency</label>
-              <select
-                className="select select-bordered w-full select-sm"
-                value={frequency}
-                onChange={(e) => setFrequency(e.target.value)}
-              >
-                <option value="STAT">STAT (Once)</option>
-                <option value="dly">Daily</option>
-                <option value="b.d">b.d (2x daily)</option>
-                <option value="tds">tds (3x daily)</option>
-                <option value="qds">qds (4x daily)</option>
-                <option value="mane">Mane (Morning)</option>
-                <option value="nocte">Nocte (Night)</option>
-                <option value="prn">PRN (As needed)</option>
-                <option value="alt die">Alt Die</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Duration</label>
-              <input
-                type="number"
-                min="1"
-                value={durationAmount}
-                onChange={(e) => setDurationAmount(e.target.value)}
-                className="input input-bordered w-full input-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Duration Unit</label>
-              <select
-                className="select select-bordered w-full select-sm"
-                value={durationUnit}
-                onChange={(e) => setDurationUnit(e.target.value)}
-              >
-                <option value="day">Day(s)</option>
-                <option value="week">Week(s)</option>
-                <option value="month">Month(s)</option>
-              </select>
-            </div>
+          <div>
+            <label className="text-xs text-base-content/70 block mb-1">Frequency</label>
+            <select
+              className="select select-bordered w-full select-sm"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+            >
+              <option value="STAT">STAT (Once)</option>
+              <option value="dly">Daily</option>
+              <option value="b.d">b.d (2x daily)</option>
+              <option value="tds">tds (3x daily)</option>
+              <option value="qds">qds (4x daily)</option>
+              <option value="mane">Mane (Morning)</option>
+              <option value="nocte">Nocte (Night)</option>
+              <option value="prn">PRN (As needed)</option>
+              <option value="alt die">Alt Die</option>
+            </select>
           </div>
 
           <div>

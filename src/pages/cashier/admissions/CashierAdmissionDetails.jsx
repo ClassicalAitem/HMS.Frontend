@@ -23,6 +23,7 @@ const CashierAdmissionDetails = () => {
   const [loading, setLoading] = useState(true);
   const [admission, setAdmission] = useState(null);
   const [ledgerItems, setLedgerItems] = useState([]);
+  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], bts: [], treatments: [] });
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
   
@@ -76,13 +77,17 @@ const CashierAdmissionDetails = () => {
           });
         });
 
-        // Fetch Unbilled items (labs, IVs, blood)
-        let unbilledItems = [];
+        // Fetch Unbilled items (labs, IVs, blood, treatments)
+        let unbilledLabs = [];
+        let unbilledIvs = [];
+        let unbilledBts = [];
+        let unbilledTreatments = [];
+
         try {
           const labsRes = await getInvestigationByPatientId(admData.patientId);
           const rawLabs = Array.isArray(labsRes?.data ?? labsRes) ? (labsRes?.data ?? labsRes) : [];
           rawLabs.filter(l => !l.isBilled && String(l.admissionId || '') === String(admissionId)).forEach(l => {
-            unbilledItems.push({
+            unbilledLabs.push({
               description: `${l.testName || l.type || 'Investigation'} (Lab Test)`,
               quantity: 1, unitPrice: l.price || 0, price: l.price || 0, total: l.price || 0,
               isBilled: false, category: 'Investigation', investigationRequestId: l._id || l.id,
@@ -94,7 +99,7 @@ const CashierAdmissionDetails = () => {
           const ivRes = await apiClient.get(`/iv-fluid/patient/${admData.patientId}`);
           const ivs = Array.isArray(ivRes.data?.data || ivRes.data) ? (ivRes.data?.data || ivRes.data) : [];
           ivs.filter(i => !i.isBilled && String(i.admissionId || '') === String(admissionId)).forEach(i => {
-            unbilledItems.push({
+            unbilledIvs.push({
               description: `${i.fluidType} (IV Fluid)`,
               quantity: i.volume || 1, unitPrice: i.price || 0, price: i.price || 0, total: (i.price || 0) * (i.volume || 1),
               isBilled: false, category: 'IV Fluid', ivFluidOrderId: i._id || i.id
@@ -106,7 +111,7 @@ const CashierAdmissionDetails = () => {
           const btRes = await apiClient.get(`/blood-transfusion/patient/${admData.patientId}`);
           const bts = Array.isArray(btRes.data?.data || btRes.data) ? (btRes.data?.data || btRes.data) : [];
           bts.filter(i => !i.isBilled && String(i.admissionId || '') === String(admissionId)).forEach(i => {
-            unbilledItems.push({
+            unbilledBts.push({
               description: `${i.bloodGroup} (Blood Transfusion)`,
               quantity: i.unitsRequested || 1, unitPrice: i.price || 0, price: i.price || 0, total: (i.price || 0) * (i.unitsRequested || 1),
               isBilled: false, category: 'Blood Transfusion', bloodTransfusionOrderId: i._id || i.id
@@ -114,7 +119,25 @@ const CashierAdmissionDetails = () => {
           });
         } catch (err) {}
 
-        setLedgerItems([...masterBillItems, ...unbilledItems]);
+        try {
+          const tRes = await apiClient.get(`/dispense/treatment-bill/preview/${admissionId}`);
+          const treats = tRes.data?.data?.itemDetails || [];
+          treats.forEach(t => {
+            unbilledTreatments.push({
+              ...t,
+              isBilled: false,
+              isTreatment: true
+            });
+          });
+        } catch (err) {}
+
+        setLedgerItems([...masterBillItems]);
+        setUnbilledGroups({
+          labs: unbilledLabs,
+          ivs: unbilledIvs,
+          bts: unbilledBts,
+          treatments: unbilledTreatments
+        });
 
         // Fetch receipts for this admission's bills
         let admissionReceipts = [];
@@ -167,9 +190,17 @@ const CashierAdmissionDetails = () => {
     }
   };
 
-  const generateBillForUnbilledItems = async (unbilledList) => {
+  const generateBillForUnbilledItems = async (unbilledList, type) => {
     try {
       const toastId = toast.loading('Generating bill...');
+      
+      if (type === 'unbilled_treatments') {
+        await apiClient.post(`/dispense/treatment-bill/${admissionId}`);
+        toast.success('Treatment bill generated successfully!', { id: toastId });
+        fetchData();
+        return;
+      }
+
       const billData = {
         patientId: admission.patientId,
         dependantId: admission.dependantId,
@@ -223,21 +254,48 @@ const CashierAdmissionDetails = () => {
 
     const result = Object.values(groups).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-    if (unbilled.length > 0) {
+    if (unbilledGroups.treatments.length > 0) {
       result.unshift({
-        id: 'unbilled',
-        pseudo: true,
-        createdAt: null,
-        totalAmount: unbilled.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
-        outstandingBill: unbilled.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
-        raisedBy: { firstName: 'System', lastName: '(Unbilled items)', accountType: 'Auto' },
-        isCleared: false,
-        itemDetails: unbilled
+        id: 'unbilled_treatments', pseudo: true, createdAt: null,
+        totalAmount: unbilledGroups.treatments.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        outstandingBill: unbilledGroups.treatments.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        raisedBy: { firstName: 'System', lastName: '(Treatments)', accountType: 'Auto' },
+        isCleared: false, itemDetails: unbilledGroups.treatments
+      });
+    }
+    
+    if (unbilledGroups.bts.length > 0) {
+      result.unshift({
+        id: 'unbilled_bts', pseudo: true, createdAt: null,
+        totalAmount: unbilledGroups.bts.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        outstandingBill: unbilledGroups.bts.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        raisedBy: { firstName: 'System', lastName: '(Blood Transfusions)', accountType: 'Auto' },
+        isCleared: false, itemDetails: unbilledGroups.bts
+      });
+    }
+
+    if (unbilledGroups.ivs.length > 0) {
+      result.unshift({
+        id: 'unbilled_ivs', pseudo: true, createdAt: null,
+        totalAmount: unbilledGroups.ivs.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        outstandingBill: unbilledGroups.ivs.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        raisedBy: { firstName: 'System', lastName: '(IV Fluids)', accountType: 'Auto' },
+        isCleared: false, itemDetails: unbilledGroups.ivs
+      });
+    }
+
+    if (unbilledGroups.labs.length > 0) {
+      result.unshift({
+        id: 'unbilled_labs', pseudo: true, createdAt: null,
+        totalAmount: unbilledGroups.labs.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        outstandingBill: unbilledGroups.labs.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        raisedBy: { firstName: 'System', lastName: '(Labs)', accountType: 'Auto' },
+        isCleared: false, itemDetails: unbilledGroups.labs
       });
     }
 
     return result;
-  }, [ledgerItems, billings]);
+  }, [ledgerItems, billings, unbilledGroups]);
 
   const summarySubject = useMemo(() => {
     const p = currentPatient || admission?.patient || {};
@@ -335,7 +393,7 @@ const CashierAdmissionDetails = () => {
                       <td>
                         {bill.pseudo ? (
                           <button
-                            onClick={() => generateBillForUnbilledItems(bill.itemDetails)}
+                            onClick={() => generateBillForUnbilledItems(bill.itemDetails, bill.id)}
                             className="btn btn-sm btn-outline btn-primary"
                           >
                             Generate Bill
