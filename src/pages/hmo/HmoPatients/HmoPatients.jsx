@@ -111,7 +111,9 @@ const HMOPatients = () => {
           totalAmount: Number(bill.totalAmount || 0),
           hmoCovered: hmoCoveredTotal,
           patientOwes: patientOwesTotal,
-          approvedBy: bill.hmoReviewedBy || `${bill.raisedBy?.firstName || ''} ${bill.raisedBy?.lastName || ''}`.trim() || '—',
+          hmoProvider: Array.isArray(patient?.hmos) && patient.hmos.length > 0 
+            ? patient.hmos.map(h => h.provider).filter(Boolean).join(', ') 
+            : 'Self-pay',
           approvedAt: bill.hmoReviewedAt || bill.updatedAt || null,
         };
       });
@@ -266,8 +268,8 @@ const HMOPatients = () => {
       }
     },
     {
-      key: 'approvedBy',
-      title: 'Decided By',
+      key: 'hmoProvider',
+      title: 'HMO Provider',
       sortable: true,
       className: 'text-base-content/70',
     },
