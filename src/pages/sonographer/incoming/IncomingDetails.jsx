@@ -73,9 +73,16 @@ useEffect(() => {
         ? investigationsResponse
         : (investigationsResponse?.data || []);
 
+      // Filter out tests that are unpaid and not approved by HMO
+      const paidInvestigations = allInvestigations.map(inv => {
+        if (!inv.tests) return inv;
+        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
+        return { ...inv, tests: validTests };
+      }).filter(inv => inv.tests && inv.tests.length > 0);
+
       // Sonographer only ever deals with radiology-type investigations —
       // check for both 'radiology' and 'imaging' to support old and new enums.
-      const radiologyInvestigations = allInvestigations.filter(
+      const radiologyInvestigations = paidInvestigations.filter(
         (inv) => {
           const type = String(inv.type || '').toLowerCase();
           return type === 'radiology' || type === 'imaging';
@@ -308,11 +315,6 @@ useEffect(() => {
 
         await createLabResult(targetId, payload);
         toast.success("Scan uploaded successfully.");
-      }
-
-      // Update investigation status to completed
-      if (investigation?._id) {
-        await updateInvestigation(investigation._id, { status: 'completed' });
       }
 
       // Show success state instead of navigating
@@ -578,10 +580,25 @@ useEffect(() => {
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                       {radiologyHistory.map((inv) => {
                         const isCurrent = inv._id === investigation?._id;
+                        const isCompleted = String(inv.status || '').toLowerCase() === 'completed';
                         return (
                           <div
                             key={inv._id}
-                            className={`p-3 rounded-lg border ${isCurrent ? 'border-primary bg-primary/5' : 'border-base-200 bg-base-100'}`}
+                            onClick={() => {
+                              if (!isCompleted) {
+                                setInvestigation(inv);
+                                setFiles([]);
+                                setUploadSuccess(false);
+                                setExistingLabResult(null);
+                                // Also fetch existing lab result for the new selection
+                                getLabResults({ investigationRequestId: inv._id }).then(res => {
+                                  const results = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []);
+                                  const existing = results.find(lr => lr.investigationRequestId === inv._id || lr.investigationId === inv._id);
+                                  if (existing) setExistingLabResult(existing);
+                                }).catch(console.warn);
+                              }
+                            }}
+                            className={`p-3 rounded-lg border ${isCurrent ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-200 bg-base-100'} ${!isCompleted && !isCurrent ? 'cursor-pointer hover:border-primary/50 hover:bg-base-100/80 transition-colors' : ''} ${isCompleted ? 'opacity-70' : ''}`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-1.5">
                               <span className={`badge badge-sm ${investigationStatusBadge(inv.status)}`}>
@@ -606,7 +623,7 @@ useEffect(() => {
                               })}
                             </div>
                             <p className="text-xs text-base-content/50">
-                              Ordered {inv.createdAt ? formatNigeriaDate(inv.createdAt) : '—'}
+                              Ordered {inv.createdAt ? formatNigeriaDateTime(inv.createdAt) : '—'}
                             </p>
                           </div>
                         );
