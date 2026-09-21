@@ -193,7 +193,6 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
                   onChange={handleInputChange}
                   placeholder="Type the amount paid"
                   className="w-full input input-bordered"
-                  readOnly={selectedItems.length > 0}
                   required
                 />
               </div>
