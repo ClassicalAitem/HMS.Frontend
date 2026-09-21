@@ -15,6 +15,7 @@ import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
+import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
 import toast from 'react-hot-toast'
 import {
   FaHeartbeat,
@@ -26,6 +27,7 @@ import {
   FaArrowLeft,
   FaCashRegister,
   FaPaperPlane,
+  FaPills,
 } from 'react-icons/fa'
 
 const DRAdmittedPatient = () => {
@@ -278,6 +280,18 @@ const DRAdmittedPatient = () => {
                 </button>
 
                 <button
+                  onClick={() => setActiveTab('treatment')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'treatment'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaPills className="w-4 h-4" />
+                  Treatment Plan
+                </button>
+
+                <button
                   onClick={() => setActiveTab('blood')}
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'blood'
@@ -354,6 +368,15 @@ const DRAdmittedPatient = () => {
                 isDoctor={true}
                 isNurse={false}
                 onRoundSaved={loadAdmission}
+              />
+            )}
+
+            {activeTab === 'treatment' && (
+              <TreatmentPlanTab
+                admissionId={admission?.id || admission?._id}
+                isDoctor={true}
+                isNurse={false}
+                isPharmacy={false}
               />
             )}
 

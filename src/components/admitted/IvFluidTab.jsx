@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import ivFluidApi from '@/services/api/ivFluidApi'
 import { getInventories } from '@/services/api/inventoryAPI'
+import { createTreatmentBill } from '@/services/api/dispensesAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaTint,
@@ -20,6 +21,7 @@ import {
   FaSearch,
   FaExclamationTriangle,
   FaMoneyBillWave,
+  FaFileInvoiceDollar,
 } from 'react-icons/fa'
 
 
@@ -27,6 +29,7 @@ const IvFluidTab = ({
   patientId,
   dependantId,
   consultationId,
+  admissionId,
   isDoctor = false,
   isNurse = false,
   isPharmacist = false,
@@ -50,7 +53,6 @@ const IvFluidTab = ({
   const [saving, setSaving] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState(null)
   const [dispensingId, setDispensingId] = useState(null)
-
   // Consumables ordering
   const [consumableSearch, setConsumableSearch] = useState('')
   const [selectedConsumables, setSelectedConsumables] = useState([])
@@ -97,11 +99,13 @@ const IvFluidTab = ({
     }
   }
 
-  const searchInventory = async (term) => {
+  const loadConsumablesInventory = async () => {
     try {
       setLoadingInventory(true)
-      const res = await getInventories({ search: term, limit: 10 })
-      setInventoryList(res?.data?.inventories || res?.data || [])
+      const res = await getInventories()
+      const raw = res?.data ?? res ?? []
+      const list = Array.isArray(raw) ? raw : raw?.data ?? []
+      setInventoryList(list)
     } catch (error) {
       console.error('Error fetching inventory:', error)
     } finally {
@@ -110,15 +114,19 @@ const IvFluidTab = ({
   }
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (consumableSearch.trim().length > 1) {
-        searchInventory(consumableSearch)
-      } else {
-        setInventoryList([])
-      }
-    }, 500)
-    return () => clearTimeout(timeoutId)
-  }, [consumableSearch])
+    if (showConsumablesModal && inventoryList.length === 0) {
+      loadConsumablesInventory()
+    }
+  }, [showConsumablesModal])
+
+  const filteredConsumables = useMemo(() => {
+    const q = consumableSearch.trim().toLowerCase()
+    if (!q) return []
+    return inventoryList.filter((item) => {
+      const name = String(item?.name || item?.itemName || '').toLowerCase()
+      return name.includes(q)
+    })
+  }, [inventoryList, consumableSearch])
 
   const loadData = async (dateToFetch = selectedDate) => {
     try {
@@ -451,24 +459,34 @@ const IvFluidTab = ({
           </div>
 
           {/* Doctor Order Regimen Button */}
-          {isDoctor && (
-            <button
-              onClick={() => setShowOrderModal(true)}
-              className="btn btn-sm btn-primary rounded-xl gap-2 font-semibold shadow-sm"
-            >
-              <FaPlus className="w-3 h-3" /> Prescribe IV Regimen
-            </button>
-          )}
-
-          {/* Nurse Log Balance Button */}
-          {isNurse && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn btn-sm btn-success rounded-xl text-white gap-2 font-semibold shadow-sm"
-            >
-              <FaPlus className="w-3 h-3" /> Log Intake / Output
-            </button>
-          )}
+          <div className="flex gap-2">
+            {isPharmacist && (
+              <button
+                onClick={() => setShowPreviewModal(true)}
+                className="btn btn-sm btn-primary rounded-xl text-white gap-2 font-semibold shadow-sm"
+              >
+                <FaFileInvoiceDollar className="w-3 h-3" />
+                Generate Bill
+              </button>
+            )}
+            {isDoctor && (
+              <button
+                onClick={() => setShowOrderModal(true)}
+                className="btn btn-sm btn-primary rounded-xl gap-2 font-semibold shadow-sm"
+              >
+                <FaPlus className="w-3 h-3" /> Prescribe IV Regimen
+              </button>
+            )}
+            {/* Nurse Log Balance Button */}
+            {isNurse && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="btn btn-sm btn-success rounded-xl text-white gap-2 font-semibold shadow-sm"
+              >
+                <FaPlus className="w-3 h-3" /> Log Intake / Output
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1148,9 +1166,9 @@ const IvFluidTab = ({
                 </div>
 
                 {/* Search Results */}
-                {consumableSearch.length > 1 && inventoryList.length > 0 && (
+                {consumableSearch.length > 1 && filteredConsumables.length > 0 && (
                   <div className="mt-2 border border-base-200 rounded-xl overflow-hidden shadow-sm max-h-40 overflow-y-auto">
-                    {inventoryList.map((item) => (
+                    {filteredConsumables.map((item) => (
                       <div
                         key={item._id || item.id}
                         className="p-2 hover:bg-base-200/50 cursor-pointer text-sm flex items-center justify-between border-b border-base-200 last:border-0"
@@ -1336,7 +1354,6 @@ const IvFluidTab = ({
           </div>
         </div>
       )}
-
       {/* Confirm Delete Entry Modal */}
       {confirmDeleteModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

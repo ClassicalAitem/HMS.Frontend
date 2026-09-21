@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { dispenseMedicationSlot, createTreatmentBill, getMedicationDispenseSlots } from '@/services/api/dispensesAPI'
+import { dispenseMedicationSlot, getMedicationDispenseSlots } from '@/services/api/dispensesAPI'
 
 const TIME_SLOTS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night']
 
@@ -46,7 +46,7 @@ const PharmacyWardRoundDispenseModal = ({ isOpen, onClose, admissionId, prescrip
   const [administrationTimes, setAdministrationTimes] = useState({})
   const [savingKeys, setSavingKeys] = useState(() => new Set())
   const [notes, setNotes] = useState('')
-  const [generatingBill, setGeneratingBill] = useState(false)
+  const [notes, setNotes] = useState('')
 
   const medications = useMemo(
     () => prescriptions.flatMap((prescription, prescriptionIndex) =>
@@ -136,20 +136,6 @@ const PharmacyWardRoundDispenseModal = ({ isOpen, onClose, admissionId, prescrip
         next.delete(key)
         return next
       })
-    }
-  }
-
-  const handleGenerateBill = async () => {
-    if (!admissionId) return toast.error('No admission found for this patient')
-    setGeneratingBill(true)
-    try {
-      await createTreatmentBill(admissionId)
-      toast.success('Treatment bill generated for the cashier')
-      onCompleted && onCompleted()
-    } catch (error) {
-      toast.error(error?.response?.data?.error || error?.message || 'Failed to generate treatment bill')
-    } finally {
-      setGeneratingBill(false)
     }
   }
 
@@ -267,16 +253,6 @@ const PharmacyWardRoundDispenseModal = ({ isOpen, onClose, admissionId, prescrip
           )}
 
           <div className="flex justify-end gap-2">
-            {!readOnly && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={handleGenerateBill}
-                disabled={generatingBill}
-              >
-                {generatingBill ? 'Generating...' : 'Generate Treatment Bill'}
-              </button>
-            )}
             <button type="button" className="btn btn-primary btn-sm" onClick={onClose}>
               {readOnly ? 'Done' : 'Close'}
             </button>
