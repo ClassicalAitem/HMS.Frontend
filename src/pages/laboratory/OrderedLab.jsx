@@ -81,7 +81,14 @@ const OrderedLab = () => {
         ? response
         : response?.data || response?.data?.data || response?.results || [];
 
-      setAllInvestigations(investigationsData);
+      // Filter tests for payment/HMO visibility
+      const paidInvestigations = investigationsData.map(inv => {
+        if (!inv.tests) return inv;
+        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
+        return { ...inv, tests: validTests };
+      }).filter(inv => inv.tests && inv.tests.length > 0);
+
+      setAllInvestigations(paidInvestigations);
       setError(null);
     } catch (err) {
       console.error("Error fetching investigations:", err);

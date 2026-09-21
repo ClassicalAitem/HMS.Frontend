@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import ebtApi from '@/services/api/ebtApi'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
@@ -14,13 +14,16 @@ import {
   FaSearch,
   FaTrashAlt,
   FaPlay,
+  FaFileInvoiceDollar,
+  FaPrescriptionBottleAlt,
 } from 'react-icons/fa'
 import { getInventories } from '@/services/api/inventoryAPI'
-
+import { createTreatmentBill } from '@/services/api/dispensesAPI'
 const EbtTab = ({
   patientId,
   dependantId,
   consultationId,
+  admissionId,
   isDoctor = false,
   isNurse = false,
   isPharmacist = false,
@@ -29,7 +32,6 @@ const EbtTab = ({
   const [loading, setLoading] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [saving, setSaving] = useState(false)
-
   const [form, setForm] = useState({
     indication: '',
     donorBloodGroup: '',
@@ -73,11 +75,13 @@ const EbtTab = ({
     loadRecords()
   }, [patientId, dependantId])
 
-  const searchInventory = async (term) => {
+  const loadConsumablesInventory = async () => {
     try {
       setLoadingInventory(true)
-      const res = await getInventories({ search: term, limit: 10 })
-      setInventoryList(res?.data?.inventories || res?.data || [])
+      const res = await getInventories()
+      const raw = res?.data ?? res ?? []
+      const list = Array.isArray(raw) ? raw : raw?.data ?? []
+      setInventoryList(list)
     } catch (error) {
       console.error('Error fetching inventory:', error)
     } finally {
@@ -86,15 +90,58 @@ const EbtTab = ({
   }
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (consumableSearch.trim().length > 1) {
-        searchInventory(consumableSearch)
-      } else {
-        setInventoryList([])
+    if (showConsumablesModal && inventoryList.length === 0) {
+      loadConsumablesInventory()
+    }
+  }, [showConsumablesModal])
+
+  const filteredConsumables = useMemo(() => {
+    const q = consumableSearch.trim().toLowerCase()
+    if (!q) return []
+    return inventoryList.filter((item) => {
+      const name = String(item?.name || item?.itemName || '').toLowerCase()
+      return name.includes(q)
+    })
+  }, [inventoryList, consumableSearch])
+
+  const allConsumables = useMemo(() => {
+    const list = []
+    records.forEach((record) => {
+      if (record.consumableOrders && Array.isArray(record.consumableOrders)) {
+        record.consumableOrders.forEach((order) => {
+          if (order.items && Array.isArray(order.items)) {
+            order.items.forEach((item) => {
+              list.push({
+                date: order.createdAt || record.createdAt,
+                itemName: item.itemName,
+                quantity: item.quantity,
+                orderedByName: order.orderedByName || 'Nurse',
+                isDispensed: order.isDispensed,
+                orderId: record._id || record.id,
+                consumableId: order._id || order.id,
+              })
+            })
+          }
+        })
       }
-    }, 500)
-    return () => clearTimeout(timeoutId)
-  }, [consumableSearch])
+    })
+    return list
+  }, [records])
+
+  const renderDispenseStatus = (isDispensed) => {
+    if (isDispensed) {
+      return (
+        <span className="badge badge-success text-white badge-xs font-bold gap-1">
+          <FaCheckCircle className="w-2.5 h-2.5" /> Dispensed
+        </span>
+      )
+    }
+    return (
+      <span className="badge badge-warning badge-xs font-bold gap-1">
+        <FaClock className="w-2.5 h-2.5" /> Pending
+      </span>
+    )
+  }
 
   const handleFormChange = (e) => {
     const { name, value } = e.target
@@ -223,14 +270,16 @@ const EbtTab = ({
         </div>
 
         {/* Doctor-Only Record Button */}
-        {isDoctor && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="btn btn-sm btn-secondary rounded-xl gap-2 font-semibold shadow-sm"
-          >
-            <FaPlus className="w-3 h-3" /> Record EBT Procedure
-          </button>
-        )}
+        <div className="flex gap-2">
+          {isDoctor && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="btn btn-sm btn-secondary rounded-xl gap-2 font-semibold shadow-sm"
+            >
+              <FaPlus className="w-3 h-3" /> Record EBT Procedure
+            </button>
+          )}
+        </div>
       </div>
 
       {!isDoctor && (
@@ -628,21 +677,22 @@ const EbtTab = ({
                   )}
                 </div>
 
-                {consumableSearch.length > 1 && inventoryList.length > 0 && (
+                {/* Search Results */}
+                {consumableSearch.length > 1 && filteredConsumables.length > 0 && (
                   <div className="mt-2 border border-base-200 rounded-xl overflow-hidden shadow-sm max-h-40 overflow-y-auto">
-                    {inventoryList.map((item) => (
+                    {filteredConsumables.map((item) => (
                       <div
                         key={item._id || item.id}
                         className="p-2 hover:bg-base-200/50 cursor-pointer text-sm flex items-center justify-between border-b border-base-200 last:border-0"
                         onClick={() => {
-                          if (!selectedConsumables.find(c => (c.id || c._id) === (item.id || item._id))) {
+                          if (!selectedConsumables.find((c) => (c.id || c._id) === (item.id || item._id))) {
                             setSelectedConsumables([...selectedConsumables, { ...item, quantity: 1 }])
                           }
                           setConsumableSearch('')
                         }}
                       >
                         <span className="font-medium text-base-content">{item.itemName || item.name}</span>
-                        <FaPlus className="w-3 h-3 text-secondary" />
+                        <FaPlus className="w-3 h-3 text-primary" />
                       </div>
                     ))}
                   </div>
