@@ -162,13 +162,8 @@ const PharmacistAttendedToday = () => {
   const visible = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleView = (row) => {
-    if (!row?.patientId) return;
-
-    navigate(`/dashboard/pharmacist/incoming/${row.patientId}`, {
-      state: {
-        dependantId: row.dependantId || null,
-      },
-    });
+    // Navigate to a view, e.g. receipt or drug dispensation. For now, we can just send them to the Drug Dispensation page to see the list of drugs.
+    navigate(`/dashboard/pharmacist/drug-dispensation`);
   };
 
   return (
