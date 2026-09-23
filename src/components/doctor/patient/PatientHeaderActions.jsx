@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-const PatientHeaderActions = ({ title, subtitle }) => {
+const PatientHeaderActions = ({ title, subtitle, onBack }) => {
   const navigate = useNavigate();
 
   return (
@@ -15,7 +15,13 @@ const PatientHeaderActions = ({ title, subtitle }) => {
 
       <button
         className="btn btn-outline btn-sm"
-        onClick={() => navigate(-1)}
+        onClick={() => {
+          if (onBack) {
+            onBack();
+          } else {
+            navigate(-1);
+          }
+        }}
       >
         Back
       </button>
