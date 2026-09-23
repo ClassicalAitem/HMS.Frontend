@@ -25,6 +25,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
       "Medical": "medical_history",
       "Medical History": "medical_history",
       "Medical_History": "medical_history",
+      "Gynaecological": "gynaecological",
       "Diagnosis": "diagnosis",
     };
     return categoryMap[typeStr] || typeStr.toLowerCase().replace(/\s+/g, "_");
@@ -125,7 +126,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
                     const query = search.trim();
                     const filteredItems = Array.isArray(localData) ? (localData.filter(item =>
                       query
-                        ? item.name.toLowerCase().includes(query.toLowerCase())
+                        ? (item?.name || "").toLowerCase().includes(query.toLowerCase())
                         : true
                     )) : [];
 
@@ -133,13 +134,13 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
                     // (case-insensitive). Partial matches shouldn't block adding
                     // a new item with a different exact name.
                     const hasExactMatch = query
-                      ? filteredItems.some(item => item.name.toLowerCase() === query.toLowerCase())
+                      ? filteredItems.some(item => (item?.name || "").toLowerCase() === query.toLowerCase())
                       : true;
 
                     return (
                       <>
                         {query && !hasExactMatch && (
-                          <div className={`py-2 px-4 ${filteredItems.length > 0 ? "border-t border-gray-100" : ""}`}>
+                          <div className={`py-2 px-4 ${filteredItems.length > 0 ? "border-b border-gray-100" : ""}`}>
                             <button
                               onClick={async () => {
                                 try {

@@ -134,6 +134,7 @@ const MedicalData = () => {
       'social': 'social',
       'allergy': 'allergic',
       'medical': 'medical_history',
+      'gynaecological': 'gynaecological',
       'diagnosis': 'diagnosis'
     };
 
@@ -222,6 +223,7 @@ const MedicalData = () => {
     { id: 'social', label: 'Social', icon: FaUsers },
     { id: 'allergy', label: 'Allergy', icon: FaExclamationTriangle },
     { id: 'medical', label: 'Medical History', icon: FaClipboardList },
+    { id: 'gynaecological', label: 'Gynaecological', icon: FaClipboardList },
     { id: 'diagnosis', label: 'Diagnosis', icon: FaStethoscope }
   ];
 
