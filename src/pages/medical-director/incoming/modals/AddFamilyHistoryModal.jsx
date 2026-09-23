@@ -125,7 +125,7 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                     const query = search.trim();
                     const filteredItems = Array.isArray(localData) ? (localData.filter(item =>
                       query
-                        ? item.name.toLowerCase().includes(query.toLowerCase())
+                        ? (item?.name || "").toLowerCase().includes(query.toLowerCase())
                         : true
                     )) : [];
 
@@ -133,13 +133,13 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                     // (case-insensitive). Partial matches shouldn't block adding
                     // a differently-named new relation.
                     const hasExactMatch = query
-                      ? filteredItems.some(item => item.name.toLowerCase() === query.toLowerCase())
+                      ? filteredItems.some(item => (item?.name || "").toLowerCase() === query.toLowerCase())
                       : true;
 
                     return (
                       <>
                         {query && !hasExactMatch && (
-                          <div className={`py-2 px-4 ${filteredItems.length > 0 ? "border-t border-gray-100" : ""}`}>
+                          <div className={`py-2 px-4 ${filteredItems.length > 0 ? "border-b border-gray-100" : ""}`}>
                             <button
                               onClick={async () => {
                                 try {
@@ -149,7 +149,7 @@ const AddFamilyHistoryModal = ({ isOpen, onClose, onAdd, data = [] }) => {
                                   });
                                   const newItem = { name: query };
                                   setLocalData(prev => [...prev, newItem]);
-                                  setSearch(query);
+                                  queueItem(query);
                                   setDropdownOpen(false);
                                   toast.success(`Added "${newItem.name}" to Family History`);
                                 } catch (error) {
