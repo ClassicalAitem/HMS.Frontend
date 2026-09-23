@@ -510,6 +510,9 @@ const ViewConsultation = () => {
       medicalHistory: Array.isArray(consultation.medicalHistory) ? consultation.medicalHistory.map((m) =>
         typeof m === 'object' ? m.title || m.name || '' : m,
       ) : [],
+      gynaecologicalHistory: Array.isArray(consultation.gynaecologicalHistory) ? consultation.gynaecologicalHistory.map((g) =>
+        typeof g === 'object' ? g.title || g.name || '' : g,
+      ) : [],
       surgicalHistory: Array.isArray(consultation.surgicalHistory) ? consultation.surgicalHistory.map((s) =>
         typeof s === 'object' ? s.procedureName || s.procedure || '' : s,
       ) : [],
@@ -545,6 +548,7 @@ const ViewConsultation = () => {
             family: r.filter((x) => x.category === 'family'),
             social: r.filter((x) => x.category === 'social'),
             allergic: r.filter((x) => x.category === 'allergic'),
+            gynaecological: r.filter((x) => x.category === 'gynaecological'),
           });
         }
       } catch (err) {
@@ -580,6 +584,10 @@ const ViewConsultation = () => {
         })),
         medicalHistory: editForm.medicalHistory.map((m) => ({
           title: m,
+          value: '1',
+        })),
+        gynaecologicalHistory: editForm.gynaecologicalHistory.map((g) => ({
+          title: g,
           value: '1',
         })),
         allergicHistory: editForm.allergyHistory.map((a) => ({ allergen: a })),
@@ -1289,6 +1297,18 @@ const getInventoryMatch = (medication) => {
         }
         type="Allergic"
         data={medicalRecords.allergic}
+      />
+      <AddHistoryModal
+        isOpen={activeModal === 'gynaecological'}
+        onClose={() => setActiveModal(null)}
+        onAdd={(item) =>
+          setEditForm((prev) => ({
+            ...prev,
+            gynaecologicalHistory: [...prev.gynaecologicalHistory, item],
+          }))
+        }
+        type="Gynaecological"
+        data={medicalRecords.gynaecological}
       />
       <OrderInvestigationModal
         isOpen={isInvestigationModalOpen}
@@ -2907,6 +2927,80 @@ const getInventoryMatch = (medication) => {
                         </span>
                       )}
                     </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Gynaecological History */}
+              <div className="flex gap-4">
+                <div className="mt-1 bg-secondary/10 p-2 rounded-full text-secondary h-min">
+                  <FaFileMedical className="flex-shrink-0" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="font-semibold text-base-content">
+                      Gynaecological History
+                    </h4>
+                    {isEditMode && (
+                      <button
+                        onClick={() => setActiveModal('gynaecological')}
+                        className="btn btn-xs btn-outline btn-secondary gap-1"
+                      >
+                        <FaPlus className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  {isEditMode ? (
+                    <div className="flex flex-wrap gap-2">
+                      {editForm.gynaecologicalHistory.map((item, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm"
+                        >
+                          {item}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                gynaecologicalHistory: prev.gynaecologicalHistory.filter(
+                                  (_, i) => i !== idx,
+                                ),
+                              }))
+                            }
+                            className="text-error hover:text-red-600"
+                          >
+                            <IoCloseCircleOutline className="w-4 h-4" />
+                          </button>
+                        </span>
+                      ))}
+                      {editForm.gynaecologicalHistory.length === 0 && (
+                        <span className="text-sm text-base-content/40 italic">
+                          None added
+                        </span>
+                      )}
+                    </div>
+                  ) : (editForm.gynaecologicalHistory || []).length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {(editForm.gynaecologicalHistory || []).map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="badge badge-secondary badge-outline gap-1 h-auto py-1 px-3"
+                        >
+                          <span className="font-medium">
+                            {typeof item === 'object'
+                              ? item.title ||
+                                item.name ||
+                                JSON.stringify(item)
+                              : item}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-base-content/50 italic">
+                      None recorded
+                    </p>
                   )}
                 </div>
               </div>

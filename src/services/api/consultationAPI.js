@@ -25,6 +25,7 @@ export const createConsultation = async (payload) => {
     'familyHistory',
     'medicalHistory',
     'socialHistory',
+    'gynaecologicalHistory',
     'surgicalHistory',
     'complaint',
     'complaintHistory',
