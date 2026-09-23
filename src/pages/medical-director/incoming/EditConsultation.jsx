@@ -38,6 +38,7 @@ const EditConsultation = () => {
   const [familyHistory, setFamilyHistory] = useState([]);
   const [socialHistory, setSocialHistory] = useState([]);
   const [allergyHistory, setAllergyHistory] = useState([]);
+  const [gynaecologicalHistory, setGynaecologicalHistory] = useState([]);
   const [notes, setNotes] = useState("");
   const [visitReason, setVisitReason] = useState("");
   const [historyOfPresentingComplaint, setHistoryOfPresentingComplaint] = useState("");
@@ -52,7 +53,8 @@ const EditConsultation = () => {
     surgical: [],
     family: [],
     social: [],
-    allergic: []
+    allergic: [],
+    gynaecological: [],
   });
 
   // load inventory allergic options
@@ -87,6 +89,7 @@ const EditConsultation = () => {
               social: records.filter(r => r.category === 'social'),
               allergic: records.filter(r => r.category === 'allergic'),
               diagnosis: records.filter(r => r.category === 'diagnosis'),
+              gynaecological: records.filter(r => r.category === 'gynaecological'),
             };
             setMedicalRecords(categorized);
           }
@@ -136,6 +139,7 @@ const EditConsultation = () => {
           setSurgicalHistory((data.surgicalHistory || []).map(s => s.procedureName));
           setFamilyHistory((data.familyHistory || []).map(f => ({ title: f.relation, value: f.condition })));
           setMedicalHistory((data.medicalHistory || []).map(m => m.title));
+          setGynaecologicalHistory((data.gynaecologicalHistory || []).map(g => g.title));
           setAllergyHistory((data.allergicHistory || []).map(a => a.allergen));
           setSocialHistory((data.socialHistory || []).map(s => s.title));
         }
@@ -164,6 +168,7 @@ const EditConsultation = () => {
   const handleAddFamily = (item) => setFamilyHistory([...familyHistory, item]);
   const handleAddSocial = (item) => setSocialHistory([...socialHistory, item]);
   const handleAddAllergy = (item) => setAllergyHistory([...allergyHistory, item]);
+  const handleAddGynaecological = (item) => setGynaecologicalHistory([...gynaecologicalHistory, item]);
 
   const removeComplaint = (idx) => setComplaints(complaints.filter((_, i) => i !== idx));
   const removeMedical = (idx) => setMedicalHistory(medicalHistory.filter((_, i) => i !== idx));
@@ -171,6 +176,7 @@ const EditConsultation = () => {
   const removeFamily = (idx) => setFamilyHistory(familyHistory.filter((_, i) => i !== idx));
   const removeSocial = (idx) => setSocialHistory(socialHistory.filter((_, i) => i !== idx));
   const removeAllergy = (idx) => setAllergyHistory(allergyHistory.filter((_, i) => i !== idx));
+  const removeGynaecological = (idx) => setGynaecologicalHistory(gynaecologicalHistory.filter((_, i) => i !== idx));
 
   const [attachments, setAttachments] = useState([]);
 
@@ -220,6 +226,10 @@ const EditConsultation = () => {
       })),
       medicalHistory: medicalHistory.map(m => ({
         title: m,
+        value: "1"
+      })),
+      gynaecologicalHistory: gynaecologicalHistory.map(g => ({
+        title: g,
         value: "1"
       })),
       allergicHistory: allergyHistory.map(a => ({
@@ -514,6 +524,32 @@ const EditConsultation = () => {
             </div>
           </div>
 
+          {/* Gynaecological History */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center mb-2">
+                <h3 className="card-title text-lg font-semibold text-base-content">Gynaecological History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal('gynaecological')}
+                >
+                  <span className="text-lg">+</span> Add Gynaecological History
+                </button>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                {gynaecologicalHistory.map((item, idx) => (
+                  <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm text-base-content shadow-sm hover:border-base-content/30 transition-colors">
+                    <span className="font-medium">{item}</span>
+                    <button onClick={() => removeGynaecological(idx)} className="text-error hover:text-red-700 ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                      <IoCloseCircleOutline className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {gynaecologicalHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No gynaecological history recorded</span>}
+              </div>
+            </div>
+          </div>
+
           {/* Notes */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
@@ -615,6 +651,13 @@ const EditConsultation = () => {
         onAdd={handleAddAllergy}
         type="Allergy"
         data={medicalRecords.allergic}
+      />
+      <AddHistoryModal
+        isOpen={activeModal === 'gynaecological'}
+        onClose={() => setActiveModal(null)}
+        onAdd={handleAddGynaecological}
+        type="Gynaecological"
+        data={medicalRecords.gynaecological}
       />
 
       {/* Confirmation Modal */}

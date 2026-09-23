@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/medical-director/dashboard';
 import { Header } from '@/components/common';
 import {
   FaUserMd, FaHistory, FaSyringe, FaAllergies,
-  FaUsers, FaHeartbeat, FaCalendarAlt, FaChevronDown, FaChevronUp
+  FaUsers, FaHeartbeat, FaCalendarAlt, FaChevronDown, FaChevronUp, FaFileMedical
 } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
@@ -134,6 +134,7 @@ const MedicalRecordHistory = () => {
   // ─── Aggregation logic ──────────────────────────────────────────────────────
   const aggregated = useMemo(() => {
     const medicalHistory = [];
+    const gynaecologicalHistory = [];
     const surgicalHistory = [];
     const allergyHistory = [];
     const familyHistory = [];
@@ -149,6 +150,13 @@ const MedicalRecordHistory = () => {
         const name = typeof item === 'object' ? item.title || item.name || '' : item;
         if (name && !medicalHistory.find(e => e.name.toLowerCase() === name.toLowerCase())) {
           medicalHistory.push({ name, date, doctor, consultationId: c._id || c.id });
+        }
+      });
+
+      (c.gynaecologicalHistory || []).forEach(item => {
+        const name = typeof item === 'object' ? item.title || item.name || '' : item;
+        if (name && !gynaecologicalHistory.find(e => e.name.toLowerCase() === name.toLowerCase())) {
+          gynaecologicalHistory.push({ name, date, doctor, consultationId: c._id || c.id });
         }
       });
 
@@ -192,7 +200,7 @@ const MedicalRecordHistory = () => {
       });
     });
 
-    return { medicalHistory, surgicalHistory, allergyHistory, familyHistory, socialHistory };
+    return { medicalHistory, gynaecologicalHistory, surgicalHistory, allergyHistory, familyHistory, socialHistory };
   }, [consultations]);
 
   // ─── Loading State ──────────────────────────────────────────────────────────
@@ -329,6 +337,48 @@ const MedicalRecordHistory = () => {
               </div>
             </>
           ) : <EmptyRow message="No medical history recorded across all consultations." />}
+        </SectionCard>
+
+        {/* ─── Gynaecological History ─── */}
+        <SectionCard
+          icon={<FaFileMedical />}
+          title="Gynaecological History"
+          color="text-secondary"
+          count={aggregated.gynaecologicalHistory.length}
+        >
+          {aggregated.gynaecologicalHistory.length > 0 ? (
+            <>
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="table table-sm w-full">
+                  <thead>
+                    <tr className="border-b border-base-200 text-base-content/60 text-xs uppercase tracking-wider">
+                      <th>Condition</th>
+                      <th>Recorded On</th>
+                      <th>Recorded By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {aggregated.gynaecologicalHistory.map((item, idx) => (
+                      <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/30">
+                        <td className="font-medium text-base-content">{item.name}</td>
+                        <td className="text-base-content/60 text-sm">{item.date}</td>
+                        <td className="text-base-content/60 text-sm">{item.doctor}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="sm:hidden space-y-2.5">
+                {aggregated.gynaecologicalHistory.map((item, idx) => (
+                  <MobileCard key={idx}>
+                    <p className="font-semibold text-base-content text-sm pb-1">{item.name}</p>
+                    <MobileField label="Recorded On" value={item.date} />
+                    <MobileField label="Recorded By" value={item.doctor} />
+                  </MobileCard>
+                ))}
+              </div>
+            </>
+          ) : <EmptyRow message="No gynaecological history recorded across all consultations." />}
         </SectionCard>
 
         {/* ─── Surgical History ─── */}
