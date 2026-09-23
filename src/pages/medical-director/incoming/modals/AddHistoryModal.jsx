@@ -3,6 +3,18 @@ import { MdAdd, MdClose } from "react-icons/md";
 import { createMedicalRecord } from "@/services/api/medicalRecordAPI";
 import toast from "react-hot-toast";
 
+const hasSameItems = (left, right) => {
+  if (left === right) return true;
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((item, index) => (
+    (item?.id || item?._id || item?.name) ===
+    (right[index]?.id || right[index]?._id || right[index]?.name)
+  ));
+};
+
 const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -10,7 +22,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
   const [localData, setLocalData] = useState(data);
 
   useEffect(() => {
-    setLocalData(data);
+    setLocalData((previous) => hasSameItems(previous, data) ? previous : data);
   }, [data]);
   const [queuedItems, setQueuedItems] = useState([]);
 
@@ -34,7 +46,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
   useEffect(() => {
     setSearch("");
     setQueuedItems([]);
-  }, [isOpen, data]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!dropdownOpen) return;
