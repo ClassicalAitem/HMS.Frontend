@@ -59,6 +59,7 @@ const AddDiagnosis = () => {
   const [familyHistory, setFamilyHistory] = useState([]);
   const [socialHistory, setSocialHistory] = useState([]);
   const [allergicHistory, setAllergicHistory] = useState([]);
+  const [gynaecologicalHistory, setGynaecologicalHistory] = useState([]);
   const [notes, setNotes] = useState("");
   const [visitReason, setVisitReason] = useState("");
   const [historyOfPresentingComplaint, setHistoryOfPresentingComplaint] = useState("");
@@ -83,6 +84,7 @@ const [createdConsultationId, setCreatedConsultationId] = useState(null);
     allergic: [],
     diagnosis: [],
     medicalHistory: [],
+    gynaecological: [],
   });
 
     const enrichedVitals = useMemo(() =>
@@ -191,6 +193,7 @@ const [createdConsultationId, setCreatedConsultationId] = useState(null);
             allergic: records.filter(r => r.category === "allergic"),
             diagnosis: records.filter(r => r.category === "diagnosis"),
             medicalHistory: records.filter(r => r.category === "medical_history"),
+            gynaecological: records.filter(r => r.category === "gynaecological"),
           }));
         }
       } catch (err) {
@@ -310,6 +313,8 @@ const summarySubjectName = summarySubject?.fullName
   const removeFamily = (idx) => setFamilyHistory(prev => prev.filter((_, i) => i !== idx));
   const removeSocial = (idx) => setSocialHistory(prev => prev.filter((_, i) => i !== idx));
   const removeAllergic = (idx) => setAllergicHistory(prev => prev.filter((_, i) => i !== idx));
+  const handleAddGynaecological = (item) => setGynaecologicalHistory(prev => [...prev, item]);
+  const removeGynaecological = (idx) => setGynaecologicalHistory(prev => prev.filter((_, i) => i !== idx));
 
   const handleAttachmentsChange = (e) => {
     const newFiles = Array.from(e.target.files || []);
@@ -355,7 +360,11 @@ const handleConfirmSave = async () => {
       })),
       medicalHistory: medicalHistory.map(m => ({
         title: m,
-        value: "1",
+        value: 1,
+      })),
+      gynaecologicalHistory: gynaecologicalHistory.map(g => ({
+        title: g,
+        value: 1,
       })),
       allergicHistory: allergicHistory.map(a => ({ allergen: a })),
       socialHistory: socialHistory.map(s => ({
@@ -653,6 +662,32 @@ const handleConfirmSave = async () => {
             </div>
           </div>
 
+          {/* Gynaecological History */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-0">
+              <div className="p-4 flex justify-between items-center mb-2">
+                <h3 className="card-title text-lg font-semibold text-base-content">Gynaecological History</h3>
+                <button
+                  className="btn btn-sm btn-primary text-white border-none gap-2 font-normal normal-case"
+                  onClick={() => setActiveModal("gynaecological")}
+                >
+                  <span className="text-lg">+</span> Add Gynaecological History
+                </button>
+              </div>
+              <div className="px-6 pb-6 flex flex-wrap gap-3">
+                {gynaecologicalHistory.map((item, idx) => (
+                  <div key={idx} className="inline-flex items-center gap-2 px-4 py-2 bg-base-100 border border-base-300 rounded-full text-sm shadow-sm">
+                    <span className="font-medium">{item}</span>
+                    <button onClick={() => removeGynaecological(idx)} className="text-error ml-1 flex items-center justify-center bg-red-50 rounded-full w-5 h-5">
+                      <IoCloseCircleOutline className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                {gynaecologicalHistory.length === 0 && <span className="text-sm text-base-content/40 italic">No gynaecological history recorded</span>}
+              </div>
+            </div>
+          </div>
+
           {/* Notes */}
           <div className="card bg-base-100 shadow-sm">
             <div className="card-body p-4">
@@ -732,6 +767,7 @@ const handleConfirmSave = async () => {
       <AddHistoryModal isOpen={activeModal === "surgical"} onClose={() => setActiveModal(null)} onAdd={handleAddSurgical} type="Surgical" data={medicalRecords.surgical} />
       <AddHistoryModal isOpen={activeModal === "social"} onClose={() => setActiveModal(null)} onAdd={handleAddSocial} type="Social" data={medicalRecords.social} />
       <AddHistoryModal isOpen={activeModal === "allergic"} onClose={() => setActiveModal(null)} onAdd={handleAddAllergic} type="Allergic" data={medicalRecords.allergic} />
+      <AddHistoryModal isOpen={activeModal === "gynaecological"} onClose={() => setActiveModal(null)} onAdd={handleAddGynaecological} type="Gynaecological" data={medicalRecords.gynaecological} />
 
       <ConfirmationModal
         isOpen={isConfirmOpen}

@@ -44,6 +44,21 @@ const PatientMedicalHistory = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
+  const from = location?.state?.from;
+
+  const handleBack = () => {
+    if (from === "attendedToday" || from === "attended-today") {
+      navigate('/dashboard/doctor/attended-today');
+    } else if (from === "labresults" || from === "labResults" || from === "lab-results") {
+      navigate('/dashboard/doctor/lab-results');
+    } else if (from === "patients" || from === "allPatients") {
+      navigate('/dashboard/doctor/allPatients');
+    } else if (from === "incoming") {
+      navigate('/dashboard/doctor/incoming');
+    } else {
+      navigate('/dashboard/doctor/incoming'); // fallback
+    }
+  };
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [vitals, setVitals] = useState([]);
@@ -1008,7 +1023,7 @@ const dependant = isDependant
             title="Patient Details"
             subtitle="Vitals overview and history"
             fromIncoming={fromIncoming}
-            onBack={() => navigate(fromIncoming ? "/dashboard/doctor/incoming" : "/dashboard/doctor/patientVitals")}
+            onBack={handleBack}
           />
 
            {/* Patient Info */}

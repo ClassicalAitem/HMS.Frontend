@@ -1,14 +1,23 @@
 import React from "react";
 
-const PatientHeaderActions = ({ title, subtitle, fromIncoming, onBack }) => {
+import { useNavigate } from "react-router-dom";
+
+const PatientHeaderActions = ({ title, subtitle, onBack }) => {
+  const navigate = useNavigate();
   return (
     <div className="flex justify-between items-center mb-4">
       <div>
         <h1 className="text-2xl font-bold text-base-content">{title}</h1>
         <p className="text-sm text-base-content/70">{subtitle} <span className="text-error">*</span></p>
       </div>
-      <button className="btn btn-outline btn-sm" onClick={onBack}>
-        {fromIncoming ? "Back to Incoming" : "Back to Patients"}
+      <button className="btn btn-outline btn-sm" onClick={() => {
+        if (onBack) {
+          onBack();
+        } else {
+          navigate(-1);
+        }
+      }}>
+        Back
       </button>
     </div>
   );
