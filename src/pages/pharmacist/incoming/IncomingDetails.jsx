@@ -200,7 +200,7 @@ const IncomingDetails = () => {
     let mounted = true
 
     const loadBillings = async () => {
-      if (!patientId || !patient?.hmos?.length) {
+      if (!patientId) {
         setBillings([])
         return
       }
@@ -211,7 +211,7 @@ const IncomingDetails = () => {
         const list = Array.isArray(raw) ? raw : []
         if (mounted) setBillings(list)
       } catch (err) {
-        console.error('Failed to load billings for HMO status', err)
+        console.error('Failed to load billings', err)
         if (mounted) setBillings([])
       }
     }
@@ -220,7 +220,7 @@ const IncomingDetails = () => {
     return () => {
       mounted = false
     }
-  }, [patientId, patient?.hmos])
+  }, [patientId])
 
   // Doctors are now enriched by the backend (doc.doctorName)
   useEffect(() => {
@@ -327,8 +327,8 @@ const getDispenseInfo = (med) => {
   }
 }
 
-  const getHmoStatusForMed = (prescriptionId, drugName) => {
-    if (!billings.length) return null
+  const getBillingStatusForMed = (prescriptionId, drugName) => {
+    if (!billings.length) return { hmoStatus: null, isPaid: false }
 
     for (const bill of billings) {
       const matchesSubject = isViewingDependant
@@ -343,10 +343,13 @@ const getDispenseInfo = (med) => {
             .toLowerCase()
             .includes(String(drugName || '').toLowerCase())
       )
-      if (match) return match.hmoStatus || 'pending'
+      if (match) {
+        const isPaid = match.paymentStatus === 'paid' || match.hmoStatus === 'approved' || match.isCleared || bill.isCleared
+        return { hmoStatus: match.hmoStatus || 'pending', isPaid }
+      }
     }
 
-    return null
+    return { hmoStatus: null, isPaid: false }
   }
 
   const toggleExpand = (id) => {
@@ -368,6 +371,11 @@ const getDispenseInfo = (med) => {
           <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
             {m.availabilityInfo.label}
           </span>
+          {m.isPaid ? (
+            <span className="badge badge-sm badge-success text-white font-medium">Paid</span>
+          ) : (
+            <span className="badge badge-sm badge-warning font-medium">Unpaid</span>
+          )}
           {m.hmoStatus === 'approved' && (
             <span className="badge badge-sm badge-success font-medium">HMO: Covered</span>
           )}
@@ -424,7 +432,7 @@ const getDispenseInfo = (med) => {
     return (p.medications || []).map((m) => {
       const dispenseInfo = getDispenseInfo(m)
       const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
-      const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
+      const billingStatus = getBillingStatusForMed(p._id, m.drugName)
 
       return {
         ...m,
@@ -445,7 +453,8 @@ const getDispenseInfo = (med) => {
         prescribedQty: dispenseInfo.prescribedQty,
         bottlesNeeded: dispenseInfo.bottlesNeeded,
         availabilityInfo,
-        hmoStatus,
+        hmoStatus: billingStatus.hmoStatus,
+        isPaid: billingStatus.isPaid,
       }
     })
   }
@@ -464,7 +473,7 @@ const getDispenseInfo = (med) => {
       return (p.medications || []).map((m) => {
         const dispenseInfo = getDispenseInfo(m)
         const availabilityInfo = getDrugAvailabilityStatus(m, dispenseInfo)
-        const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
+        const billingStatus = getBillingStatusForMed(p._id, m.drugName)
 
         return {
           key: `${p._id}-${m.drugName}`,
@@ -482,7 +491,8 @@ const getDispenseInfo = (med) => {
           bottlesNeeded: dispenseInfo.bottlesNeeded,
           formStrength: dispenseInfo.inv ? `${dispenseInfo.inv.form || ''} ${dispenseInfo.inv.strength ? '• ' + dispenseInfo.inv.strength : ''}`.trim() : '',
           availabilityInfo,
-          hmoStatus,
+          hmoStatus: billingStatus.hmoStatus,
+          isPaid: billingStatus.isPaid,
         }
       })
     })
