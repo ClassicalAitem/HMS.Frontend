@@ -11,6 +11,7 @@ import { updateDependantStatus } from "@/services/api/dependantAPI";
 import { getAllOpdPatients, updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
 import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { getAllBillings } from "@/services/api/billingAPI";
 import toast from "react-hot-toast";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import ClearAllButton from "@/components/common/ClearAllButton";
@@ -18,6 +19,7 @@ import { useNotifications } from "@/contexts/NotificationContext";
 import { FiSearch, FiAlertCircle, FiRefreshCw, FiUser, FiCalendar, FiClock } from "react-icons/fi";
 import { FaFlask, FaStethoscope } from "react-icons/fa";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
@@ -43,7 +45,7 @@ const IncomingLaboratory = () => {
       setError(null);
 
       // Fetch investigations and OPD patients concurrently (NO N+1 loops)
-      const [invResponse, opdResponse] = await Promise.all([
+      const [invResponse, opdResponse, billingsRes] = await Promise.all([
         getInvestigations().catch((err) => {
           console.warn("Failed to fetch investigations:", err);
           return [];
@@ -51,8 +53,10 @@ const IncomingLaboratory = () => {
         getAllOpdPatients().catch((err) => {
           console.warn("Failed to fetch OPD patients:", err);
           return [];
-        })
+        }),
+        getAllBillings().catch(() => [])
       ]);
+      const allBillings = Array.isArray(billingsRes) ? billingsRes : (billingsRes?.data?.data || billingsRes?.data || []);
 
       const allInvestigations = Array.isArray(invResponse)
         ? invResponse
@@ -62,12 +66,9 @@ const IncomingLaboratory = () => {
         ? opdResponse
         : (opdResponse?.data || []);
 
-      // Filter out tests that are unpaid and not approved by HMO
-      const paidInvestigations = allInvestigations.map(inv => {
-        if (!inv.tests) return inv;
-        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
-        return { ...inv, tests: validTests };
-      }).filter(inv => inv.tests && inv.tests.length > 0);
+      const paidInvestigations = allInvestigations
+        .map((inv) => filterVisibleInvestigation(inv, allBillings))
+        .filter(Boolean);
 
       const awaitingLabOpdPatients = allOpdPatients.filter((p) =>
         hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
@@ -76,7 +77,8 @@ const IncomingLaboratory = () => {
       // Separate into lab and radiology investigations
       const laboratoryInvestigations = paidInvestigations.filter(inv => {
         const type = String(inv.type || "").toLowerCase();
-        return type === "lab" || type === "laboratory";
+          return (type === "lab" || type === "laboratory") &&
+            inv.status !== 'completed' && inv.status !== 'cancelled';
       });
 
       const radiologyInvestigations = paidInvestigations.filter(inv => {
@@ -167,41 +169,15 @@ const IncomingLaboratory = () => {
             patientStatus,
             statusUser: dependant?.statusUser || patient?.statusUser,
             statusSenderName: dependant?.statusSenderName || patient?.statusSenderName,
-            hmoStatus: inv.hmoStatus || null,
+            hmoStatus: (inv.tests || []).find((t) => t.hmoStatus)?.hmoStatus || null,
+            isPaid: (inv.tests || []).some((t) => t.isPaid) || !(inv.tests || []).some((t) => t.hmoStatus),
             tests: inv.tests || [],
             investigation: inv,
             pendingRadiologyCount: getPendingRadiologyCount(patientType, displayId, inv.dependantId)
           };
         });
 
-      // Filter standalone OPD patients awaiting lab not already tied to an investigation
-      const opdPatientCards = awaitingLabOpdPatients
-        .filter(
-          (opdPatient) =>
-            !investigationCards.some(
-              (inv) => String(inv.opdPatientId || inv.patientId) === String(opdPatient.id)
-            )
-        )
-        .map((opdPatient) => ({
-          id: null,
-          opdPatientId: opdPatient.id,
-          name: opdPatient.fullName || "Unknown OpD Patient",
-          userId: opdPatient.id,
-          status: "Normal",
-          test: "OpD Laboratory Request",
-          date: opdPatient.createdAt ? formatNigeriaDate(opdPatient.createdAt) : "N/A",
-          requestedBy: "Cashier",
-          time: opdPatient.createdAt ? formatNigeriaTime(opdPatient.createdAt) : "N/A",
-          createdAt: opdPatient.createdAt,
-          sortTimestamp: opdPatient.updatedAt || opdPatient.createdAt,
-          updatedAt: opdPatient.updatedAt ? formatNigeriaDateTime(opdPatient.updatedAt) : "N/A",
-          patientType: "opd",
-          patientStatus: opdPatient.status || "unknown",
-          hmoStatus: null,
-          pendingRadiologyCount: getPendingRadiologyCount('opd', opdPatient.id, null)
-        }));
-
-      const formattedRequests = [...investigationCards, ...opdPatientCards];
+      const formattedRequests = investigationCards;
 
       const uniqueRequests = formattedRequests
         .filter(
@@ -253,7 +229,7 @@ const IncomingLaboratory = () => {
   useEffect(() => {
     fetchTestRequests();
     fetchExistingLabResults();
-  }, []);
+  }, [lastUpdate]);
 
   const handleAcceptFromDetails = (cardData) => {
     setSelectedCard(cardData);
@@ -488,8 +464,14 @@ const IncomingLaboratory = () => {
                           {testCard.patientType === 'opd' && (
                             <span className="badge badge-sm badge-info font-medium">OPD</span>
                           )}
-                          {/* HMO Badge */}
-                          <HmoStatusBadge status={testCard.hmoStatus} size="sm" />
+                          {/* Payment / HMO Badge */}
+                          {testCard.isPaid ? (
+                            <span className="badge badge-sm badge-success text-success-content font-semibold">✓ Paid</span>
+                          ) : testCard.hmoStatus ? (
+                            <HmoStatusBadge status={testCard.hmoStatus} size="sm" />
+                          ) : (
+                            <span className="badge badge-sm badge-success text-success-content badge-outline font-semibold">✓ Paid</span>
+                          )}
 
                           {/* Patient Workflow Status */}
                           {testCard.patientStatus && (

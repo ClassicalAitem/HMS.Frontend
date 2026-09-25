@@ -9,11 +9,13 @@ import { getOpdPatientById, getAllOpdPatients, updateOpdPatient } from "@/servic
 import toast from "react-hot-toast";
 import { FaSearch } from "react-icons/fa";
 import { GiUltrasound } from "react-icons/gi";
+import { getAllBillings } from "@/services/api/billingAPI";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
 import HmoStatusBadge from "@/components/common/HmoStatusBadge";
+import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
 
 const SonographerIncoming = () => {
   const navigate = useNavigate();
@@ -28,10 +30,12 @@ const SonographerIncoming = () => {
     try {
       setLoading(true);
       setError(null);
-      const [investigationsRes, opdResponse] = await Promise.all([
+      const [investigationsRes, opdResponse, billingsRes] = await Promise.all([
         getInvestigations({ type: 'radiology' }),
-        getAllOpdPatients().catch(() => [])
+        getAllOpdPatients().catch(() => []),
+        getAllBillings().catch(() => [])
       ]);
+      const allBillings = Array.isArray(billingsRes) ? billingsRes : (billingsRes?.data?.data || billingsRes?.data || []);
       const allOpdPatients = Array.isArray(opdResponse) ? opdResponse : (opdResponse?.data || []);
       const opdPatientsAwaitingSonographer = allOpdPatients.filter((patient) => {
         const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
@@ -52,24 +56,21 @@ const SonographerIncoming = () => {
         Array.isArray(response) ? response : (response?.data || [])
       ));
 
-      // Filter out tests that are unpaid and not approved by HMO
-      const paidInvestigations = allInvestigations.map(inv => {
-        if (!inv.tests) return inv;
-        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
-        return { ...inv, tests: validTests };
-      }).filter(inv => inv.tests && inv.tests.length > 0);
+      const paidInvestigations = allInvestigations
+        .map((inv) => filterVisibleInvestigation(inv, allBillings))
+        .filter(Boolean);
 
-      const paidOpdInvestigations = opdInvestigations.map(inv => {
-        if (!inv.tests) return inv;
-        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
-        return { ...inv, tests: validTests };
-      }).filter(inv => inv.tests && inv.tests.length > 0);
+      const paidOpdInvestigations = opdInvestigations
+        .map((inv) => filterVisibleInvestigation(inv, allBillings))
+        .filter(Boolean);
 
       // Only radiology investigations belong on the sonographer's queue
       const radiologyInvestigations = paidInvestigations.filter(
         (inv) => {
           const type = String(inv.type || '').toLowerCase();
-          return type === 'radiology' || type === 'imaging';
+          const status = String(inv.status || '').toLowerCase();
+          return (type === 'radiology' || type === 'imaging') &&
+            status !== 'completed' && status !== 'cancelled';
         }
       );
       
@@ -194,31 +195,7 @@ const SonographerIncoming = () => {
         new Map(enrichedOpdPatients.map(p => [p.opdPatientId || p.id || p._id, p])).values()
       );
 
-      const standaloneOpdPatients = allOpdPatients
-        .filter(p => isAwaitingSonographer(p.status))
-        .filter(p => !uniqueOpdPatients.some(up => String(up.opdPatientId) === String(p.id || p._id)))
-        .map(p => {
-          const pid = p.id || p._id;
-          return {
-            ...p,
-            patientType: "opd",
-            dependantId: null,
-            dependantInfo: null,
-            opdPatientId: pid,
-            opdPatientInfo: {
-              id: pid,
-              name: p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim(),
-            },
-            investigationId: null,
-            investigation: null,
-            cardType: p.cardType || 'personal',
-            familyName: p.familyName || '',
-            companyName: p.companyName || '',
-            pendingLabCount: getPendingLabCount('opd', pid, null)
-          };
-        });
-
-      const allIncomingPatients = [...uniquePatients, ...uniqueDependants, ...uniqueOpdPatients, ...standaloneOpdPatients]
+      const allIncomingPatients = [...uniquePatients, ...uniqueDependants, ...uniqueOpdPatients]
         .sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime();
           const bTime = new Date(b.updatedAt || 0).getTime();
@@ -237,6 +214,19 @@ const SonographerIncoming = () => {
 
   useEffect(() => {
     fetchIncomingPatients();
+  }, [fetchIncomingPatients, lastUpdate]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') fetchIncomingPatients();
+    };
+
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [fetchIncomingPatients]);
 
   const filteredPatients = useMemo(() => {
@@ -267,14 +257,27 @@ const SonographerIncoming = () => {
   }, [patients, searchValue]);
 
   const handleNavigate = (patient) => {
-    const patientIdValue = patient?.id || patient?._id;
+    if (!patient) return;
+
+    const extractId = (val) => {
+      if (!val) return "";
+      if (typeof val === "string") return val;
+      if (typeof val === "object") return val.id || val._id || "";
+      return String(val);
+    };
+
+    const patientIdValue = extractId(patient.id) || extractId(patient._id);
+
     if (patient.patientType === "opd") {
-      navigate(`/dashboard/sonographer/incoming/${patient.opdPatientInfo?.id || patientIdValue}`, {
+      const opdId = extractId(patient.opdPatientInfo?.id) || extractId(patient.opdPatientId) || patientIdValue;
+      navigate(`/dashboard/sonographer/incoming/${opdId}`, {
         state: { patientType: "opd" }
       });
     } else if (patient.patientType === "dependant") {
-      navigate(`/dashboard/sonographer/incoming/${patient.patientId}`, {
-        state: { dependantId: patient.dependantId, dependantSnapshot: patient }
+      const parentId = extractId(patient.patientId) || extractId(patient.patient) || patientIdValue;
+      const depId = extractId(patient.dependantId) || extractId(patient.dependantInfo?.id);
+      navigate(`/dashboard/sonographer/incoming/${parentId}`, {
+        state: { dependantId: depId, dependantSnapshot: patient }
       });
     } else {
       navigate(`/dashboard/sonographer/incoming/${patientIdValue}`);
@@ -461,11 +464,16 @@ const SonographerIncoming = () => {
                             {patient.investigation.tests.map((test, idx) => {
                                const testName = typeof test === 'object' ? (test.name || test.code) : test;
                                const hmoStatus = typeof test === 'object' ? test.hmoStatus : null;
+                               const isPaid = typeof test === 'object' ? (test.isPaid || test.paymentStatus === 'paid' || test.isCleared) : false;
                                return (
                                  <div key={idx} className="flex items-center justify-between bg-base-100 px-2.5 py-1.5 rounded-lg border border-base-300 shadow-sm">
                                    <span className="text-xs font-medium text-base-content capitalize">{testName}</span>
-                                   {hmoStatus && (
+                                   {isPaid ? (
+                                     <span className="badge badge-success text-success-content badge-xs font-semibold px-2 py-1">✓ Paid</span>
+                                   ) : hmoStatus ? (
                                      <HmoStatusBadge hmoStatus={hmoStatus} size="xs" />
+                                   ) : (
+                                     <span className="badge badge-success text-success-content badge-xs font-semibold px-2 py-1">✓ Paid</span>
                                    )}
                                  </div>
                                );
