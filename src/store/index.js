@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer } from 'redux-persist';
+import { persistStore, persistReducer, createTransform } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { combineReducers } from '@reduxjs/toolkit';
 
@@ -18,6 +18,13 @@ const persistConfig = {
   key: 'root',
   storage,
   whitelist: ['auth'], // Only persist auth state
+  transforms: [
+    createTransform(
+      (state) => ({ ...state, isLoading: false }),
+      (state) => ({ ...state, isLoading: false }),
+      { whitelist: ['auth'] },
+    ),
+  ],
 };
 
 // Root reducer
