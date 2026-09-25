@@ -8,6 +8,7 @@ import { getInvestigations, updateInvestigation, getInvestigationRequestByOpdPat
 import { createLabResult, getLabResults, updateLabResult } from "@/services/api/labResultsAPI";
 import { getOpdPatientById, updateOpdPatient } from "@/services/api/opdPatientAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
+import { getAllBillings } from "@/services/api/billingAPI";
 import toast from "react-hot-toast";
 import { FaUpload, FaCheckCircle, FaArrowLeft, FaTimes, FaEye, FaXRay, FaHistory, FaTrash } from "react-icons/fa";
 import { formatNigeriaDateTime, formatNigeriaDate } from "@/utils/formatDateTimeUtils";
@@ -18,6 +19,7 @@ import SendPatientModal from "@/components/modals/SendPatientModal";
 import mammoth from "mammoth";
 import { FaFileWord } from "react-icons/fa";
 import HmoStatusBadge from "@/components/common/HmoStatusBadge";
+import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
 
 const investigationStatusBadge = (status) => {
   const s = String(status || '').toLowerCase();
@@ -66,19 +68,23 @@ useEffect(() => {
       setLoading(true);
 
       // OPD requests must be loaded by OPD patient ID; regular and dependant requests use the patient endpoint.
-      const investigationsResponse = location.state?.patientType === 'opd'
-        ? await getInvestigationRequestByOpdPatientId(patientId)
-        : await getInvestigations({ type: 'radiology' });
+      const investigationsPromise = location.state?.patientType === 'opd'
+        ? getInvestigationRequestByOpdPatientId(patientId)
+        : getInvestigations({ type: 'radiology' });
+        
+      const [investigationsResponse, billingsResponse] = await Promise.all([
+        investigationsPromise,
+        getAllBillings().catch(() => [])
+      ]);
+      const allBillings = Array.isArray(billingsResponse) ? billingsResponse : (billingsResponse?.data?.data || billingsResponse?.data || []);
+
       const allInvestigations = Array.isArray(investigationsResponse)
         ? investigationsResponse
         : (investigationsResponse?.data || []);
 
-      // Filter out tests that are unpaid and not approved by HMO
-      const paidInvestigations = allInvestigations.map(inv => {
-        if (!inv.tests) return inv;
-        const validTests = inv.tests.filter(test => test.paymentStatus === 'paid' || test.hmoStatus === 'approved' || inv.hmoStatus === 'approved');
-        return { ...inv, tests: validTests };
-      }).filter(inv => inv.tests && inv.tests.length > 0);
+      const paidInvestigations = allInvestigations
+        .map((inv) => filterVisibleInvestigation(inv, allBillings))
+        .filter(Boolean);
 
       // Sonographer only ever deals with radiology-type investigations —
       // check for both 'radiology' and 'imaging' to support old and new enums.
@@ -89,29 +95,41 @@ useEffect(() => {
         }
       );
 
+      const extractId = (val) => {
+        if (!val) return "";
+        if (typeof val === "string") return val;
+        if (typeof val === "object") return val.id || val._id || "";
+        return String(val);
+      };
+
+      const cleanPatientId = extractId(patientId);
+      const cleanDependantId = extractId(passedDependantId);
+
+      const getInvPatientId = (inv) => extractId(inv.patientId) || extractId(inv.patient);
+      const getInvDependantId = (inv) => extractId(inv.dependantId) || extractId(inv.dependant);
+      const getInvOpdId = (inv) => extractId(inv.opdPatientId) || extractId(inv.opdPatient);
+
       // Determine patient type from investigation — search radiology-only list
       let investigationData = null;
-      if (passedDependantId) {
+      if (cleanDependantId) {
         investigationData = radiologyInvestigations.find(inv => 
-          String(inv.dependantId) === String(passedDependantId) && 
-          String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && 
+          getInvDependantId(inv) === cleanDependantId && 
+          getInvPatientId(inv) === cleanPatientId && 
           inv.status !== 'completed'
         );
         if (!investigationData) {
           investigationData = radiologyInvestigations.find(inv => 
-            String(inv.dependantId) === String(passedDependantId) && 
-            String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId)
+            getInvDependantId(inv) === cleanDependantId && 
+            getInvPatientId(inv) === cleanPatientId
           );
         }
       } else {
         investigationData = radiologyInvestigations.find(inv =>
-          (String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId && inv.status !== 'completed') ||
-          (String(inv.opdPatientId) === String(patientId) && inv.status !== 'completed')
+          ((getInvPatientId(inv) === cleanPatientId && !inv.dependantId) || getInvOpdId(inv) === cleanPatientId) && inv.status !== 'completed'
         );
         if (!investigationData) {
           investigationData = radiologyInvestigations.find(inv =>
-            (String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) && !inv.dependantId) ||
-            String(inv.opdPatientId) === String(patientId)
+            (getInvPatientId(inv) === cleanPatientId && !inv.dependantId) || getInvOpdId(inv) === cleanPatientId
           );
         }
       }
@@ -125,7 +143,7 @@ useEffect(() => {
       if (location.state?.patientType === 'opd' || investigationData?.opdPatientId) {
         // This is an OPD patient
         detectedPatientType = "opd";
-        detectedOpdPatientId = location.state?.patientType === 'opd' ? patientId : investigationData.opdPatientId;
+        detectedOpdPatientId = location.state?.patientType === 'opd' ? cleanPatientId : extractId(investigationData.opdPatientId);
         try {
           const opdRes = await getOpdPatientById(detectedOpdPatientId);
           patientData = opdRes?.data || opdRes;
@@ -133,12 +151,12 @@ useEffect(() => {
           console.warn("Failed to load OPD patient:", err);
           patientData = { id: detectedOpdPatientId, fullName: "OPD Patient" };
         }
-      } else if (passedDependantId || investigationData?.dependantId) {
+      } else if (cleanDependantId || investigationData?.dependantId) {
         // This is a dependant
         detectedPatientType = "dependant";
-        detectedDependantId = passedDependantId || investigationData.dependantId;
+        detectedDependantId = cleanDependantId || extractId(investigationData.dependantId);
         try {
-          const res = await getPatientById(patientId);
+          const res = await getPatientById(cleanPatientId);
           patientData = Array.isArray(res) ? res[0] : res?.data || res;
         } catch (err) {
           console.error("Failed to load patient:", err);
@@ -156,7 +174,7 @@ useEffect(() => {
         // Regular patient
         detectedPatientType = "regular";
         try {
-          const res = await getPatientById(patientId);
+          const res = await getPatientById(cleanPatientId);
           patientData = Array.isArray(res) ? res[0] : res?.data || res;
         } catch (err) {
           console.error("Failed to load patient:", err);
@@ -168,13 +186,13 @@ useEffect(() => {
       const historyList = radiologyInvestigations
         .filter((inv) => {
           if (detectedPatientType === 'opd') {
-            return String(inv.opdPatientId) === String(detectedOpdPatientId || patientId);
+            return getInvOpdId(inv) === (detectedOpdPatientId || cleanPatientId);
           }
           if (detectedPatientType === 'dependant') {
-            return String(inv.dependantId) === String(detectedDependantId);
+            return getInvDependantId(inv) === detectedDependantId;
           }
           return (
-            String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(patientId) &&
+            getInvPatientId(inv) === cleanPatientId &&
             !inv.dependantId
           );
         })
@@ -612,11 +630,16 @@ useEffect(() => {
                               {(inv.tests || []).map((t, i) => {
                                 const testName = typeof t === 'object' ? (t.name || t.code) : t;
                                 const hmoStatus = typeof t === 'object' ? t.hmoStatus : null;
+                                const isPaid = typeof t === 'object' ? (t.isPaid || t.paymentStatus === 'paid' || t.isCleared) : false;
                                 return (
                                   <div key={i} className="flex items-center justify-between bg-base-100 px-2 py-1 rounded border border-base-200">
                                     <span className="text-xs text-base-content/80 capitalize">{testName}</span>
-                                    {hmoStatus && (
+                                    {isPaid ? (
+                                      <span className="badge badge-success text-success-content badge-xs font-semibold px-1.5 py-0.5">✓ Paid</span>
+                                    ) : hmoStatus ? (
                                       <HmoStatusBadge hmoStatus={hmoStatus} size="xs" />
+                                    ) : (
+                                      <span className="badge badge-success text-success-content badge-xs font-semibold px-1.5 py-0.5">✓ Paid</span>
                                     )}
                                   </div>
                                 );
