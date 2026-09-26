@@ -16,6 +16,7 @@ const CasihierPati = () => {
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('patients');
 
   // Fetch patients from backend
   useEffect(() => {
@@ -168,6 +169,34 @@ const StatusBadge = ({ status }) => {
     cardType: patient.cardType || 'N/A',
   })), [patients]);
 
+  const dependants = useMemo(() => {
+    let deps = [];
+    patients.forEach(p => {
+      if (Array.isArray(p.dependants)) {
+        p.dependants.forEach(d => {
+          deps.push({
+            ...d,
+            parentPatientId: p.id || p._id,
+            parentPatientName: `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+            hospitalId: p.hospitalId || 'N/A',
+            phone: d.phone || p.phone,
+            email: d.email || p.email,
+            cardType: d.cardType || p.cardType,
+          });
+        });
+      }
+    });
+    return deps.map((d, index) => ({
+      ...d,
+      serialNumber: index + 1,
+      name: `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+      age: calculateAge(d.dob),
+      fullName: `${d.firstName || ''} ${d.lastName || ''}`.trim(),
+      createdAtFormatted: formatNigeriaDate(d.createdAt),
+      cardType: d.cardType || 'N/A',
+    }));
+  }, [patients]);
+
   // Define table columns
   const columns = useMemo(() => [
     {
@@ -193,11 +222,12 @@ const StatusBadge = ({ status }) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            navigate(`/cashier/patient-details/${row.id}`);
+            navigate(`/cashier/patient-details/${row.parentPatientId || row.id || row._id}`, { state: row.parentPatientId ? { dependantId: row.id || row._id, dependantSnapshot: row } : {} });
           }}
           className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
         >
           {value}
+          {row.parentPatientId && <span className="badge badge-xs badge-secondary ml-2">Dependant</span>}
         </button>
       )
     },
@@ -248,10 +278,26 @@ const StatusBadge = ({ status }) => {
 
   return (
     <CashierLayout>
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
           <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
+        </div>
+        <div role="tablist" className="tabs tabs-boxed">
+          <button 
+            role="tab"
+            className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('patients')}
+          >
+            Primary Patients
+          </button>
+          <button 
+            role="tab"
+            className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab('dependants')}
+          >
+            Dependants
+          </button>
         </div>
       </div>
 
@@ -266,7 +312,7 @@ const StatusBadge = ({ status }) => {
             ) : (
               <div className="overflow-x-auto">
                 <DataTable
-                  data={processedPatients}
+                  data={activeTab === 'patients' ? processedPatients : dependants}
                   columns={columns}
                   searchable={true}
                   sortable={true}
