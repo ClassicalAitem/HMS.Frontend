@@ -376,10 +376,15 @@ const DoctorDashboard = () => {
                       <button
                         onClick={() =>
                           navigate(
-                            patient.isDependant
-                              ? `/dashboard/doctor/dependant/${patient.dependantId}`
-                              : `/dashboard/doctor/patient/${patient.patientId}`,
-                            { state: { from: "incoming" } }
+                            `/dashboard/doctor/medical-history/${patient.patientId}`,
+                            {
+                              state: {
+                                from: "incoming",
+                                patientSnapshot: patient.snapshot,
+                                dependantId: patient.isDependant ? patient.dependantId : null,
+                                dependantSnapshot: patient.isDependant ? patient.snapshot : null,
+                              },
+                            }
                           )
                         }
                         className="btn btn-xs btn-primary rounded-lg font-medium shadow-2xs gap-1"
