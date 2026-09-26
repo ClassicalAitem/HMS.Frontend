@@ -9,7 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
-import { FaClipboardCheck, FaThLarge } from 'react-icons/fa';
+import { FaClipboardCheck, FaThLarge, FaBed } from 'react-icons/fa';
 import { FaSuitcaseMedical, FaVials } from 'react-icons/fa6';
 import { useNotifications } from '@/contexts/NotificationContext';
 import NotificationBadge from '@/components/common/NotificationBadge';
@@ -56,6 +56,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/hmo",  active: location.pathname === '/dashboard/hmo' },
     { icon: FaSuitcaseMedical, label: "Incoming", path: "/dashboard/hmo/incoming", active: isOnIncoming, badge: incomingCount },
+    { icon: FaBed, label: "Admissions", path: '/dashboard/hmo/admissions', active: location.pathname.startsWith('/dashboard/hmo/admissions') },
     { icon: FaClipboardCheck, label: "Hmo Patients", path: '/dashboard/hmo/patients', active: location.pathname === '/dashboard/hmo/patients' },
     { icon: FaVials, label: "Lab Results", path: '/dashboard/hmo/lab-results', active: location.pathname.startsWith('/dashboard/hmo/lab-results'), badge: labReadyCount }
   ];

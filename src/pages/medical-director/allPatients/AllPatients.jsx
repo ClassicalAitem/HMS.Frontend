@@ -14,6 +14,7 @@ const AllPatients = () => {
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  const [activeTab, setActiveTab] = useState('patients');
   const pageSize = 9;
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -72,8 +73,9 @@ const AllPatients = () => {
           const parentPatient = patientMap.get(d?.patientId);
           return {
             type: 'dependant',
-            id: d?.patientId,           // navigate using guardian's patientId
-            dependantId: d?.id,
+            id: d?.id || d?._id,
+            parentPatientId: d?.patientId,
+            dependantId: d?.id || d?._id,
             snapshot: d,
             name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || d?.fullName || 'Unknown',
             badge: d?.relationshipType || 'Dependant',
@@ -111,10 +113,10 @@ const AllPatients = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = items;    
+    const base = items.filter(i => activeTab === 'dependants' ? i.type === 'dependant' : i.type === 'patient');    
      if (!q) return base;
    return base.filter((d) => [d.name, d.patientId, d.insurance, d.gender, d.phone, d.status, d.badge].filter(Boolean).join(' ').toLowerCase().includes(q));
-  }, [items, query]);
+  }, [items, query, activeTab]);
 
   const start = page * pageSize;
   const end = start + pageSize;
@@ -125,7 +127,8 @@ const AllPatients = () => {
     { key: 'name', title: 'Patient Name', className: 'font-medium text-base-content', render: (value, row) => (
       <button className="text-primary hover:underline text-sm" onClick={(e) => {
         e.preventDefault(); e.stopPropagation();
-        row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+        const navId = row.parentPatientId || row.id || row._id;
+        navId && navigate(`/dashboard/medical-director/medical-history/${navId}`, {
           state: {
             from: 'patients',
             patientSnapshot: row.type === 'dependant' ? null : row.snapshot,
@@ -146,8 +149,10 @@ const AllPatients = () => {
     { key: 'insurance', title: 'Insurance', className: 'text-base-content/70' },
     { key: 'registered', title: 'Registered', className: 'text-base-content/70' },
     { key: 'status', title: 'Status', className: 'text-base-content/70' },
-    { key: '__action', title: '', className: 'text-right', render: (_, row) => (
-      <button className="btn btn-ghost btn-xs text-primary" onClick={() => row.id && navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+    { key: '__action', title: '', className: 'text-right', render: (_, row) => {
+      const navId = row.parentPatientId || row.id || row._id;
+      return (
+      <button className="btn btn-ghost btn-xs text-primary" onClick={() => navId && navigate(`/dashboard/medical-director/medical-history/${navId}`, {
         state: {
           from: 'patients',
           patientSnapshot: row.type === 'dependant' ? null : row.snapshot,
@@ -155,7 +160,8 @@ const AllPatients = () => {
           dependantSnapshot: row.type === 'dependant' ? row.snapshot : null,
         }
       })}>View Details</button>
-    ) },
+      );
+    } },
   ]), [navigate]);
 
   return (
@@ -172,12 +178,28 @@ const AllPatients = () => {
         <Header onToggleSidebar={toggleSidebar} />
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           <section>
-            <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <div className="flex items-center gap-5 ">
                   <h1 className="text-[32px] text-primary ">All Patients</h1>
                 </div>
                 <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
+              </div>
+              <div role="tablist" className="tabs tabs-boxed">
+                <button 
+                  role="tab"
+                  className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
+                  onClick={() => setActiveTab('patients')}
+                >
+                  Primary Patients
+                </button>
+                <button 
+                  role="tab"
+                  className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
+                  onClick={() => setActiveTab('dependants')}
+                >
+                  Dependants
+                </button>
               </div>
             </div>
 
