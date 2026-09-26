@@ -21,7 +21,8 @@ const Patients = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [dependants, setDependants] = useState([]);
-const [dependantsLoading, setDependantsLoading] = useState(true);
+  const [dependantsLoading, setDependantsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('patients');
 
 useEffect(() => {
   let mounted = true;
@@ -181,12 +182,11 @@ const patientMap = useMemo(
   [patients]
 );
 
-const processedPatients = useMemo(() => {
-  const mappedPatients = patients.map((patient, index) => ({
+const { mappedPatients, mappedDependants } = useMemo(() => {
+  const pList = patients.map((patient) => ({
     ...patient,
     type: 'patient',
     dependantId: null,
-    serialNumber: index + 1,
     name: `${patient.firstName} ${patient.lastName}`.trim(),
     age: calculateAge(patient.dob),
     fullName: `${patient.firstName} ${patient.middleName || ''} ${patient.lastName}`.trim(),
@@ -198,15 +198,16 @@ const processedPatients = useMemo(() => {
     createdAtFormatted: formatNigeriaDate(patient.createdAt),
     updatedAtFormatted: formatNigeriaDate(patient.updatedAt),
     cardType: patient.cardType || 'N/A',
-  }));
+  })).map((row, index) => ({ ...row, serialNumber: index + 1 }));
 
-  const mappedDependants = dependants.map((dep) => {
+  const dList = dependants.map((dep) => {
     const parent = patientMap.get(dep.patientId);
     return {
       ...dep,
       type: 'dependant',
-      id: dep.patientId,          // navigate using guardian's patientId
-      dependantId: dep.id,
+      id: dep.id || dep._id,
+      parentPatientId: dep.patientId,
+      dependantId: dep.id || dep._id,
       badge: dep.relationshipType || 'Dependant',
       hospitalId: parent?.hospitalId || dep.patientId || 'N/A',
       name: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Unknown',
@@ -217,12 +218,9 @@ const processedPatients = useMemo(() => {
       status: dep.status,
       cardType: parent?.cardType || 'N/A',
     };
-  });
+  }).map((row, index) => ({ ...row, serialNumber: index + 1 }));
 
-  return [...mappedPatients, ...mappedDependants].map((row, index) => ({
-    ...row,
-    serialNumber: index + 1,
-  }));
+  return { mappedPatients: pList, mappedDependants: dList };
 }, [patients, dependants, patientMap]);
   // Define table columns
   const columns = useMemo(() => [
@@ -249,7 +247,7 @@ const processedPatients = useMemo(() => {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          navigate(`/dashboard/medical-director/medical-history/${row.id}`, {
+          navigate(`/dashboard/medical-director/medical-history/${row.parentPatientId || row.id || row._id}`, {
             state: {
               patientSnapshot: row.type === 'dependant' ? null : row,
               dependantId: row.dependantId,
@@ -327,10 +325,26 @@ const processedPatients = useMemo(() => {
         {/* Page Content */}
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
           {/* Page Header */}
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
+            </div>
+            <div role="tablist" className="tabs tabs-boxed">
+              <button 
+                role="tab"
+                className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('patients')}
+              >
+                Primary Patients
+              </button>
+              <button 
+                role="tab"
+                className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
+                onClick={() => setActiveTab('dependants')}
+              >
+                Dependants
+              </button>
             </div>
           </div>
 
@@ -369,7 +383,7 @@ const processedPatients = useMemo(() => {
                   </div>
                 ) : (
                   <DataTable
-                    data={processedPatients}
+                    data={activeTab === 'patients' ? mappedPatients : mappedDependants}
                     columns={columns}
                     searchable={true}
                     sortable={true}
