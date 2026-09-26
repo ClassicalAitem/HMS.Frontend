@@ -76,12 +76,27 @@ const getUnitOptions = (medicationType, selectedDrug) => {
 };
 
 const matchesMedicationType = (drug, medicationType) => {
-  if (medicationType === 'tablet') return drug.form === 'Tablet';
-  if (medicationType === 'syrup') return drug.form === 'Syrup';
-  if (medicationType === 'injection') return drug.form === 'Injection';
-  if (medicationType === 'gutt') return drug.form === 'Gutt';
-  if (medicationType === 'cream') return drug.form === 'Cream';
-  if (medicationType === 'infusion') return drug.form === 'Infusion';
+  const form = (drug.form || '').toLowerCase();
+  if (!form) return false;
+
+  if (medicationType === 'tablet') {
+    return form.includes('tablet') || form.includes('caplet') || form.includes('capsule') || form.includes('suppository') || form.includes('implant') || form.includes('powder') || form.includes('granules') || form.includes('enema');
+  }
+  if (medicationType === 'syrup') {
+    return form.includes('syrup') || form.includes('suspension') || (form.includes('solution') && !form.includes('topical') && !form.includes('nebulizer')) || form.includes('oral gel');
+  }
+  if (medicationType === 'cream') {
+    return form.includes('cream') || form.includes('ointment') || form.includes('gel') || form.includes('lotion') || form.includes('shampoo') || form.includes('lacquer') || form.includes('preparation');
+  }
+  if (medicationType === 'gutt') {
+    return form.includes('drop') || form.includes('spray') || form.includes('inhaler') || form.includes('inhalation') || form.includes('nebulizer') || form.includes('gutt') || form.includes('mouthwash') || form.includes('gas');
+  }
+  if (medicationType === 'injection') {
+    return form.includes('injection');
+  }
+  if (medicationType === 'infusion') {
+    return form.includes('infusion');
+  }
   return false;
 };
 
