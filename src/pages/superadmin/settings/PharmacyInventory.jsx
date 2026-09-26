@@ -17,7 +17,27 @@ const UNIT_LABELS = {
   ml: 'ml',
   iu: 'IU',
   ampoule: 'Ampoule',
+  tube: 'Tube',
 }
+
+const ALL_FORMS = [
+  'Caplet', 'Capsule', 'Chewable tablet', 'Cream', 'Delayed-release tablet',
+  'Dispersible tablet', 'Drops', 'Ear drops', 'Effervescent tablet', 'Enema',
+  'Enteric-coated tablet', 'Enzymatic preparation', 'Extended-release capsule',
+  'Extended-release tablet', 'Eye drops', 'Eye gel', 'Eye ointment',
+  'Eye suspension', 'Film-coated tablet', 'Gel', 'Granules', 'Gutt',
+  'Implant', 'Infusion', 'Inhalation', 'Inhalation capsule', 'Inhalation liquid',
+  'Inhalation powder', 'Inhaler', 'Injection', 'Injection concentrate',
+  'Injection diluent', 'Injection/infusion', 'Lotion', 'Medical gas',
+  'Modified-release tablet', 'Mouthwash', 'Nail lacquer', 'Nasal drops',
+  'Nasal spray', 'Nebulizer solution', 'Nebulizer suspension', 'Ointment',
+  'Oral gel', 'Oral solution', 'Oral suspension', 'Oral syrup',
+  'Orally disintegrating tablet', 'Powder', 'Scored tablet', 'Shampoo',
+  'Solution', 'Sublingual spray', 'Sublingual tablet', 'Suppository',
+  'Suspension', 'Syrup', 'Tablet', 'Topical cream', 'Topical solution',
+  'Topical suspension', 'Vaginal capsule', 'Vaginal cream', 'Vaginal tablet'
+];
+
 const pricePerUnit = (item) => {
   const packSize = Number(item.packSize) || 1
   const sellingPrice = Number(item.sellingPrice) || 0
@@ -432,7 +452,7 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
 
   const handle = async () => {
     if (!form.name.trim()) return toast.error('Item name is required')
-    if (!form.form) return toast.error('Please select a form (Tablet, Syrup, Injection, Cream, Gutt, or Infusion)')
+    if (!form.form) return toast.error('Please select a form')
     if (!form.batchNumber.trim()) return toast.error('Batch number is required')
     if (!isEdit && (!form.packs || Number(form.packs) <= 0)) {
       return toast.error(form.unit === 'tablet' ? 'Enter number of tablets' : 'Enter number of bottles/vials')
@@ -498,20 +518,22 @@ function InventoryFormModal({ item, onClose, onSubmit }) {
                 value={form.form}
                 onChange={(e) => {
                   const nextForm = e.target.value
-                  // Keep unit sensible when form changes; cream uses the discrete tube model,
-                  // while gutt/infusion behave like liquid bottles.
-                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : nextForm === 'Cream' ? 'tube' : nextForm === 'Gutt' || nextForm === 'Infusion' ? 'ml' : nextForm === 'Syrup' ? 'ml' : nextForm === 'Injection' ? (form.unit === 'tablet' || form.unit === 'tube' ? 'ml' : form.unit) : form.unit
+                  let nextUnit = form.unit
+                  const lower = nextForm.toLowerCase()
+                  if (lower.includes('tablet') || lower.includes('caplet') || lower.includes('capsule') || lower.includes('suppository') || lower.includes('implant')) {
+                    nextUnit = 'tablet'
+                  } else if (lower.includes('cream') || lower.includes('ointment') || lower.includes('gel')) {
+                    nextUnit = 'tube'
+                  } else if (lower.includes('syrup') || lower.includes('suspension') || lower.includes('solution') || lower.includes('drops') || lower.includes('infusion') || lower.includes('gutt') || lower.includes('injection') || lower.includes('spray') || lower.includes('inhaler') || lower.includes('lacquer') || lower.includes('mouthwash') || lower.includes('shampoo')) {
+                    nextUnit = (form.unit === 'tablet' || form.unit === 'tube') ? 'ml' : form.unit
+                  }
                   setForm({ ...form, form: nextForm, unit: nextUnit })
                 }}
               >
                 <option value="">Select form</option>
-                <option value="Tablet">Tablet</option>
-                <option value="Syrup">Syrup</option>
-                <option value="Gutt">Gutt</option>
-                <option value="Cream">Cream</option>
-                <option value="Infusion">Infusion</option>
-                <option value="Injection">Injection</option>
-                <option value="Suspension">Suspension</option>
+                {ALL_FORMS.map(f => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
               </select>
             </div> 
 
@@ -652,23 +674,29 @@ function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
   const [isLoading, setIsLoading] = useState(false)
 
   const FORM_ALIASES = {
-  tablet: 'Tablet',
-  tab: 'Tablet',
-  cap: 'Tablet',
-  capsule: 'Tablet',
-  susp: 'Syrup',
-  suspension: 'Syrup',
-  syrup: 'Syrup',
-  injection: 'Injection',
-  injectiong: 'Injection', // typo present in source data
-}
+    tab: 'Tablet',
+    cap: 'Capsule',
+    susp: 'Suspension',
+    injectiong: 'Injection', // typo present in source data
+  }
 
-const normalizeForm = (rawForm) => {
-  const key = String(rawForm || '').trim().toLowerCase()
-  return FORM_ALIASES[key] || 'Tablet' // unmapped/unknown/empty forms default to Tablet
-}
+  const normalizeForm = (rawForm) => {
+    const form = String(rawForm || '').trim()
+    const key = form.toLowerCase()
+    if (!key) return 'Tablet'
+    
+    // Exact match in ALL_FORMS
+    const exact = ALL_FORMS.find(f => f.toLowerCase() === key)
+    if (exact) return exact
 
-const makeDuplicateKey = (name, strength, form, batchNumber) =>
+    // Aliases
+    if (FORM_ALIASES[key]) return FORM_ALIASES[key]
+
+    // Fallback: capitalize the raw form to not lose any unmapped ones
+    return form.charAt(0).toUpperCase() + form.slice(1)
+  }
+
+  const makeDuplicateKey = (name, strength, form, batchNumber) =>
   [name, strength, form, batchNumber].map((v) => String(v || '').trim().toLowerCase()).join('|')
 
 
@@ -757,7 +785,7 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
     const skippedInvalidRows = []
 
     parsedRows.forEach((item) => {
-      const name = String(item.name || item.drug || item.item || '').trim()
+      const name = String(item.name || item.drug || item['drug name'] || item.item || '').trim()
       if (!name) { skippedInvalidRows.push(item.__rowIndex); return }
 
       const rawForm = String(item.form || '').trim()
