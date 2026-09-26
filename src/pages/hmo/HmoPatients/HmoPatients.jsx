@@ -386,7 +386,6 @@ const HMOPatients = () => {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setActiveTab('reviewed')}
@@ -399,14 +398,24 @@ const HMOPatients = () => {
               Reviewed Patients {records.length > 0 && `(${records.length})`}
             </button>
             <button
-              onClick={() => setActiveTab('all')}
+              onClick={() => setActiveTab('patients')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'all'
+                activeTab === 'patients'
                   ? 'bg-primary text-primary-content'
                   : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
               }`}
             >
-              All Patients {allPeople.length > 0 && `(${allPeople.length})`}
+              Primary Patients {allPeople.filter(p => p.type === 'patient').length > 0 && `(${allPeople.filter(p => p.type === 'patient').length})`}
+            </button>
+            <button
+              onClick={() => setActiveTab('dependants')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'dependants'
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
+              }`}
+            >
+              Dependants {allPeople.filter(p => p.type === 'dependant').length > 0 && `(${allPeople.filter(p => p.type === 'dependant').length})`}
             </button>
           </div>
 
@@ -543,7 +552,7 @@ const HMOPatients = () => {
                 />
               ) : (
                 <DataTable
-                  data={allPeople}
+                  data={allPeople.filter(p => activeTab === 'dependants' ? p.type === 'dependant' : p.type === 'patient')}
                   columns={allPeopleColumns}
                   searchable={true}
                   sortable={true}
