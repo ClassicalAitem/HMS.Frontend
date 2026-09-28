@@ -223,7 +223,7 @@ const summarySubject = useMemo(() => {
     lastName: dep.lastName,
     fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
     gender: dep.gender,
-    dob: dep.dob,
+    dob: dep.dob || dep.dateOfBirth || dep.birthDate,
     status: dep.status || dependantSnapshot?.status || 'Unknown',
     statusSenderName: dep.statusSenderName || dependantSnapshot?.statusSenderName,
     statusUser: dep.statusUser || dependantSnapshot?.statusUser,
