@@ -1,76 +1,56 @@
-import React, { useState } from "react";
-import { FaSearch, FaBell, FaSync, FaUserPlus, FaBars } from "react-icons/fa";
+import React from "react";
+import { FaBars } from "react-icons/fa";
 import { SlRefresh } from "react-icons/sl";
 import ThemeSwitcher from "./ThemeSwitcher";
-import { BsBell } from "react-icons/bs";
+import HospitalFavicon from "@/assets/images/favicon.svg";
 
 const Header = ({ onToggleSidebar }) => {
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleAddPatient = () => {
-    // Handle add patient action
-    console.log("Add patient clicked");
-  };
-
   const handleRefresh = () => {
-    // Refresh the page
     window.location.reload();
-  };
-  const handleNotifications = () => {
-    // Handle notifications
-    console.log("Notifications clicked");
   };
 
   return (
-    <header className="w-full border-b border-neutral/10 bg-base-100 px-3 py-1 sm:px-4 lg:px-4 2xl:px-6 2xl:py-[11px]">
-      <div className="flex justify-between gap-2 sm:gap-3 min-h-0">
-        {/* Mobile Menu Button */}
-        <button
-          onClick={onToggleSidebar}
-          className="btn btn-ghost btn-circle btn-xs shrink-0 lg:hidden min-h-0"
-          title="Toggle Menu"
-        >
-          <FaBars className="h-3.5 w-3.5" />
-        </button>
-
-        {/* Search Bar */}
-        {/* <div className="flex min-w-0 flex-1 justify-center">
-          <div className="relative w-full max-w-md">
-            <FaSearch className="absolute left-3 top-1/2 z-10 h-3 w-3 -translate-y-1/2 text-base-content/40 sm:h-4 sm:w-4" />
-            <input
-              type="text"
-              placeholder="Search Patient"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="input input-xs w-full border-b pl-8 focus:input-primary sm:input-sm sm:pl-10 2xl:input-md"
-            />
+    <div className="h-16 shrink-0">
+      <header className="fixed inset-x-0 top-0 z-[60] h-16 border-b border-base-200 bg-base-100">
+        <div className="flex h-full items-center">
+          <div className="hidden h-full w-64 shrink-0 items-center gap-2 border-r border-base-200 px-4 lg:flex">
+            <img src={HospitalFavicon} alt="Kolak Hospital" className="h-10 w-auto shrink-0" />
+            <div className="flex min-w-0 flex-col items-center">
+              <span className="text-xl font-bold text-base-content">Kolak</span>
+              <span className="text-xs text-base-content/70">- Hospital -</span>
+            </div>
           </div>
-        </div> */}
 
-        {/* Right Side Actions */}
-       {/* Right Side Actions */}
-<div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2 2xl:gap-3 p-1">
-  <ThemeSwitcher className="2xl:h-4 2xl:w-4" />
+          <div className="flex h-full items-center gap-2 px-3 lg:hidden">
+            <button
+              onClick={onToggleSidebar}
+              className="btn btn-ghost btn-circle btn-sm shrink-0"
+              title="Toggle Menu"
+              aria-label="Toggle menu"
+            >
+              <FaBars className="h-4 w-4" />
+            </button>
+            <img src={HospitalFavicon} alt="" className="h-9 w-auto shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-base font-bold text-base-content">Kolak</span>
+              <span className="text-[10px] text-base-content/70">- Hospital -</span>
+            </div>
+          </div>
 
-  <button
-    onClick={handleRefresh}
-    className="btn btn-ghost btn-circle btn-xs min-h-0"
-    title="Refresh"
-  >
-    <SlRefresh className="h-3 w-3 sm:h-3.5 sm:w-3.5 2xl:h-4 2xl:w-4" />
-  </button>
-
-  {/* <button
-    onClick={handleNotifications}
-    className="relative btn btn-ghost btn-circle btn-xs min-h-0"
-    title="Notifications"
-  >
-    <BsBell className="h-3 w-3 sm:h-3.5 sm:w-3.5 2xl:h-4 2xl:w-4" />
-    <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-error sm:h-2 sm:w-2 2xl:h-2.5 2xl:w-2.5"></span>
-  </button> */}
-</div>
-      </div>
-    </header>
+          <div className="ml-auto flex shrink-0 items-center gap-1 px-3 sm:gap-2 lg:px-4">
+            <ThemeSwitcher className="2xl:h-4 2xl:w-4" />
+            <button
+              onClick={handleRefresh}
+              className="btn btn-ghost btn-circle btn-sm"
+              title="Refresh"
+              aria-label="Refresh page"
+            >
+              <SlRefresh className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+    </div>
   );
 };
 
