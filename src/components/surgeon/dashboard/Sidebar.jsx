@@ -86,20 +86,20 @@ const Sidebar = ({ onCloseSidebar }) => {
     <Link
       to={path}
       onClick={onCloseSidebar}
-      className={`flex items-center space-x-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+      className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
           : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
       }`}
     >
-      <Icon className="w-5 h-5" />
-      <span>{label}</span>
+      <Icon className="w-5 h-5 shrink-0" />
+      <span className="text-sm">{label}</span>
     </Link>
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r-2 bg-base-100 border-neutral/20">
-      <div className="p-4 border-b border-base-300">
+    <div className="flex flex-col w-64 h-full border-r border-base-200 bg-base-100">
+      <div className="flex h-20 shrink-0 items-center justify-center border-b border-base-200 px-4">
         <div className="flex justify-center items-center">
           <img
             src="/src/assets/images/logo.png"
@@ -125,7 +125,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-4 space-y-2 lg:py-6 overflow-y-auto min-h-0">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
@@ -138,11 +138,11 @@ const Sidebar = ({ onCloseSidebar }) => {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-4 space-y-2 border-t border-base-300">
+      <div className="p-3 space-y-1.5 border-t border-base-200">
         <Link
           to="/change-password"
           onClick={onCloseSidebar}
-          className={`flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
             location.pathname === "/change-password"
               ? "bg-primary text-primary-content"
               : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
@@ -154,7 +154,7 @@ const Sidebar = ({ onCloseSidebar }) => {
 
         <button 
           onClick={() => setIsLogoutModalOpen(true)}
-          className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          className="flex items-center gap-3 px-4 py-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
           <FaSignOutAlt className="w-5 h-5" />
           <span>Log Out</span>
@@ -162,8 +162,8 @@ const Sidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-base-300">
-        <div className="flex items-center space-x-3 h-[58px]">
+      <div className="p-4 border-t border-base-200">
+        <div className="flex items-center gap-3 min-h-[58px]">
           <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
             {user?.profileImage ? (
               <img
@@ -177,7 +177,7 @@ const Sidebar = ({ onCloseSidebar }) => {
               </div>
             )}
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-base-content">
               {user ? `${user.firstName} ${user.lastName}` : 'User'}
             </p>
