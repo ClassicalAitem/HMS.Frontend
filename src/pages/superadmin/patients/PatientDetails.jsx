@@ -202,6 +202,7 @@ const PatientDetails = () => {
       id: dep.id || dependantId,
       fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || 'Dependant',
       gender: dep.gender || '—',
+      dob: dep.dob || dep.dateOfBirth || dep.birthDate,
       phone: dep.phone || guardian.phone || guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
       status: dep.status || dependantSnapshot?.status || 'Unknown',

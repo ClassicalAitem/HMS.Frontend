@@ -282,6 +282,7 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
       fullName:
         `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || 'Dependant',
       gender: dep.gender || '—',
+      dob: dep.dob || dep.dateOfBirth || dep.birthDate,
       // Dependants don't carry their own phone in this schema — fall back to guardian's
       phone: dep.phone || guardian.phone || guardian.phoneNumber,
       // Hospital ID always belongs to the parent/guardian patient record
