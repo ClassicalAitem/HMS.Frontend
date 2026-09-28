@@ -111,19 +111,11 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full bg-base-100 border-r border-base-200">
+    <div className="flex flex-col w-64 h-full bg-base-100 border-r border-base-200 pt-16">
       {/* Logo */}
-      <div className="flex h-20 shrink-0 items-center justify-center border-b border-base-200 px-4">
+      <div className="hidden h-20 shrink-0 items-center justify-center border-b border-base-200 px-4">
         <div className="flex justify-center items-center">
-          <div className="flex items-center space-x-2">
-            <div className="">
-              <img src={HospitalFavicon} alt="Kolak logo" className="w-auto h-10 shrink-0" />
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-xl font-bold">Kolak</span>
-              <span className="text-xs text-base-content/70">- Hospital -</span>
-            </div>
-          </div>
+        
         </div>
       </div>
 
