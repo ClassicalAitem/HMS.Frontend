@@ -113,17 +113,9 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r border-base-200 bg-base-100">
+    <div className="flex flex-col w-64 h-full border-r border-base-200 bg-base-100 pt-16">
       {/* Kolak Logo Header */}
-      <div className="flex h-20 shrink-0 items-center justify-center border-b border-base-200 px-4">
-        <div className="flex items-center justify-center space-x-2.5">
-          <img src={HospitalFavicon} alt="Kolak Hospital" className="w-auto h-10" />
-          <div className="flex flex-col items-center">
-            <span className="text-xl font-bold text-base-content tracking-tight">Kolak</span>
-            <span className="text-xs font-semibold text-base-content/60">- Hospital -</span>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Navigation Menu */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
