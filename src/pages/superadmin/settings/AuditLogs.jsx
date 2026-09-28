@@ -108,6 +108,7 @@ const AuditLogs = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
@@ -147,7 +148,7 @@ const AuditLogs = () => {
     try {
       setLoading(true);
       const params = {
-        search: searchTerm.trim() || undefined,
+        search: debouncedSearchTerm.trim() || undefined,
         role: selectedRole !== 'all' ? selectedRole : undefined,
         status: selectedStatus !== 'all' ? selectedStatus : undefined,
         startDate: selectedDate || undefined,
@@ -163,7 +164,7 @@ const AuditLogs = () => {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedRole, selectedStatus, selectedDate]);
+  }, [debouncedSearchTerm, selectedRole, selectedStatus, selectedDate]);
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -185,29 +186,28 @@ const AuditLogs = () => {
 
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 30000);
+    const interval = setInterval(fetchStats, 300000);
     return () => clearInterval(interval);
   }, [fetchStats]);
 
   useEffect(() => {
     fetchLogs();
-    const interval = setInterval(fetchLogs, 15000);
+    const interval = setInterval(fetchLogs, 300000);
     return () => clearInterval(interval);
   }, [fetchLogs]);
 
   useEffect(() => {
     fetchAttendance();
-    const interval = setInterval(fetchAttendance, 15000);
+    const interval = setInterval(fetchAttendance, 300000);
     return () => clearInterval(interval);
   }, [fetchAttendance]);
 
-  // Debounced search
   useEffect(() => {
     const handler = setTimeout(() => {
-      fetchLogs();
+      setDebouncedSearchTerm(searchTerm);
     }, 400);
     return () => clearTimeout(handler);
-  }, [searchTerm, fetchLogs]);
+  }, [searchTerm]);
 
   const handleExportLogs = () => {
     if (activeTab === 'audit') {
@@ -246,6 +246,7 @@ const AuditLogs = () => {
 
   const resetFilters = () => {
     setSearchTerm('');
+    setDebouncedSearchTerm('');
     setSelectedRole('all');
     setSelectedStatus('all');
     setSelectedDate('');

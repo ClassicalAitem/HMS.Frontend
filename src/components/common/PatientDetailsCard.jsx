@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PatientCardTypeInfo, PatientStatusBadge } from '@/components/common';
 import { formatPatientAge } from '@/utils/formatDateTimeUtils';
 
@@ -11,6 +11,19 @@ const PatientDetailsCard = ({
   guardian,
   activeAdmission,
 }) => {
+  const [today, setToday] = useState(() => new Date());
+
+  useEffect(() => {
+    const nextMidnight = new Date(today);
+    nextMidnight.setHours(24, 0, 0, 0);
+    const timeout = window.setTimeout(
+      () => setToday(new Date()),
+      nextMidnight.getTime() - Date.now(),
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [today]);
+
   // Resolve active subject entity (dependant or patient)
   const activeSubject =
     summarySubject || subject || patientData || (isViewingDependant ? null : patient) || patient || {};
@@ -41,13 +54,15 @@ const PatientDetailsCard = ({
   const familyName = parentPatient?.familyName || activeSubject?.familyName || parentPatient?.lastName || '';
   const companyName = parentPatient?.companyName || activeSubject?.companyName || '';
 
-  // Extract DOB from activeSubject or parentPatient
+  // A dependant's DOB must never fall back to the guardian's DOB.
   const rawDob =
     activeSubject?.dob ||
     activeSubject?.dateOfBirth ||
     activeSubject?.birthDate ||
-    parentPatient?.dob ||
-    parentPatient?.dateOfBirth;
+    subject?.dob ||
+    subject?.dateOfBirth ||
+    subject?.birthDate ||
+    (!isViewingDependant && (parentPatient?.dob || parentPatient?.dateOfBirth));
 
   // Status sender info - prioritize activeSubject (dependant), then parentPatient if not viewing dependant
   const resolvedStatusSenderName =
@@ -67,14 +82,14 @@ const PatientDetailsCard = ({
 
   // Age & Birthday Calculation
   const { age, isBirthday } = useMemo(() => {
-    if (!rawDob) return { age: summarySubject?.age || patient?.age || '—', isBirthday: false };
+    const fallbackAge = summarySubject?.age || (!isViewingDependant && patient?.age) || '—';
+    if (!rawDob) return { age: fallbackAge, isBirthday: false };
 
     const birthDate = new Date(rawDob);
     if (isNaN(birthDate.getTime())) {
-      return { age: summarySubject?.age || patient?.age || '—', isBirthday: false };
+      return { age: fallbackAge, isBirthday: false };
     }
 
-    const today = new Date();
     const formattedAge = formatPatientAge(rawDob);
 
     const diffDays = Math.floor((today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -87,7 +102,7 @@ const PatientDetailsCard = ({
       age: formattedAge,
       isBirthday: isTodayBirthday,
     };
-  }, [rawDob, summarySubject?.age, patient?.age]);
+  }, [rawDob, summarySubject?.age, patient?.age, isViewingDependant, today]);
 
   const isExpired = (h) => {
     const expiresAt = h?.expiresAt || h?.expiryDate;

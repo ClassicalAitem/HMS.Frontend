@@ -100,22 +100,22 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
     <Link
       to={path}
       onClick={onCloseSidebar}
-      className={`flex items-center space-x-3 px-4 2xl:py-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+      className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
           : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
       }`}
     >
-      <Icon className="w-4 h-4 2xl:w-5 2xl:h-5" />
-      <span className="text-xs 2xl:text-sm">{label}</span>
+      <Icon className="w-5 h-5 shrink-0" />
+      <span className="flex-1 text-sm">{label}</span>
        <NotificationBadge count={badge} />
     </Link>
   );
 
   return (
-    <div className="flex h-full w-[82vw] max-w-[280px] flex-col border-r-2 bg-base-100 border-neutral/20 lg:w-64">
+    <div className="flex h-full w-64 flex-col border-r border-base-200 bg-base-100">
       {/* Logo */}
-      <div className="p-3 border-b-4 border-neutral/20 lg:p-1 2xl:p-3">
+      <div className="flex h-20 shrink-0 items-center justify-center border-b border-base-200 px-4">
         <div className="flex justify-center items-center">
           <img
             src="/src/assets/images/logo.png"
@@ -129,14 +129,14 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
               <img
                 src={HospitalFavicon}
                 alt="Kolak logo"
-                className="w-auto h-10 lg:h-8 2xl:h-12"
+                className="w-auto h-10 shrink-0"
               />
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-lg font-bold lg:text-md 2xl:text-3xl">
+              <span className="text-xl font-bold">
                 Kolak
               </span>
-              <span className="text-sm text-base-content/70 lg:text-xs 2xl:text-base">
+              <span className="text-xs text-base-content/70">
                 - Hospital -
               </span>
             </div>
@@ -145,7 +145,7 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 px-4 py-6 space-y-2 lg:py-12">
+      <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
         {menuItems.map((item, index) => (
           <MenuItem
             key={index}
@@ -159,32 +159,32 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
       </nav>
 
       {/* Bottom Actions */}
-      <div className="p-4 space-y-2 border-t border-base-300">
+      <div className="p-3 space-y-1.5 border-t border-base-200">
         <Link
           to="/change-password"
           onClick={onCloseSidebar}
-          className={`flex items-center px-4 py-3 space-x-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
             location.pathname === "/change-password"
               ? "bg-primary text-primary-content"
               : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
           }`}
         >
-          <CiLock className="w-4 h-4 2xl:w-5 2xl:h-5" />
-          <span className="text-xs 2xl:text-sm">Change Password</span>
+          <CiLock className="w-5 h-5 shrink-0" />
+          <span className="text-sm">Change Password</span>
         </Link>
 
         <button
           onClick={() => setIsLogoutModalOpen(true)}
-          className="flex items-center px-4 py-3 space-x-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
+          className="flex items-center gap-3 px-4 py-3 w-full text-sm font-medium text-left rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
-          <CiLogout className="w-4 h-4 2xl:w-5 2xl:h-5" />
-          <span className="text-xs 2xl:text-sm">Log Out</span>
+          <CiLogout className="w-5 h-5 shrink-0" />
+          <span className="text-sm">Log Out</span>
         </button>
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-base-300">
-        <div className="flex items-center space-x-3">
+      <div className="p-4 border-t border-base-200">
+        <div className="flex items-center gap-3">
           <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10">
             {user?.profileImage ? (
               <img
@@ -198,7 +198,7 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
               </div>
             )}
           </div>
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-base-content">
               {user ? `${user.firstName} ${user.lastName}` : "User"}
             </p>
