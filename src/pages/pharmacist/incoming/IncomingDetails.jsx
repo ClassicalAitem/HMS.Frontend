@@ -362,7 +362,7 @@ const getDispenseInfo = (med) => {
   }
 
   const renderMedCard = (m, isHistory = false) => (
-    <div
+      <div
       key={`${m._id || m.drugName}-${m.drugName}`}
       className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
     >
@@ -371,20 +371,17 @@ const getDispenseInfo = (med) => {
           <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
             {m.availabilityInfo.label}
           </span>
-          {m.isPaid ? (
-            <span className="badge badge-sm badge-success text-white font-medium">Paid</span>
-          ) : (
-            <span className="badge badge-sm badge-warning font-medium">Unpaid</span>
-          )}
-          {m.hmoStatus === 'approved' && (
-            <span className="badge badge-sm badge-success font-medium">HMO: Covered</span>
-          )}
-          {m.hmoStatus === 'partial' && (
-            <span className="badge badge-sm badge-warning font-medium">HMO: Partial</span>
-          )}
-          {m.hmoStatus === 'rejected' && (
-            <span className="badge badge-sm badge-error font-medium">HMO: Not Covered</span>
-          )}
+            {m.hmoStatus === 'approved' ? (
+              <span className="badge badge-sm badge-success font-medium">Covered by HMO</span>
+            ) : m.hmoStatus === 'partial' ? (
+              <span className="badge badge-sm badge-warning font-medium">Partially Covered by HMO</span>
+            ) : m.hmoStatus === 'rejected' ? (
+              <span className="badge badge-sm badge-error font-medium">Rejected by HMO</span>
+            ) : m.isPaid ? (
+              <span className="badge badge-sm badge-success text-white font-medium">Paid</span>
+            ) : (
+              <span className="badge badge-sm badge-warning font-medium">Unpaid</span>
+            )}
         </div>
       </div>
 
@@ -758,6 +755,7 @@ const getDispenseInfo = (med) => {
       id: dep.id || dependantId,
       fullName: `${dep.firstName || ''} ${dep.lastName || ''}`.trim() || dep.fullName || 'Dependant',
       gender: dep.gender || '—',
+      dob: dep.dob || dep.dateOfBirth || dep.birthDate,
       phone: dep.phone || guardian.phone || guardian.phoneNumber,
       hospitalId: guardian.hospitalId,
       status: dep.status || incomingDependantSnapshot?.status || 'Unknown',

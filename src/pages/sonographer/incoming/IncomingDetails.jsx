@@ -573,6 +573,7 @@ useEffect(() => {
           </div>
            <PatientDetailsCard
                 patient={patient}
+             subject={isViewingDependant ? dependantInfo : patient}
                 summarySubject={summarySubject}
                 isViewingDependant={isViewingDependant}
               />
