@@ -19,7 +19,7 @@ const matchesSubject = (billing, investigation) => {
   return String(billingPatientId) === String(investigationPatientId) && !billingDependantId;
 };
 
-const findBillingItem = (investigation, test, billings) => {
+const findBillingMatch = (investigation, test, billings) => {
   const investigationId = getInvestigationId(investigation);
   const testName = normalize(typeof test === 'object' ? test.name || test.code : test);
 
@@ -65,10 +65,37 @@ const findBillingItem = (investigation, test, billings) => {
       });
     }
 
-    if (item) return item;
+    if (item) return { billing, item };
   }
 
   return null;
+};
+
+const findBillingItem = (investigation, test, billings) => (
+  findBillingMatch(investigation, test, billings)?.item || null
+);
+
+export const enrichInvestigationTestPayment = (investigation, test, billings = []) => {
+  const testObj = test && typeof test === 'object' ? { ...test } : { name: test };
+  const match = findBillingMatch(investigation, test, billings);
+  if (!match) return testObj;
+
+  const { billing, item } = match;
+  const hmoStatus = normalize(item.hmoStatus) ? item.hmoStatus : testObj.hmoStatus || null;
+  const isCleared = item.isCleared === true || billing.isCleared === true;
+  const paymentStatus = item.paymentStatus || (isCleared ? 'paid' : 'unpaid');
+  const isPaid = normalize(paymentStatus) === 'paid' || isCleared;
+  const isHmoCovered = ['approved', 'partial'].includes(normalize(hmoStatus));
+
+  return {
+    ...testObj,
+    isPaid,
+    isCleared,
+    paymentStatus,
+    hmoStatus,
+    isHmoCovered,
+    coverageType: hmoStatus ? 'hmo' : isPaid ? 'self_pay' : 'unknown',
+  };
 };
 
 export const isInvestigationTestVisible = (investigation, test, billings = []) => {
