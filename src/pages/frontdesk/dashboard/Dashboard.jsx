@@ -3,7 +3,8 @@ import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { 
   UpcomingSurgeries, 
   OverallDischarge, 
-  RecentlyAddedPatients 
+  RecentlyAddedPatients,
+  RecentlyAttendedPatients
 } from '@/components/frontdesk';
 import KolakLoader from '@/components/common/KolakLoader';
 import { Link } from 'react-router-dom';
@@ -48,9 +49,16 @@ const FrontdeskDashboard = () => {
             </div>
           </div>
           
-          {/* Recently Added Patients Table */}
-          <div className="flex flex-1 w-full min-h-0">   
-            <RecentlyAddedPatients />
+          <div className="flex flex-col gap-4">
+            {/* Recently Added Patients Table */}
+            <div className="flex flex-1 w-full min-h-0">   
+              <RecentlyAddedPatients />
+            </div>
+
+            {/* Recently Attended To Patients Table */}
+            <div className="flex flex-1 w-full min-h-0">   
+              <RecentlyAttendedPatients />
+            </div>
           </div>
     </FrontdeskLayout>
   );

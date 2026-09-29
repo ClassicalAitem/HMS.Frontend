@@ -171,6 +171,8 @@ import InventoryAndStocks from "@/pages/laboratory/Inventory&stocks/Inventory&st
 import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
 import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
 import CompletedTests from "@/pages/laboratory/completed/CompletedTests";
+import LaboratoryPatientProfile from "@/pages/laboratory/patients/LaboratoryPatientDetails";
+import LaboratoryPatientsList from "@/pages/laboratory/patients/LaboratoryPatientsList";
 import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
 import FrontDeskPaymentRecords from "@/pages/frontdesk/payment-records/ReceiptRecord";
 import NursePaymentRecords from "@/pages/nurse/payment-records/ReceiptRecord";
@@ -1238,6 +1240,14 @@ const AppRoutes = () => {
       <Route
         path="/dashboard/laboratory/completed"
         element={<CompletedTests />}
+      />
+      <Route
+        path="/dashboard/laboratory/patients/:patientId"
+        element={<LaboratoryPatientProfile />}
+      />
+      <Route
+        path="/dashboard/laboratory/patients"
+        element={<LaboratoryPatientsList />}
       />
 
       {/*==============================================================================================================
