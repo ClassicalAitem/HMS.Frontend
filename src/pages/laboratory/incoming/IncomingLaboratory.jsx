@@ -1,291 +1,115 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, PatientStatusBadge, HmoStatusBadge } from "@/components/common";
+import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
-import AcceptTestRequestModal from "./modals/AcceptTestRequestModal";
-import TestRequestModal from "./modals/TestRequestModal";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
-import { getLabResults } from "@/services/api/labResultsAPI";
-import { updatePatientStatus } from "@/services/api/patientsAPI";
-import { updateDependantStatus } from "@/services/api/dependantAPI";
-import { getAllOpdPatients, updateOpdPatient } from '@/services/api/opdPatientAPI';
 import { hasStatus } from "@/utils/statusUtils";
-import { formatNigeriaDate, formatNigeriaDateTime, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
-import { getAllBillings } from "@/services/api/billingAPI";
+import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
-import ClearItemButton from "@/components/common/ClearIncomingButton";
-import ClearAllButton from "@/components/common/ClearAllButton";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { FiSearch, FiAlertCircle, FiRefreshCw, FiUser, FiCalendar, FiClock } from "react-icons/fi";
-import { FaFlask, FaStethoscope } from "react-icons/fa";
+import { FiSearch, FiAlertCircle, FiRefreshCw, FiUser } from "react-icons/fi";
+import { FaFlask, FaEye } from "react-icons/fa";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
-import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [testRequests, setTestRequests] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showModal2, setShowModal2] = useState(false);
-  const [selectedCard, setSelectedCard] = useState(null);
-  const [existingLabResults, setExistingLabResults] = useState({});
-  const [activeFilter, setActiveFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { refreshQueueCount, lastUpdate } = useNotifications();
+  const { lastUpdate } = useNotifications();
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const fetchTestRequests = async () => {
+  const fetchIncomingPatients = async () => {
     try {
       setLoading(true);
       setError(null);
+      const response = await getInvestigations();
+      const allInvestigations = Array.isArray(response) ? response : (response?.data || []);
+      const subjectsById = new Map();
 
-      // Fetch investigations and OPD patients concurrently (NO N+1 loops)
-      const [invResponse, opdResponse, billingsRes] = await Promise.all([
-        getInvestigations().catch((err) => {
-          console.warn("Failed to fetch investigations:", err);
-          return [];
-        }),
-        getAllOpdPatients().catch((err) => {
-          console.warn("Failed to fetch OPD patients:", err);
-          return [];
-        }),
-        getAllBillings().catch(() => [])
-      ]);
-      const allBillings = Array.isArray(billingsRes) ? billingsRes : (billingsRes?.data?.data || billingsRes?.data || []);
+      allInvestigations.forEach((investigation) => {
+        const type = String(investigation.type || '').toLowerCase();
+        if (type !== 'lab' && type !== 'laboratory') return;
 
-      const allInvestigations = Array.isArray(invResponse)
-        ? invResponse
-        : (invResponse?.data || []);
+        const rawStatus = investigation.status;
+        const requestStatus = String(Array.isArray(rawStatus) ? rawStatus[rawStatus.length - 1] : rawStatus || '').toLowerCase();
+        if (!['requested', 'in_progress', 'pending', 'awaiting_lab'].includes(requestStatus)) return;
 
-      const allOpdPatients = Array.isArray(opdResponse)
-        ? opdResponse
-        : (opdResponse?.data || []);
+        const dependant = investigation.dependant;
+        const patient = investigation.patient;
+        const isDependant = Boolean(dependant || investigation.dependantId);
+        const subject = dependant || patient;
+        if (!subject || !hasStatus(subject.status, PATIENT_STATUS.AWAITING_LAB)) return;
 
-      const paidInvestigations = allInvestigations
-        .map((inv) => filterVisibleInvestigation(inv, allBillings))
-        .filter(Boolean);
+        const dependantId = investigation.dependantId || dependant?.id || dependant?._id;
+        const patientId = investigation.patientId || patient?.id || patient?._id || dependant?.patientId;
+        const subjectId = isDependant ? dependantId : patientId;
+        if (!subjectId) return;
 
-      const awaitingLabOpdPatients = allOpdPatients.filter((p) =>
-        hasStatus(p.status, PATIENT_STATUS.AWAITING_LAB) || hasStatus(p.status, 'sonography_completed')
-      );
+        const key = `${isDependant ? 'dependant' : 'patient'}:${subjectId}`;
+        const existing = subjectsById.get(key);
+        const requestedAt = investigation.createdAt || subject.updatedAt;
 
-      // Separate into lab and radiology investigations
-      const laboratoryInvestigations = paidInvestigations.filter(inv => {
-        const type = String(inv.type || "").toLowerCase();
-          return (type === "lab" || type === "laboratory") &&
-            inv.status !== 'completed' && inv.status !== 'cancelled';
+        if (existing) {
+          existing.requestCount += 1;
+          if (new Date(requestedAt || 0) > new Date(existing.latestRequestAt || 0)) {
+            existing.latestRequestAt = requestedAt;
+          }
+          return;
+        }
+
+        subjectsById.set(key, {
+          key,
+          patientId,
+          dependantId: isDependant ? dependantId : null,
+          patientType: isDependant ? 'dependant' : 'patient',
+          name: `${subject.firstName || ''} ${subject.lastName || ''}`.trim() || subject.fullName || subject.name || 'Unknown Patient',
+          hospitalId: patient?.hospitalId || subject.hospitalId || '—',
+          status: subject.status,
+          requestCount: 1,
+          latestRequestAt: requestedAt,
+          updatedAt: subject.updatedAt || requestedAt,
+        });
       });
 
-      const radiologyInvestigations = paidInvestigations.filter(inv => {
-        const type = String(inv.type || "").toLowerCase();
-        return (type === "radiology" || type === "imaging") && inv.status !== 'completed' && inv.status !== 'cancelled';
-      });
-
-      const getPendingRadiologyCount = (pType, pid, did) => {
-        return radiologyInvestigations.filter(inv => {
-          if (pType === 'opd') return String(inv.opdPatientId) === String(pid);
-          if (pType === 'dependant') return String(inv.dependantId) === String(did);
-          return String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(pid) && !inv.dependantId;
-        }).length;
-      };
-
-      // Map investigation requests using backend enriched patient, dependant, opdPatient, and hmoStatus
-      const investigationCards = laboratoryInvestigations
-        .filter((inv) => {
-
-          const pStatus = inv.dependant?.status || inv.patient?.status || inv.opdPatient?.status;
-          const invStatus = String(inv.status || "").toLowerCase();
-
-          // If patient status is present, verify status
-          if (pStatus) {
-            return hasStatus(pStatus, PATIENT_STATUS.AWAITING_LAB) || hasStatus(pStatus, 'sonography_completed');
-          }
-
-          // If patient status is unknown, allow pending / awaiting_lab requests
-          return invStatus === 'pending' || invStatus === 'awaiting_lab' || !invStatus;
-        })
-        .map((inv) => {
-          const patient = inv.patient;
-          const dependant = inv.dependant;
-          const opdPatient = inv.opdPatient;
-
-          let patientType = "regular";
-          let patientName = "Unknown Patient";
-          let displayId = inv.patientId || "N/A";
-          let requestedBy = inv.doctorName || (inv.doctor?.name ? inv.doctor.name : "Doctor");
-
-          if (dependant) {
-            patientType = "dependant";
-            patientName =
-              `${dependant.firstName || ""} ${dependant.lastName || ""}`.trim() ||
-              dependant.fullName ||
-              dependant.name ||
-              "Unknown Dependant";
-            displayId = dependant.id || dependant._id || inv.dependantId || displayId;
-            requestedBy = inv.doctorName || "Doctor";
-          } else if (opdPatient) {
-            patientType = "opd";
-            patientName =
-              opdPatient.fullName ||
-              `${opdPatient.firstName || ""} ${opdPatient.lastName || ""}`.trim() ||
-              "Unknown OPD Patient";
-            displayId = opdPatient.id || inv.opdPatientId || displayId;
-            requestedBy = "Front Desk";
-          } else if (patient) {
-            patientName =
-              `${patient.firstName || ""} ${patient.lastName || ""}`.trim() ||
-              patient.name ||
-              "Unknown";
-            displayId = patient.hospitalId || patient.id || patient._id || displayId;
-          }
-
-          const patientStatus = dependant?.status || patient?.status || opdPatient?.status || "unknown";
-
-          return {
-            id: inv._id || inv.id,
-            patientId: inv.patientId || (patient?._id || patient?.id),
-            dependantId: inv.dependantId,
-            opdPatientId: inv.opdPatientId || opdPatient?.id,
-            name: patientName,
-            userId: displayId,
-            status: inv.priority === "urgent" ? "Urgent" : "Normal",
-            test:
-              inv.tests?.map((t) => t.name).join(", ") ||
-              inv.investigationType ||
-              "Lab Test",
-            date: inv.createdAt ? formatNigeriaDate(inv.createdAt) : "N/A",
-            requestedBy,
-            time: inv.createdAt ? formatNigeriaTime(inv.createdAt) : "N/A",
-            createdAt: inv.createdAt,
-            sortTimestamp: patient?.updatedAt || inv.createdAt,
-            updatedAt: patient?.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : "N/A",
-            patientType,
-            investigationStatus: inv.status,
-            patientStatus,
-            statusUser: dependant?.statusUser || patient?.statusUser,
-            statusSenderName: dependant?.statusSenderName || patient?.statusSenderName,
-            hmoStatus: (inv.tests || []).find((t) => t.hmoStatus)?.hmoStatus || null,
-            isPaid: (inv.tests || []).some((t) => t.isPaid) || !(inv.tests || []).some((t) => t.hmoStatus),
-            tests: inv.tests || [],
-            investigation: inv,
-            pendingRadiologyCount: getPendingRadiologyCount(patientType, displayId, inv.dependantId)
-          };
-        });
-
-      const formattedRequests = investigationCards;
-
-      const uniqueRequests = formattedRequests
-        .filter(
-          (item, index, self) =>
-            index ===
-            self.findIndex(
-              (t) =>
-                t.userId === item.userId &&
-                t.test === item.test &&
-                t.date === item.date
-            )
-        )
-        .sort((a, b) => {
-          const aTime = new Date(a.sortTimestamp || a.createdAt || 0).getTime();
-          const bTime = new Date(b.sortTimestamp || b.createdAt || 0).getTime();
-          return bTime - aTime;
-        });
-
-      setTestRequests(uniqueRequests);
+      const incomingSubjects = Array.from(subjectsById.values())
+        .sort((first, second) => new Date(second.updatedAt || second.latestRequestAt || 0) - new Date(first.updatedAt || first.latestRequestAt || 0));
+      setPatients(incomingSubjects);
     } catch (err) {
-      console.error("Error fetching incoming lab requests:", err);
-      setError("Failed to load incoming test requests. Please try refreshing.");
-      setTestRequests([]);
+      console.error("Error fetching incoming lab patients:", err);
+      setError("Failed to load incoming patients. Please try refreshing.");
+      setPatients([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchExistingLabResults = async () => {
-    try {
-      const labRes = await getLabResults();
-      const labList = Array.isArray(labRes?.data)
-        ? labRes.data
-        : Array.isArray(labRes)
-        ? labRes
-        : [];
-
-      const labMap = {};
-      labList.forEach((lr) => {
-        const invId = lr.investigationRequestId || lr.investigationId;
-        if (invId) labMap[invId] = lr._id || lr.id;
-      });
-      setExistingLabResults(labMap);
-    } catch {
-      /* silent */
-    }
-  };
-
   useEffect(() => {
-    fetchTestRequests();
-    fetchExistingLabResults();
+    fetchIncomingPatients();
   }, [lastUpdate]);
 
-  const handleAcceptFromDetails = (cardData) => {
-    setSelectedCard(cardData);
-    setShowModal(true);
-  };
+  const filteredPatients = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return patients;
+    return patients.filter((patient) => (
+      patient.name.toLowerCase().includes(query) || String(patient.hospitalId).toLowerCase().includes(query)
+    ));
+  }, [patients, searchTerm]);
 
-  const handleClear = async (testCard) => {
-    if (testCard.patientType === 'dependant' && testCard.dependantId) {
-      await updateDependantStatus(testCard.dependantId, { status: PATIENT_STATUS.CANCELLED });
-    } else if (testCard.patientType === 'opd' && testCard.opdPatientId) {
-      await updateOpdPatient(testCard.opdPatientId, { status: PATIENT_STATUS.CANCELLED });
-    } else if (testCard.patientId) {
-      await updatePatientStatus(testCard.patientId, { status: PATIENT_STATUS.CANCELLED });
+  const viewPatientDetails = (patient) => {
+    if (!patient.patientId) {
+      toast.error('Patient ID is missing.');
+      return;
     }
-    localStorage.setItem('refreshIncoming', Date.now().toString());
-    refreshQueueCount();
-  };
-
-  // Filtered requests computation
-  const filteredRequests = useMemo(() => {
-    return testRequests.filter((item) => {
-      // Filter tab
-      if (activeFilter === "urgent" && item.status !== "Urgent") return false;
-      if (activeFilter === "normal" && item.status !== "Normal") return false;
-      if (activeFilter === "opd" && item.patientType !== "opd") return false;
-      if (activeFilter === "dependant" && item.patientType !== "dependant") return false;
-      if (activeFilter === "hmo_covered" && item.hmoStatus !== "approved" && item.hmoStatus !== "partial") return false;
-      if (activeFilter === "hmo_not_covered" && item.hmoStatus !== "rejected") return false;
-
-      // Search term
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        const matchesName = item.name?.toLowerCase().includes(query);
-        const matchesId = String(item.userId || "").toLowerCase().includes(query);
-        const matchesTest = item.test?.toLowerCase().includes(query);
-        const matchesDoctor = item.requestedBy?.toLowerCase().includes(query);
-        return matchesName || matchesId || matchesTest || matchesDoctor;
-      }
-
-      return true;
+    navigate(`/dashboard/laboratory/patients/${patient.patientId}`, {
+      state: patient.dependantId ? { dependantId: patient.dependantId } : {},
     });
-  }, [testRequests, activeFilter, searchTerm]);
-
-  // Dynamic KPI stats
-  const stats = useMemo(() => {
-    const total = testRequests.length;
-    const urgent = testRequests.filter((r) => r.status === "Urgent").length;
-    const routine = testRequests.filter((r) => r.status === "Normal").length;
-    const hmoCovered = testRequests.filter((r) => r.hmoStatus === "approved" || r.hmoStatus === "partial").length;
-    return [
-      { label: "New Requests", value: total, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-      { label: "Urgent Priority", value: urgent, color: "text-red-600", bg: "bg-red-50 dark:bg-red-950/30" },
-      { label: "Routine / Normal", value: routine, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-      { label: "HMO Covered", value: hmoCovered, color: "text-purple-600", bg: "bg-purple-50 dark:bg-purple-950/30" },
-    ];
-  }, [testRequests]);
+  };
 
   const sidebarWrapper = (
     <>
@@ -309,29 +133,27 @@ const IncomingLaboratory = () => {
     <div className="flex h-screen bg-base-200">
       {sidebarWrapper}
 
-      <div className="flex overflow-hidden flex-col flex-1 min-w-0">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Header Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                <FaFlask className="w-7 h-7 text-emerald-600" />
-                Incoming Test Requests
-              </h1>
-             
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <FaFlask className="h-6 w-6 text-primary" aria-hidden="true" />
+              <div>
+                <h1 className="text-2xl font-bold text-base-content">Incoming Lab Patients</h1>
+                <p className="text-sm text-base-content/60">Patients and dependants awaiting laboratory tests</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={fetchTestRequests}
-                className="btn btn-sm btn-ghost gap-2 border border-base-300 hover:bg-base-300"
-                title="Refresh requests"
+                type="button"
+                onClick={fetchIncomingPatients}
+                className="btn btn-sm btn-ghost gap-2 border border-base-300"
+                title="Refresh incoming patients"
               >
                 <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
-              <ClearAllButton items={testRequests} updateStatusFn={handleClear} onCleared={fetchTestRequests} />
             </div>
           </div>
 
@@ -342,255 +164,60 @@ const IncomingLaboratory = () => {
             </div>
           )}
 
-          {/* Stats Bar */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => (
-              <div
-                key={index}
-                className={`p-4 rounded-xl border border-base-300/80 bg-base-100 shadow-sm flex flex-col justify-between`}
-              >
-                <span className="text-xs font-medium text-base-content/60 uppercase tracking-wider">{stat.label}</span>
-                <div className="flex items-baseline justify-between mt-2">
-                  <span className={`text-2xl sm:text-3xl font-bold ${stat.color}`}>
-                    {stat.value}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${stat.bg} ${stat.color} font-medium`}>
-                    Active
-                  </span>
-                </div>
+          <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+            <div className="flex flex-col gap-3 border-b border-base-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold">Awaiting Laboratory</h2>
+                <span className="badge badge-ghost badge-sm">{filteredPatients.length}</span>
               </div>
-            ))}
-          </div>
-
-          {/* Filter Chips & Search Bar */}
-          <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              {/* Filter Tabs */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                {[
-                  { id: "all", label: "All Requests" },
-                  { id: "urgent", label: "Urgent" },
-                  { id: "normal", label: "Routine" },
-                  { id: "opd", label: "OPD" },
-                  { id: "dependant", label: "Dependants" },
-                  { id: "hmo_covered", label: "HMO Covered" },
-                  { id: "hmo_not_covered", label: "HMO Not Covered" },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveFilter(tab.id)}
-                    className={`btn btn-xs sm:btn-sm rounded-lg transition-all ${
-                      activeFilter === tab.id
-                        ? "btn-primary text-white"
-                        : "btn-ghost text-base-content/70 hover:bg-base-200"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Search Box */}
-              <div className="relative w-full md:w-72">
-                <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
+              <label className="input input-sm input-bordered flex w-full items-center gap-2 sm:max-w-xs">
+                <FiSearch className="h-4 w-4 text-base-content/40" aria-hidden="true" />
                 <input
-                  type="text"
-                  placeholder="Search patient, ID, or test..."
+                  type="search"
+                  placeholder="Search patient or hospital ID"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
+                  onChange={(event) => setSearchTerm(event.target.value)}
                 />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              </label>
             </div>
-          </div>
 
-          {/* Test Request List */}
-          <div className="space-y-3">
             {loading ? (
-              // Fast Modern Skeleton Loaders
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((n) => (
-                  <div key={n} className="bg-base-100 p-5 rounded-xl border border-base-300 animate-pulse flex flex-col md:flex-row gap-4 justify-between">
-                    <div className="space-y-2.5 flex-1">
-                      <div className="flex gap-2 items-center">
-                        <div className="h-5 bg-base-300 rounded w-36"></div>
-                        <div className="h-4 bg-base-300 rounded w-16"></div>
-                        <div className="h-4 bg-base-300 rounded w-20"></div>
-                      </div>
-                      <div className="h-4 bg-base-200 rounded w-64"></div>
-                      <div className="h-3 bg-base-200 rounded w-48"></div>
-                    </div>
-                    <div className="flex gap-2 items-center self-end md:self-center">
-                      <div className="h-9 bg-base-300 rounded w-28"></div>
-                      <div className="h-9 bg-base-300 rounded w-28"></div>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-3 p-4">
+                {[1, 2, 3, 4].map((item) => <div key={item} className="h-16 animate-pulse rounded-md bg-base-200" />)}
               </div>
-            ) : filteredRequests.length > 0 ? (
-              filteredRequests.map((testCard, index) => {
-                const isUrgent = testCard.status === "Urgent";
-                return (
-                  <div
-                    key={testCard.id || index}
-                    className={`bg-base-100 p-4 sm:p-5 rounded-xl border transition-all duration-200 hover:shadow-md ${
-                      isUrgent
-                        ? "border-red-200 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/10"
-                        : "border-base-300 hover:border-emerald-300 dark:hover:border-emerald-700"
-                    }`}
-                  >
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                      {/* Left: Patient Info & Details */}
-                      <div className="flex-1 min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-bold text-base text-base-content flex items-center gap-1.5">
-                            <FiUser className="w-4 h-4 text-base-content/60" />
-                            {testCard.name}
-                          </span>
-                          <span className="badge badge-sm badge-ghost text-xs text-base-content/60 font-mono">
-                            ID: {testCard.userId}
-                          </span>
-                          {testCard.patientType === 'dependant' && (
-                            <span className="badge badge-sm badge-secondary font-medium">Dependant</span>
-                          )}
-                          {testCard.patientType === 'opd' && (
-                            <span className="badge badge-sm badge-info font-medium">OPD</span>
-                          )}
-                          {/* Payment / HMO Badge */}
-                          {testCard.isPaid ? (
-                            <span className="badge badge-sm badge-success text-success-content font-semibold">✓ Paid</span>
-                          ) : testCard.hmoStatus ? (
-                            <HmoStatusBadge status={testCard.hmoStatus} size="sm" />
-                          ) : (
-                            <span className="badge badge-sm badge-success text-success-content badge-outline font-semibold">✓ Paid</span>
-                          )}
-
-                          {/* Patient Workflow Status */}
-                          {testCard.patientStatus && (
-                            <PatientStatusBadge
-                              status={testCard.patientStatus}
-                              statusSenderName={testCard.statusSenderName}
-                              statusUser={testCard.statusUser}
-                              tooltipAlign="left"
-                            />
-                          )}
-
-                          {/* Priority Badge */}
-                          <span
-                            className={`badge badge-sm font-semibold ${
-                              isUrgent
-                                ? "badge-error text-white animate-pulse"
-                                : "badge-info badge-outline"
-                            }`}
-                          >
-                            {testCard.status}
-                          </span>
-                          
-                          {testCard.pendingRadiologyCount > 0 && (
-                            <span className="badge badge-warning badge-sm badge-outline font-semibold text-[10px]">
-                              ⚠️ {testCard.pendingRadiologyCount} PENDING RADIOLOGY(SCAN)
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Test details & timestamps */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-1.5 gap-x-4 text-xs text-base-content/70">
-                          <div className="flex items-center gap-1.5">
-                            <FaFlask className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span className="font-semibold text-base-content">Test:</span>
-                            <span className="truncate">{testCard.test}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <FaStethoscope className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                            <span className="font-semibold text-base-content">Ordered by: Dr</span>
-                            <span>{testCard.requestedBy}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <FiCalendar className="w-3.5 h-3.5 text-base-content/50 shrink-0" />
-                            <span>{testCard.date}</span>
-                            <FiClock className="w-3.5 h-3.5 text-base-content/50 ml-1 shrink-0" />
-                            <span>{testCard.time}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-2 self-end lg:self-center shrink-0">
-                        <button
-                          onClick={() => {
-                            setSelectedCard(testCard);
-                            setShowModal2(true);
-                          }}
-                          className="btn btn-sm btn-outline border-base-300 hover:bg-base-200"
-                        >
-                          View Details
-                        </button>
-
-                       
-
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <ClearItemButton
-                            item={testCard}
-                            onClear={handleClear}
-                            onCleared={fetchTestRequests}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+            ) : filteredPatients.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="table table-zebra w-full">
+                  <thead><tr><th>Patient / Dependant</th><th>Hospital ID</th><th>Type</th><th>Status</th><th>Lab Requests</th><th>Updated</th><th>Action</th></tr></thead>
+                  <tbody>
+                    {filteredPatients.map((patient) => (
+                      <tr key={patient.key}>
+                        <td className="font-medium">
+                          <span className="inline-flex items-center gap-2"><FiUser aria-hidden="true" />{patient.name}</span>
+                        </td>
+                        <td>{patient.hospitalId}</td>
+                        <td><span className={`badge badge-sm ${patient.dependantId ? 'badge-secondary' : 'badge-primary'}`}>{patient.dependantId ? 'Dependant' : 'Patient'}</span></td>
+                        <td><span className="badge badge-warning badge-sm">Awaiting lab</span></td>
+                        <td>{patient.requestCount}</td>
+                        <td>{patient.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : '—'}</td>
+                        <td>
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => viewPatientDetails(patient)}>
+                            <FaEye aria-hidden="true" /> View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <div className="text-center py-16 bg-base-100 rounded-xl border border-dashed border-base-300">
-                <FaFlask className="w-12 h-12 mx-auto text-base-content/30 mb-3" />
-                <h3 className="font-bold text-lg text-base-content">No incoming test requests</h3>
-                <p className="text-sm text-base-content/60 mt-1 max-w-sm mx-auto">
-                  {searchTerm || activeFilter !== "all"
-                    ? "No requests matched your current filters. Try resetting the search or filter."
-                    : "There are currently no patient laboratory requests awaiting processing."}
-                </p>
-                {(searchTerm || activeFilter !== "all") && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setActiveFilter("all");
-                    }}
-                    className="btn btn-sm btn-outline mt-4"
-                  >
-                    Reset Filters
-                  </button>
-                )}
+              <div className="px-4 py-12 text-center text-sm text-base-content/60">
+                {searchTerm ? 'No patients match your search.' : 'No patients or dependants are awaiting laboratory.'}
               </div>
             )}
-          </div>
+          </section>
         </div>
-      </div>
-
-      {/* Single Modals rendered outside map loop */}
-      {showModal && selectedCard && (
-        <AcceptTestRequestModal
-          data={selectedCard}
-          setShowModal={setShowModal}
-          onAcceptSuccess={fetchTestRequests}
-        />
-      )}
-
-      {showModal2 && selectedCard && (
-        <TestRequestModal
-          data={selectedCard}
-          setShowModal2={setShowModal2}
-          onAcceptFromDetails={handleAcceptFromDetails}
-          existingLabResultId={selectedCard?.id ? existingLabResults[selectedCard.id] : null}
-        />
-      )}
+      </main>
     </div>
   );
 };
