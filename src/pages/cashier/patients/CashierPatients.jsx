@@ -16,7 +16,6 @@ const CasihierPati = () => {
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('patients');
 
   // Fetch patients from backend
   useEffect(() => {
@@ -197,6 +196,13 @@ const StatusBadge = ({ status }) => {
     }));
   }, [patients]);
 
+  const allPatients = useMemo(() => {
+    return [...processedPatients, ...dependants].map((item, index) => ({
+      ...item,
+      serialNumber: index + 1
+    }));
+  }, [processedPatients, dependants]);
+
   // Define table columns
   const columns = useMemo(() => [
     {
@@ -283,22 +289,6 @@ const StatusBadge = ({ status }) => {
           <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
           <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
         </div>
-        <div role="tablist" className="tabs tabs-boxed">
-          <button 
-            role="tab"
-            className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('patients')}
-          >
-            Primary Patients
-          </button>
-          <button 
-            role="tab"
-            className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('dependants')}
-          >
-            Dependants
-          </button>
-        </div>
       </div>
 
       <div className="w-full">
@@ -312,7 +302,7 @@ const StatusBadge = ({ status }) => {
             ) : (
               <div className="overflow-x-auto">
                 <DataTable
-                  data={activeTab === 'patients' ? processedPatients : dependants}
+                  data={allPatients}
                   columns={columns}
                   searchable={true}
                   sortable={true}

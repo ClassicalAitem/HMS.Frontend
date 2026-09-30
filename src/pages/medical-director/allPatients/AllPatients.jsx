@@ -14,7 +14,6 @@ const AllPatients = () => {
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
-  const [activeTab, setActiveTab] = useState('patients');
   const pageSize = 9;
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -113,10 +112,10 @@ const AllPatients = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = items.filter(i => activeTab === 'dependants' ? i.type === 'dependant' : i.type === 'patient');    
+    const base = items;    
      if (!q) return base;
    return base.filter((d) => [d.name, d.patientId, d.insurance, d.gender, d.phone, d.status, d.badge].filter(Boolean).join(' ').toLowerCase().includes(q));
-  }, [items, query, activeTab]);
+  }, [items, query]);
 
   const start = page * pageSize;
   const end = start + pageSize;
@@ -184,22 +183,6 @@ const AllPatients = () => {
                   <h1 className="text-[32px] text-primary ">All Patients</h1>
                 </div>
                 <p className="text-[12px] text-base-content/70">View the list of all Patients.</p>
-              </div>
-              <div role="tablist" className="tabs tabs-boxed">
-                <button 
-                  role="tab"
-                  className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
-                  onClick={() => setActiveTab('patients')}
-                >
-                  Primary Patients
-                </button>
-                <button 
-                  role="tab"
-                  className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
-                  onClick={() => setActiveTab('dependants')}
-                >
-                  Dependants
-                </button>
               </div>
             </div>
 
