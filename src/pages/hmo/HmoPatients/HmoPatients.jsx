@@ -112,7 +112,7 @@ const HMOPatients = () => {
           hmoCovered: hmoCoveredTotal,
           patientOwes: patientOwesTotal,
           hmoProvider: Array.isArray(patient?.hmos) && patient.hmos.length > 0 
-            ? patient.hmos.map(h => h.provider).filter(Boolean).join(', ') 
+            ? [...new Set(patient.hmos.map(h => h.provider).filter(Boolean))].join(', ') 
             : 'Self-pay',
           approvedAt: bill.hmoReviewedAt || bill.updatedAt || null,
         };
@@ -133,7 +133,7 @@ const HMOPatients = () => {
         name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
         displayId: p?.hospitalId || p?.id || '—',
         insurance: Array.isArray(p?.hmos) && p.hmos.length > 0
-          ? p.hmos.map(h => h.provider).filter(Boolean).join(', ')
+          ? [...new Set(p.hmos.map(h => h.provider).filter(Boolean))].join(', ')
           : 'Self-pay',
         createdAt: p?.createdAt || null,
       }));
@@ -149,7 +149,7 @@ const HMOPatients = () => {
           name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
           displayId: parentPatient?.hospitalId || d?.patientId || '—',
           insurance: Array.isArray(parentPatient?.hmos) && parentPatient.hmos.length > 0
-            ? parentPatient.hmos.map(h => h.provider).filter(Boolean).join(', ')
+            ? [...new Set(parentPatient.hmos.map(h => h.provider).filter(Boolean))].join(', ')
             : 'Self-pay',
           createdAt: d?.createdAt || null,
         };
@@ -398,24 +398,14 @@ const HMOPatients = () => {
               Reviewed Patients {records.length > 0 && `(${records.length})`}
             </button>
             <button
-              onClick={() => setActiveTab('patients')}
+              onClick={() => setActiveTab('all_patients')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'patients'
+                activeTab === 'all_patients'
                   ? 'bg-primary text-primary-content'
                   : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
               }`}
             >
-              Primary Patients {allPeople.filter(p => p.type === 'patient').length > 0 && `(${allPeople.filter(p => p.type === 'patient').length})`}
-            </button>
-            <button
-              onClick={() => setActiveTab('dependants')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'dependants'
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
-              }`}
-            >
-              Dependants {allPeople.filter(p => p.type === 'dependant').length > 0 && `(${allPeople.filter(p => p.type === 'dependant').length})`}
+              All Patients {allPeople.length > 0 && `(${allPeople.length})`}
             </button>
           </div>
 
@@ -552,7 +542,7 @@ const HMOPatients = () => {
                 />
               ) : (
                 <DataTable
-                  data={allPeople.filter(p => activeTab === 'dependants' ? p.type === 'dependant' : p.type === 'patient')}
+                  data={allPeople}
                   columns={allPeopleColumns}
                   searchable={true}
                   sortable={true}
