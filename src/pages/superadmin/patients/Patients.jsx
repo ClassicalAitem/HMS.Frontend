@@ -19,7 +19,6 @@ const Patients = () => {
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [viewMode, setViewMode] = useState('all'); // 'all', 'primary', 'dependants'
   const [selectedPatientForDependants, setSelectedPatientForDependants] = useState(null);
   const [isDependantsModalOpen, setIsDependantsModalOpen] = useState(false);
 
@@ -174,12 +173,6 @@ const StatusBadge = ({ status }) => {
     });
     return combined.map((item, index) => ({ ...item, serialNumber: index + 1 }));
   }, [primaryPatients, dependantsOnly]);
-
-  const activeData = useMemo(() => {
-    if (viewMode === 'primary') return primaryPatients;
-    if (viewMode === 'dependants') return dependantsOnly;
-    return allRecords;
-  }, [viewMode, primaryPatients, dependantsOnly, allRecords]);
 
   // Define table columns
   const columns = useMemo(() => [
@@ -382,52 +375,6 @@ const StatusBadge = ({ status }) => {
             </div>
           </div>
 
-          {/* View Mode Tabs */}
-          <div className="flex items-center justify-between bg-base-100 p-2 rounded-xl border border-base-300 shadow-sm">
-            <div className="flex items-center gap-1 bg-base-200 p-1 rounded-lg">
-              <button
-                onClick={() => setViewMode('all')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  viewMode === 'all'
-                    ? 'bg-primary text-primary-content shadow-sm'
-                    : 'text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                <FaUsers className="w-3.5 h-3.5" />
-                All Records ({allRecords.length})
-              </button>
-              <button
-                onClick={() => setViewMode('primary')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  viewMode === 'primary'
-                    ? 'bg-primary text-primary-content shadow-sm'
-                    : 'text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                <FaUser className="w-3.5 h-3.5" />
-                Primary Patients ({primaryPatients.length})
-              </button>
-              <button
-                onClick={() => setViewMode('dependants')}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                  viewMode === 'dependants'
-                    ? 'bg-primary text-primary-content shadow-sm'
-                    : 'text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                <FaChild className="w-3.5 h-3.5" />
-                Dependants Only ({dependantsOnly.length})
-              </button>
-            </div>
-            <div className="text-xs text-base-content/50 hidden md:block">
-              {viewMode === 'dependants'
-                ? 'Showing children, spouses & secondary beneficiaries'
-                : viewMode === 'primary'
-                ? 'Showing registered principal account holders'
-                : 'Showing full hospital subject directory'}
-            </div>
-          </div>
-
           {/* Patients Table */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100 border border-base-300">
@@ -463,7 +410,7 @@ const StatusBadge = ({ status }) => {
                   </div>
                 ) : (
                   <DataTable
-                    data={activeData}
+                    data={allRecords}
                     columns={columns}
                     searchable={true}
                     sortable={true}

@@ -36,7 +36,6 @@ const LaboratoryPatientList = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
-  const [activeTab, setActiveTab] = useState('patients');
 
   useEffect(() => {
     dispatch(fetchPatients());
@@ -85,6 +84,13 @@ const LaboratoryPatientList = () => {
     }));
   }, [patients]);
 
+  const allPatients = useMemo(() => {
+    return [...processedPatients, ...dependants].map((item, index) => ({
+      ...item,
+      serialNumber: index + 1
+    }));
+  }, [processedPatients, dependants]);
+
   const columns = useMemo(() => [
     { key: 'serialNumber', title: 'S/n', sortable: true, className: 'text-base-content font-medium' },
     { key: 'hospitalId', title: 'Hospital ID', sortable: true, className: 'text-base-content font-medium' },
@@ -123,22 +129,6 @@ const LaboratoryPatientList = () => {
               <h1 className="text-2xl font-bold text-base-content">Patients</h1>
               <p className="text-sm text-base-content/60">Manage and view all patient records</p>
             </div>
-            <div role="tablist" className="tabs tabs-boxed">
-              <button 
-                role="tab"
-                className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
-                onClick={() => setActiveTab('patients')}
-              >
-                Primary Patients
-              </button>
-              <button 
-                role="tab"
-                className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
-                onClick={() => setActiveTab('dependants')}
-              >
-                Dependants
-              </button>
-            </div>
           </div>
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
@@ -151,7 +141,7 @@ const LaboratoryPatientList = () => {
                     </table>
                   </div>
                 ) : (
-                  <DataTable data={activeTab === 'patients' ? processedPatients : dependants} columns={columns} searchable sortable paginated initialEntriesPerPage={10} maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110" showEntries searchPlaceholder="Search patients..." />
+                  <DataTable data={allPatients} columns={columns} searchable sortable paginated initialEntriesPerPage={10} maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110" showEntries searchPlaceholder="Search patients..." />
                 )}
               </div>
             </div>
