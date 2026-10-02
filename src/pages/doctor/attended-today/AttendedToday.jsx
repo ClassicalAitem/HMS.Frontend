@@ -29,6 +29,49 @@ const getRecordDoctorId = (r) =>
     ? r.doctorId.id || r.doctorId._id
     : r?.doctorId || r?.doctor?.id || r?.doctor?._id || r?.createdBy?.id || r?.createdBy?._id;
 
+const getPersonDisplayName = (person) => {
+  if (!person) return "";
+  if (typeof person === "string") return person.trim();
+  if (typeof person !== "object") return "";
+
+  if (person.fullName) return person.fullName;
+  if (person.name) return person.name;
+  if (person.displayName) return person.displayName;
+
+  const directName = `${person.firstName || ""} ${person.lastName || ""}`.trim();
+  if (directName) return directName;
+
+  const nested = person.user || person.profile || person.doctor || person.createdBy;
+  if (nested) {
+    const nestedName = getPersonDisplayName(nested);
+    if (nestedName) return nestedName;
+  }
+
+  return "";
+};
+
+const getRecordDoctorName = (r) => {
+  if (!r) return "Unknown";
+
+  const candidates = [
+    r.doctorName,
+    r.doctor,
+    r.doctorId,
+    r.createdBy,
+    r.createdByUser,
+    r.user,
+    r.provider,
+    r.attendingDoctor,
+  ];
+
+  for (const candidate of candidates) {
+    const name = getPersonDisplayName(candidate);
+    if (name) return name;
+  }
+
+  return "Unknown";
+};
+
 const AttendedToday = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
@@ -78,7 +121,7 @@ const AttendedToday = () => {
 
         // Normalize both into a common event shape
         const consultEvents = consultations
-          .filter((c) => String(getRecordDoctorId(c)) === String(doctorId) && isToday(c?.createdAt))
+          .filter((c) => isToday(c?.createdAt))
           .map((c) => ({
             source: "Consultation",
             patientId: typeof c.patientId === 'object' ? (c.patientId?.id || c.patientId?._id) : c.patientId,
@@ -87,10 +130,11 @@ const AttendedToday = () => {
             dependant: c.dependant || (typeof c.dependantId === 'object' ? c.dependantId : null),
             createdAt: c.createdAt,
             diagnosis: c?.diagnosis || "—",
+            doctorName: getRecordDoctorName(c)
           }));
 
         const antenatalEvents = antenatalRecords
-          .filter((r) => String(getRecordDoctorId(r)) === String(doctorId) && isToday(r?.createdAt))
+          .filter((r) => isToday(r?.createdAt))
           .map((r) => ({
             source: "Antenatal",
             patientId: typeof r.patientId === 'object' ? (r.patientId?.id || r.patientId?._id) : r.patientId,
@@ -99,6 +143,7 @@ const AttendedToday = () => {
             dependant: r.dependant || (typeof r.dependantId === 'object' ? r.dependantId : null),
             createdAt: r.createdAt,
             diagnosis: "Antenatal visit",
+            doctorName: getRecordDoctorName(r)
           }));
 
         const allEvents = [...consultEvents, ...antenatalEvents];
@@ -175,6 +220,7 @@ const enriched = useMemo(
         guardianHospitalId: info.guardianHospitalId || null,
         diagnosis: e.diagnosis,
         sources: e.sources,
+        doctorName: e.doctorName,
         time: e.createdAt ? formatNigeriaTime(e.createdAt) : "—",
       };
     }),
@@ -186,7 +232,7 @@ const enriched = useMemo(
   const q = query.trim().toLowerCase();
   const filteredItems = q
     ? enriched.filter((d) =>
-        [d?.name, d?.displayId, d?.diagnosis].filter(Boolean).join(" ").toLowerCase().includes(q)
+        [d?.name, d?.displayId, d?.diagnosis, d?.doctorName].filter(Boolean).join(" ").toLowerCase().includes(q)
       )
     : enriched;
 
@@ -210,7 +256,7 @@ const enriched = useMemo(
               <h1 className="text-xl sm:text-2xl font-bold text-primary">Attended Today</h1>
             </div>
             <p className="text-xs sm:text-sm text-base-content/60 mt-1">
-              Patients and dependants you've seen today (consultations & antenatal).
+              Patients and dependants attended to by doctors today (consultations & antenatal).
             </p>
           </div>
 
@@ -242,8 +288,9 @@ const enriched = useMemo(
             {/* Desktop Table Header */}
             {!loading && filteredItems.length > 0 && (
               <div className="hidden md:grid grid-cols-12 gap-2 px-5 py-3 bg-base-200/60 border-b border-base-200 text-xs font-semibold text-base-content/50 uppercase tracking-wider">
-                <div className="col-span-3">Name</div>
-                <div className="col-span-2">Type</div>
+                <div className="col-span-2">Name</div>
+                <div className="col-span-1">Type</div>
+                <div className="col-span-2">Doctor</div>
                 <div className="col-span-2">Visit</div>
                 <div className="col-span-2">Diagnosis</div>
                 <div className="col-span-1">Time</div>
@@ -267,8 +314,9 @@ const enriched = useMemo(
 
                     {/* Desktop Skeleton */}
                     <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-3"><div className="skeleton h-4 w-36 rounded" /></div>
-                      <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
+                      <div className="col-span-2"><div className="skeleton h-4 w-28 rounded" /></div>
+                      <div className="col-span-1"><div className="skeleton h-4 w-16 rounded" /></div>
+                      <div className="col-span-2"><div className="skeleton h-4 w-24 rounded" /></div>
                       <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
                       <div className="col-span-2"><div className="skeleton h-4 w-28 rounded" /></div>
                       <div className="col-span-1"><div className="skeleton h-4 w-16 rounded" /></div>
@@ -294,6 +342,7 @@ const enriched = useMemo(
                         <div className="col-span-3 min-w-0">
                           <p className="font-bold text-base-content truncate">{row.name}</p>
                           <span className="text-xs text-base-content/40 font-mono">{row.displayId}</span>
+                          <span className="text-xs text-base-content/50 block mt-0.5">Dr. {row.doctorName}</span>
                           {row.type === "Dependant" && row.guardianHospitalId && (
                             <span className="text-[10px] text-base-content/40 block">
                               Guardian: {row.guardianName} ({row.guardianHospitalId})
@@ -327,14 +376,17 @@ const enriched = useMemo(
 
                     {/* Desktop View Table Grid Layout */}
                     <div className="hidden md:grid grid-cols-12 gap-2 items-center">
-                      <div className="col-span-3 min-w-0">
+                      <div className="col-span-2 min-w-0">
                         <p className="font-bold text-base-content truncate">{row.name}</p>
                         <span className="text-xs text-base-content/40 font-mono">{row.displayId}</span>
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <span className={`badge badge-sm ${row.type === "Dependant" ? "badge-secondary" : "badge-primary"}`}>
                           {row.type}
                         </span>
+                      </div>
+                      <div className="col-span-2 min-w-0">
+                        <span className="text-sm text-base-content/70 truncate" title={row.doctorName}>Dr. {row.doctorName}</span>
                       </div>
                       <div className="col-span-2 flex flex-wrap gap-1">
                         {row.sources.map((s) => (
