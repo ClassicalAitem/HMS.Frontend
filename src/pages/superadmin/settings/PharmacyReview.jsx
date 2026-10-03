@@ -161,9 +161,13 @@ const PharmacyReview = () => {
     if (med.availability === 'unavailable' || !med.inventoryId) {
       return { label: 'Not Stocked by Hospital', badgeClass: 'badge-warning', inStock: false, stockQty: 0 }
     }
-    const inv = inventory.find(
-      (i) => (i._id || i.id) === med.inventoryId || i.name.toLowerCase() === med.drugName.toLowerCase()
-    )
+    let inv = null;
+    if (med.inventoryId) {
+      inv = inventory.find((i) => (i._id || i.id) === med.inventoryId)
+    }
+    if (!inv) {
+      inv = inventory.find((i) => i.name.toLowerCase() === med.drugName.toLowerCase())
+    }
     const stockQty = Number(inv?.stock ?? inv?.quantity ?? inv?.stockQuantity ?? 0)
     if (!inv || stockQty < suggestedQty) {
       return {
@@ -202,9 +206,13 @@ const PharmacyReview = () => {
   const buildDispenseRows = () =>
     prescriptions.flatMap((p) =>
       (p.medications || []).map((m) => {
-        const inv = inventory.find(
-          (i) => (i._id || i.id) === m.inventoryId || i.name.toLowerCase() === m.drugName.toLowerCase()
-        )
+        let inv = null;
+        if (m.inventoryId) {
+          inv = inventory.find((i) => (i._id || i.id) === m.inventoryId)
+        }
+        if (!inv) {
+          inv = inventory.find((i) => i.name.toLowerCase() === m.drugName.toLowerCase())
+        }
         const suggestedQty = calculateQuantity(m)
         const availabilityInfo = getDrugAvailabilityStatus(m, suggestedQty)
         const hmoStatus = getHmoStatusForMed(p._id, m.drugName)
