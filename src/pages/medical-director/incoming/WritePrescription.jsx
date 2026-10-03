@@ -538,17 +538,18 @@ const WritePrescription = () => {
                                     {drugList
                                       .filter((drug) => matchesMedicationType(drug, medicationType))
                                       .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true))
-                                      .filter((drug) => {
-                                        return !allMeds.some((m, idx) => 
+                                      .map((drug) => {
+                                        const isDuplicate = allMeds.some((m, idx) => 
                                           idx !== index && 
                                           m.medicationType === medicationType && 
-                                          (m.inventoryId === (drug._id || drug.id) || m.drugName?.toLowerCase() === drug.name?.toLowerCase())
+                                          m.inventoryId && (m.inventoryId === (drug._id || drug.id))
                                         );
-                                      })
-                                      .map((drug) => (
+
+                                        return (
                                         <li
                                           key={drug._id || drug.id}
                                           onClick={() => {
+                                            if (isDuplicate) return;
                                             setValue(`medications.${index}.drugName`, drug.name);
                                             setValue(`medications.${index}._selectedDrug`, drug);
                                             setValue(`medications.${index}.inventoryId`, drug._id || drug.id);
@@ -558,10 +559,13 @@ const WritePrescription = () => {
                                             setDrugDropdownIndex(null);
                                             setDrugSearch('');
                                           }}
-                                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                          className={`px-4 py-2 text-sm ${isDuplicate ? 'opacity-50 cursor-not-allowed bg-base-200' : 'hover:bg-gray-100 cursor-pointer'}`}
                                         >
                                           <div className="flex items-center justify-between">
-                                            <span className="font-medium">{drug.name}</span>
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium">{drug.name}</span>
+                                              {isDuplicate && <span className="text-[10px] uppercase font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">Already Selected</span>}
+                                            </div>
                                             {(drug.form || drug.strength) && (
                                               <span className="text-gray-500 text-xs ml-2">
                                                 {[drug.form, drug.strength].filter(Boolean).join(' - ')}
@@ -569,39 +573,43 @@ const WritePrescription = () => {
                                             )}
                                           </div>
                                         </li>
-                                      ))}
+                                      )})}
 
-                                    {drugList
-                                      .filter((drug) => matchesMedicationType(drug, medicationType))
-                                      .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true))
-                                      .filter((drug) => {
-                                        return !allMeds.some((m, idx) => 
-                                          idx !== index && 
-                                          m.medicationType === medicationType && 
-                                          (m.inventoryId === (drug._id || drug.id) || m.drugName?.toLowerCase() === drug.name?.toLowerCase())
-                                        );
-                                      }).length === 0 && 
-                                      !allMeds.some((m, idx) => 
+                                    {(() => {
+                                      const filteredList = drugList
+                                        .filter((drug) => matchesMedicationType(drug, medicationType))
+                                        .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true));
+
+                                      if (filteredList.length > 0) return null;
+
+                                      const isCustomDuplicate = allMeds.some((m, idx) => 
                                         idx !== index && 
                                         m.medicationType === medicationType && 
-                                        m.drugName?.toLowerCase() === drugSearch?.toLowerCase()
-                                      ) && (
-                                      <li
-                                        key="prescribe-unavailable"
-                                        onClick={() => {
-                                          setValue(`medications.${index}.drugName`, drugSearch);
-                                          setValue(`medications.${index}._selectedDrug`, null);
-                                          setValue(`medications.${index}.inventoryId`, null);
-                                          setValue(`medications.${index}.availability`, 'unavailable');
-                                          setDrugDropdownIndex(null);
-                                          setDrugSearch('');
-                                        }}
-                                        className="px-4 py-2 hover:bg-warning/10 cursor-pointer text-sm border-t"
-                                      >
-                                        <span className="font-medium text-warning">+ Prescribe "{drugSearch}" (not in stock)</span>
-                                        <p className="text-xs text-base-content/60 mt-0.5">Patient will source this externally</p>
-                                      </li>
-                                    )}
+                                        !m.inventoryId && m.drugName?.toLowerCase() === drugSearch?.toLowerCase()
+                                      );
+
+                                      return (
+                                        <li
+                                          key="prescribe-unavailable"
+                                          onClick={() => {
+                                            if (isCustomDuplicate) return;
+                                            setValue(`medications.${index}.drugName`, drugSearch);
+                                            setValue(`medications.${index}._selectedDrug`, null);
+                                            setValue(`medications.${index}.inventoryId`, null);
+                                            setValue(`medications.${index}.availability`, 'unavailable');
+                                            setDrugDropdownIndex(null);
+                                            setDrugSearch('');
+                                          }}
+                                          className={`px-4 py-2 text-sm border-t ${isCustomDuplicate ? 'opacity-50 cursor-not-allowed bg-base-200' : 'hover:bg-warning/10 cursor-pointer'}`}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-warning">+ Prescribe "{drugSearch}" (not in stock)</span>
+                                            {isCustomDuplicate && <span className="text-[10px] uppercase font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">Already Selected</span>}
+                                          </div>
+                                          <p className="text-xs text-base-content/60 mt-0.5">Patient will source this externally</p>
+                                        </li>
+                                      );
+                                    })()}
                                   </ul>
                                 </div>
                               )}
