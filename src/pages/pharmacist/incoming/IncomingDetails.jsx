@@ -242,12 +242,12 @@ const formatQty = (n) => {
 }
 
   const findInventoryMatch = (med) => {
+    if (med.inventoryId) {
+      const matchById = inventory.find((item) => (item._id || item.id) === med.inventoryId)
+      if (matchById) return matchById
+    }
     const medicationName = String(med.drugName || '').toLowerCase()
-    return inventory.find(
-      (item) =>
-        (item._id || item.id) === med.inventoryId ||
-        String(item.name || '').toLowerCase() === medicationName
-    )
+    return inventory.find((item) => String(item.name || '').toLowerCase() === medicationName)
   }
 
 const getDispenseInfo = (med) => {
