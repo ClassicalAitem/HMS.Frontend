@@ -467,6 +467,7 @@ const WritePrescription = () => {
               <div className="flex-1 overflow-y-auto p-6">
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mx-auto">
                   {fields.map((item, index) => {
+                    const allMeds = watch('medications') || [];
                     const medicationType = watch(`medications.${index}.medicationType`);
                     const selectedDrug = watch(`medications.${index}._selectedDrug`);
                     const availability = watch(`medications.${index}.availability`);
@@ -528,7 +529,11 @@ const WritePrescription = () => {
                                 placeholder="Search drug..."
                                 className={`input input-bordered w-full ${errors.medications?.[index]?.drugName ? 'input-error' : ''}`}
                                 value={drugDropdownIndex === index ? drugSearch : watch(`medications.${index}.drugName`) || ''}
-                                onFocus={() => { setDrugDropdownIndex(index); setDrugSearch(''); }}
+                                onFocus={(e) => { 
+                                  setDrugDropdownIndex(index); 
+                                  setDrugSearch(watch(`medications.${index}.drugName`) || ''); 
+                                  e.target.select(); 
+                                }}
                                 onChange={(e) => {
                                   setDrugSearch(e.target.value);
                                   setDrugDropdownIndex(index);
@@ -545,6 +550,13 @@ const WritePrescription = () => {
                                     {drugList
                                       .filter((drug) => matchesMedicationType(drug, medicationType))
                                       .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true))
+                                      .filter((drug) => {
+                                        return !allMeds.some((m, idx) => 
+                                          idx !== index && 
+                                          m.medicationType === medicationType && 
+                                          (m.inventoryId === (drug._id || drug.id) || m.drugName?.toLowerCase() === drug.name?.toLowerCase())
+                                        );
+                                      })
                                       .map((drug) => (
                                         <li
                                           key={drug._id || drug.id}
@@ -573,7 +585,19 @@ const WritePrescription = () => {
 
                                     {drugList
                                       .filter((drug) => matchesMedicationType(drug, medicationType))
-                                      .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true)).length === 0 && (
+                                      .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true))
+                                      .filter((drug) => {
+                                        return !allMeds.some((m, idx) => 
+                                          idx !== index && 
+                                          m.medicationType === medicationType && 
+                                          (m.inventoryId === (drug._id || drug.id) || m.drugName?.toLowerCase() === drug.name?.toLowerCase())
+                                        );
+                                      }).length === 0 && 
+                                      !allMeds.some((m, idx) => 
+                                        idx !== index && 
+                                        m.medicationType === medicationType && 
+                                        m.drugName?.toLowerCase() === drugSearch?.toLowerCase()
+                                      ) && (
                                       <li
                                         key="prescribe-unavailable"
                                         onClick={() => {
