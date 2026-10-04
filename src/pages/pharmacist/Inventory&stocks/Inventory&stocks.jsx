@@ -110,6 +110,9 @@ const InventoryStocks = () => {
     if (activeTab === 'expired') {
       list = list.filter(i => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now())
     }
+    if (activeTab !== 'recent') {
+      list = list.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    }
     return list
   }, [items, search, activeTab])
 
