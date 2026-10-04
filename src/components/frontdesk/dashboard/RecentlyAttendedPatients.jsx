@@ -2,9 +2,11 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoSearch, IoClose } from "react-icons/io5";
 import { DataTable } from '@/components/common';
-import { getAllReceipts } from '@/services/api/billingAPI';
+import { getPatients } from '@/services/api/patientsAPI';
+import { getDependants } from '@/services/api/dependantAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { FaEye } from 'react-icons/fa';
+import PatientStatusBadge from '@/components/common/PatientStatusBadge';
 
 const RecentlyAttendedPatients = () => {
   const navigate = useNavigate();
@@ -20,20 +22,34 @@ const RecentlyAttendedPatients = () => {
       try {
         setIsLoading(true);
         setError('');
-        const res = await getAllReceipts();
-        const raw = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
+        const [patientsRes, dependantsRes] = await Promise.allSettled([
+          getPatients(),
+          getDependants()
+        ]);
+        
+        const patients = patientsRes.status === 'fulfilled' 
+          ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : []) 
+          : [];
+          
+        const dependants = dependantsRes.status === 'fulfilled'
+          ? (() => {
+              const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? [];
+              return Array.isArray(raw) ? raw : (raw?.dependants ?? []);
+            })()
+          : [];
+
+        const allRecords = [...patients, ...dependants];
 
         // Filter and sort by latest
-        const sorted = list.sort((a, b) => {
-          const at = new Date(a?.paidAt || a?.createdAt || a?.updatedAt || 0).getTime();
-          const bt = new Date(b?.paidAt || b?.createdAt || b?.updatedAt || 0).getTime();
+        const sorted = allRecords.sort((a, b) => {
+          const at = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+          const bt = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
           return bt - at;
         });
 
         if (mounted) setRecords(sorted);
       } catch (e) {
-        console.error('RecentlyAttendedPatients: failed to fetch receipts', e);
+        console.error('RecentlyAttendedPatients: failed to fetch patients', e);
         if (mounted) setError('Failed to load attended patients');
       } finally {
         if (mounted) setIsLoading(false);
@@ -44,39 +60,25 @@ const RecentlyAttendedPatients = () => {
   }, []);
 
   const processedRecords = useMemo(() => {
-    const seenPatients = new Set();
-    const result = [];
-    
-    for (const r of records) {
-      const p = r?.billing?.patient;
-      const d = r?.billing?.dependant; 
+    return records.map(r => {
+      const isDependant = !!r?.patientId; // Dependants have patientId pointing to guardian
+      const pId = isDependant ? r.patientId : r.id; // The main patient ID
       
-      const pId = p?.id || p?._id;
-      if (!pId) continue;
+      const name = (`${r?.firstName || ''} ${r?.lastName || ''}`).trim() || 'Unknown';
       
-      const isDependant = !!r?.dependantId || !!d;
-      const personId = isDependant ? r?.dependantId : pId;
-
-      const name = isDependant 
-        ? (`${d?.firstName || ''} ${d?.lastName || ''}`).trim() || r?.paidBy || 'Dependant'
-        : (`${p?.firstName || ''} ${p?.lastName || ''}`).trim() || 'Unknown';
-        
-      result.push({
-        id: r?.id,
+      return {
+        id: r?.id || r?._id,
         patientId: pId, // original patient ID to route to
         patientName: name,
-        universalId: p?.universalPatientId || p?.patientId || pId,
-        paymentMethod: r?.paymentMethod || 'N/A',
-        paymentDestination: r?.paymentDestination || 'N/A',
-        amountPaid: `₦ ${Number(r?.amountPaid || 0).toLocaleString()}`,
-        status: r?.status || 'completed',
-        dateTime: formatNigeriaDateTime(r?.paidAt || r?.createdAt || r?.updatedAt),
+        universalId: r?.universalPatientId || r?.patientId || pId,
+        phone: r?.phone || r?.phoneNumber || 'N/A',
+        type: isDependant ? 'Dependant' : 'Primary',
+        status: r?.status || 'N/A',
+        dateTime: formatNigeriaDateTime(r?.updatedAt || r?.createdAt),
         isDependant: isDependant,
         raw: r
-      });
-    }
-    
-    return result;
+      };
+    });
   }, [records]);
 
   const filteredRecords = useMemo(() => {
@@ -84,7 +86,7 @@ const RecentlyAttendedPatients = () => {
     const lower = searchTerm.toLowerCase();
     return processedRecords.filter(record =>
       record.patientName.toLowerCase().includes(lower) ||
-      record.paymentDestination.toLowerCase().includes(lower) ||
+      String(record.phone).toLowerCase().includes(lower) ||
       record.universalId.toLowerCase().includes(lower)
     );
   }, [processedRecords, searchTerm]);
@@ -108,28 +110,30 @@ const RecentlyAttendedPatients = () => {
       className: 'font-medium text-base-content',
     },
     {
-      key: 'paymentDestination',
-      title: 'Service',
-      className: 'text-base-content/70 capitalize'
-    },
-    {
-      key: 'amountPaid',
-      title: 'Amount',
+      key: 'phone',
+      title: 'Phone',
       className: 'text-base-content/70'
     },
     {
+      key: 'type',
+      title: 'Type',
+      className: 'text-base-content/70 capitalize'
+    },
+    {
       key: 'dateTime',
-      title: 'Date/Time',
+      title: 'Last Updated',
       className: 'text-base-content/70'
     },
     {
       key: 'status',
       title: 'Status',
       className: 'text-base-content/70',
-      render: (value) => (
-        <span className={`badge ${value === 'paid' || value === 'completed' ? 'badge-success' : 'badge-neutral'} w-full capitalize`}>
-          {value}
-        </span>
+      render: (value, row) => (
+        <PatientStatusBadge 
+          status={value} 
+          statusSenderName={row.raw?.statusSenderName}
+          updatedAt={row.raw?.updatedAt}
+        />
       )
     },
     {
