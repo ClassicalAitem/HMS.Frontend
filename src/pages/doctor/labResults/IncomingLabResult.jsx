@@ -102,6 +102,7 @@ const IncomingLabResults = () => {
             badge: null,
             statusUser: p?.statusUser,
             statusSenderName: p?.statusSenderName,
+            isCalled: p?.isCalled || false,
           }));
 
         // Map dependants
@@ -136,6 +137,7 @@ const IncomingLabResults = () => {
             badge: d?.relationshipType || 'Dependant',
             statusUser: d?.statusUser,
             statusSenderName: d?.statusSenderName,
+            isCalled: d?.isCalled || false,
           }
         });
 
@@ -230,6 +232,19 @@ const IncomingLabResults = () => {
       refreshLabReadyCount();
     } catch (err) {
       console.error('Failed to reset status', err);
+    }
+  };
+
+  const handleCall = async (data) => {
+    try {
+      if (data.type === 'dependant') {
+        await updateDependantStatus(data.dependantId, { isCalled: true });
+      } else {
+        await updatePatientStatus(data.patientId, { isCalled: true });
+      }
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to call patient", err);
     }
   };
 
@@ -376,7 +391,14 @@ const IncomingLabResults = () => {
                       </div>
 
                     {/* Action — full width below on mobile */}
-                    <div className="col-span-full md:col-span-2 flex items-center justify-end gap-2 mt-2 md:mt-0">
+                    <div className="col-span-full md:col-span-2 flex flex-col md:flex-row items-center justify-end gap-2 mt-2 md:mt-0">
+                          <button
+                            className={`btn btn-sm ${data.isCalled ? 'btn-secondary' : 'btn-accent'} w-full md:w-auto px-4`}
+                            disabled={data.isCalled}
+                            onClick={() => handleCall(data)}
+                          >
+                            {data.isCalled ? "Called" : "Call"}
+                          </button>
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto px-4"
                             disabled={navigatingId === data.id}

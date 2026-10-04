@@ -177,12 +177,18 @@ export const formatSenderShortName = (arg1, arg2) => {
   const rolePrefix = (() => {
     const normalizedRole = String(role || '').toLowerCase().replace(/[_\s-]/g, '');
     if (normalizedRole === 'doctor') return 'Dr.';
+    if (normalizedRole === 'surgeon') return 'Dr.';
     if (normalizedRole === 'nurse') return 'Nurse.';
     if (normalizedRole === 'medicaldirector' || normalizedRole === 'md') return 'MD.';
     if (normalizedRole === 'hmo') return 'HMO.';
     if (normalizedRole === 'pharmacist') return 'Pharm.';
     if (normalizedRole === 'laboratory' || normalizedRole === 'labtechnician') return 'Lab.';
     if (normalizedRole === 'sonographer') return 'Sono.';
+    if (normalizedRole === 'frontdesk') return 'Desk.';
+    if (normalizedRole === 'cashier') return 'Cashier.';
+    if (normalizedRole === 'hr' || normalizedRole === 'humanresource') return 'HR.';
+    if (normalizedRole === 'accountofficer') return 'Acct.';
+    if (normalizedRole === 'admin' || normalizedRole === 'superadmin') return 'Admin.';
     return '';
   })();
 
