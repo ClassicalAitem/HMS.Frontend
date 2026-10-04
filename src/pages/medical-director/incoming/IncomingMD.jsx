@@ -97,6 +97,7 @@ const IncomingMD = () => {
               ? Math.floor((Date.now() - new Date(p.dob || p.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
               : null,
             badge: null,
+            isCalled: p?.isCalled || false,
           }));
 
         // Map dependants
@@ -131,6 +132,7 @@ const IncomingMD = () => {
               ? Math.floor((Date.now() - new Date(d.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
               : null,
             badge: d?.relationshipType || 'Dependant',
+            isCalled: d?.isCalled || false,
           }
         });
 
@@ -216,7 +218,18 @@ const IncomingMD = () => {
     }
   };
 
-  
+  const handleCall = async (data) => {
+    try {
+      if (data.type === 'dependant') {
+        await updateDependantStatus(data.dependantId, { isCalled: true });
+      } else {
+        await updatePatientStatus(data.patientId, { isCalled: true });
+      }
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to call patient", err);
+    }
+  };
 
 
   const handleClear = async (data) => {
@@ -361,6 +374,13 @@ const IncomingMD = () => {
                     <div className="col-span-full md:col-span-2 flex flex-col gap-2 md:items-end">
                     
                         <div className="flex flex-col items-end gap-2 w-full">
+                          <button
+                            className={`btn btn-sm ${data.isCalled ? 'btn-secondary' : 'btn-accent'} w-full md:w-auto px-4`}
+                            disabled={data.isCalled}
+                            onClick={() => handleCall(data)}
+                          >
+                            {data.isCalled ? "Called" : "Call"}
+                          </button>
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto"
                             disabled={navigatingId === data.id}
