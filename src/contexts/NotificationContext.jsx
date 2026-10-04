@@ -93,7 +93,8 @@ export const NotificationProvider = ({ children }) => {
       toast.success(
         <div className="flex flex-col gap-1 w-full">
           <span className="font-bold text-sm border-b border-gray-500 pb-1 mb-1">
-            New Incoming {payload?.subjectType === 'dependant' ? 'Dependant' : 'Patient'}
+            {payload?.isCalled ? '🔔 CALLED: ' : 'New Incoming '}
+            {payload?.subjectType === 'dependant' ? 'Dependant' : 'Patient'}
           </span>
           <span className="text-sm"><strong>Name:</strong> {name}</span>
           <span className="text-sm capitalize"><strong>Status:</strong> {status.replace(/_/g, ' ')}</span>
@@ -103,7 +104,7 @@ export const NotificationProvider = ({ children }) => {
             </span>
           )}
         </div>,
-        { duration: 7000 }
+        { duration: 15000 }
       );
     };
 
