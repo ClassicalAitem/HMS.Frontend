@@ -6,6 +6,7 @@ import { getPatients } from '@/services/api/patientsAPI';
 import { getDependants } from '@/services/api/dependantAPI';
 import { showErrorToast } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
+import PushNotificationPrompt from '@/components/common/PushNotificationPrompt';
 
 const NotificationContext = createContext(null);
 
@@ -84,6 +85,7 @@ export const NotificationProvider = ({ children }) => {
       setLastUpdate(Date.now());
       refreshQueueCount();
       refreshLabReadyCount();
+      if (document.visibilityState !== 'visible') return;
 
       const name = payload?.subjectName || "Unknown Patient";
       const status = payload?.status || "Unknown Status";
@@ -104,14 +106,16 @@ export const NotificationProvider = ({ children }) => {
             </span>
           )}
         </div>,
-        { duration: 15000 }
+        { duration: 20000 }
       );
+
     };
 
     // Fires when a lab or sonography result is ready for doctor/medical-director review
     const handleLabReady = (payload) => {
       setLastUpdate(Date.now());
       refreshLabReadyCount();
+      if (document.visibilityState !== 'visible') return;
 
       const name = payload?.subjectName || "Unknown Patient";
       const status = payload?.status || "lab_completed";
@@ -133,11 +137,13 @@ export const NotificationProvider = ({ children }) => {
         </div>,
         { duration: 7000 }
       );
+
     };
 
     socket.on('patient:incoming', handleIncoming);
     socket.on('patient:labResultReady', handleLabReady);
     socket.on('patient:statusChanged', () => {
+      setLastUpdate(Date.now());
       refreshQueueCount();
       refreshLabReadyCount();
     });
@@ -156,6 +162,7 @@ export const NotificationProvider = ({ children }) => {
       value={{ incomingCount, labReadyCount, refreshQueueCount, refreshLabReadyCount, clearLabReadyCount, lastUpdate }}
     >
       {children}
+        <PushNotificationPrompt />
     </NotificationContext.Provider>
   );
 };

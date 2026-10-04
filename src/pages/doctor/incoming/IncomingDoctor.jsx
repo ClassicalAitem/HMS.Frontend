@@ -12,6 +12,7 @@ import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { PatientStatusBadge } from "@/components/common";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useCallState } from "@/hook/useCallState";
 import { DoctorLayout } from "@/components/doctor/doctor";
 
 const DOCTOR_STATUSES = new Set([
@@ -51,6 +52,7 @@ const IncomingDoctor = () => {
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
   const { refreshQueueCount, lastUpdate } = useNotifications();
+  const { isLockedForMe } = useCallState();
 
 
   useEffect(() => {
@@ -105,6 +107,7 @@ const IncomingDoctor = () => {
             statusUser: p?.statusUser,
             statusSenderName: p?.statusSenderName,
             isCalled: p?.isCalled || false,
+            calledByUserId: p?.calledByUserId || null,
           }));
 
         // Map dependants
@@ -140,6 +143,7 @@ const IncomingDoctor = () => {
             statusUser: d?.statusUser,
             statusSenderName: d?.statusSenderName,
             isCalled: d?.isCalled || false,
+            calledByUserId: d?.calledByUserId || null,
           }
         });
 
@@ -301,7 +305,7 @@ const IncomingDoctor = () => {
                 <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm">Clear</button>
               )}
               <button onClick={onRefresh} className="btn btn-outline btn-sm">Refresh</button>
-              <ClearAllButton items={items} updateStatusFn={handleClear} onCleared={onRefresh} />
+              <ClearAllButton items={items.filter((item) => !isLockedForMe(item))} updateStatusFn={handleClear} onCleared={onRefresh} />
             </div>
           </div>
 
@@ -342,8 +346,9 @@ const IncomingDoctor = () => {
               ) : (
                 visible.map((data) => {
                   const isInConsultation = ['in_consultation', 'in consultation'].some((v) => data.rawStatus?.includes(v));
+                  const locked = isLockedForMe(data);
                   return (
-                    <div key={`${data.type}-${data.id}`} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-base-200/40 transition-colors rounded-xl md:rounded-none">
+                    <div key={`${data.type}-${data.id}`} className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-base-200/40 transition-colors rounded-xl md:rounded-none ${locked ? 'opacity-50 grayscale' : ''}`}>
 
                       {/* Name + Type badge — flex together on mobile, separate grid cols on desktop */}
                       <div className="col-span-full flex items-start justify-between gap-3 md:contents">
@@ -388,18 +393,17 @@ const IncomingDoctor = () => {
                         </div>
                       </div>
 
-                    {/* Action — full width below on mobile */}
                     <div className="col-span-full md:col-span-2 flex flex-col md:flex-row items-center justify-end gap-2 mt-2 md:mt-0">
                           <button
                             className={`btn btn-sm ${data.isCalled ? 'btn-secondary' : 'btn-accent'} w-full md:w-auto px-4`}
-                            disabled={data.isCalled}
+                            disabled={locked}
                             onClick={() => handleCall(data)}
                           >
                             {data.isCalled ? "Called" : "Call"}
                           </button>
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto px-4"
-                            disabled={navigatingId === data.id}
+                            disabled={navigatingId === data.id || locked}
                             onClick={() => handleView(data)}
                           >
                             {navigatingId === data.id
@@ -407,7 +411,7 @@ const IncomingDoctor = () => {
                               : 'View'}
                           </button>
                           <div className="w-full md:w-auto">
-                            <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                            {!locked && <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />}
                           </div>
                     </div>
                     </div>
