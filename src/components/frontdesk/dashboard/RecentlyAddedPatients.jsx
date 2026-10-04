@@ -102,7 +102,7 @@ const RecentlyAddedPatients = () => {
   const columns = useMemo(() => [
     {
       key: 'hospitalId',
-      title: 'S/n',
+      title: 'Hospital ID',
       className: 'text-base-content'
     },
     {
