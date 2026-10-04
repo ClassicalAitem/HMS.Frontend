@@ -207,11 +207,19 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
                         }}
                       >
                         <option value="">Select drugs</option>
-                        {inventoryItems.map((item) => (
-                          <option key={item._id} value={item._id}>
-                            {item.name} - {item.form} - Stock Remaining: {item.stock}
-                          </option>
-                        ))}
+                        {inventoryItems.map((item) => {
+                          const isAlreadySelected = meds.some((m) => m.inventoryId === item._id);
+                          return (
+                            <option 
+                              key={item._id} 
+                              value={item._id} 
+                              disabled={isAlreadySelected}
+                              className={isAlreadySelected ? "opacity-50 cursor-not-allowed text-error font-semibold" : ""}
+                            >
+                              {item.name} - {item.form} - Stock Remaining: {item.stock} {isAlreadySelected ? " (ALREADY SELECTED)" : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
