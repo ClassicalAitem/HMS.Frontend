@@ -237,7 +237,7 @@ const VitalsChart = ({ data = [], vitals }) => {
 
       {/* Fullscreen Modal Chart */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 w-full max-w-6xl rounded-2xl shadow-2xl flex flex-col overflow-hidden h-[90vh] animate-in zoom-in-95 duration-200">
             
             {/* Modal Header */}

@@ -36,7 +36,7 @@ const DispenseConfirmModal = ({
   if (!rows.length) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-sm px-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>

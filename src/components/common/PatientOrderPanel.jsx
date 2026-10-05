@@ -130,7 +130,7 @@ const InvestigationCard = ({ inv, patientName }) => {
 const ViewAllModal = ({ isOpen, onClose, title, icon, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative z-10 w-full max-w-2xl bg-base-100 rounded-xl shadow-2xl flex flex-col max-h-[85vh]">
         {/* Header */}
