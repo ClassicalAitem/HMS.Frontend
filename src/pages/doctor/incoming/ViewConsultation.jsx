@@ -2195,7 +2195,7 @@ const getInventoryMatch = (medication) => {
                     </div>
 
                     {selectedProcedure && (
-                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
                         <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl max-h-[85vh] overflow-y-auto">
                           <div className="flex items-center justify-between border-b border-base-200 p-5 sticky top-0 bg-base-100 z-10">
                             <h2 className="text-lg font-bold">
@@ -2270,7 +2270,7 @@ const getInventoryMatch = (medication) => {
                     )}
 
                     {selectedAdmission && (
-                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
+                      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
                         <div className="w-full max-w-2xl rounded-xl bg-base-100 shadow-xl max-h-[85vh] overflow-y-auto">
                           <div className="flex items-center justify-between border-b border-base-200 p-5 sticky top-0 bg-base-100 z-10">
                             <h2 className="text-lg font-bold">Admission Details</h2>

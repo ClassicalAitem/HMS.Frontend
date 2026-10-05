@@ -139,7 +139,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center w-[100vw]">
+    <div className="flex fixed inset-0 z-50 justify-center items-center w-[100vw]" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       {/* Backdrop */}
       <div className="fixed inset-0 w-[100vw] bg-black/70 backdrop-blur-sm" onClick={handleCancel} />
       

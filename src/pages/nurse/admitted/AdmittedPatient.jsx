@@ -14,7 +14,7 @@ import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
-import AdmissionBillingModal from '@/components/modals/AdmissionBillingModal'
+import AdmissionBillManagerModal from '@/components/modals/AdmissionBillManagerModal'
 import toast from 'react-hot-toast'
 import {
   FaHeartbeat,
@@ -24,7 +24,7 @@ import {
   FaBaby,
   FaBed,
   FaArrowLeft,
-  FaCashRegister,
+  FaFileInvoice,
   FaPills,
   FaPaperPlane,
 } from 'react-icons/fa'
@@ -233,8 +233,8 @@ const AdmittedPatient = () => {
                       className="btn btn-sm sm:btn-md btn-primary gap-2"
                       onClick={() => setIsBillingModalOpen(true)}
                     >
-                      <FaCashRegister className="w-4 h-4" />
-                      Generate Bill
+                      <FaFileInvoice className="w-4 h-4" />
+                      Preview Bill
                     </button>
                   </>
                 )}
@@ -419,17 +419,13 @@ const AdmittedPatient = () => {
         </div>
       </div>
 
-      <AdmissionBillingModal
+      <AdmissionBillManagerModal
         isOpen={isBillingModalOpen}
         onClose={() => setIsBillingModalOpen(false)}
+        admissionId={admission?._id || admission?.id || null}
         patientId={patientId}
         dependantId={isViewingDependant ? dependantId : null}
-        admissionId={admission?._id || admission?.id || null}
-        consultationId={consultationId}
-        onSuccess={() => {
-          setIsBillingModalOpen(false)
-          loadAdmission()
-        }}
+        patientName={summarySubject.fullName}
       />
     </div>
   )

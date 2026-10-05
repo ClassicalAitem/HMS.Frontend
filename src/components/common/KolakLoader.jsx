@@ -88,7 +88,7 @@ export const KolakLoader = ({ fullscreen = false, size = 'md', label = 'Loading'
 
   if (fullscreen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-100">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-100" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
         {content}
       </div>
     )
