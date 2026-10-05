@@ -20,3 +20,14 @@ export const saveWebPushSubscription = async (subscription) => {
   );
   return response.data;
 };
+
+export const removeWebPushSubscription = async (endpoint) => {
+  if (!endpoint) return null;
+
+  const response = await apiClient.delete(
+    '/push-notifications/subscription',
+    { data: { endpoint }, skipErrorToast: true },
+  );
+
+  return response.data;
+};
