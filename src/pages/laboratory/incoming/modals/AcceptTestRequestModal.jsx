@@ -62,7 +62,7 @@ const AcceptTestRequestModal = ({ data, setShowModal, onAcceptSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 p-3 bg-black/40 backdrop-blur-xs flex items-center justify-center overflow-y-auto">
+    <div className="fixed inset-0 z-50 p-3 bg-black/40 backdrop-blur-xs flex items-center justify-center overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="bg-base-100 text-base-content border border-base-200 shadow-2xl rounded-2xl p-6 max-w-[520px] w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3 border-b border-base-200 pb-3">
           <div>

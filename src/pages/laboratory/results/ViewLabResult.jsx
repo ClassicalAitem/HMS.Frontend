@@ -1114,7 +1114,7 @@ const handleComplete = async () => {
       />
 
       {showPendingModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="fixed inset-0 bg-black/60" onClick={() => setShowPendingModal(false)} />
           <div className="relative z-[110] w-full max-w-lg bg-base-100 rounded-xl shadow-2xl p-6">
             <div className="mb-4">

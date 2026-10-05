@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import wardRoundApi from '@/services/api/wardRoundApi'
 import { dischargeAdmission } from '@/services/api/admissionApi'
@@ -13,6 +14,8 @@ import {
   createInvestigationRequestByWardRound,
   getInvestigationRequestsByWardRound,
 } from '@/services/api/investigationRequestAPI'
+import { getLabResults } from '@/services/api/labResultsAPI'
+import { LabResultDetailsModal } from '@/components/modals'
 import {
   FaNotesMedical,
   FaPrescriptionBottleAlt,
@@ -32,7 +35,40 @@ import {
   FaFilePrescription,
   FaVial,
   FaInfoCircle,
+  FaEye,
+  FaTimes,
+  FaDownload,
+  FaFileWord,
 } from 'react-icons/fa'
+import mammoth from 'mammoth'
+
+const toDataUrl = (file) => {
+  if (!file?.data) return null;
+  if (typeof file.data === "string") {
+    return file.data.startsWith("data:") || file.data.startsWith("http") ? file.data : `data:${file.mimetype};base64,${file.data}`;
+  }
+  if (file.data instanceof Uint8Array || file.data instanceof ArrayBuffer) {
+    const arr = file.data instanceof ArrayBuffer ? new Uint8Array(file.data) : file.data;
+    const binary = Array.from(arr).map((b) => String.fromCharCode(b)).join("");
+    return `data:${file.mimetype};base64,${btoa(binary)}`;
+  }
+  if (file.data?.type === "Buffer" && Array.isArray(file.data.data)) {
+    const binary = file.data.data.map((b) => String.fromCharCode(b)).join("");
+    return `data:${file.mimetype};base64,${btoa(binary)}`;
+  }
+  return null;
+};
+
+const downloadFile = (file, fallbackName) => {
+  const url = toDataUrl(file);
+  if (!url) return;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = file.name || file.filename || fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
 
 const WardRoundTab = ({
   patientId,
@@ -43,6 +79,8 @@ const WardRoundTab = ({
   isNurse = false,
   onRoundSaved,
 }) => {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [form, setForm] = useState({
     note: '',
     dischargeNote: '',
@@ -67,8 +105,85 @@ const WardRoundTab = ({
   })
   const [loadingRelated, setLoadingRelated] = useState(false)
 
-  // Track which historical round is selected for the side drawer
   const [selectedRound, setSelectedRound] = useState(null)
+
+  // Test Results Modal State
+  const [showResultsModal, setShowResultsModal] = useState(false)
+  const [selectedResultFiles, setSelectedResultFiles] = useState([])
+  const [selectedLabResultId, setSelectedLabResultId] = useState(null)
+  const [resultLoading, setResultLoading] = useState(false)
+  const [previewFile, setPreviewFile] = useState(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [docPreviewHtml, setDocPreviewHtml] = useState(null)
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false)
+
+  const handleViewResult = async (inv) => {
+    try {
+      const invId = inv._id || inv.id;
+      setResultLoading(true)
+      const res = await getLabResults({ investigationRequestId: invId })
+      const results = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : [])
+      const existing = results.find(lr => lr.investigationRequestId === invId || lr.investigationId === invId)
+      
+      if (existing) {
+        const labResultId = existing._id || existing.id
+        const isMedicalDirector = location.pathname.startsWith('/dashboard/medical-director/')
+        const hasFullDetailsRoute = isMedicalDirector || location.pathname.startsWith('/dashboard/doctor/')
+
+        if (hasFullDetailsRoute && labResultId) {
+          const route = isMedicalDirector
+            ? '/dashboard/medical-director/labResults'
+            : '/dashboard/doctor/labResults'
+          navigate(`${route}/${labResultId}`)
+        } else if (String(inv.type || '').toLowerCase() === 'radiology' || String(inv.type || '').toLowerCase() === 'scan') {
+          if (existing.form?.attachments?.length > 0) {
+            setSelectedResultFiles(existing.form.attachments)
+            setShowResultsModal(true)
+          } else {
+            toast.error("No uploaded scans found for this request.")
+          }
+        } else {
+          setSelectedLabResultId(existing._id || existing.id)
+        }
+      } else {
+        toast.error("No results found for this request.")
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error("Failed to load result.")
+    } finally {
+      setResultLoading(false)
+    }
+  }
+
+  const openPreview = async (file) => {
+    setPreviewFile(file);
+    setShowPreview(true);
+    setDocPreviewHtml(null);
+
+    const isWord = (file.name || file.filename || '').toLowerCase().endsWith(".docx") || (file.name || file.filename || '').toLowerCase().endsWith(".doc");
+    if (isWord) {
+      setDocPreviewLoading(true);
+      try {
+        const dataUrl = toDataUrl(file);
+        if (dataUrl) {
+           const base64 = dataUrl.split(',')[1];
+           const binaryStr = atob(base64);
+           const len = binaryStr.length;
+           const bytes = new Uint8Array(len);
+           for (let i = 0; i < len; i++) {
+             bytes[i] = binaryStr.charCodeAt(i);
+           }
+           const result = await mammoth.convertToHtml({ arrayBuffer: bytes.buffer });
+           setDocPreviewHtml(result.value);
+        }
+      } catch (err) {
+        console.error("Word preview failed:", err);
+      } finally {
+        setDocPreviewLoading(false);
+      }
+    }
+  };
 
   // Ensure effective consultation ID is always a string, never an object
   const effectiveConsultationId = useMemo(() => {
@@ -904,7 +1019,7 @@ const WardRoundTab = ({
                                   <span className="badge badge-outline badge-sm capitalize">{inv.type === 'radiology' ? 'Radiology' : 'Lab'}</span>
                                   <span>Order #{String(inv._id || inv.id).slice(-6)}</span>
                                 </div>
-                                <span className="badge badge-outline badge-sm capitalize">{inv.status || 'Requested'}</span>
+                                <span className={`badge badge-outline badge-sm capitalize ${String(inv.status || '').toLowerCase() === 'completed' ? 'badge-success' : ''}`}>{inv.status || 'Requested'}</span>
                               </div>
                               <div className="flex flex-wrap gap-2 pt-1">
                                 {(inv.tests || []).map((t, tIdx) => (
@@ -913,6 +1028,18 @@ const WardRoundTab = ({
                                   </span>
                                 ))}
                               </div>
+                              {String(inv.status || '').toLowerCase() === 'completed' && (
+                                <div className="pt-2 border-t border-base-200/50 flex justify-end">
+                                  <button
+                                    onClick={() => handleViewResult(inv)}
+                                    disabled={resultLoading}
+                                    className="btn btn-sm btn-outline btn-primary gap-1"
+                                  >
+                                    <FaEye className="w-3.5 h-3.5" />
+                                    View Result
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -933,7 +1060,7 @@ const WardRoundTab = ({
 
       {/* Discharge Confirmation Modal */}
       {showDischargeConfirm && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-base-300 space-y-4 animate-scaleUp">
             <div className="flex items-center gap-3 text-warning">
               <div className="p-3 bg-warning/10 rounded-xl">
@@ -997,6 +1124,122 @@ const WardRoundTab = ({
             } test(s)`
           )
         }}
+      />
+
+      {/* Test Results Modal */}
+      {showResultsModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+          <div className="bg-base-100 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-base-200 flex justify-between items-center bg-base-100">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <FaFlask className="text-primary" /> Test Results
+              </h3>
+              <button onClick={() => setShowResultsModal(false)} className="btn btn-ghost btn-sm btn-circle">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3 bg-base-200/30">
+              {selectedResultFiles.map((file, idx) => (
+                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-base-100 rounded-xl border border-base-200 shadow-sm">
+                  <div className="min-w-0 flex-1 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      {/^image\//i.test(file?.mimetype || "") || /\.(jpg|jpeg|png|gif|webp)$/i.test(file?.name || file?.filename || "") ? (
+                        <FaEye className="w-4 h-4 text-primary" />
+                      ) : (
+                        <FaFileWord className="w-4 h-4 text-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium text-base-content truncate">{file.name || file.filename || `Document ${idx + 1}`}</p>
+                      <p className="text-xs text-base-content/60 capitalize">{file.mimetype || 'Unknown Type'}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => openPreview(file)} className="btn btn-outline btn-sm bg-base-100 gap-1.5">
+                      <FaEye className="w-3.5 h-3.5" /> View
+                    </button>
+                    <button type="button" onClick={() => downloadFile(file, `result-${idx + 1}`)} className="btn btn-primary btn-sm gap-1.5">
+                      <FaDownload className="w-3.5 h-3.5" /> Save
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="p-4 bg-base-100 border-t border-base-200 flex justify-end">
+              <button className="btn btn-ghost" onClick={() => setShowResultsModal(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {showPreview && previewFile && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+          <div className="bg-base-100 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-base-200 flex items-center justify-between bg-base-100">
+              <h3 className="text-lg font-semibold truncate flex-1 pr-4">{previewFile.name || previewFile.filename || 'Preview'}</h3>
+              <div className="flex items-center gap-2">
+                 <button onClick={() => downloadFile(previewFile, previewFile.name || previewFile.filename || 'download')} className="btn btn-ghost btn-sm gap-1" title="Download current file">
+                   <FaDownload className="w-4 h-4" />
+                 </button>
+                 <button onClick={() => setShowPreview(false)} className="btn btn-ghost btn-sm btn-circle">
+                   <FaTimes className="w-4 h-4" />
+                 </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-6 flex justify-center bg-base-200/50">
+              {(() => {
+                const isImage = previewFile instanceof File 
+                  ? previewFile.type.startsWith('image/')
+                  : (/^image\//i.test(previewFile?.mimetype || "") || /\.(jpg|jpeg|png|gif|webp)$/i.test(previewFile?.name || previewFile?.filename || ""));
+                  
+                const src = previewFile instanceof File ? URL.createObjectURL(previewFile) : toDataUrl(previewFile);
+                
+                if (isImage && src) {
+                  return <img src={src} alt="Preview" className="max-w-full h-auto rounded-lg shadow-sm" />;
+                }
+                
+                if (docPreviewLoading) {
+                  return (
+                    <div className="py-10 flex flex-col items-center gap-3">
+                      <span className="loading loading-spinner loading-lg text-primary" />
+                      <p className="text-base font-medium text-base-content/70">Rendering document…</p>
+                    </div>
+                  );
+                }
+                
+                if (docPreviewHtml) {
+                  return (
+                    <div
+                      className="prose prose-sm md:prose-base max-w-none w-full bg-base-100 p-6 rounded-lg shadow-sm"
+                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                    />
+                  );
+                }
+                
+                return (
+                  <div className="text-center py-16 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-full bg-base-300 flex items-center justify-center mb-4">
+                      <FaFileWord className="w-10 h-10 text-base-content/40" />
+                    </div>
+                    <p className="text-lg font-semibold mb-2">Preview Not Available</p>
+                    <p className="text-sm text-base-content/60 mb-6 max-w-sm">This file format cannot be previewed in the browser. You can download it to view it on your device.</p>
+                    <button className="btn btn-primary px-8" onClick={() => downloadFile(previewFile, previewFile.name || previewFile.filename)}>
+                       <FaDownload className="w-4 h-4 mr-2" /> Download File
+                    </button>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lab Result Details Modal (Dynamic form results) */}
+      <LabResultDetailsModal
+        isOpen={!!selectedLabResultId}
+        labResultId={selectedLabResultId}
+        onClose={() => setSelectedLabResultId(null)}
       />
     </div>
   )

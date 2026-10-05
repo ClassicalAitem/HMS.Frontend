@@ -142,7 +142,7 @@ const PharmacyWardRoundDispenseModal = ({ isOpen, onClose, admissionId, prescrip
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="w-full max-w-5xl max-h-[92vh] overflow-hidden bg-base-100 rounded-2xl shadow-2xl border border-base-200 flex flex-col">
         <div className="flex items-center justify-between gap-4 p-5 border-b border-base-200">
           <div>

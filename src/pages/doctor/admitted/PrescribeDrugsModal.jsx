@@ -190,7 +190,7 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="bg-base-100 rounded-2xl max-w-3xl w-full shadow-2xl border border-base-300 max-h-[92vh] flex flex-col overflow-hidden">
         <div className="border-b border-base-200 px-6 py-4 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
