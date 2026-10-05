@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay } from 'react-icons/fa';
+import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye } from 'react-icons/fa';
 import { Header } from '@/components/common';
 import LaboratorySidebar from '@/components/laboratory/dashboard/LaboratorySidebar';
 import { getDependantById } from '@/services/api/dependantAPI';
@@ -260,25 +260,44 @@ const LaboratoryPatientDetails = () => {
                         <td>
                           {Array.isArray(request.tests) && request.tests.length > 0 ? (
                             <div className="flex min-w-max items-start gap-2">
-                              {hasPaymentReadyTest(request) && <button
-                                type="button"
-                                className={`btn btn-outline btn-xs whitespace-nowrap ${labResultLookupFailed || isInvestigationClosed(request.status) ? 'btn-disabled' : labResultsByInvestigationId[request._id || request.id] ? 'btn-warning' : 'btn-primary'}`}
-                                disabled={labResultLookupFailed || isInvestigationClosed(request.status)}
-                                onClick={() => handleLabResultAction(request)}
-                              >
-                                {isInvestigationClosed(request.status)
-                                  ? null
-                                  : labResultsByInvestigationId[request._id || request.id]
-                                    ? <FaEdit aria-hidden="true" />
-                                    : <FaPlus aria-hidden="true" />}
-                                {isInvestigationClosed(request.status)
-                                  ? normalizeRequestStatus(request.status) === 'completed' ? 'Completed' : 'Cancelled'
-                                  : labResultLookupFailed
-                                  ? 'Unable to Check Result'
-                                  : labResultsByInvestigationId[request._id || request.id]
-                                    ? 'Edit Lab Result'
-                                    : 'Add Lab Result'}
-                                  </button>}
+                              {hasPaymentReadyTest(request) && (
+                                <div className="flex items-center gap-2">
+                                  {!isInvestigationClosed(request.status) ? (
+                                    <button
+                                      type="button"
+                                      className={`btn btn-outline btn-xs whitespace-nowrap ${labResultLookupFailed ? 'btn-disabled' : labResultsByInvestigationId[request._id || request.id] ? 'btn-warning' : 'btn-primary'}`}
+                                      disabled={labResultLookupFailed}
+                                      onClick={() => handleLabResultAction(request)}
+                                    >
+                                      {labResultsByInvestigationId[request._id || request.id]
+                                        ? <FaEdit aria-hidden="true" />
+                                        : <FaPlus aria-hidden="true" />}
+                                      {labResultLookupFailed
+                                        ? 'Unable to Check Result'
+                                        : labResultsByInvestigationId[request._id || request.id]
+                                          ? 'Edit Lab Result'
+                                          : 'Add Lab Result'}
+                                    </button>
+                                  ) : normalizeRequestStatus(request.status) === 'cancelled' ? (
+                                    <span className="badge badge-sm badge-ghost">Cancelled</span>
+                                  ) : normalizeRequestStatus(request.status) === 'completed' && !labResultsByInvestigationId[request._id || request.id] ? (
+                                    <span className="badge badge-sm badge-success">Completed</span>
+                                  ) : null}
+                                  
+                                  {labResultsByInvestigationId[request._id || request.id] && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline btn-success btn-xs whitespace-nowrap"
+                                      onClick={() => {
+                                        const res = labResultsByInvestigationId[request._id || request.id];
+                                        navigate(`/dashboard/laboratory/results/${res._id || res.id}`);
+                                      }}
+                                    >
+                                      <FaEye aria-hidden="true" /> View Lab Result
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                               <details className="group min-w-48">
                                 <summary className="cursor-pointer select-none font-medium hover:text-primary">
                                   {request.tests.length} ordered {request.tests.length === 1 ? 'test' : 'tests'}

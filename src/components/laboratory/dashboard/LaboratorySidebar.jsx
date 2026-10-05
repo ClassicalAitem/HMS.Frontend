@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaThLarge, FaSignOutAlt, FaUsers } from "react-icons/fa";
+import { FaThLarge, FaSignOutAlt, FaUsers, FaBed } from "react-icons/fa";
 import { RiCalendarScheduleLine } from "react-icons/ri";
 import { GiHospitalCross } from "react-icons/gi";
 import { CiLock, CiLogout } from "react-icons/ci";
@@ -69,6 +69,12 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
       path: "/dashboard/laboratory/incoming",
       active: isOnIncoming,
       badge: incomingCount,
+    },
+    {
+      icon: FaBed,
+      label: "Admitted",
+      path: "/dashboard/laboratory/admitted",
+      active: location.pathname.startsWith("/dashboard/laboratory/admitted"),
     },
     {
       icon: FaUsers,

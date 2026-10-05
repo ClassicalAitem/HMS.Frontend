@@ -15,6 +15,7 @@ import {
   FaMoneyBillWave,
   FaSearch,
   FaExclamationTriangle,
+  FaTimes,
 } from 'react-icons/fa'
 
 const BloodTransfusionTab = ({
@@ -48,6 +49,10 @@ const BloodTransfusionTab = ({
   const [loadingInventories, setLoadingInventories] = useState(false)
   const [medSearch, setMedSearch] = useState('')
   const [selectedMeds, setSelectedMeds] = useState([])
+  const [showConsumablesModal, setShowConsumablesModal] = useState(null)
+  const [consumableSearch, setConsumableSearch] = useState('')
+  const [selectedConsumables, setSelectedConsumables] = useState([])
+  const [savingConsumables, setSavingConsumables] = useState(false)
 
   const [form, setForm] = useState({
     note: '',
@@ -111,11 +116,11 @@ const BloodTransfusionTab = ({
   }, [patientId, dependantId])
 
   useEffect(() => {
-    if (showOrderModal) {
+    if (showOrderModal || showConsumablesModal) {
       if (labServices.length === 0) loadLabServices()
       if (inventories.length === 0) loadInventories()
     }
-  }, [showOrderModal])
+  }, [showOrderModal, showConsumablesModal])
 
   const filteredLabServices = useMemo(() => {
     const q = serviceSearch.trim().toLowerCase()
@@ -146,6 +151,12 @@ const BloodTransfusionTab = ({
       return name.includes(q)
     }).slice(0, 20) // limit results for performance
   }, [inventories, medSearch])
+
+  const filteredConsumables = useMemo(() => {
+    const query = consumableSearch.trim().toLowerCase()
+    if (!query) return []
+    return inventories.filter((inventory) => String(inventory?.name || '').toLowerCase().includes(query)).slice(0, 20)
+  }, [inventories, consumableSearch])
 
   const handleSelectService = (service) => {
     setSelectedService(service)
@@ -218,7 +229,7 @@ const BloodTransfusionTab = ({
         preppingMedications: selectedMeds.length > 0 ? selectedMeds : undefined,
       })
 
-      toast.success('Blood transfusion order placed and billed to Laboratory')
+      toast.success('Transfusion order placed; charges are ready for admission billing')
       setShowOrderModal(false)
       setForm({ note: '', bloodGroup: '', units: 1, unitPrice: 0, amount: 0 })
       setSelectedService(null)
@@ -290,6 +301,20 @@ const BloodTransfusionTab = ({
     }
   }
 
+  const handleDispenseConsumableBatch = async (orderId, batchId) => {
+    setDispensingId(batchId)
+    try {
+      await bloodTransfusionApi.dispenseBloodTransfusionConsumables(orderId, batchId)
+      toast.success('Blood transfusion consumables marked as dispensed')
+      await loadOrders()
+    } catch (err) {
+      console.error('Failed to dispense blood consumables', err)
+      toast.error(err?.response?.data?.error || 'Failed to dispense blood consumables')
+    } finally {
+      setDispensingId(null)
+    }
+  }
+
   const handleAdministerPreps = async (orderId) => {
     setAdministeringId(orderId)
     try {
@@ -301,6 +326,46 @@ const BloodTransfusionTab = ({
       toast.error(err?.response?.data?.error || 'Failed to administer medications')
     } finally {
       setAdministeringId(null)
+    }
+  }
+
+  const addConsumable = (inventory) => {
+    const inventoryId = String(inventory.id || inventory._id)
+    if (selectedConsumables.some((item) => item.inventoryId === inventoryId)) {
+      return toast.error('Consumable already added')
+    }
+    setSelectedConsumables((current) => [...current, {
+      inventoryId,
+      itemName: inventory.name,
+      quantity: 1,
+    }])
+    setConsumableSearch('')
+  }
+
+  const submitConsumables = async (event) => {
+    event.preventDefault()
+    if (!showConsumablesModal || selectedConsumables.length === 0) {
+      return toast.error('Add at least one consumable item')
+    }
+    const invalidItem = selectedConsumables.find((item) => !Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0)
+    if (invalidItem) return toast.error('Each consumable needs a quantity greater than zero')
+
+    setSavingConsumables(true)
+    try {
+      const orderId = showConsumablesModal._id || showConsumablesModal.id
+      await bloodTransfusionApi.orderBloodTransfusionConsumables(orderId, selectedConsumables.map(({ itemName, quantity }) => ({
+        itemName,
+        quantity: Number(quantity),
+      })))
+      toast.success('Consumables added to the transfusion bill queue')
+      setShowConsumablesModal(null)
+      setSelectedConsumables([])
+      setConsumableSearch('')
+      await loadOrders()
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to add transfusion consumables')
+    } finally {
+      setSavingConsumables(false)
     }
   }
 
@@ -343,7 +408,7 @@ const BloodTransfusionTab = ({
               Blood Transfusion Orders & Administration
             </h3>
             <p className="text-xs text-base-content/60">
-              Laboratory-billed blood transfusion directives, payment verification, and nursing administration log
+              Blood transfusion orders, preparation supplies, and nursing administration log
             </p>
           </div>
         </div>
@@ -447,7 +512,7 @@ const BloodTransfusionTab = ({
                       )}
                       {order.amount !== undefined && order.amount !== null && (
                         <div className="font-semibold text-base-content">
-                          Billed: ₦{Number(order.amount).toLocaleString()}
+                          Service charge: ₦{Number(order.amount).toLocaleString()} (not yet billed)
                         </div>
                       )}
                     </div>
@@ -486,6 +551,35 @@ const BloodTransfusionTab = ({
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+
+                    {order.consumableOrders?.length > 0 && (
+                      <div className="mt-2 rounded-xl border border-base-300 bg-base-200/40 p-2.5">
+                        <p className="mb-1 text-xs font-semibold text-base-content/70">Blood transfusion consumables</p>
+                        {order.consumableOrders.map((batch, batchIndex) => (
+                          <div key={batch._id || batchIndex} className="text-[11px] text-base-content/70 flex flex-col gap-1.5 py-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span>{batch.items?.map((item) => `${item.quantity} × ${item.itemName}`).join(', ')}</span>
+                              <span className={`badge badge-xs ${batch.isDispensed ? 'badge-success' : batch.isBilled ? 'badge-success' : 'badge-warning'}`}>
+                                {batch.isDispensed ? 'Dispensed' : batch.isBilled ? 'Billed' : 'Awaiting Pharmacy'}
+                              </span>
+                            </div>
+                            {batch.isDispensed && batch.dispensedByName && (
+                              <span className="text-[10px] text-success">Dispensed by {batch.dispensedByName}</span>
+                            )}
+                            {isPharmacist && !batch.isDispensed && !batch.isBilled && (
+                              <button
+                                type="button"
+                                onClick={() => handleDispenseConsumableBatch(order._id || order.id, batch._id || batchIndex)}
+                                disabled={dispensingId === (batch._id || batchIndex)}
+                                className="btn btn-xs btn-primary rounded-lg font-bold self-end"
+                              >
+                                {dispensingId === (batch._id || batchIndex) ? 'Marking...' : 'Mark Consumables Dispensed'}
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -533,6 +627,19 @@ const BloodTransfusionTab = ({
                   {/* Nurse Action Button */}
                   {isNurse && (
                     <div className="shrink-0 flex flex-col gap-2">
+                      {!order.isBilled && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowConsumablesModal(order)
+                            setSelectedConsumables([])
+                            setConsumableSearch('')
+                          }}
+                          className="btn btn-sm btn-outline btn-primary rounded-xl font-bold"
+                        >
+                          <FaPlus className="h-3 w-3" /> Add Consumables
+                        </button>
+                      )}
                       {order.preppingMedications && order.preppingMedications.length > 0 && order.isPrepsDispensed && !order.isPrepsAdministered && (
                         <button
                           type="button"
@@ -670,11 +777,11 @@ const BloodTransfusionTab = ({
 
       {/* Doctor Create Transfusion Order Modal */}
       {showOrderModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
-                <FaHeartbeat className="text-error" /> Order Blood Transfusion (Laboratory Charge)
+                <FaHeartbeat className="text-error" /> Order Blood Transfusion
               </h3>
               <button
                 type="button"
@@ -690,7 +797,7 @@ const BloodTransfusionTab = ({
               <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-2">
                 <label className="block text-xs font-bold text-base-content flex items-center justify-between">
                   <span>Select Laboratory Service Charge *</span>
-                  <span className="text-[11px] text-primary font-normal">Billed under Laboratory</span>
+                  <span className="text-[11px] text-primary font-normal">Added to the admission bill by nursing/cashier</span>
                 </label>
 
                 <div className="relative">
@@ -888,8 +995,8 @@ const BloodTransfusionTab = ({
               {/* Total Billed Amount Display */}
               <div className="p-3 rounded-xl bg-base-200/60 border border-base-300 flex items-center justify-between text-xs">
                 <div>
-                  <span className="font-semibold text-base-content/80">Total Billed to Laboratory:</span>
-                  <p className="text-[11px] text-base-content/50">Routed to HMO or Cashier for payment/approval</p>
+                  <span className="font-semibold text-base-content/80">Estimated blood-service charge:</span>
+                  <p className="text-[11px] text-base-content/50">Nursing/cashier generates the combined bill after supplies are added</p>
                 </div>
                 <div className="text-base font-black text-error">
                   ₦{Number(form.amount || 0).toLocaleString()}
@@ -910,16 +1017,70 @@ const BloodTransfusionTab = ({
                   disabled={saving}
                   className="btn btn-sm btn-error text-white rounded-xl font-semibold gap-2"
                 >
-                  {saving ? 'Placing Order...' : 'Place & Bill Transfusion'}
+                  {saving ? 'Placing Order...' : 'Place Transfusion Order'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+      {showConsumablesModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+          <form onSubmit={submitConsumables} className="w-full max-w-lg space-y-4 rounded-xl border border-base-300 bg-base-100 p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-base-200 pb-3">
+              <div>
+                <h3 className="font-bold text-base-content">Add Transfusion Consumables</h3>
+                <p className="text-xs text-base-content/60">These items will be billed with the blood service and prep medications.</p>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm btn-circle" onClick={() => setShowConsumablesModal(null)} aria-label="Close consumables dialog">
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-3 text-xs text-base-content/40" />
+              <input
+                value={consumableSearch}
+                onChange={(event) => setConsumableSearch(event.target.value)}
+                className="input input-bordered input-sm w-full pl-8"
+                placeholder="Search inventory supplies"
+                autoComplete="off"
+              />
+              {consumableSearch.trim() && (
+                <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg">
+                  {loadingInventories ? <p className="p-3 text-xs text-base-content/60">Loading inventory...</p> : filteredConsumables.length === 0 ? <p className="p-3 text-xs text-base-content/60">No matching supplies.</p> : filteredConsumables.map((inventory) => (
+                    <button key={inventory._id || inventory.id} type="button" className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-base-200" onClick={() => addConsumable(inventory)}>
+                      <span>{inventory.name}</span>
+                      <span className="text-xs text-base-content/60">Stock: {inventory.stock ?? '—'} {inventory.unit || ''}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selectedConsumables.length > 0 ? (
+              <div className="max-h-64 space-y-2 overflow-y-auto">
+                {selectedConsumables.map((item) => (
+                  <div key={item.inventoryId} className="grid grid-cols-[1fr_6rem_2rem] items-center gap-2 rounded-lg border border-base-200 p-2">
+                    <span className="truncate text-sm font-medium">{item.itemName}</span>
+                    <input type="number" min="1" step="1" value={item.quantity} aria-label={`${item.itemName} quantity`} className="input input-bordered input-sm" onChange={(event) => setSelectedConsumables((current) => current.map((entry) => entry.inventoryId === item.inventoryId ? { ...entry, quantity: event.target.value } : entry))} />
+                    <button type="button" className="btn btn-ghost btn-xs text-error" aria-label={`Remove ${item.itemName}`} onClick={() => setSelectedConsumables((current) => current.filter((entry) => entry.inventoryId !== item.inventoryId))}><FaTimes /></button>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="rounded-lg border border-dashed border-base-300 p-4 text-center text-xs text-base-content/60">Search inventory and add supplies for this transfusion.</p>}
+
+            <div className="flex justify-end gap-2 border-t border-base-200 pt-3">
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowConsumablesModal(null)} disabled={savingConsumables}>Cancel</button>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={savingConsumables || selectedConsumables.length === 0}>{savingConsumables ? 'Adding...' : 'Add to Transfusion'}</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Side Drawer for Blood Transfusion History Details */}
       {selectedHistoryOrder && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="w-full max-w-lg bg-base-100 h-full shadow-2xl flex flex-col animate-slideInRight">
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-4 border-b border-base-200 bg-base-100">
@@ -1067,7 +1228,7 @@ const BloodTransfusionTab = ({
 
       {/* Start Order Modal */}
       {startOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-base-300 space-y-4 animate-scaleUp">
             <div className="flex items-center gap-3 text-info">
               <div className="p-3 bg-info/10 rounded-xl">
@@ -1118,7 +1279,7 @@ const BloodTransfusionTab = ({
 
       {/* Complete Order Modal */}
       {completeOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-base-300 space-y-4 animate-scaleUp">
             <div className="flex items-center gap-3 text-success">
               <div className="p-3 bg-success/10 rounded-xl">

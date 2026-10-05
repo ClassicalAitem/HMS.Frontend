@@ -4,7 +4,7 @@ import { IoMdClose } from "react-icons/io";
 const BookAppointmentModal = ({ setShowModal }) => {
   return (
     <div>
-      <div className="fixed inset-0 z-50 p-3 bg-opacity-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 p-3 bg-opacity-50 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
         <div className="bg-base-100 rounded-xl shadow-lg p-6 max-w-[688px] w-full max-h-[85vh] overflow-y-auto">
           <div className="flex justify-between items-center">
             <div className="text-primary text-xl md:text-2xl font-semibold">Book Appointment</div>

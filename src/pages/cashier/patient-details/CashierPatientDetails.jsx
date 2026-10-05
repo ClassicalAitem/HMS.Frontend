@@ -7,6 +7,7 @@ import { fetchPatientById, clearPatientsError, clearCurrentPatient } from '../..
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
+import { createPatientCredit, getPatientCredits } from '@/services/api/patientCreditAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
@@ -29,6 +30,11 @@ const CashierPatientDetails = () => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedBilling, setSelectedBilling] = useState(null);
+  const [patientCredits, setPatientCredits] = useState([]);
+  const [totalCredit, setTotalCredit] = useState(0);
+  const [creditsLoading, setCreditsLoading] = useState(false);
+  const [savingCredit, setSavingCredit] = useState(false);
+  const [creditForm, setCreditForm] = useState({ amount: '', reason: '', sourceReference: '' });
   const { refreshQueueCount } = useNotifications();
 
   const toggleRow = (id) => {
@@ -169,6 +175,56 @@ const CashierPatientDetails = () => {
     }
     fetchReceipts();
   }, [patientId, isViewingDependant, dependantId]);
+
+  useEffect(() => {
+    let active = true;
+    const fetchCredits = async () => {
+      try {
+        setCreditsLoading(true);
+        const data = await getPatientCredits(patientId);
+        if (!active) return;
+        setPatientCredits(Array.isArray(data?.entries) ? data.entries : []);
+        setTotalCredit(Number(data?.totalCredit) || 0);
+      } catch (creditError) {
+        console.error('Error fetching patient credits:', creditError);
+        if (active) toast.error('Failed to load patient credits.');
+      } finally {
+        if (active) setCreditsLoading(false);
+      }
+    };
+    if (patientId) fetchCredits();
+    return () => { active = false; };
+  }, [patientId]);
+
+  const handlePatientCreditSubmit = async (event) => {
+    event.preventDefault();
+    const amount = Number(creditForm.amount);
+    const reason = creditForm.reason.trim();
+    const sourceReference = creditForm.sourceReference.trim();
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error('Enter a credit amount greater than zero.');
+      return;
+    }
+    if (!reason) {
+      toast.error('A reason is required to record patient credit.');
+      return;
+    }
+
+    setSavingCredit(true);
+    try {
+      await createPatientCredit(patientId, { amount, reason, sourceReference });
+      const data = await getPatientCredits(patientId);
+      setPatientCredits(Array.isArray(data?.entries) ? data.entries : []);
+      setTotalCredit(Number(data?.totalCredit) || 0);
+      setCreditForm({ amount: '', reason: '', sourceReference: '' });
+      toast.success('Patient credit recorded.');
+    } catch (creditError) {
+      toast.error(creditError?.response?.data?.message || creditError?.message || 'Failed to record patient credit.');
+    } finally {
+      setSavingCredit(false);
+    }
+  };
 
   const handleReceiptSubmit = async (receiptData) => {
     try {
@@ -431,6 +487,88 @@ const CashierPatientDetails = () => {
           </div>
         </div>
 
+
+        <section className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-base-200 pb-4">
+            <div>
+              <h3 className="text-xl font-bold text-primary">Patient Credit Ledger</h3>
+              <p className="text-sm text-base-content/60">Credits owed to this patient, across care types</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs uppercase text-base-content/60">Credit Owed</p>
+              <p className="text-xl font-bold text-warning">₦{totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+
+          <form onSubmit={handlePatientCreditSubmit} className="grid grid-cols-1 gap-3 py-4 md:grid-cols-4 md:items-end">
+            <label className="form-control">
+              <span className="label-text mb-1 text-xs">Amount (₦) *</span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={creditForm.amount}
+                onChange={(event) => setCreditForm((current) => ({ ...current, amount: event.target.value }))}
+                className="input input-bordered input-sm"
+                placeholder="0.00"
+              />
+            </label>
+            <label className="form-control md:col-span-2">
+              <span className="label-text mb-1 text-xs">Reason *</span>
+              <input
+                required
+                maxLength={500}
+                value={creditForm.reason}
+                onChange={(event) => setCreditForm((current) => ({ ...current, reason: event.target.value }))}
+                className="input input-bordered input-sm"
+                placeholder="Why is this amount owed?"
+              />
+            </label>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={savingCredit || creditsLoading}>
+              {savingCredit ? 'Recording...' : 'Record Credit'}
+            </button>
+            <label className="form-control md:col-span-2">
+              <span className="label-text mb-1 text-xs">Source / bill reference</span>
+              <input
+                maxLength={150}
+                value={creditForm.sourceReference}
+                onChange={(event) => setCreditForm((current) => ({ ...current, sourceReference: event.target.value }))}
+                className="input input-bordered input-sm"
+                placeholder="Optional reference"
+              />
+            </label>
+          </form>
+
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead>
+                <tr>
+                  <th>Date recorded</th>
+                  <th>Reason</th>
+                  <th>Source reference</th>
+                  <th>Recorded by</th>
+                  <th className="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {creditsLoading ? (
+                  <tr><td colSpan={5} className="py-6 text-center text-base-content/60">Loading credits...</td></tr>
+                ) : patientCredits.length === 0 ? (
+                  <tr><td colSpan={5} className="py-6 text-center text-base-content/60">No patient credits recorded.</td></tr>
+                ) : patientCredits.map((credit) => (
+                  <tr key={credit.id}>
+                    <td>{formatNigeriaDateTime(credit.createdAt)}</td>
+                    <td>{credit.reason}</td>
+                    <td>{credit.sourceReference || '—'}</td>
+                    <td>{credit.createdByName || 'Staff'}</td>
+                    <td className="text-right font-semibold">₦{Number(credit.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         {/* Payment History */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6">
