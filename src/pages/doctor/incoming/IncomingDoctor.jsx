@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
@@ -47,11 +47,12 @@ const IncomingDoctor = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [navigatingId, setNavigatingId] = useState(null);
+  const hasLoadedRef = useRef(false);
   const pageSize = 4;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
-  const { refreshQueueCount, lastUpdate } = useNotifications();
+  const { refreshQueueCount, incomingUpdate } = useNotifications();
   const { isLockedForMe } = useCallState();
 
 
@@ -60,7 +61,7 @@ const IncomingDoctor = () => {
 
     const fetchIncoming = async () => {
       try {
-        setLoading(true);
+        if (!hasLoadedRef.current) setLoading(true);
 
         // Fetch both in parallel
         const [patientsRes, dependantsRes] = await Promise.allSettled([
@@ -157,13 +158,14 @@ const IncomingDoctor = () => {
       } catch (err) {
         console.error("IncomingDoctor: fetch error", err);
       } finally {
+        hasLoadedRef.current = true;
         if (mounted) setLoading(false);
       }
     };
 
     fetchIncoming();
     return () => { mounted = false; };
-  }, [refreshKey, lastUpdate]);
+  }, [refreshKey, incomingUpdate]);
 
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -173,7 +175,7 @@ const IncomingDoctor = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  useEffect(() => { setPage(0); }, [query, items]);
+  useEffect(() => { setPage(0); }, [query]);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -186,6 +188,9 @@ const IncomingDoctor = () => {
     : items;
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages - 1));
+  }, [totalPages]);
   const visible = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleView = async (data) => {
