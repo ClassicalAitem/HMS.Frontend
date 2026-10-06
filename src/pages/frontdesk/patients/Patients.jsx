@@ -11,7 +11,50 @@ import { Skeleton } from '@heroui/skeleton';
 import KolakLoader from '@/components/common/KolakLoader';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import ViewDependantsModal from '@/components/superadmin/patients/ViewDependantsModal';
-import { FaUsers, FaUser, FaChild } from 'react-icons/fa';
+import { getConsultations } from '@/services/api/consultationAPI';
+import { getAllAnteNatalRecords } from '@/services/api/anteNatalAPI';
+import { FaUsers, FaUser, FaChild, FaClipboardList } from 'react-icons/fa';
+
+const unwrapList = (response, collectionKey) => {
+  const data = response?.data?.data ?? response?.data ?? response ?? [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.[collectionKey])) return data[collectionKey];
+  return [];
+};
+
+const getMonthBounds = (month) => {
+  if (!month) return null;
+  const [year, monthNumber] = month.split('-').map(Number);
+  if (!year || !monthNumber || monthNumber < 1 || monthNumber > 12) return null;
+  return {
+    start: new Date(year, monthNumber - 1, 1),
+    end: new Date(year, monthNumber, 1),
+  };
+};
+
+const getHistoryDateBounds = (filter, fromMonth, toMonth) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (filter === 'today') {
+    return { start: today, end: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1) };
+  }
+  if (filter === 'week') {
+    const start = new Date(today);
+    start.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    return { start, end: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7) };
+  }
+  if (filter === 'month') {
+    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+  }
+  if (filter === 'range') {
+    const startBounds = getMonthBounds(fromMonth);
+    const endBounds = getMonthBounds(toMonth);
+    if (!startBounds || !endBounds || startBounds.start > endBounds.start) return null;
+    return { start: startBounds.start, end: endBounds.end };
+  }
+  return null;
+};
 
 const Patients = () => {
   const navigate = useNavigate();
@@ -19,6 +62,19 @@ const Patients = () => {
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState('all');
+  const [historyFilter, setHistoryFilter] = useState('all');
+  const [historyFromMonth, setHistoryFromMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [historyToMonth, setHistoryToMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [historyRecords, setHistoryRecords] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const [selectedPatientForDependants, setSelectedPatientForDependants] = useState(null);
   const [isDependantsModalOpen, setIsDependantsModalOpen] = useState(false);
 
@@ -26,6 +82,91 @@ const Patients = () => {
   useEffect(() => {
     dispatch(fetchPatients());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (viewMode !== 'attended') return undefined;
+
+    let mounted = true;
+    const loadAttendanceHistory = async () => {
+      setHistoryLoading(true);
+      setHistoryError(null);
+      try {
+        const [consultationsResponse, antenatalResponse] = await Promise.all([
+          getConsultations(),
+          getAllAnteNatalRecords(),
+        ]);
+        if (!mounted) return;
+
+        const patientsById = new Map();
+        const dependantsById = new Map();
+        patients.forEach((patient) => {
+          const patientId = patient.id || patient._id;
+          if (patientId) patientsById.set(String(patientId), patient);
+          (patient.dependants || []).forEach((dependant) => {
+            const dependantId = dependant.id || dependant._id;
+            if (dependantId) dependantsById.set(String(dependantId), dependant);
+          });
+        });
+
+        const entries = [];
+        unwrapList(consultationsResponse, 'consultations').forEach((consultation) => {
+          const patientId = consultation.patientId || consultation.patient?.id || consultation.patient?._id;
+          const dependantId = consultation.dependantId || consultation.dependant?.id || consultation.dependant?._id;
+          const patient = consultation.patient || patientsById.get(String(patientId));
+          const dependant = consultation.dependant || dependantsById.get(String(dependantId));
+          const subject = dependantId ? dependant : patient;
+          const date = consultation.createdAt;
+          if (!patientId || !subject || !date || Number.isNaN(new Date(date).getTime())) return;
+
+          entries.push({
+            patientId: String(patientId),
+            dependantId: dependantId ? String(dependantId) : null,
+            name: `${subject.firstName || ''} ${subject.middleName || ''} ${subject.lastName || ''}`.trim() || 'Unknown',
+            hospitalId: patient?.hospitalId || subject.hospitalId || '—',
+            patientSnapshot: patient,
+            dependantSnapshot: dependantId ? dependant : null,
+            recordType: 'Consultation',
+            doctor: `${consultation.doctor?.firstName || ''} ${consultation.doctor?.lastName || ''}`.trim() || '—',
+            date: new Date(date),
+          });
+        });
+
+        unwrapList(antenatalResponse, 'anteNatalRecords').forEach((antenatal) => {
+          const patientId = antenatal.patientId || antenatal.patient?.id || antenatal.patient?._id;
+          const patient = antenatal.patient || patientsById.get(String(patientId));
+          (antenatal.anteNatalRecords || []).forEach((record) => {
+            const dependantId = record.dependantId || record.dependant?.id || record.dependant?._id;
+            const dependant = record.dependant || dependantsById.get(String(dependantId));
+            const subject = dependantId ? dependant : patient;
+            const date = record.createdAt || antenatal.createdAt;
+            if (!patientId || !subject || !date || Number.isNaN(new Date(date).getTime())) return;
+
+            entries.push({
+              patientId: String(patientId),
+              dependantId: dependantId ? String(dependantId) : null,
+              name: `${subject.firstName || ''} ${subject.middleName || ''} ${subject.lastName || ''}`.trim() || 'Unknown',
+              hospitalId: patient?.hospitalId || subject.hospitalId || '—',
+              patientSnapshot: patient,
+              dependantSnapshot: dependantId ? dependant : null,
+              recordType: 'Antenatal',
+              doctor: `${record.doctor?.firstName || ''} ${record.doctor?.lastName || ''}`.trim() || '—',
+              date: new Date(date),
+            });
+          });
+        });
+
+        setHistoryRecords(entries);
+      } catch (loadError) {
+        console.error('Failed to load attended-patient history', loadError);
+        if (mounted) setHistoryError(getErrorMessage(loadError, 'Failed to load attendance history'));
+      } finally {
+        if (mounted) setHistoryLoading(false);
+      }
+    };
+
+    loadAttendanceHistory();
+    return () => { mounted = false; };
+  }, [viewMode, historyRefreshKey, patients]);
 
   // Show error toast if there's an error
   useEffect(() => {
@@ -193,6 +334,86 @@ const Patients = () => {
     .map((item, index) => ({ ...item, serialNumber: index + 1 })), [primaryPatients, dependantsOnly]);
 
   const activeData = viewMode === 'primary' ? primaryPatients : viewMode === 'dependants' ? dependantsOnly : allRecords;
+  const historyBounds = getHistoryDateBounds(historyFilter, historyFromMonth, historyToMonth);
+  const attendedPatients = useMemo(() => {
+    if (historyFilter === 'range' && !historyBounds) return [];
+    const filteredEntries = historyRecords.filter(({ date }) => (
+      !historyBounds || (date >= historyBounds.start && date < historyBounds.end)
+    ));
+    const grouped = new Map();
+
+    filteredEntries.forEach((entry) => {
+      const key = `${entry.patientId}:${entry.dependantId || 'primary'}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.visitCount += 1;
+        existing.recordTypes.add(entry.recordType);
+        if (entry.date > existing.lastAttendedAt) {
+          existing.lastAttendedAt = entry.date;
+          existing.lastAttendedBy = entry.doctor;
+        }
+      } else {
+        grouped.set(key, {
+          ...entry,
+          visitCount: 1,
+          recordTypes: new Set([entry.recordType]),
+          lastAttendedAt: entry.date,
+          lastAttendedBy: entry.doctor,
+        });
+      }
+    });
+
+    return Array.from(grouped.values())
+      .map((entry, index) => ({
+        ...entry,
+        serialNumber: index + 1,
+        recordType: Array.from(entry.recordTypes).join(', '),
+        lastAttendedAt: entry.lastAttendedAt.toLocaleString(),
+        lastAttendedTimestamp: entry.lastAttendedAt.getTime(),
+        attendedSearch: `${entry.name} ${entry.hospitalId} ${entry.recordType} ${entry.lastAttendedBy}`.toLowerCase(),
+      }))
+      .sort((a, b) => b.lastAttendedTimestamp - a.lastAttendedTimestamp);
+  }, [historyRecords, historyBounds, historyFilter]);
+
+  const attendanceColumns = useMemo(() => [
+    { key: 'serialNumber', title: 'S/n', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'hospitalId', title: 'Hospital ID', sortable: true, className: 'text-base-content font-medium' },
+    {
+      key: 'name',
+      title: 'Patient / Subject Name',
+      sortable: true,
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate(`/frontdesk/patients/${row.patientId}`, {
+              state: {
+                patientSnapshot: row.patientSnapshot,
+                dependantId: row.dependantId,
+                dependantSnapshot: row.dependantSnapshot,
+              },
+            })}
+            className="font-semibold text-left text-primary hover:underline"
+          >
+            {value}
+          </button>
+          {row.dependantId && <div className="text-[11px] text-base-content/60">Dependant</div>}
+        </div>
+      ),
+    },
+    { key: 'recordType', title: 'Record Type(s)', sortable: true, className: 'text-base-content/70' },
+    { key: 'visitCount', title: 'Visits', sortable: true, className: 'text-base-content/70' },
+    {
+      key: 'lastAttendedTimestamp',
+      title: 'Last Attended',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value) => new Date(value).toLocaleString(),
+    },
+    { key: 'lastAttendedBy', title: 'Doctor', sortable: true, className: 'text-base-content/70' },
+    { key: 'attendedSearch', title: '', className: 'hidden' },
+  ], [navigate]);
 
   // Define table columns
   const columns = useMemo(() => [
@@ -358,6 +579,7 @@ const Patients = () => {
                 ['all', 'All Records', allRecords.length, FaUsers],
                 ['primary', 'Primary Patients', primaryPatients.length, FaUser],
                 ['dependants', 'Dependants Only', dependantsOnly.length, FaChild],
+                ['attended', 'Attended Patients', attendedPatients.length, FaClipboardList],
               ].map(([mode, label, count, Icon]) => (
                 <button key={mode} type="button" onClick={() => setViewMode(mode)} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === mode ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/70 hover:text-base-content'}`}>
                   <Icon className="w-3.5 h-3.5" /> {label} ({count})
@@ -366,11 +588,98 @@ const Patients = () => {
             </div>
           </div>
 
+          {viewMode === 'attended' && (
+            <div className="flex flex-col gap-3 mb-4 rounded-xl border border-base-300 bg-base-100 p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <label htmlFor="attendance-date-filter" className="mb-1 block text-xs font-semibold text-base-content/70">
+                  Attendance period
+                </label>
+                <select
+                  id="attendance-date-filter"
+                  className="select select-bordered select-sm w-full sm:w-48"
+                  value={historyFilter}
+                  onChange={(event) => setHistoryFilter(event.target.value)}
+                >
+                  <option value="all">All time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This week</option>
+                  <option value="month">This month</option>
+                  <option value="range">Month range</option>
+                </select>
+              </div>
+              {historyFilter === 'range' && (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div>
+                    <label htmlFor="attendance-from-month" className="mb-1 block text-xs font-semibold text-base-content/70">
+                      From month
+                    </label>
+                    <input
+                      id="attendance-from-month"
+                      type="month"
+                      className="input input-bordered input-sm w-full"
+                      value={historyFromMonth}
+                      onChange={(event) => setHistoryFromMonth(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="attendance-to-month" className="mb-1 block text-xs font-semibold text-base-content/70">
+                      To month
+                    </label>
+                    <input
+                      id="attendance-to-month"
+                      type="month"
+                      className="input input-bordered input-sm w-full"
+                      value={historyToMonth}
+                      onChange={(event) => setHistoryToMonth(event.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-base-content/60">
+                Showing patients with a consultation or antenatal record in the selected period.
+              </p>
+            </div>
+          )}
+
           {/* Patients Table */}
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-4 card-body 2xl:p-6">
-                {isLoading ? (
+                {viewMode === 'attended' ? (
+                  historyLoading ? (
+                    <div className="flex min-h-48 items-center justify-center gap-3 text-sm text-base-content/60">
+                      <span className="loading loading-spinner loading-md" />
+                      Loading attendance history...
+                    </div>
+                  ) : historyError ? (
+                    <div className="flex flex-col items-center gap-3 py-12 text-center">
+                      <p className="text-sm text-error">{historyError}</p>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => setHistoryRefreshKey((key) => key + 1)}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : historyFilter === 'range' && !historyBounds ? (
+                    <div className="py-12 text-center text-sm text-warning">
+                      The start month must be the same as or earlier than the end month.
+                    </div>
+                  ) : (
+                    <DataTable
+                      data={attendedPatients}
+                      columns={attendanceColumns}
+                      searchable={true}
+                      sortable={true}
+                      paginated={true}
+                      initialEntriesPerPage={10}
+                      maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                      showEntries={true}
+                      searchPlaceholder="Search attended patients..."
+                    />
+                  )
+                ) : isLoading ? (
                   <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
                     <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
                       <table className="table w-full table-zebra">
