@@ -62,10 +62,6 @@ const AddLabTestModal = ({ isOpen, onClose, onAdd }) => {
       setQuery('');
       setSelectedService(null);
       onClose();
-      // Refresh page after adding lab test
-      setTimeout(() => {
-        window.location.reload();
-      }, 300);
     } else {
       toast.error('Please select a lab test');
     }
