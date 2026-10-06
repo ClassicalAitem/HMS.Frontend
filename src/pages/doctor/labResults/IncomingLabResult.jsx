@@ -49,7 +49,7 @@ const IncomingLabResults = () => {
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
-  const { refreshQueueCount, refreshLabReadyCount, lastUpdate } = useNotifications();
+  const { refreshQueueCount, refreshLabReadyCount, labReadyUpdate } = useNotifications();
   const { isLockedForMe } = useCallState();
 
 
@@ -161,7 +161,7 @@ const IncomingLabResults = () => {
 
     fetchIncoming();
     return () => { mounted = false; };
-  }, [refreshKey, lastUpdate]);
+  }, [refreshKey, labReadyUpdate]);
 
   useEffect(() => {
     const handleStorageChange = (e) => {

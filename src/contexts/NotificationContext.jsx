@@ -15,6 +15,8 @@ export const NotificationProvider = ({ children }) => {
   const [incomingCount, setIncomingCount] = useState(0);
   const [labReadyCount, setLabReadyCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const [incomingUpdate, setIncomingUpdate] = useState(0);
+  const [labReadyUpdate, setLabReadyUpdate] = useState(0);
   const roleRef = useRef(null);
 
   const refreshQueueCount = useCallback(() => {
@@ -83,6 +85,7 @@ export const NotificationProvider = ({ children }) => {
 
     const handleIncoming = (payload) => {
       setLastUpdate(Date.now());
+      setIncomingUpdate((update) => update + 1);
       refreshQueueCount();
       refreshLabReadyCount();
       if (document.visibilityState !== 'visible') return;
@@ -114,6 +117,7 @@ export const NotificationProvider = ({ children }) => {
     // Fires when a lab or sonography result is ready for doctor/medical-director review
     const handleLabReady = (payload) => {
       setLastUpdate(Date.now());
+      setLabReadyUpdate((update) => update + 1);
       refreshLabReadyCount();
       if (document.visibilityState !== 'visible') return;
 
@@ -142,16 +146,18 @@ export const NotificationProvider = ({ children }) => {
 
     socket.on('patient:incoming', handleIncoming);
     socket.on('patient:labResultReady', handleLabReady);
-    socket.on('patient:statusChanged', () => {
+    const handleStatusChanged = () => {
       setLastUpdate(Date.now());
+      setIncomingUpdate((update) => update + 1);
       refreshQueueCount();
       refreshLabReadyCount();
-    });
+    };
+    socket.on('patient:statusChanged', handleStatusChanged);
 
     return () => {
       socket.off('patient:incoming', handleIncoming);
       socket.off('patient:labResultReady', handleLabReady);
-      socket.off('patient:statusChanged');
+      socket.off('patient:statusChanged', handleStatusChanged);
     };
   }, [isAuthenticated, user, refreshLabReadyCount, refreshQueueCount]);
 
@@ -159,7 +165,16 @@ export const NotificationProvider = ({ children }) => {
 
   return (
     <NotificationContext.Provider
-      value={{ incomingCount, labReadyCount, refreshQueueCount, refreshLabReadyCount, clearLabReadyCount, lastUpdate }}
+      value={{
+        incomingCount,
+        labReadyCount,
+        refreshQueueCount,
+        refreshLabReadyCount,
+        clearLabReadyCount,
+        lastUpdate,
+        incomingUpdate,
+        labReadyUpdate,
+      }}
     >
       {children}
         <PushNotificationPrompt />

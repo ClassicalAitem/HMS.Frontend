@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header, EmptyState, DataTable } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { FaDownload } from 'react-icons/fa';
@@ -9,6 +10,7 @@ import { LabResultDetailsModal } from '@/components/modals';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 
 const LabResults = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [labResults, setLabResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -292,7 +294,7 @@ const resolvedData = useMemo(() => {
                     showEntries={true}
                     onRowClick={(row) => {
                       const id = row?.id || row?.labId;
-                      if (id) window.location.href = `/dashboard/doctor/labResults/${id}`;
+                      if (id) navigate(`/dashboard/doctor/labResults/${id}`);
                     }}
                   />
                 )}
