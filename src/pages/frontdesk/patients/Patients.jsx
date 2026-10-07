@@ -304,6 +304,7 @@ const Patients = () => {
     familyName: patient.familyName || '',
     companyName: patient.companyName || '',
     status: patient.status || 'Active',
+    isOldPatient: patient.isOldPatient || false,
   })), [patients]);
 
   const dependantsOnly = useMemo(() => patients.flatMap((patient) => (
@@ -326,6 +327,7 @@ const Patients = () => {
       familyName: patient.familyName || '',
       companyName: patient.companyName || '',
       status: dependant.status || patient.status || 'Active',
+      isOldPatient: patient.isOldPatient || false,
       dependantsCount: 0,
     }))
   )).map((item, index) => ({ ...item, serialNumber: index + 1 })), [patients]);
@@ -440,13 +442,16 @@ const Patients = () => {
           <div className="text-[11px] text-base-content/60">Dep. of <strong className="text-primary">{row.primaryPatientName}</strong></div>
         </div>
       ) : (
-        <button type="button" onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          navigate(`/frontdesk/patients/${row.id}`);
-        }} className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline">
-          {value}
-        </button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            navigate(`/frontdesk/patients/${row.id}`);
+          }} className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline">
+            {value}
+          </button>
+          {row.isOldPatient && <span className="badge badge-neutral badge-xs uppercase text-[9px] font-bold">Old Patient</span>}
+        </div>
       )
     },
     {
