@@ -11,6 +11,7 @@ import VitalsTab from '@/components/admitted/VitalsTab'
 import WardRoundTab from '@/components/admitted/WardRoundTab'
 import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
 import BloodTransfusionTab from '@/components/admitted/BloodTransfusionTab'
+import BloodAvailabilityTab from '@/components/admitted/BloodAvailabilityTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
@@ -379,14 +380,20 @@ const AdmittedPatient = () => {
             )}
 
             {activeTab === 'blood' && (
-              <BloodTransfusionTab
-                patientId={patientId}
-                dependantId={dependantId}
-                consultationId={consultationId}
-                admissionId={admission?.id || admission?._id}
-                isDoctor={false}
-                isNurse={true}
-              />
+              <div className="space-y-4">
+                <BloodAvailabilityTab
+                  admissionId={admission?.id || admission?._id}
+                  isNurse
+                />
+                <BloodTransfusionTab
+                  patientId={patientId}
+                  dependantId={dependantId}
+                  consultationId={consultationId}
+                  admissionId={admission?.id || admission?._id}
+                  isDoctor={false}
+                  isNurse={true}
+                />
+              </div>
             )}
 
             {activeTab === 'ivfluid' && (

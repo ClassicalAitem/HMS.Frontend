@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye } from 'react-icons/fa';
+import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye, FaTint } from 'react-icons/fa';
 import { Header } from '@/components/common';
 import LaboratorySidebar from '@/components/laboratory/dashboard/LaboratorySidebar';
 import { getDependantById } from '@/services/api/dependantAPI';
@@ -8,9 +8,12 @@ import { getPatientById } from '@/services/api/patientsAPI';
 import { getInvestigationByPatientId, updateInvestigation } from '@/services/api/investigationRequestAPI';
 import { getAllBillings } from '@/services/api/billingAPI';
 import { getLabResults } from '@/services/api/labResultsAPI';
+import { getBloodDispenseByPatient, createBloodDispense } from '@/services/api/bloodDispenseApi';
 import { enrichInvestigationTestPayment } from '@/utils/investigationVisibility';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
+import BloodDispenseModal from './BloodDispenseModal';
+import CrossMatchModal from './CrossMatchModal';
 
 const unwrapRecord = (response) => response?.data?.data || response?.data || response;
 
@@ -92,6 +95,10 @@ const LabAdmittedPatientDetails = () => {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [updatingInvestigationId, setUpdatingInvestigationId] = useState(null);
+  const [activeTab, setActiveTab] = useState('investigations');
+  const [isBloodModalOpen, setIsBloodModalOpen] = useState(false);
+  const [isCrossMatchModalOpen, setIsCrossMatchModalOpen] = useState(false);
+  const [bloodRecords, setBloodRecords] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -99,7 +106,7 @@ const LabAdmittedPatientDetails = () => {
     const loadDetails = async () => {
       setLoading(true);
       try {
-        const [patientResponse, investigationResponse, billingResponse, labResultsResponse] = await Promise.all([
+        const [patientResponse, investigationResponse, billingResponse, labResultsResponse, bloodRecordsResponse] = await Promise.all([
           getPatientById(patientId),
           getInvestigationByPatientId(patientId).catch((error) => {
             if (error?.response?.status !== 404) throw error;
@@ -110,6 +117,7 @@ const LabAdmittedPatientDetails = () => {
             console.warn('Could not check existing lab results:', error);
             return null;
           }),
+          getBloodDispenseByPatient(patientId).catch(() => ({ data: [] }))
         ]);
         const patientRecord = unwrapRecord(patientResponse);
         const patientData = Array.isArray(patientRecord) ? patientRecord[0] : patientRecord;
@@ -161,6 +169,7 @@ const LabAdmittedPatientDetails = () => {
           setInvestigations(labRequests);
           setLabResultsByInvestigationId(resultsByInvestigationId);
           setLabResultLookupFailed(labResultsResponse === null);
+          setBloodRecords(bloodRecordsResponse?.data || []);
         }
       } catch (error) {
         console.error('Failed to load laboratory patient details:', error);
@@ -176,6 +185,31 @@ const LabAdmittedPatientDetails = () => {
 
   const subject = dependant || patient;
   const fullName = subject?.fullName || `${subject?.firstName || ''} ${subject?.lastName || ''}`.trim() || 'Patient';
+  const crossMatchRecords = bloodRecords.filter((record) => (
+    record.recordType === 'crossMatch' || (!record.recordType && record.crossCheckDate)
+  ));
+  const bloodDispenseRecords = bloodRecords.filter((record) => (
+    record.recordType === 'dispense' || (!record.recordType && record.bagNo)
+  ));
+  const saveBloodRecord = async (newRecord) => {
+    try {
+      const payload = {
+        ...newRecord,
+        patientId,
+        dependantId: dependantId || undefined,
+        admissionId: admission?.id || admission?._id || undefined,
+      };
+      const response = await createBloodDispense(payload);
+      if (!response.success) return false;
+      setBloodRecords((current) => [response.data, ...current]);
+      return true;
+    } catch (error) {
+      console.error('Failed to save blood record', error);
+      toast.error(error?.response?.data?.message || 'Failed to save record');
+      return false;
+    }
+  };
+
   const handleLabResultAction = (request) => {
     if (labResultLookupFailed) {
       toast.error('Could not check whether a lab result already exists.');
@@ -244,8 +278,24 @@ const LabAdmittedPatientDetails = () => {
             <div><p className="text-xs text-base-content/60">Status</p><p className="font-medium capitalize">{subject?.status || patient?.status || 'Unknown'}</p></div>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
-            <div className="flex items-center gap-2 border-b border-base-200 px-4 py-3">
+          <div className="tabs tabs-boxed bg-base-100 p-1 w-fit">
+            <button
+              className={`tab tab-lg ${activeTab === 'investigations' ? 'tab-active font-semibold' : ''}`}
+              onClick={() => setActiveTab('investigations')}
+            >
+              Lab Requests
+            </button>
+            <button
+              className={`tab tab-lg ${activeTab === 'blood' ? 'tab-active font-semibold text-error' : ''}`}
+              onClick={() => setActiveTab('blood')}
+            >
+              Blood Dispense
+            </button>
+          </div>
+
+          {activeTab === 'investigations' && (
+            <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+              <div className="flex items-center gap-2 border-b border-base-200 px-4 py-3">
               <FaFlask className="text-primary" aria-hidden="true" />
               <h2 className="font-semibold">Laboratory Investigation Requests</h2>
               <span className="badge badge-ghost badge-sm">{investigations.length}</span>
@@ -344,6 +394,98 @@ const LabAdmittedPatientDetails = () => {
               </div>
             )}
           </section>
+          )}
+
+          {activeTab === 'blood' && (
+            <div className="space-y-5">
+              <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+                <div className="flex items-center justify-between gap-2 border-b border-base-200 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <FaTint className="text-primary" aria-hidden="true" />
+                    <h2 className="font-semibold">Cross-Matching List</h2>
+                    <span className="badge badge-ghost badge-sm">{crossMatchRecords.length}</span>
+                  </div>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setIsCrossMatchModalOpen(true)}>
+                    <FaPlus /> Add Cross-Match
+                  </button>
+                </div>
+                {crossMatchRecords.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-base-content/60">No cross-matching records found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="table table-zebra w-full">
+                      <thead><tr><th>Date</th><th>Patient Blood Group</th><th>Compatibility Results</th><th>Lab Representative</th></tr></thead>
+                      <tbody>
+                        {crossMatchRecords.map((record) => (
+                          <tr key={record._id || record.id}>
+                            <td>{record.crossCheckDate ? String(record.crossCheckDate).slice(0, 10) : '—'}</td>
+                            <td>{record.patientBloodGroup || '—'}</td>
+                            <td>{record.results || '—'}</td>
+                            <td>{record.labRepSign || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+                <div className="flex items-center justify-between gap-2 border-b border-base-200 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <FaTint className="text-error" aria-hidden="true" />
+                    <h2 className="font-semibold">Blood Dispense List</h2>
+                    <span className="badge badge-ghost badge-sm">{bloodDispenseRecords.length}</span>
+                  </div>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setIsBloodModalOpen(true)}>
+                    <FaPlus /> Add Blood Dispense
+                  </button>
+                </div>
+                {bloodDispenseRecords.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-base-content/60">No blood dispense records found.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="table table-zebra w-full">
+                      <thead><tr><th>Bag No.</th><th>Donor Group</th><th>Expires</th><th>Delivered By</th><th>Date Out</th><th>Status</th><th>Lab Representative</th><th>Nurse Representative</th></tr></thead>
+                      <tbody>
+                        {bloodDispenseRecords.map((record) => (
+                          <tr key={record._id || record.id}>
+                            <td className="font-medium">{record.bagNo || '—'}</td>
+                            <td>{record.donorGroup || '—'}</td>
+                            <td>{record.expiredDate ? String(record.expiredDate).slice(0, 10) : '—'}</td>
+                            <td>{record.deliveredBy || '—'}</td>
+                            <td>{record.dateOut ? String(record.dateOut).slice(0, 10) : '—'}</td>
+                            <td>
+                              {record.status ? (
+                                <span className={`badge badge-sm ${record.status === 'Dispensed' ? 'badge-success' : record.status === 'Available' ? 'badge-info' : 'badge-error'}`}>
+                                  {record.status}
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td>{record.labRep || '—'}</td>
+                            <td>{record.nurseRep || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          <BloodDispenseModal
+            isOpen={isBloodModalOpen}
+            onClose={() => setIsBloodModalOpen(false)}
+            patient={subject}
+            onSave={saveBloodRecord}
+          />
+          <CrossMatchModal
+            isOpen={isCrossMatchModalOpen}
+            onClose={() => setIsCrossMatchModalOpen(false)}
+            patient={subject}
+            onSave={saveBloodRecord}
+          />
         </div>
       </main>
     </div>
