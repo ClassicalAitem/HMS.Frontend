@@ -43,7 +43,9 @@ PATCH: Restock Inventory
 curl --location --request PATCH '/inventory/restockInventory/68e918a106ead03e6259ab21' \
 --data '{
 "quantity": "200",
-"batchNumber": "CFX2025B"
+"batchNumber": "CFX2025B",
+"sellingPrice": 300,
+"expiryDate": "2027-10-14"
 
 }'
 
@@ -68,6 +70,8 @@ Example Response
 "\_\_v": 0
 }
 }
+
+`batchNumber`, `sellingPrice`, and `expiryDate` are optional; omit a field to keep its current value.
 
 =========================================================================================================================
 

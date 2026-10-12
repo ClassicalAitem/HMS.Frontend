@@ -819,7 +819,7 @@ useEffect(() => {
 
       {/* Preview Modal */}
       {showPreview && previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-auto">
             <div className="p-4 border-b border-base-200 flex items-center justify-between sticky top-0 bg-base-100">
               <h3 className="text-lg font-semibold">{previewFile.name}</h3>
@@ -862,7 +862,7 @@ useEffect(() => {
       )}
     {/* Pending Investigations Modal */}
     {showPendingModal && (
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
         <div className="bg-base-100 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
           <div className="p-5 border-b border-base-200 flex justify-between items-center bg-base-100">
             <h3 className="font-bold text-lg text-warning flex items-center gap-2">

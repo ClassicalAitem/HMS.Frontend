@@ -173,6 +173,8 @@ import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModa
 import CompletedTests from "@/pages/laboratory/completed/CompletedTests";
 import LaboratoryPatientProfile from "@/pages/laboratory/patients/LaboratoryPatientDetails";
 import LaboratoryPatientsList from "@/pages/laboratory/patients/LaboratoryPatientsList";
+import LabAdmittedList from "@/pages/laboratory/admitted/LabAdmittedList";
+import LabAdmittedPatientDetails from "@/pages/laboratory/admitted/LabAdmittedPatientDetails";
 import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
 import FrontDeskPaymentRecords from "@/pages/frontdesk/payment-records/ReceiptRecord";
 import NursePaymentRecords from "@/pages/nurse/payment-records/ReceiptRecord";
@@ -184,6 +186,8 @@ import SonographerIncoming from "@/pages/sonographer/incoming/Incoming";
 import SonographerIncomingDetails from "@/pages/sonographer/incoming/IncomingDetails";
 import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory";
 import SonographerPatients from "@/pages/sonographer/patients/SonographerPatients";
+import SonographerAdmittedList from "@/pages/sonographer/admitted/SonographerAdmittedList";
+import SonographerAdmittedPatientDetails from "@/pages/sonographer/admitted/SonographerAdmittedPatientDetails";
 import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
 import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
 import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
@@ -1249,6 +1253,14 @@ const AppRoutes = () => {
         path="/dashboard/laboratory/patients"
         element={<LaboratoryPatientsList />}
       />
+      <Route
+        path="/dashboard/laboratory/admitted"
+        element={<LabAdmittedList />}
+      />
+      <Route
+        path="/dashboard/laboratory/admitted/:patientId"
+        element={<LabAdmittedPatientDetails />}
+      />
 
       {/*==============================================================================================================
 
@@ -1272,6 +1284,16 @@ const AppRoutes = () => {
       <Route path="/dashboard/sonographer/patients" element={
         <ProtectedRoute allowedRoles={['sonographer']}>
           <SonographerPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/sonographer/admitted" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerAdmittedList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/sonographer/admitted/:patientId" element={
+        <ProtectedRoute allowedRoles={['sonographer']}>
+          <SonographerAdmittedPatientDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/sonographer/scan-history" element={

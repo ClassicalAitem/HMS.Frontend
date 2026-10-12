@@ -339,14 +339,17 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const setAllDecisions = (status) => {
     setHasSavedDecisions(false);
 
-    setItemDecisions(() => {
+    setItemDecisions((prev) => {
       const next = {};
       billings.forEach((bill) => {
         next[bill.id] = {};
-        (bill.itemDetails || []).forEach((item, idx) => {
-          next[bill.id][idx] = {
+        (bill.itemDetails || []).forEach((item) => {
+          const itemIdx = item.originalIdx;
+          next[bill.id][itemIdx] = {
             status,
             hmoCovered: status === 'approved' ? Number(item.total || 0) : 0,
+            isClaimed:
+              prev[bill.id]?.[itemIdx]?.isClaimed ?? !!item.isClaimed,
           };
         });
       });
@@ -414,26 +417,31 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
             hmoCovered,
             patientOwes: patientPays,
             isClaimed: decision.isClaimed || false,
+            hmoApprovedBy: hmoUserName,
+            hmoApprovedById: hmoUserId,
+            hmoApprovedAt: new Date().toISOString(),
           };
         });
 
-        const outstandingBill = updatedItems.reduce(
-          (sum, item) => sum + Number(item.patientOwes || 0),
-          0,
-        );
-
-        const hmoCoveredAmount = updatedItems.reduce(
-          (sum, item) => sum + Number(item.hmoCovered || 0),
-          0,
-        );
+        const outstandingBill = updatedItems.reduce((sum, item) => {
+          const itemTotal = Number(item.total || 0);
+          const hmoCovered = Number(item.hmoCovered || 0);
+          const patientOwes =
+            item.patientOwes ??
+            (item.hmoStatus === 'approved'
+              ? 0
+              : item.hmoStatus === 'partial'
+                ? itemTotal - hmoCovered
+                : itemTotal);
+          return sum + Number(patientOwes);
+        }, 0);
 
         await updateBilling(pendingBill.id, {
           itemDetails: updatedItems,
           outstandingBill,
-          hmoCoveredAmount,
-          hmoApprovedBy: hmoUserName,
-          hmoApprovedById: hmoUserId,
-          hmoApprovedAt: new Date().toISOString(),
+          hmoReviewedBy: hmoUserName,
+          hmoReviewedById: hmoUserId,
+          hmoReviewedAt: new Date().toISOString(),
         });
       }),
     );

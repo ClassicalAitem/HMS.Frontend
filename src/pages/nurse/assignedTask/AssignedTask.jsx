@@ -207,7 +207,7 @@ const AssignedTask = () => {
       </div>
       {/* Completion Modal */}
       {taskToComplete && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="card w-full max-w-md bg-base-100 shadow-2xl animate-in fade-in zoom-in-95">
             <div className="p-5 border-b border-base-200">
               <h3 className="font-bold text-lg text-base-content">

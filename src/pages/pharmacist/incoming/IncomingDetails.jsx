@@ -8,8 +8,9 @@ import { getConsultations } from '@/services/api/consultationAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
-import { getInventories } from '@/services/api/inventoryAPI'
+import { getInventories, createInventory } from '@/services/api/inventoryAPI'
 import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal } from '@/components/modals'
+import { InventoryFormModal } from '@/components/modals/InventoryFormModal'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
@@ -46,6 +47,7 @@ const IncomingDetails = () => {
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
   const [dispenseModalRows, setDispenseModalRows] = useState(null)
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
+  const [addingInventoryFor, setAddingInventoryFor] = useState(null)
   const [pendingAction, setPendingAction] = useState(null)
   const [doctors, setDoctors] = useState({}) 
   const [dependants, setDependants] = useState([])
@@ -279,8 +281,8 @@ const getDispenseInfo = (med) => {
   const getDrugAvailabilityStatus = (med, dispenseInfo) => {
   const unitSuffix = dispenseInfo.unit ? ` ${dispenseInfo.unit}` : ''
 
-  // 1. Not Stocked by Hospital (Explicitly set unavailable or missing inventory ID)
-  if (med.availability === 'unavailable' || !med.inventoryId) {
+  // 1. Not Stocked by Hospital (missing from inventory)
+  if (!dispenseInfo.inv) {
     return {
       label: 'Not Stocked by Hospital',
       badgeClass: 'badge-warning',
@@ -371,6 +373,14 @@ const getDispenseInfo = (med) => {
           <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
             {m.availabilityInfo.label}
           </span>
+          {!isHistory && m.availabilityInfo.label === 'Not Stocked by Hospital' && (
+            <button 
+              className="btn btn-xs btn-outline btn-primary ml-2"
+              onClick={() => setAddingInventoryFor(m)}
+            >
+              Add to Inventory
+            </button>
+          )}
             {m.hmoStatus === 'approved' ? (
               <span className="badge badge-sm badge-success font-medium">Covered by HMO</span>
             ) : m.hmoStatus === 'partial' ? (
@@ -498,6 +508,20 @@ const getDispenseInfo = (med) => {
   const handlePrescriptionAction = (p) => {
     setPendingAction({ prescriptionIds: [p._id] })
     setDispenseModalRows(buildDispenseRowsForPrescriptions([p]))
+  }
+
+  const handleCreateInventory = async (payload) => {
+    const p = createInventory(payload)
+    toast.promise(p, { loading: 'Creating item...', success: 'Item created', error: 'Failed creating item' })
+    try {
+      await p
+      const res = await getInventories()
+      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
+      setInventory(list)
+      setAddingInventoryFor(null)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   const handleCancelPrescription = async (p) => {
@@ -908,6 +932,17 @@ const getDispenseInfo = (med) => {
             isSuperAdmin={isSuperAdmin}
             onCancel={() => setDispenseModalRows(null)}
             onConfirm={(finalRows) => submitDispense(finalRows, pendingAction)}
+          />
+        )}
+
+        {addingInventoryFor && (
+          <InventoryFormModal
+            item={{ 
+              name: addingInventoryFor.drugName, 
+              description: `Dosage: ${addingInventoryFor.dosage || ''}\nFrequency: ${addingInventoryFor.frequency || ''}\nDuration: ${addingInventoryFor.duration || ''}`.trim()
+            }}
+            onClose={() => setAddingInventoryFor(null)}
+            onSubmit={handleCreateInventory}
           />
         )}
 

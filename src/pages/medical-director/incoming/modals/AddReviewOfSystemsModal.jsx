@@ -110,7 +110,7 @@ const AddReviewOfSystemsModal = ({
   const removeReview = (index) => setReviews((previous) => previous.filter((_, itemIndex) => itemIndex !== index));
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="w-full max-w-2xl bg-base-100 rounded-xl shadow-2xl overflow-hidden border border-base-200">
         <div className="flex items-center justify-between border-b p-5">
           <h2 className="text-xl font-bold text-base-content">{review ? 'Edit Review of Systems' : 'Review of Systems'}</h2>

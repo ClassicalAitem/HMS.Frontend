@@ -39,6 +39,7 @@ const Registration = () => {
     cardType: 'personal',
     familyName: '',
     companyName: '',
+    isOldPatient: false,
     
     // Next of Kin (matching backend API structure)
     nextOfKin: {
@@ -356,6 +357,7 @@ const Registration = () => {
         cardType: formData.cardType || 'personal',
         ...(formData.cardType === 'family' && formData.familyName && { familyName: formatCardName(formData.familyName) }),
         ...(formData.cardType === 'company' && formData.companyName && { companyName: formatCardName(formData.companyName) }),
+        isOldPatient: formData.isOldPatient,
         ...(formData.email && { email: formData.email }),
         ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
         ...(formData.town && { town: formData.town }),
@@ -405,6 +407,7 @@ const Registration = () => {
           cardType: 'personal',
           familyName: '',
           companyName: '',
+          isOldPatient: false,
           nextOfKin: {
             name: '',
             phone: '',
@@ -478,9 +481,23 @@ const Registration = () => {
             {/* First Section */}
             <div className="shadow-sm border border-base-200 card bg-base-100">
               <div className="p-4 card-body sm:p-6">
-                <div className="flex items-center gap-2 mb-6 pb-2 border-b border-base-200">
-                  <FaUser className="text-primary" />
-                  <h2 className="text-lg font-bold text-base-content">Patient Details</h2>
+                <div className="flex items-center justify-between gap-2 mb-6 pb-2 border-b border-base-200">
+                  <div className="flex items-center gap-2">
+                    <FaUser className="text-primary" />
+                    <h2 className="text-lg font-bold text-base-content">Patient Details</h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="label cursor-pointer flex gap-2">
+                      <span className="label-text font-medium text-base-content">Old Patient?</span>
+                      <input 
+                        type="checkbox" 
+                        name="isOldPatient"
+                        checked={formData.isOldPatient}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isOldPatient: e.target.checked }))}
+                        className="toggle toggle-primary toggle-sm" 
+                      />
+                    </label>
+                  </div>
                 </div>
                 
                 {/* Names Row */}

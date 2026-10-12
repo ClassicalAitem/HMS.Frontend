@@ -113,7 +113,7 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-center">
+      <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-center" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
         <div className="bg-white shadow-lg p-6 rounded-lg">
           <p className="text-center">Loading prescription.......</p>
         </div>
@@ -123,7 +123,7 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
 
   if (!prescription) {
     return (
-      <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-[1px] bg-opacity-40 flex justify-center items-center">
+      <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-[1px] bg-opacity-40 flex justify-center items-center" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
         <div className="bg-white shadow-lg p-6 rounded-lg">
           <p className="text-center mb-4">No data found</p>
           <button
@@ -138,7 +138,7 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-start overflow-y-auto">
+    <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-sm bg-opacity-40 flex justify-center items-start overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="bg-[#FFFFFF] shadow-lg p-6 max-w-[600px] w-full mt-10 rounded-lg">
         <div className="w-full">
           <div className="w-full flex flex-col gap-3">
@@ -207,11 +207,19 @@ const AddDrugModal = ({  setIsSelectModalOpen, prescriptionPatient }) => {
                         }}
                       >
                         <option value="">Select drugs</option>
-                        {inventoryItems.map((item) => (
-                          <option key={item._id} value={item._id}>
-                            {item.name} - {item.form} - Stock Remaining: {item.stock}
-                          </option>
-                        ))}
+                        {inventoryItems.map((item) => {
+                          const isAlreadySelected = meds.some((m) => m.inventoryId === item._id);
+                          return (
+                            <option 
+                              key={item._id} 
+                              value={item._id} 
+                              disabled={isAlreadySelected}
+                              className={isAlreadySelected ? "opacity-50 cursor-not-allowed text-error font-semibold" : ""}
+                            >
+                              {item.name} - {item.form} - Stock Remaining: {item.stock} {isAlreadySelected ? " (ALREADY SELECTED)" : ""}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -9,6 +9,7 @@ import apiClient from '@/services/api/apiClient';
 import admissionApi from '@/services/api/admissionApi';
 import { getBillingsByAdmissionId, getAllReceipts, createReceipt } from '@/services/api/billingAPI';
 import { getInvestigationByPatientId } from '@/services/api/investigationRequestAPI';
+import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { ReceiptModal } from '@/components/modals';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
@@ -23,7 +24,7 @@ const CashierAdmissionDetails = () => {
   const [loading, setLoading] = useState(true);
   const [admission, setAdmission] = useState(null);
   const [ledgerItems, setLedgerItems] = useState([]);
-  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], bts: [], treatments: [] });
+  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], treatments: [] });
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
   
@@ -31,6 +32,7 @@ const CashierAdmissionDetails = () => {
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
+  const [billDraft, setBillDraft] = useState(null);
 
   const toggleRow = (id) => {
     setOpenRow(openRow === id ? null : id);
@@ -77,21 +79,61 @@ const CashierAdmissionDetails = () => {
           });
         });
 
-        // Fetch Unbilled items (labs, IVs, blood, treatments)
+        // Fetch Unbilled items (labs, IVs, treatments)
         let unbilledLabs = [];
         let unbilledIvs = [];
-        let unbilledBts = [];
         let unbilledTreatments = [];
 
         try {
-          const labsRes = await getInvestigationByPatientId(admData.patientId);
+          const [labsResult, chargesResult] = await Promise.allSettled([
+            getInvestigationByPatientId(admData.patientId),
+            getServiceCharges(),
+          ]);
+          if (labsResult.status === 'rejected') throw labsResult.reason;
+          const labsRes = labsResult.value;
+          const chargesRes = chargesResult.status === 'fulfilled' ? chargesResult.value : [];
           const rawLabs = Array.isArray(labsRes?.data ?? labsRes) ? (labsRes?.data ?? labsRes) : [];
-          rawLabs.filter(l => !l.isBilled && String(l.admissionId || '') === String(admissionId)).forEach(l => {
-            unbilledLabs.push({
-              description: `${l.testName || l.type || 'Investigation'} (Lab Test)`,
-              quantity: 1, unitPrice: l.price || 0, price: l.price || 0, total: l.price || 0,
-              isBilled: false, category: 'Investigation', investigationRequestId: l._id || l.id,
+          const rawCharges = chargesRes?.data?.data ?? chargesRes?.data ?? chargesRes;
+          const serviceCharges = Array.isArray(rawCharges) ? rawCharges : rawCharges?.data || [];
+          const findCharge = (name, chargeId) => {
+            if (chargeId) {
+              const matchingCharge = serviceCharges.find(charge => String(charge.id || charge._id) === String(chargeId));
+              if (matchingCharge) return matchingCharge;
+            }
+            const normalizedName = String(name || '').trim().toLowerCase();
+            if (!normalizedName) return null;
+            return serviceCharges.find(charge => {
+              const chargeName = String(charge.service || charge.name || '').trim().toLowerCase();
+              return chargeName && (chargeName === normalizedName || chargeName.includes(normalizedName) || normalizedName.includes(chargeName));
             });
+          };
+
+          rawLabs
+            .filter(l => !l.isBilled && String(l.admissionId || '') === String(admissionId))
+            .forEach(l => {
+              const tests = Array.isArray(l.tests) && l.tests.length > 0 ? l.tests : [{ name: l.testName || l.type || 'Investigation' }];
+              tests.forEach(test => {
+                const testName = typeof test === 'string' ? test : test?.name || test?.code || l.type || 'Investigation';
+                const charge = findCharge(testName, test?.serviceChargeId || l.serviceChargeId);
+                const configuredPrice = test?.price ?? l.price ?? charge?.amount ?? charge?.price;
+                const hasConfiguredPrice = configuredPrice !== undefined && configuredPrice !== null &&
+                  !(typeof configuredPrice === 'string' && !configuredPrice.trim()) &&
+                  Number.isFinite(Number(configuredPrice));
+                const price = hasConfiguredPrice ? Number(configuredPrice) : 0;
+                unbilledLabs.push({
+                  code: 'LAB',
+                  description: `${testName} (Lab Test)`,
+                  quantity: 1,
+                  unitPrice: price,
+                  price,
+                  total: price,
+                  isBilled: false,
+                  category: 'Investigation',
+                  serviceChargeId: test?.serviceChargeId || l.serviceChargeId || charge?.id || charge?._id || null,
+                  investigationId: l._id || l.id,
+                  hasConfiguredPrice,
+                });
+              });
           });
         } catch (err) {}
 
@@ -103,18 +145,6 @@ const CashierAdmissionDetails = () => {
               description: `${i.fluidType} (IV Fluid)`,
               quantity: i.volume || 1, unitPrice: i.price || 0, price: i.price || 0, total: (i.price || 0) * (i.volume || 1),
               isBilled: false, category: 'IV Fluid', ivFluidOrderId: i._id || i.id
-            });
-          });
-        } catch (err) {}
-
-        try {
-          const btRes = await apiClient.get(`/blood-transfusion/patient/${admData.patientId}`);
-          const bts = Array.isArray(btRes.data?.data || btRes.data) ? (btRes.data?.data || btRes.data) : [];
-          bts.filter(i => !i.isBilled && String(i.admissionId || '') === String(admissionId)).forEach(i => {
-            unbilledBts.push({
-              description: `${i.bloodGroup} (Blood Transfusion)`,
-              quantity: i.unitsRequested || 1, unitPrice: i.price || 0, price: i.price || 0, total: (i.price || 0) * (i.unitsRequested || 1),
-              isBilled: false, category: 'Blood Transfusion', bloodTransfusionOrderId: i._id || i.id
             });
           });
         } catch (err) {}
@@ -135,7 +165,6 @@ const CashierAdmissionDetails = () => {
         setUnbilledGroups({
           labs: unbilledLabs,
           ivs: unbilledIvs,
-          bts: unbilledBts,
           treatments: unbilledTreatments
         });
 
@@ -190,14 +219,36 @@ const CashierAdmissionDetails = () => {
     }
   };
 
-  const generateBillForUnbilledItems = async (unbilledList, type) => {
+  const generateBillForUnbilledItems = async (unbilledList, type, discountAmount = 0, discountReason = '') => {
     try {
+      const subtotal = unbilledList.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+      if (discountAmount < 0 || discountAmount > subtotal) {
+        toast.error('Discount cannot exceed the bill subtotal.');
+        return;
+      }
+      if (discountAmount > 0 && !discountReason.trim()) {
+        toast.error('Enter a reason for the admission discount.');
+        return;
+      }
+
+      if (type === 'unbilled_labs') {
+        const missingPrice = unbilledList.find(item => !item.hasConfiguredPrice);
+        if (missingPrice) {
+          toast.error(`No service charge price is configured for ${missingPrice.description}.`);
+          return;
+        }
+      }
+
       const toastId = toast.loading('Generating bill...');
       
       if (type === 'unbilled_treatments') {
-        await apiClient.post(`/dispense/treatment-bill/${admissionId}`);
+        await apiClient.post(`/dispense/treatment-bill/${admissionId}`, {
+          discountAmount,
+          ...(discountAmount > 0 ? { discountReason: discountReason.trim() } : {}),
+        });
         toast.success('Treatment bill generated successfully!', { id: toastId });
         fetchData();
+        setBillDraft(null);
         return;
       }
 
@@ -205,23 +256,29 @@ const CashierAdmissionDetails = () => {
         patientId: admission.patientId,
         dependantId: admission.dependantId,
         itemDetail: unbilledList.map(item => ({
+          code: item.code || item.category || 'MISC',
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           price: item.price,
           total: item.total,
           category: item.category,
+          serviceChargeId: item.serviceChargeId || undefined,
           admissionId: admissionId,
-          investigationRequestId: item.investigationRequestId,
+          investigationId: item.investigationId || undefined,
           ivFluidOrderId: item.ivFluidOrderId,
           bloodTransfusionOrderId: item.bloodTransfusionOrderId,
           paymentStatus: 'pending'
         })),
-        totalAmount: unbilledList.reduce((acc, curr) => acc + (curr.total || 0), 0)
+        subtotalAmount: subtotal,
+        discountAmount,
+        ...(discountAmount > 0 ? { discountReason: discountReason.trim() } : {}),
+        totalAmount: subtotal - discountAmount
       };
 
       await apiClient.post(`/billing/create/${admission.patientId}`, billData);
       toast.success('Bill generated successfully!', { id: toastId });
+      setBillDraft(null);
       fetchData(); // refresh
     } catch (error) {
       toast.error('Failed to generate bill.');
@@ -264,16 +321,6 @@ const CashierAdmissionDetails = () => {
       });
     }
     
-    if (unbilledGroups.bts.length > 0) {
-      result.unshift({
-        id: 'unbilled_bts', pseudo: true, createdAt: null,
-        totalAmount: unbilledGroups.bts.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
-        outstandingBill: unbilledGroups.bts.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
-        raisedBy: { firstName: 'System', lastName: '(Blood Transfusions)', accountType: 'Auto' },
-        isCleared: false, itemDetails: unbilledGroups.bts
-      });
-    }
-
     if (unbilledGroups.ivs.length > 0) {
       result.unshift({
         id: 'unbilled_ivs', pseudo: true, createdAt: null,
@@ -393,7 +440,12 @@ const CashierAdmissionDetails = () => {
                       <td>
                         {bill.pseudo ? (
                           <button
-                            onClick={() => generateBillForUnbilledItems(bill.itemDetails, bill.id)}
+                            onClick={() => setBillDraft({
+                              items: bill.itemDetails,
+                              type: bill.id,
+                              discountAmount: '',
+                              discountReason: '',
+                            })}
                             className="btn btn-sm btn-outline btn-primary"
                           >
                             Generate Bill
@@ -559,6 +611,67 @@ const CashierAdmissionDetails = () => {
           patientId={admission?.patientId}
           onSubmit={handleReceiptSubmit}
         />
+
+        {billDraft && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+            <form
+              className="w-full max-w-md space-y-4 rounded-lg bg-base-100 p-5 shadow-xl"
+              onSubmit={(event) => {
+                event.preventDefault();
+                generateBillForUnbilledItems(
+                  billDraft.items,
+                  billDraft.type,
+                  Number(billDraft.discountAmount) || 0,
+                  billDraft.discountReason || ''
+                );
+              }}
+            >
+              <div>
+                <h3 className="text-lg font-semibold">Generate Admission Bill</h3>
+                <p className="text-sm text-base-content/60">
+                  Subtotal: ₦{billDraft.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0).toLocaleString()}
+                </p>
+              </div>
+              <label className="form-control">
+                <span className="label-text">Fixed discount amount</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={billDraft.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0)}
+                  step="1"
+                  value={billDraft.discountAmount}
+                  onChange={(event) => setBillDraft((current) => ({ ...current, discountAmount: event.target.value }))}
+                  className="input input-bordered"
+                  placeholder="₦0"
+                />
+              </label>
+              {Number(billDraft.discountAmount) > 0 && (
+                <label className="form-control">
+                  <span className="label-text">Reason for discount *</span>
+                  <input
+                    value={billDraft.discountReason}
+                    onChange={(event) => setBillDraft((current) => ({ ...current, discountReason: event.target.value }))}
+                    className="input input-bordered"
+                    required
+                  />
+                </label>
+              )}
+              <p className="text-sm font-semibold">
+                Amount due: ₦{Math.max(0, billDraft.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0) - (Number(billDraft.discountAmount) || 0)).toLocaleString()}
+              </p>
+              <div className="flex justify-end gap-2">
+                <button type="button" className="btn btn-ghost" onClick={() => setBillDraft(null)}>Cancel</button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={Number(billDraft.discountAmount) < 0 || Number(billDraft.discountAmount) > billDraft.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0) || (Number(billDraft.discountAmount) > 0 && !billDraft.discountReason.trim())}
+                >
+                  Generate Bill
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </CashierLayout>
   );

@@ -94,7 +94,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-opacity-50" onClick={handleCancel} />
 

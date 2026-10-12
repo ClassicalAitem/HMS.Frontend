@@ -6,6 +6,7 @@ import { getPatients } from '@/services/api/patientsAPI';
 import { getDependants } from '@/services/api/dependantAPI';
 import { showErrorToast } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
+import PushNotificationPrompt from '@/components/common/PushNotificationPrompt';
 
 const NotificationContext = createContext(null);
 
@@ -14,6 +15,8 @@ export const NotificationProvider = ({ children }) => {
   const [incomingCount, setIncomingCount] = useState(0);
   const [labReadyCount, setLabReadyCount] = useState(0);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
+  const [incomingUpdate, setIncomingUpdate] = useState(0);
+  const [labReadyUpdate, setLabReadyUpdate] = useState(0);
   const roleRef = useRef(null);
 
   const refreshQueueCount = useCallback(() => {
@@ -82,8 +85,10 @@ export const NotificationProvider = ({ children }) => {
 
     const handleIncoming = (payload) => {
       setLastUpdate(Date.now());
+      setIncomingUpdate((update) => update + 1);
       refreshQueueCount();
       refreshLabReadyCount();
+      if (document.visibilityState !== 'visible') return;
 
       const name = payload?.subjectName || "Unknown Patient";
       const status = payload?.status || "Unknown Status";
@@ -93,7 +98,8 @@ export const NotificationProvider = ({ children }) => {
       toast.success(
         <div className="flex flex-col gap-1 w-full">
           <span className="font-bold text-sm border-b border-gray-500 pb-1 mb-1">
-            New Incoming {payload?.subjectType === 'dependant' ? 'Dependant' : 'Patient'}
+            {payload?.isCalled ? '🔔 CALLED: ' : 'New Incoming '}
+            {payload?.subjectType === 'dependant' ? 'Dependant' : 'Patient'}
           </span>
           <span className="text-sm"><strong>Name:</strong> {name}</span>
           <span className="text-sm capitalize"><strong>Status:</strong> {status.replace(/_/g, ' ')}</span>
@@ -103,14 +109,17 @@ export const NotificationProvider = ({ children }) => {
             </span>
           )}
         </div>,
-        { duration: 7000 }
+        { duration: 20000 }
       );
+
     };
 
     // Fires when a lab or sonography result is ready for doctor/medical-director review
     const handleLabReady = (payload) => {
       setLastUpdate(Date.now());
+      setLabReadyUpdate((update) => update + 1);
       refreshLabReadyCount();
+      if (document.visibilityState !== 'visible') return;
 
       const name = payload?.subjectName || "Unknown Patient";
       const status = payload?.status || "lab_completed";
@@ -132,19 +141,23 @@ export const NotificationProvider = ({ children }) => {
         </div>,
         { duration: 7000 }
       );
+
     };
 
     socket.on('patient:incoming', handleIncoming);
     socket.on('patient:labResultReady', handleLabReady);
-    socket.on('patient:statusChanged', () => {
+    const handleStatusChanged = () => {
+      setLastUpdate(Date.now());
+      setIncomingUpdate((update) => update + 1);
       refreshQueueCount();
       refreshLabReadyCount();
-    });
+    };
+    socket.on('patient:statusChanged', handleStatusChanged);
 
     return () => {
       socket.off('patient:incoming', handleIncoming);
       socket.off('patient:labResultReady', handleLabReady);
-      socket.off('patient:statusChanged');
+      socket.off('patient:statusChanged', handleStatusChanged);
     };
   }, [isAuthenticated, user, refreshLabReadyCount, refreshQueueCount]);
 
@@ -152,9 +165,19 @@ export const NotificationProvider = ({ children }) => {
 
   return (
     <NotificationContext.Provider
-      value={{ incomingCount, labReadyCount, refreshQueueCount, refreshLabReadyCount, clearLabReadyCount, lastUpdate }}
+      value={{
+        incomingCount,
+        labReadyCount,
+        refreshQueueCount,
+        refreshLabReadyCount,
+        clearLabReadyCount,
+        lastUpdate,
+        incomingUpdate,
+        labReadyUpdate,
+      }}
     >
       {children}
+        <PushNotificationPrompt />
     </NotificationContext.Provider>
   );
 };
