@@ -75,6 +75,40 @@ export const logoutUser = createAsyncThunk(
   async (_, { getState }) => {
     try {
       const { auth } = getState();
+
+      // Stop browser push notifications before clearing auth state.
+      // Browsers do not allow JavaScript to reset Notification.permission to "default".
+      // We can only unsubscribe the push subscription and unregister the app service worker.
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+              const endpoint = subscription.endpoint;
+              const unsubscribed = await subscription.unsubscribe();
+              if (unsubscribed && endpoint) {
+                try {
+                  await import('../../services/api/notificationAPI').then(({ removeWebPushSubscription }) =>
+                    removeWebPushSubscription(endpoint),
+                  );
+                } catch {
+                  // Ignore cleanup failure and keep logout flowing.
+                }
+              }
+            }
+
+            try {
+              await registration.unregister();
+            } catch {
+              // Ignore service worker cleanup errors.
+            }
+          }
+        } catch {
+          // Ignore browser-specific cleanup issues.
+        }
+      }
+
       if (auth.token) {
         try {
           await authAPI.logout();

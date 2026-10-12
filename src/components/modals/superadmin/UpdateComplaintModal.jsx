@@ -57,7 +57,7 @@ const UpdateComplaintModal = ({ isOpen, onClose, complaint, onUpdated }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/70">
+    <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="mx-4 w-full max-w-md shadow-xl card bg-base-100">
         <div className="p-6 card-body">
           <div className="flex justify-between items-center mb-4">

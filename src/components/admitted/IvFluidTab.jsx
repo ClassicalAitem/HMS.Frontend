@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import ivFluidApi from '@/services/api/ivFluidApi'
 import { getInventories } from '@/services/api/inventoryAPI'
-import { createTreatmentBill } from '@/services/api/dispensesAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaTint,
@@ -21,7 +20,6 @@ import {
   FaSearch,
   FaExclamationTriangle,
   FaMoneyBillWave,
-  FaFileInvoiceDollar,
 } from 'react-icons/fa'
 
 
@@ -49,10 +47,11 @@ const IvFluidTab = ({
   const [showConsumablesModal, setShowConsumablesModal] = useState(null)
   const [confirmLogInfusionModal, setConfirmLogInfusionModal] = useState(null)
   const [confirmCompleteModal, setConfirmCompleteModal] = useState(null)
-  const [confirmDeleteModal, setConfirmDeleteModal] = useState(null)
+  const [historyModalOrder, setHistoryModalOrder] = useState(null)
   const [saving, setSaving] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState(null)
   const [dispensingId, setDispensingId] = useState(null)
+  const [dispensingOrderId, setDispensingOrderId] = useState(null)
   // Consumables ordering
   const [consumableSearch, setConsumableSearch] = useState('')
   const [selectedConsumables, setSelectedConsumables] = useState([])
@@ -242,6 +241,7 @@ const IvFluidTab = ({
         patientId,
         ...(dependantId ? { dependantId } : {}),
         consultationId,
+        admissionId,
         fluidName: fluidToPrescribe,
         volumeMl: Number(orderForm.volumeMl || 500),
         rateOrFrequency: orderForm.rateOrFrequency.trim(),
@@ -251,7 +251,7 @@ const IvFluidTab = ({
         units,
       })
 
-      toast.success('IV fluid regimen prescribed and billed to Laboratory')
+      toast.success('IV fluid regimen prescribed and queued for pharmacy and admission billing')
       setShowOrderModal(false)
       setOrderForm({
         fluidName: 'Normal Saline 0.9%',
@@ -297,6 +297,20 @@ const IvFluidTab = ({
       toast.error('Failed to update regimen status')
     } finally {
       setUpdatingOrderId(null)
+    }
+  }
+
+  const handleDispenseOrder = async (order) => {
+    const orderId = order._id || order.id
+    setDispensingOrderId(orderId)
+    try {
+      await ivFluidApi.dispenseIvFluidOrder(orderId)
+      toast.success('IV fluid marked as dispensed by pharmacy')
+      await loadData(selectedDate)
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to mark IV fluid as dispensed')
+    } finally {
+      setDispensingOrderId(null)
     }
   }
 
@@ -408,25 +422,9 @@ const IvFluidTab = ({
     }
   }
 
-  const handleDelete = async (id) => {
-    setConfirmDeleteModal(id)
-  }
-
-  const executeDelete = async () => {
-    if (!confirmDeleteModal) return
-    try {
-      await ivFluidApi.deleteIvFluidEntry(confirmDeleteModal)
-      toast.success('Entry removed')
-      setConfirmDeleteModal(null)
-      await loadData(selectedDate)
-    } catch (err) {
-      console.error('Failed to delete fluid entry', err)
-      toast.error('Failed to remove entry')
-    }
-  }
-
   const netBalance = data.dailyTotalInput - data.dailyTotalOutput
   const activeOrders = (data.orders || []).filter((o) => o.status === 'active')
+  const completedOrders = (data.orders || []).filter((o) => o.status === 'completed')
 
   return (
     <div className="space-y-6">
@@ -460,15 +458,6 @@ const IvFluidTab = ({
 
           {/* Doctor Order Regimen Button */}
           <div className="flex gap-2">
-            {isPharmacist && (
-              <button
-                onClick={() => setShowPreviewModal(true)}
-                className="btn btn-sm btn-primary rounded-xl text-white gap-2 font-semibold shadow-sm"
-              >
-                <FaFileInvoiceDollar className="w-3 h-3" />
-                Generate Bill
-              </button>
-            )}
             {isDoctor && (
               <button
                 onClick={() => setShowOrderModal(true)}
@@ -530,6 +519,14 @@ const IvFluidTab = ({
                         <span className="badge badge-primary badge-xs font-bold uppercase">
                           {ord.rateOrFrequency}
                         </span>
+                        {ord.isDispensed ? (
+                          <span className="badge badge-success badge-xs text-white">Dispensed</span>
+                        ) : isPharmacist ? (
+                          <span className="badge badge-warning badge-xs">Awaiting Pharmacy</span>
+                        ) : null}
+                        {ord.isDispensed && ord.dispensedByName && (
+                          <span className="text-[10px] text-base-content/60">By {ord.dispensedByName}</span>
+                        )}
                         {renderPaymentBadge(ord)}
                       </div>
                     </div>
@@ -554,6 +551,13 @@ const IvFluidTab = ({
                       )}
                       <span>{formatNigeriaDateTimeShort(ord.orderedAt || ord.createdAt)}</span>
                     </div>
+
+                    {ord.isDispensed && (ord.dispensedByName || ord.dispensedAt) && (
+                      <div className="rounded-lg border border-success/20 bg-success/5 px-2.5 py-1.5 text-[10px] text-success-content">
+                        <span className="font-semibold">Dispensed by:</span> {ord.dispensedByName || 'Pharmacist'}
+                        {ord.dispensedAt && <span className="ml-2">@ {formatNigeriaDateTimeShort(ord.dispensedAt)}</span>}
+                      </div>
+                    )}
 
                     {/* Nurse Clearance Status Indicator */}
                     {isNurse && (
@@ -617,6 +621,17 @@ const IvFluidTab = ({
                       </div>
                     )}
                   </div>
+
+                  {isPharmacist && !ord.isDispensed && (
+                    <button
+                      type="button"
+                      onClick={() => handleDispenseOrder(ord)}
+                      disabled={dispensingOrderId === (ord._id || ord.id)}
+                      className="btn btn-sm btn-primary rounded-xl font-bold"
+                    >
+                      {dispensingOrderId === (ord._id || ord.id) ? 'Marking...' : 'Mark IV Fluid Dispensed'}
+                    </button>
+                  )}
 
                   {isNurse && (
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-primary/10">
@@ -746,7 +761,6 @@ const IvFluidTab = ({
                   <th className="py-3 px-4">Output Classification</th>
                   <th className="py-3 px-4 text-warning">Output (ml)</th>
                   <th className="py-3 px-4">Logged By / Remarks</th>
-                  <th className="py-3 px-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-base-200">
@@ -774,13 +788,67 @@ const IvFluidTab = ({
                         <div className="text-[11px] text-base-content/50 italic mt-0.5">{entry.notes}</div>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleDelete(entry._id || entry.id)}
-                        className="btn btn-ghost btn-xs text-error hover:bg-error/10 rounded-lg"
-                      >
-                        <FaTrashAlt className="w-3 h-3" />
-                      </button>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* History of IV Fluid Regimens */}
+      <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden mt-6">
+        <div className="p-4 sm:p-5 border-b border-base-200 flex items-center justify-between">
+          <h4 className="font-bold text-base text-base-content flex items-center gap-2">
+            <FaClock className="text-primary" /> IV Fluid Regimen History
+          </h4>
+        </div>
+        
+        {!data.orders || data.orders.length === 0 ? (
+          <div className="p-10 text-center text-xs text-base-content/50">
+            No IV fluid regimens found in history.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table table-sm w-full text-xs min-w-[650px]">
+              <thead className="bg-base-200/60 uppercase tracking-wider text-base-content/70">
+                <tr>
+                  <th className="py-3 px-4">Date Ordered</th>
+                  <th className="py-3 px-4">Fluid Description</th>
+                  <th className="py-3 px-4">Volume (ml)</th>
+                  <th className="py-3 px-4">Prescribed By</th>
+                  <th className="py-3 px-4 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-base-200">
+                {[...data.orders].sort((a, b) => new Date(b.orderedAt || b.createdAt) - new Date(a.orderedAt || a.createdAt)).map((ord) => (
+                  <tr 
+                    key={ord._id || ord.id} 
+                    className="hover:bg-base-200/40 cursor-pointer transition-colors"
+                    onClick={() => setHistoryModalOrder(ord)}
+                  >
+                    <td className="py-3 px-4 font-medium text-base-content whitespace-nowrap">
+                      {formatNigeriaDateTimeShort(ord.orderedAt || ord.createdAt)}
+                    </td>
+                    <td className="py-3 px-4 font-bold text-base-content">
+                      {ord.fluidName}
+                      <div className="text-[11px] text-base-content/60 font-normal mt-0.5">{ord.rateOrFrequency}</div>
+                    </td>
+                    <td className="py-3 px-4 font-medium text-base-content">
+                      {ord.volumeMl || 500} ml
+                    </td>
+                    <td className="py-3 px-4 text-base-content">
+                      <div className="flex items-center gap-1">
+                        <FaUserMd className="text-primary w-3 h-3" />
+                        {ord.doctorName || 'Doctor'}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {ord.status === 'completed' ? (
+                        <span className="badge badge-success badge-sm text-white font-semibold">Completed</span>
+                      ) : (
+                        <span className="badge badge-primary badge-sm font-semibold">Active</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -792,7 +860,10 @@ const IvFluidTab = ({
 
       {/* Doctor Prescribe IV Fluid Regimen Modal */}
       {showOrderModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => e.target === e.currentTarget && setShowOrderModal(false)}
+        >
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
@@ -990,7 +1061,10 @@ const IvFluidTab = ({
 
       {/* Nurse Record Intake/Output Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => e.target === e.currentTarget && setShowAddModal(false)}
+        >
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
@@ -1121,7 +1195,16 @@ const IvFluidTab = ({
 
       {/* Consumables Order Modal */}
       {showConsumablesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !saving) {
+              setShowConsumablesModal(null)
+              setSelectedConsumables([])
+              setConsumableSearch('')
+            }
+          }}
+        >
           <div className="bg-base-100 rounded-2xl max-w-lg w-full shadow-2xl border border-base-300 flex flex-col max-h-[90vh] animate-scaleUp">
             <div className="flex items-center justify-between p-4 border-b border-base-200">
               <div>
@@ -1267,7 +1350,10 @@ const IvFluidTab = ({
 
       {/* Warning Modal for Logging Infusion on Unpaid Order */}
       {confirmLogInfusionModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => e.target === e.currentTarget && setConfirmLogInfusionModal(null)}
+        >
           <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-warning/30 space-y-4 animate-scaleUp">
             <div className="flex items-center gap-3 text-warning">
               <div className="p-3 bg-warning/10 rounded-xl">
@@ -1315,7 +1401,14 @@ const IvFluidTab = ({
 
       {/* Warning Modal for Completing Unpaid Order */}
       {confirmCompleteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && updatingOrderId !== (confirmCompleteModal._id || confirmCompleteModal.id)) {
+              setConfirmCompleteModal(null)
+            }
+          }}
+        >
           <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-warning/30 space-y-4 animate-scaleUp">
             <div className="flex items-center gap-3 text-warning">
               <div className="p-3 bg-warning/10 rounded-xl">
@@ -1354,41 +1447,109 @@ const IvFluidTab = ({
           </div>
         </div>
       )}
-      {/* Confirm Delete Entry Modal */}
-      {confirmDeleteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-base-100 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-error/30 space-y-4 animate-scaleUp">
-            <div className="flex items-center gap-3 text-error">
-              <div className="p-3 bg-error/10 rounded-xl">
-                <FaTrashAlt className="w-6 h-6" />
-              </div>
+      {/* History Regimen Details Modal */}
+      {historyModalOrder && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => e.target === e.currentTarget && setHistoryModalOrder(null)}
+        >
+          <div className="bg-base-100 rounded-2xl max-w-4xl w-full shadow-2xl border border-base-300 flex flex-col max-h-[85vh] animate-scaleUp">
+            <div className="flex items-center justify-between p-4 border-b border-base-200">
               <div>
-                <h3 className="font-bold text-lg text-base-content">Delete Entry?</h3>
-                <p className="text-xs text-base-content/60">
-                  This action cannot be undone
+                <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
+                  <FaPrescriptionBottleAlt className="text-primary" /> Regimen Infusion Logs
+                </h3>
+                <p className="text-xs text-base-content/60 mt-0.5">
+                  {historyModalOrder.fluidName} ({historyModalOrder.volumeMl}ml) - {historyModalOrder.rateOrFrequency}
                 </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryModalOrder(null)}
+                className="btn btn-sm btn-ghost btn-circle"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 flex flex-wrap gap-4 border-b border-base-200 bg-base-200/30">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-base-content/60">Status</span>
+                {historyModalOrder.status === 'completed' ? (
+                  <span className="badge badge-success badge-sm text-white font-semibold">Completed</span>
+                ) : (
+                  <span className="badge badge-primary badge-sm font-semibold">Active</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-base-content/60">Ordered By</span>
+                <span className="text-xs font-semibold text-base-content">
+                  {historyModalOrder.doctorName || 'Doctor'}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-base-content/60">Date</span>
+                <span className="text-xs font-semibold text-base-content">
+                  {formatNigeriaDateTimeShort(historyModalOrder.orderedAt || historyModalOrder.createdAt)}
+                </span>
               </div>
             </div>
 
-            <p className="text-sm text-base-content/80 leading-relaxed">
-              Are you sure you want to delete this fluid chart entry? The net balance will be recalculated.
-            </p>
+            <div className="flex-1 overflow-y-auto p-0">
+              {(() => {
+                const associatedLogs = data.entries.filter((e) => e.inputFluid === historyModalOrder.fluidName)
+                
+                if (associatedLogs.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-xs text-base-content/50 m-4 border border-dashed border-base-300 rounded-xl">
+                      No matching logs found in today's active entries.
+                    </div>
+                  )
+                }
 
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteModal(null)}
-                className="btn btn-sm btn-ghost rounded-xl"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={executeDelete}
-                className="btn btn-sm btn-error text-white rounded-xl font-semibold gap-2"
-              >
-                Delete Entry
-              </button>
+                return (
+                  <table className="table table-sm w-full text-xs">
+                    <thead className="bg-base-200/60 uppercase tracking-wider text-base-content/70 sticky top-0 z-10">
+                      <tr>
+                        <th className="py-3 px-4">Time</th>
+                        <th className="py-3 px-4">Fluid Intake (Infusion)</th>
+                        <th className="py-3 px-4 text-info">Input (ml)</th>
+                        <th className="py-3 px-4">Output Classification</th>
+                        <th className="py-3 px-4 text-warning">Output (ml)</th>
+                        <th className="py-3 px-4">Logged By / Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-base-200">
+                      {associatedLogs.map((log) => (
+                        <tr key={log._id || log.id} className="hover:bg-base-200/40">
+                          <td className="py-3 px-4 font-bold text-base-content">{log.time}</td>
+                          <td className="py-3 px-4 font-medium text-base-content">
+                            {log.inputFluid || '—'}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-info">
+                            {log.inputAmountMl ? `${log.inputAmountMl} ml` : '—'}
+                          </td>
+                          <td className="py-3 px-4 font-medium text-base-content">
+                            {log.outputType || '—'}
+                          </td>
+                          <td className="py-3 px-4 font-bold text-warning">
+                            {log.outputAmountMl ? `${log.outputAmountMl} ml` : '—'}
+                          </td>
+                          <td className="py-3 px-4 text-base-content/70">
+                            <div className="flex items-center gap-1 font-medium text-base-content">
+                              <FaUserNurse className="text-success w-3 h-3" />
+                              {log.recordedByName || 'Nurse'}
+                            </div>
+                            {log.notes && (
+                              <div className="text-[11px] text-base-content/50 italic mt-0.5">{log.notes}</div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              })()}
             </div>
           </div>
         </div>

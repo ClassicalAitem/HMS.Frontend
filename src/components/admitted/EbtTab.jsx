@@ -36,6 +36,7 @@ const EbtTab = ({
     indication: '',
     donorBloodGroup: '',
     volumeExchangedMl: '',
+    patientWeightKg: '',
     preTransfusionBilirubin: '',
     postTransfusionBilirubin: '',
     doctorNote: '',
@@ -178,6 +179,7 @@ const EbtTab = ({
         indication: '',
         donorBloodGroup: '',
         volumeExchangedMl: '',
+        patientWeightKg: '',
         preTransfusionBilirubin: '',
         postTransfusionBilirubin: '',
         doctorNote: '',
@@ -503,7 +505,7 @@ const EbtTab = ({
 
       {/* Record EBT Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
@@ -551,16 +553,39 @@ const EbtTab = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                    Volume Exchanged (ml)
+                    Patient Weight (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    name="patientWeightKg"
+                    value={form.patientWeightKg}
+                    onChange={handleFormChange}
+                    placeholder="e.g. 2.5"
+                    className="input input-bordered input-sm w-full rounded-xl text-xs"
+                  />
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-semibold text-base-content/70 mb-1 flex justify-between">
+                    <span>Volume Exchanged (ml)</span>
+                    {form.patientWeightKg && !isNaN(form.patientWeightKg) && (
+                      <span className="text-secondary text-[10px]">
+                        Target: ~{(Number(form.patientWeightKg) * 160).toFixed(0)} ml
+                      </span>
+                    )}
                   </label>
                   <input
                     type="number"
                     name="volumeExchangedMl"
                     value={form.volumeExchangedMl}
                     onChange={handleFormChange}
-                    placeholder="e.g. 340"
+                    placeholder="e.g. 400"
                     className="input input-bordered input-sm w-full rounded-xl text-xs"
                   />
+                  <p className="text-[10px] text-base-content/50 mt-0.5">
+                    *Double volume exchange is typically ~160 ml/kg
+                  </p>
                 </div>
               </div>
 
@@ -634,7 +659,7 @@ const EbtTab = ({
 
       {/* Consumables Order Modal */}
       {showConsumablesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-lg w-full shadow-2xl border border-base-300 flex flex-col max-h-[90vh] animate-scaleUp">
             <div className="flex items-center justify-between p-4 border-b border-base-200">
               <div>
@@ -777,7 +802,7 @@ const EbtTab = ({
 
       {/* Start Modal */}
       {confirmStartModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-warning/30 space-y-4 animate-scaleUp">
             <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
               <FaPlay className="text-warning" /> Start EBT Procedure?
@@ -809,7 +834,7 @@ const EbtTab = ({
 
       {/* Complete Modal */}
       {confirmCompleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-success/30 space-y-4 animate-scaleUp">
             <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
               <FaCheckCircle className="text-success" /> Mark Completed?
@@ -841,7 +866,7 @@ const EbtTab = ({
 
       {/* Add Note Modal */}
       {addNoteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-info/30 space-y-4 animate-scaleUp">
             <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
               <FaNotesMedical className="text-info" /> Nursing Observation Note

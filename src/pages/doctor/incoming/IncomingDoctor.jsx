@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
@@ -12,6 +12,7 @@ import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { PatientStatusBadge } from "@/components/common";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useCallState } from "@/hook/useCallState";
 import { DoctorLayout } from "@/components/doctor/doctor";
 
 const DOCTOR_STATUSES = new Set([
@@ -46,11 +47,13 @@ const IncomingDoctor = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [navigatingId, setNavigatingId] = useState(null);
+  const hasLoadedRef = useRef(false);
   const pageSize = 4;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
-  const { refreshQueueCount, lastUpdate } = useNotifications();
+  const { refreshQueueCount, incomingUpdate } = useNotifications();
+  const { isLockedForMe } = useCallState();
 
 
   useEffect(() => {
@@ -58,7 +61,7 @@ const IncomingDoctor = () => {
 
     const fetchIncoming = async () => {
       try {
-        setLoading(true);
+        if (!hasLoadedRef.current) setLoading(true);
 
         // Fetch both in parallel
         const [patientsRes, dependantsRes] = await Promise.allSettled([
@@ -104,6 +107,8 @@ const IncomingDoctor = () => {
             badge: null,
             statusUser: p?.statusUser,
             statusSenderName: p?.statusSenderName,
+            isCalled: p?.isCalled || false,
+            calledByUserId: p?.calledByUserId || null,
           }));
 
         // Map dependants
@@ -138,6 +143,8 @@ const IncomingDoctor = () => {
             badge: d?.relationshipType || 'Dependant',
             statusUser: d?.statusUser,
             statusSenderName: d?.statusSenderName,
+            isCalled: d?.isCalled || false,
+            calledByUserId: d?.calledByUserId || null,
           }
         });
 
@@ -151,13 +158,14 @@ const IncomingDoctor = () => {
       } catch (err) {
         console.error("IncomingDoctor: fetch error", err);
       } finally {
+        hasLoadedRef.current = true;
         if (mounted) setLoading(false);
       }
     };
 
     fetchIncoming();
     return () => { mounted = false; };
-  }, [refreshKey, lastUpdate]);
+  }, [refreshKey, incomingUpdate]);
 
   useEffect(() => {
     const handleStorageChange = (e) => {
@@ -167,7 +175,7 @@ const IncomingDoctor = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  useEffect(() => { setPage(0); }, [query, items]);
+  useEffect(() => { setPage(0); }, [query]);
 
   const onRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -180,6 +188,9 @@ const IncomingDoctor = () => {
     : items;
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  useEffect(() => {
+    setPage((currentPage) => Math.min(currentPage, totalPages - 1));
+  }, [totalPages]);
   const visible = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleView = async (data) => {
@@ -234,7 +245,18 @@ const IncomingDoctor = () => {
     }
   };
 
-  
+  const handleCall = async (data) => {
+    try {
+      if (data.type === 'dependant') {
+        await updateDependantStatus(data.dependantId, { isCalled: true });
+      } else {
+        await updatePatientStatus(data.patientId, { isCalled: true });
+      }
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to call patient", err);
+    }
+  };
 
 
   const handleClear = async (data) => {
@@ -288,7 +310,7 @@ const IncomingDoctor = () => {
                 <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm">Clear</button>
               )}
               <button onClick={onRefresh} className="btn btn-outline btn-sm">Refresh</button>
-              <ClearAllButton items={items} updateStatusFn={handleClear} onCleared={onRefresh} />
+              <ClearAllButton items={items.filter((item) => !isLockedForMe(item))} updateStatusFn={handleClear} onCleared={onRefresh} />
             </div>
           </div>
 
@@ -329,8 +351,9 @@ const IncomingDoctor = () => {
               ) : (
                 visible.map((data) => {
                   const isInConsultation = ['in_consultation', 'in consultation'].some((v) => data.rawStatus?.includes(v));
+                  const locked = isLockedForMe(data);
                   return (
-                    <div key={`${data.type}-${data.id}`} className="grid grid-cols-1 md:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-base-200/40 transition-colors rounded-xl md:rounded-none">
+                    <div key={`${data.type}-${data.id}`} className={`grid grid-cols-1 md:grid-cols-12 gap-4 px-5 py-4 items-center hover:bg-base-200/40 transition-colors rounded-xl md:rounded-none ${locked ? 'opacity-50 grayscale' : ''}`}>
 
                       {/* Name + Type badge — flex together on mobile, separate grid cols on desktop */}
                       <div className="col-span-full flex items-start justify-between gap-3 md:contents">
@@ -375,11 +398,17 @@ const IncomingDoctor = () => {
                         </div>
                       </div>
 
-                    {/* Action — full width below on mobile */}
-                    <div className="col-span-full md:col-span-2 flex items-center justify-end gap-2 mt-2 md:mt-0">
+                    <div className="col-span-full md:col-span-2 flex flex-col md:flex-row items-center justify-end gap-2 mt-2 md:mt-0">
+                          <button
+                            className={`btn btn-sm ${data.isCalled ? 'btn-secondary' : 'btn-accent'} w-full md:w-auto px-4`}
+                            disabled={locked}
+                            onClick={() => handleCall(data)}
+                          >
+                            {data.isCalled ? "Called" : "Call"}
+                          </button>
                           <button
                             className="btn btn-sm btn-primary w-full md:w-auto px-4"
-                            disabled={navigatingId === data.id}
+                            disabled={navigatingId === data.id || locked}
                             onClick={() => handleView(data)}
                           >
                             {navigatingId === data.id
@@ -387,7 +416,7 @@ const IncomingDoctor = () => {
                               : 'View'}
                           </button>
                           <div className="w-full md:w-auto">
-                            <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />
+                            {!locked && <ClearItemButton item={data} onClear={handleClear} onCleared={onRefresh} />}
                           </div>
                     </div>
                     </div>

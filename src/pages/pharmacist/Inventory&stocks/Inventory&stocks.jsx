@@ -7,15 +7,18 @@ import {
   createInventory,
   updateInventory,
   restockInventory,
+  reduceInventory,
 } from '@/services/api/inventoryAPI'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler'
+import { InventoryFormModal } from '@/components/modals/InventoryFormModal'
 
 const UNIT_LABELS = {
   tablet: 'Tablet',
   ml: 'ml',
   iu: 'IU',
   ampoule: 'Ampoule',
+  tube: 'Tube',
 }
 const pricePerUnit = (item) => {
   const packSize = Number(item.packSize) || 1
@@ -109,6 +112,9 @@ const InventoryStocks = () => {
     if (activeTab === 'expired') {
       list = list.filter(i => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now())
     }
+    if (activeTab !== 'recent') {
+      list = list.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    }
     return list
   }, [items, search, activeTab])
 
@@ -177,6 +183,18 @@ const InventoryStocks = () => {
   const handleRestock = async (id, payload) => {
     const p = restockInventory(id, payload)
     toast.promise(p, { loading: 'Restocking...', success: 'Restocked', error: (e) => getErrorMessage(e, 'Failed to restock item') })
+    try {
+      await p
+      fetch()
+      setRestockingFor(null)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleReduce = async (id, payload) => {
+    const p = reduceInventory(id, payload)
+    toast.promise(p, { loading: 'Reducing stock...', success: 'Stock reduced successfully', error: (e) => getErrorMessage(e, 'Failed to reduce stock') })
     try {
       await p
       fetch()
@@ -364,7 +382,14 @@ const InventoryStocks = () => {
           />
         )}
         {editing && <InventoryFormModal item={editing} onClose={() => setEditing(null)} onSubmit={(payload) => handleEdit(editing._id, payload)} />}
-        {restockingFor && <RestockModal item={restockingFor} onClose={() => setRestockingFor(null)} onSubmit={(payload) => handleRestock(restockingFor._id, payload)} />}
+        {restockingFor && (
+          <RestockModal
+            item={restockingFor}
+            onClose={() => setRestockingFor(null)}
+            onSubmit={(payload) => handleRestock(restockingFor._id, payload)}
+            onReduce={(payload) => handleReduce(restockingFor._id, payload)}
+          />
+        )}
       </div>
     </PharmacistLayout>
   )
@@ -384,244 +409,317 @@ function StatCard({ label, value, sub, subClass = 'text-base-content/60' }) {
 
 // --- Inline modal components ---
 
-function InventoryFormModal({ item, onClose, onSubmit }) {
-  const isEdit = !!item?._id
-  const [form, setForm] = useState({
-    name: item?.name || '',
-    form: item?.form || '',
-    strength: item?.strength || '',
-    costPrice: item?.costPrice ?? '',
-    sellingPrice: item?.sellingPrice ?? '',
-    reorderLevel: item?.reorderLevel ?? '',
-    supplier: item?.supplier || '',
-    packs: '',
-    packSize: item?.packSize ?? 1,
-    unit: item?.unit || 'tablet',
-    concentrationAmount: item?.concentrationAmount || '',
-    concentrationPer: item?.concentrationPer || '',
-    concentrationUnit: ['ml', 'tablet', 'ampoule', 'iu', 'tube', 'unit'].includes(item?.concentrationUnit) ? 'mg' : (item?.concentrationUnit || 'mg'),
-    batchNumber: item?.batchNumber || '',
-    expiryDate: item?.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '',
-    description: item?.description || '',
-  })
-  const [submitting, setSubmitting] = useState(false)
-
-  const safeString = (value) => String(value || '').trim()
-  const safeNumber = (value) => {
-    const str = String(value ?? '').trim()
-    return str === '' ? undefined : Number(str)
-  }
-
-  const handle = async () => {
-    if (!form.name.trim()) return toast.error('Item name is required')
-    if (!form.form) return toast.error('Please select a form (Tablet, Syrup, Injection, Cream, Gutt, or Infusion)')
-    if (!form.batchNumber.trim()) return toast.error('Batch number is required')
-    if (!isEdit && (!form.packs || Number(form.packs) <= 0)) {
-      return toast.error(form.unit === 'tablet' ? 'Enter number of tablets' : 'Enter number of bottles/vials')
-    }
-
-    const payload = { name: safeString(form.name) }
-
-    const formValue = safeString(form.form)
-    const strengthValue = safeString(form.strength)
-    const costPriceValue = safeNumber(form.costPrice)
-    const sellingPriceValue = safeNumber(form.sellingPrice)
-    const reorderLevelValue = safeNumber(form.reorderLevel)
-    const supplierValue = safeString(form.supplier)
-    const batchNumberValue = safeString(form.batchNumber)
-    const expiryDateValue = safeString(form.expiryDate)
-    const descriptionValue = safeString(form.description)
-    const packSizeValue = safeNumber(form.packSize) || 1
-
-    payload.packSize = packSizeValue
-    payload.unit = form.unit
-    payload.concentrationUnit = form.concentrationUnit
-    if (safeNumber(form.concentrationAmount) !== undefined) payload.concentrationAmount = safeNumber(form.concentrationAmount)
-    if (safeNumber(form.concentrationPer) !== undefined) payload.concentrationPer = safeNumber(form.concentrationPer)
-
-    // Only creating a new item sets initial stock (via packs). Editing an
-    // existing item never touches stock — that's what Restock is for.
-    if (!isEdit) {
-      payload.packs = safeNumber(form.packs)
-    }
-
-    if (formValue) payload.form = formValue
-    if (strengthValue) payload.strength = strengthValue
-    if (costPriceValue !== undefined) payload.costPrice = costPriceValue
-    if (sellingPriceValue !== undefined) payload.sellingPrice = sellingPriceValue
-    if (reorderLevelValue !== undefined) payload.reorderLevel = reorderLevelValue
-    if (supplierValue) payload.supplier = supplierValue
-    if (batchNumberValue) payload.batchNumber = batchNumberValue
-    if (expiryDateValue) payload.expiryDate = expiryDateValue
-    if (descriptionValue) payload.description = descriptionValue
-
-    setSubmitting(true)
-    try {
-      await onSubmit(payload)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="z-10 w-full max-w-lg card bg-base-100 p-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium">{isEdit ? 'Edit Item' : 'Add Item'}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
-        </div>
-
-        <div className="space-y-3">
-            <div className="flex gap-2">
-              <input className="input input-bordered flex-1" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              <select
-                className="select select-bordered flex-1"
-                value={form.form}
-                onChange={(e) => {
-                  const nextForm = e.target.value
-                  // Keep unit sensible when form changes; cream uses the discrete tube model,
-                  // while gutt/infusion behave like liquid bottles.
-                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : nextForm === 'Cream' ? 'tube' : nextForm === 'Gutt' || nextForm === 'Infusion' ? 'ml' : nextForm === 'Syrup' ? 'ml' : nextForm === 'Injection' ? (form.unit === 'tablet' || form.unit === 'tube' ? 'ml' : form.unit) : form.unit
-                  setForm({ ...form, form: nextForm, unit: nextUnit })
-                }}
-              >
-                <option value="">Select form</option>
-                <option value="Tablet">Tablet</option>
-                <option value="Syrup">Syrup</option>
-                <option value="Gutt">Gutt</option>
-                <option value="Cream">Cream</option>
-                <option value="Infusion">Infusion</option>
-                <option value="Injection">Injection</option>
-                <option value="Suspension">Suspension</option>
-              </select>
-            </div> 
-
-          <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Strength" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
-            <select className="select select-bordered flex-1" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
-                <option value="tablet">Tablet (counted individually)</option>
-                <option value="tube">Tube (counted individually)</option>
-                <option value="ml">Liquid — ml (syrup, injection)</option>
-                <option value="iu">IU (injection)</option>
-                <option value="ampoule">Ampoule (injection, counted individually)</option>
-              </select>
-          </div>
-
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-base-content/60 block mb-1">
-                {form.unit === 'ampoule' ? 'Pack size — ampoules per pack' : form.unit === 'tablet' ? 'Pack size — tablets per pack (usually 1)' : form.unit === 'tube' ? 'Pack size — tubes per pack (usually 1)' : 'Pack size — volume of ONE bottle/vial'}
-              </label>
-              <input className="input input-bordered w-full" placeholder={form.unit === 'tablet' || form.unit === 'tube' ? 'e.g. 1' : 'e.g. 75 = 75ml bottle'} value={form.packSize} onChange={(e) => setForm({ ...form, packSize: e.target.value })} />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-base-content/60 block mb-1">Concentration (optional, for mg dosing)</label>
-              <div className="flex items-center gap-1">
-                <input className="input input-bordered input-sm flex-1" placeholder="Amount e.g. 500" value={form.concentrationAmount} onChange={(e) => setForm({ ...form, concentrationAmount: e.target.value })} />
-                <select className="select select-bordered select-sm w-20 px-1" value={form.concentrationUnit || 'mg'} onChange={(e) => setForm({ ...form, concentrationUnit: e.target.value })}>
-                  <option value="mg">mg</option>
-                  <option value="g">g</option>
-                  <option value="mcg">mcg</option>
-                </select>
-                <span className="text-xs whitespace-nowrap">per</span>
-                <input className="input input-bordered input-sm w-16" placeholder="1" value={form.concentrationPer} onChange={(e) => setForm({ ...form, concentrationPer: e.target.value })} />
-                <span className="text-xs">{form.unit}</span>
-              </div>
-            </div>
-          </div>
-
-          {isEdit ? (
-            <div className="text-xs text-base-content/60 bg-base-200/50 rounded px-3 py-2">
-              Current stock: <span className="font-medium">{item.stock ?? 0} {UNIT_LABELS[form.unit] || 'tablet'}</span>
-              {' '}— to change stock, use <span className="font-medium">Restock</span> instead.
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs text-base-content/60 block mb-1">
-                {form.unit === 'tablet' ? 'Number of tablets' : form.unit === 'tube' ? 'Number of tubes' : form.unit === 'ampoule' ? 'Number of ampoules' : `Number of ${form.unit === 'ml' ? 'bottles/vials' : 'packs'}`}
-              </label>
-              <input className="input input-bordered w-full" placeholder="e.g. 10" value={form.packs} onChange={(e) => setForm({ ...form, packs: e.target.value })} />
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="text-xs text-base-content/60 block mb-1">Cost Price (per pack)</label>
-              <input className="input input-bordered w-full" placeholder="Cost Price" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-base-content/60 block mb-1">Selling Price (per pack)</label>
-              <input className="input input-bordered w-full" placeholder="Selling Price" value={form.sellingPrice} onChange={(e) => setForm({ ...form, sellingPrice: e.target.value })} />
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Reorder Level" value={form.reorderLevel} onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })} />
-            <input className="input input-bordered flex-1" placeholder="Supplier" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
-          </div>
-
-          <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Batch Number" value={form.batchNumber} onChange={(e) => setForm({ ...form, batchNumber: e.target.value })} />
-            <input className="input input-bordered flex-1" type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} />
-          </div>
-
-          <textarea className="textarea textarea-bordered w-full" rows={3} placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-
-          <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function RestockModal({ item, onClose, onSubmit }) {
+function RestockModal({ item, onClose, onSubmit, onReduce }) {
+  const [mode, setMode] = useState('restock')
   const [packs, setPacks] = useState('')
+  const [batchNumber, setBatchNumber] = useState(item.batchNumber || '')
+  const [expiryDate, setExpiryDate] = useState(item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '')
   const [costPrice, setCostPrice] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const unit = UNIT_LABELS[item.unit] || 'tablet'
-  const packSize = item.packSize ?? 1
+  const [sellingPrice, setSellingPrice] = useState('')
 
-  const handle = async () => {
-    if (!packs || Number(packs) <= 0) return toast.error('Enter a valid quantity')
+  const [reducePacks, setReducePacks] = useState('')
+  const [reduceReason, setReduceReason] = useState('Damaged / Broken')
+  const [customReason, setCustomReason] = useState('')
+
+  const [submitting, setSubmitting] = useState(false)
+  const unit = UNIT_LABELS[item.unit] || item.unit || 'tablet'
+  const packSize = Number(item.packSize) || 1
+  const currentStock = Number(item.stock) || 0
+
+  const REDUCE_REASONS = [
+    'Damaged / Broken',
+    'Expired stock',
+    'Wastage / Spillage',
+    'Dispensed without prescription',
+    'Stock count / Audit correction',
+    'Returned to supplier',
+    'Manufacturer recall',
+    'Other (Specify)',
+  ]
+
+  const handleRestockSubmit = async () => {
+    if (!packs || Number(packs) <= 0) return toast.error('Enter a valid quantity to add')
     setSubmitting(true)
     try {
-      await onSubmit({ packs: Number(packs), batchNumber: item.batchNumber, costPrice: costPrice ? Number(costPrice) : undefined })
+      await onSubmit({
+        packs: Number(packs),
+        batchNumber: batchNumber.trim() || undefined,
+        expiryDate: expiryDate || undefined,
+        costPrice: costPrice ? Number(costPrice) : undefined,
+        sellingPrice: sellingPrice.trim() ? Number(sellingPrice) : undefined,
+      })
     } finally {
       setSubmitting(false)
     }
   }
 
+  const handleReduceSubmit = async () => {
+    const val = Number(reducePacks)
+    if (!reducePacks || isNaN(val) || val <= 0) {
+      return toast.error('Enter a valid quantity to reduce')
+    }
+    const unitsToRemove = val * packSize
+    if (unitsToRemove > currentStock) {
+      return toast.error(`Cannot reduce more than available stock (${currentStock} ${unit})`)
+    }
+    if (reduceReason === 'Other (Specify)' && !customReason.trim()) {
+      return toast.error('Please specify the reason for reduction')
+    }
+
+    const finalReason =
+      reduceReason === 'Other (Specify)'
+        ? customReason.trim() || 'Manual stock reduction'
+        : customReason.trim()
+          ? `${reduceReason} - ${customReason.trim()}`
+          : reduceReason
+
+    setSubmitting(true)
+    try {
+      const payload = {
+        packs: val,
+        quantity: unitsToRemove,
+        reason: finalReason,
+        currentStock,
+        packSize,
+      }
+      if (onReduce) {
+        await onReduce(payload)
+      } else {
+        await onSubmit({ type: 'reduce', ...payload })
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const restockUnits = Number(packs) > 0 ? Number(packs) * packSize : 0
+  const reduceUnits = Number(reducePacks) > 0 ? Number(reducePacks) * packSize : 0
+  const isReduceOver = reduceUnits > currentStock
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="z-10 w-full max-w-md card bg-base-100 p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium">Restock {item.name}</h3>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+    >
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="z-10 w-full max-w-md card bg-base-100 p-5 shadow-xl">
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-semibold text-lg">
+            {mode === 'restock' ? 'Restock Stock' : 'Reduce Stock'}
+          </h3>
+          <button className="btn btn-ghost btn-sm btn-circle" onClick={onClose} aria-label="Close modal">✕</button>
         </div>
-        <div className="space-y-2">
-          <div>
-            <label className="text-xs text-base-content/60 block mb-1">
-              {item.unit === 'tablet' ? 'Number of tablets to add' : item.unit === 'ampoule' ? `Number of ampoules to add (each pack ${packSize})` : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to add (each ${packSize} ${unit})`}
-            </label>
-            <input className="input input-bordered w-full" placeholder="e.g. 10" value={packs} onChange={(e) => setPacks(e.target.value)} />
+
+        {/* Tab switcher */}
+        <div className="grid grid-cols-2 p-1 bg-base-200 rounded-lg mb-3">
+          <button
+            type="button"
+            className={`py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+              mode === 'restock'
+                ? 'bg-primary text-primary-content shadow-sm'
+                : 'text-base-content/70 hover:text-base-content'
+            }`}
+            onClick={() => setMode('restock')}
+          >
+            <span>+</span> Restock (Add)
+          </button>
+          <button
+            type="button"
+            className={`py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+              mode === 'reduce'
+                ? 'bg-error text-error-content shadow-sm'
+                : 'text-base-content/70 hover:text-base-content'
+            }`}
+            onClick={() => setMode('reduce')}
+          >
+            <span>−</span> Reduce Stock
+          </button>
+        </div>
+
+        {/* Item Stock Summary Banner */}
+        <div className="bg-base-200/50 rounded-lg p-3 mb-3 border border-base-300/60">
+          <div className="flex items-center justify-between text-xs">
+            <div>
+              <span className="font-semibold text-base-content">{item.name}</span>
+              <span className="text-base-content/70 ml-1">({item.form} {item.strength})</span>
+            </div>
+            <span className="badge badge-sm badge-outline">Batch: {item.batchNumber || 'N/A'}</span>
           </div>
-          {packs && Number(packs) > 0 && (
-            <p className="text-xs text-base-content/60">
-              This adds {Number(packs) * packSize} {unit} to stock ({item.stock ?? 0} → {(Number(item.stock) || 0) + Number(packs) * packSize}).
-            </p>
-          )}
-          <input className="input input-bordered w-full" placeholder="Batch number" value={item.batchNumber} disabled />
-          <input className="input input-bordered w-full" placeholder="Cost price (optional)" value={costPrice} onChange={(e) => setCostPrice(e.target.value)} />
-          <div className="flex justify-end gap-2">
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handle} disabled={submitting}>{submitting ? 'Restocking...' : 'Restock'}</button>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-base-300/40 text-xs">
+            <span className="text-base-content/70">Current Stock:</span>
+            <span className="font-bold text-sm text-primary">
+              {currentStock} <span className="text-xs font-normal text-base-content/70">{unit}</span>
+              {packSize > 1 && (
+                <span className="text-[11px] font-normal text-base-content/60 ml-1">
+                  ({(currentStock / packSize).toFixed(1)} packs)
+                </span>
+              )}
+            </span>
           </div>
         </div>
+
+        {mode === 'restock' ? (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1 font-medium">
+                {item.unit === 'tablet'
+                  ? 'Number of tablets to add'
+                  : item.unit === 'tube'
+                    ? 'Number of tubes to add'
+                    : item.unit === 'ampoule'
+                      ? `Number of ampoules to add (each pack ${packSize})`
+                      : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to add (each ${packSize} ${unit})`}
+              </label>
+              <input
+                className="input input-bordered input-sm w-full"
+                placeholder="e.g. 10"
+                type="number"
+                min="1"
+                value={packs}
+                onChange={(e) => setPacks(e.target.value)}
+              />
+            </div>
+
+            {packs && Number(packs) > 0 && (
+              <div className="p-2.5 rounded-lg text-xs bg-success/10 text-success-content border border-success/30">
+                This adds <span className="font-semibold">{restockUnits} {unit}</span> to stock ({currentStock} → <span className="font-semibold">{currentStock + restockUnits} {unit}</span>).
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Batch Number</label>
+              <input
+                className="input input-bordered input-sm w-full"
+                placeholder="Batch number"
+                value={batchNumber}
+                onChange={(e) => setBatchNumber(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Expiry Date (optional)</label>
+              <input
+                className="input input-bordered input-sm w-full"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Cost Price (per pack, optional)</label>
+              <input
+                className="input input-bordered input-sm w-full"
+                placeholder="Cost price (optional)"
+                type="number"
+                value={costPrice}
+                onChange={(e) => setCostPrice(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">Selling Price (per pack, optional)</label>
+              <input
+                className="input input-bordered input-sm w-full"
+                placeholder="Selling price (optional)"
+                type="number"
+                min="0"
+                step="any"
+                value={sellingPrice}
+                onChange={(e) => setSellingPrice(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={submitting}>Cancel</button>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleRestockSubmit}
+                disabled={submitting || !packs || Number(packs) <= 0}
+              >
+                {submitting ? 'Restocking...' : 'Restock Item'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1 font-medium">
+                {item.unit === 'tablet'
+                  ? 'Number of tablets to remove'
+                  : item.unit === 'tube'
+                    ? 'Number of tubes to remove'
+                    : item.unit === 'ampoule'
+                      ? `Number of ampoules to remove (each pack ${packSize})`
+                      : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to remove (each ${packSize} ${unit})`}
+              </label>
+              <input
+                className={`input input-bordered input-sm w-full ${isReduceOver ? 'input-error' : ''}`}
+                placeholder="e.g. 5"
+                type="number"
+                min="1"
+                value={reducePacks}
+                onChange={(e) => setReducePacks(e.target.value)}
+              />
+            </div>
+
+            {reducePacks && Number(reducePacks) > 0 && (
+              <div className={`p-2.5 rounded-lg text-xs ${isReduceOver ? 'bg-error/15 text-error border border-error/30' : 'bg-warning/15 text-warning-content border border-warning/30'}`}>
+                {isReduceOver ? (
+                  <span>⚠️ Cannot remove {reduceUnits} {unit}. Available stock is only {currentStock} {unit}.</span>
+                ) : (
+                  <span>This removes <span className="font-semibold">{reduceUnits} {unit}</span> from stock ({currentStock} → <span className="font-semibold">{currentStock - reduceUnits} {unit}</span>).</span>
+                )}
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1 font-medium">Reason for Reduction</label>
+              <select
+                className="select select-bordered select-sm w-full"
+                value={reduceReason}
+                onChange={(e) => setReduceReason(e.target.value)}
+              >
+                {REDUCE_REASONS.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-base-content/70 block mb-1">
+                {reduceReason === 'Other (Specify)' ? 'Specify Reason *' : 'Additional Notes (optional)'}
+              </label>
+              <input
+                className="input input-bordered input-sm w-full"
+                placeholder={reduceReason === 'Other (Specify)' ? 'e.g. Lost during relocation' : 'e.g. Expired batch 12A, broken vial during handling'}
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={submitting}>Cancel</button>
+              <button
+                className="btn btn-error btn-sm text-white"
+                onClick={handleReduceSubmit}
+                disabled={
+                  submitting ||
+                  !reducePacks ||
+                  Number(reducePacks) <= 0 ||
+                  isReduceOver ||
+                  (reduceReason === 'Other (Specify)' && !customReason.trim())
+                }
+              >
+                {submitting ? 'Reducing...' : 'Reduce Stock'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -850,7 +948,7 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="z-10 w-full max-w-lg card bg-base-100 p-4">
         <div className="flex items-center justify-between mb-4">
@@ -893,5 +991,3 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
     </div>
   )
 }
-
-

@@ -190,7 +190,10 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div 
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-base-100 rounded-2xl max-w-3xl w-full shadow-2xl border border-base-300 max-h-[92vh] flex flex-col overflow-hidden">
         <div className="border-b border-base-200 px-6 py-4 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
@@ -265,7 +268,10 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                         placeholder="Search drug..."
                         className={`input input-bordered w-full ${errors.medications?.[index]?.drugName ? 'input-error' : ''}`}
                         value={drugDropdownIndex === index ? drugSearch : watch(`medications.${index}.drugName`) || ''}
-                        onFocus={() => { setDrugDropdownIndex(index); setDrugSearch(''); }}
+                        onFocus={() => { 
+                          setDrugDropdownIndex(index); 
+                          setDrugSearch(watch(`medications.${index}.drugName`) || ''); 
+                        }}
                         onChange={(e) => {
                           setDrugSearch(e.target.value);
                           setDrugDropdownIndex(index);
@@ -282,10 +288,19 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                             {drugList
                               .filter((drug) => matchesMedicationType(drug, medicationType))
                               .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true))
-                              .map((drug) => (
+                              .map((drug) => {
+                                const allMeds = watch('medications') || [];
+                                const isDuplicate = allMeds.some((m, idx) => 
+                                  idx !== index && 
+                                  m.medicationType === medicationType && 
+                                  m.inventoryId && (m.inventoryId === (drug._id || drug.id))
+                                );
+
+                                return (
                                 <li
                                   key={drug._id || drug.id}
                                   onClick={() => {
+                                    if (isDuplicate) return;
                                     setValue(`medications.${index}.drugName`, drug.name);
                                     setValue(`medications.${index}._selectedDrug`, drug);
                                     setValue(`medications.${index}.inventoryId`, drug._id || drug.id);
@@ -295,10 +310,13 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                                     setDrugDropdownIndex(null);
                                     setDrugSearch('');
                                   }}
-                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  className={`px-4 py-2 text-sm ${isDuplicate ? 'opacity-50 cursor-not-allowed bg-base-200' : 'hover:bg-gray-100 cursor-pointer'}`}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-medium">{drug.name}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{drug.name}</span>
+                                      {isDuplicate && <span className="text-[10px] uppercase font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">Already Selected</span>}
+                                    </div>
                                     {(drug.form || drug.strength) && (
                                       <span className="text-gray-500 text-xs ml-2">
                                         {[drug.form, drug.strength].filter(Boolean).join(' - ')}
@@ -306,27 +324,62 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                                     )}
                                   </div>
                                 </li>
-                              ))}
+                              )})}
 
-                            {drugList
-                              .filter((drug) => matchesMedicationType(drug, medicationType))
-                              .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true)).length === 0 && (
-                              <li
-                                onClick={() => {
-                                  setValue(`medications.${index}.drugName`, drugSearch);
-                                  setValue(`medications.${index}._selectedDrug`, null);
-                                  setValue(`medications.${index}.inventoryId`, null);
-                                  setValue(`medications.${index}.availability`, 'unavailable');
-                                  setDrugDropdownIndex(null);
-                                  setDrugSearch('');
-                                }}
-                                className="px-4 py-2 hover:bg-warning/10 cursor-pointer text-sm border-t"
-                              >
-                                <span className="font-medium text-warning">+ Prescribe "{drugSearch}" (not in stock)</span>
-                                <p className="text-xs text-base-content/60 mt-0.5">Patient will source this externally</p>
-                              </li>
-                            )}
+                            {(() => {
+                              const filteredList = drugList
+                                .filter((drug) => matchesMedicationType(drug, medicationType))
+                                .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true));
+
+                              if (filteredList.length > 0) return null;
+
+                              const allMeds = watch('medications') || [];
+                              const isCustomDuplicate = allMeds.some((m, idx) => 
+                                idx !== index && 
+                                m.medicationType === medicationType && 
+                                !m.inventoryId && m.drugName?.toLowerCase() === drugSearch?.toLowerCase()
+                              );
+
+                              return (
+                                <li
+                                  onClick={() => {
+                                    if (isCustomDuplicate) return;
+                                    setValue(`medications.${index}.drugName`, drugSearch);
+                                    setValue(`medications.${index}._selectedDrug`, null);
+                                    setValue(`medications.${index}.inventoryId`, null);
+                                    setValue(`medications.${index}.availability`, 'unavailable');
+                                    setDrugDropdownIndex(null);
+                                    setDrugSearch('');
+                                  }}
+                                  className={`px-4 py-2 text-sm border-t ${isCustomDuplicate ? 'opacity-50 cursor-not-allowed bg-base-200' : 'hover:bg-warning/10 cursor-pointer'}`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-warning">+ Prescribe "{drugSearch}" (not in stock)</span>
+                                    {isCustomDuplicate && <span className="text-[10px] uppercase font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">Already Selected</span>}
+                                  </div>
+                                  <p className="text-xs text-base-content/60 mt-0.5">Patient will source this externally</p>
+                                </li>
+                              );
+                            })()}
                           </ul>
+                        </div>
+                      )}
+
+                      {selectedDrug && (
+                        <div className="mt-2 rounded border border-info/30 bg-info/10 p-3 text-sm">
+                          <p className="font-medium">
+                            Available: {selectedDrug.form || 'N/A'}{selectedDrug.strength ? ` - ${selectedDrug.strength}` : ''}
+                          </p>
+                          {selectedDrug.stock !== undefined && (
+                            <p className="mt-1 text-xs">
+                              Stock:{' '}
+                              <span className={selectedDrug.stock > 0 ? 'font-semibold text-success' : 'font-semibold text-warning'}>
+                                {selectedDrug.stock}
+                              </span>{' '}
+                              {selectedDrug.unit || unitOptions[0]?.value}
+                              {selectedDrug.packSize > 1 && ` (packs of ${selectedDrug.packSize})`}
+                            </p>
+                          )}
                         </div>
                       )}
 

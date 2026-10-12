@@ -280,7 +280,7 @@ const NeonatalCareTab = ({ patientId, dependantId, consultationId }) => {
 
       {/* Start Session Modal */}
       {showStartModal && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <div className="bg-base-100 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-base-300 space-y-4">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">

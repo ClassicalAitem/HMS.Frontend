@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaInbox, FaThLarge, FaUsers } from "react-icons/fa";
+import { FaInbox, FaThLarge, FaUsers, FaBed } from "react-icons/fa";
 import { FaSuitcaseMedical } from "react-icons/fa6";
 import { MdLockOutline } from "react-icons/md";
 import { FaSignOutAlt } from "react-icons/fa";
@@ -42,6 +42,7 @@ const Sidebar = () => {
     { icon: FaInbox, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
       badge: incomingCount, },
     { icon: FaUsers, label: "Patients", path: "/dashboard/sonographer/patients", active: isOnPatients },
+    { icon: FaBed, label: "Admitted", path: "/dashboard/sonographer/admitted" },
     { icon: FaHistory, label: "Scan History", path: "/dashboard/sonographer/scan-history" },
   ];
 
