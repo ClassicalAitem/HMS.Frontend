@@ -76,6 +76,30 @@ export const getInventoryTransaction = async (id) => {
   }
 }
 
+export const reduceInventory = async (id, payload) => {
+  try {
+    const response = await apiClient.patch(`/inventory/reduceInventory/${id}`, payload)
+    return response.data ?? response
+  } catch (err) {
+    if (err?.response?.status === 404) {
+      console.warn('reduceInventory endpoint returned 404, falling back to updateInventory')
+      const currentStock = Number(payload.currentStock) || 0
+      const packSize = Number(payload.packSize) || 1
+      let reduceUnits = 0
+      if (payload.packs !== undefined && payload.packs !== null && payload.packs !== '') {
+        reduceUnits = Number(payload.packs) * packSize
+      } else if (payload.quantity !== undefined && payload.quantity !== null && payload.quantity !== '') {
+        reduceUnits = Number(payload.quantity)
+      }
+      const newStock = Math.max(0, currentStock - reduceUnits)
+      const fallbackRes = await apiClient.patch(`/inventory/${id}`, { stock: newStock })
+      return fallbackRes.data ?? fallbackRes
+    }
+    console.error('inventoryAPI: reduceInventory error', err)
+    throw err
+  }
+}
+
 export const deleteInventory = async (id) => {
   try {
     const response = await apiClient.delete(`/inventory/${id}`)
@@ -91,6 +115,7 @@ export default {
   createInventory,
   updateInventory,
   restockInventory,
+  reduceInventory,
   getAllInventoryTransactions,
   getInventoryTransaction,
   deleteInventory
