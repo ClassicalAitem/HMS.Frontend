@@ -8,3 +8,4 @@ export { default as PatientCardTypeInfo } from './PatientCardTypeInfo';
 export { default as PatientStatusBadge } from './PatientStatusBadge';
 export { default as HmoStatusBadge } from './HmoStatusBadge';
 export { default as SearchableNameDropdown } from './SearchableNameDropdown';
+export { default as AutoLogoutHandler } from './AutoLogoutHandler';
