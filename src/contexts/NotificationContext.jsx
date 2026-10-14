@@ -46,9 +46,20 @@ export const NotificationProvider = ({ children }) => {
       const isReady = (status) => (Array.isArray(status) ? status : [status])
         .some((value) => readyStatuses.has(String(value).toLowerCase()));
 
+      const isToday = (dateValue) => {
+        if (!dateValue) return false;
+        const d = new Date(dateValue);
+        const now = new Date();
+        return (
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate()
+        );
+      };
+
       setLabReadyCount(
-        patients.filter((patient) => isReady(patient?.status)).length +
-        dependants.filter((dependant) => isReady(dependant?.status)).length,
+        patients.filter((patient) => isReady(patient?.status) && isToday(patient?.updatedAt || patient?.createdAt)).length +
+        dependants.filter((dependant) => isReady(dependant?.status) && isToday(dependant?.updatedAt || dependant?.createdAt)).length,
       );
     } catch (error) {
       console.error('Failed to refresh lab results count:', error);
@@ -153,11 +164,36 @@ export const NotificationProvider = ({ children }) => {
       refreshLabReadyCount();
     };
     socket.on('patient:statusChanged', handleStatusChanged);
+    socket.on('queue:midnight-reset', handleStatusChanged);
+
+    // Client-side midnight rollover scheduler
+    let midnightTimer = null;
+    const scheduleMidnight = () => {
+      const now = new Date();
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
+      const delay = Math.max(1000, tomorrow.getTime() - now.getTime());
+      midnightTimer = setTimeout(() => {
+        handleStatusChanged();
+        scheduleMidnight();
+      }, delay);
+    };
+    scheduleMidnight();
+
+    // Also refresh counts when returning to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleStatusChanged();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       socket.off('patient:incoming', handleIncoming);
       socket.off('patient:labResultReady', handleLabReady);
       socket.off('patient:statusChanged', handleStatusChanged);
+      socket.off('queue:midnight-reset', handleStatusChanged);
+      if (midnightTimer) clearTimeout(midnightTimer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAuthenticated, user, refreshLabReadyCount, refreshQueueCount]);
 
