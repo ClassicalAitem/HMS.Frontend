@@ -8,6 +8,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
 import ShiftCountdown from './components/common/ShiftCountdown';
+import AutoLogoutHandler from './components/common/AutoLogoutHandler';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Router>
             <NotificationProvider>
               <div className="App">
+                <AutoLogoutHandler />
                 <ShiftCountdown />
                 <AppRoutes />
                 <Toaster
