@@ -1,10 +1,11 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { IoCloseCircleOutline } from "react-icons/io5";
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = "Confirm", cancelText = "Cancel", children }) => {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="flex fixed inset-0 z-50 justify-center items-center backdrop-blur-sm bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="mx-4 w-full max-w-md shadow-xl card bg-white">
         <div className="p-6 card-body">
@@ -42,7 +43,8 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message, confirm
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

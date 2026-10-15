@@ -286,11 +286,11 @@ const SonographerIncoming = () => {
 
   const handleClear = async (patient) => {
     if (patient.patientType === "dependant") {
-      await updateDependantStatus(patient.dependantId, { status: PATIENT_STATUS.CANCELLED });
+      await updateDependantStatus(patient.dependantId, { status: PATIENT_STATUS.COMPLETED });
     } else if (patient.patientType === "opd") {
-      await updateOpdPatient(patient.opdPatientId, { status: PATIENT_STATUS.CANCELLED });
+      await updateOpdPatient(patient.opdPatientId, { status: PATIENT_STATUS.COMPLETED });
     } else {
-      await updatePatientStatus(patient.patientId || patient.id, { status: PATIENT_STATUS.CANCELLED });
+      await updatePatientStatus(patient.patientId || patient.id, { status: PATIENT_STATUS.COMPLETED });
     }
     localStorage.setItem('refreshIncoming', Date.now().toString());
     refreshQueueCount();
