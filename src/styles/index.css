@@ -299,3 +299,37 @@ h6 {
 .layout {
   @apply lg:max-w-[1220px] w-full mx-auto p-2;
 }
+
+/* ==========================================================================
+   Universal Modal Stacking & Backdrop Blur System
+   Keeps header at z-20 (below all modals, drawers, and overlays)
+   ========================================================================== */
+
+#app-header {
+  z-index: 20 !important;
+}
+
+/* Ensure all modals and dialogs sit above the header */
+.fixed.inset-0:is([class*="z-50"], [class*="z-[50]"], [class*="z-60"], [class*="z-[60]"], [class*="z-70"], [class*="z-[70]"], [class*="z-80"], [class*="z-[80]"], [class*="z-100"], [class*="z-[100]"], [class*="z-[9999]"]),
+.modal,
+.modal.modal-open,
+dialog[open] {
+  z-index: 100 !important;
+}
+
+/* Universal backdrop blur and dimming for all modal overlays */
+.fixed.inset-0:is([class*="bg-black"], [class*="bg-opacity"], .modal, [class*="backdrop-blur"]),
+.modal-backdrop,
+.modal::backdrop,
+dialog::backdrop {
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+/* Ensure backdrop colors are visible for legacy bg-opacity-50 backdrops in Tailwind v4 */
+.fixed.inset-0.bg-opacity-50,
+.fixed.inset-0[class*="bg-opacity"] {
+  background-color: rgba(0, 0, 0, 0.55) !important;
+}
+
+

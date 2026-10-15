@@ -6,7 +6,7 @@ import ConfirmationModal from '@/components/modals/ConfirmationModal';
 /**
  * Standalone per-row "Clear" action for any Incoming page. Sets the item's
  * status to a terminal value (caller decides which, typically
- * PATIENT_STATUS.CANCELLED) so it drops out of every role's Incoming queue —
+ * PATIENT_STATUS.COMPLETED) so it drops out of every role's Incoming queue —
  * for cases where a patient/dependant has sat unattended (e.g. "collecting
  * injection for 3 days") and staff want to manually remove it rather than
  * waiting for any automatic staleness rule.
@@ -56,7 +56,7 @@ const ClearItemButton = ({ item, onClear, onCleared, label = 'Clear' }) => {
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmClear}
         title="Clear Entry"
-        message={`Remove ${item?.name || 'this entry'} from the queue? This marks it as cancelled and it will no longer appear here. This does not delete any records.`}
+        message={`Remove ${item?.name || 'this entry'} from the queue? This marks it as completed and it will no longer appear here. This does not delete any records.`}
         confirmText="Clear"
         cancelText="Cancel"
       />

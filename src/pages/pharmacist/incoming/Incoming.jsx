@@ -28,8 +28,8 @@ const Incoming = () => {
     setError(null)
     try {
       const [patientsRes, dependantsRes] = await Promise.allSettled([
-        getPatients(),
-        getDependants(),
+        getPatients({ status: 'awaiting_pharmacy', limit: 100 }),
+        getDependants({ status: 'awaiting_pharmacy', limit: 100 }),
       ])
 
       const patientList = patientsRes.status === 'fulfilled'
@@ -125,9 +125,9 @@ const Incoming = () => {
 
   const handleClear = async (p) => {
     if (p.type === 'dependant') {
-      await updateDependantStatus(p.dependantId, { status: PATIENT_STATUS.CANCELLED })
+      await updateDependantStatus(p.dependantId, { status: PATIENT_STATUS.COMPLETED })
     } else {
-      await updatePatientStatus(p.patientId, { status: PATIENT_STATUS.CANCELLED })
+      await updatePatientStatus(p.patientId, { status: PATIENT_STATUS.COMPLETED })
     }
     localStorage.setItem('refreshIncoming', Date.now().toString())
     refreshQueueCount()

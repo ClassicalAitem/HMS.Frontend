@@ -56,8 +56,8 @@ const Incoming = () => {
         ];
 
         const [patientsRes, dependantsRes] = await Promise.allSettled([
-          getPatients(),
-          getDependants(),
+          getPatients({ status: nurseStatuses.join(","), limit: 100 }),
+          getDependants({ status: nurseStatuses.join(","), limit: 100 }),
         ]);
 
         const patients =
@@ -160,9 +160,9 @@ const Incoming = () => {
 
   const handleClear = async (data) => {
     if (data.type === "dependant") {
-      await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.CANCELLED });
+      await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.COMPLETED });
     } else {
-      await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.CANCELLED });
+      await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.COMPLETED });
     }
     localStorage.setItem("refreshIncoming", Date.now().toString());
     refreshQueueCount();

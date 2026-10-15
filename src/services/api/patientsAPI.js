@@ -20,10 +20,10 @@ export const addPatientStatus = async (patient, newStatus) => {
   return updatePatientStatus(patient.id, normalizedStatus);
 };
 
-// Get all patients
-export const getPatients = async () => {
+// Get all patients (with optional server-side filter, search, and pagination)
+export const getPatients = async (params = {}) => {
   try {
-    const response = await apiClient.get('/patient');
+    const response = await apiClient.get('/patient', { params });
 
     const patients = Array.isArray(response.data?.data)
       ? response.data.data.map((p) => ({
