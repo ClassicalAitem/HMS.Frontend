@@ -20,9 +20,9 @@ const initialState = {
 // Async thunks
 export const fetchPatients = createAsyncThunk(
   'patients/fetchPatients',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await getPatients();
+      const response = await getPatients(params);
       return response;
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Failed to fetch patients'));

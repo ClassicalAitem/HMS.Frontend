@@ -13,7 +13,6 @@ dist-ssr
 *.local
 
 # Editor directories and files
-.vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
@@ -24,10 +23,9 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
-.env*
-.env
 .env.example
 .vs/
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+config.bat
