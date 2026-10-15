@@ -1,21 +1,18 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
 import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
-import { getInvestigations, getInvestigationRequestByOpdPatientId } from "@/services/api/investigationRequestAPI";
-import { getAllDependantsForPatient, getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
-import { getOpdPatientById, getAllOpdPatients, updateOpdPatient } from "@/services/api/opdPatientAPI";
+import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
+import { getAllOpdPatients, updateOpdPatient } from "@/services/api/opdPatientAPI";
 import toast from "react-hot-toast";
 import { FaSearch } from "react-icons/fa";
 import { GiUltrasound } from "react-icons/gi";
-import { getAllBillings } from "@/services/api/billingAPI";
 import ClearItemButton from "@/components/common/ClearIncomingButton";
 import ClearAllButton from "@/components/common/ClearAllButton";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { useNotifications } from "@/contexts/NotificationContext";
-import HmoStatusBadge from "@/components/common/HmoStatusBadge";
-import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
+import { formatNigeriaDateTimeShort } from "@/utils/formatDateTimeUtils";
 
 const SonographerIncoming = () => {
   const navigate = useNavigate();
@@ -25,184 +22,99 @@ const SonographerIncoming = () => {
   const [error, setError] = useState(null);
   const [searchValue, setSearchValue] = useState("");
   const { refreshQueueCount, lastUpdate } = useNotifications();
+  const hasLoadedRef = useRef(false);
 
   const fetchIncomingPatients = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!hasLoadedRef.current) setLoading(true);
       setError(null);
-      const [investigationsRes, opdResponse, billingsRes] = await Promise.all([
-        getInvestigations({ type: 'radiology' }),
-        getAllOpdPatients().catch(() => []),
-        getAllBillings().catch(() => [])
+
+      // Directly look for patients awaiting sonography for fast, lightweight loading
+      const [patientsRes, dependantsRes, opdRes] = await Promise.allSettled([
+        getPatients({ status: PATIENT_STATUS.AWAITING_SONOGRAPHER, limit: 100 }),
+        getDependants({ status: PATIENT_STATUS.AWAITING_SONOGRAPHER, limit: 100 }),
+        getAllOpdPatients({ status: PATIENT_STATUS.AWAITING_SONOGRAPHER, limit: 100 }).catch(() => []),
       ]);
-      const allBillings = Array.isArray(billingsRes) ? billingsRes : (billingsRes?.data?.data || billingsRes?.data || []);
-      const allOpdPatients = Array.isArray(opdResponse) ? opdResponse : (opdResponse?.data || []);
-      const opdPatientsAwaitingSonographer = allOpdPatients.filter((patient) => {
-        const statusList = Array.isArray(patient.status) ? patient.status : [patient.status];
-        return statusList.some((status) => String(status || "").toLowerCase() === "awaiting_sonographer");
+
+      const rawPatients = patientsRes.status === "fulfilled"
+        ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])
+        : [];
+
+      const rawDependants = dependantsRes.status === "fulfilled"
+        ? (() => {
+            const raw = dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? [];
+            return Array.isArray(raw) ? raw : (raw?.dependants ?? []);
+          })()
+        : [];
+
+      const rawOpd = opdRes.status === "fulfilled"
+        ? (Array.isArray(opdRes.value?.data) ? opdRes.value.data : (Array.isArray(opdRes.value) ? opdRes.value : []))
+        : [];
+
+      const regularList = rawPatients.map((p) => {
+        const idVal = p.id || p._id;
+        const nameVal = `${p.firstName || ""} ${p.lastName || ""}`.trim() || p.fullName || "Unknown Patient";
+        return {
+          ...p,
+          id: idVal,
+          patientType: "regular",
+          displayName: nameVal,
+          displayId: p.hospitalId || p.patientId || idVal,
+          cardType: p.cardType || "personal",
+        };
       });
-      const opdInvestigationResponses = await Promise.all(
-        opdPatientsAwaitingSonographer.map(async (patient) => {
-          const opdPatientId = patient.id || patient._id;
-          try {
-            return await getInvestigationRequestByOpdPatientId(opdPatientId);
-          } catch (error) {
-            return [];
-          }
+
+      const dependantList = rawDependants.map((d) => {
+        const idVal = d.id || d._id;
+        const nameVal = `${d.firstName || ""} ${d.lastName || ""}`.trim() || d.fullName || "Unknown Dependant";
+        const parent = d.patient || {};
+        return {
+          ...d,
+          id: idVal,
+          dependantId: idVal,
+          patientId: d.patientId || parent.id || parent._id,
+          patientType: "dependant",
+          displayName: nameVal,
+          displayId: d.hospitalId || parent.hospitalId || d.patientId || idVal,
+          cardType: parent.cardType || d.cardType || "personal",
+          dependantInfo: {
+            id: idVal,
+            name: nameVal,
+          },
+        };
+      });
+
+      const opdList = rawOpd
+        .filter((o) => {
+          const s = Array.isArray(o.status) ? o.status : [o.status];
+          return s.some((val) => String(val || "").toLowerCase() === PATIENT_STATUS.AWAITING_SONOGRAPHER);
         })
-      );
-      const allInvestigations = Array.isArray(investigationsRes) ? investigationsRes : (investigationsRes?.data || []);
-      const opdInvestigations = opdInvestigationResponses.flatMap((response) => (
-        Array.isArray(response) ? response : (response?.data || [])
-      ));
-
-      const paidInvestigations = allInvestigations
-        .map((inv) => filterVisibleInvestigation(inv, allBillings))
-        .filter(Boolean);
-
-      const paidOpdInvestigations = opdInvestigations
-        .map((inv) => filterVisibleInvestigation(inv, allBillings))
-        .filter(Boolean);
-
-      // Only radiology investigations belong on the sonographer's queue
-      const radiologyInvestigations = paidInvestigations.filter(
-        (inv) => {
-          const type = String(inv.type || '').toLowerCase();
-          const status = String(inv.status || '').toLowerCase();
-          return (type === 'radiology' || type === 'imaging') &&
-            status !== 'completed' && status !== 'cancelled';
-        }
-      );
-      
-      const laboratoryInvestigations = [...paidInvestigations, ...paidOpdInvestigations].filter(
-        (inv) => {
-          const type = String(inv.type || '').toLowerCase();
-          return (type === 'laboratory' || type === 'lab') && inv.status !== 'completed' && inv.status !== 'cancelled';
-        }
-      );
-
-      const isAwaitingSonographer = (status) => {
-        const statusList = Array.isArray(status) ? status : [status];
-        return statusList.some((s) => {
-          const val = String(s || "").toLowerCase();
-          return val === "awaiting_sonographer" ;
-        });
-      };
-
-      const getPendingLabCount = (pType, pid, did) => {
-        return laboratoryInvestigations.filter(inv => {
-          if (pType === 'opd') return String(inv.opdPatientId) === String(pid);
-          if (pType === 'dependant') return String(inv.dependantId) === String(did);
-          return String(inv.patientId || inv.patient?._id || inv.patient?.id) === String(pid) && !inv.dependantId;
-        }).length;
-      };
-
-      const enrichedPatients = radiologyInvestigations
-        .filter((inv) => (
-          inv.patient &&
-          !inv.dependantId &&
-          !inv.opdPatientId &&
-          !inv.opdPatient &&
-          isAwaitingSonographer(inv.patient.status)
-        ))
-        .map((inv) => {
-          const patient = inv.patient;
-          const pid = patient.id || patient._id;
+        .map((o) => {
+          const idVal = o.id || o._id;
+          const nameVal = o.fullName || `${o.firstName || ""} ${o.lastName || ""}`.trim() || "OPD Patient";
           return {
-            ...patient,
-            patientType: "regular",
-            dependantId: null,
-            dependantInfo: null,
-            opdPatientId: inv.opdPatientId,
-            opdPatientInfo: null,
-            investigationId: inv.id || inv._id,
-            investigation: inv,
-            cardType: patient.cardType || 'personal',
-            familyName: patient.familyName || '',
-            companyName: patient.companyName || '',
-            pendingLabCount: getPendingLabCount('regular', pid, null)
-          };
-        });
-
-      const enrichedDependants = radiologyInvestigations
-        .filter((inv) => inv.dependant && isAwaitingSonographer(inv.dependant.status))
-        .map((inv) => {
-          const dep = inv.dependant;
-          const parentPatient = inv.patient;
-          const did = dep.id || dep._id;
-          return {
-            ...dep,
-            status: dep.status,
-            hospitalId: parentPatient?.hospitalId,
-            patientId: dep.patientId || inv.patientId,
-            patientType: "dependant",
-            dependantId: did,
-            dependantInfo: {
-              id: did,
-              name: `${dep.firstName || ""} ${dep.lastName || ""}`.trim() || dep.fullName,
-            },
-            opdPatientId: null,
-            opdPatientInfo: null,
-            investigationId: inv.id || inv._id,
-            investigation: inv,
-            cardType: parentPatient?.cardType || 'personal',
-            familyName: parentPatient?.familyName || '',
-            companyName: parentPatient?.companyName || '',
-            pendingLabCount: getPendingLabCount('dependant', null, did)
-          };
-        });
-
-      const uniqueDependants = Array.from(
-        new Map(enrichedDependants.map(d => [d.dependantId, d])).values()
-      );
-
-      const opdRadiologyInvestigations = paidOpdInvestigations.filter(
-        (inv) => {
-          const type = String(inv.type || '').toLowerCase();
-          return type === 'radiology' || type === 'imaging';
-        }
-      );
-
-      const enrichedOpdPatients = opdRadiologyInvestigations
-        .filter((inv) => inv.opdPatient && isAwaitingSonographer(inv.opdPatient.status))
-        .map((inv) => {
-          const patient = inv.opdPatient;
-          const patientId = patient.id || patient._id;
-          return {
-            ...patient,
+            ...o,
+            id: idVal,
+            opdPatientId: idVal,
             patientType: "opd",
-            dependantId: null,
-            dependantInfo: null,
-            opdPatientId: patientId,
+            displayName: nameVal,
+            displayId: o.opdId || idVal,
+            cardType: "opd",
             opdPatientInfo: {
-              id: patientId,
-              name: patient.fullName || `${patient.firstName || ""} ${patient.lastName || ""}`.trim(),
+              id: idVal,
+              name: nameVal,
             },
-            investigationId: inv.id || inv._id,
-            investigation: inv,
-            cardType: patient.cardType || 'personal',
-            familyName: patient.familyName || '',
-            companyName: patient.companyName || '',
-            pendingLabCount: getPendingLabCount('opd', patientId, null)
           };
         });
 
-      const uniquePatients = Array.from(
-        new Map(enrichedPatients.map(p => [p.id || p._id, p])).values()
-      );
+      const allIncoming = [...regularList, ...dependantList, ...opdList].sort((a, b) => {
+        const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return bTime - aTime;
+      });
 
-      const uniqueOpdPatients = Array.from(
-        new Map(enrichedOpdPatients.map(p => [p.opdPatientId || p.id || p._id, p])).values()
-      );
-
-      const allIncomingPatients = [...uniquePatients, ...uniqueDependants, ...uniqueOpdPatients]
-        .sort((a, b) => {
-          const aTime = new Date(a.updatedAt || 0).getTime();
-          const bTime = new Date(b.updatedAt || 0).getTime();
-          return bTime - aTime;
-        });
-
-      setPatients(allIncomingPatients);
+      setPatients(allIncoming);
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error("SonographerIncoming: fetch error", err);
       setError(err);
@@ -218,41 +130,30 @@ const SonographerIncoming = () => {
 
   useEffect(() => {
     const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') fetchIncomingPatients();
+      if (document.visibilityState === "visible") fetchIncomingPatients();
     };
 
-    window.addEventListener('focus', refreshWhenVisible);
-    document.addEventListener('visibilitychange', refreshWhenVisible);
+    const handleStorageChange = (e) => {
+      if (e.key === "refreshIncoming") fetchIncomingPatients();
+    };
+
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    window.addEventListener("storage", handleStorageChange);
     return () => {
-      window.removeEventListener('focus', refreshWhenVisible);
-      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, [fetchIncomingPatients]);
 
   const filteredPatients = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
+    if (!query) return patients;
     return patients.filter((patient) => {
-      if (!query) return true;
-
-      let patientName = "";
-      if (patient.patientType === "dependant" && patient.dependantInfo) {
-        patientName = patient.dependantInfo.name.toLowerCase();
-      } else if (patient.patientType === "opd" && patient.opdPatientInfo) {
-        patientName = patient.opdPatientInfo.name.toLowerCase();
-      } else {
-        patientName = `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim().toLowerCase();
-      }
-
-      let patientId = "";
-      if (patient.patientType === "dependant") {
-        patientId = String(patient?.hospitalId || patient?.patientId || patient?.id || patient?._id || "").toLowerCase();
-      } else if (patient.patientType === "opd") {
-        patientId = String(patient.opdPatientInfo?.id || patient?.id || patient?._id || "").toLowerCase();
-      } else {
-        patientId = String(patient?.hospitalId || patient?.patientId || patient?.id || patient?._id || "").toLowerCase();
-      }
-
-      return patientName.includes(query) || patientId.includes(query);
+      const name = (patient.displayName || "").toLowerCase();
+      const id = String(patient.displayId || "").toLowerCase();
+      return name.includes(query) || id.includes(query);
     });
   }, [patients, searchValue]);
 
@@ -271,13 +172,13 @@ const SonographerIncoming = () => {
     if (patient.patientType === "opd") {
       const opdId = extractId(patient.opdPatientInfo?.id) || extractId(patient.opdPatientId) || patientIdValue;
       navigate(`/dashboard/sonographer/incoming/${opdId}`, {
-        state: { patientType: "opd" }
+        state: { patientType: "opd" },
       });
     } else if (patient.patientType === "dependant") {
       const parentId = extractId(patient.patientId) || extractId(patient.patient) || patientIdValue;
       const depId = extractId(patient.dependantId) || extractId(patient.dependantInfo?.id);
       navigate(`/dashboard/sonographer/incoming/${parentId}`, {
-        state: { dependantId: depId, dependantSnapshot: patient }
+        state: { dependantId: depId, dependantSnapshot: patient },
       });
     } else {
       navigate(`/dashboard/sonographer/incoming/${patientIdValue}`);
@@ -292,21 +193,21 @@ const SonographerIncoming = () => {
     } else {
       await updatePatientStatus(patient.patientId || patient.id, { status: PATIENT_STATUS.COMPLETED });
     }
-    localStorage.setItem('refreshIncoming', Date.now().toString());
+    localStorage.setItem("refreshIncoming", Date.now().toString());
     refreshQueueCount();
   };
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-    const typeStyles = {
-    regular: { border: "border-l-primary", badge: null },
-    dependant: { border: "border-l-secondary", badge: { text: "Dependant", cls: "badge-secondary" } },
-    opd: { border: "border-l-info", badge: { text: "OPD", cls: "badge-info" } },
+  const typeBadgeConfig = {
+    regular: { cls: "badge-ghost", text: "Regular" },
+    dependant: { cls: "badge-secondary badge-outline", text: "Dependant" },
+    opd: { cls: "badge-info badge-outline", text: "OPD" },
   };
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-base-200">
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={closeSidebar} />
       )}
@@ -319,19 +220,19 @@ const SonographerIncoming = () => {
         <Sidebar onCloseSidebar={closeSidebar} />
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-200/40">
+      <div className="flex overflow-hidden flex-col flex-1">
         <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="flex overflow-y-auto flex-col p-3 sm:p-6 gap-5">
+        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 gap-4">
           {/* Page header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-primary to-primary/70 p-3 rounded-2xl text-primary-content shadow-sm">
+              <div className="bg-primary/10 text-primary p-2.5 rounded-xl">
                 <GiUltrasound className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-base-content leading-tight">Incoming Scans</h1>
-                <p className="text-sm text-base-content/60">Patients awaiting sonography scan uploads</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content leading-tight">Incoming Scans</h1>
+                <p className="text-xs sm:text-sm text-base-content/60">Patients awaiting sonography scan uploads</p>
               </div>
             </div>
 
@@ -343,77 +244,60 @@ const SonographerIncoming = () => {
                   placeholder="Search by name or ID"
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  className="input input-bordered input-sm sm:input-md w-full pl-9 rounded-full bg-base-100"
+                  className="input input-bordered input-sm w-full pl-9 rounded-lg bg-base-100"
                 />
               </div>
               <ClearAllButton items={patients} updateStatusFn={handleClear} onCleared={fetchIncomingPatients} />
             </div>
           </div>
 
-          {/* Stat strip */}
+          {/* Quick Counter Strip */}
           {!loading && !error && patients.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <div className="badge badge-lg badge-ghost gap-1.5 py-3">
-                <span className="font-semibold text-base-content">{filteredPatients.length}</span>
-                <span className="text-base-content/60">waiting</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <div className="badge badge-sm badge-primary font-semibold">
+                {filteredPatients.length} Waiting
               </div>
               {["regular", "dependant", "opd"].map((t) => {
                 const count = patients.filter((p) => p.patientType === t).length;
                 if (!count) return null;
                 return (
-                  <div key={t} className="badge badge-lg badge-ghost gap-1.5 py-3 capitalize">
-                    <span className="font-semibold text-base-content">{count}</span>
-                    <span className="text-base-content/60">{t}</span>
+                  <div key={t} className="badge badge-sm badge-ghost capitalize text-base-content/70">
+                    {count} {t}
                   </div>
                 );
               })}
             </div>
           )}
 
-          {/* List */}
+          {/* Patient Cards List */}
           {loading ? (
-            <div className="grid gap-3">
-              {[1, 2, 3].map((item) => (
-                <div key={item} className="h-32 rounded-2xl bg-base-100 border border-base-200 animate-pulse" />
+            <div className="grid gap-2">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={item} className="h-16 rounded-xl bg-base-100 border border-base-200 animate-pulse" />
               ))}
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-error/30 bg-error/5 p-6 text-center text-error text-sm">
+            <div className="rounded-xl border border-error/30 bg-error/5 p-5 text-center text-error text-sm">
               Unable to load patients. Please refresh the page.
             </div>
           ) : filteredPatients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-base-300 py-16 text-center">
+            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-base-300 py-14 text-center bg-base-100">
               <GiUltrasound className="w-8 h-8 text-base-content/20" />
               <p className="text-base-content/60 text-sm">
-                {searchValue ? "No matches for your search." : "No sonography appointments are waiting right now."}
+                {searchValue ? "No matches for your search." : "No patients awaiting sonography right now."}
               </p>
             </div>
           ) : (
-            <div className="grid gap-3">
+            <div className="grid gap-2">
               {filteredPatients.map((patient) => {
                 const patientIdValue = patient?.id || patient?._id;
-                let displayName = "Unknown Patient";
-                let displayId = patientIdValue;
-
-                if (patient.patientType === "dependant" && patient.dependantInfo) {
-                  displayName = patient.dependantInfo.name;
-                  displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
-                } else if (patient.patientType === "opd" && patient.opdPatientInfo) {
-                  displayName = patient.opdPatientInfo.name;
-                  displayId = patient.opdPatientInfo.id || patientIdValue;
-                } else {
-                  displayName = `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim() || patient?.fullName || "Unknown Patient";
-                  displayId = patient?.hospitalId || patient?.patientId || patientIdValue;
-                }
-
-                const statusText = Array.isArray(patient?.status) ? patient.status.join(", ") : patient?.status || "—";
-                const initials = displayName
+                const initials = (patient.displayName || "Patient")
                   .split(" ")
                   .filter(Boolean)
                   .slice(0, 2)
                   .map((n) => n[0]?.toUpperCase())
                   .join("");
-                const style = typeStyles[patient.patientType] || typeStyles.regular;
+                const typeCfg = typeBadgeConfig[patient.patientType] || typeBadgeConfig.regular;
 
                 return (
                   <div
@@ -424,71 +308,51 @@ const SonographerIncoming = () => {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") handleNavigate(patient);
                     }}
-                    className={`group w-full rounded-2xl border border-base-200 border-l-4 ${style.border} bg-base-100 p-4 sm:p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer`}
+                    className="group relative w-full rounded-xl border border-base-200 bg-base-100 px-4 py-2.5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md hover:bg-base-100/90 cursor-pointer"
                   >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex items-start gap-3 min-w-0 flex-1">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 text-sm font-semibold text-base-content/70 shrink-0">
-                          {initials || "?"}
+                    <div className="flex items-center justify-between gap-3">
+                      {/* Avatar + Patient details */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-xs shrink-0">
+                          {initials || "P"}
                         </div>
-                        <div className="min-w-0">
+
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-base-content truncate">{displayName}</p>
-                            {style.badge && (
-                              <span className={`badge badge-xs ${style.badge.cls}`}>{style.badge.text}</span>
+                            <span className="font-semibold text-sm text-base-content truncate group-hover:text-primary transition-colors">
+                              {patient.displayName}
+                            </span>
+                            <span className={`badge badge-xs ${typeCfg.cls}`}>
+                              {typeCfg.text}
+                            </span>
+                            <span className="badge badge-warning badge-xs font-medium">
+                              Awaiting Scan
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-base-content/60 mt-0.5 font-mono">
+                            <span>ID: {patient.displayId}</span>
+                            {patient.updatedAt && (
+                              <span className="font-sans text-[11px] text-base-content/40 hidden sm:inline">
+                                • {formatNigeriaDateTimeShort(patient.updatedAt)}
+                              </span>
                             )}
                           </div>
-                          <p className="text-xs text-base-content/50 font-mono mt-0.5">{displayId}</p>
-                          {patient.pendingLabCount > 0 && (
-                            <span className="badge badge-warning badge-sm badge-outline mt-1 font-semibold text-[10px]">
-                              🧪 {patient.pendingLabCount} PENDING LAB TEST(S)
-                            </span>
-                          )}
                         </div>
                       </div>
-                      <span className="badge badge-primary badge-outline badge-sm shrink-0 group-hover:badge-primary transition-colors">
-                        Upload Scan
-                      </span>
-                    </div>
 
-                    <div className="mt-3 pt-3 border-t border-base-200 flex flex-wrap items-center justify-between gap-y-1 text-xs text-base-content/60">
-                      <p>Status: <span className="font-medium text-base-content/80">{statusText}</span></p>
-                      <p>Updated: {patient?.updatedAt ? new Date(patient.updatedAt).toLocaleString() : "—"}</p>
-                    </div>
-
-                    {patient.investigationId && patient.investigation && (
-                      <div className="mt-3 p-3 bg-base-200/50 rounded-xl">
-                        <p className="text-[10px] uppercase text-base-content/40 mb-1.5 font-semibold tracking-wider">Ordered Tests</p>
-                        {patient.investigation?.tests && patient.investigation.tests.length > 0 ? (
-                          <div className="flex flex-col gap-1.5">
-                            {patient.investigation.tests.map((test, idx) => {
-                               const testName = typeof test === 'object' ? (test.name || test.code) : test;
-                               const hmoStatus = typeof test === 'object' ? test.hmoStatus : null;
-                               const isPaid = typeof test === 'object' ? (test.isPaid || test.paymentStatus === 'paid' || test.isCleared) : false;
-                               return (
-                                 <div key={idx} className="flex items-center justify-between bg-base-100 px-2.5 py-1.5 rounded-lg border border-base-300 shadow-sm">
-                                   <span className="text-xs font-medium text-base-content capitalize">{testName}</span>
-                                   {isPaid ? (
-                                     <span className="badge badge-success text-success-content badge-xs font-semibold px-2 py-1">✓ Paid</span>
-                                   ) : hmoStatus ? (
-                                     <HmoStatusBadge hmoStatus={hmoStatus} size="xs" />
-                                   ) : (
-                                     <span className="badge badge-success text-success-content badge-xs font-semibold px-2 py-1">✓ Paid</span>
-                                   )}
-                                 </div>
-                               );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="badge badge-ghost badge-sm bg-base-100">
-                            {patient.investigation?.testName || patient.investigation?.investigationType || "Sonography"}
-                          </span>
-                        )}
+                      {/* Right Action buttons */}
+                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleNavigate(patient)}
+                          className="btn btn-primary btn-xs sm:btn-sm gap-1"
+                        >
+                          <GiUltrasound className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Upload Scan</span>
+                          <span className="sm:hidden">Upload</span>
+                        </button>
+                        <ClearItemButton item={patient} onClear={handleClear} onCleared={fetchIncomingPatients} />
                       </div>
-                    )}
-
-                    <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
-                      <ClearItemButton item={patient} onClear={handleClear} onCleared={fetchIncomingPatients} />
                     </div>
                   </div>
                 );
