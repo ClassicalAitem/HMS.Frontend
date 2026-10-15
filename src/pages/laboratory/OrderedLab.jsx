@@ -73,13 +73,19 @@ const OrderedLab = () => {
   const [selectedCard, setSelectedCard] = useState(null);
   const [sendingToDoctor, setSendingToDoctor] = useState(null);
 
-  const fetchInvestigations = useCallback(async (silent = false) => {
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  const loadData = useCallback(async (silent = false) => {
     try {
-      if (!silent) setLoading(true);
-      const response = await getInvestigations({ type: 'lab' }).catch(() => getInvestigations());
-      const investigationsData = Array.isArray(response)
-        ? response
-        : response?.data || response?.data?.data || response?.results || [];
+      if (!silent && !hasLoaded) setLoading(true);
+      const [invRes, labRes] = await Promise.all([
+        getInvestigations({ type: 'lab', limit: 100 }).catch(() => getInvestigations({ limit: 100 }).catch(() => [])),
+        getLabResults({ limit: 100 }).catch(() => []),
+      ]);
+
+      const investigationsData = Array.isArray(invRes)
+        ? invRes
+        : invRes?.data || invRes?.data?.data || invRes?.results || [];
 
       // Filter tests for payment/HMO visibility
       const paidInvestigations = investigationsData.map(inv => {
@@ -89,20 +95,7 @@ const OrderedLab = () => {
       }).filter(inv => inv.tests && inv.tests.length > 0);
 
       setAllInvestigations(paidInvestigations);
-      setError(null);
-    } catch (err) {
-      console.error("Error fetching investigations:", err);
-      if (!silent) {
-        setError("Failed to load ordered lab requests");
-      }
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, []);
 
-  const fetchExistingLabResults = useCallback(async () => {
-    try {
-      const labRes = await getLabResults();
       const labList = Array.isArray(labRes?.data) ? labRes.data
         : Array.isArray(labRes) ? labRes : [];
 
@@ -112,15 +105,31 @@ const OrderedLab = () => {
         if (invId) labMap[invId] = lr._id || lr.id;
       });
       setExistingLabResults(labMap);
+      setError(null);
+      setHasLoaded(true);
     } catch (err) {
-      console.error("Error fetching existing lab results:", err);
+      console.error("Error loading ordered lab data:", err);
+      if (!silent) setError("Failed to load ordered lab requests");
+    } finally {
+      if (!silent) setLoading(false);
     }
-  }, []);
+  }, [hasLoaded]);
 
   useEffect(() => {
-    fetchInvestigations();
-    fetchExistingLabResults();
-  }, [fetchInvestigations, fetchExistingLabResults]);
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') loadData(true);
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [loadData]);
 
   const handleSendToDoctor = async (inv) => {
     const invId = inv._id || inv.id;

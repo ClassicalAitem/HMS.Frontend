@@ -38,10 +38,10 @@ const AdmittedList = () => {
       setError(null)
 
       const [admissionsRes, vitalsRes, billingsRes, receiptsRes] = await Promise.allSettled([
-        getAdmissions(),
-        getVitals(),
-        getAllBillings({ skipErrorToast: true }),
-        getAllReceipts({ skipErrorToast: true }),
+        getAdmissions({ limit: 100 }),
+        getVitals({ limit: 100 }),
+        getAllBillings({ limit: 100, skipErrorToast: true }),
+        getAllReceipts({ limit: 100, skipErrorToast: true }),
       ])
 
       const allAdmissions = admissionsRes.status === 'fulfilled'

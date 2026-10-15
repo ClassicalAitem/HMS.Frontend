@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
-import { getLabResults } from "@/services/api/labResultsAPI";
+import { getLabResults, getLabResultById } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getDependantById } from "@/services/api/dependantAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
@@ -125,19 +125,21 @@ const SonographerScanHistory = () => {
     return 'Unknown Sonographer';
   };
 
+  const hasLoadedRef = React.useRef(false);
+
   useEffect(() => {
     let mounted = true;
 
-    const fetchScanHistory = async () => {
+    const fetchScanHistory = async (silent = false) => {
       try {
-        setLoading(true);
+        if (!silent && !hasLoadedRef.current) setLoading(true);
         setError(null);
-        const res = await getLabResults();
+        const res = await getLabResults({ limit: 100 });
         const allResults = Array.isArray(res?.data) ? res.data : [];
 
         // Only results with real file objects (not empty attachments)
         const scanOnly = allResults.filter(
-          (r) => r.attachedFiles && r.attachedFiles.some((f) => f?.data || f?.name)
+          (r) => r.attachedFiles && r.attachedFiles.some((f) => f?.data || f?.name || f?._id)
         );
 
         const enriched = scanOnly.map((result) => {
@@ -188,20 +190,34 @@ const SonographerScanHistory = () => {
           };
         });
 
-        if (mounted) setScanResults(enriched);
+        if (mounted) {
+          setScanResults(enriched);
+          hasLoadedRef.current = true;
+        }
       } catch (err) {
         console.error("SonographerScanHistory: fetch error", err);
-        if (mounted) {
+        if (mounted && !silent) {
           setError(err);
           toast.error("Failed to load scan history.");
         }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && !silent) setLoading(false);
       }
     };
 
     fetchScanHistory();
-    return () => { mounted = false; };
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') fetchScanHistory(true);
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   const filteredResults = scanResults.filter((result) => {
@@ -220,6 +236,8 @@ const SonographerScanHistory = () => {
 
       const sonoIds = new Set();
       scanResults.forEach((result) => {
+        // Skip user lookup if backend enrichment already provided technician/sonographer name
+        if (result.labTechnicianName || result.sonographerName || result.technician) return;
         const sonoId = getSonographerId(result);
         if (sonoId && !sonographerNameById[sonoId]) {
           sonoIds.add(sonoId);
@@ -289,8 +307,19 @@ const SonographerScanHistory = () => {
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const handleViewScan = (result) => {
-    const files = (result.attachedFiles || []).filter((f) => f?.data || f?.name);
+  const handleViewScan = async (result) => {
+    let files = (result.attachedFiles || []).filter((f) => f?.data || f?.name || f?._id);
+    if (files.some((f) => !f.data && f._id)) {
+      try {
+        const fullRes = await getLabResultById(result._id || result.id);
+        const full = fullRes?.data || fullRes;
+        if (full?.attachedFiles) {
+          files = full.attachedFiles;
+        }
+      } catch (err) {
+        console.error("Failed to load full scan files:", err);
+      }
+    }
     setPreviewFiles(files);
     setPreviewIndex(0);
     setShowPreview(true);
