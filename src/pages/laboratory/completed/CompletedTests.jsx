@@ -42,12 +42,14 @@ const CompletedTests = () => {
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const fetchCompletedTests = async () => {
+  const hasLoadedRef = React.useRef(false);
+
+  const fetchCompletedTests = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent && !hasLoadedRef.current) setLoading(true);
       const [labResults, investigations] = await Promise.all([
-        getLabResults().catch(() => []),
-        getInvestigations({ type: 'lab' }).catch(() => getInvestigations().catch(() => [])),
+        getLabResults({ limit: 100 }).catch(() => []),
+        getInvestigations({ type: 'lab', limit: 100 }).catch(() => getInvestigations({ limit: 100 }).catch(() => [])),
       ]);
 
       const resultsArray = Array.isArray(labResults) ? labResults : labResults?.data || [];
@@ -115,16 +117,27 @@ const CompletedTests = () => {
 
       setCompletedTests(allCompleted);
       setError(null);
+      setError(null);
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error("Error fetching completed tests:", err);
       setError("Failed to load completed tests");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchCompletedTests();
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') fetchCompletedTests(true);
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+    };
   }, []);
 
   const filteredTests = useMemo(() => {
