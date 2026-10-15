@@ -5,6 +5,7 @@ import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySideb
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { useNotifications } from "@/contexts/NotificationContext";
 import { 
   FiClock, 
   FiCheckCircle, 
@@ -19,6 +20,7 @@ import { FaFlask } from "react-icons/fa";
 
 const LaboratoryDashboard = () => {
   const navigate = useNavigate();
+  const { lastUpdate } = useNotifications();
   const [testStats, setTestStats] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [completedTests, setCompletedTests] = useState([]);
@@ -52,17 +54,19 @@ const LaboratoryDashboard = () => {
     return "Unknown Patient";
   };
 
+  const hasLoadedRef = React.useRef(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        // Parallel fetch of enriched lab results & investigations (NO N+1 loops)
+        if (!hasLoadedRef.current) setLoading(true);
+        // Parallel fetch of enriched lab results & investigations with limits
         const [labResultsRes, investigationsRes] = await Promise.all([
-          getLabResults().catch((err) => {
+          getLabResults({ limit: 100 }).catch((err) => {
             console.warn("Failed to fetch lab results:", err);
             return [];
           }),
-          getInvestigations({ type: 'lab' }).catch(() => getInvestigations().catch(() => [])),
+          getInvestigations({ type: 'lab', limit: 100 }).catch(() => getInvestigations({ limit: 100 }).catch(() => [])),
         ]);
 
         const resultsArray = Array.isArray(labResultsRes)
@@ -195,6 +199,7 @@ const LaboratoryDashboard = () => {
 
         setAllCompletedTests(dedupedCompleted);
         setError(null);
+        hasLoadedRef.current = true;
       } catch (err) {
         console.error("Error fetching laboratory data:", err);
         setError("Failed to load laboratory data");
@@ -204,7 +209,7 @@ const LaboratoryDashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [lastUpdate]);
 
   // Pagination for pending requests
   useEffect(() => {

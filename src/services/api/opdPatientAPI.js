@@ -15,10 +15,10 @@ export const createOpdPatient = async (data) => {
   }
 };
 
-// Get all OPD patients
-export const getAllOpdPatients = async () => {
+// Get all OPD patients (supports params like status, limit, etc.)
+export const getAllOpdPatients = async (params = {}) => {
   try {
-    const response = await apiClient.get('/opdPatient');
+    const response = await apiClient.get('/opdPatient', { params });
     return response.data ?? response;
   } catch (error) {
     console.error('opdPatientAPI: getAllOpdPatients error', error);

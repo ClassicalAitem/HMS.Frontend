@@ -29,9 +29,10 @@ export const NotificationProvider = ({ children }) => {
 
   const refreshLabReadyCount = useCallback(async () => {
     try {
+      const readyFilter = 'lab_completed,sonography_completed';
       const [patientsRes, dependantsRes] = await Promise.allSettled([
-        getPatients(),
-        getDependants(),
+        getPatients({ status: readyFilter, limit: 100 }),
+        getDependants({ status: readyFilter, limit: 100 }),
       ]);
       const patients = patientsRes.status === 'fulfilled'
         ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : [])

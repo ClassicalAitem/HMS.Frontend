@@ -38,7 +38,7 @@ const LaboratoryPatientList = () => {
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
 
   useEffect(() => {
-    dispatch(fetchPatients());
+    dispatch(fetchPatients({ limit: 100 }));
   }, [dispatch]);
 
   useEffect(() => {

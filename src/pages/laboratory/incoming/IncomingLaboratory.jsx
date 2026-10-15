@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
@@ -18,23 +18,24 @@ const IncomingLaboratory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const hasLoadedRef = useRef(false);
 
   const { lastUpdate } = useNotifications();
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
 
-  const fetchIncomingPatients = async () => {
+  const fetchIncomingPatients = useCallback(async () => {
     try {
-      setLoading(true);
+      if (!hasLoadedRef.current) setLoading(true);
       setError(null);
-      const response = await getInvestigations();
+      const response = await getInvestigations({ type: 'lab', limit: 100 });
       const allInvestigations = Array.isArray(response) ? response : (response?.data || []);
       const subjectsById = new Map();
 
       allInvestigations.forEach((investigation) => {
         const type = String(investigation.type || '').toLowerCase();
-        if (type !== 'lab' && type !== 'laboratory') return;
+        if (type && type !== 'lab' && type !== 'laboratory') return;
 
         const rawStatus = investigation.status;
         const requestStatus = String(Array.isArray(rawStatus) ? rawStatus[rawStatus.length - 1] : rawStatus || '').toLowerCase();
@@ -80,6 +81,7 @@ const IncomingLaboratory = () => {
       const incomingSubjects = Array.from(subjectsById.values())
         .sort((first, second) => new Date(second.updatedAt || second.latestRequestAt || 0) - new Date(first.updatedAt || first.latestRequestAt || 0));
       setPatients(incomingSubjects);
+      hasLoadedRef.current = true;
     } catch (err) {
       console.error("Error fetching incoming lab patients:", err);
       setError("Failed to load incoming patients. Please try refreshing.");
@@ -87,11 +89,30 @@ const IncomingLaboratory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchIncomingPatients();
-  }, [lastUpdate]);
+  }, [fetchIncomingPatients, lastUpdate]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') fetchIncomingPatients();
+    };
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'refreshIncoming') fetchIncomingPatients();
+    };
+
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [fetchIncomingPatients]);
 
   const filteredPatients = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
