@@ -63,10 +63,11 @@ const IncomingDoctor = () => {
       try {
         if (!hasLoadedRef.current) setLoading(true);
 
-        // Fetch both in parallel
+        // Fetch both in parallel with server-side queue filtering
+        const doctorStatusFilter = Array.from(DOCTOR_STATUSES).join(",");
         const [patientsRes, dependantsRes] = await Promise.allSettled([
-          getPatients(),
-          getDependants(),
+          getPatients({ status: doctorStatusFilter, limit: 100 }),
+          getDependants({ status: doctorStatusFilter, limit: 100 }),
         ]);
 
         const patients = patientsRes.status === 'fulfilled'
@@ -261,9 +262,9 @@ const IncomingDoctor = () => {
 
   const handleClear = async (data) => {
   if (data.type === 'dependant') {
-    await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.CANCELLED });
+    await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.COMPLETED });
   } else {
-    await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.CANCELLED });
+    await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.COMPLETED });
   }
   localStorage.setItem('refreshIncoming', Date.now().toString());
     refreshQueueCount();

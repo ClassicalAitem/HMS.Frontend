@@ -27,5 +27,23 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("recharts") || id.includes("apexcharts")) {
+              return "vendor-charts";
+            }
+            if (id.includes("slate") || id.includes("mammoth")) {
+              return "vendor-editor";
+            }
+            if (id.includes("react-icons")) {
+              return "vendor-icons";
+            }
+          }
+        },
+      },
+    },
   },
 });
