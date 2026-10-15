@@ -19,7 +19,7 @@ import SendPatientModal from "@/components/modals/SendPatientModal";
 import mammoth from "mammoth";
 import { FaFileWord } from "react-icons/fa";
 import HmoStatusBadge from "@/components/common/HmoStatusBadge";
-import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
+import { enrichInvestigationTestPayment } from "@/utils/investigationVisibility";
 
 const investigationStatusBadge = (status) => {
   const s = String(status || '').toLowerCase();
@@ -28,6 +28,31 @@ const investigationStatusBadge = (status) => {
   if (s === 'awaiting_sonographer') return 'badge-warning';
   if (s === 'cancelled') return 'badge-error';
   return 'badge-ghost';
+};
+
+const renderTestPaymentBadge = (test, size = "sm") => {
+  const isPaid = test && typeof test === 'object'
+    ? (test.isPaid || test.paymentStatus === 'paid' || test.isCleared)
+    : false;
+  const hmoStatus = test && typeof test === 'object' ? test.hmoStatus : null;
+
+  if (isPaid) {
+    return (
+      <span className={`badge badge-success text-success-content font-semibold whitespace-nowrap ${size === 'xs' ? 'badge-xs px-1.5 py-0.5' : 'badge-sm px-2 py-0.5'}`}>
+        ✓ Paid
+      </span>
+    );
+  }
+
+  if (hmoStatus) {
+    return <HmoStatusBadge hmoStatus={hmoStatus} size={size} />;
+  }
+
+  return (
+    <span className={`badge badge-warning text-warning-content font-semibold whitespace-nowrap ${size === 'xs' ? 'badge-xs px-1.5 py-0.5' : 'badge-sm px-2 py-0.5'}`}>
+      Unpaid
+    </span>
+  );
 };
 
 const SonographerIncomingDetails = () => {
@@ -67,34 +92,6 @@ useEffect(() => {
     try {
       setLoading(true);
 
-      // OPD requests must be loaded by OPD patient ID; regular and dependant requests use the patient endpoint.
-      const investigationsPromise = location.state?.patientType === 'opd'
-        ? getInvestigationRequestByOpdPatientId(patientId)
-        : getInvestigations({ type: 'radiology' });
-        
-      const [investigationsResponse, billingsResponse] = await Promise.all([
-        investigationsPromise,
-        getAllBillings().catch(() => [])
-      ]);
-      const allBillings = Array.isArray(billingsResponse) ? billingsResponse : (billingsResponse?.data?.data || billingsResponse?.data || []);
-
-      const allInvestigations = Array.isArray(investigationsResponse)
-        ? investigationsResponse
-        : (investigationsResponse?.data || []);
-
-      const paidInvestigations = allInvestigations
-        .map((inv) => filterVisibleInvestigation(inv, allBillings))
-        .filter(Boolean);
-
-      // Sonographer only ever deals with radiology-type investigations —
-      // check for both 'radiology' and 'imaging' to support old and new enums.
-      const radiologyInvestigations = paidInvestigations.filter(
-        (inv) => {
-          const type = String(inv.type || '').toLowerCase();
-          return type === 'radiology' || type === 'imaging';
-        }
-      );
-
       const extractId = (val) => {
         if (!val) return "";
         if (typeof val === "string") return val;
@@ -104,6 +101,92 @@ useEffect(() => {
 
       const cleanPatientId = extractId(patientId);
       const cleanDependantId = extractId(passedDependantId);
+      const isOpd = location.state?.patientType === 'opd';
+
+      // 1. Fetch Patient/OPD, Dependant, Investigations, and Scoped Billings ALL IN PARALLEL!
+      const patientPromise = isOpd
+        ? getOpdPatientById(cleanPatientId).catch(() => ({ id: cleanPatientId, fullName: "OPD Patient" }))
+        : getPatientById(cleanPatientId).catch(() => null);
+
+      const dependantPromise = cleanDependantId
+        ? getDependantById(cleanDependantId).catch(() => null)
+        : Promise.resolve(null);
+
+      const investigationsPromise = isOpd
+        ? getInvestigationRequestByOpdPatientId(cleanPatientId)
+        : Promise.allSettled([
+            getInvestigationByPatientId(cleanPatientId),
+            getInvestigations({ type: 'radiology', limit: 100 })
+          ]).then(([res1, res2]) => {
+            const list1 = res1.status === 'fulfilled' ? (Array.isArray(res1.value) ? res1.value : res1.value?.data || []) : [];
+            const list2 = res2.status === 'fulfilled' ? (Array.isArray(res2.value) ? res2.value : res2.value?.data || []) : [];
+            const map = new Map();
+            [...list1, ...list2].forEach((item) => {
+              const id = item?._id || item?.id;
+              if (id && !map.has(String(id))) map.set(String(id), item);
+            });
+            return Array.from(map.values());
+          });
+
+      // Scope billing lookup to ONLY this patient instead of loading the entire hospital database!
+      const billingsPromise = getAllBillings(isOpd ? { opdPatientId: cleanPatientId } : { patientId: cleanPatientId }).catch(() => []);
+
+      const [patientRes, depRes, investigationsResponse, billingsResponse] = await Promise.all([
+        patientPromise,
+        dependantPromise,
+        investigationsPromise,
+        billingsPromise,
+      ]);
+
+      const rawPatientData = patientRes?.data || patientRes;
+      const patientData = Array.isArray(rawPatientData) ? rawPatientData[0] : rawPatientData;
+      const depData = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant || depRes?.data;
+      const allBillings = Array.isArray(billingsResponse) ? billingsResponse : (billingsResponse?.data?.data || billingsResponse?.data || []);
+      const allInvestigations = Array.isArray(investigationsResponse) ? investigationsResponse : (investigationsResponse?.data || []);
+
+      // Enrich tests with billing and payment status without filtering out unpaid tests!
+      const enrichedInvestigations = allInvestigations.map((inv) => {
+        const rawTests = Array.isArray(inv.tests) && inv.tests.length > 0
+          ? inv.tests
+          : (inv.testName || inv.investigationType ? [{ name: inv.testName || inv.investigationType }] : []);
+
+        const enrichedTests = rawTests.map((t) => {
+          const testObj = typeof t === 'object' ? { ...t } : { name: t };
+          const billingEnriched = enrichInvestigationTestPayment(inv, testObj, allBillings);
+
+          const hmoStatus = billingEnriched.hmoStatus || testObj.hmoStatus || inv.hmoStatus || null;
+          const isCleared = billingEnriched.isCleared === true || testObj.isCleared === true;
+          const isPaid = billingEnriched.isPaid === true || testObj.isPaid === true || isCleared || String(testObj.paymentStatus || '').toLowerCase() === 'paid';
+          const paymentStatus = isPaid ? 'paid' : (billingEnriched.paymentStatus || testObj.paymentStatus || 'unpaid');
+          const isHmoCovered = ['approved', 'partial'].includes(String(hmoStatus || '').toLowerCase());
+
+          return {
+            ...testObj,
+            ...billingEnriched,
+            isPaid,
+            isCleared,
+            paymentStatus,
+            hmoStatus,
+            isHmoCovered,
+          };
+        });
+
+        return {
+          ...inv,
+          tests: enrichedTests,
+        };
+      });
+
+      // Sonographer only deals with radiology/imaging-type investigations
+      const radiologyInvestigations = enrichedInvestigations.filter(
+        (inv) => {
+          const type = String(inv.type || '').toLowerCase();
+          return type === 'radiology' || type === 'imaging';
+        }
+      );
+
+      // Sort newest first
+      radiologyInvestigations.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
       const getInvPatientId = (inv) => extractId(inv.patientId) || extractId(inv.patient);
       const getInvDependantId = (inv) => extractId(inv.dependantId) || extractId(inv.dependant);
@@ -123,6 +206,11 @@ useEffect(() => {
             getInvPatientId(inv) === cleanPatientId
           );
         }
+        if (!investigationData) {
+          investigationData = radiologyInvestigations.find(inv => 
+            getInvDependantId(inv) === cleanDependantId
+          );
+        }
       } else {
         investigationData = radiologyInvestigations.find(inv =>
           ((getInvPatientId(inv) === cleanPatientId && !inv.dependantId) || getInvOpdId(inv) === cleanPatientId) && inv.status !== 'completed'
@@ -134,53 +222,9 @@ useEffect(() => {
         }
       }
 
-      let patientData = null;
-      let detectedPatientType = "regular";
-      let detectedOpdPatientId = null;
-      let detectedDependantId = null;
-
-      // Step 2: Fetch the correct patient based on investigation data or navigation state
-      if (location.state?.patientType === 'opd' || investigationData?.opdPatientId) {
-        // This is an OPD patient
-        detectedPatientType = "opd";
-        detectedOpdPatientId = location.state?.patientType === 'opd' ? cleanPatientId : extractId(investigationData.opdPatientId);
-        try {
-          const opdRes = await getOpdPatientById(detectedOpdPatientId);
-          patientData = opdRes?.data || opdRes;
-        } catch (err) {
-          console.warn("Failed to load OPD patient:", err);
-          patientData = { id: detectedOpdPatientId, fullName: "OPD Patient" };
-        }
-      } else if (cleanDependantId || investigationData?.dependantId) {
-        // This is a dependant
-        detectedPatientType = "dependant";
-        detectedDependantId = cleanDependantId || extractId(investigationData.dependantId);
-        try {
-          const res = await getPatientById(cleanPatientId);
-          patientData = Array.isArray(res) ? res[0] : res?.data || res;
-        } catch (err) {
-          console.error("Failed to load patient:", err);
-          patientData = null;
-        }
-
-        try {
-            const depRes = await getDependantById(detectedDependantId);
-            const dep = depRes?.data?.data?.dependant || depRes?.data?.dependant || depRes?.dependant || depRes?.data;
-            if (mounted && dep) setDependantInfo(dep);
-          } catch (err) {
-            console.warn("Failed to load dependant details:", err);
-          }
-      } else {
-        // Regular patient
-        detectedPatientType = "regular";
-        try {
-          const res = await getPatientById(cleanPatientId);
-          patientData = Array.isArray(res) ? res[0] : res?.data || res;
-        } catch (err) {
-          console.error("Failed to load patient:", err);
-          patientData = null;
-        }
-      }
+      const detectedPatientType = isOpd ? "opd" : cleanDependantId || investigationData?.dependantId ? "dependant" : "regular";
+      const detectedOpdPatientId = isOpd ? cleanPatientId : extractId(investigationData?.opdPatientId);
+      const detectedDependantId = cleanDependantId || extractId(investigationData?.dependantId);
 
       // Build radiology history for this exact subject (patient, dependant, or OPD patient)
       const historyList = radiologyInvestigations
@@ -189,7 +233,7 @@ useEffect(() => {
             return getInvOpdId(inv) === (detectedOpdPatientId || cleanPatientId);
           }
           if (detectedPatientType === 'dependant') {
-            return getInvDependantId(inv) === detectedDependantId;
+            return getInvDependantId(inv) === (detectedDependantId || cleanDependantId);
           }
           return (
             getInvPatientId(inv) === cleanPatientId &&
@@ -198,13 +242,30 @@ useEffect(() => {
         })
         .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
+      if (!investigationData && historyList.length > 0) {
+        investigationData = historyList[0];
+      }
+
+      // Check pending lab count directly from allInvestigations (0ms, no network call!)
+      const pendingLab = allInvestigations.filter(inv => {
+        const isMatch = detectedPatientType === 'dependant'
+          ? String(inv.dependantId) === String(detectedDependantId)
+          : !inv.dependantId;
+        const invType = String(inv.type || '').toLowerCase();
+        const isLab = invType === 'laboratory' || invType === 'lab';
+        const isPending = inv.status !== 'completed' && inv.status !== 'cancelled';
+        return isMatch && isLab && isPending;
+      });
+
       if (mounted) {
         setPatient(patientData);
+        if (depData) setDependantInfo(depData);
         setPatientType(detectedPatientType);
         setOpdPatientId(detectedOpdPatientId);
         setDependantId(detectedDependantId);
         setInvestigation(investigationData);
         setRadiologyHistory(historyList);
+        setPendingLabCount(pendingLab.length);
 
         // Check for existing lab result
         if (investigationData?._id) {
@@ -225,31 +286,6 @@ useEffect(() => {
           } catch (error) {
             console.warn("Could not check for existing lab results:", error);
           }
-        }
-
-        // Check for pending lab tests
-        try {
-          let invs = [];
-          if (detectedPatientType === 'opd') {
-            const res = await getInvestigationRequestByOpdPatientId(detectedOpdPatientId);
-            invs = Array.isArray(res) ? res : (res?.data || []);
-          } else {
-            const res = await getInvestigationByPatientId(patientId);
-            invs = Array.isArray(res) ? res : (res?.data || []);
-          }
-          
-          const pendingLab = invs.filter(inv => {
-            const isMatch = detectedPatientType === 'dependant'
-              ? String(inv.dependantId) === String(detectedDependantId)
-              : !inv.dependantId;
-            const invType = String(inv.type || '').toLowerCase();
-            const isLab = invType === 'laboratory' || invType === 'lab';
-            const isPending = inv.status !== 'completed' && inv.status !== 'cancelled';
-            return isMatch && isLab && isPending;
-          });
-          if (mounted) setPendingLabCount(pendingLab.length);
-        } catch (error) {
-          console.warn("Could not check for pending lab tests:", error);
         }
       }
     }  catch (error) {
@@ -580,8 +616,100 @@ useEffect(() => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
-              {/* Patient Info */}
-             
+              {/* Ordered Tests / Current Order Card */}
+              <div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
+                <div className="card-body">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="card-title text-base flex items-center gap-2">
+                      <FaXRay className="w-4 h-4 text-primary" />
+                      Ordered Tests
+                    </h2>
+                    {investigation && (
+                      <span className={`badge badge-sm uppercase font-semibold ${investigationStatusBadge(investigation.status)}`}>
+                        {String(investigation.status || 'requested').replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </div>
+
+                  {loading ? (
+                    <div className="py-6 flex justify-center">
+                      <div className="loading loading-spinner loading-sm" />
+                    </div>
+                  ) : !investigation ? (
+                    <p className="text-sm text-base-content/50 italic py-2">
+                      No active radiology request found for {displaySubjectName}.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Meta information */}
+                      <div className="text-xs space-y-1.5 bg-base-200/50 p-3 rounded-xl border border-base-200">
+                        <div className="flex justify-between items-center">
+                          <span className="text-base-content/60 font-medium">Doctor:</span>
+                          <span className="font-semibold text-base-content text-right truncate ml-2">
+                            {investigation.doctorName || (investigation.doctor ? `${investigation.doctor.firstName || ''} ${investigation.doctor.lastName || ''}`.trim() : '—')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-base-content/60 font-medium">Priority:</span>
+                          <span className={`badge badge-xs uppercase font-bold ${
+                            String(investigation.priority).toLowerCase() === 'emergency' ? 'badge-error' :
+                            String(investigation.priority).toLowerCase() === 'urgent' ? 'badge-warning' : 'badge-ghost'
+                          }`}>
+                            {investigation.priority || 'Normal'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-base-content/60 font-medium">Ordered:</span>
+                          <span className="text-base-content/70">
+                            {investigation.createdAt ? formatNigeriaDateTime(investigation.createdAt) : '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* List of ordered tests with paid status */}
+                      <div className="space-y-2">
+                        <p className="text-xs uppercase font-bold tracking-wider text-base-content/50">
+                          Tests ({investigation.tests?.length || 0})
+                        </p>
+                        <div className="space-y-2">
+                          {(investigation.tests || []).map((t, idx) => {
+                            const testName = typeof t === 'object' ? (t.name || t.code) : t;
+                            return (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between p-2.5 rounded-xl border border-base-200 bg-base-100 shadow-xs gap-2"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                                  <span className="text-sm font-medium text-base-content truncate capitalize">
+                                    {testName}
+                                  </span>
+                                </div>
+                                <div className="shrink-0">
+                                  {renderTestPaymentBadge(t, "sm")}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Unpaid notice if any test is unpaid */}
+                      {investigation.tests?.some(t => {
+                        const isPaid = typeof t === 'object' ? (t.isPaid || t.paymentStatus === 'paid' || t.isCleared) : false;
+                        const hmoStatus = typeof t === 'object' ? t.hmoStatus : null;
+                        return !isPaid && !hmoStatus;
+                      }) && (
+                        <div className="alert alert-warning py-2.5 px-3 rounded-xl text-xs flex items-center gap-2">
+                          <span className="text-base shrink-0">⚠️</span>
+                          <span>Unpaid test(s) found. Check payment status with cashier.</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Radiology History */}
               <div className="card bg-base-100 shadow-sm border border-base-200 rounded-2xl">
                 <div className="card-body">
@@ -604,20 +732,20 @@ useEffect(() => {
                           <div
                             key={inv._id}
                             onClick={() => {
-                              if (!isCompleted) {
+                              const invId = inv._id || inv.id;
+                              if (invId !== (investigation?._id || investigation?.id)) {
                                 setInvestigation(inv);
                                 setFiles([]);
                                 setUploadSuccess(false);
                                 setExistingLabResult(null);
-                                // Also fetch existing lab result for the new selection
-                                getLabResults({ investigationRequestId: inv._id }).then(res => {
+                                getLabResults({ investigationRequestId: invId }).then(res => {
                                   const results = Array.isArray(res?.data) ? res.data : (res?.data ? [res.data] : []);
-                                  const existing = results.find(lr => lr.investigationRequestId === inv._id || lr.investigationId === inv._id);
+                                  const existing = results.find(lr => lr.investigationRequestId === invId || lr.investigationId === invId);
                                   if (existing) setExistingLabResult(existing);
                                 }).catch(console.warn);
                               }
                             }}
-                            className={`p-3 rounded-lg border ${isCurrent ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-200 bg-base-100'} ${!isCompleted && !isCurrent ? 'cursor-pointer hover:border-primary/50 hover:bg-base-100/80 transition-colors' : ''} ${isCompleted ? 'opacity-70' : ''}`}
+                            className={`p-3 rounded-lg border ${isCurrent ? 'border-primary bg-primary/5 shadow-sm' : 'border-base-200 bg-base-100'} ${!isCurrent ? 'cursor-pointer hover:border-primary/50 hover:bg-base-100/80 transition-colors' : ''} ${isCompleted ? 'opacity-70' : ''}`}
                           >
                             <div className="flex items-center justify-between gap-2 mb-1.5">
                               <span className={`badge badge-sm ${investigationStatusBadge(inv.status)}`}>
@@ -630,18 +758,10 @@ useEffect(() => {
                             <div className="flex flex-col gap-1.5 mb-1.5 mt-1">
                               {(inv.tests || []).map((t, i) => {
                                 const testName = typeof t === 'object' ? (t.name || t.code) : t;
-                                const hmoStatus = typeof t === 'object' ? t.hmoStatus : null;
-                                const isPaid = typeof t === 'object' ? (t.isPaid || t.paymentStatus === 'paid' || t.isCleared) : false;
                                 return (
-                                  <div key={i} className="flex items-center justify-between bg-base-100 px-2 py-1 rounded border border-base-200">
-                                    <span className="text-xs text-base-content/80 capitalize">{testName}</span>
-                                    {isPaid ? (
-                                      <span className="badge badge-success text-success-content badge-xs font-semibold px-1.5 py-0.5">✓ Paid</span>
-                                    ) : hmoStatus ? (
-                                      <HmoStatusBadge hmoStatus={hmoStatus} size="xs" />
-                                    ) : (
-                                      <span className="badge badge-success text-success-content badge-xs font-semibold px-1.5 py-0.5">✓ Paid</span>
-                                    )}
+                                  <div key={i} className="flex items-center justify-between bg-base-100 px-2 py-1 rounded border border-base-200 gap-2">
+                                    <span className="text-xs text-base-content/80 capitalize truncate">{testName}</span>
+                                    {renderTestPaymentBadge(t, "xs")}
                                   </div>
                                 );
                               })}
@@ -740,6 +860,31 @@ useEffect(() => {
                         </div>
                       ) : (
                         <div className="space-y-5">
+                          {/* Active Investigation Order Summary */}
+                          {investigation && (
+                            <div className="p-4 bg-base-200/50 rounded-xl border border-base-200 space-y-2.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-xs font-bold uppercase tracking-wider text-base-content/60 flex items-center gap-1.5">
+                                  <FaXRay className="text-primary w-3.5 h-3.5" /> Ordered Scan Tests ({investigation.tests?.length || 0})
+                                </span>
+                                <span className={`badge badge-sm font-semibold uppercase ${investigationStatusBadge(investigation.status)}`}>
+                                  {String(investigation.status || 'requested').replace(/_/g, ' ')}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {(investigation.tests || []).map((t, idx) => {
+                                  const testName = typeof t === 'object' ? (t.name || t.code) : t;
+                                  return (
+                                    <div key={idx} className="flex items-center gap-2 bg-base-100 border border-base-200 px-3 py-1.5 rounded-lg shadow-xs">
+                                      <span className="text-sm font-medium capitalize text-base-content">{testName}</span>
+                                      {renderTestPaymentBadge(t, "xs")}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="form-control">
                             <label className="label">
                               <span className="label-text">Choose Scan Files</span>
