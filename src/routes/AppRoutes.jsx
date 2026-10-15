@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "@/pages/auth/Login";
@@ -7,210 +7,221 @@ import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 
-import NurseDashboard from "@/pages/nurse/dashboard/NurseDashboard";
-import AssignedTask from "@/pages/nurse/assignedTask/AssignedTask";
-import Task from "@/pages/nurse/assignedTask/AssignedTask";
-import ViewAllPatientVitals from "@/pages/nurse/patientVitals/ViewAllPatientVitals";
-import ViewAllAdmission from "@/pages/nurse/patientVitals/ViewAllAdmission";
-import NurseAntenatalRecords from "@/pages/nurse/patientVitals/NurseAntenatalRecords";
+const NurseDashboard = lazy(() => import("@/pages/nurse/dashboard/NurseDashboard"));
+const AssignedTask = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
+const Task = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
+const ViewAllPatientVitals = lazy(() => import("@/pages/nurse/patientVitals/ViewAllPatientVitals"));
+const ViewAllAdmission = lazy(() => import("@/pages/nurse/patientVitals/ViewAllAdmission"));
+const NurseAntenatalRecords = lazy(() => import("@/pages/nurse/patientVitals/NurseAntenatalRecords"));
 
-import Appointmentss from "@/pages/nurse/appointment/Appointment"
+const Appointmentss = lazy(() => import("@/pages/nurse/appointment/Appointment"));
 
-import SurgeonDashboard from "@/pages/surgeon/dashboard/SurgeonDashboard";
-import SurgeonAssignedTask from "@/pages/surgeon/assignedTask/AssignedTask";
-import SurgeonAppointments from "@/pages/surgeon/appointment/Appointment"
-import SurgeonIncoming from "@/pages/surgeon/incoming/SurgeonIncoming";
-import WriteSurgicalNote from "@/pages/surgeon/incoming/WriteSurgicalNote";
-import SurgeonNoteHistory from "@/pages/surgeon/history/SurgeonNoteHistory";
+const SurgeonDashboard = lazy(() => import("@/pages/surgeon/dashboard/SurgeonDashboard"));
+const SurgeonAssignedTask = lazy(() => import("@/pages/surgeon/assignedTask/AssignedTask"));
+const SurgeonAppointments = lazy(() => import("@/pages/surgeon/appointment/Appointment"));
+const SurgeonIncoming = lazy(() => import("@/pages/surgeon/incoming/SurgeonIncoming"));
+const WriteSurgicalNote = lazy(() => import("@/pages/surgeon/incoming/WriteSurgicalNote"));
+const SurgeonNoteHistory = lazy(() => import("@/pages/surgeon/history/SurgeonNoteHistory"));
 
-import ViewConsultationRecords from "@/pages/doctor/incoming/ViewConsultationRecords";
-import ViewAllPrescriptions from "@/pages/doctor/incoming/ViewAllPrescriptions";
-import ViewAllInvestigations from "@/pages/doctor/incoming/ViewAllInvestigations";
-import ViewAllLabResults from "@/pages/doctor/incoming/ViewAllLabResults";
-import ViewAllVitals from "@/pages/doctor/incoming/ViewAllVitals";
-import DoctorDashboard from "@/pages/doctor/dashboard/DoctorDashboard";
-import LabResults from "@/pages/doctor/labResults/LabResults";
-import LabResultDetails from "@/pages/doctor/labResults/LabResultDetails";
-import IncomingDoctor from "@/pages/doctor/incoming/IncomingDoctor";
+const ViewConsultationRecords = lazy(() => import("@/pages/doctor/incoming/ViewConsultationRecords"));
+const ViewAllPrescriptions = lazy(() => import("@/pages/doctor/incoming/ViewAllPrescriptions"));
+const ViewAllInvestigations = lazy(() => import("@/pages/doctor/incoming/ViewAllInvestigations"));
+const ViewAllLabResults = lazy(() => import("@/pages/doctor/incoming/ViewAllLabResults"));
+const ViewAllVitals = lazy(() => import("@/pages/doctor/incoming/ViewAllVitals"));
+const DoctorDashboard = lazy(() => import("@/pages/doctor/dashboard/DoctorDashboard"));
+const LabResults = lazy(() => import("@/pages/doctor/labResults/LabResults"));
+const LabResultDetails = lazy(() => import("@/pages/doctor/labResults/LabResultDetails"));
+const IncomingDoctor = lazy(() => import("@/pages/doctor/incoming/IncomingDoctor"));
 
-import HmoDashboard from "@/pages/hmo/dashboard/HmoDashboard";
-import IncomingHmo from "@/pages/hmo/incoming/IncomingHmo";
-import IncomingHmoDetails from "@/pages/hmo/incoming/IncomingHmoDetails";
-import PatientMedicalHistory from "@/pages/doctor/incoming/PatientMedicalHistory";
-import AntenatalRecords from "@/pages/doctor/incoming/AntenatalRecords";
-import AntenatalRecordDetails from "@/pages/doctor/incoming/AntenatalRecordDetails";
-import AddDiagnosis from "@/pages/doctor/incoming/AddDiagnosis";
-import EditConsultation from "@/pages/doctor/incoming/EditConsultation";
-import SendToCashier from "@/pages/doctor/incoming/SendToCashier";
-import SendToPharmacy from "@/pages/doctor/incoming/SendToPharmacy";
-import SendToNurse from "@/pages/doctor/incoming/SendToNurse";
-import ConsultationDetails from "@/pages/doctor/incoming/ConsultationDetails";
-import ViewConsultation from "@/pages/doctor/incoming/ViewConsultation";
-import AllPatients from "@/pages/doctor/allPatients/AllPatients";
-import Appointment from "@/pages/doctor/appiontments/Appointment";
-import MedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
-import DRAdmittedList from "@/pages/doctor/admitted/AdmittedList";
-import DRAdmittedPatient from "@/pages/doctor/admitted/AdmittedPatient";
+const HmoDashboard = lazy(() => import("@/pages/hmo/dashboard/HmoDashboard"));
+const IncomingHmo = lazy(() => import("@/pages/hmo/incoming/IncomingHmo"));
+const IncomingHmoDetails = lazy(() => import("@/pages/hmo/incoming/IncomingHmoDetails"));
+const PatientMedicalHistory = lazy(() => import("@/pages/doctor/incoming/PatientMedicalHistory"));
+const AntenatalRecords = lazy(() => import("@/pages/doctor/incoming/AntenatalRecords"));
+const AntenatalRecordDetails = lazy(() => import("@/pages/doctor/incoming/AntenatalRecordDetails"));
+const AddDiagnosis = lazy(() => import("@/pages/doctor/incoming/AddDiagnosis"));
+const EditConsultation = lazy(() => import("@/pages/doctor/incoming/EditConsultation"));
+const SendToCashier = lazy(() => import("@/pages/doctor/incoming/SendToCashier"));
+const SendToPharmacy = lazy(() => import("@/pages/doctor/incoming/SendToPharmacy"));
+const SendToNurse = lazy(() => import("@/pages/doctor/incoming/SendToNurse"));
+const ConsultationDetails = lazy(() => import("@/pages/doctor/incoming/ConsultationDetails"));
+const ViewConsultation = lazy(() => import("@/pages/doctor/incoming/ViewConsultation"));
+const AllPatients = lazy(() => import("@/pages/doctor/allPatients/AllPatients"));
+const Appointment = lazy(() => import("@/pages/doctor/appiontments/Appointment"));
+const MedicalRecordHistory = lazy(() => import("@/pages/medical-director/incoming/MedicalRecordHistory"));
+const DRAdmittedList = lazy(() => import("@/pages/doctor/admitted/AdmittedList"));
+const DRAdmittedPatient = lazy(() => import("@/pages/doctor/admitted/AdmittedPatient"));
 
 // Medical Director Pages
-import MDDashboard from "@/pages/medical-director/dashboard/MDDashboard";
-import MDPatientMedicalHistory from "@/pages/medical-director/incoming/PatientMedicalHistory";
-import MDViewConsultationRecords from "@/pages/medical-director/incoming/ViewConsultationRecords";
-import MDViewAllPrescriptions from "@/pages/medical-director/incoming/ViewAllPrescriptions";
-import MDViewAllInvestigations from "@/pages/medical-director/incoming/ViewAllInvestigations";
-import MDViewAllLabResults from "@/pages/medical-director/incoming/ViewAllLabResults";
-import MDMedicalRecordHistory from "@/pages/medical-director/incoming/MedicalRecordHistory";
-import MDViewAllVitals from "@/pages/medical-director/incoming/ViewAllVitals";
-import MDIncomingLabResults from "@/pages/medical-director/labResults/IncomingLabResults";
-import MDLabResultDetails from "@/pages/medical-director/labResults/LabResultDetails";
-import IncomingMD from "@/pages/medical-director/incoming/IncomingMD";
-import MDAntenatalRecords from "@/pages/medical-director/incoming/AntenatalRecords";
-import MDAntenatalRecordDetails from "@/pages/medical-director/incoming/AntenatalRecordDetails";
-import MDAddDiagnosis from "@/pages/medical-director/incoming/AddDiagnosis";
-import MDEditConsultation from "@/pages/medical-director/incoming/EditConsultation";
-import MDSendToCashier from "@/pages/medical-director/incoming/SendToCashier";
-import MDSendToPharmacy from "@/pages/medical-director/incoming/SendToPharmacy";
-import MDSendToNurse from "@/pages/medical-director/incoming/SendToNurse";
-import MDViewConsultation from "@/pages/medical-director/incoming/ViewConsultation";
-import MDViewAllAdmissions from "@/pages/medical-director/incoming/ViewAllAdmission";
-import MDWritePrescription from "@/pages/medical-director/incoming/WritePrescription";
-import MDAllPatients from "@/pages/medical-director/allPatients/AllPatients";
-import MDAttendedToday from "@/pages/medical-director/attended-today/AttendedToday";
-import MDPatients from "@/pages/medical-director/patients/Patients";
-import MDAppointment from "@/pages/medical-director/appiontments/Appointment";
-import MDPaymentRecords from "@/pages/medical-director/payment-records/ReceiptRecord";
-import MDTask from "@/pages/medical-director/assignTask/Task";
-import MDAdmittedList from "@/pages/medical-director/admitted/AdmittedList";
-import MDAdmittedPatient from "@/pages/medical-director/admitted/AdmittedPatient";
+const MDDashboard = lazy(() => import("@/pages/medical-director/dashboard/MDDashboard"));
+const MDPatientMedicalHistory = lazy(() => import("@/pages/medical-director/incoming/PatientMedicalHistory"));
+const MDViewConsultationRecords = lazy(() => import("@/pages/medical-director/incoming/ViewConsultationRecords"));
+const MDViewAllPrescriptions = lazy(() => import("@/pages/medical-director/incoming/ViewAllPrescriptions"));
+const MDViewAllInvestigations = lazy(() => import("@/pages/medical-director/incoming/ViewAllInvestigations"));
+const MDViewAllLabResults = lazy(() => import("@/pages/medical-director/incoming/ViewAllLabResults"));
+const MDMedicalRecordHistory = lazy(() => import("@/pages/medical-director/incoming/MedicalRecordHistory"));
+const MDViewAllVitals = lazy(() => import("@/pages/medical-director/incoming/ViewAllVitals"));
+const MDIncomingLabResults = lazy(() => import("@/pages/medical-director/labResults/IncomingLabResults"));
+const MDLabResultDetails = lazy(() => import("@/pages/medical-director/labResults/LabResultDetails"));
+const IncomingMD = lazy(() => import("@/pages/medical-director/incoming/IncomingMD"));
+const MDAntenatalRecords = lazy(() => import("@/pages/medical-director/incoming/AntenatalRecords"));
+const MDAntenatalRecordDetails = lazy(() => import("@/pages/medical-director/incoming/AntenatalRecordDetails"));
+const MDAddDiagnosis = lazy(() => import("@/pages/medical-director/incoming/AddDiagnosis"));
+const MDEditConsultation = lazy(() => import("@/pages/medical-director/incoming/EditConsultation"));
+const MDSendToCashier = lazy(() => import("@/pages/medical-director/incoming/SendToCashier"));
+const MDSendToPharmacy = lazy(() => import("@/pages/medical-director/incoming/SendToPharmacy"));
+const MDSendToNurse = lazy(() => import("@/pages/medical-director/incoming/SendToNurse"));
+const MDViewConsultation = lazy(() => import("@/pages/medical-director/incoming/ViewConsultation"));
+const MDViewAllAdmissions = lazy(() => import("@/pages/medical-director/incoming/ViewAllAdmission"));
+const MDWritePrescription = lazy(() => import("@/pages/medical-director/incoming/WritePrescription"));
+const MDAllPatients = lazy(() => import("@/pages/medical-director/allPatients/AllPatients"));
+const MDAttendedToday = lazy(() => import("@/pages/medical-director/attended-today/AttendedToday"));
+const MDPatients = lazy(() => import("@/pages/medical-director/patients/Patients"));
+const MDAppointment = lazy(() => import("@/pages/medical-director/appiontments/Appointment"));
+const MDPaymentRecords = lazy(() => import("@/pages/medical-director/payment-records/ReceiptRecord"));
+const MDTask = lazy(() => import("@/pages/medical-director/assignTask/Task"));
+const MDAdmittedList = lazy(() => import("@/pages/medical-director/admitted/AdmittedList"));
+const MDAdmittedPatient = lazy(() => import("@/pages/medical-director/admitted/AdmittedPatient"));
 
 // Admin Dashboard
-import AdminDashboard from "@/pages/admin/dashboard/AdminDashboard";
-import Schedule from "@/pages/admin/schedule/Schedule";
-import Stocks from "@/pages/admin/stocks/Stocks";
-import Invoice from "@/pages/admin/invoice/Invoice";
-import Users from "@/pages/admin/users/Users";
-import StaffList from "@/pages/admin/users/StaffList";
-import FrontdeskDashboard from "@/pages/frontdesk/dashboard/Dashboard";
-import Patients from "@/pages/frontdesk/patients/Patients";
-import Surgeries from "@/pages/frontdesk/surgeries/Surgeries";
-import SurgeryDetails from "@/pages/frontdesk/surgeries/SurgeryDetails";
+const AdminDashboard = lazy(() => import("@/pages/admin/dashboard/AdminDashboard"));
+const Schedule = lazy(() => import("@/pages/admin/schedule/Schedule"));
+const Stocks = lazy(() => import("@/pages/admin/stocks/Stocks"));
+const Invoice = lazy(() => import("@/pages/admin/invoice/Invoice"));
+const Users = lazy(() => import("@/pages/admin/users/Users"));
+const StaffList = lazy(() => import("@/pages/admin/users/StaffList"));
+const FrontdeskDashboard = lazy(() => import("@/pages/frontdesk/dashboard/Dashboard"));
+const Patients = lazy(() => import("@/pages/frontdesk/patients/Patients"));
+const Surgeries = lazy(() => import("@/pages/frontdesk/surgeries/Surgeries"));
+const SurgeryDetails = lazy(() => import("@/pages/frontdesk/surgeries/SurgeryDetails"));
 
 
-import PatientDetails from "@/pages/frontdesk/patients/PatientDetails";
-import Registration from "@/pages/frontdesk/registration/Registration";
-import OpdPatients from '@/pages/frontdesk/opd-patients/OpdPatients';
-import AddOpdPatient from '@/pages/frontdesk/opd-patients/AddOpdPatient';
+const PatientDetails = lazy(() => import("@/pages/frontdesk/patients/PatientDetails"));
+const Registration = lazy(() => import("@/pages/frontdesk/registration/Registration"));
+const OpdPatients = lazy(() => import("@/pages/frontdesk/opd-patients/OpdPatients"));
+const AddOpdPatient = lazy(() => import("@/pages/frontdesk/opd-patients/AddOpdPatient"));
 
 
 // SUper Admin
-import SuperAdminDashboard from "@/pages/superadmin/dashboard/SuperAdminDashboard";
-import GenerateReports from "@/pages/superadmin/reports/GenerateReports";
-import ManageUsers from "@/pages/superadmin/users/ManageUsers";
-import SuperAdminPatients from "@/pages/superadmin/patients/Patients";
-import SuperPatientDetails from "@/pages/superadmin/patients/PatientDetails";
-import SuperAdminAdmittedList from "@/pages/superadmin/admitted/SuperAdminAdmittedList";
-import SuperAdminAdmittedPatient from "@/pages/superadmin/admitted/SuperAdminAdmittedPatient";
-import SuperAdminRegistration from "@/pages/superadmin/registration/SuperAdminRegistration";
-import SuperAdminAppointments from "@/pages/superadmin/appointments/Appointments";
-import SuperAdminSettings from "@/pages/superadmin/settings/SuperAdminSettings";
-import HospitalSetup from "@/pages/superadmin/settings/HospitalSetup";
-import BillingFinance from "@/pages/superadmin/settings/BillingFinance";
-import SecuritySettings from "@/pages/superadmin/settings/SecuritySettings";
-import SecurityPreferences from "@/pages/superadmin/settings/SecurityPreferences";
-import AuditLogs from "@/pages/superadmin/settings/AuditLogs";
-import MedicalData from "@/pages/superadmin/settings/MedicalData";
-import PharmacyInventory from "@/pages/superadmin/settings/PharmacyInventory";
-import LaboratoryInventory from "@/pages/superadmin/settings/LaboratoryInventory";
-import PharmacyReview from "@/pages/superadmin/settings/PharmacyReview";
+const SuperAdminDashboard = lazy(() => import("@/pages/superadmin/dashboard/SuperAdminDashboard"));
+const GenerateReports = lazy(() => import("@/pages/superadmin/reports/GenerateReports"));
+const ManageUsers = lazy(() => import("@/pages/superadmin/users/ManageUsers"));
+const SuperAdminPatients = lazy(() => import("@/pages/superadmin/patients/Patients"));
+const SuperPatientDetails = lazy(() => import("@/pages/superadmin/patients/PatientDetails"));
+const SuperAdminAdmittedList = lazy(() => import("@/pages/superadmin/admitted/SuperAdminAdmittedList"));
+const SuperAdminAdmittedPatient = lazy(() => import("@/pages/superadmin/admitted/SuperAdminAdmittedPatient"));
+const SuperAdminRegistration = lazy(() => import("@/pages/superadmin/registration/SuperAdminRegistration"));
+const SuperAdminAppointments = lazy(() => import("@/pages/superadmin/appointments/Appointments"));
+const SuperAdminSettings = lazy(() => import("@/pages/superadmin/settings/SuperAdminSettings"));
+const HospitalSetup = lazy(() => import("@/pages/superadmin/settings/HospitalSetup"));
+const BillingFinance = lazy(() => import("@/pages/superadmin/settings/BillingFinance"));
+const SecuritySettings = lazy(() => import("@/pages/superadmin/settings/SecuritySettings"));
+const SecurityPreferences = lazy(() => import("@/pages/superadmin/settings/SecurityPreferences"));
+const AuditLogs = lazy(() => import("@/pages/superadmin/settings/AuditLogs"));
+const MedicalData = lazy(() => import("@/pages/superadmin/settings/MedicalData"));
+const PharmacyInventory = lazy(() => import("@/pages/superadmin/settings/PharmacyInventory"));
+const LaboratoryInventory = lazy(() => import("@/pages/superadmin/settings/LaboratoryInventory"));
+const PharmacyReview = lazy(() => import("@/pages/superadmin/settings/PharmacyReview"));
 
 // Cashier
-import CashierDashboard from "@/pages/cashier/dashboard/CashierDashboard";
-import CashierIncoming from "@/pages/cashier/incoming/Incoming";
-import CashierPatients from "@/pages/cashier/patients/CashierPatients";
-import BillingRecords from "@/pages/cashier/payment-records/BillingRecord";
-import ReceiptRecords from "@/pages/cashier/payment-records/ReceiptRecord";
+const CashierDashboard = lazy(() => import("@/pages/cashier/dashboard/CashierDashboard"));
+const CashierIncoming = lazy(() => import("@/pages/cashier/incoming/Incoming"));
+const CashierPatients = lazy(() => import("@/pages/cashier/patients/CashierPatients"));
+const BillingRecords = lazy(() => import("@/pages/cashier/payment-records/BillingRecord"));
+const ReceiptRecords = lazy(() => import("@/pages/cashier/payment-records/ReceiptRecord"));
 // import PaymentRecords from "@/pages/cashier/payment-records/PaymentRecords";
-import CashierPatientDetails from "@/pages/cashier/patient-details/CashierPatientDetails";
-import ReceiptDetails from "@/pages/cashier/receipt-details/ReceiptDetails";
-import PaymentReceiptHistory from "@/pages/cashier/payment-receipt-history/PaymentReceiptHistory";
-import GenerateBill from "@/pages/cashier/generate-bill/GenerateBill";
-import CashierOpdPatients from '@/pages/cashier/opd-patients/CashierOpdPatients';
-import CashierOpdPatientDetails from '@/pages/cashier/opd-patients/CashierOpdPatientDetails';
-import CreateOpdPatient from '@/pages/cashier/opd-patients/CreateOpdPatient';
-import CashierAdmissions from "@/pages/cashier/admissions/CashierAdmissions";
-import CashierAdmissionDetails from "@/pages/cashier/admissions/CashierAdmissionDetails";
+const CashierPatientDetails = lazy(() => import("@/pages/cashier/patient-details/CashierPatientDetails"));
+const ReceiptDetails = lazy(() => import("@/pages/cashier/receipt-details/ReceiptDetails"));
+const PaymentReceiptHistory = lazy(() => import("@/pages/cashier/payment-receipt-history/PaymentReceiptHistory"));
+const GenerateBill = lazy(() => import("@/pages/cashier/generate-bill/GenerateBill"));
+const CashierOpdPatients = lazy(() => import("@/pages/cashier/opd-patients/CashierOpdPatients"));
+const CashierOpdPatientDetails = lazy(() => import("@/pages/cashier/opd-patients/CashierOpdPatientDetails"));
+const CreateOpdPatient = lazy(() => import("@/pages/cashier/opd-patients/CreateOpdPatient"));
+const CashierAdmissions = lazy(() => import("@/pages/cashier/admissions/CashierAdmissions"));
+const CashierAdmissionDetails = lazy(() => import("@/pages/cashier/admissions/CashierAdmissionDetails"));
 
 // Modals
 import { BookAppointmentModal } from "@/components/modals";
-import Appointments from "@/pages/frontdesk/appointments/Appointments";
-import PatientVitals from "@/pages/nurse/patientVitals/PatientVitals";
-import PatientVitalsDetails from "@/pages/nurse/patientVitals/PatientVitalsDetails";
-import DependantVitalsDetails from "@/pages/nurse/dependantVitals/PatientVitalsDetails";
-import NurseIncoming from "@/pages/nurse/incoming/Incoming";
-import AdmittedList from "@/pages/nurse/admitted/AdmittedList";
-import AdmittedPatient from "@/pages/nurse/admitted/AdmittedPatient";
+const Appointments = lazy(() => import("@/pages/frontdesk/appointments/Appointments"));
+const PatientVitals = lazy(() => import("@/pages/nurse/patientVitals/PatientVitals"));
+const PatientVitalsDetails = lazy(() => import("@/pages/nurse/patientVitals/PatientVitalsDetails"));
+const DependantVitalsDetails = lazy(() => import("@/pages/nurse/dependantVitals/PatientVitalsDetails"));
+const NurseIncoming = lazy(() => import("@/pages/nurse/incoming/Incoming"));
+const AdmittedList = lazy(() => import("@/pages/nurse/admitted/AdmittedList"));
+const AdmittedPatient = lazy(() => import("@/pages/nurse/admitted/AdmittedPatient"));
 // Pharmacist
-import PharmacistDashboard from "@/pages/pharmacist/dashboard/PharmacistDashboard";
-import DrugDispensation from "@/pages/pharmacist/DrugDispensation/DrugDispensation";
-import PharmacistIncoming from "@/pages/pharmacist/incoming/Incoming";
-import PharmacistIncomingDetails from "@/pages/pharmacist/incoming/IncomingDetails";
-import InventoryStocks from "@/pages/pharmacist/Inventory&stocks/Inventory&stocks";
-import PharmacistReports from "@/pages/pharmacist/Reports/Reports";
-import PharmacistTransactions from "@/pages/pharmacist/Transactions/Transactions";
+const PharmacistDashboard = lazy(() => import("@/pages/pharmacist/dashboard/PharmacistDashboard"));
+const DrugDispensation = lazy(() => import("@/pages/pharmacist/DrugDispensation/DrugDispensation"));
+const PharmacistIncoming = lazy(() => import("@/pages/pharmacist/incoming/Incoming"));
+const PharmacistIncomingDetails = lazy(() => import("@/pages/pharmacist/incoming/IncomingDetails"));
+const InventoryStocks = lazy(() => import("@/pages/pharmacist/Inventory&stocks/Inventory&stocks"));
+const PharmacistReports = lazy(() => import("@/pages/pharmacist/Reports/Reports"));
+const PharmacistTransactions = lazy(() => import("@/pages/pharmacist/Transactions/Transactions"));
 
 //Laboratory Dashboard Routes
-import LaboratoryDashboard from "@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard";
-import IncomingLaboratory from "@/pages/laboratory/incoming/IncomingLaboratory";
-import OrderedLab from "@/pages/laboratory/OrderedLab";
-import IncomingScan from "@/pages/laboratory/incoming/IncomingScan";
-import AddLabResult from "@/pages/laboratory/results/AddLabResult";
-import ViewLabResult from "@/pages/laboratory/results/ViewLabResult";
-import LabResultsHistory from "@/pages/laboratory/results/LabResultsHistory";
+const LaboratoryDashboard = lazy(() => import("@/pages/laboratory/laboratoryDashboard/LaboratoryDashboard"));
+const IncomingLaboratory = lazy(() => import("@/pages/laboratory/incoming/IncomingLaboratory"));
+const OrderedLab = lazy(() => import("@/pages/laboratory/OrderedLab"));
+const IncomingScan = lazy(() => import("@/pages/laboratory/incoming/IncomingScan"));
+const AddLabResult = lazy(() => import("@/pages/laboratory/results/AddLabResult"));
+const ViewLabResult = lazy(() => import("@/pages/laboratory/results/ViewLabResult"));
+const LabResultsHistory = lazy(() => import("@/pages/laboratory/results/LabResultsHistory"));
 // import InventorySTOCKS from "@/pages/laboratory/inventoryStocks/InventoryStocks";
-import InventoryAndStocks from "@/pages/laboratory/Inventory&stocks/Inventory&stocks";
-import LaboratoryReports from "@/pages/laboratory/Reports/LaboratoryReports";
-import TestRequestModal from "@/pages/laboratory/incoming/modals/TestRequestModal";
-import CompletedTests from "@/pages/laboratory/completed/CompletedTests";
-import LaboratoryPatientProfile from "@/pages/laboratory/patients/LaboratoryPatientDetails";
-import LaboratoryPatientsList from "@/pages/laboratory/patients/LaboratoryPatientsList";
-import LabAdmittedList from "@/pages/laboratory/admitted/LabAdmittedList";
-import LabAdmittedPatientDetails from "@/pages/laboratory/admitted/LabAdmittedPatientDetails";
-import WritePrescription from "@/pages/doctor/incoming/WritePrescription";
-import FrontDeskPaymentRecords from "@/pages/frontdesk/payment-records/ReceiptRecord";
-import NursePaymentRecords from "@/pages/nurse/payment-records/ReceiptRecord";
-import PharmacistPaymentRecords from "@/pages/pharmacist/payment-records/ReceiptRecord";
+const InventoryAndStocks = lazy(() => import("@/pages/laboratory/Inventory&stocks/Inventory&stocks"));
+const LaboratoryReports = lazy(() => import("@/pages/laboratory/Reports/LaboratoryReports"));
+const TestRequestModal = lazy(() => import("@/pages/laboratory/incoming/modals/TestRequestModal"));
+const CompletedTests = lazy(() => import("@/pages/laboratory/completed/CompletedTests"));
+const LaboratoryPatientProfile = lazy(() => import("@/pages/laboratory/patients/LaboratoryPatientDetails"));
+const LaboratoryPatientsList = lazy(() => import("@/pages/laboratory/patients/LaboratoryPatientsList"));
+const LabAdmittedList = lazy(() => import("@/pages/laboratory/admitted/LabAdmittedList"));
+const LabAdmittedPatientDetails = lazy(() => import("@/pages/laboratory/admitted/LabAdmittedPatientDetails"));
+const WritePrescription = lazy(() => import("@/pages/doctor/incoming/WritePrescription"));
+const FrontDeskPaymentRecords = lazy(() => import("@/pages/frontdesk/payment-records/ReceiptRecord"));
+const NursePaymentRecords = lazy(() => import("@/pages/nurse/payment-records/ReceiptRecord"));
+const PharmacistPaymentRecords = lazy(() => import("@/pages/pharmacist/payment-records/ReceiptRecord"));
 
 // Sonographer Dashboard Routes
-import SonographerDashboard from "@/pages/sonographer/dashboard/SonographerDashboard";
-import SonographerIncoming from "@/pages/sonographer/incoming/Incoming";
-import SonographerIncomingDetails from "@/pages/sonographer/incoming/IncomingDetails";
-import SonographerScanHistory from "@/pages/sonographer/scan-history/ScanHistory";
-import SonographerPatients from "@/pages/sonographer/patients/SonographerPatients";
-import SonographerAdmittedList from "@/pages/sonographer/admitted/SonographerAdmittedList";
-import SonographerAdmittedPatientDetails from "@/pages/sonographer/admitted/SonographerAdmittedPatientDetails";
-import AttendedToday from "@/pages/doctor/attended-today/AttendedToday";
-import HmoConsultations from "@/pages/hmo/incoming/HmoConsultations";
-import HmoConsultationDetail from "@/pages/hmo/incoming/HmoConsultationDetail";
-import ViewAllAdmissions from "@/pages/doctor/incoming/ViewAllAdmission";
-import PatientsHistory from "@/pages/doctor/patients/PatientsHistory";
-import PatientHmoHistory from "@/pages/hmo/incoming/PatientHmoHistory";
-import HMOPatients from "@/pages/hmo/HmoPatients/HmoPatients";
-import PatientHmoHistoryFull from "@/pages/hmo/incoming/PatientHmoHistoryFull";
-import HmoAdmissions from "@/pages/hmo/admissions/HmoAdmissions";
-import HmoAdmissionDetails from "@/pages/hmo/admissions/HmoAdmissionDetails";
-import PharmacyPatients from "@/pages/pharmacist/PharmacyPatients/PharmacyPatients";
-import HMOLabResultDetails from "@/pages/hmo/incoming/labResult";
-import IncomingLabResults from "@/pages/doctor/labResults/IncomingLabResult";
-import NurseIncomingLabResults from "@/pages/nurse/labResults/IncomingLabResult";
-import HmoIncomingLabResults from "@/pages/hmo/labResults/IncomingLabResult";
-import PharmacistAttendedToday from "@/pages/pharmacist/attendedToday/AttendedToday";
-import PharmacyAdmissions from "@/pages/pharmacist/admissions/PharmacyAdmissions";
-import PharmacyAdmittedPatient from "@/pages/pharmacist/admissions/PharmacyAdmittedPatient";
+const SonographerDashboard = lazy(() => import("@/pages/sonographer/dashboard/SonographerDashboard"));
+const SonographerIncoming = lazy(() => import("@/pages/sonographer/incoming/Incoming"));
+const SonographerIncomingDetails = lazy(() => import("@/pages/sonographer/incoming/IncomingDetails"));
+const SonographerScanHistory = lazy(() => import("@/pages/sonographer/scan-history/ScanHistory"));
+const SonographerPatients = lazy(() => import("@/pages/sonographer/patients/SonographerPatients"));
+const SonographerAdmittedList = lazy(() => import("@/pages/sonographer/admitted/SonographerAdmittedList"));
+const SonographerAdmittedPatientDetails = lazy(() => import("@/pages/sonographer/admitted/SonographerAdmittedPatientDetails"));
+const AttendedToday = lazy(() => import("@/pages/doctor/attended-today/AttendedToday"));
+const HmoConsultations = lazy(() => import("@/pages/hmo/incoming/HmoConsultations"));
+const HmoConsultationDetail = lazy(() => import("@/pages/hmo/incoming/HmoConsultationDetail"));
+const ViewAllAdmissions = lazy(() => import("@/pages/doctor/incoming/ViewAllAdmission"));
+const PatientsHistory = lazy(() => import("@/pages/doctor/patients/PatientsHistory"));
+const PatientHmoHistory = lazy(() => import("@/pages/hmo/incoming/PatientHmoHistory"));
+const HMOPatients = lazy(() => import("@/pages/hmo/HmoPatients/HmoPatients"));
+const PatientHmoHistoryFull = lazy(() => import("@/pages/hmo/incoming/PatientHmoHistoryFull"));
+const HmoAdmissions = lazy(() => import("@/pages/hmo/admissions/HmoAdmissions"));
+const HmoAdmissionDetails = lazy(() => import("@/pages/hmo/admissions/HmoAdmissionDetails"));
+const PharmacyPatients = lazy(() => import("@/pages/pharmacist/PharmacyPatients/PharmacyPatients"));
+const HMOLabResultDetails = lazy(() => import("@/pages/hmo/incoming/labResult"));
+const IncomingLabResults = lazy(() => import("@/pages/doctor/labResults/IncomingLabResult"));
+const NurseIncomingLabResults = lazy(() => import("@/pages/nurse/labResults/IncomingLabResult"));
+const HmoIncomingLabResults = lazy(() => import("@/pages/hmo/labResults/IncomingLabResult"));
+const PharmacistAttendedToday = lazy(() => import("@/pages/pharmacist/attendedToday/AttendedToday"));
+const PharmacyAdmissions = lazy(() => import("@/pages/pharmacist/admissions/PharmacyAdmissions"));
+const PharmacyAdmittedPatient = lazy(() => import("@/pages/pharmacist/admissions/PharmacyAdmittedPatient"));
 
+
+
+const RouteLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh] w-full">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-8 h-8 border-3 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+      <span className="text-xs text-gray-500 font-medium">Loading module...</span>
+    </div>
+  </div>
+);
 
 const AppRoutes = () => {
   return (
-    <Routes>
+    <Suspense fallback={<RouteLoader />}>
+      <Routes>
       {/* Default route - redirect to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
 
@@ -1305,6 +1316,7 @@ const AppRoutes = () => {
       {/* Catch all route - redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
+    </Suspense>
   );
 };
 

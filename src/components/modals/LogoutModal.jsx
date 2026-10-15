@@ -1,5 +1,5 @@
-/* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../../store/slices/authSlice';
@@ -138,7 +138,7 @@ const LogoutModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="flex fixed inset-0 z-50 justify-center items-center w-[100vw]" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       {/* Backdrop */}
       <div className="fixed inset-0 w-[100vw] bg-black/70 backdrop-blur-sm" onClick={handleCancel} />
@@ -156,34 +156,6 @@ const LogoutModal = ({ isOpen, onClose }) => {
             </p>
           </div>
 
-          {/* Action Buttons */}
-          {/* <div className="flex gap-3 justify-center">
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={isLoggingOut || isLoading}
-              className="text-white bg-red-600 border-red-600 btn btn-error disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoggingOut || isLoading ? (
-                <div className="flex items-center">
-                  <div className="mr-2 w-4 h-4 rounded-full border-b-2 border-white animate-spin"></div>
-                  Logging out...
-                </div>
-              ) : (
-                'Log out'
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isLoggingOut || isLoading}
-              className="btn btn-outline disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-          </div> */}
-
-
           <div className="flex gap-3 justify-center">
             <button
               type="button"
@@ -199,10 +171,10 @@ const LogoutModal = ({ isOpen, onClose }) => {
             </button>
           </div>
 
-
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

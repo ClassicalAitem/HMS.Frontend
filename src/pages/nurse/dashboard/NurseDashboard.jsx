@@ -85,9 +85,10 @@ const NurseDashboard = () => {
     const fetchIncoming = async () => {
       try {
         setIncomingLoading(true);
+        const nurseStatusFilter = "awaiting_injection,awaiting_sampling,awaiting_vitals,awaiting_nurse";
         const [patientsRes, dependantsRes] = await Promise.allSettled([
-          getPatients(),
-          getDependants(),
+          getPatients({ status: nurseStatusFilter, limit: 100 }),
+          getDependants({ status: nurseStatusFilter, limit: 100 }),
         ]);
 
         const patients =

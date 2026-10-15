@@ -238,9 +238,9 @@ const IncomingMD = () => {
 
   const handleClear = async (data) => {
   if (data.type === 'dependant') {
-    await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.CANCELLED });
+    await updateDependantStatus(data.dependantId, { status: PATIENT_STATUS.COMPLETED });
   } else {
-    await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.CANCELLED });
+    await updatePatientStatus(data.patientId, { status: PATIENT_STATUS.COMPLETED });
   }
   localStorage.setItem('refreshIncoming', Date.now().toString());
     refreshQueueCount();
