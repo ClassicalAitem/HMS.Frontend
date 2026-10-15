@@ -11,7 +11,10 @@ const Header = ({ onToggleSidebar }) => {
 
   return (
     <div className="h-16 shrink-0">
-      <header className="fixed inset-x-0 top-0 z-[60] h-16 border-b border-base-200 bg-base-100">
+      <header
+        id="app-header"
+        className="fixed inset-x-0 top-0 z-20 h-16 border-b border-base-200 bg-base-100"
+      >
         <div className="flex h-full items-center">
           <div className="hidden h-full w-64 shrink-0 items-center gap-2 border-r border-base-200 px-4 lg:flex">
             <img src={HospitalFavicon} alt="Kolak Hospital" className="h-10 w-auto shrink-0" />
@@ -54,4 +57,4 @@ const Header = ({ onToggleSidebar }) => {
   );
 };
 
-export default Header;
+export default Header;

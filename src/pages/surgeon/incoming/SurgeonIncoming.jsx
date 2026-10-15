@@ -143,10 +143,10 @@ const SurgeonIncoming = () => {
   const handleClear = async (data) => {
     try {
       if (data.rawPatientId) {
-        await updatePatientStatus(data.rawPatientId, { status: PATIENT_STATUS.CANCELLED });
+        await updatePatientStatus(data.rawPatientId, { status: PATIENT_STATUS.COMPLETED });
       }
       if (data.id) {
-        await updateAppointment(data.id, { status: 'cancelled' });
+        await updateAppointment(data.id, { status: 'completed' });
       }
       localStorage.setItem('refreshIncoming', Date.now().toString());
       refreshQueueCount();

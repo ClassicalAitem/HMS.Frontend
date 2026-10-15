@@ -7,7 +7,7 @@ import ConfirmationModal from '@/components/modals/ConfirmationModal';
 /**
  * Bulk "Clear All" action for any Incoming/Awaiting queue page.
  * Sets items currently in the queue to a terminal status
- * (typically PATIENT_STATUS.CANCELLED) so the queue empties out.
+ * (typically PATIENT_STATUS.COMPLETED) so the queue empties out.
  *
  * It extracts unique statuses from the current items. If multiple statuses
  * exist, it provides a dropdown in the confirmation modal so the user can
@@ -106,7 +106,7 @@ const ClearAllButton = ({ items = [], updateStatusFn, onCleared, label = 'Clear 
         }}
         onConfirm={handleConfirmClearAll}
         title="Clear Queue Entries"
-        message={`Remove entries currently in this queue? This marks them as cancelled and they will no longer appear here. This does not delete any records.`}
+        message={`Remove entries currently in this queue? This marks them as completed and they will no longer appear here. This does not delete any records.`}
         confirmText={`Clear ${itemsToClearCount}`}
         cancelText="Cancel"
       >
