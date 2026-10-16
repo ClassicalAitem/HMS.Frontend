@@ -9,6 +9,7 @@ import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
 import ShiftCountdown from './components/common/ShiftCountdown';
 import AutoLogoutHandler from './components/common/AutoLogoutHandler';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 function App() {
   return (
@@ -20,7 +21,9 @@ function App() {
               <div className="App">
                 <AutoLogoutHandler />
                 <ShiftCountdown />
-                <AppRoutes />
+                <ErrorBoundary>
+                  <AppRoutes />
+                </ErrorBoundary>
                 <Toaster
                   position="top-right"
                   gutter={8}

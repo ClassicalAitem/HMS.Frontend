@@ -309,10 +309,20 @@ const NurseAntenatalForm = () => {
 
   const transformFrontendToBackend = (fd) => {
     const resolvedPatientId = patient?.id || patientId;
+    const authorId = user?.id || user?._id;
+    const authorName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || nurseName;
+    const authorRole = user?.accountType || user?.role || 'nurse';
+
     const out = {
       patientId: resolvedPatientId,
-      doctorId: user?.id || user?._id,
-      nurseId: user?.id || user?._id,
+      doctorId: authorId,
+      nurseId: authorId,
+      createdById: authorId,
+      createdByName: authorName,
+      createdByRole: authorRole,
+      updatedById: authorId,
+      updatedByName: authorName,
+      updatedByRole: authorRole,
       ...(selectedDependantId && { dependantId: selectedDependantId }),
       ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
     };
@@ -385,6 +395,10 @@ const NurseAntenatalForm = () => {
         ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
         ...(i.nextVisit != null && String(i.nextVisit).trim() && { nextVisit: String(i.nextVisit).trim() }),
         ...(i.remark?.trim() && { remark: i.remark.trim() }),
+        signature: i.signature || authorName,
+        recordedById: i.recordedById || authorId,
+        recordedByName: i.recordedByName || i.signature || authorName,
+        recordedByRole: i.recordedByRole || authorRole,
       }));
     if (exams.length > 0) out.anteNatalExamination = exams;
     if (fd.remark?.trim()) out.remark = fd.remark.trim();
@@ -523,6 +537,17 @@ const NurseAntenatalForm = () => {
               </button>
             </div>
           </div>
+
+          {isEditing && (
+            <div className="alert alert-info text-xs py-2.5 px-4 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📋</span>
+                <span>
+                  <strong>Audit Tracking Active:</strong> Your changes will be recorded under your name (<strong>Nurse {nurseName}</strong>) in the patient's antenatal audit trail to track what was changed.
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Dependant selection if available */}
           {dependants.length > 0 && !isEditing && (

@@ -317,13 +317,23 @@ useEffect(() => {
   };
 
   const transformFrontendToBackend = (fd) => {
+    const authorId = user?.id || user?._id;
+    const authorName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || doctorName;
+    const authorRole = user?.accountType || user?.role || 'doctor';
+
     const out = {
-    patientId,
-    doctorId: user?.id || user?._id,
-    // ✅ Include dependant if selected
-    ...(selectedDependantId && { dependantId: selectedDependantId }),
-    ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
-  };
+      patientId,
+      doctorId: authorId,
+      createdById: authorId,
+      createdByName: authorName,
+      createdByRole: authorRole,
+      updatedById: authorId,
+      updatedByName: authorName,
+      updatedByRole: authorRole,
+      // ✅ Include dependant if selected
+      ...(selectedDependantId && { dependantId: selectedDependantId }),
+      ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
+    };
 
 
     const med = {};
@@ -394,6 +404,10 @@ useEffect(() => {
         ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
         ...(i.nextVisit != null && String(i.nextVisit).trim() && { nextVisit: String(i.nextVisit).trim() }),
         ...(i.remark?.trim() && { remark: i.remark.trim() }),
+        signature: i.signature || authorName,
+        recordedById: i.recordedById || authorId,
+        recordedByName: i.recordedByName || i.signature || authorName,
+        recordedByRole: i.recordedByRole || authorRole,
       }));
     if (exams.length > 0) out.anteNatalExamination = exams;
     if (fd.remark?.trim()) out.remark = fd.remark.trim();
