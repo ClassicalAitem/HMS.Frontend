@@ -1,42 +1,53 @@
 import React, { useEffect, useState } from 'react';
-import { getLabResultById } from '@/services/api/labResultsAPI';
+import { getLabResultById, getLabResultFile } from '@/services/api/labResultsAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import { FaFileAlt, FaDownload, FaFlask, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
-const LabResultDetailsModal = ({ isOpen, onClose, labResultId }) => {
+const LabResultDetailsModal = ({ isOpen, onClose, labResultId, labResult: initialLabResult }) => {
   const [loading, setLoading] = useState(false);
-  const [lab, setLab] = useState(null);
+  const [lab, setLab] = useState(initialLabResult || null);
   const [patient, setPatient] = useState(null);
 
-  const displayField = (label, value) => {
-    if (!value) return null;
-    return (
-      <div className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200">
-        <div className="font-semibold text-[#00943C]">{label}</div>
-        <div className="col-span-2 text-gray-700">{value}</div>
-      </div>
-    );
-  };
-
   const displaySection = (title, data) => {
-    if (!data || Object.values(data).every((v) => !v)) return null;
+    if (!data || typeof data !== 'object') return null;
+    const entries = Object.entries(data).filter(([_, v]) => v !== undefined && v !== null && v !== '');
+    if (entries.length === 0) return null;
+
     return (
-      <div className="mb-6">
-        <h3 className="text-lg font-bold text-[#00943C] mb-3 pb-2 border-b-2 border-[#00943C]">
-          {title}
-        </h3>
-        <div className="bg-gray-50 p-4 rounded-lg">
-          {Object.entries(data).map(([key, value]) => {
-            if (!value) return null;
-            if (typeof value === "object") return null;
-            return (
-              <div key={key} className="grid grid-cols-3 gap-4 py-2 border-b border-gray-200 last:border-b-0">
-                <div className="font-semibold text-gray-700">{key}</div>
-                <div className="col-span-2 text-gray-600">
-                  {typeof value === "string" || typeof value === "number"
-                    ? value
-                    : JSON.stringify(value)}
+      <div className="mb-4 rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-xs">
+        <div className="px-4 py-2.5 bg-base-200/50 border-b border-base-200 flex items-center gap-2">
+          <FaFlask className="text-primary text-xs" />
+          <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+            {title}
+          </h4>
+        </div>
+        <div className="p-3 divide-y divide-base-200/60">
+          {entries.map(([key, value]) => {
+            if (typeof value === 'object' && value !== null) {
+              return (
+                <div key={key} className="py-2 text-xs">
+                  <span className="font-semibold text-base-content/70 block mb-1 capitalize">
+                    {key.replace(/([A-Z])/g, ' $1')}
+                  </span>
+                  <div className="pl-3 border-l-2 border-primary/30 space-y-1">
+                    {Object.entries(value).map(([subK, subV]) => (
+                      <div key={subK} className="flex justify-between py-0.5">
+                        <span className="text-base-content/60 capitalize">{subK.replace(/([A-Z])/g, ' $1')}:</span>
+                        <span className="font-medium text-base-content">{String(subV)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              );
+            }
+            return (
+              <div key={key} className="flex items-center justify-between py-1.5 text-xs">
+                <span className="font-medium text-base-content/70 capitalize">
+                  {key.replace(/([A-Z])/g, ' $1')}
+                </span>
+                <span className="font-semibold text-base-content text-right">{String(value)}</span>
               </div>
             );
           })}
@@ -45,188 +56,270 @@ const LabResultDetailsModal = ({ isOpen, onClose, labResultId }) => {
     );
   };
 
+  const handleDownloadFile = async (file, index) => {
+    try {
+      const fileId = file?._id || file?.id;
+      if (fileId) {
+        const response = await getLabResultFile(fileId);
+        const blob = new Blob([response.data], { type: file.mimetype || 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.filename || file.name || `lab_file_${index + 1}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else if (file?.url) {
+        window.open(file.url, '_blank');
+      } else {
+        toast.error("File download unavailable");
+      }
+    } catch (err) {
+      console.error("File download failed:", err);
+      toast.error("Failed to download file");
+    }
+  };
+
   const patientName =
-    patient?.firstName && patient?.lastName
-      ? `${patient.firstName} ${patient.lastName}`
-      : patient?.name || "Unknown Patient";
+    patient?.fullName ||
+    (patient?.firstName && patient?.lastName ? `${patient.firstName} ${patient.lastName}`.trim() : null) ||
+    patient?.name ||
+    lab?.patient?.fullName ||
+    (lab?.patient?.firstName ? `${lab.patient.firstName} ${lab.patient.lastName || ''}`.trim() : null) ||
+    "Patient";
 
   useEffect(() => {
+    let mounted = true;
     const load = async () => {
-      if (!isOpen || !labResultId) return;
+      if (!isOpen) return;
+
+      if (initialLabResult && (!labResultId || labResultId === (initialLabResult._id || initialLabResult.id))) {
+        setLab(initialLabResult);
+        if (initialLabResult.patient) {
+          setPatient(initialLabResult.patient);
+        } else if (initialLabResult.patientId) {
+          getPatientById(initialLabResult.patientId).then(p => {
+            if (mounted) setPatient(p?.data || p);
+          }).catch(() => {});
+        }
+        return;
+      }
+
+      if (!labResultId) return;
+
       try {
         setLoading(true);
         const res = await getLabResultById(labResultId);
         const data = res?.data ?? res;
         if (!data) throw new Error('No lab result');
-        setLab(data);
+        if (mounted) setLab(data);
 
-        if (data?.patientId) {
+        const targetPid = data?.patientId || data?.patient?._id || data?.patient?.id;
+        if (targetPid) {
           try {
-            const pRes = await getPatientById(data.patientId);
-            setPatient(pRes?.data || pRes);
+            const pRes = await getPatientById(targetPid);
+            if (mounted) setPatient(pRes?.data || pRes);
           } catch (e) {
             console.warn('Failed to load patient for modal', e);
           }
         }
       } catch (e) {
-        toast.error('Failed to load lab result');
+        toast.error('Failed to load lab result details');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
+
     load();
-  }, [isOpen, labResultId]);
+    return () => { mounted = false; };
+  }, [isOpen, labResultId, initialLabResult]);
 
   if (!isOpen) return null;
 
   const items = Array.isArray(lab?.result) ? lab.result : [];
-  const files = Array.isArray(lab?.attachedFiles) ? lab.attachedFiles : [];
+  const files = Array.isArray(lab?.attachedFiles)
+    ? lab.attachedFiles
+    : Array.isArray(lab?.form?.attachments)
+      ? lab.form.attachments
+      : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
-      <div className="fixed inset-0 bg-opacity-50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-2xl shadow-xl card bg-base-100 max-h-[80vh] overflow-y-auto">
-        <div className="p-6 card-body">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-base-content">Lab Result Details</h2>
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <div className="relative z-10 w-full max-w-2xl shadow-2xl rounded-2xl bg-base-100 max-h-[90vh] flex flex-col border border-base-200 overflow-hidden animate-fadeIn">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-base-200 bg-base-200/40 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <FaFlask className="text-base" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-base-content leading-tight">
+                Laboratory Investigation Result
+              </h2>
+              <p className="text-xs text-base-content/60">
+                {lab?.createdAt ? formatNigeriaDate(lab.createdAt) : 'Result Record'}
+              </p>
+            </div>
           </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-circle btn-ghost"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        </div>
 
+        {/* Content */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 text-sm">
           {loading ? (
-            <div className="skeleton h-24 w-full" />
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="loading loading-spinner loading-md text-primary" />
+              <p className="text-xs text-base-content/60">Loading lab result details...</p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              {/* patient header */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <>
+              {/* Patient and Lab Meta Header Card */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 bg-base-200/50 rounded-xl border border-base-200">
                 <div>
-                  <div className="text-xs text-gray-600 uppercase font-semibold">Patient</div>
-                  <div className="font-medium">{patientName}</div>
+                  <div className="text-[11px] font-bold text-base-content/50 uppercase">Subject</div>
+                  <div className="font-semibold text-xs sm:text-sm text-base-content truncate">{patientName}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-600 uppercase font-semibold">Hospital ID</div>
-                  <div className="font-medium">{patient?.hospitalId || '—'}</div>
+                  <div className="text-[11px] font-bold text-base-content/50 uppercase">Hospital ID</div>
+                  <div className="font-semibold text-xs sm:text-sm text-base-content">{patient?.hospitalId || '—'}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-600 uppercase font-semibold">Technician</div>
-                  <div className="font-medium">{lab?.form?.labNo || '—'}</div>
+                  <div className="text-[11px] font-bold text-base-content/50 uppercase">Technician</div>
+                  <div className="font-semibold text-xs sm:text-sm text-base-content truncate">
+                    {lab?.labTechnicianName || lab?.technician?.fullName || lab?.form?.labNo || 'Lab Staff'}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-600 uppercase font-semibold">Date</div>
-                  <div className="font-medium">{lab?.form?.date || '—'}</div>
+                  <div className="text-[11px] font-bold text-base-content/50 uppercase">Date</div>
+                  <div className="font-semibold text-xs sm:text-sm text-base-content">
+                    {lab?.createdAt ? formatNigeriaDate(lab.createdAt) : (lab?.form?.date || '—')}
+                  </div>
                 </div>
               </div>
 
-              {/* raw result table */}
+              {/* Standard Results Table (if present) */}
               {items.length > 0 && (
-                <div className="shadow-xl card bg-base-100 mb-6">
-                  <div className="p-4">
-                    <h3 className="text-base font-semibold mb-2">Results</h3>
-                    <div className="overflow-x-auto">
-                      <table className="table w-full">
-                        <thead>
-                          <tr>
-                            <th>Code</th>
-                            <th>Value</th>
-                            <th>Unit</th>
-                            <th>Range</th>
-                            <th>Flag</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((r, idx) => (
+                <div className="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-xs">
+                  <div className="px-4 py-2.5 bg-base-200/40 border-b border-base-200 flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-base-content/80">
+                      Standard Test Findings ({items.length})
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="table table-sm table-zebra w-full text-xs">
+                      <thead>
+                        <tr className="bg-base-200/60 text-base-content/70">
+                          <th>Test Parameter</th>
+                          <th>Result Value</th>
+                          <th>Unit</th>
+                          <th>Reference Range</th>
+                          <th>Flag</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((r, idx) => {
+                          const flag = String(r?.flag || '').toUpperCase();
+                          const isAbnormal = flag === 'HIGH' || flag === 'LOW' || flag === 'ABNORMAL' || flag === 'POSITIVE';
+                          return (
                             <tr key={idx}>
-                              <td>{r?.code || '—'}</td>
-                              <td>{r?.value || '—'}</td>
-                              <td>{r?.unit || '—'}</td>
-                              <td>{r?.range || '—'}</td>
-                              <td>{r?.flag || '—'}</td>
+                              <td className="font-medium text-base-content">{r?.code || r?.name || '—'}</td>
+                              <td className="font-bold text-base-content">{r?.value || '—'}</td>
+                              <td className="text-base-content/70">{r?.unit || '—'}</td>
+                              <td className="text-base-content/60">{r?.range || '—'}</td>
+                              <td>
+                                {r?.flag ? (
+                                  <span className={`badge badge-xs ${
+                                    isAbnormal ? 'badge-error' : 'badge-success'
+                                  }`}>
+                                    {r.flag}
+                                  </span>
+                                ) : (
+                                  <span className="text-base-content/40">—</span>
+                                )}
+                              </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
 
-              {/* test sections */}
+              {/* Categorized Test Sections */}
               {displaySection('Haematology', lab?.form?.haematology)}
               {displaySection('WBC Differential', lab?.form?.wbcDifferential)}
               {displaySection('Serology', lab?.form?.serology)}
-              {displaySection('Hormone Profile', lab?.form?.hormoneProfile)}
-              {displaySection('Oestrogen', lab?.form?.oestrogen)}
+              {displaySection('Blood Crossmatching', lab?.form?.bloodCrossmaching)}
               {displaySection('Urinalysis', lab?.form?.urinalysis)}
               {displaySection('Kidney Function Test', lab?.form?.kidneyFunctionTest)}
               {displaySection('Liver Function Test', lab?.form?.liverFunctionTest)}
               {displaySection('Diabetes Screening', lab?.form?.diabetesScreening)}
               {displaySection('Lipid Profile', lab?.form?.lipidProfile)}
-              {displaySection('Others', lab?.form?.others)}
-
-              {/* Widal */}
-              {lab?.form?.widalReport &&
-                Object.values(lab.form.widalReport).some((v) => v.O || v.H) && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-bold text-[#00943C] mb-3 pb-2 border-b-2 border-[#00943C]">
-                      Widal Report
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gradient-to-r from-[#00943C]/20 to-[#00943C]/10">
-                            <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                              Organism
-                            </th>
-                            <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                              O 
-                            </th>
-                            <th className="border border-gray-300 px-4 py-3 text-left font-semibold">
-                              H 
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Object.entries(lab.form.widalReport).map(([key, values]) => (
-                            <tr key={key} className="hover:bg-gray-50">
-                              <td className="border border-gray-300 px-4 py-2">
-                                {key === 'SalmTyphi' && 'Salmonella Typhi'}
-                                {key === 'SalmParatyphiA' &&
-                                  'Salmonella Paratyphi A'}
-                                {key === 'SalmParatyphiB' &&
-                                  'Salmonella Paratyphi B'}
-                                {key === 'SalmParatyphiC' &&
-                                  'Salmonella Paratyphi C'}
-                              </td>
-                              <td className="border border-gray-300 px-4 py-2">
-                                {values.O || '—'}
-                              </td>
-                              <td className="border border-gray-300 px-4 py-2">
-                                {values.H || '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
+              {displaySection('Parasitology', lab?.form?.parasitology)}
               {displaySection('Microbiology', lab?.form?.microbiology)}
               {displaySection('Wet Preparation', lab?.form?.wetPreparation)}
-              {displaySection('Antibiotic Sensitivity', lab?.form?.sensitiveProfile?.Drugs)}
+              {displaySection('Others', lab?.form?.others)}
 
-              {/* remarks */}
-              {lab?.form?.remarks && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-bold text-[#00943C] mb-3 pb-2 border-b-2 border-[#00943C]">
-                    Overall Remarks
-                  </h3>
-                  <div className="bg-gray-50 p-4 rounded-lg text-gray-700 whitespace-pre-wrap">
-                    {lab.form.remarks}
+              {/* Remarks */}
+              {(lab?.remarks || lab?.form?.remarks) && (
+                <div className="p-3.5 bg-base-200/40 rounded-xl border border-base-200">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/70 mb-1.5 flex items-center gap-1.5">
+                    <span>Clinical / Technician Remarks</span>
+                  </h4>
+                  <p className="text-xs text-base-content/90 whitespace-pre-wrap leading-relaxed">
+                    {lab.remarks || lab.form.remarks}
+                  </p>
+                </div>
+              )}
+
+              {/* Attached Files & Scan Reports */}
+              {files.length > 0 && (
+                <div className="p-3.5 bg-base-200/30 rounded-xl border border-base-200">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-base-content/70 mb-2.5 flex items-center gap-1.5">
+                    <FaFileAlt className="text-primary" />
+                    <span>Attached Reports & Files ({files.length})</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {files.map((file, fIdx) => (
+                      <div
+                        key={fIdx}
+                        className="flex items-center justify-between p-2.5 bg-base-100 rounded-lg border border-base-200 hover:border-primary/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FaFileAlt className="text-primary shrink-0 text-sm" />
+                          <span className="text-xs font-medium text-base-content truncate">
+                            {file.filename || file.name || `Attachment ${fIdx + 1}`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline btn-primary gap-1 shrink-0 ml-2"
+                          onClick={() => handleDownloadFile(file, fIdx)}
+                        >
+                          <FaDownload className="text-[10px]" /> Download
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-            </div>
+            </>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 sm:p-4 border-t border-base-200 bg-base-200/30 flex justify-end">
+          <button type="button" className="btn btn-sm btn-neutral" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>
