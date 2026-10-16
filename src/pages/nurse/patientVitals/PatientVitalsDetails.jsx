@@ -232,17 +232,23 @@ const summarySubject = useMemo(() => {
     hmos: ownHmos,
   };
 }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
-// Fetch antenatal records (nurse read-only view)
+// Fetch antenatal records (nurse view)
 useEffect(() => {
   let mounted = true;
   const fetchAntenatal = async () => {
     setAntenatalLoading(true);
     try {
       const records = await getAnteNatalRecordByPatientId(patientId);
-      const list = Array.isArray(records) ? records : [];
+      const unwrapped = Array.isArray(records)
+        ? (records.some(r => r?.presentPregnancy || r?.presentPregnancyHistories || r?.medicalHistories)
+            ? records.map((r, i) => ({ ...r, __originalIndex: r.__originalIndex ?? i }))
+            : records.flatMap(w => (w.anteNatalRecords || []).map((r, i) => ({ ...r, __wrapperId: w._id, __originalIndex: i }))))
+        : (Array.isArray(records?.anteNatalRecords)
+            ? records.anteNatalRecords.map((r, i) => ({ ...r, __originalIndex: i }))
+            : []);
       const scoped = isViewingDependant
-        ? list.filter(r => r?.dependantId === dependantId)
-        : list.filter(r => !r?.dependantId);
+        ? unwrapped.filter(r => r?.dependantId === dependantId)
+        : unwrapped.filter(r => !r?.dependantId);
       if (mounted) setAntenatalRecords(scoped);
     } catch (error) {
       console.error('Error fetching antenatal records:', error);
@@ -884,28 +890,61 @@ useEffect(() => {
             hidePrice
           /> */}
 
-          {/* Antenatal Records (Nurse, Female patients only). Read-only, view all/details */}
-          {summarySubject?.gender?.toLowerCase() === 'female' && (
+          {/* Antenatal Records (Nurse view) */}
+          {(summarySubject?.gender?.toLowerCase() === 'female' || antenatalRecords.length > 0) && (
           <div className="shadow-xl card bg-base-100 mb-4">
             <div className="p-4 card-body">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-base-content">Antenatal Records</h2>
-             <button
-                className="btn btn-sm btn-outline"
-                onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`, {
-                  state: { dependantId, dependantSnapshot }
-                })}
-                disabled={antenatalLoading || antenatalRecords.length === 0}
-              >
-                View All ({antenatalRecords.length})
-              </button>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-base-content">Antenatal Records</h2>
+                  <p className="text-xs text-base-content/60">Prenatal care and examination history</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`, {
+                      state: { dependantId, dependantSnapshot }
+                    })}
+                    disabled={antenatalLoading || antenatalRecords.length === 0}
+                  >
+                    View All ({antenatalRecords.length})
+                  </button>
+                  <button
+                    className="btn btn-sm btn-primary gap-1"
+                    onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records/new`, {
+                      state: {
+                        dependantId: dependantId || null,
+                        dependantSnapshot: dependantSnapshot || null,
+                        patientSnapshot: patient,
+                        returnTo: 'patient',
+                      }
+                    })}
+                  >
+                    <span>+</span> Add New Record
+                  </button>
+                </div>
               </div>
               {antenatalLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="loading loading-spinner loading-md" />
                 </div>
               ) : antenatalRecords.length === 0 ? (
-                <EmptyState title="No antenatal records" description="No antenatal records available for this patient." />
+                <div className="py-6 text-center space-y-3">
+                  <p className="text-sm text-base-content/70">No antenatal records available for this patient.</p>
+                  <button
+                    className="btn btn-sm btn-primary gap-1"
+                    onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records/new`, {
+                      state: {
+                        dependantId: dependantId || null,
+                        dependantSnapshot: dependantSnapshot || null,
+                        patientSnapshot: patient,
+                        returnTo: 'patient',
+                      }
+                    })}
+                  >
+                    <span>+</span> Create First Antenatal Record
+                  </button>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="table table-zebra w-full">
@@ -922,6 +961,7 @@ useEffect(() => {
                     <tbody>
                       {antenatalRecords.slice(0, 4).map((record, idx) => {
                         const presentPregnancy = record?.presentPregnancy || record?.presentPregnancyHistories?.[0] || {};
+                        const recordIndex = record.__originalIndex ?? idx;
                         return (
                           <tr key={record._id || record.id || idx}>
                             <td>{idx + 1}</td>
@@ -930,9 +970,29 @@ useEffect(() => {
                             <td>{presentPregnancy?.EDD || presentPregnancy?.edd ? formatNigeriaDate(presentPregnancy.EDD || presentPregnancy.edd) : '—'}</td>
                             <td>{presentPregnancy?.durationOfPregnancyInWeek || presentPregnancy?.durationInWeeks ? `${presentPregnancy.durationOfPregnancyInWeek || presentPregnancy.durationInWeeks} w` : '—'}</td>
                             <td className="text-right">
-                              <button type="button" className="btn btn-xs btn-primary" onClick={() => setSelectedAntenatalRecord(record)}>
-                                View details
-                              </button>
+                              <div className="flex justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-outline btn-primary"
+                                  onClick={() => setSelectedAntenatalRecord(selectedAntenatalRecord === record ? null : record)}
+                                >
+                                  {selectedAntenatalRecord === record ? 'Hide' : 'Details'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-xs btn-primary"
+                                  onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records/edit/${recordIndex}`, {
+                                    state: {
+                                      dependantId: record.dependantId || dependantId || null,
+                                      dependantSnapshot: record.dependantId === dependantId ? dependantSnapshot : null,
+                                      patientSnapshot: patient,
+                                      returnTo: 'patient',
+                                    }
+                                  })}
+                                >
+                                  Edit
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -944,11 +1004,27 @@ useEffect(() => {
 
               {selectedAntenatalRecord && (() => {
                 const pregnancyData = selectedAntenatalRecord?.presentPregnancy || selectedAntenatalRecord?.presentPregnancyHistories?.[0] || {};
+                const selectedRecordIndex = selectedAntenatalRecord.__originalIndex ?? 0;
                 return (
                 <div className="mt-4 p-3 border rounded-lg bg-base-200">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-base font-semibold">Antenatal details</h3>
-                    <button className="btn btn-xs btn-ghost" onClick={() => setSelectedAntenatalRecord(null)}>Close</button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="btn btn-xs btn-primary"
+                        onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records/edit/${selectedRecordIndex}`, {
+                          state: {
+                            dependantId: selectedAntenatalRecord.dependantId || dependantId || null,
+                            dependantSnapshot: selectedAntenatalRecord.dependantId === dependantId ? dependantSnapshot : null,
+                            patientSnapshot: patient,
+                            returnTo: 'patient',
+                          }
+                        })}
+                      >
+                        Edit Record
+                      </button>
+                      <button className="btn btn-xs btn-ghost" onClick={() => setSelectedAntenatalRecord(null)}>Close</button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                     <div>

@@ -50,7 +50,7 @@ const AntenatalRecords = () => {
   const fromIncoming = location?.state?.from === "incoming";
   const { user } = useAppSelector((state) => state.auth);
   const doctorName = user?.fullName || user?.name || "";
-  const isEditing = Boolean(recordIndex);
+  const isEditing = Boolean(recordIndex && recordIndex !== "new");
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(true);
@@ -317,13 +317,23 @@ useEffect(() => {
   };
 
   const transformFrontendToBackend = (fd) => {
+    const authorId = user?.id || user?._id;
+    const authorName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || doctorName;
+    const authorRole = user?.accountType || user?.role || 'doctor';
+
     const out = {
-    patientId,
-    doctorId: user?.id || user?._id,
-    // ✅ Include dependant if selected
-    ...(selectedDependantId && { dependantId: selectedDependantId }),
-    ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
-  };
+      patientId,
+      doctorId: authorId,
+      createdById: authorId,
+      createdByName: authorName,
+      createdByRole: authorRole,
+      updatedById: authorId,
+      updatedByName: authorName,
+      updatedByRole: authorRole,
+      // ✅ Include dependant if selected
+      ...(selectedDependantId && { dependantId: selectedDependantId }),
+      ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
+    };
 
 
     const med = {};
@@ -394,6 +404,10 @@ useEffect(() => {
         ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
         ...(i.nextVisit != null && String(i.nextVisit).trim() && { nextVisit: String(i.nextVisit).trim() }),
         ...(i.remark?.trim() && { remark: i.remark.trim() }),
+        signature: i.signature || authorName,
+        recordedById: i.recordedById || authorId,
+        recordedByName: i.recordedByName || i.signature || authorName,
+        recordedByRole: i.recordedByRole || authorRole,
       }));
     if (exams.length > 0) out.anteNatalExamination = exams;
     if (fd.remark?.trim()) out.remark = fd.remark.trim();
@@ -477,21 +491,9 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
   
   return (
     <DoctorLayout>
-    {/* <div className="flex h-screen bg-base-200/50"> */}
-       {loadingData && <KolakLoader fullscreen />}
+      {loadingData && <KolakLoader fullscreen />}
 
-      {/* {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
-      )}
-
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar />
-      </div> */}
-
-      <div className="flex min-w-0 overflow-hidden flex-col flex-1">
-        {/* <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} /> */}
-
-        <div className="flex min-w-0 overflow-y-auto flex-col p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="flex items-start sm:items-center justify-between mb-4 gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full justify-between min-w-0">
@@ -932,10 +934,8 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
               Cancel
             </button>
           </div>
-        </div>
       </div>
-    {/* </div> */}
-        </DoctorLayout>
+    </DoctorLayout>
 
   );
 };
