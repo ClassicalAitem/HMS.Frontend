@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import DOMPurify from 'dompurify'
 import wardRoundApi from '@/services/api/wardRoundApi'
 import { dischargeAdmission } from '@/services/api/admissionApi'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
@@ -1212,7 +1213,7 @@ const WardRoundTab = ({
                   return (
                     <div
                       className="prose prose-sm md:prose-base max-w-none w-full bg-base-100 p-6 rounded-lg shadow-sm"
-                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docPreviewHtml) }}
                     />
                   );
                 }
