@@ -72,7 +72,10 @@ const Sidebar = ({ onCloseSidebar }) => {
       icon: FiUser,
       label: "Patients",
       path: "/dashboard/nurse/patient",
-      active: !fromIncoming && location.pathname.startsWith("/dashboard/nurse/patient"),
+      active: !fromIncoming && (
+        location.pathname.startsWith("/dashboard/nurse/patient") ||
+        location.pathname.startsWith("/dashboard/nurse/antenatal-records")
+      ),
     },
     {
       icon: IoReceiptOutline,

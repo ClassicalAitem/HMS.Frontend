@@ -1,8 +1,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
+import MedicalDirectorLayout from "@/layouts/medical-director/MedicalDirectorLayout";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { useAppSelector } from "@/store/hooks";
 import toast from "react-hot-toast";
@@ -16,9 +15,6 @@ import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
 import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI"; 
 import KolakLoader from "@/components/common/KolakLoader";
 import { IoIosCloseCircleOutline } from "react-icons/io";
-
-
-
 
 const emptyForm = (doctorName = "") => ({
   previousMedicalHistory: {
@@ -49,7 +45,7 @@ const AntenatalRecords = () => {
   const fromIncoming = location?.state?.from === "incoming";
   const { user } = useAppSelector((state) => state.auth);
   const doctorName = user?.fullName || user?.name || "";
-  const isEditing = Boolean(recordIndex);
+  const isEditing = Boolean(recordIndex && recordIndex !== "new");
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(true);
@@ -475,21 +471,10 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
   }
 
   return (
-    <div className="flex h-screen bg-base-200/50">
-       {loadingData && <KolakLoader fullscreen />}
+    <MedicalDirectorLayout>
+      {loadingData && <KolakLoader fullscreen />}
 
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
-      )}
-
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar />
-      </div>
-
-      <div className="flex min-w-0 overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-
-        <div className="flex min-w-0 overflow-y-auto flex-col p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="flex items-start sm:items-center justify-between mb-4 gap-3">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full justify-between min-w-0">
@@ -933,9 +918,8 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
               </>
             )}
           </div>
-        </div>
       </div>
-    </div>
+    </MedicalDirectorLayout>
   );
 };
 

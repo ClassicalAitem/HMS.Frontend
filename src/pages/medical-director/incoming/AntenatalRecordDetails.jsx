@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/medical-director/dashboard/Sidebar";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { usersAPI } from "@/services/api/usersAPI";
@@ -18,6 +16,10 @@ import { SendToHmoModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";
 import { getServiceCharges } from "@/services/api/serviceChargesAPI";
 import { calculateDispenseQuantity } from "@/utils/prescriptionsCalculator";
+import { getLabResults } from "@/services/api/labResultsAPI";
+import { LabResultDetailsModal } from "@/components/modals";
+import MedicalDirectorLayout from "@/layouts/medical-director/MedicalDirectorLayout";
+import { FaFlask, FaCheckCircle, FaEye, FaFileAlt } from "react-icons/fa";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -53,6 +55,10 @@ const AntenatalRecordDetails = () => {
   const [billDefaults, setBillDefaults] = useState([]);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
   const [isSendToHmoModalOpen, setIsSendToHmoModalOpen] = useState(false);
+  const [labResults, setLabResults] = useState([]);
+  const [selectedLabResultForModal, setSelectedLabResultForModal] = useState(null);
+  const [isLabResultModalOpen, setIsLabResultModalOpen] = useState(false);
+  const [showAllLabHistory, setShowAllLabHistory] = useState(false);
 
     const selectedDependant = useMemo(() => {
       if (!selectedDependantId) return null;
@@ -247,11 +253,13 @@ const AntenatalRecordDetails = () => {
             ? sortedRecords.filter(r => r.dependantId === dependantId)
             : sortedRecords.filter(r => !r.dependantId);
 
-          setAntenatalRecords(scoped);(sortedRecords);
+          setAntenatalRecords(scoped);
 
           const selectedFromState = normalizeAntenatalRecordFromState(location.state?.selectedRecord);
           if (selectedFromState) {
             setSelectedRecord(selectedFromState);
+          } else if (scoped.length > 0) {
+            setSelectedRecord(scoped[0]);
           } else if (sortedRecords.length > 0) {
             setSelectedRecord(sortedRecords[0]);
           }
@@ -328,6 +336,20 @@ useEffect(() => {
         console.warn("Failed to load investigations:", err);
         if (mounted) setLabRequests([]);
       }
+
+      // Fetch lab results for patient
+      try {
+        const labRes = await getLabResults({ patientId });
+        const rawList = labRes?.data ?? labRes ?? [];
+        const list = Array.isArray(rawList) ? rawList : (rawList?.data ?? []);
+        const scopedLabs = isViewingDependant && dependantId
+          ? list.filter(r => r.dependantId === dependantId)
+          : list.filter(r => !r.dependantId);
+        if (mounted) setLabResults(scopedLabs);
+      } catch (err) {
+        console.warn("Failed to load lab results:", err);
+        if (mounted) setLabResults([]);
+      }
     } finally {
       if (mounted) setLoadingTreatmentData(false);
     }
@@ -335,7 +357,16 @@ useEffect(() => {
   
   loadTreatmentData();
   return () => { mounted = false; };
-}, [selectedRecord]);
+}, [selectedRecord, patientId, isViewingDependant, dependantId]);
+
+const getLabResultForRequest = (lab) => {
+  if (!lab) return null;
+  const invId = String(lab._id || lab.id || '');
+  return labResults.find(r => 
+    String(r.investigationRequestId || '') === invId ||
+    String(r.investigationId || '') === invId
+  );
+};
 
 const getDependantName = (dependantId) => {
   if (!dependantId) return null;
@@ -523,17 +554,17 @@ const handleOrderCreated = () => {
 
   if (loadingPatient || loadingData) {
     return (
-      <div className="flex h-screen bg-base-200/50">
-        <div className="flex-1 flex items-center justify-center">
+      <MedicalDirectorLayout>
+        <div className="flex-1 flex items-center justify-center py-24">
           <div className="loading loading-spinner loading-lg"></div>
         </div>
-      </div>
+      </MedicalDirectorLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-base-200/50">
+      <MedicalDirectorLayout>
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="alert alert-error max-w-md">
             <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
@@ -542,29 +573,14 @@ const handleOrderCreated = () => {
             <span>{error}</span>
           </div>
         </div>
-      </div>
+      </MedicalDirectorLayout>
     );
   }
 
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}>
-        <Sidebar />
-      </div>
-
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-3 py-2 h-full sm:p-6 sm:py-4">
-          {/* ─── Page Header ─── */}
+    <MedicalDirectorLayout>
+      <div className="space-y-4 sm:space-y-6">
+        {/* ─── Page Header ─── */}
           <div className="flex flex-col gap-3 mb-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div>
@@ -791,48 +807,118 @@ const handleOrderCreated = () => {
                     </div>
                   )}
 
-                  {/* Routine Tests */}
+                  {/* Routine Tests / Screening Results */}
                   {selectedRecord.routineTest && (Array.isArray(selectedRecord.routineTest) ? selectedRecord.routineTest.length > 0 : true) && (
-                    <div className="card bg-base-100 shadow-sm">
-                      <div className="card-body p-4 sm:p-6">
-                        <h3 className="card-title text-base sm:text-lg font-semibold text-base-content mb-4">Routine Tests</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
-                            <div className="stat-title text-xs sm:text-sm">RVS</div>
-                            <div className="stat-value text-base sm:text-lg">
-                              {getRoutineTestField(selectedRecord, 'RVS')}
-                            </div>
-                          </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
-                            <div className="stat-title text-xs sm:text-sm">VDRL</div>
-                            <div className="stat-value text-base sm:text-lg">
-                              {getRoutineTestField(selectedRecord, 'VDRL')}
-                            </div>
-                          </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
-                            <div className="stat-title text-xs sm:text-sm">PCV</div>
-                            <div className="stat-value text-base sm:text-lg">
-                              {getRoutineTestField(selectedRecord, 'PCV')}
-                            </div>
-                          </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
-                            <div className="stat-title text-xs sm:text-sm">HBV</div>
-                            <div className="stat-value text-base sm:text-lg">
-                              {getRoutineTestField(selectedRecord, 'HBV')}
-                            </div>
-                          </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
-                            <div className="stat-title text-xs sm:text-sm">ABO</div>
-                            <div className="stat-value text-base sm:text-lg">
-                              {getRoutineTestField(selectedRecord, 'ABO')}
-                            </div>
-                          </div>
-                          <div className="stat bg-base-200/50 rounded-lg p-3 sm:p-4">
-                            <div className="stat-title text-xs sm:text-sm">GENOTYPE</div>
-                            <div className="stat-value text-base sm:text-lg">
-                              {getRoutineTestField(selectedRecord, 'GENOTYPE')}
-                            </div>
-                          </div>
+                    <div className="card bg-base-100 shadow-sm border border-base-200">
+                      <div className="card-body p-4 sm:p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="card-title text-base sm:text-lg font-bold text-base-content flex items-center gap-2">
+                            <span>🧪</span> Routine Tests & Screening
+                          </h3>
+                          <span className="text-xs text-base-content/60">Booking Screening</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                          {/* RVS */}
+                          {(() => {
+                            const val = getRoutineTestField(selectedRecord, 'RVS');
+                            const isNeg = String(val).toLowerCase().includes('neg') || String(val).toLowerCase().includes('non');
+                            const isPos = String(val).toLowerCase().includes('pos') || String(val).toLowerCase().includes('react');
+                            return (
+                              <div className="bg-base-200/50 rounded-xl p-3 border border-base-200 text-center">
+                                <span className="text-[11px] font-bold text-base-content/60 block mb-1">RVS (HIV)</span>
+                                {val !== '-' ? (
+                                  <span className={`badge badge-sm font-semibold ${isNeg ? 'badge-success' : isPos ? 'badge-error' : 'badge-neutral'}`}>
+                                    {val}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-base-content/40">Not tested</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* VDRL */}
+                          {(() => {
+                            const val = getRoutineTestField(selectedRecord, 'VDRL');
+                            const isNeg = String(val).toLowerCase().includes('neg') || String(val).toLowerCase().includes('non');
+                            const isPos = String(val).toLowerCase().includes('pos') || String(val).toLowerCase().includes('react');
+                            return (
+                              <div className="bg-base-200/50 rounded-xl p-3 border border-base-200 text-center">
+                                <span className="text-[11px] font-bold text-base-content/60 block mb-1">VDRL (Syphilis)</span>
+                                {val !== '-' ? (
+                                  <span className={`badge badge-sm font-semibold ${isNeg ? 'badge-success' : isPos ? 'badge-error' : 'badge-neutral'}`}>
+                                    {val}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-base-content/40">Not tested</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* PCV */}
+                          {(() => {
+                            const val = getRoutineTestField(selectedRecord, 'PCV');
+                            return (
+                              <div className="bg-base-200/50 rounded-xl p-3 border border-base-200 text-center">
+                                <span className="text-[11px] font-bold text-base-content/60 block mb-1">PCV</span>
+                                {val !== '-' ? (
+                                  <span className="badge badge-info badge-sm font-bold">{val}</span>
+                                ) : (
+                                  <span className="text-xs text-base-content/40">Not tested</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* HBV */}
+                          {(() => {
+                            const val = getRoutineTestField(selectedRecord, 'HBV');
+                            const isNeg = String(val).toLowerCase().includes('neg') || String(val).toLowerCase().includes('non');
+                            const isPos = String(val).toLowerCase().includes('pos') || String(val).toLowerCase().includes('react');
+                            return (
+                              <div className="bg-base-200/50 rounded-xl p-3 border border-base-200 text-center">
+                                <span className="text-[11px] font-bold text-base-content/60 block mb-1">HBV (Hepatitis)</span>
+                                {val !== '-' ? (
+                                  <span className={`badge badge-sm font-semibold ${isNeg ? 'badge-success' : isPos ? 'badge-error' : 'badge-neutral'}`}>
+                                    {val}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-base-content/40">Not tested</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* ABO */}
+                          {(() => {
+                            const val = getRoutineTestField(selectedRecord, 'ABO');
+                            return (
+                              <div className="bg-base-200/50 rounded-xl p-3 border border-base-200 text-center">
+                                <span className="text-[11px] font-bold text-base-content/60 block mb-1">Blood Group</span>
+                                {val !== '-' ? (
+                                  <span className="badge badge-primary badge-sm font-bold">{val}</span>
+                                ) : (
+                                  <span className="text-xs text-base-content/40">Not tested</span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {/* GENOTYPE */}
+                          {(() => {
+                            const val = getRoutineTestField(selectedRecord, 'GENOTYPE');
+                            return (
+                              <div className="bg-base-200/50 rounded-xl p-3 border border-base-200 text-center">
+                                <span className="text-[11px] font-bold text-base-content/60 block mb-1">Genotype</span>
+                                {val !== '-' ? (
+                                  <span className="badge badge-secondary badge-sm font-bold">{val}</span>
+                                ) : (
+                                  <span className="text-xs text-base-content/40">Not tested</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -1109,84 +1195,211 @@ const handleOrderCreated = () => {
                       
                         {/* Lab Requests */}
                         <div>
-                          <h4 className="text-sm font-bold text-base-content mb-3 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-info"></span>
-                            Lab Investigations
-                          </h4>
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-bold text-base-content flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-info"></span>
+                              <span>Lab Investigations ({labRequests.length})</span>
+                            </h4>
+                            {labResults.length > 0 && (
+                              <button
+                                type="button"
+                                className="btn btn-xs btn-ghost text-primary gap-1"
+                                onClick={() => setShowAllLabHistory(!showAllLabHistory)}
+                              >
+                                {showAllLabHistory ? 'Hide All Patient Labs' : `View All Patient Labs (${labResults.length})`}
+                              </button>
+                            )}
+                          </div>
+
                           {loadingTreatmentData ? (
                             <div className="flex justify-center py-6">
                               <div className="loading loading-spinner loading-sm"></div>
                             </div>
                           ) : labRequests.length > 0 ? (
                             <div className="space-y-3">
-                              {labRequests.map((lab) => (
-                                <div
-                                  key={lab._id}
-                                  className="border border-base-300 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <span className={`badge badge-sm sm:badge-md ${lab.status === 'completed'
-                                          ? 'badge-success'
-                                          : lab.status === 'pending' || lab.status === 'in_progress'
-                                            ? 'badge-warning'
-                                            : 'badge-info'
+                              {labRequests.map((lab) => {
+                                const matchedResult = getLabResultForRequest(lab);
+                                const isCompleted = lab.status === 'completed' || !!matchedResult;
+
+                                return (
+                                  <div
+                                    key={lab._id}
+                                    className="border border-base-200 rounded-xl p-3 sm:p-4 bg-base-100 hover:shadow-xs transition-shadow"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                          <span className={`badge badge-sm ${
+                                            isCompleted
+                                              ? 'badge-success'
+                                              : lab.status === 'pending' || lab.status === 'in_progress'
+                                                ? 'badge-warning'
+                                                : 'badge-info'
                                           }`}>
-                                          {lab.status || 'pending'}
-                                        </span>
-                                      </div>
-                                      <div className="space-y-1">
-                                        {lab.tests?.map((test, idx) => (
-                                          <p key={idx} className="font-medium text-base-content text-sm sm:text-base">
-                                            {test.name || 'Lab Test'}
-                                          </p>
-                                        ))}
-                                        {!lab.tests && (
-                                          <p className="font-medium text-base-content text-sm sm:text-base">Lab Test</p>
+                                            {isCompleted ? 'Completed' : (lab.status || 'pending')}
+                                          </span>
+                                          {matchedResult && (
+                                            <span className="badge badge-sm badge-outline badge-success gap-1">
+                                              ✓ Result Ready
+                                            </span>
+                                          )}
+                                          {lab.priority && (
+                                            <span className={`badge badge-xs ${
+                                              lab.priority === 'urgent'
+                                                ? 'badge-error'
+                                                : lab.priority === 'high'
+                                                  ? 'badge-warning'
+                                                  : 'badge-ghost'
+                                            }`}>
+                                              {lab.priority}
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        <div className="space-y-0.5">
+                                          {lab.tests?.map((test, idx) => (
+                                            <p key={idx} className="font-semibold text-base-content text-sm sm:text-base">
+                                              {test.name || 'Lab Test'}
+                                            </p>
+                                          ))}
+                                          {!lab.tests && (
+                                            <p className="font-semibold text-base-content text-sm sm:text-base">Lab Test</p>
+                                          )}
+                                        </div>
+
+                                        <p className="text-xs text-base-content/60 mt-1">
+                                          Ordered: {lab.createdAt ? formatNigeriaDate(lab.createdAt) : 'N/A'}
+                                        </p>
+
+                                        {/* Result Preview Box if Result is available */}
+                                        {matchedResult && (
+                                          <div className="mt-3 p-3 bg-base-200/50 rounded-xl border border-base-200 space-y-2 text-xs">
+                                            <div className="flex items-center justify-between">
+                                              <span className="font-bold text-primary flex items-center gap-1.5">
+                                                <FaFlask className="text-xs" /> Test Result Summary
+                                              </span>
+                                              <span className="text-[10px] text-base-content/50">
+                                                By {matchedResult.labTechnicianName || matchedResult.technician?.fullName || 'Laboratory'}
+                                              </span>
+                                            </div>
+
+                                            {/* Preview parameters */}
+                                            {Array.isArray(matchedResult.result) && matchedResult.result.length > 0 && (
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                                                {matchedResult.result.slice(0, 4).map((r, rIdx) => (
+                                                  <div key={rIdx} className="flex justify-between bg-base-100 p-2 rounded-lg border border-base-200/60 text-[11px]">
+                                                    <span className="font-medium text-base-content/70">{r.code || r.name}:</span>
+                                                    <span className="font-bold text-base-content">{r.value} {r.unit || ''}</span>
+                                                  </div>
+                                                ))}
+                                                {matchedResult.result.length > 4 && (
+                                                  <span className="text-[10px] text-primary sm:col-span-2">
+                                                    +{matchedResult.result.length - 4} more parameters...
+                                                  </span>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            {/* Remarks */}
+                                            {(matchedResult.remarks || matchedResult.form?.remarks) && (
+                                              <p className="text-[11px] text-base-content/80 bg-base-100 p-2 rounded-lg border border-base-200/60 italic">
+                                                &ldquo;{matchedResult.remarks || matchedResult.form.remarks}&rdquo;
+                                              </p>
+                                            )}
+
+                                            {/* Action button */}
+                                            <div className="pt-1 flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                className="btn btn-xs btn-primary gap-1"
+                                                onClick={() => {
+                                                  setSelectedLabResultForModal(matchedResult);
+                                                  setIsLabResultModalOpen(true);
+                                                }}
+                                              >
+                                                <FaEye className="text-xs" /> View Full Lab Result
+                                              </button>
+                                              {Array.isArray(matchedResult.attachments) && matchedResult.attachments.length > 0 && (
+                                                <span className="badge badge-xs badge-neutral gap-1">
+                                                  📎 {matchedResult.attachments.length} attachment{matchedResult.attachments.length > 1 ? 's' : ''}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
                                         )}
                                       </div>
-                                      <p className="text-xs sm:text-sm text-base-content/70 mt-1">
-                                        Ordered: {lab.createdAt ? formatNigeriaDate(lab.createdAt) : 'N/A'}
-                                      </p>
-                                      {lab.priority && (
-                                        <div className="mt-2">
-                                          <span className={`badge badge-sm ${lab.priority === 'urgent'
-                                            ? 'badge-error'
-                                            : lab.priority === 'high'
-                                              ? 'badge-warning'
-                                              : 'badge-info'
-                                            }`}>
-                                            {lab.priority}
-                                          </span>
+
+                                      {!(lab.isBilled || lab.paymentStatus === 'paid') && (
+                                        <div className="flex gap-1 sm:gap-2 shrink-0">
+                                          <button
+                                            className="btn btn-xs btn-ghost text-info"
+                                            onClick={() => handleEditLab(lab)}
+                                            disabled={loadingTreatmentData}
+                                          >
+                                            ✏️
+                                          </button>
+                                          <button
+                                            className="btn btn-xs btn-ghost text-error"
+                                            onClick={() => handleDeleteLab(lab._id)}
+                                            disabled={loadingTreatmentData}
+                                          >
+                                            🗑️
+                                          </button>
                                         </div>
                                       )}
                                     </div>
-                                    {!(lab.isBilled || lab.paymentStatus === 'paid') && (
-                                      <div className="flex gap-1 sm:gap-2 shrink-0">
-                                        <button
-                                          className="btn btn-xs btn-ghost text-info"
-                                          onClick={() => handleEditLab(lab)}
-                                          disabled={loadingTreatmentData}
-                                        >
-                                          ✏️
-                                        </button>
-                                        <button
-                                          className="btn btn-xs btn-ghost text-error"
-                                          onClick={() => handleDeleteLab(lab._id)}
-                                          disabled={loadingTreatmentData}
-                                        >
-                                          🗑️
-                                        </button>
-                                      </div>
-                                    )}
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="text-center py-6 bg-base-200/20 rounded-lg border border-dashed border-base-300">
                               <p className="text-sm text-base-content/50">No lab investigations ordered yet</p>
+                            </div>
+                          )}
+
+                          {/* All Patient Labs History Drawer */}
+                          {showAllLabHistory && labResults.length > 0 && (
+                            <div className="mt-4 p-4 bg-base-200/40 rounded-xl border border-base-200 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <h5 className="text-xs font-bold uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
+                                  <FaFlask className="text-xs text-primary" /> All Patient Lab Results History ({labResults.length})
+                                </h5>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs text-base-content/60"
+                                  onClick={() => setShowAllLabHistory(false)}
+                                >
+                                  Close
+                                </button>
+                              </div>
+                              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                {labResults.map((result, idx) => (
+                                  <div
+                                    key={result._id || idx}
+                                    className="p-3 bg-base-100 rounded-lg border border-base-200 flex items-center justify-between gap-3 text-xs"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="font-semibold text-base-content truncate">
+                                        {result.investigationName || result.testName || result.name || 'Laboratory Test Result'}
+                                      </p>
+                                      <p className="text-[11px] text-base-content/60">
+                                        Date: {result.createdAt ? formatNigeriaDate(result.createdAt) : 'N/A'} • Status: <span className="font-medium text-success capitalize">{result.status || 'Completed'}</span>
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="btn btn-xs btn-outline btn-primary shrink-0 gap-1"
+                                      onClick={() => {
+                                        setSelectedLabResultForModal(result);
+                                        setIsLabResultModalOpen(true);
+                                      }}
+                                    >
+                                      <FaEye className="text-xs" /> View
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1326,7 +1539,6 @@ const handleOrderCreated = () => {
             </div>
           )}
         </div>
-      </div>
 
       <OrderInvestigationModalAntenatal
         isOpen={isInvestigationModalOpen}
@@ -1365,8 +1577,15 @@ const handleOrderCreated = () => {
         defaultItems={billDefaults}
         onSentSuccessfully={() => setIsSendToHmoModalOpen(false)}
       />
-    
-    </div>
+      <LabResultDetailsModal
+        isOpen={isLabResultModalOpen}
+        onClose={() => {
+          setIsLabResultModalOpen(false);
+          setSelectedLabResultForModal(null);
+        }}
+        labResult={selectedLabResultForModal}
+      />
+    </MedicalDirectorLayout>
   );
 };
 

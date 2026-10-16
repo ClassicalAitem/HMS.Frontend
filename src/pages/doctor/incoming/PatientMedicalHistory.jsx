@@ -560,14 +560,12 @@ useEffect(() => {
 
 const isEligibleForAntenatal = useMemo(() => {
   const subject = isViewingDependant ? dependantSnapshot : patient;
-  return subject?.gender?.toLowerCase() === 'female';
-}, [patient, dependantSnapshot, isViewingDependant]);
+  return subject?.gender?.toLowerCase() === 'female' || antenatalRecords.length > 0;
+}, [patient, dependantSnapshot, isViewingDependant, antenatalRecords.length]);
 
 
-  // Fetch antenatal records for eligible female patients
+  // Fetch antenatal records
   useEffect(() => {
-    if (!isEligibleForAntenatal) return;
-
     let mounted = true;
    const loadAntenatalRecords = async () => {
       try {
@@ -575,14 +573,13 @@ const isEligibleForAntenatal = useMemo(() => {
         const res = await getAnteNatalRecordByPatientId(patientId);
         const raw = res?.data ?? res ?? [];
 
-        const allRecords = (Array.isArray(raw) ? raw : [])
-          .flatMap(wrapper => {
-            if (wrapper.patientId !== patientId) return [];
-            return (wrapper.anteNatalRecords || []).map(r => ({
-              ...r,
-              __wrapperId: wrapper._id,
-            }));
-          });
+        const allRecords = Array.isArray(raw)
+          ? (raw.some(r => r?.presentPregnancy || r?.presentPregnancyHistories || r?.medicalHistories)
+              ? raw.map((r, i) => ({ ...r, __originalIndex: r.__originalIndex ?? i }))
+              : raw.flatMap(w => (w.anteNatalRecords || []).map((r, i) => ({ ...r, __wrapperId: w._id, __originalIndex: i }))))
+          : (Array.isArray(raw?.anteNatalRecords)
+              ? raw.anteNatalRecords.map((r, i) => ({ ...r, __originalIndex: i }))
+              : []);
 
         if (mounted) {
           const sorted = [...allRecords].sort(
@@ -594,8 +591,6 @@ const isEligibleForAntenatal = useMemo(() => {
             : sorted.filter(r => !r.dependantId);
 
           setAntenatalRecords(scoped);
-
-          
         }
       } catch (err) {
         console.error("Failed to load antenatal records", err);
@@ -604,9 +599,9 @@ const isEligibleForAntenatal = useMemo(() => {
       }
     };
 
-    loadAntenatalRecords();
+    if (patientId) loadAntenatalRecords();
     return () => { mounted = false; };
-  }, [patientId, isEligibleForAntenatal, isViewingDependant, dependantId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
 const latestLab = useMemo(() => { 
   if (!Array.isArray(labResults) || labResults.length === 0) return null;
@@ -1083,8 +1078,8 @@ const dependant = isDependant
                     </button>
                     <button
                       className="btn btn-secondary btn-sm gap-2 w-full sm:w-auto"
-                    onClick={() => navigate(
-                        `/dashboard/doctor/antenatal-records/${patientId}`,
+                      onClick={() => navigate(
+                        `/dashboard/doctor/antenatal-records/${patientId}/new`,
                         {
                           state: {
                             from: fromIncoming ? "incoming" : "patients",
@@ -1105,64 +1100,125 @@ const dependant = isDependant
                     <div className="loading loading-spinner loading-md"></div>
                   </div>
                 ) : antenatalRecords.length > 0 ? (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Summary Stats */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-base-content text-sm">Summary</h4>
-                      <div className="bg-base-200/50 rounded-lg p-3 space-y-3">
-                        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:justify-between sm:gap-3">
-                          <span className="text-base-content/70 shrink-0">Latest Remarks:</span>
-                          <span className="font-medium sm:max-w-xs sm:text-right">
-                            {(() => {
-                              const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-                              const latestExam = latest?.anteNatalExamination?.slice().sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
-                              const remark = latestExam?.remark;
-                              return remark ? (
-                                <div className="text-xs text-base-content/80 bg-base-100/50 p-2 rounded whitespace-pre-wrap max-h-16 overflow-y-auto">
-                                  {remark}
-                                </div>
-                              ) : '-';
-                            })()}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-base-content/70">Total Examinations:</span>
-                          <span className="font-medium">
-                            {antenatalRecords.reduce((sum, r) => sum + (r.anteNatalExamination?.length || 0), 0)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                  (() => {
+                    const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+                    const pregnancy = latest?.presentPregnancy || latest?.presentPregnancyHistories?.[0];
+                    const exams = latest?.anteNatalExamination || latest?.antenatalExaminations || [];
+                    const latestExam = exams.slice().sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
+                    const routine = Array.isArray(latest?.routineTest) ? latest.routineTest[0] : latest?.routineTest;
 
-                    {/* Latest Record Summary */}
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-base-content text-sm">Latest Pregnancy</h4>
-                      <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
-                        {(() => {
-                          const latest = antenatalRecords.slice().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
-                          const pregnancy = latest?.presentPregnancyHistories?.[0];
-                          return pregnancy ? (
-                            <>
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-base-content/70">EDD:</span>
-                                <span className="font-medium">{pregnancy.EDD ? formatNigeriaDate(pregnancy.EDD) : '-'}</span>
+                    return (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {/* Pregnancy Overview */}
+                          <div className="bg-base-200/50 rounded-xl p-3.5 space-y-2 border border-base-200">
+                            <h4 className="font-bold text-xs uppercase text-primary tracking-wider">Pregnancy Overview</h4>
+                            {pregnancy ? (
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">EDD:</span>
+                                  <span className="font-semibold text-base-content">{pregnancy.EDD ? formatNigeriaDate(pregnancy.EDD) : '—'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">LMP:</span>
+                                  <span className="font-semibold text-base-content">{pregnancy.LMP ? formatNigeriaDate(pregnancy.LMP) : '—'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">EGA:</span>
+                                  <span className="font-semibold text-base-content">{pregnancy.durationOfPregnancyInWeek ? `${pregnancy.durationOfPregnancyInWeek} weeks` : '—'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">Total Visits/Exams:</span>
+                                  <span className="badge badge-xs badge-info font-bold">{exams.length}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-base-content/70">LMP:</span>
-                                <span className="font-medium">{pregnancy.LMP ? formatNigeriaDate(pregnancy.LMP) : '-'}</span>
+                            ) : (
+                              <p className="text-xs text-base-content/50">No pregnancy data</p>
+                            )}
+                          </div>
+
+                          {/* Latest Examination Findings */}
+                          <div className="bg-base-200/50 rounded-xl p-3.5 space-y-2 border border-base-200">
+                            <h4 className="font-bold text-xs uppercase text-secondary tracking-wider">Latest Exam Findings</h4>
+                            {latestExam ? (
+                              <div className="space-y-1.5 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">BP / Weight:</span>
+                                  <span className="font-semibold text-base-content">
+                                    {latestExam.bloodPressure || '—'} {latestExam.weight ? `• ${latestExam.weight}kg` : ''}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">Fundus / FHR:</span>
+                                  <span className="font-semibold text-base-content">
+                                    {latestExam.heightOfFundus || '—'} {latestExam.foetalHeart ? `• ${latestExam.foetalHeart}` : ''}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">Presentation:</span>
+                                  <span className="font-semibold text-base-content">{latestExam.presentationAndLife || '—'}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-base-content/70">Exam Date:</span>
+                                  <span className="text-base-content/80">{latestExam.Date ? formatNigeriaDate(latestExam.Date) : '—'}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-base-content/70">Gestational Age:</span>
-                                <span className="font-medium">{pregnancy.durationOfPregnancyInWeek || 0} weeks</span>
+                            ) : (
+                              <p className="text-xs text-base-content/50">No examination entries yet</p>
+                            )}
+                          </div>
+
+                          {/* Routine Screening Results */}
+                          <div className="bg-base-200/50 rounded-xl p-3.5 space-y-2 border border-base-200">
+                            <h4 className="font-bold text-xs uppercase text-success tracking-wider">Routine Screening Results</h4>
+                            {routine ? (
+                              <div className="grid grid-cols-3 gap-1.5 text-center pt-0.5">
+                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
+                                  <span className="text-[10px] text-base-content/60 block">Blood Grp</span>
+                                  <span className="font-bold text-xs text-primary">{routine.ABO || routine.abo || '—'}</span>
+                                </div>
+                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
+                                  <span className="text-[10px] text-base-content/60 block">Genotype</span>
+                                  <span className="font-bold text-xs text-secondary">{routine.GENOTYPE || routine.genotype || '—'}</span>
+                                </div>
+                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
+                                  <span className="text-[10px] text-base-content/60 block">PCV</span>
+                                  <span className="font-bold text-xs text-info">{routine.PCV || routine.pcv || '—'}</span>
+                                </div>
+                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
+                                  <span className="text-[10px] text-base-content/60 block">RVS (HIV)</span>
+                                  <span className={`badge badge-xs ${String(routine.RVS || routine.rvs || '').toLowerCase().includes('neg') ? 'badge-success' : 'badge-ghost'}`}>
+                                    {routine.RVS || routine.rvs || '—'}
+                                  </span>
+                                </div>
+                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
+                                  <span className="text-[10px] text-base-content/60 block">VDRL</span>
+                                  <span className={`badge badge-xs ${String(routine.VDRL || routine.vdrl || '').toLowerCase().includes('neg') ? 'badge-success' : 'badge-ghost'}`}>
+                                    {routine.VDRL || routine.vdrl || '—'}
+                                  </span>
+                                </div>
+                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
+                                  <span className="text-[10px] text-base-content/60 block">HBV</span>
+                                  <span className={`badge badge-xs ${String(routine.HBV || routine.hbv || '').toLowerCase().includes('neg') ? 'badge-success' : 'badge-ghost'}`}>
+                                    {routine.HBV || routine.hbv || '—'}
+                                  </span>
+                                </div>
                               </div>
-                            </>
-                          ) : (
-                            <p className="text-base-content/50 text-sm">No pregnancy data</p>
-                          );
-                        })()}
+                            ) : (
+                              <p className="text-xs text-base-content/50">Routine tests not recorded</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {latestExam?.remark && (
+                          <div className="bg-base-200/40 p-2.5 rounded-lg border border-base-200 text-xs">
+                            <span className="font-semibold text-base-content/70">Latest Clinical Remark: </span>
+                            <span className="text-base-content/90 italic">&ldquo;{latestExam.remark}&rdquo;</span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()
                 ) : (
                   <div className="text-center py-8 text-base-content/70">
                     <p>No antenatal records found for this patient.</p>
