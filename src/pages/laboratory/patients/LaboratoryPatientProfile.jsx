@@ -17,6 +17,7 @@ import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import { useAppSelector } from "@/store/hooks";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import mammoth from "mammoth";
+import DOMPurify from "dompurify";
 import { FaFileWord } from "react-icons/fa";
 import HmoStatusBadge from "@/components/common/HmoStatusBadge";
 import { filterVisibleInvestigation } from "@/utils/investigationVisibility";
@@ -845,7 +846,7 @@ useEffect(() => {
               ) : docPreviewHtml ? (
                 <div
                   className="prose prose-sm max-w-full w-full max-h-[60vh] overflow-y-auto text-left px-2"
-                  dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docPreviewHtml) }}
                 />
               ) : (
                 <div className="text-center py-10">

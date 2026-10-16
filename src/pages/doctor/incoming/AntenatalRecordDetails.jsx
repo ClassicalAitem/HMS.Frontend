@@ -11,7 +11,7 @@ import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequ
 import { deletePrescription, updatePrescription } from "@/services/api/prescriptionsAPI";
 import { deleteInvestigation, updateInvestigation } from "@/services/api/investigationAPI";
 import toast from "react-hot-toast";
-import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import OrderInvestigationModalAntenatal from "./modals/OrderInvestigationModalAntenatal";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import { SendToHmoModal } from "@/components/modals";
@@ -21,7 +21,7 @@ import { calculateDispenseQuantity } from "@/utils/prescriptionsCalculator";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { LabResultDetailsModal } from "@/components/modals";
 import { DoctorLayout } from "@/components/doctor/doctor";
-import { FaFlask, FaCheckCircle, FaEye, FaFileAlt } from "react-icons/fa";
+import { FaFlask, FaCheckCircle, FaEye, FaFileAlt, FaUserMd, FaUserNurse, FaHistory, FaClock, FaEdit } from "react-icons/fa";
 
 const AntenatalRecordDetails = () => {
   const { patientId } = useParams();
@@ -179,14 +179,71 @@ const AntenatalRecordDetails = () => {
     return null;
   };
 
+  const getRoleBadge = (role) => {
+    const r = String(role || '').toLowerCase();
+    if (r === 'nurse') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          <FaUserNurse className="text-[10px]" /> Nurse
+        </span>
+      );
+    }
+    if (r === 'medical-director' || r === 'medical_director') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+          <FaUserMd className="text-[10px]" /> Medical Director
+        </span>
+      );
+    }
+    if (r === 'doctor') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+          <FaUserMd className="text-[10px]" /> Doctor
+        </span>
+      );
+    }
+    if (r) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/80 border border-base-300 capitalize">
+          {r.replace('-', ' ')}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/70">
+        Staff
+      </span>
+    );
+  };
+
+  const getCreatorDetails = (record) => {
+    if (!record) return { name: 'Medical Staff', role: 'doctor' };
+    const role = record.createdByRole || record.creator?.accountType || (record.nurseName ? 'nurse' : 'doctor');
+    let name = record.createdByName || (record.creator ? getDoctorDisplayName(record.creator) : null);
+    if (!name) {
+      const sid = getDoctorId(record);
+      if (sid && doctorNameById[sid]) name = doctorNameById[sid];
+    }
+    if (!name) name = record.doctorName || record.nurseName || 'Medical Staff';
+    return { name, role, date: record.createdAt };
+  };
+
+  const getUpdaterDetails = (record) => {
+    if (!record || !record.updatedByName) return null;
+    const role = record.updatedByRole || record.updater?.accountType || record.createdByRole || 'doctor';
+    const name = record.updatedByName || (record.updater ? getDoctorDisplayName(record.updater) : null) || 'Staff';
+    return { name, role, date: record.updatedAt };
+  };
+
   const getRecordDoctorName = (record) => {
-    if (!record) return "Unknown Doctor";
+    if (!record) return "Unknown Staff";
+    if (record.createdByName) return record.createdByName;
     if (record.doctorName) return record.doctorName;
     const resolvedName = getDoctorDisplayName(record.doctor || record.createdBy);
     if (resolvedName) return resolvedName;
     const doctorId = getDoctorId(record);
-    if (doctorId) return doctorNameById[doctorId] || "Unknown Doctor";
-    return "Unknown Doctor";
+    if (doctorId) return doctorNameById[doctorId] || "Unknown Staff";
+    return "Unknown Staff";
   };
 
   const loadDoctorNames = useCallback(async (doctorIds = []) => {
@@ -705,9 +762,43 @@ const handleOrderCreated = () => {
                               )}
                             </div>
 
-                            <p className="text-xs sm:text-sm text-base-content/70">
-                              Created: {record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'}
-                            </p>
+                            {(() => {
+                              const creator = getCreatorDetails(record);
+                              const updater = getUpdaterDetails(record);
+                              const hasEdits = (record.editHistory && record.editHistory.length > 1) || (updater && updater.name !== creator.name);
+
+                              return (
+                                <div className="flex items-center gap-2 text-xs sm:text-sm text-base-content/70 flex-wrap mt-1">
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <span className="text-base-content/50">Created by:</span>
+                                    {getRoleBadge(creator.role)}
+                                    <span className="font-semibold text-base-content">{creator.name}</span>
+                                    <span>({record.createdAt ? formatNigeriaDate(record.createdAt) : 'N/A'})</span>
+                                  </span>
+
+                                  {hasEdits && updater && (
+                                    <>
+                                      <span>•</span>
+                                      <span className="inline-flex items-center gap-1.5 bg-base-200/50 px-2 py-0.5 rounded-md">
+                                        <span className="text-base-content/50">Last edited by:</span>
+                                        {getRoleBadge(updater.role)}
+                                        <span className="font-semibold text-base-content">{updater.name}</span>
+                                        {record.updatedAt && (
+                                          <span>({formatNigeriaDate(record.updatedAt)})</span>
+                                        )}
+                                      </span>
+                                    </>
+                                  )}
+
+                                  {record.editHistory && record.editHistory.length > 0 && (
+                                    <span className="badge badge-ghost badge-sm text-xs gap-1">
+                                      <FaHistory className="text-[10px]" />
+                                      {record.editHistory.length} {record.editHistory.length === 1 ? 'version' : 'edits tracked'}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             
                           </div>
                           <div className="flex gap-2 shrink-0">
@@ -737,9 +828,117 @@ const handleOrderCreated = () => {
                         {/* Selected Record Details rendered inside the record card */}
                         {selectedRecord && getAntenatalRecordId(selectedRecord) === getAntenatalRecordId(record) && (
                           <div className="mt-4 pt-4 border-t border-base-200 space-y-4 sm:space-y-6">
-                            <div className="px-2 sm:px-6">
-                              <p className="text-sm text-base-content/70">Created by: Dr  {getRecordDoctorName(selectedRecord)}</p>
-                            </div>
+                            {/* Audit Trail & Staff Follow-up Banner */}
+                            {(() => {
+                              const creator = getCreatorDetails(selectedRecord);
+                              const updater = getUpdaterDetails(selectedRecord);
+                              const history = Array.isArray(selectedRecord.editHistory) ? selectedRecord.editHistory : [];
+
+                              return (
+                                <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden mb-4">
+                                  <div className="bg-base-200/40 px-4 py-3 border-b border-base-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <FaHistory className="text-primary text-sm" />
+                                      <h5 className="font-bold text-sm text-base-content">
+                                        Staff Audit Trail & Change Tracking
+                                      </h5>
+                                    </div>
+                                    <span className="text-xs text-base-content/60">
+                                      Track who created and edited this antenatal care record
+                                    </span>
+                                  </div>
+
+                                  <div className="p-4 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
+                                      <div className="p-3.5 rounded-lg border border-base-200 bg-base-200/20 flex flex-col justify-between">
+                                        <div>
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+                                              Original Creator
+                                            </span>
+                                            {getRoleBadge(creator.role)}
+                                          </div>
+                                          <p className="font-bold text-base text-base-content">{creator.name}</p>
+                                          <p className="text-xs text-base-content/70 mt-0.5">
+                                            Role: <span className="font-medium capitalize">{String(creator.role || 'Staff').replace('-', ' ')}</span>
+                                          </p>
+                                        </div>
+                                        <div className="mt-3 pt-2 border-t border-base-200/60 text-xs text-base-content/60 flex items-center gap-1">
+                                          <FaClock className="text-[10px]" />
+                                          Created: {selectedRecord.createdAt ? formatNigeriaDateTime(selectedRecord.createdAt) : '—'}
+                                        </div>
+                                      </div>
+
+                                      <div className="p-3.5 rounded-lg border border-base-200 bg-base-200/20 flex flex-col justify-between">
+                                        <div>
+                                          <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+                                              Last Modified By
+                                            </span>
+                                            {updater ? getRoleBadge(updater.role) : getRoleBadge(creator.role)}
+                                          </div>
+                                          <p className="font-bold text-base text-base-content">
+                                            {updater ? updater.name : creator.name}
+                                          </p>
+                                          <p className="text-xs text-base-content/70 mt-0.5">
+                                            Role: <span className="font-medium capitalize">{String((updater?.role || creator.role) || 'Staff').replace('-', ' ')}</span>
+                                          </p>
+                                        </div>
+                                        <div className="mt-3 pt-2 border-t border-base-200/60 text-xs text-base-content/60 flex items-center gap-1">
+                                          <FaClock className="text-[10px]" />
+                                          Last Modified: {selectedRecord.updatedAt ? formatNigeriaDateTime(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatNigeriaDateTime(selectedRecord.createdAt) : '—')}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {history.length > 0 && (
+                                      <div className="pt-2">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-xs font-bold text-base-content/80 flex items-center gap-1.5">
+                                            <FaEdit className="text-primary text-xs" /> Chronological Change Log ({history.length})
+                                          </span>
+                                        </div>
+
+                                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                          {history.map((item, hIdx) => (
+                                            <div
+                                              key={hIdx}
+                                              className="p-2.5 rounded-lg bg-base-200/30 border border-base-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs"
+                                            >
+                                              <div className="flex items-start sm:items-center gap-2">
+                                                <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 font-bold text-[10px]">
+                                                  {history.length - hIdx}
+                                                </span>
+                                                <div>
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold text-base-content">
+                                                      {item.editedByName || 'Medical Staff'}
+                                                    </span>
+                                                    {getRoleBadge(item.editedByRole)}
+                                                    <span className="text-base-content/50 text-[11px]">
+                                                      — {item.action || 'Edited Record'}
+                                                    </span>
+                                                  </div>
+                                                  {item.changesSummary && (
+                                                    <p className="text-xs text-base-content/80 mt-0.5 font-medium">
+                                                      <span className="text-base-content/50">Changes: </span>
+                                                      {item.changesSummary}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <span className="text-[11px] text-base-content/60 shrink-0 self-end sm:self-center">
+                                                {item.editedAt ? formatNigeriaDateTime(item.editedAt) : '—'}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                   {/* Present Pregnancy */}
                   {selectedRecord.presentPregnancyHistories && selectedRecord.presentPregnancyHistories.length > 0 && (
                     <div className="card bg-base-100 shadow-sm">
