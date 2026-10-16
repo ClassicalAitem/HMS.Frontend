@@ -50,7 +50,10 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   // If authenticated but role not allowed, redirect to appropriate dashboard
-  if (!allowedRoles.includes(user?.role)) {
+  const userRole = String(user?.role || user?.accountType || '').trim().toLowerCase();
+  const normalizedAllowed = allowedRoles.map(r => String(r).trim().toLowerCase());
+
+  if (!normalizedAllowed.includes(userRole)) {
     console.log('🔒 ProtectedRoute: Role not allowed, redirecting to appropriate dashboard');
     // Redirect to user's default dashboard based on role
     const roleRoutes = {
@@ -68,7 +71,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'sonographer': '/dashboard/sonographer',
     };
     
-    const roleOrType = user?.role || user?.accountType;
+    const roleOrType = userRole || 'frontdesk';
     const defaultRoute = roleRoutes[roleOrType] || '/frontdesk/dashboard';
     console.log('🔒 ProtectedRoute: Redirecting to:', defaultRoute);
     return <Navigate to={defaultRoute} replace />;

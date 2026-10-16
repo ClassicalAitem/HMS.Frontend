@@ -41,7 +41,9 @@ const Sidebar = ({ onCloseSidebar }) => {
     }
   };
 
-  const isIncomingActive = location.pathname.startsWith("/dashboard/medical-director/incoming");
+  const fromIncoming = location.state && location.state.from === "incoming";
+  const isIncomingActive =
+    fromIncoming || location.pathname.startsWith("/dashboard/medical-director/incoming");
   const isAdmittedActive =
     location.pathname.startsWith("/dashboard/medical-director/admitted") ||
     location.pathname.startsWith("/dashboard/medical-director/admittedPatients");
@@ -83,6 +85,7 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Patients",
       path: "/dashboard/medical-director/patients",
       active:
+        (!fromIncoming && location.pathname.startsWith("/dashboard/medical-director/antenatal-records")) ||
         location.pathname === "/dashboard/medical-director/patients" ||
         location.pathname.startsWith("/dashboard/medical-director/patient"),
     },

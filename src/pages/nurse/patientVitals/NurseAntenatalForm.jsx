@@ -1,0 +1,976 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import NurseLayout from "@/layouts/nurse/NurseLayout";
+import { getPatientById } from "@/services/api/patientsAPI";
+import { useAppSelector } from "@/store/hooks";
+import toast from "react-hot-toast";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import {
+  createAnteNatalRecord,
+  getAnteNatalRecord,
+  updateAnteNatalRecord
+} from "@/services/api/anteNatalAPI";
+import { getAllDependantsForPatient } from "@/services/api/dependantAPI";
+import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital } from "@/services/api/vitalsAPI";
+import KolakLoader from "@/components/common/KolakLoader";
+import { IoIosCloseCircleOutline } from "react-icons/io";
+
+const emptyForm = (nurseName = "") => ({
+  previousMedicalHistory: {
+    heartDisease: '', yawsOrSyphilis: '', previousOperation: '',
+    kidney: '', hypertension: '', others: ''
+  },
+  familyHistory: { twins: '', malformation: '', tuberculosis: '' },
+  previousObstetricHistory: [],
+  presentPregnancy: {
+    dateOfBooking: '', lmp: '', edd: '', bleeding: '',
+    durationInWeeks: '', fmf: '', headache: '', vomiting: '',
+    oedema: '', constipation: '', urinarySymptoms: '', jaundice: '',
+    otherSymptoms: '', vaginalDischarge: '', takenBy: nurseName
+  },
+  routineTest: {
+    rvs: '', vdrl: '', pcv: '', hbv: '', abo: '', genotype: ''
+  },
+  antenatalExaminations: [],
+});
+
+const NurseAntenatalForm = () => {
+  const { patientId, recordIndex } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const incomingDependantId = location?.state?.dependantId || null;
+  const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
+  const fromIncoming = location?.state?.from === "incoming";
+  const { user } = useAppSelector((state) => state.auth);
+  const nurseName = user?.fullName || user?.name || "";
+  const isEditing = Boolean(recordIndex !== undefined && recordIndex !== null && recordIndex !== "" && recordIndex !== "new");
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loadingPatient, setLoadingPatient] = useState(!location?.state?.patientSnapshot);
+  const [loadingData, setLoadingData] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [patient, setPatient] = useState(location?.state?.patientSnapshot || null);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const [formData, setFormData] = useState(emptyForm(nurseName));
+
+  const [dependants, setDependants] = useState([]);
+  const [latestVital, setLatestVital] = useState(null);
+  const [savedRecord, setSavedRecord] = useState(null);
+
+  const [selectedDependantId, setSelectedDependantId] = useState(incomingDependantId || "");
+
+  const selectedDependant = useMemo(() => {
+    if (!selectedDependantId) return null;
+    return dependants.find(d => (d.id || d._id) === selectedDependantId) || null;
+  }, [selectedDependantId, dependants]);
+
+  const [openSections, setOpenSections] = useState({
+    medical: true,
+    family: true,
+    obstetric: true,
+    pregnancy: true,
+    routine: true,
+    examinations: true,
+  });
+
+  const toggleSection = (key) =>
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const SectionHeader = ({ title, sectionKey }) => (
+    <div
+      className="card-title text-base sm:text-lg font-semibold mb-4 flex items-center justify-between cursor-pointer select-none"
+      onClick={() => toggleSection(sectionKey)}
+    >
+      <span>{title}</span>
+      {openSections[sectionKey] ? <FaChevronUp className="text-base-content/50" /> : <FaChevronDown className="text-base-content/50" />}
+    </div>
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchDependants = async () => {
+      try {
+        const res = await getAllDependantsForPatient(patientId);
+        const raw =
+          res?.data?.data?.dependants ??
+          res?.data?.dependants ??
+          res?.data ??
+          [];
+        const normalized = (Array.isArray(raw) ? raw : []).map(dep => ({
+          ...dep,
+          id: dep.id || dep._id,
+          fullName: dep.fullName || `${dep.firstName || ""} ${dep.lastName || ""}`.trim(),
+        }));
+        if (mounted) setDependants(normalized);
+      } catch (err) {
+        console.error("Failed to fetch dependants", err);
+      }
+    };
+
+    const fetchLatestVital = async () => {
+      try {
+        const res = await getVitalsByPatient(patientId);
+        const list = normalizeVitalsResponse(res);
+        const latest = getLatestVital(list);
+        if (mounted) setLatestVital(latest);
+      } catch (err) {
+        console.error("Failed to fetch latest vital", err);
+      }
+    };
+
+    if (patientId) {
+      fetchDependants();
+      fetchLatestVital();
+    }
+
+    return () => { mounted = false; };
+  }, [patientId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadPatient = async () => {
+      try {
+        if (!location?.state?.patientSnapshot) {
+          setLoadingPatient(true);
+        }
+        const res = await getPatientById(patientId);
+        const patientData = res?.data ?? res;
+        if (mounted && patientData) setPatient(patientData);
+      } catch (err) {
+        console.error("Failed to fetch patient", err);
+      } finally {
+        if (mounted) setLoadingPatient(false);
+      }
+    };
+
+    if (patientId) {
+      loadPatient();
+    }
+
+    return () => { mounted = false; };
+  }, [patientId, location?.state?.patientSnapshot]);
+
+  const parseUrine = (urineStr = '') => {
+    const match = String(urineStr || '').match(/^(Protein|Sugar)\s*-\s*(.*)$/i);
+    if (!match) return { urineType: '', urineValue: '' };
+    const type = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+    return { urineType: type, urineValue: match[2].trim() };
+  };
+
+  const transformBackendToFrontend = (backendData, docName = "") => {
+    if (!backendData) return emptyForm(docName);
+
+    const routineSource = (() => {
+      const raw = backendData.routineTest || backendData.routineTests || backendData.presentPregnancyHistories?.[0]?.routineTest || {};
+      if (Array.isArray(raw)) return raw[0] || {};
+      return raw || {};
+    })();
+
+    return {
+      previousMedicalHistory: {
+        heartDisease: backendData.medicalHistories?.[0]?.heartDisease || '',
+        yawsOrSyphilis: backendData.medicalHistories?.[0]?.yawnOrSyphilis || '',
+        previousOperation: backendData.medicalHistories?.[0]?.previousOperation || '',
+        kidney: backendData.medicalHistories?.[0]?.kidney || '',
+        hypertension: backendData.medicalHistories?.[0]?.hypertension || '',
+        others: backendData.medicalHistories?.[0]?.other || ''
+      },
+      familyHistory: {
+        twins: backendData.familyHistories?.[0]?.twins || '',
+        malformation: backendData.familyHistories?.[0]?.malformation || '',
+        tuberculosis: backendData.familyHistories?.[0]?.tuberculosis || ''
+      },
+      previousObstetricHistory: (backendData.obstetricHistories || []).map(item => ({
+        date: item.Date ? new Date(item.Date).toISOString().split('T')[0] : '',
+        durationOfPregnancy: item.durationOfPregnancy || '',
+        birthWeight: item.birthWeight || '',
+        complication: item.complicationInPregnancy || '',
+        aliveOrDead: item.aliveOrDead || '',
+        ageOfDeath: item.ageAtDeath || '',
+        causeOfDeath: item.causeOfDeath || ''
+      })),
+      presentPregnancy: {
+        dateOfBooking: backendData.presentPregnancyHistories?.[0]?.dateOfBooking || '',
+        lmp: backendData.presentPregnancyHistories?.[0]?.LMP || '',
+        edd: backendData.presentPregnancyHistories?.[0]?.EDD || '',
+        bleeding: backendData.presentPregnancyHistories?.[0]?.bleeding || '',
+        durationInWeeks: backendData.presentPregnancyHistories?.[0]?.durationOfPregnancyInWeek || '',
+        fmf: backendData.presentPregnancyHistories?.[0]?.FMF || '',
+        headache: backendData.presentPregnancyHistories?.[0]?.headache || '',
+        vomiting: backendData.presentPregnancyHistories?.[0]?.vomiting || '',
+        oedema: backendData.presentPregnancyHistories?.[0]?.oedema || '',
+        constipation: backendData.presentPregnancyHistories?.[0]?.constipation || '',
+        urinarySymptoms: backendData.presentPregnancyHistories?.[0]?.urinarySymptoms || '',
+        jaundice: backendData.presentPregnancyHistories?.[0]?.jaundice || '',
+        otherSymptoms: backendData.presentPregnancyHistories?.[0]?.otherSymptoms || '',
+        vaginalDischarge: backendData.presentPregnancyHistories?.[0]?.vaginalDischarge || '',
+        takenBy: backendData.presentPregnancyHistories?.[0]?.takenBy || docName
+      },
+      routineTest: {
+        rvs: routineSource.RVS || routineSource.rvs || '',
+        vdrl: routineSource.VDRL || routineSource.vdrl || '',
+        pcv: routineSource.PCV || routineSource.pcv || '',
+        hbv: routineSource.HBV || routineSource.hbv || '',
+        abo: routineSource.ABO || routineSource.abo || '',
+        genotype: routineSource.GENOTYPE || routineSource.genotype || ''
+      },
+      antenatalExaminations: (backendData.anteNatalExamination || []).map(item => ({
+        date: item.Date ? new Date(item.Date).toISOString().split('T')[0] : '',
+        heightOfFundus: item.heightOfFundus || '',
+        ega: item.EGA || '',
+        presentationAndLie: item.presentationAndLife || '',
+        relationsOfPpToBirth: item.relationOfPPToBrim || '',
+        foetalHeart: item.foetalHeart || '',
+        urine: item.urine || '',
+        ...parseUrine(item.urine),
+        weight: item.weight || '',
+        bp: item.bloodPressure || '',
+        nextVisit: item.nextVisit || '',
+        remark: item.remark || '',
+        signature: item.signature || docName
+      })),
+    };
+  };
+
+  // Load existing record when editing
+  useEffect(() => {
+    if (!isEditing || !patientId) return;
+    let mounted = true;
+
+    const load = async () => {
+      try {
+        setLoadingData(true);
+        const record = await getAnteNatalRecord(patientId, recordIndex);
+        const sourceRecord = (record && Array.isArray(record.anteNatalRecords))
+          ? record.anteNatalRecords[Number(recordIndex)] || record.anteNatalRecords[0] || record
+          : record;
+        if (mounted && sourceRecord) {
+          setFormData(transformBackendToFrontend(sourceRecord, nurseName));
+        }
+        if (sourceRecord?.dependantId) {
+          setSelectedDependantId(sourceRecord.dependantId);
+        }
+      } catch (err) {
+        console.error("Failed to load antenatal record data", err);
+        toast.error("Failed to load record data");
+      } finally {
+        if (mounted) setLoadingData(false);
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, [patientId, recordIndex, isEditing, nurseName]);
+
+  useEffect(() => {
+    if (nurseName && !isEditing) {
+      setFormData(prev => ({
+        ...prev,
+        presentPregnancy: { ...prev.presentPregnancy, takenBy: nurseName }
+      }));
+    }
+  }, [nurseName, isEditing]);
+
+  const patientName = useMemo(() => (
+    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
+  ), [patient]);
+
+  const summarySubject = useMemo(() => {
+    if (!incomingDependantId) return patient;
+    const dep = selectedDependant || incomingDependantSnapshot || {};
+    const guardian = patient || {};
+    const dependantHmos = Array.isArray(guardian.hmos)
+      ? guardian.hmos.filter((h) => h.dependantId === dep.id)
+      : [];
+
+    return {
+      phone: guardian.phone,
+      phoneNumber: guardian.phoneNumber,
+      hospitalId: guardian.hospitalId,
+      cardType: guardian.cardType,
+      familyName: guardian.familyName,
+      companyName: guardian.companyName,
+      id: dep.id || incomingDependantId,
+      firstName: dep.firstName,
+      middleName: dep.middleName,
+      lastName: dep.lastName,
+      fullName: dep.fullName || `${dep.firstName || ''} ${dep.lastName || ''}`.trim(),
+      gender: dep.gender,
+      dob: dep.dob,
+      relationshipType: dep.relationshipType,
+      hmos: dependantHmos,
+    };
+  }, [incomingDependantId, selectedDependant, incomingDependantSnapshot, patient]);
+
+  const summarySubjectName = summarySubject?.fullName
+    || `${summarySubject?.firstName || ''} ${summarySubject?.lastName || ''}`.trim()
+    || patientName;
+
+  const transformFrontendToBackend = (fd) => {
+    const resolvedPatientId = patient?.id || patientId;
+    const authorId = user?.id || user?._id;
+    const authorName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || nurseName;
+    const authorRole = user?.accountType || user?.role || 'nurse';
+
+    const out = {
+      patientId: resolvedPatientId,
+      doctorId: authorId,
+      nurseId: authorId,
+      createdById: authorId,
+      createdByName: authorName,
+      createdByRole: authorRole,
+      updatedById: authorId,
+      updatedByName: authorName,
+      updatedByRole: authorRole,
+      ...(selectedDependantId && { dependantId: selectedDependantId }),
+      ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
+    };
+
+    const med = {};
+    if (fd.previousMedicalHistory.heartDisease?.trim()) med.heartDisease = fd.previousMedicalHistory.heartDisease.trim();
+    if (fd.previousMedicalHistory.yawsOrSyphilis?.trim()) med.yawnOrSyphilis = fd.previousMedicalHistory.yawsOrSyphilis.trim();
+    if (fd.previousMedicalHistory.previousOperation?.trim()) med.previousOperation = fd.previousMedicalHistory.previousOperation.trim();
+    if (fd.previousMedicalHistory.kidney?.trim()) med.kidney = fd.previousMedicalHistory.kidney.trim();
+    if (fd.previousMedicalHistory.hypertension?.trim()) med.hypertension = fd.previousMedicalHistory.hypertension.trim();
+    if (fd.previousMedicalHistory.others?.trim()) med.other = fd.previousMedicalHistory.others.trim();
+    if (Object.keys(med).length > 0) out.medicalHistories = [med];
+
+    const fam = {};
+    if (fd.familyHistory.twins?.trim()) fam.twins = fd.familyHistory.twins.trim();
+    if (fd.familyHistory.malformation?.trim()) fam.malformation = fd.familyHistory.malformation.trim();
+    if (fd.familyHistory.tuberculosis?.trim()) fam.tuberculosis = fd.familyHistory.tuberculosis.trim();
+    if (Object.keys(fam).length > 0) out.familyHistories = [fam];
+
+    const obs = fd.previousObstetricHistory
+      .filter(i => i.date?.trim() || i.durationOfPregnancy?.trim() || i.birthWeight?.trim() || i.complication?.trim() || i.aliveOrDead?.trim())
+      .map(i => ({
+        ...(i.date?.trim() && { Date: new Date(i.date) }),
+        ...(i.durationOfPregnancy?.trim() && { durationOfPregnancy: i.durationOfPregnancy.trim() }),
+        ...(i.birthWeight?.trim() && { birthWeight: i.birthWeight.trim() }),
+        ...(i.complication?.trim() && { complicationInPregnancy: i.complication.trim() }),
+        ...(i.aliveOrDead?.trim() && { aliveOrDead: i.aliveOrDead.trim() }),
+        ...(i.ageOfDeath?.trim() && { ageAtDeath: i.ageOfDeath.trim() }),
+        ...(i.causeOfDeath?.trim() && { causeOfDeath: i.causeOfDeath.trim() }),
+      }));
+    if (obs.length > 0) out.obstetricHistories = obs;
+
+    const preg = {};
+    if (fd.presentPregnancy.dateOfBooking?.trim()) preg.dateOfBooking = fd.presentPregnancy.dateOfBooking.trim();
+    if (fd.presentPregnancy.lmp?.trim()) preg.LMP = fd.presentPregnancy.lmp.trim();
+    if (fd.presentPregnancy.edd?.trim()) preg.EDD = fd.presentPregnancy.edd.trim();
+    if (fd.presentPregnancy.bleeding?.trim()) preg.bleeding = fd.presentPregnancy.bleeding.trim();
+    if (fd.presentPregnancy.durationInWeeks?.trim()) preg.durationOfPregnancyInWeek = fd.presentPregnancy.durationInWeeks.trim();
+    if (fd.presentPregnancy.fmf?.trim()) preg.FMF = fd.presentPregnancy.fmf.trim();
+    if (fd.presentPregnancy.headache?.trim()) preg.headache = fd.presentPregnancy.headache.trim();
+    if (fd.presentPregnancy.vomiting?.trim()) preg.vomiting = fd.presentPregnancy.vomiting.trim();
+    if (fd.presentPregnancy.oedema?.trim()) preg.oedema = fd.presentPregnancy.oedema.trim();
+    if (fd.presentPregnancy.constipation?.trim()) preg.constipation = fd.presentPregnancy.constipation.trim();
+    if (fd.presentPregnancy.urinarySymptoms?.trim()) preg.urinarySymptoms = fd.presentPregnancy.urinarySymptoms.trim();
+    if (fd.presentPregnancy.jaundice?.trim()) preg.jaundice = fd.presentPregnancy.jaundice.trim();
+    if (fd.presentPregnancy.otherSymptoms?.trim()) preg.otherSymptoms = fd.presentPregnancy.otherSymptoms.trim();
+    if (fd.presentPregnancy.vaginalDischarge?.trim()) preg.vaginalDischarge = fd.presentPregnancy.vaginalDischarge.trim();
+    if (Object.keys(preg).length > 0) out.presentPregnancyHistories = [preg];
+
+    const routine = {};
+    if (fd.routineTest.rvs?.trim()) routine.RVS = fd.routineTest.rvs.trim();
+    if (fd.routineTest.vdrl?.trim()) routine.VDRL = fd.routineTest.vdrl.trim();
+    if (fd.routineTest.pcv?.trim()) routine.PCV = fd.routineTest.pcv.trim();
+    if (fd.routineTest.hbv?.trim()) routine.HBV = fd.routineTest.hbv.trim();
+    if (fd.routineTest.abo?.trim()) routine.ABO = fd.routineTest.abo.trim();
+    if (fd.routineTest.genotype?.trim()) routine.GENOTYPE = fd.routineTest.genotype.trim();
+    if (Object.keys(routine).length > 0) out.routineTest = [routine];
+
+    const exams = fd.antenatalExaminations
+      .filter(i => i.date?.trim() || i.heightOfFundus?.trim() || i.bp?.trim() || (i.weight != null && String(i.weight).trim()) || (i.nextVisit != null && String(i.nextVisit).trim()))
+      .map(i => ({
+        ...(i.date?.trim() && { Date: new Date(i.date) }),
+        ...(i.heightOfFundus?.trim() && { heightOfFundus: i.heightOfFundus.trim() }),
+        ...(i.ega?.trim() && { EGA: i.ega.trim() }),
+        ...(i.presentationAndLie?.trim() && { presentationAndLife: i.presentationAndLie.trim() }),
+        ...(i.relationsOfPpToBirth?.trim() && { relationOfPPToBrim: i.relationsOfPpToBirth.trim() }),
+        ...(i.foetalHeart?.trim() && { foetalHeart: i.foetalHeart.trim() }),
+        ...(i.urine?.trim() && { urine: i.urine.trim() }),
+        ...(i.weight != null && String(i.weight).trim() && { weight: String(i.weight).trim() }),
+        ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
+        ...(i.nextVisit != null && String(i.nextVisit).trim() && { nextVisit: String(i.nextVisit).trim() }),
+        ...(i.remark?.trim() && { remark: i.remark.trim() }),
+        signature: i.signature || authorName,
+        recordedById: i.recordedById || authorId,
+        recordedByName: i.recordedByName || i.signature || authorName,
+        recordedByRole: i.recordedByRole || authorRole,
+      }));
+    if (exams.length > 0) out.anteNatalExamination = exams;
+    if (fd.remark?.trim()) out.remark = fd.remark.trim();
+
+    return out;
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const backendData = transformFrontendToBackend(formData);
+    toast.promise(
+      isEditing
+        ? updateAnteNatalRecord(patientId, recordIndex, backendData)
+        : createAnteNatalRecord(backendData),
+      {
+        loading: isEditing ? 'Updating record...' : 'Saving record...',
+        success: (data) => {
+          if (!isEditing) {
+            setSavedRecord(data);
+          } else {
+            navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`, {
+              state: { dependantId, dependantSnapshot }
+            });
+          }
+          return isEditing ? 'Record updated successfully!' : 'Record created successfully!';
+        },
+        error: (err) => err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save record',
+      }
+    ).finally(() => setSaving(false));
+  };
+
+  // --- Form field updaters ---
+  const updateMedical = (field, value) => setFormData(p => ({ ...p, previousMedicalHistory: { ...p.previousMedicalHistory, [field]: value } }));
+  const updateFamily = (field, value) => setFormData(p => ({ ...p, familyHistory: { ...p.familyHistory, [field]: value } }));
+  const updatePregnancy = (field, value) => { if (field === 'takenBy') return; setFormData(p => ({ ...p, presentPregnancy: { ...p.presentPregnancy, [field]: value } })); };
+  const updateRoutineTest = (field, value) => setFormData(p => ({ ...p, routineTest: { ...p.routineTest, [field]: value } }));
+  const addObstetric = () => setFormData(p => ({ ...p, previousObstetricHistory: [...p.previousObstetricHistory, { date: '', durationOfPregnancy: '', birthWeight: '', complication: '', aliveOrDead: '', ageOfDeath: '', causeOfDeath: '' }] }));
+  const updateObstetric = (idx, field, value) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
+  const removeObstetric = (idx) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.filter((_, i) => i !== idx) }));
+  const addExamination = () => setFormData(p => ({ ...p, antenatalExaminations: [...p.antenatalExaminations, {
+    date: new Date().toISOString().split('T')[0],
+    heightOfFundus: '',
+    ega: '',
+    presentationAndLie: '',
+    relationsOfPpToBirth: '',
+    foetalHeart: '',
+    urine: '',
+    urineType: '',
+    urineValue: '',
+    weight: latestVital?.weight || '',
+    bp: latestVital?.bp || latestVital?.bloodPressure || '',
+    nextVisit: '',
+    remark: '',
+    signature: nurseName
+  }] }));
+  const updateExamination = (idx, field, value) => setFormData(p => ({
+    ...p,
+    antenatalExaminations: p.antenatalExaminations.map((item, i) => {
+      if (i !== idx) return item;
+      const updated = { ...item, [field]: value };
+      if (field === 'urineType' || field === 'urineValue') {
+        const type = field === 'urineType' ? value : item.urineType;
+        const val = field === 'urineValue' ? value : item.urineValue;
+        updated.urine = type && val ? `${type} - ${val}` : (type || val || '');
+      }
+      return updated;
+    })
+  }));
+  const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminations: p.antenatalExaminations.filter((_, i) => i !== idx) }));
+
+  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
+  const handleCancelOrClose = () => {
+    if (location?.state?.returnTo === 'patient') {
+      navigate(`/dashboard/nurse/patient/${patientId}`, {
+        state: { dependantId, dependantSnapshot }
+      });
+    } else {
+      navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`, {
+        state: {
+          from: fromIncoming ? "incoming" : "patients",
+          patientSnapshot: patient,
+          dependantId: incomingDependantId || dependantId,
+          dependantSnapshot: selectedDependant || incomingDependantSnapshot || dependantSnapshot,
+        }
+      });
+    }
+  };
+
+  if (loadingPatient || loadingData) {
+    return (
+      <div className="flex h-screen bg-base-200/50">
+        <div className="flex-1 flex items-center justify-center flex-col gap-3">
+          <div className="loading loading-spinner loading-lg"></div>
+          <p className="text-base-content/60 text-sm">
+            {loadingData ? "Loading record data..." : "Loading patient..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <NurseLayout>
+      {loadingData && <KolakLoader fullscreen />}
+
+      <div className="space-y-4 sm:space-y-6">
+        {/* Header */}
+          <div className="flex items-start sm:items-center justify-between mb-2 gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full justify-between min-w-0">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div>
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-base-content break-words">
+                    {isEditing ? "Edit Ante-Natal Record" : "New Ante-Natal Record"}
+                  </h1>
+                  <p className="text-xs text-base-content/60">
+                    Nurse Entry • Recorded by {nurseName || "Nurse"}
+                  </p>
+                </div>
+                <div className="flex items-start sm:items-center gap-2 flex-col sm:flex-row min-w-0">
+                  <span className="badge badge-primary badge-outline text-xs">
+                    {summarySubjectName || "Patient"}
+                  </span>
+                  <span className="text-xs text-base-content/70">
+                    ID: {summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="btn btn-ghost btn-sm sm:btn-md btn-circle shrink-0"
+                onClick={handleCancelOrClose}
+                aria-label="Close"
+              >
+                <IoIosCloseCircleOutline className="w-6 sm:w-7 h-6 sm:h-7" />
+              </button>
+            </div>
+          </div>
+
+          {isEditing && (
+            <div className="alert alert-info text-xs py-2.5 px-4 shadow-sm flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📋</span>
+                <span>
+                  <strong>Audit Tracking Active:</strong> Your changes will be recorded under your name (<strong>Nurse {nurseName}</strong>) in the patient's antenatal audit trail to track what was changed.
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Dependant selection if available */}
+          {dependants.length > 0 && !isEditing && (
+            <div className="card bg-base-100 shadow-sm p-4">
+              <label className="label pb-1">
+                <span className="label-text font-semibold text-sm">Recording For</span>
+              </label>
+              <select
+                className="select select-bordered select-sm w-full sm:max-w-md"
+                value={selectedDependantId}
+                onChange={(e) => setSelectedDependantId(e.target.value)}
+              >
+                <option value="">{patientName || "Principal Patient"} (Patient)</option>
+                {dependants.map((dep) => (
+                  <option key={dep.id || dep._id} value={dep.id || dep._id}>
+                    {dep.fullName} ({dep.relationshipType || 'Dependant'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Previous Medical History */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-3 sm:p-4">
+              <SectionHeader title="PREVIOUS MEDICAL HISTORY" sectionKey="medical" />
+              {openSections.medical && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {[
+                    ['heartDisease', 'Heart Disease'],
+                    ['yawsOrSyphilis', 'Yaws or Syphilis'],
+                    ['previousOperation', 'Previous Operation'],
+                    ['kidney', 'Kidney'],
+                    ['hypertension', 'Hypertension'],
+                    ['others', 'Others'],
+                  ].map(([field, label]) => (
+                    <div key={field}>
+                      <label className="label"><span className="label-text">{label}</span></label>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        placeholder="Details"
+                        value={formData.previousMedicalHistory[field]}
+                        onChange={(e) => updateMedical(field, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Family History */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-3 sm:p-4">
+              <SectionHeader title="FAMILY HISTORY" sectionKey="family" />
+              {openSections.family && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {[
+                    ['twins', 'Twins'],
+                    ['malformation', 'Malformation'],
+                    ['tuberculosis', 'Tuberculosis']
+                  ].map(([field, label]) => (
+                    <div key={field}>
+                      <label className="label"><span className="label-text">{label}</span></label>
+                      <input
+                        type="text"
+                        className="input input-bordered w-full"
+                        placeholder="Details"
+                        value={formData.familyHistory[field]}
+                        onChange={(e) => updateFamily(field, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Previous Obstetric History */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-3 sm:p-4">
+              <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">PREVIOUS OBSTETRIC HISTORY</h3>
+              <div className="overflow-x-auto -mx-1 px-1">
+                <table className="table w-full min-w-[900px]">
+                  <thead>
+                    <tr className="border-b border-base-200">
+                      {['Date', 'Duration Of Pregnancy', 'Birth Weight', 'Complication', 'Alive or Dead', 'Age of Death', 'Cause Of Death', ''].map(h => (
+                        <th key={h} className="font-medium text-base-content/70 py-2">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {formData.previousObstetricHistory.map((item, idx) => (
+                      <tr key={idx} className="border-b border-base-200 last:border-0">
+                        <td className="py-2"><input type="date" className="input input-bordered input-sm w-full" value={item.date} onChange={(e) => updateObstetric(idx, 'date', e.target.value)} /></td>
+                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="e.g. 9 months" value={item.durationOfPregnancy} onChange={(e) => updateObstetric(idx, 'durationOfPregnancy', e.target.value)} /></td>
+                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="e.g. 3.5 kg" value={item.birthWeight} onChange={(e) => updateObstetric(idx, 'birthWeight', e.target.value)} /></td>
+                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="Complications" value={item.complication} onChange={(e) => updateObstetric(idx, 'complication', e.target.value)} /></td>
+                        <td className="py-2">
+                          <select className="select select-bordered select-sm w-full" value={item.aliveOrDead} onChange={(e) => updateObstetric(idx, 'aliveOrDead', e.target.value)}>
+                            <option value="">Select</option>
+                            <option value="Alive">Alive</option>
+                            <option value="Dead">Dead</option>
+                          </select>
+                        </td>
+                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="Age" value={item.ageOfDeath} onChange={(e) => updateObstetric(idx, 'ageOfDeath', e.target.value)} /></td>
+                        <td className="py-2"><input type="text" className="input input-bordered input-sm w-full" placeholder="Cause" value={item.causeOfDeath} onChange={(e) => updateObstetric(idx, 'causeOfDeath', e.target.value)} /></td>
+                        <td className="py-2 text-right"><button onClick={() => removeObstetric(idx)} className="btn btn-ghost btn-xs text-error"><span className="text-lg font-bold">−</span></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button className="btn btn-sm btn-outline mt-3 sm:mt-4 w-full sm:w-auto" onClick={addObstetric}>+ Add Previous Obstetric History</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Present Pregnancy */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-3 sm:p-4">
+              <SectionHeader title="HISTORY OF PRESENT PREGNANCY" sectionKey="pregnancy" />
+              {openSections.pregnancy && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {[
+                    { field: 'dateOfBooking', label: 'Date of Booking', type: 'date' },
+                    { field: 'lmp', label: 'LMP', type: 'date' },
+                    { field: 'edd', label: 'EDD', type: 'date' },
+                    { field: 'bleeding', label: 'Bleeding', type: 'text', placeholder: 'Yes/No/Details' },
+                    { field: 'durationInWeeks', label: 'EGA', type: 'text', placeholder: 'e.g. 28 weeks' },
+                    { field: 'fmf', label: 'FMF', type: 'text', placeholder: 'Fetal Movement Felt' },
+                    { field: 'headache', label: 'Headache', type: 'text', placeholder: 'Yes/No/Details' },
+                    { field: 'vomiting', label: 'Vomiting', type: 'text', placeholder: 'Yes/No/Details' },
+                    { field: 'oedema', label: 'Oedema', type: 'text', placeholder: 'Yes/No/Details' },
+                    { field: 'constipation', label: 'Constipation', type: 'text', placeholder: 'Yes/No/Details' },
+                    { field: 'urinarySymptoms', label: 'Urinary Symptoms', type: 'text', placeholder: 'Details' },
+                    { field: 'jaundice', label: 'Jaundice', type: 'text', placeholder: 'Yes/No/Details' },
+                    { field: 'otherSymptoms', label: 'Other Symptoms', type: 'text', placeholder: 'Details' },
+                    { field: 'vaginalDischarge', label: 'Vaginal Discharge', type: 'text', placeholder: 'Details' },
+                  ].map(({ field, label, type, placeholder }) => (
+                    <div key={field}>
+                      <label className="label"><span className="label-text">{label}</span></label>
+                      <input
+                        type={type}
+                        className="input input-bordered w-full"
+                        placeholder={placeholder}
+                        value={formData.presentPregnancy[field]}
+                        onChange={(e) => updatePregnancy(field, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                  <div>
+                    <label className="label"><span className="label-text">Taken By</span></label>
+                    <input type="text" className="input input-bordered w-full" value={formData.presentPregnancy.takenBy || nurseName} disabled />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Routine Tests Section */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-3 sm:p-4">
+              <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">ROUTINE TESTS</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {[
+                  { field: 'rvs', label: 'RVS', type: 'text', placeholder: 'Negative/Positive' },
+                  { field: 'vdrl', label: 'VDRL', type: 'text', placeholder: 'Negative/Positive' },
+                  { field: 'pcv', label: 'PCV', type: 'text', placeholder: 'e.g. 40%' },
+                  { field: 'hbv', label: 'HBV', type: 'text', placeholder: 'Negative/Positive' },
+                  { field: 'abo', label: 'ABO', type: 'text', placeholder: 'Blood Group' },
+                  { field: 'genotype', label: 'Genotype', type: 'select', placeholder: 'e.g. AA, AS, SS' },
+                ].map(({ field, label, type, placeholder }) => (
+                  <div key={field}>
+                    <label className="label"><span className="label-text">{label}</span></label>
+                    {type === 'select' ? (
+                      <select
+                        className="select select-bordered select-sm w-full"
+                        value={formData.routineTest[field]}
+                        onChange={(e) => updateRoutineTest(field, e.target.value)}
+                      >
+                        <option value="">Select</option>
+                        <option value="AA">AA</option>
+                        <option value="AS">AS</option>
+                        <option value="SS">SS</option>
+                        <option value="AC">AC</option>
+                        <option value="SC">SC</option>
+                        <option value="CC">CC</option>
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm w-full"
+                        placeholder={placeholder}
+                        value={formData.routineTest[field]}
+                        onChange={(e) => updateRoutineTest(field, e.target.value)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Antenatal Examinations */}
+          <div className="card bg-base-100 shadow-sm">
+            <div className="card-body p-3 sm:p-4">
+              <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">ANTE-NATAL EXAMINATIONS</h3>
+              <div className="space-y-4 sm:space-y-6">
+                {formData.antenatalExaminations.map((item, idx) => (
+                  <div key={idx} className="border border-base-200 rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-base-200/40 border-b border-base-200">
+                      <span className="text-xs sm:text-sm font-semibold text-base-content/70">
+                        Examination #{idx + 1}
+                      </span>
+                      <button
+                        onClick={() => removeExamination(idx)}
+                        className="btn btn-ghost btn-xs text-error"
+                      >
+                        <span className="text-lg font-bold">−</span> Remove
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="table w-full min-w-[1050px]">
+                        <thead>
+                          <tr className="border-b border-base-200">
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Date</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Height Of Fundus</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">E.G.A</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Presentation & Lie</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">P.P to Brim</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Foetal Heart</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Urine</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Weight (kg)</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">B.P (mmHg)</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Next Visit (wk)</th>
+                            <th className="font-medium text-base-content/70 py-2 text-xs">Signature</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="py-2">
+                              <input
+                                type="date"
+                                className="input input-bordered input-sm w-full min-w-[130px]"
+                                value={item.date}
+                                onChange={(e) => updateExamination(idx, 'date', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                className="input input-bordered input-sm w-full min-w-[80px]"
+                                placeholder="cm"
+                                value={item.heightOfFundus}
+                                onChange={(e) => updateExamination(idx, 'heightOfFundus', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                className="input input-bordered input-sm w-full min-w-[70px]"
+                                placeholder="weeks"
+                                value={item.ega}
+                                onChange={(e) => updateExamination(idx, 'ega', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <select
+                                className="select select-bordered select-sm w-full min-w-[110px]"
+                                value={item.presentationAndLie}
+                                onChange={(e) => updateExamination(idx, 'presentationAndLie', e.target.value)}
+                              >
+                                <option value="">Select</option>
+                                <option value="Cephalic">Cephalic</option>
+                                <option value="Breech">Breech</option>
+                                <option value="Transverse lie">Transverse lie</option>
+                                <option value="Oblique Cephalic">Oblique Cephalic</option>
+                                <option value="Oblique Breech">Oblique Breech</option>
+                              </select>
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                className="input input-bordered input-sm w-full min-w-[80px]"
+                                placeholder="Relations"
+                                value={item.relationsOfPpToBirth}
+                                onChange={(e) => updateExamination(idx, 'relationsOfPpToBirth', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                className="input input-bordered input-sm w-full min-w-[70px]"
+                                placeholder="bpm"
+                                value={item.foetalHeart}
+                                onChange={(e) => updateExamination(idx, 'foetalHeart', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <div className="flex flex-col gap-1 min-w-[130px]">
+                                <select
+                                  className="select select-bordered select-sm w-full"
+                                  value={item.urineType}
+                                  onChange={(e) => updateExamination(idx, 'urineType', e.target.value)}
+                                >
+                                  <option value="">Type</option>
+                                  <option value="Protein">Protein</option>
+                                  <option value="Sugar">Sugar</option>
+                                </select>
+                                <input
+                                  type="text"
+                                  className="input input-bordered input-sm w-full"
+                                  placeholder="e.g. +++"
+                                  value={item.urineValue}
+                                  onChange={(e) => updateExamination(idx, 'urineValue', e.target.value)}
+                                />
+                              </div>
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="number"
+                                step="0.1"
+                                className="input input-bordered input-sm w-full min-w-[70px]"
+                                placeholder="kg"
+                                value={item.weight}
+                                onChange={(e) => updateExamination(idx, 'weight', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                className="input input-bordered input-sm w-full min-w-[80px]"
+                                placeholder="120/80"
+                                value={item.bp}
+                                onChange={(e) => updateExamination(idx, 'bp', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="number"
+                                className="input input-bordered input-sm w-full min-w-[70px]"
+                                placeholder="week"
+                                value={item.nextVisit}
+                                onChange={(e) => updateExamination(idx, 'nextVisit', e.target.value)}
+                              />
+                            </td>
+                            <td className="py-2">
+                              <input
+                                type="text"
+                                className="input input-bordered input-sm w-full min-w-[100px]"
+                                placeholder="Signature"
+                                value={item.signature || nurseName}
+                                disabled
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Remark textarea */}
+                    <div className="px-3 sm:px-4 pb-3 sm:pb-4 pt-3 border-t border-base-200">
+                      <label className="label pb-1">
+                        <span className="label-text font-medium text-base-content/70 text-sm">Remark</span>
+                      </label>
+                      <textarea
+                        className="textarea textarea-bordered w-full resize-y min-h-[80px] text-sm sm:text-base"
+                        placeholder="Enter remark, observations, or additional notes for this examination..."
+                        value={item.remark}
+                        onChange={(e) => updateExamination(idx, 'remark', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  className="btn btn-sm btn-outline w-full sm:w-auto"
+                  onClick={addExamination}
+                >
+                  + Add Ante-Natal Examination
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 pt-4 pb-8 sm:pb-12 w-full">
+            <button
+              className={`btn btn-primary text-white w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md ${saving ? "loading" : ""}`}
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? (isEditing ? "Updating..." : "Saving...") : (isEditing ? "Update" : "Save Now")}
+            </button>
+            {savedRecord && (
+              <button
+                className="btn btn-outline border-base-300 text-base-content w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
+                onClick={() => navigate(`/dashboard/nurse/patient/${patientId}/antenatal-records`, {
+                  state: {
+                    from: fromIncoming ? "incoming" : "patients",
+                    selectedRecord: savedRecord,
+                    patientSnapshot: patient,
+                    dependantId: dependantId || null,
+                    dependantSnapshot: isViewingDependant ? (summarySubject || dependantSnapshot) : null,
+                  }
+                })}
+              >
+                View Records
+              </button>
+            )}
+            <button
+              className="btn btn-outline w-full sm:w-auto px-8 sm:px-12 h-11 sm:h-12 text-base sm:text-lg font-normal normal-case rounded-md"
+              onClick={handleCancelOrClose}
+              disabled={saving}
+            >
+              Cancel
+            </button>
+          </div>
+      </div>
+    </NurseLayout>
+  );
+};
+
+export default NurseAntenatalForm;
