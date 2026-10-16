@@ -13,6 +13,7 @@ const Task = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
 const ViewAllPatientVitals = lazy(() => import("@/pages/nurse/patientVitals/ViewAllPatientVitals"));
 const ViewAllAdmission = lazy(() => import("@/pages/nurse/patientVitals/ViewAllAdmission"));
 const NurseAntenatalRecords = lazy(() => import("@/pages/nurse/patientVitals/NurseAntenatalRecords"));
+const NurseAntenatalForm = lazy(() => import("@/pages/nurse/patientVitals/NurseAntenatalForm"));
 
 const Appointmentss = lazy(() => import("@/pages/nurse/appointment/Appointment"));
 
@@ -339,7 +340,37 @@ const AppRoutes = () => {
         </ProtectedRoute>
       } />
       <Route path="/dashboard/nurse/patient/:patientId/antenatal-records" element={
-        <ProtectedRoute allowedRoles={['nurse']}>
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
+          <NurseAntenatalRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/patient/:patientId/antenatal-records/new" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
+          <NurseAntenatalForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/patient/:patientId/antenatal-records/edit/:recordIndex" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
+          <NurseAntenatalForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/antenatal-records/:patientId/view" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
+          <NurseAntenatalRecords />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/antenatal-records/:patientId/new" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
+          <NurseAntenatalForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/antenatal-records/:patientId/edit/:recordIndex" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
+          <NurseAntenatalForm />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/antenatal-records/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director', 'admin', 'super-admin']}>
           <NurseAntenatalRecords />
         </ProtectedRoute>
       } />
@@ -447,14 +478,24 @@ const AppRoutes = () => {
       <ViewAllVitals />
     </ProtectedRoute>
   } />
-  <Route path="/dashboard/doctor/antenatal-records/:patientId/:recordId?" element={
-    <ProtectedRoute allowedRoles={['doctor']}>
+  <Route path="/dashboard/doctor/antenatal-records/:patientId/view" element={
+    <ProtectedRoute allowedRoles={['doctor', 'medical-director', 'super-admin']}>
+      <AntenatalRecordDetails />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/antenatal-records/:patientId/new" element={
+    <ProtectedRoute allowedRoles={['doctor', 'medical-director', 'super-admin']}>
       <AntenatalRecords />
     </ProtectedRoute>
   } />
-  <Route path="/dashboard/doctor/antenatal-records/:patientId/view" element={
-    <ProtectedRoute allowedRoles={['doctor']}>
-      <AntenatalRecordDetails />
+  <Route path="/dashboard/doctor/antenatal-records/:patientId/edit/:recordIndex" element={
+    <ProtectedRoute allowedRoles={['doctor', 'medical-director', 'super-admin']}>
+      <AntenatalRecords />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/doctor/antenatal-records/:patientId" element={
+    <ProtectedRoute allowedRoles={['doctor', 'medical-director', 'super-admin']}>
+      <AntenatalRecords />
     </ProtectedRoute>
   } />
   <Route path="/dashboard/doctor/patientshistory" element={
@@ -462,8 +503,6 @@ const AppRoutes = () => {
       <PatientsHistory />
     </ProtectedRoute>
   } />
-<Route path="/dashboard/doctor/antenatal-records/:patientId" element={<AntenatalRecords />} />
-<Route path="/dashboard/doctor/antenatal-records/:patientId/edit/:recordIndex" element={<AntenatalRecords />} />
   <Route path="/dashboard/doctor/medical-history/:patientId/add" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <AddDiagnosis />
@@ -622,23 +661,31 @@ const AppRoutes = () => {
       <MDViewAllVitals />
     </ProtectedRoute>
   } />
-  <Route path="/dashboard/medical-director/antenatal-records/:patientId/:recordId?" element={
-    <ProtectedRoute allowedRoles={['medical-director']}>
-      <MDAntenatalRecords />
-    </ProtectedRoute>
-  } />
   <Route path="/dashboard/medical-director/antenatal-records/:patientId/view" element={
-    <ProtectedRoute allowedRoles={['medical-director']}>
+    <ProtectedRoute allowedRoles={['medical-director', 'super-admin']}>
       <MDAntenatalRecordDetails />
     </ProtectedRoute>
   } />
-      <Route path="/dashboard/medical-director/patients" element={
-        <ProtectedRoute allowedRoles={['medical-director']}>
-          <MDPatients />
-        </ProtectedRoute>
-      } />
-<Route path="/dashboard/medical-director/antenatal-records/:patientId" element={<MDAntenatalRecords />} />
-<Route path="/dashboard/medical-director/antenatal-records/:patientId/edit/:recordIndex" element={<MDAntenatalRecords />} />
+  <Route path="/dashboard/medical-director/antenatal-records/:patientId/new" element={
+    <ProtectedRoute allowedRoles={['medical-director', 'super-admin']}>
+      <MDAntenatalRecords />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/antenatal-records/:patientId/edit/:recordIndex" element={
+    <ProtectedRoute allowedRoles={['medical-director', 'super-admin']}>
+      <MDAntenatalRecords />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/antenatal-records/:patientId" element={
+    <ProtectedRoute allowedRoles={['medical-director', 'super-admin']}>
+      <MDAntenatalRecords />
+    </ProtectedRoute>
+  } />
+  <Route path="/dashboard/medical-director/patients" element={
+    <ProtectedRoute allowedRoles={['medical-director']}>
+      <MDPatients />
+    </ProtectedRoute>
+  } />
   <Route path="/dashboard/medical-director/medical-history/:patientId/add" element={
     <ProtectedRoute allowedRoles={['medical-director']}>
       <MDAddDiagnosis />
