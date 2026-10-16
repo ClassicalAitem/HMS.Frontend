@@ -7,25 +7,9 @@ import App from './App.jsx';
 // When a browser tab is inactive, Chrome/Edge throttles timers and drops the HMR WebSocket connection.
 // By intercepting 'vite:ws:disconnect' and 'vite:beforeFullReload', we suppress the unwanted location.reload().
 if (import.meta.hot) {
-  let isTabReactivated = false;
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      isTabReactivated = true;
-      setTimeout(() => {
-        isTabReactivated = false;
-      }, 3000);
-    }
-  });
-
+  // Silent handling of disconnects to avoid unhandled runtime errors in dev mode
   import.meta.hot.on('vite:ws:disconnect', () => {
-    // Intercept disconnect to prevent Vite from polling and triggering location.reload() on tab focus
-    throw new Error('[vite] Suppressed automatic full-reload caused by background tab WebSocket disconnect.');
-  });
-
-  import.meta.hot.on('vite:beforeFullReload', () => {
-    if (isTabReactivated || document.visibilityState === 'hidden') {
-      throw new Error('[vite] Suppressed automatic full-reload on tab reactivation.');
-    }
+    // Suppress unhandled disconnect errors
   });
 }
 

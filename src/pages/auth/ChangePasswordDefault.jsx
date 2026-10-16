@@ -74,16 +74,11 @@ const ChangePasswordDefault = () => {
     setIsLoading(true);
     
     try {
-      console.log('🔄 ChangePasswordDefault: Changing password for user:', userId);
-      console.log('📊 ChangePasswordDefault: Password data:', data);
-      
       // Prepare data for API
       const passwordData = {
         oldPassword: data.currentPassword,
         newPassword: data.newPassword
       };
-      
-      console.log('📤 ChangePasswordDefault: API data:', passwordData);
       
       // Make API call to change password
       const response = await fetch(`${config.API_BASE_URL}/user/changePassword/${userId}`, {

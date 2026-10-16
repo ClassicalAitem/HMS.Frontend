@@ -43,8 +43,8 @@ const ForgotPassword = () => {
     resolver: yupResolver(updateYourPasswordSchema),
   });
 
-  const onSubmit = async (data) => {
-    console.log("Password update submitted:", data);
+  const onSubmit = async (_data) => {
+    // Password update handler
   };
 
   return (

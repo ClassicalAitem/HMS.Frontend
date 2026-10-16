@@ -9,8 +9,8 @@ import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequ
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { LabResultDetailsModal } from "@/components/modals";
 import { usersAPI } from "@/services/api/usersAPI";
-import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
-import { FaFlask,  FaEye } from "react-icons/fa";
+import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import { FaFlask, FaEye, FaUserMd, FaUserNurse, FaHistory, FaClock, FaEdit, FaCheckCircle } from "react-icons/fa";
 
 // Helper: resolve subject ID
 const summarySubjectId = (patient, isViewingDependant, dependantSnapshot) => {
@@ -74,8 +74,92 @@ const NurseAntenatalRecords = () => {
     return null;
   };
 
+  const formatRoleTitle = (role, name = '') => {
+    const r = String(role || '').toLowerCase();
+    const cleanName = name ? name.replace(/^(Dr\.|Dr|Nurse)\s+/i, '') : '';
+    if (r === 'nurse') {
+      return cleanName ? `Nurse ${cleanName}` : 'Nurse';
+    }
+    if (r === 'medical-director' || r === 'medical_director') {
+      return cleanName ? `Dr. ${cleanName} (MD)` : 'Medical Director';
+    }
+    if (r === 'doctor') {
+      return cleanName ? `Dr. ${cleanName}` : 'Doctor';
+    }
+    return cleanName || name || 'Medical Staff';
+  };
+
+  const getRoleBadge = (role) => {
+    const r = String(role || '').toLowerCase();
+    if (r === 'nurse') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          <FaUserNurse className="text-[10px]" /> Nurse
+        </span>
+      );
+    }
+    if (r === 'medical-director' || r === 'medical_director') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">
+          <FaUserMd className="text-[10px]" /> Medical Director
+        </span>
+      );
+    }
+    if (r === 'doctor') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+          <FaUserMd className="text-[10px]" /> Doctor
+        </span>
+      );
+    }
+    if (r) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/80 border border-base-300 capitalize">
+          {r.replace('-', ' ')}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-base-200 text-base-content/70">
+        Staff
+      </span>
+    );
+  };
+
+  const getCreatorDetails = (record) => {
+    if (!record) return { name: 'Medical Staff', role: 'doctor', display: 'Medical Staff' };
+    const role = record.createdByRole || record.creator?.accountType || (record.nurseName ? 'nurse' : 'doctor');
+    let name = record.createdByName || (record.creator ? getStaffDisplayName(record.creator) : null);
+    if (!name) {
+      const sid = getStaffId(record);
+      if (sid && staffNameById[sid]) name = staffNameById[sid];
+    }
+    if (!name) name = record.doctorName || record.nurseName || 'Medical Staff';
+    return {
+      name,
+      role,
+      display: formatRoleTitle(role, name),
+      date: record.createdAt,
+    };
+  };
+
+  const getUpdaterDetails = (record) => {
+    if (!record || !record.updatedByName) return null;
+    const role = record.updatedByRole || record.updater?.accountType || record.createdByRole || 'doctor';
+    const name = record.updatedByName || (record.updater ? getStaffDisplayName(record.updater) : null) || 'Staff';
+    return {
+      name,
+      role,
+      display: formatRoleTitle(role, name),
+      date: record.updatedAt,
+    };
+  };
+
   const getRecordStaffName = (record) => {
     if (!record) return 'Unknown Provider';
+    if (record.createdByName && record.createdByRole) {
+      return formatRoleTitle(record.createdByRole, record.createdByName);
+    }
     if (record.doctorName) return `Dr. ${record.doctorName}`;
     if (record.nurseName) return `Nurse ${record.nurseName}`;
     if (record.doctor && typeof record.doctor === 'object') {
@@ -491,13 +575,50 @@ const NurseAntenatalRecords = () => {
                                   <span className="badge badge-sm badge-outline">Patient</span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-3 text-xs text-base-content/70 mt-1 flex-wrap">
-                                <span>Recorded: {record.createdAt ? formatNigeriaDate(record.createdAt) : '—'}</span>
-                                <span>•</span>
-                                <span>By: {getRecordStaffName(record)}</span>
-                                <span>•</span>
-                                <span>Examinations: {exams.length}</span>
-                              </div>
+                              {(() => {
+                                const creator = getCreatorDetails(record);
+                                const updater = getUpdaterDetails(record);
+                                const hasEdits = (record.editHistory && record.editHistory.length > 1) || (updater && updater.name !== creator.name);
+
+                                return (
+                                  <div className="flex items-center gap-3 text-xs text-base-content/70 mt-2 flex-wrap">
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <span className="text-base-content/50">Created by:</span>
+                                      {getRoleBadge(creator.role)}
+                                      <span className="font-semibold text-base-content">{creator.name}</span>
+                                      <span className="text-base-content/50">
+                                        ({record.createdAt ? formatNigeriaDate(record.createdAt) : '—'})
+                                      </span>
+                                    </span>
+
+                                    {hasEdits && updater && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="inline-flex items-center gap-1.5 bg-base-200/50 px-2 py-0.5 rounded-md">
+                                          <span className="text-base-content/50">Last edited by:</span>
+                                          {getRoleBadge(updater.role)}
+                                          <span className="font-semibold text-base-content">{updater.name}</span>
+                                          {record.updatedAt && (
+                                            <span className="text-base-content/50">
+                                              ({formatNigeriaDate(record.updatedAt)})
+                                            </span>
+                                          )}
+                                        </span>
+                                      </>
+                                    )}
+
+                                    <span>•</span>
+                                    <span>Examinations: {exams.length}</span>
+
+                                    {record.editHistory && record.editHistory.length > 0 && (
+                                      <span className="badge badge-ghost badge-sm text-xs gap-1">
+                                        <FaHistory className="text-[10px]" />
+                                        {record.editHistory.length} {record.editHistory.length === 1 ? 'version' : 'edits tracked'}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
@@ -521,6 +642,122 @@ const NurseAntenatalRecords = () => {
                           {/* Full Expanded Record Details */}
                           {isSelected && (
                             <div className="mt-5 pt-4 border-t border-base-200 space-y-5">
+                              {/* Audit Trail & Staff Follow-up Banner */}
+                              {(() => {
+                                const creator = getCreatorDetails(record);
+                                const updater = getUpdaterDetails(record);
+                                const history = Array.isArray(record.editHistory) ? record.editHistory : [];
+
+                                return (
+                                  <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden">
+                                    <div className="bg-base-200/40 px-4 py-3 border-b border-base-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                      <div className="flex items-center gap-2">
+                                        <FaHistory className="text-primary text-sm" />
+                                        <h5 className="font-bold text-sm text-base-content">
+                                          Staff Audit Trail & Change Tracking
+                                        </h5>
+                                      </div>
+                                      <span className="text-xs text-base-content/60">
+                                        Follow up on who created and modified this pregnancy record
+                                      </span>
+                                    </div>
+
+                                    <div className="p-4 space-y-4">
+                                      {/* Creator vs Editor Comparison Cards */}
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
+                                        {/* Creator Box */}
+                                        <div className="p-3.5 rounded-lg border border-base-200 bg-base-200/20 flex flex-col justify-between">
+                                          <div>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+                                                Original Creator
+                                              </span>
+                                              {getRoleBadge(creator.role)}
+                                            </div>
+                                            <p className="font-bold text-base text-base-content">{creator.name}</p>
+                                            <p className="text-xs text-base-content/70 mt-0.5">
+                                              Role: <span className="font-medium capitalize">{String(creator.role || 'Staff').replace('-', ' ')}</span>
+                                            </p>
+                                          </div>
+                                          <div className="mt-3 pt-2 border-t border-base-200/60 text-xs text-base-content/60 flex items-center gap-1">
+                                            <FaClock className="text-[10px]" />
+                                            Created: {record.createdAt ? formatNigeriaDateTime(record.createdAt) : '—'}
+                                          </div>
+                                        </div>
+
+                                        {/* Last Editor Box */}
+                                        <div className="p-3.5 rounded-lg border border-base-200 bg-base-200/20 flex flex-col justify-between">
+                                          <div>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                              <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+                                                Last Modified By
+                                              </span>
+                                              {updater ? getRoleBadge(updater.role) : getRoleBadge(creator.role)}
+                                            </div>
+                                            <p className="font-bold text-base text-base-content">
+                                              {updater ? updater.name : creator.name}
+                                            </p>
+                                            <p className="text-xs text-base-content/70 mt-0.5">
+                                              Role: <span className="font-medium capitalize">{String((updater?.role || creator.role) || 'Staff').replace('-', ' ')}</span>
+                                            </p>
+                                          </div>
+                                          <div className="mt-3 pt-2 border-t border-base-200/60 text-xs text-base-content/60 flex items-center gap-1">
+                                            <FaClock className="text-[10px]" />
+                                            Last Modified: {record.updatedAt ? formatNigeriaDateTime(record.updatedAt) : (record.createdAt ? formatNigeriaDateTime(record.createdAt) : '—')}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* Change History Timeline */}
+                                      {history.length > 0 && (
+                                        <div className="pt-2">
+                                          <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-base-content/80 flex items-center gap-1.5">
+                                              <FaEdit className="text-primary text-xs" /> Chronological Change Log ({history.length})
+                                            </span>
+                                          </div>
+
+                                          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                            {history.map((item, hIdx) => (
+                                              <div
+                                                key={hIdx}
+                                                className="p-2.5 rounded-lg bg-base-200/30 border border-base-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs"
+                                              >
+                                                <div className="flex items-start sm:items-center gap-2">
+                                                  <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 font-bold text-[10px]">
+                                                    {history.length - hIdx}
+                                                  </span>
+                                                  <div>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      <span className="font-bold text-base-content">
+                                                        {item.editedByName || 'Medical Staff'}
+                                                      </span>
+                                                      {getRoleBadge(item.editedByRole)}
+                                                      <span className="text-base-content/50 text-[11px]">
+                                                        — {item.action || 'Edited Record'}
+                                                      </span>
+                                                    </div>
+                                                    {item.changesSummary && (
+                                                      <p className="text-xs text-base-content/80 mt-0.5 font-medium">
+                                                        <span className="text-base-content/50">Changes: </span>
+                                                        {item.changesSummary}
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                                <span className="text-[11px] text-base-content/60 shrink-0 self-end sm:self-center">
+                                                  {item.editedAt ? formatNigeriaDateTime(item.editedAt) : '—'}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                               {/* Present Pregnancy Section */}
                               <div className="card bg-base-100 border border-base-200">
                                 <div className="card-body p-4">
@@ -830,12 +1067,21 @@ const NurseAntenatalRecords = () => {
                                       {exams.map((exam, exIdx) => (
                                         <div key={exIdx} className="border border-base-200 rounded-lg p-3 bg-base-100">
                                           <div className="flex justify-between items-center mb-2 pb-1.5 border-b border-base-200">
-                                            <span className="font-bold text-xs text-base-content">
-                                              Examination #{exIdx + 1}
-                                            </span>
-                                            <span className="text-xs text-base-content/60">
-                                              {exam.Date ? formatNigeriaDate(exam.Date) : 'No date'}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-bold text-xs text-base-content">
+                                                Examination #{exIdx + 1}
+                                              </span>
+                                              {exam.recordedByRole && getRoleBadge(exam.recordedByRole)}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs text-base-content/60">
+                                              {exam.recordedByName && (
+                                                <span>
+                                                  By: <span className="font-semibold text-base-content">{exam.recordedByName}</span>
+                                                </span>
+                                              )}
+                                              <span>•</span>
+                                              <span>{exam.Date ? formatNigeriaDate(exam.Date) : 'No date'}</span>
+                                            </div>
                                           </div>
                                           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                                             <div><span className="text-base-content/60 block">Fundus:</span><span className="font-medium">{exam.heightOfFundus || '—'}</span></div>
@@ -847,7 +1093,7 @@ const NurseAntenatalRecords = () => {
                                             <div><span className="text-base-content/60 block">Weight:</span><span className="font-medium">{exam.weight ? `${exam.weight} kg` : '—'}</span></div>
                                             <div><span className="text-base-content/60 block">BP:</span><span className="font-medium">{exam.bloodPressure || '—'}</span></div>
                                             <div><span className="text-base-content/60 block">Next Visit:</span><span className="font-medium">{exam.nextVisit ? `${exam.nextVisit} wk` : '—'}</span></div>
-                                            <div><span className="text-base-content/60 block">Signature:</span><span className="font-medium">{exam.signature || '—'}</span></div>
+                                            <div><span className="text-base-content/60 block">Signature:</span><span className="font-medium">{exam.signature || exam.recordedByName || '—'}</span></div>
                                           </div>
                                           {exam.remark && (
                                             <div className="mt-2 text-xs bg-base-200/40 p-2 rounded">

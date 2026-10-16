@@ -9,6 +9,7 @@ import { usersAPI } from "@/services/api/usersAPI";
 import toast from "react-hot-toast";
 import { FaSearch, FaEye, FaDownload, FaTimes } from "react-icons/fa";
 import mammoth from "mammoth";
+import DOMPurify from "dompurify";
 import { FaFileWord } from "react-icons/fa";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 
@@ -556,7 +557,7 @@ const SonographerScanHistory = () => {
                       <div className="w-full max-h-[60vh] overflow-y-auto bg-white rounded-lg border border-base-200 p-6">
                         <div
                           className="prose prose-sm max-w-none text-left"
-                          dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docPreviewHtml) }}
                         />
                       </div>
                     );

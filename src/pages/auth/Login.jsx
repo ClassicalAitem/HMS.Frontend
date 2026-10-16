@@ -73,6 +73,7 @@ const Login = () => {
 
   // Redirect if user is already authenticated
   useEffect(() => {
+    if (showSuccessModal) return; // Allow smooth login modal and timeout transition without double-navigate race
     if (isAuthenticated && user) {
       let expired = false;
       try {
@@ -126,9 +127,6 @@ const Login = () => {
   }, [isAuthenticated, user, needsPasswordChange, navigate, location.state, token, dispatch]);
 
   const onSubmit = async (data) => {
-    console.log('🚀 Login: Starting login process');
-    console.log('📤 Login: Form data:', data);
-    
     // Clear any previous errors
     dispatch(clearError());
     

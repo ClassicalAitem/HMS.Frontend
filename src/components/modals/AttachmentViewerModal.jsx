@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IoClose, IoChevronBack, IoChevronForward, IoDownload, IoImage } from 'react-icons/io5';
 import { FaFilePdf, FaFile, FaFileWord } from 'react-icons/fa';
 import mammoth from 'mammoth';
+import DOMPurify from 'dompurify';
 
 const AttachmentViewerModal = ({ isOpen, onClose, attachments = [], initialIndex = 0, title = "Attachments" }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -221,7 +222,7 @@ const getDataUrl = () => {
                   <div className="w-full max-h-[60vh] overflow-y-auto bg-white rounded-lg border border-base-200 p-6">
                     <div
                       className="prose prose-sm max-w-none text-left"
-                      dangerouslySetInnerHTML={{ __html: docPreviewHtml }}
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docPreviewHtml) }}
                     />
                   </div>
                 ) : (
