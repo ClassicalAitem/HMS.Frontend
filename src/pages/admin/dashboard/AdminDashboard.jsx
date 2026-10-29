@@ -11,7 +11,6 @@ import {
   FaBabyCarriage,
   FaSun,
   FaBoxes,
-  FaMoneyBillWave,
   FaIdCard,
   FaUserMd,
   FaArrowRight,
@@ -19,6 +18,10 @@ import {
   FaExclamationTriangle,
   FaSync,
   FaCalendarAlt,
+  FaClock,
+  FaSearch,
+  FaNotesMedical,
+  FaUserCheck,
 } from "react-icons/fa";
 import { MdPregnantWoman, MdAnalytics, MdOutlineDashboard } from "react-icons/md";
 import { TbStethoscope, TbChartDots2 } from "react-icons/tb";
@@ -43,10 +46,9 @@ import { getAdmissions } from "@/services/api/admissionApi";
 import { getAllSurgeries } from "@/services/api/surgeryAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getAllAnteNatalRecords } from "@/services/api/anteNatalAPI";
+import { getConsultations } from "@/services/api/consultationAPI";
 import { getInventories } from "@/services/api/inventoryAPI";
 import { getLaboratoryInventories } from "@/services/api/labInventoryApi";
-import { getAllBillings } from "@/services/api/billingAPI";
-import { getAllReceipts } from "@/services/api/receiptAPI";
 import { usersAPI } from "@/services/api/usersAPI";
 import { getCachedData, clearAdminCache } from "@/utils/adminDataCache";
 import metricsAPI, {
@@ -80,8 +82,18 @@ const safeGetStaffMetrics = async () => {
   }
 };
 
-import { formatCurrency } from "../reports/adminReportUtils";
-import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
+
+const isToday = (dateValue) => {
+  if (!dateValue) return false;
+  const d = new Date(dateValue);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+};
 
 const extractArray = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -99,11 +111,29 @@ const formatPersonName = (subject) => {
   return [firstName, lastName].filter(Boolean).join(" ").trim() || subject.fullName || subject.name || "—";
 };
 
+const formatDoctorName = (rawName, docUser) => {
+  if (rawName && typeof rawName === "string" && rawName.trim()) {
+    const clean = rawName.trim();
+    return clean.toLowerCase().startsWith("dr") ? clean : `Dr. ${clean}`;
+  }
+  if (docUser) {
+    const name = `${docUser.firstName || ""} ${docUser.lastName || ""}`.trim() || docUser.fullName || docUser.name;
+    if (name) {
+      return name.toLowerCase().startsWith("dr") ? name : `Dr. ${name}`;
+    }
+  }
+  return "Dr. Attending";
+};
+
 const CHART_COLORS = ["#0052CC", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#06B6D4", "#EC4899"];
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [attendedSearch, setAttendedSearch] = useState("");
+  const [attendedTab, setAttendedTab] = useState("all"); // 'all' | 'consultation' | 'antenatal'
+  const [attendedPage, setAttendedPage] = useState(1);
+  const attendedPerPage = 8;
 
   const [dashboardData, setDashboardData] = useState({
     patients: [],
@@ -113,10 +143,9 @@ const AdminDashboard = () => {
     surgeries: [],
     labResults: [],
     antenatal: [],
+    consultations: [],
     inventories: [],
     labInventories: [],
-    billings: [],
-    receipts: [],
     users: [],
     metrics: null,
     staffCounts: null,
@@ -136,25 +165,23 @@ const AdminDashboard = () => {
             surgRes,
             labRes,
             ancRes,
+            consultRes,
             invRes,
             labInvRes,
-            billRes,
-            recRes,
             usersRes,
             metricsRes,
             staffMetricsRes,
           ] = await Promise.allSettled([
-            getPatients({ limit: 50 }),
+            getPatients({ limit: 100 }),
             getAllDependants(),
             getAllOpdPatients({ limit: 50 }),
             getAdmissions(),
             getAllSurgeries(),
             getLabResults({ limit: 50 }),
             getAllAnteNatalRecords(),
+            getConsultations(),
             getInventories(),
             getLaboratoryInventories(),
-            getAllBillings(),
-            getAllReceipts(),
             usersAPI.getUsers(),
             safeGetMetrics(),
             safeGetStaffMetrics(),
@@ -168,10 +195,9 @@ const AdminDashboard = () => {
             surgeries: surgRes.status === "fulfilled" ? extractArray(surgRes.value) : [],
             labResults: labRes.status === "fulfilled" ? extractArray(labRes.value) : [],
             antenatal: ancRes.status === "fulfilled" ? extractArray(ancRes.value) : [],
+            consultations: consultRes.status === "fulfilled" ? extractArray(consultRes.value) : [],
             inventories: invRes.status === "fulfilled" ? extractArray(invRes.value) : [],
             labInventories: labInvRes.status === "fulfilled" ? extractArray(labInvRes.value) : [],
-            billings: billRes.status === "fulfilled" ? extractArray(billRes.value) : [],
-            receipts: recRes.status === "fulfilled" ? extractArray(recRes.value) : [],
             users: usersRes.status === "fulfilled" ? extractArray(usersRes.value) : [],
             metrics: metricsRes.status === "fulfilled" ? metricsRes.value?.data || metricsRes.value : null,
             staffCounts: staffMetricsRes.status === "fulfilled" ? staffMetricsRes.value?.data || staffMetricsRes.value : null,
@@ -193,7 +219,35 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, [refreshKey]);
 
-  // Aggregate Metrics Calculations
+  // Lookup maps for fast and accurate name/ID resolution
+  const patientMap = useMemo(() => {
+    const map = new Map();
+    (dashboardData.patients || []).forEach((p) => {
+      const id = String(p.id || p._id || "");
+      if (id) map.set(id, p);
+    });
+    return map;
+  }, [dashboardData.patients]);
+
+  const dependantMap = useMemo(() => {
+    const map = new Map();
+    (dashboardData.dependants || []).forEach((d) => {
+      const id = String(d.id || d._id || "");
+      if (id) map.set(id, d);
+    });
+    return map;
+  }, [dashboardData.dependants]);
+
+  const userMap = useMemo(() => {
+    const map = new Map();
+    (dashboardData.users || []).forEach((u) => {
+      const id = String(u.id || u._id || "");
+      if (id) map.set(id, u);
+    });
+    return map;
+  }, [dashboardData.users]);
+
+  // Aggregate Metrics Calculations (Clinical & Operational, Zero Financial Info)
   const totalCardsOpened = dashboardData.patients.length + dashboardData.dependants.length;
   const totalInpatients = dashboardData.admissions.filter((a) => a.status?.toLowerCase() !== "discharged").length;
   const totalDischarged = dashboardData.admissions.filter((a) => a.status?.toLowerCase() === "discharged").length;
@@ -215,13 +269,179 @@ const AdminDashboard = () => {
     dashboardData.inventories.filter((i) => Number(i.stock || 0) <= Number(i.reorderLevel || 10)).length +
     dashboardData.labInventories.filter((i) => Number(i.stock || 0) <= Number(i.reorderLevel || 10)).length;
 
-  const totalInvoiced = dashboardData.billings.reduce((sum, b) => sum + Number(b.totalAmount || b.amount || 0), 0);
-  const totalCollected = dashboardData.billings.reduce((sum, b) => sum + Number(b.amountPaid || (b.status === "paid" ? b.totalAmount : 0) || 0), 0);
-  const totalOutstanding = Math.max(0, totalInvoiced - totalCollected);
-
   const hmoAttendanceCount = dashboardData.patients.filter(
     (p) => p.hmo?.provider || p.cardType?.toLowerCase().includes("hmo")
   ).length;
+
+  // Extract Attended Today by Doctors:
+  // 1. Creation of consultation
+  // 2. Creation of antenatal
+  // 3. Editing of antenatal
+  const attendedTodayList = useMemo(() => {
+    const events = [];
+
+    // 1. Consultations Created Today
+    (dashboardData.consultations || []).forEach((c) => {
+      if (!isToday(c?.createdAt)) return;
+
+      const pId = typeof c.patientId === "object" ? (c.patientId?.id || c.patientId?._id) : c.patientId;
+      const dId = typeof c.dependantId === "object" ? (c.dependantId?.id || c.dependantId?._id) : (c.dependantId || null);
+
+      const patientObj = (typeof c.patientId === "object" && c.patientId) ? c.patientId : (c.patient || (pId ? patientMap.get(String(pId)) : null));
+      const dependantObj = (typeof c.dependantId === "object" && c.dependantId) ? c.dependantId : (c.dependant || (dId ? dependantMap.get(String(dId)) : null));
+
+      const isDependant = !!dId;
+      const patientName = isDependant
+        ? formatPersonName(dependantObj)
+        : formatPersonName(patientObj);
+
+      const hospitalId = isDependant
+        ? (dependantObj?.hospitalId || patientObj?.hospitalId || dId || "—")
+        : (patientObj?.hospitalId || pId || "—");
+
+      const guardianName = isDependant ? formatPersonName(patientObj) : null;
+
+      const docUser = c.doctor || (c.doctorId ? userMap.get(String(c.doctorId)) : null);
+      const doctorName = formatDoctorName(c.doctorName, docUser);
+
+      events.push({
+        id: `consult-${c.id || c._id || Math.random()}`,
+        category: "consultation",
+        activity: "Consultation Created",
+        activityBadgeClass: "badge-primary text-primary-content",
+        doctorName,
+        patientName: patientName || "Patient",
+        hospitalId,
+        isDependant,
+        guardianName,
+        timestamp: c.createdAt,
+        timeFormatted: c.createdAt ? formatNigeriaTime(c.createdAt) : "—",
+        dateFormatted: c.createdAt ? formatNigeriaDate(c.createdAt) : "—",
+        notes: c.diagnosis || c.visitReason || c.complaint || "Clinical consultation recorded",
+      });
+    });
+
+    // 2. Antenatal Records (Created or Edited Today)
+    (dashboardData.antenatal || []).forEach((doc) => {
+      const pId = typeof doc.patientId === "object" ? (doc.patientId?.id || doc.patientId?._id) : doc.patientId;
+      const patientObj = (typeof doc.patientId === "object" && doc.patientId) ? doc.patientId : (doc.patient || (pId ? patientMap.get(String(pId)) : null));
+      const baseHospitalId = patientObj?.hospitalId || pId || "—";
+
+      (doc.anteNatalRecords || []).forEach((record, recIdx) => {
+        const dId = record.dependantId;
+        const dependantObj = record.dependant || (dId ? dependantMap.get(String(dId)) : null);
+        const isDependant = !!dId;
+        const patientName = isDependant
+          ? formatPersonName(dependantObj)
+          : formatPersonName(patientObj);
+        const hospitalId = isDependant
+          ? (dependantObj?.hospitalId || baseHospitalId)
+          : baseHospitalId;
+        const guardianName = isDependant ? formatPersonName(patientObj) : null;
+
+        // A. Created Today
+        if (isToday(record.createdAt)) {
+          const creatorUser = record.creator || (record.createdById || record.doctorId ? userMap.get(String(record.createdById || record.doctorId)) : null);
+          const doctorName = formatDoctorName(record.createdByName, creatorUser);
+
+          events.push({
+            id: `anc-create-${record._id || recIdx}-${record.createdAt}`,
+            category: "antenatal",
+            activity: "Antenatal Created",
+            activityBadgeClass: "badge-accent text-accent-content",
+            doctorName,
+            patientName: patientName || "Antenatal Patient",
+            hospitalId,
+            isDependant,
+            guardianName,
+            timestamp: record.createdAt,
+            timeFormatted: record.createdAt ? formatNigeriaTime(record.createdAt) : "—",
+            dateFormatted: record.createdAt ? formatNigeriaDate(record.createdAt) : "—",
+            notes: "New antenatal booking & medical history recorded",
+          });
+        }
+
+        // B. Edited Today
+        if (Array.isArray(record.editHistory) && record.editHistory.length > 0) {
+          record.editHistory.forEach((edit, editIdx) => {
+            if (edit.action === "Created Record" || !isToday(edit.editedAt)) return;
+
+            const editorUser = edit.editedById ? userMap.get(String(edit.editedById)) : null;
+            const doctorName = formatDoctorName(edit.editedByName, editorUser);
+
+            events.push({
+              id: `anc-edit-${record._id || recIdx}-${editIdx}-${edit.editedAt}`,
+              category: "antenatal",
+              activity: "Antenatal Updated",
+              activityBadgeClass: "badge-warning text-warning-content",
+              doctorName,
+              patientName: patientName || "Antenatal Patient",
+              hospitalId,
+              isDependant,
+              guardianName,
+              timestamp: edit.editedAt,
+              timeFormatted: edit.editedAt ? formatNigeriaTime(edit.editedAt) : "—",
+              dateFormatted: edit.editedAt ? formatNigeriaDate(edit.editedAt) : "—",
+              notes: edit.changesSummary || edit.action || "Antenatal routine examination/follow-up updated",
+            });
+          });
+        } else if (
+          record.updatedAt &&
+          isToday(record.updatedAt) &&
+          (!record.createdAt || new Date(record.updatedAt).getTime() - new Date(record.createdAt).getTime() > 60000)
+        ) {
+          // Fallback if editHistory array is empty but record was updated today
+          const updaterUser = record.updater || (record.updatedById ? userMap.get(String(record.updatedById)) : null);
+          const doctorName = formatDoctorName(record.updatedByName, updaterUser);
+
+          events.push({
+            id: `anc-update-${record._id || recIdx}-${record.updatedAt}`,
+            category: "antenatal",
+            activity: "Antenatal Updated",
+            activityBadgeClass: "badge-warning text-warning-content",
+            doctorName,
+            patientName: patientName || "Antenatal Patient",
+            hospitalId,
+            isDependant,
+            guardianName,
+            timestamp: record.updatedAt,
+            timeFormatted: record.updatedAt ? formatNigeriaTime(record.updatedAt) : "—",
+            dateFormatted: record.updatedAt ? formatNigeriaDate(record.updatedAt) : "—",
+            notes: "Antenatal record updated",
+          });
+        }
+      });
+    });
+
+    // Sort all events newest first
+    return events.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+  }, [dashboardData.consultations, dashboardData.antenatal, patientMap, dependantMap, userMap]);
+
+  // Filtered attended-today records
+  const filteredAttendedToday = useMemo(() => {
+    const q = attendedSearch.trim().toLowerCase();
+    return attendedTodayList.filter((item) => {
+      if (attendedTab === "consultation" && item.category !== "consultation") return false;
+      if (attendedTab === "antenatal" && item.category !== "antenatal") return false;
+      if (!q) return true;
+      return (
+        item.doctorName.toLowerCase().includes(q) ||
+        item.patientName.toLowerCase().includes(q) ||
+        String(item.hospitalId).toLowerCase().includes(q) ||
+        item.activity.toLowerCase().includes(q) ||
+        item.notes.toLowerCase().includes(q)
+      );
+    });
+  }, [attendedTodayList, attendedSearch, attendedTab]);
+
+  const totalAttendedPages = Math.max(1, Math.ceil(filteredAttendedToday.length / attendedPerPage));
+  const paginatedAttended = useMemo(() => {
+    const start = (attendedPage - 1) * attendedPerPage;
+    return filteredAttendedToday.slice(start, start + attendedPerPage);
+  }, [filteredAttendedToday, attendedPage]);
+
+  const consultEventsCount = attendedTodayList.filter((e) => e.category === "consultation").length;
+  const antenatalEventsCount = attendedTodayList.filter((e) => e.category === "antenatal").length;
 
   // Departmental Staff Breakdown for Pie Chart
   const staffChartData = useMemo(() => {
@@ -291,7 +511,7 @@ const AdminDashboard = () => {
               Admin Overseeing Dashboard
             </h1>
             <p className="text-sm text-base-content/70 mt-0.5">
-              Comprehensive real-time reporting across patient cards, admissions, procedures, lab investigations, inventory, and finance.
+              Comprehensive real-time reporting across patient cards, admissions, consultations, procedures, lab investigations, and inventory.
             </p>
           </div>
 
@@ -317,7 +537,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* 11 Overseeing KPI Cards Grid */}
+        {/* 11 Overseeing KPI Cards Grid (Financial Info Removed, Doctor Attendances Highlighted) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {/* 1. Card Opening / Patients */}
           <Link
@@ -463,23 +683,22 @@ const AdminDashboard = () => {
             </div>
           </Link>
 
-          {/* 9. Expenses & Billings */}
-          <Link
-            to="/dashboard/admin/invoice"
-            className="p-5 rounded-2xl bg-base-100 border border-base-200 hover:border-success/50 hover:shadow-md transition-all group"
+          {/* 9. Attended Today by Doctors (Replaced Financial Invoices/Revenue) */}
+          <div
+            className="p-5 rounded-2xl bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-base-content/60 uppercase">Revenue & Invoices</span>
-              <div className="p-2.5 rounded-xl bg-success/10 text-success group-hover:scale-105 transition-transform">
-                <FaMoneyBillWave className="w-5 h-5" />
+              <span className="text-xs font-bold text-base-content/60 uppercase">Attended Today (Doctors)</span>
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                <FaUserMd className="w-5 h-5" />
               </div>
             </div>
-            <h3 className="text-2xl font-extrabold text-base-content mt-2 truncate">{formatCurrency(totalCollected)}</h3>
+            <h3 className="text-2xl font-extrabold text-base-content mt-2">{attendedTodayList.length}</h3>
             <div className="flex items-center justify-between text-xs text-base-content/60 mt-1">
-              <span>Receivables: {formatCurrency(totalOutstanding)}</span>
-              <FaArrowRight className="w-3 h-3 text-success opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              <span>{consultEventsCount} Consults · {antenatalEventsCount} Antenatal</span>
+              <span className="text-primary font-bold">Today</span>
             </div>
-          </Link>
+          </div>
 
           {/* 10. HMO Attendance */}
           <Link
@@ -539,6 +758,195 @@ const AdminDashboard = () => {
               <FaArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* NEW DEDICATED SECTION: Attended Today by Doctors */}
+        {/* ========================================================================= */}
+        <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-6 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-base-200">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                  <FaUserCheck className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-bold text-base-content">
+                  Attended Today by Doctors
+                </h3>
+                <span className="badge badge-primary badge-sm font-semibold">
+                  {attendedTodayList.length} Today
+                </span>
+              </div>
+              <p className="text-xs text-base-content/60 mt-1">
+                Live registry of patients attended today for consultation creation, antenatal bookings, and antenatal edits.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Category Filter Tabs */}
+              <div className="join bg-base-200 p-1 rounded-xl text-xs">
+                <button
+                  type="button"
+                  className={`join-item px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                    attendedTab === "all" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/70 hover:text-base-content"
+                  }`}
+                  onClick={() => {
+                    setAttendedTab("all");
+                    setAttendedPage(1);
+                  }}
+                >
+                  All ({attendedTodayList.length})
+                </button>
+                <button
+                  type="button"
+                  className={`join-item px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                    attendedTab === "consultation" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/70 hover:text-base-content"
+                  }`}
+                  onClick={() => {
+                    setAttendedTab("consultation");
+                    setAttendedPage(1);
+                  }}
+                >
+                  Consultations ({consultEventsCount})
+                </button>
+                <button
+                  type="button"
+                  className={`join-item px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+                    attendedTab === "antenatal" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/70 hover:text-base-content"
+                  }`}
+                  onClick={() => {
+                    setAttendedTab("antenatal");
+                    setAttendedPage(1);
+                  }}
+                >
+                  Antenatal ({antenatalEventsCount})
+                </button>
+              </div>
+
+              {/* Search input */}
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
+                <input
+                  type="text"
+                  placeholder="Search doctor, patient, ID..."
+                  value={attendedSearch}
+                  onChange={(e) => {
+                    setAttendedSearch(e.target.value);
+                    setAttendedPage(1);
+                  }}
+                  className="input input-sm input-bordered pl-9 pr-3 text-xs w-full sm:w-56 rounded-xl"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full text-left text-xs">
+              <thead className="bg-base-200/60 uppercase font-bold text-base-content">
+                <tr>
+                  <th className="py-3 px-3">Time</th>
+                  <th className="px-3">Attending Doctor</th>
+                  <th className="px-3">Patient Attended</th>
+                  <th className="px-3">Clinical Activity</th>
+                  <th className="px-3">Details / Diagnosis</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-base-200">
+                {paginatedAttended.map((item) => (
+                  <tr key={item.id} className="hover:bg-base-200/40 transition-colors">
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 font-mono text-base-content/80">
+                        <FaClock className="w-3 h-3 text-primary/70 shrink-0" />
+                        <span>{item.timeFormatted}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                          <FaUserMd className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="font-semibold text-base-content whitespace-nowrap">
+                          {item.doctorName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-base-content">
+                            {item.patientName}
+                          </span>
+                          {item.isDependant && (
+                            <span className="badge badge-secondary badge-xs font-medium">
+                              Dependant
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-base-content/60 mt-0.5">
+                          <span>Hospital ID: <strong className="text-primary">{item.hospitalId}</strong></span>
+                          {item.guardianName && <span>· Guardian: {item.guardianName}</span>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className={`badge badge-sm font-semibold ${item.activityBadgeClass}`}>
+                        {item.activity}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 max-w-xs truncate text-base-content/75" title={item.notes}>
+                      {item.notes}
+                    </td>
+                  </tr>
+                ))}
+
+                {paginatedAttended.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="text-center py-10 text-base-content/50">
+                      <FaUserCheck className="w-10 h-10 mx-auto text-base-content/20 mb-2" />
+                      <p className="font-semibold text-sm">No doctor attendances recorded yet today</p>
+                      <p className="text-xs text-base-content/40 mt-0.5">
+                        {attendedSearch
+                          ? `No records match your search "${attendedSearch}"`
+                          : "Patients attended for consultations or antenatal care today will appear here in real time."}
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalAttendedPages > 1 && (
+            <div className="flex items-center justify-between pt-3 border-t border-base-200 text-xs">
+              <span className="text-base-content/60">
+                Showing {(attendedPage - 1) * attendedPerPage + 1} to{" "}
+                {Math.min(attendedPage * attendedPerPage, filteredAttendedToday.length)} of{" "}
+                {filteredAttendedToday.length} attendances
+              </span>
+              <div className="join">
+                <button
+                  type="button"
+                  className="join-item btn btn-xs btn-outline"
+                  disabled={attendedPage <= 1}
+                  onClick={() => setAttendedPage((p) => Math.max(1, p - 1))}
+                >
+                  Previous
+                </button>
+                <button type="button" className="join-item btn btn-xs btn-ghost no-animation">
+                  Page {attendedPage} of {totalAttendedPages}
+                </button>
+                <button
+                  type="button"
+                  className="join-item btn btn-xs btn-outline"
+                  disabled={attendedPage >= totalAttendedPages}
+                  onClick={() => setAttendedPage((p) => Math.min(totalAttendedPages, p + 1))}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Analytical Visuals Grid */}
@@ -693,7 +1101,7 @@ const AdminDashboard = () => {
                   Active Inpatient Hospitalizations
                 </h3>
                 <p className="text-xs text-base-content/60">
-                  Currently admitted patients and allocated beds
+                  Currently admitted patients and allocated wards
                 </p>
               </div>
               <Link
