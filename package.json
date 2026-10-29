@@ -16,7 +16,7 @@
     "@hookform/resolvers": "^5.2.1",
     "@reduxjs/toolkit": "^2.9.0",
     "@tailwindcss/vite": "^4.1.13",
-    "axios": "^1.11.0",
+    "axios": "^1.21.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.17",
@@ -38,12 +38,11 @@
     "react-hot-toast": "^2.6.0",
     "react-icons": "^5.5.0",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.10.1",
+    "react-router-dom": "^7.18.5",
     "react-slick": "^0.31.0",
     "react-use": "^17.6.0",
     "recharts": "^3.1.2",
     "redux-persist": "^6.0.0",
-    "resolver": "^0.1.12",
     "slate": "0.124.0",
     "slate-dom": "0.124.0",
     "slate-react": "0.124.0",
@@ -64,6 +63,6 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
-    "vite": "^7.1.2"
+    "vite": "^7.3.7"
   }
 }
