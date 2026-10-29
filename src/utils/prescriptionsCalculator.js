@@ -95,7 +95,37 @@ export function getDoseCount(frequency, duration) {
 
 // Kept for backward compatibility with existing call sites (e.g. ViewConsultation's
 // getBillItems) that only pass frequency+duration with no dosage amount.
-export function calculateDispenseQuantity(frequency, duration) {
+export function isSingleUnitDispense(medicationType, inventory) {
+  const type = String(medicationType || "").toLowerCase();
+  if (["cream", "gutt", "syrup"].includes(type)) {
+    return true;
+  }
+  const form = String(inventory?.form || "").toLowerCase();
+  const unit = String(inventory?.unit || "").toLowerCase();
+  const name = String(inventory?.name || "").toLowerCase();
+
+  if (unit === "tube") return true;
+
+  const singleKeywords = [
+    "cream", "ointment", "gel", "lotion", "tube",
+    "drop", "drops", "eye drop", "ear drop", "nasal drop", "gutt",
+    "spray", "inhaler", "inhalation",
+    "syrup", "suspension", "oral syrup", "oral suspension",
+    "mouthwash", "shampoo", "lacquer"
+  ];
+
+  return singleKeywords.some((keyword) => form.includes(keyword) || name.includes(keyword));
+}
+
+// Kept for backward compatibility with existing call sites
+export function calculateDispenseQuantity(frequency, duration, medOrType, inventory) {
+  if (medOrType) {
+    const medType = typeof medOrType === "string" ? medOrType : medOrType?.medicationType;
+    const inv = inventory || (typeof medOrType === "object" ? medOrType : null);
+    if (isSingleUnitDispense(medType, inv)) {
+      return 1;
+    }
+  }
   return getDoseCount(frequency, duration);
 }
 
@@ -250,9 +280,9 @@ function convertToInventoryUnit(amount, dosageUnit, inventory) {
 
 /**
  * @param {Object} params
- * @param {'tablet'|'syrup'|'injection'} params.medicationType
+ * @param {'tablet'|'syrup'|'injection'|'cream'|'gutt'|'infusion'} params.medicationType
  * @param {number} params.dosageAmount
- * @param {string} params.dosageUnit  e.g. 'tablet' | 'ml' | 'iu' | 'mg'
+ * @param {string} params.dosageUnit  e.g. 'tablet' | 'ml' | 'iu' | 'mg' | 'tube'
  * @param {string} params.frequency
  * @param {string} params.duration
  * @param {Object|null} params.inventory  matched inventory record (unit, packSize, sellingPrice, concentration*)
@@ -265,19 +295,65 @@ export function calculatePrescriptionLine({
   duration,
   inventory,
 }) {
-  const doseCount = getDoseCount(frequency, duration);
-  const totalDosageUnits = Number(dosageAmount || 0) * doseCount;
+  const isSingle = isSingleUnitDispense(medicationType, inventory);
 
   if (!inventory) {
+    const doseCount = getDoseCount(frequency, duration);
+    const totalDosageUnits = Number(dosageAmount || 0) * doseCount;
+    const qty = isSingle ? 1 : (totalDosageUnits || 1);
     return {
-      prescribedQuantity: totalDosageUnits,
-      billedQuantity: null,
+      prescribedQuantity: qty,
+      billedQuantity: qty,
       unit: dosageUnit,
       unitPrice: 0,
       lineTotal: 0,
       convertible: true,
+      isSingleUnit: isSingle,
     };
   }
+
+  const packSize = Number(inventory.packSize) || 1;
+  const sellingPrice = Number(inventory.sellingPrice) || 0;
+  const rawUnit = inventory.unit || "";
+
+  // 1. Single-unit / container items (cream, tube, eye drop, ear drop, suspension, syrup, etc.)
+  // Dispensed 1 by 1. The price is charged ONCE (sellingPrice, the pack/container price).
+  if (isSingle) {
+    const isContainerUnit = ["tube", "bottle", "pack"].includes(String(dosageUnit).toLowerCase());
+    const containers = isContainerUnit && Number(dosageAmount) > 1
+      ? Math.round(Number(dosageAmount))
+      : 1;
+
+    let displayUnit = "unit";
+    const formLower = String(inventory.form || "").toLowerCase();
+    if (medicationType === "cream" || rawUnit === "tube" || formLower.includes("cream") || formLower.includes("ointment") || formLower.includes("gel")) {
+      displayUnit = "tube";
+    } else if (["syrup", "gutt"].includes(medicationType) || ["drop", "syrup", "suspension", "solution", "spray", "inhaler"].some(k => formLower.includes(k))) {
+      displayUnit = "bottle";
+    } else {
+      displayUnit = rawUnit || "unit";
+    }
+
+    const stockDeductionQty = rawUnit === "ml" && packSize > 1
+      ? containers * packSize
+      : containers;
+
+    return {
+      prescribedQuantity: containers,
+      billedQuantity: containers,
+      bottlesNeeded: containers,
+      unit: displayUnit,
+      unitPrice: sellingPrice,
+      lineTotal: containers * sellingPrice,
+      stockDeductionQty,
+      convertible: true,
+      isSingleUnit: true,
+    };
+  }
+
+  // 2. Multi-dose discrete units (tablets, capsules, injections)
+  const doseCount = getDoseCount(frequency, duration);
+  const totalDosageUnits = Number(dosageAmount || 0) * doseCount;
 
   if (!inventory.unit) {
     return {
@@ -287,6 +363,7 @@ export function calculatePrescriptionLine({
       unitPrice: 0,
       lineTotal: 0,
       convertible: false,
+      isSingleUnit: false,
     };
   }
 
@@ -299,45 +376,29 @@ export function calculatePrescriptionLine({
       unitPrice: 0,
       lineTotal: 0,
       convertible: false,
+      isSingleUnit: false,
     };
   }
 
-  function resolveInventoryUnit(medicationType, inventory) {
-  const raw = inventory?.unit;
+  function resolveInventoryUnit(medType, inv) {
+    const r = inv?.unit;
+    if (medType === "tablet" || medType === "cream") {
+      return r === "tube" ? "tube" : "tablet";
+    }
+    if (medType === "syrup" || medType === "gutt" || medType === "infusion") {
+      return "ml";
+    }
+    if (medType === "injection") {
+      if (r === "iu" || r === "ampoule") return r;
+      return "ml";
+    }
+    return r || "unit";
+  }
 
-  if (medicationType === 'tablet' || medicationType === 'cream') {
-    return raw === 'tube' ? 'tube' : 'tablet';
-  }
-  if (medicationType === 'syrup' || medicationType === 'gutt' || medicationType === 'infusion') {
-    return 'ml';
-  }
-  if (medicationType === 'injection') {
-    if (raw === 'iu' || raw === 'ampoule') return raw;
-    return 'ml';
-  }
-  return raw || 'unit';
-}
-
-  const packSize = Number(inventory.packSize) || 1;
-  const sellingPrice = Number(inventory.sellingPrice) || 0;
-  const unitPrice = packSize > 0 ? sellingPrice / packSize : 0;
   const invUnit = resolveInventoryUnit(medicationType, inventory);
+  const unitPrice = packSize > 0 ? sellingPrice / packSize : 0;
 
-   if (medicationType === 'syrup' || medicationType === 'gutt' || medicationType === 'infusion') {
-    const bottlesNeeded = Math.ceil(totalInInventoryUnit / packSize) || 0;
-    const billedQuantity = bottlesNeeded * packSize;
-    return {
-      prescribedQuantity: totalInInventoryUnit,
-      billedQuantity,
-      bottlesNeeded,
-      unit: invUnit,
-      unitPrice,
-      lineTotal: bottlesNeeded * sellingPrice,
-      convertible: true,
-    };
-  }
-
-  if (medicationType === 'injection' && invUnit !== 'ampoule') {
+  if (medicationType === "injection" && invUnit !== "ampoule") {
     // Shared vial (ml/iu) — bill the exact fractional amount, nothing wasted.
     return {
       prescribedQuantity: totalInInventoryUnit,
@@ -345,12 +406,13 @@ export function calculatePrescriptionLine({
       unit: invUnit,
       unitPrice,
       lineTotal: totalInInventoryUnit * unitPrice,
+      stockDeductionQty: totalInInventoryUnit,
       convertible: true,
+      isSingleUnit: false,
     };
   }
 
-  // tablet, or injection with invUnit === 'ampoule': discrete, non-returnable
-  // units — round up, price = pack price / units-per-pack.
+  // tablet, or injection with invUnit === 'ampoule': discrete, non-returnable units
   const quantity = Math.ceil(totalInInventoryUnit);
   return {
     prescribedQuantity: quantity,
@@ -358,6 +420,8 @@ export function calculatePrescriptionLine({
     unit: invUnit,
     unitPrice,
     lineTotal: quantity * unitPrice,
+    stockDeductionQty: quantity,
     convertible: true,
+    isSingleUnit: false,
   };
 }

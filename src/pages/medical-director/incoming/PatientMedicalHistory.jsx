@@ -36,7 +36,7 @@ import AddProcedureModal from "./modals/AddProcedureModal";
 import PatientDetailsCard from "@/components/common/PatientDetailsCard";
 import KolakLoader from "@/components/common/KolakLoader";
 import { useNotifications } from "@/contexts/NotificationContext";
-import { calculateDispenseQuantity } from "@/utils/prescriptionsCalculator";
+import { calculateDispenseQuantity, calculatePrescriptionLine } from "@/utils/prescriptionsCalculator";
 
 const PatientMedicalHistory = () => {
     const { patientId } = useParams();
@@ -848,17 +848,25 @@ const latestLab = useMemo(() => {
                  const inventoryMatch = isUnavailable ? null : getInventoryMatch(med);
                  const stock = inventoryMatch ? Number(inventoryMatch.stock) || 0 : 0;
                  const isOutOfStock = !isUnavailable && (!inventoryMatch || stock <= 0);
-        
-                 const quantity = calculateDispenseQuantity(med.frequency, med.duration) || 1;
                  const unbillable = isUnavailable || isOutOfStock;
-                 const unitPrice = unbillable ? 0 : (Number(inventoryMatch?.sellingPrice) || 0);
-        
+
+                 const line = !unbillable
+                   ? calculatePrescriptionLine({
+                       medicationType: med.medicationType,
+                       dosageAmount: med.dosageAmount,
+                       dosageUnit: med.dosageUnit,
+                       frequency: med.frequency,
+                       duration: med.duration,
+                       inventory: inventoryMatch,
+                     })
+                   : null;
+
                  return {
                    serviceChargeId: pres?.serviceChargeId || '',
                    code: 'PRESCRIPTION',
                    description: `${med.drugName} (${med.dosage})`,
-                   quantity,
-                   price: unitPrice,
+                   quantity: unbillable ? 1 : (line?.billedQuantity ?? 1),
+                   price: unbillable ? 0 : (line?.unitPrice ?? 0),
                    prescriptionId: pres?.id || pres?._id,
                    availability: unbillable ? (isUnavailable ? 'unavailable' : 'available') : 'available',
                    stock,

@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye } from 'react-icons/fa';
 import { Header } from '@/components/common';
 import LaboratorySidebar from '@/components/laboratory/dashboard/LaboratorySidebar';
+import SendPatientModal from '@/components/modals/SendPatientModal';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { getInvestigationByPatientId, updateInvestigation } from '@/services/api/investigationRequestAPI';
@@ -90,87 +92,89 @@ const LaboratoryPatientDetails = () => {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [updatingInvestigationId, setUpdatingInvestigationId] = useState(null);
+  const { refreshQueueCount } = useNotifications();
+
+  const loadDetails = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [patientResponse, investigationResponse, billingResponse, labResultsResponse] = await Promise.all([
+        getPatientById(patientId),
+        getInvestigationByPatientId(patientId).catch((error) => {
+          if (error?.response?.status !== 404) throw error;
+          return [];
+        }),
+        getAllBillings({ patientId }).catch(() => []),
+        getLabResults().catch((error) => {
+          console.warn('Could not check existing lab results:', error);
+          return null;
+        }),
+      ]);
+      const patientRecord = unwrapRecord(patientResponse);
+      const patientData = Array.isArray(patientRecord) ? patientRecord[0] : patientRecord;
+      const billingRecord = billingResponse?.data?.data ?? billingResponse?.data ?? billingResponse;
+      const billings = Array.isArray(billingRecord) ? billingRecord : [];
+      const labResults = labResultsResponse === null ? [] : unwrapList(labResultsResponse);
+      const resultsByInvestigationId = {};
+      labResults
+        .slice()
+        .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0))
+        .forEach((result) => {
+          const linkedInvestigationId = getId(result.investigationRequestId || result.investigationId || result.investigation);
+          if (linkedInvestigationId && !resultsByInvestigationId[linkedInvestigationId]) {
+            resultsByInvestigationId[linkedInvestigationId] = result;
+          }
+        });
+      let dependantData = null;
+
+      if (dependantId) {
+        const dependantResponse = await getDependantById(dependantId);
+        const dependantRecord = unwrapRecord(dependantResponse);
+        dependantData = dependantRecord?.dependant || dependantRecord;
+      }
+
+      const labRequests = unwrapList(investigationResponse)
+        .filter((request) => {
+          const type = String(request.type || '').toLowerCase();
+          const requestDependantId = getId(request.dependantId || request.dependant);
+          const requestPatientId = getId(request.patientId || request.patient);
+          const matchesSubject = dependantId
+            ? requestDependantId === dependantId
+            : requestPatientId === patientId && !requestDependantId;
+          return matchesSubject && (type === 'lab' || type === 'laboratory');
+        })
+        .map((request) => ({
+          ...request,
+          tests: (Array.isArray(request.tests) ? request.tests : []).map((test) => (
+            enrichInvestigationTestPayment(request, test, billings)
+          )),
+        }))
+        .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0));
+
+      setPatient(patientData || null);
+      setDependant(dependantData);
+      setInvestigations(labRequests);
+      setLabResultsByInvestigationId(resultsByInvestigationId);
+      setLabResultLookupFailed(labResultsResponse === null);
+    } catch (error) {
+      console.error('Failed to load laboratory patient details:', error);
+      toast.error('Failed to load patient details and lab requests.');
+    } finally {
+      setLoading(false);
+    }
+  }, [dependantId, patientId]);
 
   useEffect(() => {
-    let active = true;
-
-    const loadDetails = async () => {
-      setLoading(true);
-      try {
-        const [patientResponse, investigationResponse, billingResponse, labResultsResponse] = await Promise.all([
-          getPatientById(patientId),
-          getInvestigationByPatientId(patientId).catch((error) => {
-            if (error?.response?.status !== 404) throw error;
-            return [];
-          }),
-          getAllBillings({ patientId }).catch(() => []),
-          getLabResults().catch((error) => {
-            console.warn('Could not check existing lab results:', error);
-            return null;
-          }),
-        ]);
-        const patientRecord = unwrapRecord(patientResponse);
-        const patientData = Array.isArray(patientRecord) ? patientRecord[0] : patientRecord;
-        const billingRecord = billingResponse?.data?.data ?? billingResponse?.data ?? billingResponse;
-        const billings = Array.isArray(billingRecord) ? billingRecord : [];
-        const labResults = labResultsResponse === null ? [] : unwrapList(labResultsResponse);
-        const resultsByInvestigationId = {};
-        labResults
-          .slice()
-          .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0))
-          .forEach((result) => {
-            const linkedInvestigationId = getId(result.investigationRequestId || result.investigationId || result.investigation);
-            if (linkedInvestigationId && !resultsByInvestigationId[linkedInvestigationId]) {
-              resultsByInvestigationId[linkedInvestigationId] = result;
-            }
-          });
-        let dependantData = null;
-
-        if (dependantId) {
-          const dependantResponse = await getDependantById(dependantId);
-          const dependantRecord = unwrapRecord(dependantResponse);
-          dependantData = dependantRecord?.dependant || dependantRecord;
-        }
-
-        const labRequests = unwrapList(investigationResponse)
-          .filter((request) => {
-            const type = String(request.type || '').toLowerCase();
-            const requestDependantId = getId(request.dependantId || request.dependant);
-            const requestPatientId = getId(request.patientId || request.patient);
-            const matchesSubject = dependantId
-              ? requestDependantId === dependantId
-              : requestPatientId === patientId && !requestDependantId;
-            return matchesSubject && (type === 'lab' || type === 'laboratory');
-          })
-          .map((request) => ({
-            ...request,
-            tests: (Array.isArray(request.tests) ? request.tests : []).map((test) => (
-              enrichInvestigationTestPayment(request, test, billings)
-            )),
-          }))
-          .sort((first, second) => new Date(second.createdAt || 0) - new Date(first.createdAt || 0));
-
-        if (active) {
-          setPatient(patientData || null);
-          setDependant(dependantData);
-          setInvestigations(labRequests);
-          setLabResultsByInvestigationId(resultsByInvestigationId);
-          setLabResultLookupFailed(labResultsResponse === null);
-        }
-      } catch (error) {
-        console.error('Failed to load laboratory patient details:', error);
-        if (active) toast.error('Failed to load patient details and lab requests.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
     loadDetails();
-    return () => { active = false; };
-  }, [dependantId, patientId]);
+  }, [loadDetails]);
+
+  const handlePatientUpdated = () => {
+    refreshQueueCount?.();
+    loadDetails();
+  };
 
   const subject = dependant || patient;
   const fullName = subject?.fullName || `${subject?.firstName || ''} ${subject?.lastName || ''}`.trim() || 'Patient';
+
   const handleLabResultAction = (request) => {
     if (labResultLookupFailed) {
       toast.error('Could not check whether a lab result already exists.');
@@ -222,14 +226,38 @@ const LaboratoryPatientDetails = () => {
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header onToggleSidebar={() => setSidebarOpen(true)} />
         <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold">Patient Details</h1>
               <p className="text-sm text-base-content/60">{fullName}{dependantId ? ' · Dependant' : ''}</p>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/laboratory/patients')}>
-              <FaArrowLeft aria-hidden="true" /> Back to Patients
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {patient && (
+                <SendPatientModal
+                  patientId={patient?.id || patient?._id || patientId}
+                  patient={patient}
+                  currentStatus={subject?.status || patient?.status || ''}
+                  defaultDependantId={dependantId}
+                  defaultDependantLabel={dependant ? fullName : undefined}
+                  lockSubject
+                  onUpdated={handlePatientUpdated}
+                  allowedRoles={[
+                    'doctor',
+                    'medical-director',
+                    'nurse',
+                    'pharmacist',
+                    'cashier',
+                    'hmo',
+                    'sonographer',
+                  ]}
+                  containerClass="inline-flex"
+                  buttonClassName="btn btn-primary btn-sm flex items-center gap-2"
+                />
+              )}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/laboratory/patients')}>
+                <FaArrowLeft aria-hidden="true" /> Back to Patients
+              </button>
+            </div>
           </div>
 
           <section className="grid gap-4 rounded-lg border border-base-300 bg-base-100 p-4 sm:grid-cols-2 lg:grid-cols-4">

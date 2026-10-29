@@ -92,7 +92,7 @@ const ViewAllPatientVitals = () => {
           new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime()
         );
         const scoped = isViewingDependant
-        ? sorted.filter(v => v.dependantId === dependantId)
+        ? sorted.filter(v => String(v.dependantId) === String(dependantId))
         : sorted.filter(v => !v.dependantId);
       if (mounted) setVitals(scoped);
       } catch (err) {
@@ -105,7 +105,7 @@ const ViewAllPatientVitals = () => {
 
     if (patientId) loadVitals();
     return () => { mounted = false; };
-  }, [patientId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   // Format vital rows
   const vitalRows = useMemo(() => (

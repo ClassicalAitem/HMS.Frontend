@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { DataTable } from '@/components/common';
 import { BookAppointmentModal } from '@/components/modals';
@@ -15,6 +16,7 @@ import Sidebar from "@/components/nurse/dashboard/Sidebar";
 
 
 const Appointment = () => {
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState(formatNigeriaDate(new Date()));
@@ -46,8 +48,8 @@ const Appointment = () => {
         console.log('Raw appointment data:', list);
         const mapped = list.map((a, idx) => ({
           id: a?.id || a?._id || a?.appointmentId || idx + 1,
-          patientId: a?.patientId,
-          dependantId: a?.dependantId || null,
+          patientId: a?.patientId || a?.patient?.id || a?.patient?._id || a?.dependant?.patientId,
+          dependantId: a?.dependantId || a?.dependant?.id || a?.dependant?._id || null,
           dependant: a?.dependant || null,
           patient: a?.patient || null,
           patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
@@ -56,6 +58,7 @@ const Appointment = () => {
           appointmentType: a?.appointmentType || 'consultation',
           department: a?.department || 'doctor',
           status: a?.status || 'Active',
+          raw: a,
         }));
         console.log('Mapped appointments:', mapped);
         setAppointments(mapped);
@@ -126,7 +129,7 @@ const Appointment = () => {
   const resolvePatientName = (a) => {
     if (a?.dependantId) {
       const depName = `${a?.dependant?.firstName || ''} ${a?.dependant?.lastName || ''}`.trim();
-      return depName || 'Dependant';
+      return depName || a?.patientName || 'Dependant';
     }
     const pid = a?.patientId || a?.patient?._id || a?.patient?.id;
     const resolved = pid ? patientsById[pid] : undefined;
@@ -139,6 +142,42 @@ const Appointment = () => {
   })), [appointments, patientsById]);
 
   // Define table columns
+  const handleViewInjection = (appointment, e) => {
+    if (e) e.stopPropagation();
+    const isDep = Boolean(appointment?.dependantId);
+    const depId = appointment?.dependantId || null;
+    const effectivePatientId = appointment?.patientId || appointment?.raw?.patientId || appointment?.dependant?.patientId;
+
+    if (isDep && effectivePatientId) {
+      navigate(`/dashboard/nurse/patient/${effectivePatientId}`, {
+        state: {
+          from: 'appointment',
+          dependantId: depId,
+          dependantSnapshot: appointment?.dependant || null,
+          openInjectionModal: true,
+        },
+      });
+    } else if (isDep && depId) {
+      navigate(`/dashboard/nurse/dependant/${depId}`, {
+        state: {
+          from: 'appointment',
+          dependantId: depId,
+          dependantSnapshot: appointment?.dependant || null,
+          openInjectionModal: true,
+        },
+      });
+    } else if (effectivePatientId) {
+      navigate(`/dashboard/nurse/patient/${effectivePatientId}`, {
+        state: {
+          from: 'appointment',
+          openInjectionModal: true,
+        },
+      });
+    } else {
+      toast.error('Unable to find patient information for this appointment');
+    }
+  };
+
   const columns = useMemo(() => [
 
     {
@@ -173,7 +212,12 @@ const Appointment = () => {
       key: 'appointmentType',
       title: 'Appointment type',
       sortable: true,
-      className: 'text-base-content/70'
+      className: 'text-base-content/70',
+      render: (value) => (
+        <span className="capitalize">
+          {value ? String(value).replace(/_/g, ' ') : 'Consultation'}
+        </span>
+      ),
     },
     {
       key: 'department',
@@ -225,8 +269,8 @@ const Appointment = () => {
       const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
       const mapped = list.map((a, idx) => ({
         id: a?.id || a?._id || a?.appointmentId || idx + 1,
-        patientId: a?.patientId,
-        dependantId: a?.dependantId || null,
+        patientId: a?.patientId || a?.patient?.id || a?.patient?._id || a?.dependant?.patientId,
+        dependantId: a?.dependantId || a?.dependant?.id || a?.dependant?._id || null,
         dependant: a?.dependant || null,
         patient: a?.patient || null,
         patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
@@ -235,6 +279,7 @@ const Appointment = () => {
         appointmentType: a?.appointmentType || 'consultation',
         department: a?.department || 'doctor',
         status: a?.status || 'Active',
+        raw: a,
       }));
       setAppointments(mapped);
     } catch (err) {
