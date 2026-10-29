@@ -35,7 +35,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
   const [updating, setUpdating] = useState(false);
 
   const isSurgery = (appointment?.appointmentType || '').toLowerCase() === 'surgery';
-  const isInjectionFollowup = (appointment?.appointmentType || '').toLowerCase().replace(/[\s-]/g, '_') === 'injection_followup';
+  const isInjectionFollowup = (appointment?.appointmentType || '').toLowerCase().includes('injection');
 
   useEffect(() => {
     if (isOpen && appointmentId) {
@@ -60,7 +60,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
             const dr = await getDependantById(appointmentData.dependantId);
             const dependantData = dr?.data?.data?.dependant ?? dr?.data?.dependant ?? dr?.data ?? dr;
             if (dependantData) {
-              setPatient({ ...dependantData, isDependant: true });
+              setPatient({ ...dependantData, isDependant: true, parentPatientId: appointmentData.patientId || dependantData?.patientId });
             } else {
               setPatient(null);
             }
@@ -110,10 +110,37 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
 
   const handleViewInjection = () => {
     onClose();
-    if (patient?.isDependant) {
-      navigate(`/dashboard/nurse/dependant/${appointment.dependantId}`);
+    const isDep = Boolean(appointment?.dependantId || patient?.isDependant);
+    const depId = appointment?.dependantId || (patient?.isDependant ? (patient?.id || patient?._id) : null);
+    const effectivePatientId = appointment?.patientId || patient?.parentPatientId || patient?.patientId || (patient?.isDependant ? null : (patient?.id || patient?._id));
+
+    if (isDep && effectivePatientId) {
+      navigate(`/dashboard/nurse/patient/${effectivePatientId}`, {
+        state: {
+          from: 'appointment',
+          dependantId: depId,
+          dependantSnapshot: patient?.isDependant ? patient : null,
+          openInjectionModal: true,
+        },
+      });
+    } else if (isDep && depId) {
+      navigate(`/dashboard/nurse/dependant/${depId}`, {
+        state: {
+          from: 'appointment',
+          dependantId: depId,
+          dependantSnapshot: patient?.isDependant ? patient : null,
+          openInjectionModal: true,
+        },
+      });
+    } else if (effectivePatientId) {
+      navigate(`/dashboard/nurse/patient/${effectivePatientId}`, {
+        state: {
+          from: 'appointment',
+          openInjectionModal: true,
+        },
+      });
     } else {
-      navigate(`/dashboard/nurse/patient/${appointment.patientId}`);
+      toast.error('Unable to find patient information for this appointment');
     }
   };
 
