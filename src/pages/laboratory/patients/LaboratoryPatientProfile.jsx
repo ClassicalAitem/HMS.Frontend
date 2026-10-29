@@ -546,7 +546,7 @@ useEffect(() => {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/sonographer/incoming')}>
+                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/laboratory/patients')}>
                   <FaArrowLeft className="w-4 h-4 mr-1" /> Back
                 </button>
                 <SendPatientModal
@@ -555,11 +555,11 @@ useEffect(() => {
                   defaultDependantId={dependantId}
                   lockSubject
                   isOpdPatient={patientType === 'opd'}
-                  onUpdated={() => navigate('/dashboard/sonographer/incoming')}
+                  onUpdated={() => navigate('/dashboard/laboratory/patients')}
                   allowedRoles={
                     patientType === 'opd'
                       ? ['labtechnician']
-                      : ['doctor', 'medical-director', 'labtechnician']
+                      : ['doctor', 'medical-director', 'nurse', 'pharmacist', 'cashier', 'hmo', 'sonographer']
                   }
                 />
               </div>

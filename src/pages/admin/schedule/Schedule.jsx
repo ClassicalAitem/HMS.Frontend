@@ -1,164 +1,140 @@
-import React from "react";
-import { Header } from "@/components/common";
-import SideBar from "../../../components/admin/dashboard/Sidebar2";
-import { LuDownload } from "react-icons/lu";
+/* eslint-disable no-unused-vars */
+import React, { useState } from "react";
+import AdminLayout from "@/layouts/admin/AdminLayout";
+import { LuDownload, LuPlus } from "react-icons/lu";
 import { FiUser } from "react-icons/fi";
-import { LuPlus } from "react-icons/lu";
-import { FaCalendarAlt, FaChevronDown } from "react-icons/fa";
-import doctorIcon from "../../../assets/images/doctorIcon.png";
+import { FaCalendarAlt, FaChevronDown, FaClock } from "react-icons/fa";
 import { staffList } from "../../../../data";
 
 const Schedule = () => {
-  const staffMAnagement = [
+  const [selectedStaff, setSelectedStaff] = useState("all");
+
+  const staffActions = [
     {
       id: 1,
-      icon: <LuDownload size={24} />,
+      icon: <LuDownload className="w-5 h-5" />,
       action: "Export Schedule",
     },
     {
       id: 2,
-      icon: <FiUser size={24} />,
+      icon: <FiUser className="w-5 h-5" />,
       action: "Manage Staff",
     },
     {
       id: 3,
-      icon: <LuPlus size={24} />,
+      icon: <LuPlus className="w-5 h-5" />,
       action: "Add New Shift",
     },
   ];
+
   return (
-    <div className="flex h-screen bg-base-200">
-      <SideBar />
-
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
-
-        <div className="overflow-y-auto flex-1">
-          <section className="p-8">
-            <div className="w-[798px]">
-              <h1 className="text-[32px]">Staff Schedules</h1>
-              <p className="text-[12px]">
-                Manage and view all staff shifts and work schedules across
-                departments. Add new shifts, modify existing ones, and assign
-                personnel.
-              </p>
-
-              <div className="flex gap-8 mt-3">
-                {staffMAnagement.map((schedule, index) => {
-                  const lastButton = index === staffMAnagement.length - 1; // check last button
-                  return (
-                    <button
-                      key={index}
-                      className={`w-[199px] h-[56px] border border-primary flex justify-center items-center gap-3 text-[16px] font-[400] rounded-[4px] ${
-                        lastButton ? "bg-primary text-primary-content" : "bg-base-100"
-                      }`}
-                    >
-                      {schedule.icon} {schedule.action}
-                    </button>
-                  );
-                })}
-              </div>
+    <AdminLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-primary/10 text-primary">
+                Staff Rostering
+              </span>
+              <span className="text-xs text-base-content/60">Shift Schedules</span>
             </div>
+            <h1 className="text-2xl font-bold text-base-content mt-1">
+              Staff Schedules & Shift Rosters
+            </h1>
+            <p className="text-sm text-base-content/70 mt-0.5">
+              Manage and view staff shifts, departmental rotations, and duty allocations.
+            </p>
+          </div>
 
-            <div className="mt-5">
-              <div className="w-[525px]">
-                <h1 className="text-primary text-[32px]">Add New Shift</h1>
-                <p className="text-[12px]">
-                  Assign roles to your staffs, they would get notification to
-                  wherever you assign them to.
-                </p>
-              </div>
-
-              {/* i wanted to use the select dropdown input tag but its not coming out very well */}
-
-              {/* <div className="flex gap-4 mt-4">
-                <div className="flex bg-[#F1F2F1] gap-4 items-center justify-center">
-                  <FaUser className="" />
-                  <select className=" w-[105px] h-[32px]">
-                    <option>All Staff</option>
-                  </select>
-                </div>
-              </div> */}
-
-              <div className="flex gap-4 mt-5">
-                {/* All Staff Filter */}
-                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70 ">
-                  <FiUser className="text-base-content/70" />
-                  <p>All Staff</p>
-                  <FaChevronDown className="ml-auto text-base-content/70" />
+          <div className="flex items-center gap-2.5">
+            {staffActions.map((act, index) => {
+              const isLast = index === staffActions.length - 1;
+              return (
+                <button
+                  key={index}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-colors ${
+                    isLast
+                      ? "bg-primary text-primary-content shadow-sm hover:bg-primary/90"
+                      : "bg-base-200 text-base-content/80 hover:bg-base-300"
+                  }`}
+                >
+                  {act.icon}
+                  <span>{act.action}</span>
                 </button>
+              );
+            })}
+          </div>
+        </div>
 
-                {/* Doctors Filter */}
-                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70">
-                  <img src={doctorIcon} alt="" />
-
-                  <p>Doctors</p>
-                  <FaChevronDown className="ml-auto text-gray-500" />
-                </button>
-
-                {/* Date Filter */}
-                <button className="flex items-center gap-2 bg-base-200 border border-base-300 px-3 py-2 rounded-md text-sm text-base-content/70 ">
-                  <FaCalendarAlt className="text-base-content/70" />
-                  <p>11th Sep 2025</p>
-                </button>
-              </div>
-            </div>
-
-            {/* staff list data table... data coming from data.js */}
-
+        {/* Schedule Table Container */}
+        <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden p-6 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
-              <div className="overflow-x-auto rounded-lg shadow mt-6">
-                <table className="w-full bg-base-100 text-[16px]">
-                  {/* Table header */}
-                  <thead className="bg-base-200 text-left text-base-content/70">
-                    <tr>
-                      <th className="px-4 py-2">S/n</th>
-                      <th className="px-4 py-2">Staff Names</th>
-                      <th className="px-4 py-2">Role</th>
-                      <th className="px-4 py-2">Assign Time</th>
-                      <th className="px-4 py-2">Day</th>
-                    </tr>
-                  </thead>
-
-                  {/* Table */}
-                  <tbody>
-                    {staffList.map((staff, index) => (
-                      <tr key={staff.id}>
-                        <td className="px-5 py-2">
-                          {String(index + 1).padStart(2, "0")}
-                        </td>
-                        <td className="px-4 py-4">{staff.name}</td>
-                        <td className="px-4 py-4">{staff.role}</td>
-
-                        {/* <td className="px-4 py-2">{staff.time}</td> */}
-                        <select className="border border-base-300 rounded-[6px] py-1 w-[271px] mt-3">
-                          <td>
-                            <option key={index} value="">
-                              {staff.time}
-                            </option>
-                          </td>
-                        </select>
-
-                        <td className="px-4 py-2">{staff.day}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-center gap-4 mt-6">
-                <button className="bg-base-100 text-base-content/70 w-[203px] px-6 py-2 rounded-full shadow ">
-                  Review Shift
-                </button>
-                <button className="bg-primary text-primary-content  w-[203px] px-6 py-2 rounded-full shadow ">
-                  Add Shift
-                </button>
-              </div>
+              <h3 className="text-base font-bold text-base-content">
+                Weekly Duty Roster
+              </h3>
+              <p className="text-xs text-base-content/60">
+                Staff shifts scheduled across clinical and administrative units
+              </p>
             </div>
-          </section>
+
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-2 bg-base-200 px-3 py-1.5 rounded-lg text-xs font-semibold text-base-content/70 hover:bg-base-300">
+                <FiUser className="w-3.5 h-3.5" />
+                <span>All Personnel</span>
+              </button>
+              <button className="flex items-center gap-2 bg-base-200 px-3 py-1.5 rounded-lg text-xs font-semibold text-base-content/70 hover:bg-base-300">
+                <FaCalendarAlt className="w-3.5 h-3.5" />
+                <span>Active Week</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="table table-zebra w-full text-left">
+              <thead className="bg-base-200/60 text-xs font-bold text-base-content uppercase border-b border-base-200">
+                <tr>
+                  <th className="py-3 px-4">S/N</th>
+                  <th className="px-4">Staff Name</th>
+                  <th className="px-4">Designation / Role</th>
+                  <th className="px-4">Assigned Shift Time</th>
+                  <th className="px-4">Scheduled Duty Days</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-base-200 text-sm">
+                {staffList.map((staff, index) => (
+                  <tr key={staff.id || index} className="hover:bg-base-200/40">
+                    <td className="px-4 py-3 font-semibold text-base-content/60">
+                      {String(index + 1).padStart(2, "0")}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-base-content">
+                      {staff.name}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-base-200 text-base-content/80">
+                        {staff.role}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <FaClock className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-xs font-medium text-base-content/90">
+                          {staff.time || "08:00 AM - 04:00 PM"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-xs text-base-content/80">
+                      {staff.day || "Monday - Friday"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

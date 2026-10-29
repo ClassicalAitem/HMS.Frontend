@@ -7,6 +7,8 @@ import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
+import { getInventories } from '@/services/api/inventoryAPI';
+import { calculatePrescriptionLine, isSingleUnitDispense } from '@/utils/prescriptionsCalculator';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { updateSubjectStatus } from '@/utils/statusHelper';
 import { SERVICE_CHARGE_CATEGORY } from '@/constants/cardTypes';
@@ -230,18 +232,22 @@ const CreateBillModal = ({
       let isSubscribed = true;
       const loadUnbilledItems = async () => {
         try {
-          const [invRes, presRes, admRes, apptRes, scRes] = await Promise.allSettled([
+          const [invRes, presRes, admRes, apptRes, scRes, pharmRes] = await Promise.allSettled([
             getInvestigationByPatientId(patientId),
             getPrescriptionByPatientId(patientId),
             getAdmissionByPatientId(patientId),
             getAllAppointments(),
             getServiceCharges(),
+            getInventories(),
           ]);
 
           if (!isSubscribed) return;
 
           const rawSc = scRes.status === 'fulfilled' ? (scRes.value?.data ?? scRes.value ?? []) : [];
+          const rawInvData = arguments.length > 5 && arguments[5] ? [] : (arguments ? [] : []);
           const scList = Array.isArray(rawSc) ? rawSc : (rawSc?.data ?? []);
+          const rawPharm = pharmRes?.status === 'fulfilled' ? (pharmRes.value?.data ?? pharmRes.value ?? []) : [];
+          const pharmacyInventories = Array.isArray(rawPharm) ? rawPharm : (rawPharm?.data ?? []);
 
           const findCharge = (name, id) => {
             if (id) {
@@ -331,10 +337,39 @@ const CreateBillModal = ({
               return true;
             });
 
+            const rawPharmacyInv = (arguments && false) ? [] : []; // handled below
             filteredPres.forEach(p => {
               const meds = Array.isArray(p.medications) ? p.medications : [];
               meds.forEach(m => {
                 const isUnavailable = m.availability === 'unavailable';
+                let qty = Number(m.billedQuantity || m.prescribedQuantity || 1);
+                let unitPrice = Number(m.unitPrice || 0);
+
+                const pharmacyInvList = Array.isArray(pharmacyInventories) ? pharmacyInventories : [];
+                const invMatch = pharmacyInvList.find(i => (m.inventoryId && (i._id === m.inventoryId || i.id === m.inventoryId)) || (i.name && m.drugName && String(i.name).toLowerCase() === String(m.drugName).toLowerCase()));
+
+                if (invMatch) {
+                  const line = calculatePrescriptionLine({
+                    medicationType: m.medicationType,
+                    dosageAmount: m.dosageAmount,
+                    dosageUnit: m.dosageUnit,
+                    frequency: m.frequency,
+                    duration: m.duration,
+                    inventory: invMatch,
+                  });
+                  if (line && line.convertible !== false) {
+                    qty = Number(line.billedQuantity || 1);
+                    unitPrice = Number(line.unitPrice || 0);
+                  } else if (!unitPrice) {
+                    const packSize = Number(invMatch.packSize) || 1;
+                    const isSingle = isSingleUnitDispense(m.medicationType, invMatch);
+                    unitPrice = isSingle ? Number(invMatch.sellingPrice || 0) : (packSize > 0 ? Number(invMatch.sellingPrice || 0) / packSize : Number(invMatch.sellingPrice || 0));
+                    if (isSingle) qty = 1;
+                  }
+                } else if (!unitPrice && m.price) {
+                  unitPrice = Number(m.price || 0);
+                }
+
                 autoItems.push({
                   serviceChargeId: p.serviceChargeId || m.serviceChargeId || null,
                   investigationId: null,
@@ -344,8 +379,8 @@ const CreateBillModal = ({
                   procedureId: null,
                   code: 'PRESCRIPTION',
                   description: `${m.drugName || 'Medication'} (${m.dosage || ''})`,
-                  quantity: Number(m.billedQuantity || m.prescribedQuantity || 1),
-                  price: isUnavailable ? 0 : Number(m.unitPrice || m.price || 0),
+                  quantity: qty,
+                  price: isUnavailable ? 0 : unitPrice,
                   isAuto: true,
                   isUnavailable,
                 });

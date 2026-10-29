@@ -1,6 +1,5 @@
 import React from "react";
-import { Header } from "@/components/common";
-import SideBar from "../../../components/admin/dashboard/Sidebar2";
+import AdminLayout from "@/layouts/admin/AdminLayout";
 import { useState } from "react";
 import { PiUsersThree } from "react-icons/pi";
 import {  FaLock } from "react-icons/fa";
@@ -80,14 +79,9 @@ const Users = () => {
   };
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SideBar />
-
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
-
-        <div className="overflow-y-auto flex-1">
-          <section className="p-7 ">
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
             {/* Page Heading */}
             <div className="flex gap-10">
               <div className={`w-[343px]${
@@ -456,10 +450,9 @@ const Users = () => {
             {activeTab === "Staff List" && (
               <StaffList refreshKey={refreshKey} />
             )}
-          </section>
-        </div>
+          </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

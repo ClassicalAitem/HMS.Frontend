@@ -24,7 +24,7 @@ import { TbHeartbeat } from "react-icons/tb";
 import { LuActivity, LuDroplet, LuThermometer } from "react-icons/lu";
 import { GiBodyHeight, GiWeightLiftingUp } from "react-icons/gi";
 import InjectionModals from "../incoming/modals/InjectionModals";
-import { getAllDependantsForPatient, updateDependantStatus } from "@/services/api/dependantAPI";
+import { getAllDependantsForPatient, updateDependantStatus, getDependantById } from "@/services/api/dependantAPI";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import DoctorBillModal from "@/components/modals/DoctorBillModal";
 import { fetchPatientById } from "@/store/slices/patientsSlice";
@@ -45,13 +45,17 @@ import ConsultationDetailModal from "@/components/modals/ConsultationDetailModal
 
 
 const PatientVitalsDetails = () => {
-  const { patientId } = useParams();
+  const { patientId: routePatientId, dependantId: routeDependantId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const dispatch = useDispatch()
-  const dependantId = location?.state?.dependantId || null;
+  const dispatch = useDispatch();
+  const dependantId = routeDependantId || location?.state?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
+  const [resolvedPatientId, setResolvedPatientId] = useState(
+    routePatientId || location?.state?.patientId || location?.state?.parentPatientId || dependantSnapshot?.patientId || null
+  );
+  const patientId = resolvedPatientId || routePatientId;
   const [subject, setSubject] = useState(null);
   const [subjectLoading, setSubjectLoading] = useState(true);
   const fromIncoming = location?.state?.from === 'incoming';
@@ -112,24 +116,68 @@ const PatientVitalsDetails = () => {
       setPatient((prev) => prev || snap);
     }
   }, [location?.state, patientId]);
-  
 
+  // Sync route params or state into resolvedPatientId
   useEffect(() => {
-  let mounted = true;
-  const loadSubject = async () => {
-    setSubjectLoading(true);
-    if (isViewingDependant) {
-      setSubject(dependantSnapshot || null);
-    } else {
-      setSubject(patient);
+    if (routePatientId) {
+      setResolvedPatientId(routePatientId);
+    } else if (location?.state?.patientId) {
+      setResolvedPatientId(location.state.patientId);
+    } else if (location?.state?.parentPatientId) {
+      setResolvedPatientId(location.state.parentPatientId);
+    } else if (dependantSnapshot?.patientId) {
+      setResolvedPatientId(dependantSnapshot.patientId);
     }
-    setSubjectLoading(false);
-  };
-  loadSubject();
-  return () => { mounted = false; };
-}, [isViewingDependant, dependantSnapshot, patient]);
+  }, [routePatientId, location?.state, dependantSnapshot]);
+
+  // Load subject (dependant or patient) and resolve parent patient if missing
+  useEffect(() => {
+    let mounted = true;
+    const loadSubjectData = async () => {
+      setSubjectLoading(true);
+      if (isViewingDependant) {
+        if (dependantSnapshot) {
+          if (mounted) setSubject(dependantSnapshot);
+          if (mounted && !resolvedPatientId && dependantSnapshot.patientId) {
+            setResolvedPatientId(dependantSnapshot.patientId);
+          }
+          if (mounted) setSubjectLoading(false);
+        } else if (dependantId) {
+          try {
+            const dr = await getDependantById(dependantId);
+            const dep = dr?.data?.data?.dependant ?? dr?.data?.dependant ?? dr?.data ?? dr;
+            if (mounted && dep) {
+              setSubject(dep);
+              if (!resolvedPatientId && dep.patientId) {
+                setResolvedPatientId(dep.patientId);
+              }
+            }
+          } catch (depErr) {
+            console.error("Error loading dependant details:", depErr);
+          } finally {
+            if (mounted) setSubjectLoading(false);
+          }
+        } else {
+          if (mounted) setSubjectLoading(false);
+        }
+      } else {
+        if (mounted) setSubject(patient);
+        if (mounted) setSubjectLoading(false);
+      }
+    };
+    loadSubjectData();
+    return () => { mounted = false; };
+  }, [isViewingDependant, dependantSnapshot, dependantId, patient, resolvedPatientId]);
+
+  // Open injection modal automatically if routed with openInjectionModal or action
+  useEffect(() => {
+    if (location?.state?.openInjectionModal || location?.state?.action === 'injection') {
+      setIsRecordInjection(true);
+    }
+  }, [location?.state]);
 
   useEffect(() => {
+    if (!patientId) return;
     let mounted = true;
     const load = async () => {
       try {
@@ -139,23 +187,21 @@ const PatientVitalsDetails = () => {
         const res = await getVitalsByPatient(patientId);
         const list = normalizeVitalsResponse(res);
         const scoped = isViewingDependant
-          ? list.filter(v => v.dependantId === dependantId)
+          ? list.filter(v => String(v.dependantId) === String(dependantId))
           : list.filter(v => !v.dependantId);
         if (mounted) setVitals(scoped);
 
         // Try to infer patient info from vitals; fallback to patient API
-        const fromVitalsPatient = list?.[0]?.patient;
-        if (fromVitalsPatient) {
-          if (mounted) setPatient(fromVitalsPatient);
-        } else {
+        let primaryPatient = list?.[0]?.patient;
+        if (!primaryPatient) {
           try {
             const pRes = await getPatientById(patientId);
-            const pData = pRes?.data ?? pRes;
-            if (mounted) setPatient(pData);
+            primaryPatient = pRes?.data ?? pRes;
           } catch (e) {
             console.warn("PatientVitalsDetails: fallback patient fetch failed", e);
           }
         }
+        if (mounted && primaryPatient) setPatient(primaryPatient);
       } catch (e) {
         console.error("PatientVitalsDetails: fetch error", e);
       } finally {
@@ -168,6 +214,7 @@ const PatientVitalsDetails = () => {
 
   // Get All Dependant
 useEffect(() => {
+  if (!patientId) return;
   let mounted = true;
 
   const fetchDependant = async () => {
@@ -208,7 +255,7 @@ const summarySubject = useMemo(() => {
 
   const dep = subject || dependantSnapshot || {};
   const ownHmos = Array.isArray(guardian.hmos)
-    ? guardian.hmos.filter(h => h.dependantId === dep.id)
+    ? guardian.hmos.filter(h => String(h.dependantId) === String(dep.id || dep._id || dependantId))
     : [];
   return {
     phone: guardian.phone,
@@ -217,7 +264,7 @@ const summarySubject = useMemo(() => {
     cardType: guardian.cardType,
     familyName: guardian.familyName,
     companyName: guardian.companyName,
-    id: dep.id || dependantId,
+    id: dep.id || dep._id || dependantId,
     firstName: dep.firstName,
     middleName: dep.middleName,
     lastName: dep.lastName,
@@ -234,6 +281,7 @@ const summarySubject = useMemo(() => {
 }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
 // Fetch antenatal records (nurse view)
 useEffect(() => {
+  if (!patientId) return;
   let mounted = true;
   const fetchAntenatal = async () => {
     setAntenatalLoading(true);
@@ -247,7 +295,7 @@ useEffect(() => {
             ? records.anteNatalRecords.map((r, i) => ({ ...r, __originalIndex: i }))
             : []);
       const scoped = isViewingDependant
-        ? unwrapped.filter(r => r?.dependantId === dependantId)
+        ? unwrapped.filter(r => String(r?.dependantId) === String(dependantId))
         : unwrapped.filter(r => !r?.dependantId);
       if (mounted) setAntenatalRecords(scoped);
     } catch (error) {
@@ -258,13 +306,14 @@ useEffect(() => {
     }
   };
 
-  if (patientId) fetchAntenatal();
+  fetchAntenatal();
 
   return () => { mounted = false; };
 }, [patientId, isViewingDependant, dependantId]);
 
 // Fetch admissions (nurse read-only view)
 useEffect(() => {
+  if (!patientId) return;
   let mounted = true;
   const fetchAdmissions = async () => {
     setAdmissionsLoading(true);
@@ -302,7 +351,7 @@ useEffect(() => {
         })),
       }));
       const scoped = isViewingDependant
-        ? withCovered.filter(a => a?.dependantId === dependantId)
+        ? withCovered.filter(a => String(a?.dependantId) === String(dependantId))
         : withCovered.filter(a => !a?.dependantId);
       if (mounted) setAdmissions(scoped);
     } catch (error) {
@@ -313,13 +362,14 @@ useEffect(() => {
     }
   };
 
-  if (patientId) fetchAdmissions();
+  fetchAdmissions();
 
   return () => { mounted = false; };
 }, [patientId, isViewingDependant, dependantId]);
 
 // Fetch doctor's consultation data
 useEffect(() => {
+  if (!patientId) return;
   let mounted = true;
 
   const fetchConsultationData = async () => {
@@ -378,7 +428,7 @@ useEffect(() => {
           : [];
       }
 
-      presList = isViewingDependant ? presList.filter(p => p.dependantId === dependantId) : presList.filter(p => !p.dependantId);
+      presList = isViewingDependant ? presList.filter(p => String(p.dependantId) === String(dependantId)) : presList.filter(p => !p.dependantId);
       if (mounted) {
         setPrescriptions(presList);
         setPrescriptionError(presList.length === 0);
@@ -612,12 +662,16 @@ useEffect(() => {
             <button
               className="btn btn-outline btn-sm"
               onClick={() => {
+                if (location?.state?.from === 'appointment') {
+                  navigate('/dashboard/nurse/appointments');
+                  return;
+                }
                 const base = role === 'doctor' || role === 'medical-director' ? '/dashboard/doctor' : '/dashboard/nurse';
                 const backPath = fromIncoming ? `${base}/incoming` : role === 'doctor' || role === 'medical-director' ? `${base}/patientVitals` : `${base}/patient`;
                 navigate(backPath);
               }}
             >
-              {fromIncoming ? 'Back to Incoming' : 'Back to Patients'}
+              {location?.state?.from === 'appointment' ? 'Back to Appointments' : fromIncoming ? 'Back to Incoming' : 'Back to Patients'}
             </button>
           </div>
 
