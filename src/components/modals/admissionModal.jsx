@@ -6,7 +6,7 @@ import { FaTimes, FaPlus, FaHospital, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
-import { createAdmission, updateAdmission, getAdmissions } from '@/services/api/admissionApi';
+import { createAdmission, updateAdmission } from '@/services/api/admissionApi';
 import { getAllWards } from '@/services/api/wardAPI';
 
 const itemSchema = yup.object({
@@ -14,7 +14,7 @@ const itemSchema = yup.object({
 });
 
 const admissionSchema = yup.object({
-  wardId: yup.string().required('Ward is required'),
+  wardId: yup.string().optional(),
   reason: yup.string().optional(),
   admissions: yup.array().of(itemSchema).min(1, 'At least one item is required'),
 });
@@ -37,9 +37,7 @@ const AdmissionModal = ({
   const [itemDropdownIndex, setItemDropdownIndex] = useState(null);
 
   const [wards, setWards] = useState([]);
-  const [wardOccupiedCount, setWardOccupiedCount] = useState({}); // wardId -> count
   const [loadingWards, setLoadingWards] = useState(false);
-  const [occupancyDataIsClean, setOccupancyDataIsClean] = useState(true);
 
   const itemWrapperRef = useRef(null);
 
@@ -93,53 +91,33 @@ const AdmissionModal = ({
     if (isOpen) loadCharges();
   }, [isOpen]);
 
-  // Load wards + compute occupied bed counts from active admissions
+  // Load wards
   useEffect(() => {
     if (!isOpen) return;
     let mounted = true;
 
-    const loadWardsAndOccupancy = async () => {
+    const loadWards = async () => {
       try {
         setLoadingWards(true);
-
-        const [wardsRes, admissionsRes] = await Promise.allSettled([
-          getAllWards(),
-          getAdmissions(),
-        ]);
-
-        const wardsList = wardsRes.status === 'fulfilled'
-          ? (Array.isArray(wardsRes.value?.data) ? wardsRes.value.data : (wardsRes.value ?? []))
-          : [];
-
-        const allAdmissions = admissionsRes.status === 'fulfilled'
-          ? (Array.isArray(admissionsRes.value?.data) ? admissionsRes.value.data : (admissionsRes.value ?? []))
-          : [];
-
-        // Count currently-admitted (confirmed, not discharged) patients per ward
-        const occupied = {};
-        allAdmissions.forEach((a) => {
-          if (a.status === 'discharged' || !a.confirmedAt || !a.wardId) return;
-          occupied[a.wardId] = (occupied[a.wardId] || 0) + 1;
-        });
-
-        // Flag if occupancy isn't stored as a clean number for any ward
-        const hasDirtyOccupancy = wardsList.some((w) => w.occupancy !== undefined && Number.isNaN(Number(w.occupancy)));
-
+        const res = await getAllWards();
+        const raw = res?.data ?? res ?? [];
+        const list = Array.isArray(raw) ? raw : (raw?.wards ?? []);
+        const active = list.filter((w) => !w.status || w.status === 'active');
         if (mounted) {
-          setWards(wardsList);
-          setWardOccupiedCount(occupied);
-          setOccupancyDataIsClean(!hasDirtyOccupancy);
+          setWards(active.length ? active : list);
         }
       } catch (err) {
-        console.error('Failed to load wards/occupancy', err);
-        toast.error('Failed to load ward availability');
+        console.error('Failed to load wards', err);
+        toast.error('Failed to load wards');
       } finally {
         if (mounted) setLoadingWards(false);
       }
     };
 
-    loadWardsAndOccupancy();
-    return () => { mounted = false; };
+    loadWards();
+    return () => {
+      mounted = false;
+    };
   }, [isOpen]);
 
   // Prefill when editing
@@ -182,13 +160,6 @@ const AdmissionModal = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const getWardAvailability = (ward) => {
-    const capacity = Number(ward.occupancy);
-    const occupied = wardOccupiedCount[ward.id] || 0;
-    if (Number.isNaN(capacity)) return { capacity: null, occupied, available: null };
-    return { capacity, occupied, available: Math.max(capacity - occupied, 0) };
-  };
-
   const onSubmit = async (data) => {
     setIsLoading(true);
 
@@ -198,7 +169,7 @@ const AdmissionModal = ({
       const payload = {
         patientId,
         dependantId,
-        wardId: data.wardId,
+        wardId: data.wardId || undefined,
         ward: selectedWard?.name || '',
         reason: data.reason,
         admissions: data.admissions,
@@ -237,7 +208,7 @@ const AdmissionModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('✕') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
       <div className="w-full max-w-2xl mx-4 bg-base-100 rounded-xl shadow-2xl border border-base-200 max-h-[90vh] flex flex-col">
         {/* HEADER */}
         <div className="p-6 border-b border-base-200 flex justify-between items-center">
@@ -268,32 +239,20 @@ const AdmissionModal = ({
                 disabled={loadingWards}
                 {...register('wardId')}
               >
-                <option value="" disabled>
-                  {loadingWards ? 'Loading wards...' : 'Select a ward'}
+                <option value="">
+                  {loadingWards ? 'Loading wards...' : 'Select a ward (Optional)'}
                 </option>
-                {wards.map((ward) => {
-                  const { capacity, occupied, available } = getWardAvailability(ward);
-                  const isFull = available !== null && available <= 0;
-                  const label = capacity !== null
-                    ? `${ward.name} — ${available}/${capacity} beds available${isFull ? ' (Full)' : ''}`
-                    : `${ward.name} — occupancy unknown (${occupied} currently admitted)`;
-                  return (
-                    <option key={ward.id} value={ward.id} disabled={isFull}>
-                      {label}
-                    </option>
-                  );
-                })}
+                {wards.map((ward) => (
+                  <option key={ward.id} value={ward.id}>
+                    {ward.name}
+                  </option>
+                ))}
               </select>
               {errors.wardId && (
                 <span className="text-error text-sm">{errors.wardId.message}</span>
               )}
               {!loadingWards && wards.length === 0 && (
-                <span className="text-error text-xs mt-1">No wards found. Create one first.</span>
-              )}
-              {!occupancyDataIsClean && (
-                <span className="text-warning text-xs mt-1">
-                  Some wards have a non-numeric capacity value — availability for those may be inaccurate until ward capacity is fixed.
-                </span>
+                <span className="text-base-content/50 text-xs mt-1">No wards found.</span>
               )}
             </div>
 
