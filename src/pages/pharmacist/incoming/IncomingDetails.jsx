@@ -348,7 +348,10 @@ const getDispenseInfo = (med) => {
             .includes(String(drugName || '').toLowerCase())
       )
       if (match) {
-        const isPaid = match.paymentStatus === 'paid' || match.hmoStatus === 'approved' || match.isCleared || bill.isCleared
+        const isHmoApproved = match.hmoStatus === 'approved'
+        const isPaidCash = match.paymentStatus === 'paid'
+        const isCleared = match.hmoStatus !== 'rejected' && (match.isCleared || bill.isCleared)
+        const isPaid = isHmoApproved || isPaidCash || isCleared
         return { hmoStatus: match.hmoStatus || 'pending', isPaid }
       }
     }
@@ -497,6 +500,7 @@ const getDispenseInfo = (med) => {
         return {
           key: `${p._id}-${m.drugName}`,
           prescriptionId: p._id,
+          medicationId: m._id || m.id,
           inventoryId: m.inventoryId || dispenseInfo.inv?._id || dispenseInfo.inv?.id,
           drugName: m.drugName,
           dosage: m.dosage,
@@ -587,11 +591,15 @@ const getDispenseInfo = (med) => {
     })
 
     const dispensableRows = (finalRows || []).filter(
-      (row) => row?.availabilityInfo?.inStock && Number(row.suggestedQty) > 0
+      (row) =>
+        row?.availabilityInfo?.inStock &&
+        Number(row.suggestedQty) > 0 &&
+        row.hmoStatus !== 'rejected' &&
+        (row.isPaid || row.hmoStatus === 'approved')
     )
 
     if (dispensableRows.length === 0) {
-      toast.error('No items available to dispense. Please check stock levels.')
+      toast.error('No approved or paid items available to dispense.')
       setDispenseSubmitting(false)
       return
     }
@@ -599,6 +607,7 @@ const getDispenseInfo = (med) => {
     const byPrescription = dispensableRows.reduce((acc, row) => {
       if (!acc[row.prescriptionId]) acc[row.prescriptionId] = []
       acc[row.prescriptionId].push({
+        medicationId: row.medicationId,
         inventoryId: row.inventoryId,
         drugName: row.drugName,
         quantity: Number(row.suggestedQty) || 0,
@@ -608,7 +617,15 @@ const getDispenseInfo = (med) => {
 
     const isPrescriptionFullyFulfilled = (prescription) => {
       const meds = prescription.medications || []
-      return meds.every((m) =>
+      // Exclude HMO-rejected items as they are not eligible for dispensing
+      const activeMeds = meds.filter((m) => {
+        const billingStatus = getBillingStatusForMed(prescription._id, m.drugName)
+        return billingStatus.hmoStatus !== 'rejected'
+      })
+
+      if (activeMeds.length === 0) return true
+
+      return activeMeds.every((m) =>
         dispensableRows.some(
           (r) =>
             r.prescriptionId === prescription._id &&

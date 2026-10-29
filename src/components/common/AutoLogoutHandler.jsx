@@ -5,10 +5,10 @@ import { logoutUser } from '@/store/slices/authSlice';
 import toast from 'react-hot-toast';
 import { FaClock, FaSignOutAlt, FaShieldAlt } from 'react-icons/fa';
 
-// 1 hour of inactivity timeout; warning shows up 10 minutes before the 1 hour is complete
-const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 3,600,000 ms (1 hour)
-const WARNING_DURATION_MS = 10 * 60 * 1000; // 10 minutes warning countdown before logout (600,000 ms)
-const WARNING_THRESHOLD_MS = INACTIVITY_TIMEOUT_MS - WARNING_DURATION_MS; // 50 minutes (3,000,000 ms)
+// 15 minutes of inactivity timeout; warning shows up 2 minutes before the 15 minutes is complete
+const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 900,000 ms (15 minutes)
+const WARNING_DURATION_MS = 2 * 60 * 1000; // 2 minutes warning countdown before logout (120,000 ms)
+const WARNING_THRESHOLD_MS = INACTIVITY_TIMEOUT_MS - WARNING_DURATION_MS; // 13 minutes (780,000 ms)
 const THROTTLE_MS = 1000; // Throttle event listeners to run at most once per second
 const CHECK_INTERVAL_MS = 1000; // Interval for checking inactivity elapsed time
 
@@ -77,7 +77,7 @@ const AutoLogoutHandler = () => {
 
         if (isTimeout) {
           toast.dismiss();
-          toast.error('You were logged out due to 1 hour of inactivity.', {
+          toast.error('You were logged out due to 15 minutes of inactivity.', {
             id: 'inactivity-logout',
             duration: 6000,
             position: 'top-center',
@@ -236,13 +236,13 @@ const AutoLogoutHandler = () => {
       const now = Date.now();
       const elapsed = now - lastTime;
 
-      // 1. If user has been inactive for 1 hour or longer: auto logout
+      // 1. If user has been inactive for 15 minutes or longer: auto logout
       if (elapsed >= INACTIVITY_TIMEOUT_MS) {
         handleLogout(true);
         return;
       }
 
-      // 2. If user is in the final 10 minutes (between 50 and 60 minutes): show warning modal
+      // 2. If user is in the final 2 minutes (between 13 and 15 minutes): show warning modal
       if (elapsed >= WARNING_THRESHOLD_MS) {
         const remainingMs = INACTIVITY_TIMEOUT_MS - elapsed;
         const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
@@ -275,7 +275,7 @@ const AutoLogoutHandler = () => {
   // If not authenticated or warning shouldn't be shown, render nothing
   if (!showWarning || !isAuthenticated) return null;
 
-  const totalWarningSeconds = WARNING_DURATION_MS / 1000; // 600 seconds (10 minutes)
+  const totalWarningSeconds = WARNING_DURATION_MS / 1000; // 120 seconds (2 minutes)
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
@@ -318,7 +318,7 @@ const AutoLogoutHandler = () => {
 
           {/* Explanation */}
           <p className="mt-1 text-sm text-base-content/70 leading-relaxed">
-            You have been inactive for over 50 minutes. For hospital security and patient privacy, your session will automatically log out when the countdown reaches zero.
+            You have been inactive for over 13 minutes. For hospital security and patient privacy, your session will automatically log out when the countdown reaches zero.
           </p>
 
           {/* Action Buttons */}
