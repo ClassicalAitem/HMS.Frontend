@@ -219,15 +219,21 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
         const list = Array.isArray(data) ? data : (data ? [data] : []);
 
         const scoped = dependantId
-          ? list.filter((p) => p?.dependantId === dependantId)
+          ? list.filter((p) => String(p?.dependantId) === String(dependantId))
           : list.filter((p) => !p?.dependantId);
 
-        let prescriptionData = scoped.find(p => {
+        const sortedScoped = [...scoped].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        let prescriptionData = sortedScoped.find(p => {
           const injectionMeds = (p.medications || []).filter(
             m => m.medicationType === "injection"
           );
           if (!injectionMeds.length) return false;
           return injectionMeds.some(m => m.injectionStatus !== "completed");
+        }) || sortedScoped.find(p => {
+          const injectionMeds = (p.medications || []).filter(
+            m => m.medicationType === "injection"
+          );
+          return injectionMeds.length > 0;
         }) || null;
 
         setPrescription(prescriptionData);

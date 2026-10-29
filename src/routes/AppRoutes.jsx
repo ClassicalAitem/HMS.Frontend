@@ -91,6 +91,17 @@ const Stocks = lazy(() => import("@/pages/admin/stocks/Stocks"));
 const Invoice = lazy(() => import("@/pages/admin/invoice/Invoice"));
 const Users = lazy(() => import("@/pages/admin/users/Users"));
 const StaffList = lazy(() => import("@/pages/admin/users/StaffList"));
+const AdminReports = lazy(() => import("@/pages/admin/reports/AdminReports"));
+const AdminPatients = lazy(() => import("@/pages/admin/patients/AdminPatients"));
+const AdminOpd = lazy(() => import("@/pages/admin/opd/AdminOpd"));
+const AdminAdmissions = lazy(() => import("@/pages/admin/admissions/AdminAdmissions"));
+const AdminSurgeries = lazy(() => import("@/pages/admin/surgeries/AdminSurgeries"));
+const AdminDiagnostics = lazy(() => import("@/pages/admin/diagnostics/AdminDiagnostics"));
+const AdminAntenatal = lazy(() => import("@/pages/admin/antenatal/AdminAntenatal"));
+const AdminPhototherapy = lazy(() => import("@/pages/admin/phototherapy/AdminPhototherapy"));
+const AdminHmoAttendance = lazy(() => import("@/pages/admin/hmo/AdminHmoAttendance"));
+const AdminStaff = lazy(() => import("@/pages/admin/staff/AdminStaff"));
+const AdminFinanceSupplies = lazy(() => import("@/pages/admin/finance/AdminFinanceSupplies"));
 const FrontdeskDashboard = lazy(() => import("@/pages/frontdesk/dashboard/Dashboard"));
 const Patients = lazy(() => import("@/pages/frontdesk/patients/Patients"));
 const Surgeries = lazy(() => import("@/pages/frontdesk/surgeries/Surgeries"));
@@ -146,7 +157,7 @@ import { BookAppointmentModal } from "@/components/modals";
 const Appointments = lazy(() => import("@/pages/frontdesk/appointments/Appointments"));
 const PatientVitals = lazy(() => import("@/pages/nurse/patientVitals/PatientVitals"));
 const PatientVitalsDetails = lazy(() => import("@/pages/nurse/patientVitals/PatientVitalsDetails"));
-const DependantVitalsDetails = lazy(() => import("@/pages/nurse/dependantVitals/PatientVitalsDetails"));
+const DependantVitalsDetails = PatientVitalsDetails;
 const NurseIncoming = lazy(() => import("@/pages/nurse/incoming/Incoming"));
 const AdmittedList = lazy(() => import("@/pages/nurse/admitted/AdmittedList"));
 const AdmittedPatient = lazy(() => import("@/pages/nurse/admitted/AdmittedPatient"));
@@ -376,7 +387,7 @@ const AppRoutes = () => {
       } />
       <Route path="/dashboard/nurse/dependant/:dependantId" element={
         <ProtectedRoute allowedRoles={['nurse']}>
-          <DependantVitalsDetails />
+          <PatientVitalsDetails />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/nurse/incoming" element={
@@ -874,14 +885,69 @@ const AppRoutes = () => {
           <Invoice />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/admin/staff" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminStaff />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/finance-supplies" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminFinanceSupplies />
+        </ProtectedRoute>
+      } />
       <Route path="/dashboard/admin/users" element={
         <ProtectedRoute allowedRoles={['admin']}>
-          <Users />
+          <AdminStaff />
         </ProtectedRoute>
       } />
       <Route path="/dashboard/admin/users/staffList" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <StaffList />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/reports" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminReports />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/patients" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/opd" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminOpd />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/admissions" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAdmissions />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/surgeries" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminSurgeries />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/diagnostics" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminDiagnostics />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/antenatal" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAntenatal />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/phototherapy" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminPhototherapy />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/admin/hmo-attendance" element={
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminHmoAttendance />
         </ProtectedRoute>
       } />
 

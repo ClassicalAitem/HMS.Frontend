@@ -142,6 +142,11 @@ const DispenseConfirmModal = ({
                           : `${row.suggestedQty}${row.suggestedUnit ? ` ${row.suggestedUnit}` : ' unit(s)'}`}
                       </div>
                   )}
+                  {row.lineTotal !== undefined && (
+                    <div className="text-xs font-semibold text-primary mt-1">
+                      Amount: ₦{Number(row.lineTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -149,23 +154,28 @@ const DispenseConfirmModal = ({
           })}
         </div>
 
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={onCancel}
-            disabled={submitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => onConfirm?.(finalRows)}
-            disabled={submitting || finalRows.length === 0}
-          >
-            {submitting ? 'Processing...' : 'Confirm & Complete'}
-          </button>
+        <div className="mt-5 pt-3 border-t border-base-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="text-sm font-semibold">
+            Total Inventory Amount: <span className="text-primary text-base font-bold ml-1">₦{finalRows.reduce((sum, r) => sum + (Number(r.lineTotal) || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onCancel}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => onConfirm?.(finalRows)}
+              disabled={submitting || finalRows.length === 0}
+            >
+              {submitting ? 'Processing...' : 'Confirm & Complete'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

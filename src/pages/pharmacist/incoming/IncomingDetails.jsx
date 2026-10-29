@@ -254,7 +254,7 @@ const formatQty = (n) => {
 
 const getDispenseInfo = (med) => {
   const inv = findInventoryMatch(med)
-  if (!inv) return { inv: null, quantity: 0, unit: null, convertible: true, prescribedQty: 0, bottlesNeeded: null }
+  if (!inv) return { inv: null, quantity: 0, unit: null, convertible: true, prescribedQty: 0, bottlesNeeded: null, unitPrice: 0, lineTotal: 0, isSingleUnit: false }
 
   const line = calculatePrescriptionLine({
     medicationType: med.medicationType,
@@ -265,15 +265,17 @@ const getDispenseInfo = (med) => {
     inventory: inv,
   })
 
-  const suppressUnit = med.medicationType === 'tablet' || med.medicationType === 'cream'
-
   return {
     inv,
-    quantity: line.convertible === false ? 0 : (line.billedQuantity ?? 0),
-    unit: suppressUnit ? null : line.unit,
+    quantity: line.convertible === false ? 0 : (line.stockDeductionQty ?? line.billedQuantity ?? 0),
+    billedQty: line.convertible === false ? 0 : (line.billedQuantity ?? 0),
+    unit: line.unit,
     convertible: line.convertible !== false,
     prescribedQty: line.convertible === false ? 0 : (line.prescribedQuantity ?? 0),
     bottlesNeeded: line.bottlesNeeded ?? null,
+    unitPrice: line.unitPrice ?? 0,
+    lineTotal: line.lineTotal ?? 0,
+    isSingleUnit: line.isSingleUnit,
   }
 }
 
@@ -405,19 +407,26 @@ const getDispenseInfo = (med) => {
           <div className="text-sm">Frequency: {m.frequency}</div>
           <div className="text-sm">Duration: {m.duration}</div>
           <div className="text-sm font-medium text-primary mt-1">
-            <div className="text-sm font-medium text-primary mt-1">
-              Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
-            </div>
-            {m.bottlesNeeded ? (
-              <div className="text-sm font-medium text-primary">
-                Billed: {m.bottlesNeeded} bottle{m.bottlesNeeded > 1 ? 's' : ''} ({m.suggestedQty}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ''})
-              </div>
-            ) : null}
+            Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
           </div>
         </div>
-        <div className="text-sm sm:text-right space-y-1">
+        <div className="text-sm sm:text-right space-y-2">
+          <div className="bg-base-200/70 p-2.5 rounded-lg border border-base-300 min-w-[140px] text-left sm:text-right">
+            <div className="text-[11px] uppercase tracking-wide text-base-content/60 font-semibold">
+              {m.isSingleUnit ? 'Item Price' : 'Unit Price'}
+            </div>
+            <div className="text-sm font-medium text-base-content">
+              ₦{Number(m.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <div className="text-[11px] uppercase tracking-wide text-base-content/60 font-semibold mt-1">
+              Amount
+            </div>
+            <div className="text-base font-bold text-primary">
+              ₦{Number(m.lineTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+          </div>
           {m.instructions && (
-            <div className="text-xs mt-1 bg-base-200 p-1.5 rounded">
+            <div className="text-xs bg-base-200 p-1.5 rounded">
               Instruction: {m.instructions}
             </div>
           )}
@@ -459,6 +468,9 @@ const getDispenseInfo = (med) => {
         suggestedUnit: dispenseInfo.unit,
         prescribedQty: dispenseInfo.prescribedQty,
         bottlesNeeded: dispenseInfo.bottlesNeeded,
+        unitPrice: Number(dispenseInfo.unitPrice || m.unitPrice || 0),
+        lineTotal: Number(dispenseInfo.lineTotal || m.lineTotal || (Number(dispenseInfo.prescribedQty || 1) * Number(dispenseInfo.unitPrice || 0))),
+        isSingleUnit: dispenseInfo.isSingleUnit,
         availabilityInfo,
         hmoStatus: billingStatus.hmoStatus,
         isPaid: billingStatus.isPaid,
@@ -496,6 +508,9 @@ const getDispenseInfo = (med) => {
           suggestedUnit: dispenseInfo.unit,
           prescribedQty: dispenseInfo.prescribedQty,
           bottlesNeeded: dispenseInfo.bottlesNeeded,
+          unitPrice: Number(dispenseInfo.unitPrice || m.unitPrice || 0),
+          lineTotal: Number(dispenseInfo.lineTotal || m.lineTotal || (Number(dispenseInfo.prescribedQty || 1) * Number(dispenseInfo.unitPrice || 0))),
+          isSingleUnit: dispenseInfo.isSingleUnit,
           formStrength: dispenseInfo.inv ? `${dispenseInfo.inv.form || ''} ${dispenseInfo.inv.strength ? '• ' + dispenseInfo.inv.strength : ''}`.trim() : '',
           availabilityInfo,
           hmoStatus: billingStatus.hmoStatus,
@@ -695,6 +710,7 @@ const getDispenseInfo = (med) => {
       : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim()
     const medRows = computeMedRows(p)
     const isOpen = isHistory || expandedIds.has(p._id)
+    const totalPrescriptionAmount = medRows.reduce((sum, m) => sum + (Number(m.lineTotal) || 0), 0)
 
     return (
       <div key={p._id} className="border border-base-300 rounded-lg mb-3 overflow-hidden">
@@ -710,6 +726,9 @@ const getDispenseInfo = (med) => {
                 {isForDependant ? 'Dependant' : 'Main Patient'}
               </span>
               <span className="capitalize badge badge-sm badge-ghost font-medium">{p.status}</span>
+              <span className="badge badge-sm badge-outline text-primary font-bold">
+                Total: ₦{totalPrescriptionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
             </div>
             <div className="text-xs text-base-content/60">
               {p.createdAt ? formatNigeriaDateTime(p.createdAt) : '—'}
@@ -726,6 +745,13 @@ const getDispenseInfo = (med) => {
         {isOpen && (
           <div className="p-3 space-y-3 border-t border-base-200">
             {medRows.map((m) => renderMedCard(m, isHistory))}
+
+            <div className="flex items-center justify-between p-3 bg-base-200/80 rounded-lg border border-base-300 font-semibold">
+              <span className="text-sm text-base-content/80">Total Inventory Amount:</span>
+              <span className="text-primary text-lg font-bold">
+                ₦{totalPrescriptionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
 
             {!isHistory && (
               <div className="flex flex-col gap-2 sm:flex-row pt-2">
@@ -894,7 +920,12 @@ const getDispenseInfo = (med) => {
             <div className="text-error">Error loading prescriptions</div>
           ) : (
             <>
-              <h3 className="font-medium mb-3">Active Prescriptions</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-2 border-b border-base-200 gap-2">
+                <h3 className="font-semibold text-lg text-primary">Active Prescriptions</h3>
+                <div className="badge badge-lg badge-primary/10 text-primary border-primary/20 font-bold px-3 py-3">
+                  Total of Inventories: ₦{prescriptions.active.reduce((acc, p) => acc + computeMedRows(p).reduce((sum, m) => sum + (Number(m.lineTotal) || 0), 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
               {prescriptions.active.length ? (
                 prescriptions.active.map((p) => renderPrescriptionCard(p, false))
               ) : (

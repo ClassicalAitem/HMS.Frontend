@@ -59,13 +59,12 @@ const getUnitOptions = (medicationType, selectedDrug) => {
       ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'ml', label: 'ml' }]
       : [{ value: 'ml', label: 'ml' }];
   }
-  if (medicationType === 'gutt') return [{ value: 'ml', label: 'drops' }];
+  if (medicationType === 'gutt') return [{ value: 'bottle', label: 'bottle(s)' }, { value: 'ml', label: 'drops' }];
   if (medicationType === 'infusion') return [{ value: 'ml', label: 'ml' }];
   if (medicationType === 'cream') {
-    const invUnit = selectedDrug?.unit === 'tube' ? 'tube' : 'tablet';
     return hasConcentration
-      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: invUnit, label: invUnit === 'tube' ? 'tube(s)' : 'tablet(s)' }]
-      : [{ value: invUnit, label: invUnit === 'tube' ? 'tube(s)' : 'tablet(s)' }];
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'tube', label: 'tube(s)' }]
+      : [{ value: 'tube', label: 'tube(s)' }];
   }
   if (medicationType === 'injection') {
     const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
@@ -804,12 +803,10 @@ const WritePrescription = () => {
                           ) : preview ? (
                             <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/30 text-sm flex flex-wrap items-center justify-between gap-2">
                               <div>
-                                Prescribed: <span className="font-medium">{Number(preview.prescribedQuantity).toFixed(2)} {preview.unit}</span>
-                                {medicationType === 'syrup' && preview.bottlesNeeded > 0 && (
-                                  <span className="text-base-content/60">
-                                    {' '}— billed as {preview.bottlesNeeded} bottle{preview.bottlesNeeded > 1 ? 's' : ''} ({preview.billedQuantity} {preview.unit})
-                                  </span>
-                                )}
+                                Prescribed: <span className="font-medium">{Number.isInteger(Number(preview.prescribedQuantity)) ? preview.prescribedQuantity : Number(preview.prescribedQuantity).toFixed(2)} {preview.unit}</span>
+                                <span className="text-base-content/60 ml-2">
+                                  {preview.isSingleUnit ? `(@ ${currency(preview.unitPrice)} each)` : `(@ ${currency(preview.unitPrice)}/unit)`}
+                                </span>
                               </div>
                               <div className="font-semibold text-success">{currency(preview.lineTotal)}</div>
                             </div>
