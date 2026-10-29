@@ -42,7 +42,11 @@ const NurseAntenatalForm = () => {
   const incomingDependantSnapshot = location?.state?.dependantSnapshot || null;
   const fromIncoming = location?.state?.from === "incoming";
   const { user } = useAppSelector((state) => state.auth);
-  const nurseName = user?.fullName || user?.name || "";
+  const nurseName = useMemo(() => {
+    const raw = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.name || '';
+    if (!raw) return '';
+    return raw.startsWith('Nurse ') ? raw : `Nurse ${raw}`;
+  }, [user]);
   const isEditing = Boolean(recordIndex !== undefined && recordIndex !== null && recordIndex !== "" && recordIndex !== "new");
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -267,7 +271,11 @@ const NurseAntenatalForm = () => {
     if (nurseName && !isEditing) {
       setFormData(prev => ({
         ...prev,
-        presentPregnancy: { ...prev.presentPregnancy, takenBy: nurseName }
+        presentPregnancy: { ...prev.presentPregnancy, takenBy: nurseName },
+        antenatalExaminations: (prev.antenatalExaminations || []).map(exam => ({
+          ...exam,
+          signature: exam.signature || nurseName,
+        }))
       }));
     }
   }, [nurseName, isEditing]);
@@ -310,7 +318,7 @@ const NurseAntenatalForm = () => {
   const transformFrontendToBackend = (fd) => {
     const resolvedPatientId = patient?.id || patientId;
     const authorId = user?.id || user?._id;
-    const authorName = user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || nurseName;
+    const authorName = nurseName || user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Nurse';
     const authorRole = user?.accountType || user?.role || 'nurse';
 
     const out = {
@@ -345,7 +353,7 @@ const NurseAntenatalForm = () => {
     const obs = fd.previousObstetricHistory
       .filter(i => i.date?.trim() || i.durationOfPregnancy?.trim() || i.birthWeight?.trim() || i.complication?.trim() || i.aliveOrDead?.trim())
       .map(i => ({
-        ...(i.date?.trim() && { Date: new Date(i.date) }),
+        ...(i.date?.trim() && !isNaN(new Date(i.date).getTime()) && { Date: new Date(i.date) }),
         ...(i.durationOfPregnancy?.trim() && { durationOfPregnancy: i.durationOfPregnancy.trim() }),
         ...(i.birthWeight?.trim() && { birthWeight: i.birthWeight.trim() }),
         ...(i.complication?.trim() && { complicationInPregnancy: i.complication.trim() }),
@@ -384,7 +392,7 @@ const NurseAntenatalForm = () => {
     const exams = fd.antenatalExaminations
       .filter(i => i.date?.trim() || i.heightOfFundus?.trim() || i.bp?.trim() || (i.weight != null && String(i.weight).trim()) || (i.nextVisit != null && String(i.nextVisit).trim()))
       .map(i => ({
-        ...(i.date?.trim() && { Date: new Date(i.date) }),
+        ...(i.date?.trim() && !isNaN(new Date(i.date).getTime()) && { Date: new Date(i.date) }),
         ...(i.heightOfFundus?.trim() && { heightOfFundus: i.heightOfFundus.trim() }),
         ...(i.ega?.trim() && { EGA: i.ega.trim() }),
         ...(i.presentationAndLie?.trim() && { presentationAndLife: i.presentationAndLie.trim() }),
@@ -395,9 +403,9 @@ const NurseAntenatalForm = () => {
         ...(i.bp?.trim() && { bloodPressure: i.bp.trim() }),
         ...(i.nextVisit != null && String(i.nextVisit).trim() && { nextVisit: String(i.nextVisit).trim() }),
         ...(i.remark?.trim() && { remark: i.remark.trim() }),
-        signature: i.signature || authorName,
+        signature: i.signature?.trim() || nurseName || authorName,
         recordedById: i.recordedById || authorId,
-        recordedByName: i.recordedByName || i.signature || authorName,
+        recordedByName: i.recordedByName || i.signature?.trim() || nurseName || authorName,
         recordedByRole: i.recordedByRole || authorRole,
       }));
     if (exams.length > 0) out.anteNatalExamination = exams;

@@ -1345,6 +1345,7 @@ const handleOrderCreated = () => {
                                       <th className="font-semibold">Weight (kg)</th>
                                       <th className="font-semibold">Blood Pressure</th>
                                       <th className="font-semibold">Next Visit</th>
+                                      <th className="font-semibold">Signature</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -1358,6 +1359,7 @@ const handleOrderCreated = () => {
                                       <td>{exam.weight || '-'}</td>
                                       <td>{exam.bloodPressure || '-'}</td>
                                       <td>{exam.nextVisit || '-'}</td>
+                                      <td>{exam.signature || exam.recordedByName || '-'}</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -1373,7 +1375,8 @@ const handleOrderCreated = () => {
                                 <div><span className="text-base-content/50 block">Urine</span><span className="font-medium">{exam.urine || '-'}</span></div>
                                 <div><span className="text-base-content/50 block">Weight (kg)</span><span className="font-medium">{exam.weight || '-'}</span></div>
                                 <div><span className="text-base-content/50 block">Blood Pressure</span><span className="font-medium">{exam.bloodPressure || '-'}</span></div>
-                                <div className="col-span-2"><span className="text-base-content/50 block">Next Visit</span><span className="font-medium">{exam.nextVisit || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Next Visit</span><span className="font-medium">{exam.nextVisit || '-'}</span></div>
+                                <div><span className="text-base-content/50 block">Signature</span><span className="font-medium">{exam.signature || exam.recordedByName || '-'}</span></div>
                               </div>
 
                               {/* Remark display - full width below the table */}
