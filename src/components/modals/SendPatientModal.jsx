@@ -71,6 +71,7 @@ const SendPatientModal = ({
   onUpdated,
   allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo' , 'sonographer', 'radiologist'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
+  buttonClassName = 'btn btn-primary m-3 flex items-center gap-2',
   isOpdPatient = false,
     defaultDependantId = null,       
   defaultDependantLabel = null,
@@ -407,7 +408,7 @@ const lockedSubject = useMemo(() => {
     <>
       {/* Trigger button(s) — kept same as before for backward compat */}
       <div className={containerClass}>
-        <button className="btn btn-primary m-3 flex items-center gap-2" onClick={open} disabled={isSending}>
+        <button className={buttonClassName} onClick={open} disabled={isSending}>
           {isSending && !isOpen && <span className="loading loading-spinner loading-sm" />}
           {lockedSubject ? `Send ${lockedSubject.label}` : 'Send Patient'}
         </button>

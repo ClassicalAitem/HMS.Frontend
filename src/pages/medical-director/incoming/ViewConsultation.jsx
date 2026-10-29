@@ -66,7 +66,7 @@ import CreateBillModal from '@/components/modals/CreateBillModal';
 import { SendToHmoModal } from '@/components/modals';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator';
+import { calculateDispenseQuantity, calculatePrescriptionLine } from '@/utils/prescriptionsCalculator';
 
 import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
 import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
@@ -765,16 +765,30 @@ const ViewConsultation = () => {
         (Array.isArray(prescription.medications) ? prescription.medications : []).map((medication) => {
           const inventory = getInventoryMatch(medication);
           const unavailable = medication.availability === 'unavailable';
-          const stock = Number(inventory?.stock) || 0;
+
+          const line = !unavailable && inventory
+            ? calculatePrescriptionLine({
+                medicationType: medication.medicationType,
+                dosageAmount: medication.dosageAmount,
+                dosageUnit: medication.dosageUnit,
+                frequency: medication.frequency,
+                duration: medication.duration,
+                inventory,
+              })
+            : null;
+
+          const billedQuantity = line?.billedQuantity ?? medication.billedQuantity ?? medication.prescribedQuantity ?? 1;
+          const unitPrice = line?.unitPrice ?? medication.unitPrice ?? 0;
+          const lineTotal = line?.lineTotal ?? medication.lineTotal ?? (Number(billedQuantity) * Number(unitPrice));
+
           return {
-            serviceChargeId: prescription.serviceChargeId || '',
+            serviceChargeId: medication.serviceChargeId || prescription.serviceChargeId || '',
             code: 'PRESCRIPTION',
             description: `${medication.drugName || 'Medication'} (${medication.dosage || ''})`,
-            quantity: calculateDispenseQuantity(medication.frequency, medication.duration) || 1,
-            price: unavailable || !inventory || stock <= 0 ? 0 : Number(inventory.sellingPrice) || 0,
+            quantity: unavailable ? 1 : Number(billedQuantity) || 1,
+            price: unavailable ? 0 : Number(unitPrice) || 0,
+            lineTotal: unavailable ? 0 : Number(lineTotal) || 0,
             prescriptionId: prescription._id || prescription.id,
-            availability: unavailable ? 'unavailable' : 'available',
-            stock,
           };
         }),
       );
