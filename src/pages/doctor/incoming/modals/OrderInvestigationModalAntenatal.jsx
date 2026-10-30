@@ -10,6 +10,9 @@ import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 
 const testSchema = yup.object({
   name: yup.string().required('Test name is required'),
+  isCustom: yup.boolean().optional(),
+  serviceChargeId: yup.string().nullable().optional(),
+  price: yup.number().nullable().optional(),
 });
 
 const investigationSchema = yup.object({
@@ -49,7 +52,7 @@ const OrderInvestigationModalAntenatal = ({
   } = useForm({
     resolver: yupResolver(investigationSchema),
     defaultValues: {
-      tests: [{ name: "", isCustom: false }],
+      tests: [{ name: "", isCustom: false, serviceChargeId: null, price: 0 }],
       priority: "normal"
     }
   });
@@ -99,8 +102,10 @@ const OrderInvestigationModalAntenatal = ({
           ...test,
           name: test.name || "",
           isCustom: Boolean(test.isCustom),
+          serviceChargeId: test.serviceChargeId || null,
+          price: Number(test.price || 0),
         }))
-      : [{ name: "", isCustom: false }];
+      : [{ name: "", isCustom: false, serviceChargeId: null, price: 0 }];
 
     reset({
       tests,
@@ -116,7 +121,7 @@ const OrderInvestigationModalAntenatal = ({
   const handleSwitchType = (nextType) => {
     if (nextType === investigationType) return;
     setInvestigationType(nextType);
-    replace([{ name: "", isCustom: false }]);
+    replace([{ name: "", isCustom: false, serviceChargeId: null, price: 0 }]);
     setTestSearch("");
     setTestDropdownIndex(null);
   };
@@ -143,7 +148,12 @@ const OrderInvestigationModalAntenatal = ({
         patientId,
         ...(dependantId ? { dependantId } : {}),
         type: investigationType,
-        tests: data.tests,
+        tests: (data.tests || []).map((t) => ({
+          name: t.name,
+          isCustom: Boolean(t.isCustom),
+          serviceChargeId: t.serviceChargeId || null,
+          price: Number(t.price || 0),
+        })),
         priority: data.priority,
         status: investigation?.status || "in_progress"
       };
@@ -278,8 +288,18 @@ const OrderInvestigationModalAntenatal = ({
                   <div className="flex justify-between">
 
                     <span className="badge badge-outline">
-                      Test #{index + 1}
-                    </span>
+                        Test #{index + 1}
+                      </span>
+                      {watch(`tests.${index}.name`) && !watch(`tests.${index}.isCustom`) && Number(watch(`tests.${index}.price`)) > 0 && (
+                        <span className="badge badge-success badge-sm font-semibold text-white ml-2">
+                          ₦{Number(watch(`tests.${index}.price`)).toLocaleString()}
+                        </span>
+                      )}
+                      {watch(`tests.${index}.name`) && watch(`tests.${index}.isCustom`) && (
+                        <span className="badge badge-warning badge-sm font-medium ml-2">
+                          Custom (Unbilled)
+                        </span>
+                      )}
 
                     {fields.length > 1 && (
 
@@ -317,6 +337,8 @@ const OrderInvestigationModalAntenatal = ({
                         // until/unless they click a real match below.
                         setValue(`tests.${index}.name`, e.target.value);
                         setValue(`tests.${index}.isCustom`, true);
+                        setValue(`tests.${index}.serviceChargeId`, null);
+                        setValue(`tests.${index}.price`, 0);
                       }}
                       onBlur={() => {
                         // Give the dropdown-item onClick time to fire first
@@ -346,8 +368,10 @@ const OrderInvestigationModalAntenatal = ({
                                   // the onBlur close-timeout — selection now works on the first click
                                   // no matter how much/little the user has typed.
                                   e.preventDefault();
-                                  setValue(`tests.${index}.name`, test.service);
+                                  setValue(`tests.${index}.name`, test.service || test.name);
                                   setValue(`tests.${index}.isCustom`, false);
+                                  setValue(`tests.${index}.serviceChargeId`, test.id || test._id || null);
+                                  setValue(`tests.${index}.price`, Number(test.amount ?? test.price ?? 0));
                                   setTestDropdownIndex(null);
                                   setTestSearch('');
                                 }}
@@ -394,7 +418,7 @@ const OrderInvestigationModalAntenatal = ({
             <button
               type="button"
               className="btn btn-outline btn-primary w-full"
-              onClick={() => append({ name: "", isCustom: false })}
+              onClick={() => append({ name: "", isCustom: false, serviceChargeId: null, price: 0 })}
             >
               <FaPlus /> Add Another Test
             </button>

@@ -9,6 +9,7 @@ import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { getInventories } from '@/services/api/inventoryAPI';
 import { calculatePrescriptionLine, isSingleUnitDispense } from '@/utils/prescriptionsCalculator';
+import { resolveServiceCharge } from '@/utils/serviceChargeHelper';
 import { PATIENT_STATUS } from '@/constants/patientStatus';
 import { updateSubjectStatus } from '@/utils/statusHelper';
 import { SERVICE_CHARGE_CATEGORY } from '@/constants/cardTypes';
@@ -283,37 +284,53 @@ const CreateBillModal = ({
 
             filteredInv.forEach(inv => {
               const tests = Array.isArray(inv.tests) ? inv.tests : [];
+              const isRadiology = String(inv.type || '').toLowerCase() === 'radiology';
+              const defaultCode = isRadiology ? 'RAD' : 'LAB';
+
               if (tests.length === 0) {
-                const charge = findCharge(inv.type, inv.serviceChargeId);
+                const resolved = resolveServiceCharge(scList, {
+                  name: inv.type,
+                  id: inv.serviceChargeId,
+                  category: inv.type,
+                });
                 autoItems.push({
-                  serviceChargeId: inv.serviceChargeId || charge?.id || charge?._id || null,
+                  serviceChargeId: inv.serviceChargeId || resolved.serviceChargeId || null,
                   investigationId: inv._id || inv.id,
                   prescriptionId: null,
                   admissionId: null,
                   appointmentId: null,
                   procedureId: null,
-                  code: 'LAB',
-                  description: inv.type || 'Lab Investigation',
+                  code: defaultCode,
+                  description: inv.type || (isRadiology ? 'Radiology Scan' : 'Lab Test'),
                   quantity: 1,
-                  price: Number(charge?.amount || charge?.price || 0),
+                  price: resolved.price,
                   isAuto: true,
                 });
               } else {
                 tests.forEach(test => {
                   const testName = typeof test === 'string' ? test : (test?.name || test?.code || '');
-                  const charge = findCharge(testName, test?.serviceChargeId || inv.serviceChargeId);
+                  const isCustom = test?.isCustom === true;
+                  const resolved = resolveServiceCharge(scList, {
+                    name: testName,
+                    id: test?.serviceChargeId || inv.serviceChargeId,
+                    category: inv.type,
+                    price: test?.price,
+                    isCustom,
+                  });
+
                   autoItems.push({
-                    serviceChargeId: test?.serviceChargeId || inv.serviceChargeId || charge?.id || charge?._id || null,
+                    serviceChargeId: test?.serviceChargeId || inv.serviceChargeId || resolved.serviceChargeId || null,
                     investigationId: inv._id || inv.id,
                     prescriptionId: null,
                     admissionId: null,
                     appointmentId: null,
                     procedureId: null,
-                    code: 'LAB',
-                    description: testName || 'Lab Test',
+                    code: defaultCode,
+                    description: testName || (isRadiology ? 'Radiology Scan' : 'Lab Test'),
                     quantity: 1,
-                    price: Number(test?.price || charge?.amount || charge?.price || 0),
+                    price: resolved.price,
                     isAuto: true,
+                    isCustom,
                   });
                 });
               }
@@ -467,9 +484,14 @@ const CreateBillModal = ({
             });
 
             surgicalAppts.forEach(proc => {
-              const charge = findCharge(proc.procedureName, proc.serviceChargeId);
+              const resolved = resolveServiceCharge(scList, {
+                name: proc.procedureName,
+                id: proc.serviceChargeId,
+                category: 'surgical',
+                price: proc.price,
+              });
               autoItems.push({
-                serviceChargeId: proc.serviceChargeId || charge?.id || charge?._id || null,
+                serviceChargeId: proc.serviceChargeId || resolved.serviceChargeId || null,
                 investigationId: null,
                 prescriptionId: null,
                 admissionId: null,
@@ -478,7 +500,7 @@ const CreateBillModal = ({
                 code: 'SURGERY',
                 description: proc.procedureName || 'Surgical Procedure',
                 quantity: 1,
-                price: Number(proc.price || charge?.amount || charge?.price || 0),
+                price: resolved.price,
                 isAuto: true,
               });
             });

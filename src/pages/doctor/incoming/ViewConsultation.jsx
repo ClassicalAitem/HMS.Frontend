@@ -69,6 +69,7 @@ import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { DoctorLayout } from '@/components/doctor/doctor';
 import { calculateDispenseQuantity, calculatePrescriptionLine } from '@/utils/prescriptionsCalculator';
+import { resolveServiceCharge } from '@/utils/serviceChargeHelper';
 import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
 import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
 import AddExaminationModal from './modals/AddExaminationModal';
@@ -785,33 +786,34 @@ const getInventoryMatch = (medication) => {
         const testName =
           typeof test === 'string'
             ? test
-            : test?.name || test?.code;
+            : test?.name || test?.code || '';
 
-        const charge = serviceCharges.find((item) =>
-          String(item?.service || item?.name || '')
-            .toLowerCase()
-            .includes(String(testName || '').toLowerCase())
-        );
+        const isRadiology = String(lab.type || '').toLowerCase() === 'radiology';
+
+        const resolved = resolveServiceCharge(serviceCharges, {
+          name: testName,
+          id: test?.serviceChargeId || lab.serviceChargeId,
+          category: lab.type,
+          price: test?.price,
+          isCustom: Boolean(test?.isCustom),
+        });
 
         return {
           serviceChargeId:
+            test?.serviceChargeId ||
             lab.serviceChargeId ||
-            charge?._id ||
-            charge?.id ||
+            resolved.serviceChargeId ||
             '',
 
-          code: 'LAB',
-          description: testName || lab.type || 'Lab Test',
+          code: isRadiology ? 'RAD' : 'LAB',
+          description: testName || (isRadiology ? 'Radiology Scan' : 'Lab Test'),
 
           quantity: 1,
 
-          price: Number(
-            charge?.amount ||
-            charge?.price ||
-            0
-          ),
+          price: resolved.price,
 
           investigationId: lab._id || lab.id,
+          isCustom: Boolean(test?.isCustom),
         };
       })
     );
@@ -972,18 +974,18 @@ const getInventoryMatch = (medication) => {
   const procedureItems = procedures
     .filter((proc) => !proc.isBilled && !proc.billId && String(proc.status || '').toLowerCase() !== 'cancelled')
     .map((proc) => {
-      const matchingCharge = serviceCharges.find(
-        (sc) =>
-          sc.id === proc.serviceChargeId ||
-          sc._id === proc.serviceChargeId ||
-          String(sc.service || sc.name || '').toLowerCase() === String(proc.procedureName || '').toLowerCase(),
-      );
+      const resolved = resolveServiceCharge(serviceCharges, {
+        name: proc.procedureName,
+        id: proc.serviceChargeId,
+        category: 'surgical',
+        price: proc.price,
+      });
       return {
-        serviceChargeId: proc.serviceChargeId || matchingCharge?.id || matchingCharge?._id || '',
+        serviceChargeId: proc.serviceChargeId || resolved.serviceChargeId || '',
         code: 'SURGERY',
         description: proc.procedureName || 'Surgical Procedure',
         quantity: 1,
-        price: Number(proc.price || matchingCharge?.amount || matchingCharge?.price || 0),
+        price: resolved.price,
         appointmentId: proc.id || proc._id || proc.appointmentId,
       };
     });
@@ -1008,7 +1010,7 @@ const getInventoryMatch = (medication) => {
       let updatedNotes;
       if (Array.isArray(consultation.additionalNotes)) {
         updatedNotes = consultation.additionalNotes.map((n) =>
-          n.id === noteId ? { ...n, note: newNote } : n,
+          n.id === noteId ? { ...n, note: newNote } : n
         );
       } else {
         updatedNotes = newNote; // If it's a string, update to new string
@@ -1408,7 +1410,7 @@ const getInventoryMatch = (medication) => {
               (p._id || p.id) === (updated?._id || updated?.id)
                 ? { ...p, ...updated }
                 : p,
-            ),
+            )
           );
         }}
       />
@@ -1824,6 +1826,7 @@ const getInventoryMatch = (medication) => {
                                   /\.(jpg|jpeg|png|gif|webp)$/i.test(
                                     file.name || file.filename,
                                   );
+
                                 const getImageUrl = () => {
                                   if (!file.data) return '';
                                   if (typeof file.data === 'string') {
