@@ -58,6 +58,16 @@ const ChangePasswordDefault = () => {
         'admin': '/dashboard/admin',
         'super-admin': '/dashboard/superadmin',
         'cashier': '/dashboard/cashier',
+        'medical-laboratory': '/dashboard/laboratory',
+        'medicallaboratory': '/dashboard/laboratory',
+        'medical laboratory': '/dashboard/laboratory',
+        'lab-technician': '/dashboard/laboratory',
+        'labtechnician': '/dashboard/laboratory',
+        'laboratory': '/dashboard/laboratory',
+        'sonographer': '/dashboard/sonographer',
+        'surgeon': '/dashboard/surgeon',
+        'pharmacist': '/dashboard/pharmacist',
+        'hmo': '/dashboard/hmo',
       };
       
       const dashboardPath = roleRoutes[user.role] || '/frontdesk/dashboard';

@@ -925,7 +925,7 @@ const getDispenseInfo = (med) => {
                 refreshQueueCount()
                 navigate('/dashboard/pharmacist/incoming')
               }}
-              allowedRoles={['nurse', 'labtechnician', 'pharmacist', 'cashier', 'hmo', 'doctor', 'medical-director']}
+              allowedRoles={['nurse', 'medical-laboratory', 'labtechnician', 'pharmacist', 'cashier', 'hmo', 'doctor', 'medical-director']}
             />
           </div>
         </div>

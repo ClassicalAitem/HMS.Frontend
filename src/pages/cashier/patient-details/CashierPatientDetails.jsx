@@ -345,7 +345,7 @@ const CashierPatientDetails = () => {
                   refreshQueueCount();
                   navigate('/cashier/incoming');
                 }}
-                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'hmo', 'sonographer']}
+                allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'medical-laboratory', 'labtechnician', 'hmo', 'sonographer']}
               />
             
 

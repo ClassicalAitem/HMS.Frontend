@@ -628,7 +628,7 @@ const CashierOpdPatientDetails = () => {
             patient={patient}
             lockSubject
             onUpdated={() => navigate('/cashier/opd-patients')}
-            allowedRoles={['labtechnician', 'sonographer']}
+            allowedRoles={['medical-laboratory', 'labtechnician', 'sonographer']}
             isOpdPatient={true}
           />
         </div>

@@ -951,10 +951,10 @@ const SidebarDrawer = () => (
                       </select>
                     </div>
                     <InputField
-                      label="Lab Technician"
+                      label="Medical Laboratory"
                       value={formData.labNo}
                       onChange={(val) => handleInputChange("labNo", null, val)}
-                      placeholder="Lab technician name"
+                      placeholder="Medical laboratory name"
                       type="text"
                       disabled={true}
                     />

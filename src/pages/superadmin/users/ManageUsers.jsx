@@ -71,7 +71,7 @@ const ManageUsers = () => {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.shift?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole = selectedRole === 'all' || user.accountType === selectedRole;
+    const matchesRole = selectedRole === 'all' || user.accountType === selectedRole || (selectedRole === 'medical-laboratory' && user.accountType === 'lab-technician');
     const matchesStatus = selectedStatus === 'all' ||
       (selectedStatus === 'active' && user.isActive) ||
       (selectedStatus === 'inactive' && !user.isActive);
@@ -110,6 +110,7 @@ const ManageUsers = () => {
         return 'badge badge-primary';
       case 'cashier':
         return 'badge badge-secondary';
+      case 'medical-laboratory':
       case 'lab-technician':
         return 'badge badge-outline badge-accent';
       case 'surgeon':

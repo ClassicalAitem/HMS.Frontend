@@ -1318,7 +1318,7 @@ const AppRoutes = () => {
       ===============================================================================================================*/}
       {/* LaboratoryDashboard */}
             <Route path="/dashboard/laboratory" element={
-        <ProtectedRoute allowedRoles={['lab-technician']}>
+        <ProtectedRoute allowedRoles={['medical-laboratory', 'lab-technician']}>
           <LaboratoryDashboard />
         </ProtectedRoute>
       } />

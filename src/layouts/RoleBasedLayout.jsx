@@ -32,7 +32,7 @@ const RoleBasedLayout = ({ children }) => {
   if (normalizedRole === 'surgeon') return <SurgeonLayout>{children}</SurgeonLayout>;
   if (normalizedRole === 'pharmacist') return <PharmacistLayout>{children}</PharmacistLayout>;
 
-  // Default clean layout for other roles (lab-technician, sonographer, etc.)
+  // Default clean layout for other roles (medical-laboratory, lab-technician, sonographer, etc.)
   return (
     <div className="flex min-h-screen w-full flex-col overflow-hidden bg-base-300/20">
       <Header />

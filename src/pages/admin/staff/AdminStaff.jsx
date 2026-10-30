@@ -63,6 +63,13 @@ const ROLE_CONFIG = {
     icon: FaPills,
     description: "Prescription dispensations, pharmacy inventory, and drug safety reviews.",
   },
+  "medical-laboratory": {
+    label: "Medical Laboratory",
+    badge: "badge-warning",
+    color: "text-warning bg-warning/10 border-warning/20",
+    icon: FaVial,
+    description: "Pathology tests, blood banking, specimen analysis, and diagnostic flags.",
+  },
   "lab-scientist": {
     label: "Lab Scientist",
     badge: "badge-warning",
@@ -595,7 +602,7 @@ const AdminStaff = () => {
                       <option value="doctor">Doctor</option>
                       <option value="nurse">Nurse</option>
                       <option value="pharmacist">Pharmacist</option>
-                      <option value="lab-scientist">Lab Scientist</option>
+                      <option value="medical-laboratory">Medical Laboratory</option>
                       <option value="front-desk">Front Desk</option>
                       <option value="cashier">Cashier</option>
                       <option value="admin">Administrator</option>

@@ -404,7 +404,7 @@ const PatientDetails = () => {
               patientId={patient?.id || patientId}
               patient={displayPatient}
               onUpdated={() => navigate('/frontdesk/dashboard')}
-              allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+              allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'medical-laboratory', 'labtechnician', 'cashier', 'hmo']}
               defaultDependantId={isViewingDependant ? dependantId : null}
               defaultDependantLabel={summarySubject?.fullName}
               lockSubject={isViewingDependant}
