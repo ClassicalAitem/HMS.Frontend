@@ -182,7 +182,7 @@ export const formatSenderShortName = (arg1, arg2) => {
     if (normalizedRole === 'medicaldirector' || normalizedRole === 'md') return 'MD.';
     if (normalizedRole === 'hmo') return 'HMO.';
     if (normalizedRole === 'pharmacist') return 'Pharm.';
-    if (normalizedRole === 'laboratory' || normalizedRole === 'labtechnician') return 'Lab.';
+    if (normalizedRole === 'laboratory' || normalizedRole === 'labtechnician' || normalizedRole === 'medicallaboratory' || normalizedRole === 'medlab') return 'Lab.';
     if (normalizedRole === 'sonographer') return 'Sono.';
     if (normalizedRole === 'frontdesk') return 'Desk.';
     if (normalizedRole === 'cashier') return 'Cashier.';

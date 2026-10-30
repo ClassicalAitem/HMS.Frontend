@@ -594,8 +594,8 @@ useEffect(() => {
                   onUpdated={() => navigate('/dashboard/sonographer/incoming')}
                   allowedRoles={
                     patientType === 'opd'
-                      ? ['labtechnician']
-                      : ['doctor', 'medical-director', 'labtechnician']
+                      ? ['medical-laboratory', 'labtechnician']
+                      : ['doctor', 'medical-director', 'medical-laboratory', 'labtechnician']
                   }
                 />
               </div>

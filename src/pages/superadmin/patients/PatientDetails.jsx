@@ -380,7 +380,7 @@ const PatientDetails = () => {
                   patientId={patient?.id || patientId}
                   patient={displayPatient}
                   onUpdated={() => navigate('/superadmin/patients/Patients')}
-                  allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo', 'sonographer']}
+                  allowedRoles={['nurse', 'doctor', 'medical-director', 'pharmacist', 'medical-laboratory', 'labtechnician', 'cashier', 'hmo', 'sonographer']}
                   defaultDependantId={isViewingDependant ? dependantId : null}
                   defaultDependantLabel={summarySubject?.fullName}
                   lockSubject={isViewingDependant}
