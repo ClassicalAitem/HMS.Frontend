@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { config } from '../../config/env';
 import { showErrorToast } from '../../utils/errorHandler';
+import { recordFailedRequest } from '../../utils/diagnostics';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -31,7 +32,6 @@ apiClient.interceptors.request.use(
       }
     }
 
-
     if (token) {
       const cleanToken = token.replace(/^["']|["']$/g, '').trim();
 
@@ -44,7 +44,6 @@ apiClient.interceptors.request.use(
       }
     }
 
-
     return config;
   },
   (error) => Promise.reject(error)
@@ -55,6 +54,18 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // Record diagnostics for failed requests (e.g. 4xx, 5xx)
+    try {
+      recordFailedRequest({
+        method: error.config?.method,
+        url: error.config?.url,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        requestData: error.config?.data,
+        responseData: error.response?.data,
+      });
+    } catch {}
 
     if (error.response?.status === 401) {
       // Check if it's a genuine JWT expiration or invalid token error
@@ -107,4 +118,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-

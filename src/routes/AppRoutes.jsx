@@ -7,6 +7,12 @@ import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 
+const TicketListPage = lazy(() => import("@/pages/tickets/TicketListPage"));
+const TicketDetailPage = lazy(() => import("@/pages/tickets/TicketDetailPage"));
+const SystemLogsPage = lazy(() => import("@/pages/developer/SystemLogsPage"));
+const SystemHealthPage = lazy(() => import("@/pages/developer/SystemHealthPage"));
+const SuperAdminIssuesOverview = lazy(() => import("@/pages/superadmin/support/SuperAdminIssuesOverview"));
+
 const NurseDashboard = lazy(() => import("@/pages/nurse/dashboard/NurseDashboard"));
 const AssignedTask = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
 const Task = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
@@ -1423,6 +1429,47 @@ const AppRoutes = () => {
       <Route path="/dashboard/sonographer/scan-history" element={
         <ProtectedRoute allowedRoles={['sonographer']}>
           <SonographerScanHistory />
+        </ProtectedRoute>
+      } />
+
+      {/* Hospital Support & Tickets System */}
+      <Route path="/tickets" element={
+        <ProtectedRoute>
+          <TicketListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/tickets/:id" element={
+        <ProtectedRoute>
+          <TicketDetailPage />
+        </ProtectedRoute>
+      } />
+
+      {/* Developer & IT Support Console (Admin interference removed) */}
+      <Route path="/developer/tickets" element={
+        <ProtectedRoute allowedRoles={['developer', 'it-support', 'super-admin']}>
+          <TicketListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/developer/logs" element={
+        <ProtectedRoute allowedRoles={['developer', 'it-support', 'super-admin']}>
+          <SystemLogsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/developer/health" element={
+        <ProtectedRoute allowedRoles={['developer', 'it-support', 'super-admin']}>
+          <SystemHealthPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/system-logs" element={
+        <ProtectedRoute allowedRoles={['developer', 'it-support', 'super-admin']}>
+          <SystemLogsPage />
+        </ProtectedRoute>
+      } />
+
+      {/* Super Admin Executive Issues & Support Overview */}
+      <Route path="/superadmin/issues-overview" element={
+        <ProtectedRoute allowedRoles={['super-admin', 'developer', 'it-support']}>
+          <SuperAdminIssuesOverview />
         </ProtectedRoute>
       } />
 
