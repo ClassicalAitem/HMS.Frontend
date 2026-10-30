@@ -30,7 +30,7 @@ const addUserSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['admin', 'doctor','medical-director', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'lab-technician', 'hmo', 'surgeon', 'sonographer'], 'Please select a valid role'),
+    .oneOf(['admin', 'doctor','medical-director', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'medical-laboratory', 'lab-technician', 'hmo', 'surgeon', 'sonographer'], 'Please select a valid role'),
   shift: yup
     .string()
     .nullable()
@@ -240,7 +240,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 <option value="front-desk">Front Desk</option>
                 <option value="cashier">Cashier</option>
                 <option value="pharmacist">Pharmacist</option>
-                <option value="lab-technician">Lab Technician</option>
+                <option value="medical-laboratory">Medical Laboratory</option>
                 <option value="hmo">HMO</option>
                 <option value="surgeon">Surgeon</option>
                 <option value="sonographer">Sonographer</option>

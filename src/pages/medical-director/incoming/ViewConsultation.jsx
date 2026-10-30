@@ -1370,7 +1370,7 @@ const ViewConsultation = () => {
                 }}
       allowedRoles={[
         'nurse',
-        'labtechnician',
+        'medical-laboratory', 'labtechnician',
         'pharmacist',
         'cashier',
         'hmo',

@@ -64,8 +64,8 @@ const HOSPITAL_ROLES_PERMISSIONS = [
     permissions: ['PHARMACY_DISPENSE', 'DRUG_INVENTORY', 'RESTOCK_ORDERS'],
   },
   {
-    role: 'lab-technician',
-    name: 'Laboratory Technician',
+    role: 'medical-laboratory',
+    name: 'Medical Laboratory',
     description: 'Execute laboratory investigations, diagnostic scans, and enter test results',
     permissions: ['LAB_INVESTIGATIONS', 'TEST_RESULTS', 'LAB_INVENTORY'],
   },

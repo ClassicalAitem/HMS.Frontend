@@ -67,7 +67,12 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'cashier': '/cashier/dashboard',
       'pharmacist': '/dashboard/pharmacist',
       'surgeon': '/dashboard/surgeon',
+      'medical-laboratory': '/dashboard/laboratory',
+      'medicallaboratory': '/dashboard/laboratory',
+      'medical laboratory': '/dashboard/laboratory',
       'lab-technician': '/dashboard/laboratory',
+      'labtechnician': '/dashboard/laboratory',
+      'laboratory': '/dashboard/laboratory',
       'sonographer': '/dashboard/sonographer',
     };
     

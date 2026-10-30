@@ -49,7 +49,7 @@ const FilterUsers = ({
             <option value="medical-director">Medical Director</option>
             <option value="nurse">Nurse</option>
             <option value="front-desk">Front Desk</option>
-            <option value="lab-technician">Lab Technician</option>
+            <option value="medical-laboratory">Medical Laboratory</option>
             <option value="pharmacist">Pharmacist</option>
             <option value="sonographer">Sonographer</option>
           </select>
