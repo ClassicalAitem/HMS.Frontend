@@ -1,12 +1,11 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics, MdCalendarMonth } from "react-icons/md";
-import { FaBed } from "react-icons/fa";
+import { FaBed, FaTicketAlt, FaShieldAlt } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg"
-
 
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
@@ -86,6 +85,18 @@ const Sidebar = ({ onCloseSidebar }) => {
       active: location.pathname === '/superadmin/registration'
     },
     {
+      icon: FaShieldAlt,
+      label: 'Issues & Support Overview',
+      path: '/superadmin/issues-overview',
+      active: location.pathname === '/superadmin/issues-overview'
+    },
+    {
+      icon: FaTicketAlt,
+      label: 'All Tickets Queue',
+      path: '/tickets',
+      active: location.pathname === '/tickets' || location.pathname.startsWith('/tickets/')
+    },
+    {
       icon: MdSettings,
       label: 'Settings',
       path: '/superadmin/settings',
@@ -115,8 +126,6 @@ const Sidebar = ({ onCloseSidebar }) => {
 
   return (
     <div className="flex flex-col w-64 h-full bg-base-100 border-r border-base-200 pt-16">
-      {/* Logo */}
-   
       {/* Navigation Menu */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
         {menuItems.map((item, index) => (

@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { createTicket, uploadTicketAttachment } from '@/services/api/ticketAPI';
+import { getDiagnosticsSnapshot } from '@/utils/diagnostics';
 
 const CATEGORIES = [
   { id: 'software_bug', label: 'Software / HMS Bug', icon: FaBug, desc: 'Error messages, buttons not working, crashes' },
@@ -111,6 +112,9 @@ const QuickReportModal = ({ isOpen, onClose, onSuccess }) => {
         }
       }
 
+      // Auto-capture technical diagnostics (failed API calls, console errors, environment)
+      const diagnostics = getDiagnosticsSnapshot();
+
       const payload = {
         title: title.trim(),
         description: description.trim(),
@@ -118,6 +122,7 @@ const QuickReportModal = ({ isOpen, onClose, onSuccess }) => {
         priority,
         currentRoute: includeRoute ? location.pathname : null,
         attachments,
+        diagnostics,
       };
 
       const res = await createTicket(payload);
@@ -364,6 +369,14 @@ const QuickReportModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={(e) => setIncludeRoute(e.target.checked)}
                   className="checkbox checkbox-primary checkbox-xs"
                 />
+              </div>
+
+              {/* Developer Diagnostics Hint */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20 text-[11px] text-base-content/70">
+                <span className="w-2 h-2 rounded-full bg-success shrink-0 animate-pulse"></span>
+                <span>
+                  <strong>Blackbox Auto-Diagnostics active:</strong> Client environment, failed API errors, and recent runtime errors will be securely attached to help developers troubleshoot.
+                </span>
               </div>
 
               {/* Submit & Cancel Actions */}

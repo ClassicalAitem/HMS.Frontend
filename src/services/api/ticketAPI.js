@@ -30,6 +30,11 @@ export const getTicketStats = async () => {
   return response.data;
 };
 
+export const getTicketOverview = async () => {
+  const response = await apiClient.get('/tickets/overview');
+  return response.data;
+};
+
 export const uploadTicketAttachment = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -53,7 +58,7 @@ export default {
   updateTicket,
   addTicketComment,
   getTicketStats,
+  getTicketOverview,
   uploadTicketAttachment,
   getAttachmentUrl,
 };
-

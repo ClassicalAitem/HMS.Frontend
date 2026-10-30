@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck, FaBed } from "react-icons/fa";
+import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck, FaBed, FaTicketAlt } from "react-icons/fa";
 import { FaVials } from "react-icons/fa6";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 import { IoReceiptOutline } from "react-icons/io5";
@@ -11,6 +11,7 @@ import { useAppSelector } from "@/store/hooks";
 import HospitalFavicon from "@/assets/images/favicon.svg";
 import NotificationBadge from "@/components/common/NotificationBadge";
 import { useNotifications } from "@/contexts/NotificationContext";
+
 const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -102,6 +103,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       path: "/dashboard/medical-director/payment-records",
       active: location.pathname.startsWith("/dashboard/medical-director/payment-records"),
     },
+    {
+      icon: FaTicketAlt,
+      label: "Support Tickets",
+      path: "/tickets",
+      active: location.pathname === "/tickets" || location.pathname.startsWith("/tickets/"),
+    },
   ];
 
   const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
@@ -122,9 +129,6 @@ const Sidebar = ({ onCloseSidebar }) => {
 
   return (
     <div className="flex flex-col w-64 h-full border-r bg-base-100 border-base-200 overflow-y-auto pt-16">
-      {/* Hospital Logo Header */}
- 
-
       {/* Navigation Menu */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
         {menuItems.map((item, index) => (
