@@ -7,6 +7,9 @@ import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 
+const TicketListPage = lazy(() => import("@/pages/tickets/TicketListPage"));
+const TicketDetailPage = lazy(() => import("@/pages/tickets/TicketDetailPage"));
+
 const NurseDashboard = lazy(() => import("@/pages/nurse/dashboard/NurseDashboard"));
 const AssignedTask = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
 const Task = lazy(() => import("@/pages/nurse/assignedTask/AssignedTask"));
@@ -1423,6 +1426,18 @@ const AppRoutes = () => {
       <Route path="/dashboard/sonographer/scan-history" element={
         <ProtectedRoute allowedRoles={['sonographer']}>
           <SonographerScanHistory />
+        </ProtectedRoute>
+      } />
+
+      {/* Hospital Support & Tickets System */}
+      <Route path="/tickets" element={
+        <ProtectedRoute>
+          <TicketListPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/tickets/:id" element={
+        <ProtectedRoute>
+          <TicketDetailPage />
         </ProtectedRoute>
       } />
 
