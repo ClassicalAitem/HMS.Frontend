@@ -54,10 +54,12 @@ const TicketListPage = () => {
   const { user } = useAppSelector((state) => state.auth);
 
   const isAdmin =
-    user?.role === 'admin' ||
     user?.role === 'super-admin' ||
-    user?.accountType === 'admin' ||
-    user?.accountType === 'super-admin';
+    user?.role === 'developer' ||
+    user?.role === 'it-support' ||
+    user?.accountType === 'super-admin' ||
+    user?.accountType === 'developer' ||
+    user?.accountType === 'it-support';
 
   // State
   const [tickets, setTickets] = useState([]);
@@ -386,6 +388,11 @@ const TicketListPage = () => {
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-semibold">
                                 <FaComments className="w-3 h-3" />
                                 {commentsCount}
+                              </span>
+                            )}
+                            {t.diagnostics && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-neutral text-neutral-content text-[9px] font-mono font-bold" title="Auto-Diagnostics Attached">
+                                ⚡ Logs
                               </span>
                             )}
                           </div>

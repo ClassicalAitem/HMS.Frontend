@@ -31,26 +31,6 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // const handleInputChange = (e) => {
-  //   const { name, value } = e.target;
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     [name]: value,
-  //   }));
-
-  // Clear error when user starts typing
-  //   if (error) {
-  //     setError("");
-  //   }
-  // };
-
-  // const handleClearInput = (fieldName) => {
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     [fieldName]: "",
-  //   }));
-  // };
-
   //Made use of yupResolver for validation
   const {
     register,
@@ -116,6 +96,8 @@ const Login = () => {
           'cashier': '/cashier/dashboard',
           'pharmacist': '/dashboard/pharmacist',
           'hmo': '/dashboard/hmo',
+          'developer': '/developer/tickets',
+          'it-support': '/developer/tickets',
         };
         const roleOrType = user.role || user.accountType;
         redirectPath = roleRoutes[roleOrType] || '/frontdesk/dashboard';
@@ -204,6 +186,9 @@ const Login = () => {
         return '/dashboard/pharmacist';
       case 'hmo':
         return '/dashboard/hmo';
+      case 'developer':
+      case 'it-support':
+        return '/developer/tickets';
       default:
         return '/frontdesk/dashboard';
     }
@@ -262,7 +247,7 @@ const Login = () => {
             </h3>
             <button
               onClick={() => {
-                const dashboardPath = getDashboardPath(user?.role);
+                const dashboardPath = getDashboardPath(user?.role || user?.accountType);
                 navigate(dashboardPath);
               }}
               className="flex justify-center items-center py-3 w-full font-medium rounded-lg transition-colors text-base-100 bg-primary hover:bg-primary/80"
@@ -289,13 +274,10 @@ const Login = () => {
           type="text"
           name="email"
           autoComplete="off"
-          // value={formData.username}
-          // onChange={handleInputChange}
           placeholder="Enter Your Email"
           icon={FaUser}
           showClearButton={true}
           {...register("email")}
-          // onClear={() => handleClearInput("username")}
           error={errors.email || !!error}
           theme={currentTheme}
           className="text-sm 2xl:text-base"
@@ -307,8 +289,6 @@ const Login = () => {
           type={showPassword ? "text" : "password"}
           name="password"
           autoComplete="off"
-          // value={formData.password}
-          // onChange={handleInputChange}
           placeholder="Enter Your Password"
           icon={FaLock}
           {...register("password")}
@@ -319,16 +299,6 @@ const Login = () => {
           className="text-sm 2xl:text-base"
         />
         <p className="mt-1 text-sm text-red-500">{errors.password?.message}</p>
-
-        {/* Forgot Password */}
-        {/* <div className="text-right">
-          <Link
-            to="/forgot-password"
-            className="text-sm transition-colors 2xl:text-base text-primary hover:text-green-600"
-          >
-            Forgot Password?
-          </Link>
-        </div> */}
 
         {/* Submit Button */}
         <button
@@ -360,15 +330,6 @@ const Login = () => {
 
       {/* Success Modal */}
       <SuccessModal />
-
-      {/* Debug Components - Remove in production */}
-      {/* <div className="hidden overflow-y-auto fixed right-4 bottom-4 z-50 space-y-4 max-h-96">
-        <AuthTest />
-        <RouteProtectionTest />
-        <LoginRedirectTest />
-        <LogoutTest />
-        <TokenDebug />
-      </div> */}
     </AuthLayout>
   );
 };
