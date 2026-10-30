@@ -682,7 +682,7 @@ useEffect(() => {
                   'medical-director',
                   'pharmacist',
                   'cashier',
-                  'labtechnician',
+                  'medical-laboratory', 'labtechnician',
                   'sonographer',
                   'nurse',
                 ]}

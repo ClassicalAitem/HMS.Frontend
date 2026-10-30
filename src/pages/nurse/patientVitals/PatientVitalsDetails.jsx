@@ -697,7 +697,7 @@ useEffect(() => {
               defaultDependantLabel={summarySubject?.fullName}
               lockSubject
               onUpdated={() => navigate('/dashboard/nurse')}
-              allowedRoles={['doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo']}
+              allowedRoles={['doctor', 'medical-director', 'pharmacist', 'medical-laboratory', 'labtechnician', 'cashier', 'hmo']}
               containerClass="flex flex-wrap gap-2"
             />
 

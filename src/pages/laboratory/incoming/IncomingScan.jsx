@@ -41,8 +41,8 @@ const IncomingScan = () => {
           attachments: files,
         },
         remarks: investigationId 
-          ? "Scan upload only - test results to be added by lab technician" 
-          : "OPD Patient scan upload - test results to be added by lab technician",
+          ? "Scan upload only - test results to be added by medical laboratory" 
+          : "OPD Patient scan upload - test results to be added by medical laboratory",
       };
 
       if (investigationId) {
@@ -75,7 +75,7 @@ const IncomingScan = () => {
           <div className="bg-white p-6 rounded-lg shadow-sm max-w-3xl mx-auto">
             <h1 className="text-2xl font-bold text-[#00943C] mb-3">Scan Upload</h1>
             <p className="text-sm text-[#605D66] mb-6">
-              Upload scan files for this investigation. This will create a new lab result with the scan files attached. Lab technicians can add test values later.
+              Upload scan files for this investigation. This will create a new lab result with the scan files attached. Medical laboratory can add test values later.
             </p>
 
             {/* Patient Info Card */}

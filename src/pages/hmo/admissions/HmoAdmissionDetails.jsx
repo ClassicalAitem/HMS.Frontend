@@ -593,7 +593,7 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
                   'medical-director',
                   'pharmacist',
                   'cashier',
-                  'labtechnician',
+                  'medical-laboratory', 'labtechnician',
                   'sonographer',
                   'nurse',
                 ]}

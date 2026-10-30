@@ -36,7 +36,13 @@ const roleConfig = {
     color: 'btn-warning',
   },
   labtechnician: {
-    label: 'Lab',
+    label: 'Medical Laboratory',
+    status: PATIENT_STATUS.AWAITING_LAB,
+    icon: '🔬',
+    color: 'btn-success',
+  },
+  'medical-laboratory': {
+    label: 'Medical Laboratory',
     status: PATIENT_STATUS.AWAITING_LAB,
     icon: '🔬',
     color: 'btn-success',
@@ -69,7 +75,7 @@ const SendPatientModal = ({
   patient = null,
   currentStatus = '',
   onUpdated,
-  allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'labtechnician', 'cashier', 'hmo' , 'sonographer', 'radiologist'],
+  allowedRoles = ['nurse', 'doctor', 'medical-director', 'pharmacist', 'medical-laboratory', 'labtechnician', 'cashier', 'hmo' , 'sonographer', 'radiologist'],
   containerClass = 'flex gap-2 flex-nowrap overflow-x-auto',
   buttonClassName = 'btn btn-primary m-3 flex items-center gap-2',
   isOpdPatient = false,
@@ -106,6 +112,9 @@ const SendPatientModal = ({
   
   const visibleRoles = useMemo(() => {
     let roles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
+    if (roles.includes('medical-laboratory') && roles.includes('labtechnician')) {
+      roles = roles.filter(r => r !== 'labtechnician');
+    }
     if (isFrontDesk && !notForConsultation) {
       // Restrict frontdesk to Cashier or HMO if they are here for consultation
       roles = roles.filter(r => r === 'cashier' || r === 'hmo');

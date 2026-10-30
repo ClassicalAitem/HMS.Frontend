@@ -484,7 +484,7 @@ const HMOLabResultDetails = () => {
                   <p className="text-base sm:text-lg font-bold break-words">{patient?.hospitalId || "N/A"}</p>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-600 uppercase font-semibold">Lab Technician</p>
+                  <p className="text-xs text-gray-600 uppercase font-semibold">Medical Laboratory</p>
                   <p className="text-base sm:text-lg font-bold break-words">
                     {labTechnician
                       ? `${labTechnician.firstName || ''} ${labTechnician.lastName || ''}`.trim() || labTechnician.name || "N/A"

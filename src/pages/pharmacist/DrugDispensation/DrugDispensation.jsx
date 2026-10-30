@@ -29,6 +29,12 @@ const Badge = ({ children, variant }) => {
 }
 
 // Deprecated: using backend populated fields now
+const getPageNumbers = (current, total) => {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, '...', total];
+  if (current >= total - 3) return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+  return [1, '...', current - 1, current, current + 1, '...', total];
+};
 const ITEMS_PER_PAGE = 10;
 
 const DrugDispensation = () => {
@@ -294,33 +300,48 @@ const DrugDispensation = () => {
                 </table>
               </div>
 
-              {totalPages > 1 && (
-                <div className="mt-6 flex items-center justify-center gap-2">
-                  <button
-                    className="btn btn-sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  >
-                    «
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <span className="text-xs text-base-content/70">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{' '}
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} entries
+                </span>
+                {totalPages > 1 && (
+                  <div className="join">
                     <button
-                      key={page}
-                      className={`btn btn-sm ${currentPage === page ? 'btn-active' : ''}`}
-                      onClick={() => setCurrentPage(page)}
+                      className="join-item btn btn-sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     >
-                      {page}
+                      «
                     </button>
-                  ))}
-                  <button
-                    className="btn btn-sm"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  >
-                    »
-                  </button>
-                </div>
-              )}
+                    {getPageNumbers(currentPage, totalPages).map((page, idx) =>
+                      page === '...' ? (
+                        <button
+                          key={`ellipsis-${idx}`}
+                          className="join-item btn btn-sm btn-disabled pointer-events-none"
+                        >
+                          …
+                        </button>
+                      ) : (
+                        <button
+                          key={page}
+                          className={`join-item btn btn-sm ${currentPage === page ? 'btn-primary' : ''}`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      )
+                    )}
+                    <button
+                      className="join-item btn btn-sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    >
+                      »
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           </>

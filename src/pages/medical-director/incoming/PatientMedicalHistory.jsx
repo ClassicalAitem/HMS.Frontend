@@ -1110,7 +1110,7 @@ const dependant = isDependant
                   refreshQueueCount();
                   navigate('/dashboard/medical-director');
                 }}
-                allowedRoles={['nurse', 'labtechnician', 'pharmacist','cashier', 'hmo']}
+                allowedRoles={['nurse', 'medical-laboratory', 'labtechnician', 'pharmacist','cashier', 'hmo']}
               />
              
             </div>
