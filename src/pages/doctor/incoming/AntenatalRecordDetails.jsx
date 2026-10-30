@@ -17,6 +17,7 @@ import CreateBillModal from "@/components/modals/CreateBillModal";
 import { SendToHmoModal } from "@/components/modals";
 import { getInventories } from "@/services/api/inventoryAPI";
 import { getServiceCharges } from "@/services/api/serviceChargesAPI";
+import { resolveServiceCharge } from '@/utils/serviceChargeHelper';
 import { calculateDispenseQuantity, calculatePrescriptionLine } from "@/utils/prescriptionsCalculator";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { LabResultDetailsModal } from "@/components/modals";
@@ -586,17 +587,25 @@ const handleOrderCreated = () => {
 
   const getBillItems = () => {
     const labItems = labRequests
-      .filter((lab) => !lab.isBilled && !lab.billId)
+      .filter((lab) => !lab.isBilled && !lab.billId && String(lab.status || '').toLowerCase() !== 'cancelled')
       .flatMap((lab) => (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
         const name = typeof test === 'string' ? test : test?.name || test?.code || 'Lab Test';
-        const charge = serviceCharges.find((item) => String(item?.service || item?.name || '').toLowerCase().includes(String(name).toLowerCase()));
+        const isRadiology = String(lab.type || '').toLowerCase() === 'radiology';
+        const resolved = resolveServiceCharge(serviceCharges, {
+          name,
+          id: test?.serviceChargeId || lab.serviceChargeId,
+          category: lab.type,
+          price: test?.price,
+          isCustom: Boolean(test?.isCustom),
+        });
         return {
-          serviceChargeId: lab.serviceChargeId || charge?._id || charge?.id || '',
-          code: 'LAB',
+          serviceChargeId: test?.serviceChargeId || lab.serviceChargeId || resolved.serviceChargeId || '',
+          code: isRadiology ? 'RAD' : 'LAB',
           description: name,
           quantity: 1,
-          price: Number(charge?.amount || charge?.price || 0),
+          price: resolved.price,
           investigationId: lab._id || lab.id,
+          isCustom: Boolean(test?.isCustom),
         };
       }));
     const prescriptionItems = prescriptions

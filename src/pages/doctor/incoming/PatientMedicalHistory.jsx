@@ -20,6 +20,7 @@ import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
 import { getInventories } from "@/services/api/inventoryAPI";
 import { getInvestigationByPatientId } from "@/services/api/investigationAPI";
 import { getServiceCharges } from "@/services/api/serviceChargesAPI";
+import { resolveServiceCharge } from '@/utils/serviceChargeHelper';
 import PrescriptionHistoryTable from "@/components/doctor/patient/PrescriptionHistoryTable";
 import CreateBillModal from "@/components/modals/CreateBillModal";
 import { FaUserMd } from "react-icons/fa";
@@ -721,14 +722,16 @@ const latestLab = useMemo(() => {
 
 
 
-  const getLabInvestigationPrice = (testName) => {
-    if (!testName) return 0;
-    const normalizedTestName = String(testName).toLowerCase().trim();
-    const match = serviceCharges.find(charge => {
-      const serviceName = String(charge?.service || charge?.name || '').toLowerCase().trim();
-      return serviceName === normalizedTestName || serviceName.includes(normalizedTestName);
+  const getLabInvestigationPrice = (testName, test, invType) => {
+    if (!testName && !test) return 0;
+    const resolved = resolveServiceCharge(serviceCharges, {
+      name: typeof test === 'string' ? test : (testName || test?.name || test?.code || ''),
+      id: test?.serviceChargeId,
+      category: invType || 'laboratory',
+      price: test?.price,
+      isCustom: Boolean(test?.isCustom),
     });
-    return Number(match?.amount || match?.price || 0);
+    return resolved.price;
   };
 
 
@@ -757,13 +760,22 @@ const latestLab = useMemo(() => {
 
         return tests.map(test => {
           const testName = typeof test === 'string' ? test : (test?.name || test?.code || '');
+          const isRadiology = String(inv.type || '').toLowerCase() === 'radiology';
+          const resolved = resolveServiceCharge(serviceCharges, {
+            name: testName,
+            id: test?.serviceChargeId || inv.serviceChargeId,
+            category: inv.type,
+            price: test?.price,
+            isCustom: Boolean(test?.isCustom),
+          });
           return {
-            serviceChargeId: inv?.serviceChargeId || '',
-            code: 'LAB',
-            description: testName || 'Lab Test',
+            serviceChargeId: test?.serviceChargeId || inv?.serviceChargeId || resolved.serviceChargeId || '',
+            code: isRadiology ? 'RAD' : 'LAB',
+            description: testName || (isRadiology ? 'Radiology Scan' : 'Lab Test'),
             quantity: 1,
-            price: getLabInvestigationPrice(testName) || 0,
+            price: resolved.price,
             investigationId: inv?.id || inv?._id,
+            isCustom: Boolean(test?.isCustom),
           };
         });
       });

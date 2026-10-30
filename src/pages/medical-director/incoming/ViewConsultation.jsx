@@ -67,6 +67,7 @@ import { SendToHmoModal } from '@/components/modals';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { calculateDispenseQuantity, calculatePrescriptionLine } from '@/utils/prescriptionsCalculator';
+import { resolveServiceCharge } from '@/utils/serviceChargeHelper';
 
 import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
 import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
@@ -742,20 +743,40 @@ const ViewConsultation = () => {
 
   const getBillItems = () => {
     const labItems = labRequests
-      .filter((lab) => !lab.isBilled && !lab.billId)
+      .filter((lab) => !lab.isBilled && !lab.billId && String(lab.status || '').toLowerCase() !== 'cancelled')
       .flatMap((lab) =>
         (Array.isArray(lab.tests) ? lab.tests : []).map((test) => {
-          const testName = typeof test === 'string' ? test : test?.name || test?.code;
-          const charge = serviceCharges.find((item) =>
-            String(item?.service || item?.name || '').toLowerCase().includes(String(testName || '').toLowerCase()),
-          );
+          const testName =
+            typeof test === 'string'
+              ? test
+              : test?.name || test?.code || '';
+
+          const isRadiology = String(lab.type || '').toLowerCase() === 'radiology';
+
+          const resolved = resolveServiceCharge(serviceCharges, {
+            name: testName,
+            id: test?.serviceChargeId || lab.serviceChargeId,
+            category: lab.type,
+            price: test?.price,
+            isCustom: Boolean(test?.isCustom),
+          });
+
           return {
-            serviceChargeId: lab.serviceChargeId || charge?._id || charge?.id || '',
-            code: 'LAB',
-            description: testName || lab.type || 'Lab Test',
+            serviceChargeId:
+              test?.serviceChargeId ||
+              lab.serviceChargeId ||
+              resolved.serviceChargeId ||
+              '',
+
+            code: isRadiology ? 'RAD' : 'LAB',
+            description: testName || (isRadiology ? 'Radiology Scan' : 'Lab Test'),
+
             quantity: 1,
-            price: Number(charge?.amount || charge?.price || 0),
+
+            price: resolved.price,
+
             investigationId: lab._id || lab.id,
+            isCustom: Boolean(test?.isCustom),
           };
         }),
       );
@@ -805,23 +826,23 @@ const ViewConsultation = () => {
         })),
       );
     const procedureItems = procedures
-      .filter((proc) => !proc.isBilled && !proc.billId)
-      .map((proc) => {
-        const matchingCharge = serviceCharges.find(
-          (sc) =>
-            sc.id === proc.serviceChargeId ||
-            sc._id === proc.serviceChargeId ||
-            String(sc.service || sc.name || '').toLowerCase() === String(proc.procedureName || '').toLowerCase(),
-        );
-        return {
-          serviceChargeId: proc.serviceChargeId || matchingCharge?.id || matchingCharge?._id || '',
-          code: 'SURGERY',
-          description: proc.procedureName || 'Surgical Procedure',
-          quantity: 1,
-          price: Number(proc.price || matchingCharge?.amount || matchingCharge?.price || 0),
-          appointmentId: proc.id || proc._id || proc.appointmentId,
-        };
+    .filter((proc) => !proc.isBilled && !proc.billId && String(proc.status || '').toLowerCase() !== 'cancelled')
+    .map((proc) => {
+      const resolved = resolveServiceCharge(serviceCharges, {
+        name: proc.procedureName,
+        id: proc.serviceChargeId,
+        category: 'surgical',
+        price: proc.price,
       });
+      return {
+        serviceChargeId: proc.serviceChargeId || resolved.serviceChargeId || '',
+        code: 'SURGERY',
+        description: proc.procedureName || 'Surgical Procedure',
+        quantity: 1,
+        price: resolved.price,
+        appointmentId: proc.id || proc._id || proc.appointmentId,
+      };
+    });
 
     return [...labItems, ...prescriptionItems, ...admissionItems, ...procedureItems];
   };
