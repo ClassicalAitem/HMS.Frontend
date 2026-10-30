@@ -10,6 +10,7 @@ import AppRoutes from './routes/AppRoutes';
 import ShiftCountdown from './components/common/ShiftCountdown';
 import AutoLogoutHandler from './components/common/AutoLogoutHandler';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import SupportFloatingButton from './components/ticket/SupportFloatingButton';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
               <div className="App">
                 <AutoLogoutHandler />
                 <ShiftCountdown />
+                <SupportFloatingButton />
                 <ErrorBoundary>
                   <AppRoutes />
                 </ErrorBoundary>
