@@ -98,6 +98,14 @@ const Login = () => {
           'hmo': '/dashboard/hmo',
           'developer': '/developer/tickets',
           'it-support': '/developer/tickets',
+          'medical-laboratory': '/dashboard/laboratory',
+          'medicallaboratory': '/dashboard/laboratory',
+          'medical laboratory': '/dashboard/laboratory',
+          'lab-technician': '/dashboard/laboratory',
+          'labtechnician': '/dashboard/laboratory',
+          'laboratory': '/dashboard/laboratory',
+          'sonographer': '/dashboard/sonographer',
+          'surgeon': '/dashboard/surgeon',
         };
         const roleOrType = user.role || user.accountType;
         redirectPath = roleRoutes[roleOrType] || '/frontdesk/dashboard';

@@ -34,7 +34,8 @@ const ROLES_LIST = [
   { value: 'surgeon', label: 'Surgeon' },
   { value: 'nurse', label: 'Nurse' },
   { value: 'pharmacist', label: 'Pharmacist' },
-  { value: 'lab-technician', label: 'Lab Technician' },
+  { value: 'medical-laboratory', label: 'Medical Laboratory' },
+  { value: 'lab-technician', label: 'Lab Technician (Legacy)' },
   { value: 'cashier', label: 'Cashier' },
   { value: 'receptionist', label: 'Receptionist' },
   { value: 'hmo', label: 'HMO Officer' },
@@ -63,6 +64,7 @@ const getRoleBadgeStyle = (role) => {
       return 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20';
     case 'pharmacist':
       return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+    case 'medical-laboratory':
     case 'lab-technician':
       return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20';
     case 'cashier':

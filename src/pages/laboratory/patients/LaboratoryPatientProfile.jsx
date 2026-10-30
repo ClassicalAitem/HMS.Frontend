@@ -558,7 +558,7 @@ useEffect(() => {
                   onUpdated={() => navigate('/dashboard/laboratory/patients')}
                   allowedRoles={
                     patientType === 'opd'
-                      ? ['labtechnician']
+                      ? ['medical-laboratory', 'labtechnician']
                       : ['doctor', 'medical-director', 'nurse', 'pharmacist', 'cashier', 'hmo', 'sonographer']
                   }
                 />

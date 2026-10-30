@@ -34,10 +34,13 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
         return "Super Admin";
       case "admin":
         return "Admin";
+      case "medical-laboratory":
+      case "medicallaboratory":
+      case "medical laboratory":
       case "laboratory":
       case "lab-technician":
       case "lab_technician":
-        return "Lab Technician";
+        return "Medical Laboratory";
       case "doctor":
         return "Doctor";
       case "nurse":
