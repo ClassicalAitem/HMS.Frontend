@@ -6,6 +6,7 @@ import {
   FaSignOutAlt,
   FaBoxes,
   FaClipboardList,
+  FaTicketAlt,
 } from "react-icons/fa";
 import { MdLockOutline } from "react-icons/md";
 import { LogoutModal } from "@/components/modals";
@@ -78,6 +79,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Finance & Supplies",
       path: "/dashboard/admin/finance-supplies",
       active: isFinanceActive,
+    },
+    {
+      icon: FaTicketAlt,
+      label: "Support & Tickets",
+      path: "/tickets",
+      active: location.pathname.startsWith("/tickets"),
     },
   ];
 
