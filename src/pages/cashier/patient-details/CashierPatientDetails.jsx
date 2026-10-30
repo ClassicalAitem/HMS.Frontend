@@ -10,6 +10,7 @@ import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/servi
 import { createPatientCredit, getPatientCredits } from '@/services/api/patientCreditAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
+import CreateBillModal from '@/components/modals/CreateBillModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
@@ -28,6 +29,7 @@ const CashierPatientDetails = () => {
   const [receipts, setReceipts] = useState([]);
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isCreateBillModalOpen, setIsCreateBillModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedBilling, setSelectedBilling] = useState(null);
   const [patientCredits, setPatientCredits] = useState([]);
@@ -292,7 +294,7 @@ const CashierPatientDetails = () => {
             </button>
           </div>
         </div>
-      </CashierLayout>
+    </CashierLayout>
     );
   }
 
@@ -389,10 +391,10 @@ const CashierPatientDetails = () => {
 
 
                       <td className="font-medium">{formatNigeriaDateTime(bill.createdAt)}</td>
-                      <td> ₦ {bill.totalAmount.toLocaleString()}</td>
+                      <td> ₦ {(Number(bill.totalAmount) || 0).toLocaleString()}</td>
                       <td> ₦ {(bill.isCleared ? 0 : (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0)).toLocaleString()}</td>
-                      <td className="text-success">{bill.raisedBy.firstName}{" "}{bill.raisedBy.lastName}</td>
-                      <td className="text-success">{bill.raisedBy.accountType}</td>
+                      <td className="text-success">{bill.raisedBy?.firstName || 'Staff'}{" "}{bill.raisedBy?.lastName || ''}</td>
+                      <td className="text-success">{bill.raisedBy?.accountType || '—'}</td>
                       <td>
                         {bill.isCleared ? (
                           <button
@@ -424,7 +426,14 @@ const CashierPatientDetails = () => {
                         <td colSpan={7} className="bg-base-200">
                           <div className="p-3">
                             <div className="mb-3 text-sm flex items-center justify-between">
-                              <p>Total:  ₦{Number(bill.totalAmount).toLocaleString()}</p>
+                              <div className="flex items-center gap-3">
+                                <p className="font-semibold">Total: ₦{Number(bill.totalAmount || 0).toLocaleString()}</p>
+                                {Number(bill.discountAmount) > 0 && (
+                                  <span className="text-xs text-base-content/70">
+                                    (Subtotal: ₦{Number(bill.subtotalAmount || bill.totalAmount || 0).toLocaleString()}, Discount: ₦{Number(bill.discountAmount).toLocaleString()})
+                                  </span>
+                                )}
+                              </div>
                               {bill.itemDetails?.some(item => !!item.admissionId) && (
                                 <span className="badge badge-primary font-semibold text-xs ml-4">
                                   🏥 Inpatient / Admission Bill
@@ -448,9 +457,9 @@ const CashierPatientDetails = () => {
                                   <tr key={index} className="border-b border-base-300 hover:bg-base-100">
                                     <td className="px-4 py-3">{item.description}</td>
                                     <td className="px-4 py-3 text-base-content/70">{item.code}</td>
-                                    <td className="px-4 py-3">₦{Number(item.price).toLocaleString()}</td>
+                                    <td className="px-4 py-3">₦{(Number(item.price) || 0).toLocaleString()}</td>
                                     <td className="px-4 py-3">{item.quantity}</td>
-                                    <td className="font-medium px-4 py-3">₦{Number(item.total).toLocaleString()}</td>
+                                    <td className="font-medium px-4 py-3">₦{(Number(item.total) || (Number(item.price || 0) * Number(item.quantity || 1))).toLocaleString()}</td>
                                     <td className="px-4 py-3">
                                       {item.paymentStatus === 'paid' || item.hmoStatus === 'approved' || item.isCleared || bill.isCleared ? (
                                         <span className="badge badge-success badge-sm text-white">Paid</span>
@@ -478,11 +487,11 @@ const CashierPatientDetails = () => {
             </div>
 
             <button
-              onClick={() => navigate(`/cashier/generate-bill/${patientId}`)}
-              className="btn btn-sm btn-primary hidden"
+              onClick={() => setIsCreateBillModalOpen(true)}
+              className="btn btn-sm btn-primary"
             >
               <FaFileInvoice className="w-4 h-4 mr-1" />
-              Generate Bill
+              Create Bill
             </button>
           </div>
         </div>
@@ -668,7 +677,23 @@ const CashierPatientDetails = () => {
           onSubmit={handleReceiptSubmit}
         />
       </div>
-    </CashierLayout>
+            {/* Create Bill Modal */}
+        <CreateBillModal
+          isOpen={isCreateBillModalOpen}
+          onClose={() => setIsCreateBillModalOpen(false)}
+          patientId={patientId}
+          dependantId={dependantId}
+          onSuccess={async () => {
+            try {
+              const billingsRes = await getAllBillings({ patientId });
+              const billingsData = billingsRes?.data?.data || billingsRes?.data || [];
+              setBillings(filterSubjectRecords(Array.isArray(billingsData) ? billingsData : []));
+            } catch (refreshErr) {
+              console.error('Error refreshing billings:', refreshErr);
+            }
+          }}
+        />
+</CashierLayout>
   );
 };
 
