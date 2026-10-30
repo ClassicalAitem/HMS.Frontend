@@ -1,27 +1,38 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAppSelector } from '@/store/hooks';
 import { Header } from '@/components/common';
 import AdminLayout from './admin/AdminLayout';
 import SuperAdminLayout from './superadmin/SuperAdminLayout';
 import DoctorLayout from './doctor/DoctorLayout';
+import MedicalDirectorLayout from './medical-director/MedicalDirectorLayout';
 import NurseLayout from './nurse/NurseLayout';
 import CashierLayout from './cashier/CashierLayout';
 import FrontdeskLayout from './frontdesk/FrontdeskLayout';
 import SurgeonLayout from './surgeon/SurgeonLayout';
+import DeveloperLayout from './developer/DeveloperLayout';
+import PharmacistLayout from './pharmacist/PharmacistLayout';
 
 const RoleBasedLayout = ({ children }) => {
   const { user } = useAppSelector((state) => state.auth);
-  const role = user?.role?.toLowerCase() || '';
+  const normalizedRole = (user?.role || user?.accountType || '')
+    .toLowerCase()
+    .trim()
+    .replace(/_/g, '-');
 
-  if (role === 'admin') return <AdminLayout>{children}</AdminLayout>;
-  if (role === 'super-admin') return <SuperAdminLayout>{children}</SuperAdminLayout>;
-  if (role === 'doctor' || role === 'medical-director') return <DoctorLayout>{children}</DoctorLayout>;
-  if (role === 'nurse') return <NurseLayout>{children}</NurseLayout>;
-  if (role === 'cashier' || role === 'account-officer') return <CashierLayout>{children}</CashierLayout>;
-  if (role === 'front-desk') return <FrontdeskLayout>{children}</FrontdeskLayout>;
-  if (role === 'surgeon') return <SurgeonLayout>{children}</SurgeonLayout>;
+  if (normalizedRole === 'developer' || normalizedRole === 'it-support') {
+    return <DeveloperLayout>{children}</DeveloperLayout>;
+  }
+  if (normalizedRole === 'super-admin') return <SuperAdminLayout>{children}</SuperAdminLayout>;
+  if (normalizedRole === 'admin') return <AdminLayout>{children}</AdminLayout>;
+  if (normalizedRole === 'medical-director') return <MedicalDirectorLayout>{children}</MedicalDirectorLayout>;
+  if (normalizedRole === 'doctor') return <DoctorLayout>{children}</DoctorLayout>;
+  if (normalizedRole === 'nurse') return <NurseLayout>{children}</NurseLayout>;
+  if (normalizedRole === 'cashier' || normalizedRole === 'account-officer') return <CashierLayout>{children}</CashierLayout>;
+  if (normalizedRole === 'front-desk') return <FrontdeskLayout>{children}</FrontdeskLayout>;
+  if (normalizedRole === 'surgeon') return <SurgeonLayout>{children}</SurgeonLayout>;
+  if (normalizedRole === 'pharmacist') return <PharmacistLayout>{children}</PharmacistLayout>;
 
-  // Default clean layout for other roles (pharmacist, lab-technician, sonographer, etc.)
+  // Default clean layout for other roles (lab-technician, sonographer, etc.)
   return (
     <div className="flex min-h-screen w-full flex-col overflow-hidden bg-base-300/20">
       <Header />
@@ -33,4 +44,3 @@ const RoleBasedLayout = ({ children }) => {
 };
 
 export default RoleBasedLayout;
-

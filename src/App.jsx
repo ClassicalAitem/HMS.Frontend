@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -11,8 +11,13 @@ import ShiftCountdown from './components/common/ShiftCountdown';
 import AutoLogoutHandler from './components/common/AutoLogoutHandler';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import SupportFloatingButton from './components/ticket/SupportFloatingButton';
+import { initDiagnosticsCollector } from './utils/diagnostics';
 
 function App() {
+  useEffect(() => {
+    initDiagnosticsCollector();
+  }, []);
+
   return (
     <Provider store={store}>
       <PersistGate loading={<div>Loading...</div>} persistor={persistor}>
