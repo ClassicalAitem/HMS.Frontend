@@ -4,6 +4,8 @@ import { Header } from '@/components/common'
 import DoctorSidebar from '@/components/doctor/dashboard/Sidebar'
 import MDSidebar from '@/components/medical-director/dashboard/Sidebar'
 import AdmissionBillManagerModal from '@/components/modals/AdmissionBillManagerModal'
+import NurseReportModal from '@/components/modals/NurseReportModal'
+import DischargePatientModal from '@/components/modals/DischargePatientModal'
 import { getAdmissionByPatientId } from '@/services/api/admissionApi'
 import { getVitalsByPatient, normalizeVitalsResponse } from '@/services/api/vitalsAPI'
 import { getPatientById } from '@/services/api/patientsAPI'
@@ -52,6 +54,8 @@ const MDAdmittedPatient = () => {
   const [sidebarMounted, setSidebarMounted] = useState(false)
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false)
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [isDischargeModalOpen, setIsDischargeModalOpen] = useState(false)
 
   const consultation = admission?.consultationId || admission?.consultation || null
   const consultationId = typeof consultation === 'object'
@@ -236,17 +240,56 @@ const MDAdmittedPatient = () => {
               {/* Status Badge & Action Buttons */}
               <div className="flex flex-wrap items-center gap-2">
                 {admission?.status === 'discharged' ? (
-                  <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
-                    Discharged Inpatient
-                  </span>
-                ) : (
                   <>
+                    <span className="badge badge-neutral badge-md sm:badge-lg py-2.5 sm:py-3 px-3 sm:px-4 font-semibold">
+                      Discharged Inpatient
+                    </span>
+                    <button
+                      className="btn btn-sm sm:btn-md btn-outline btn-primary gap-2"
+                      onClick={() => setIsReportModalOpen(true)}
+                    >
+                      <FaClipboardList className="w-4 h-4" />
+                      Report
+                    </button>
                     <button 
                       className="btn btn-sm sm:btn-md btn-primary gap-2"
                       onClick={() => setIsBillingModalOpen(true)}
                     >
                       <FaFileInvoice className="w-4 h-4" />
                       Preview Bill
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="btn btn-sm sm:btn-md btn-outline btn-primary gap-2 shadow-xs"
+                      onClick={() => setIsReportModalOpen(true)}
+                      title="Open Nurse Report & Clinical Summary"
+                    >
+                      <FaClipboardList className="w-4 h-4" />
+                      Report
+                    </button>
+
+                    <button 
+                      className="btn btn-sm sm:btn-md btn-primary gap-2 shadow-xs"
+                      onClick={() => setIsBillingModalOpen(true)}
+                      title="Preview Admission & Treatment Invoices"
+                    >
+                      <FaFileInvoice className="w-4 h-4" />
+                      Preview Bill
+                    </button>
+
+                    <button 
+                      className={`btn btn-sm sm:btn-md gap-2 shadow-xs transition-all ${
+                        admission?.dischargeReady
+                          ? 'btn-warning text-warning-content font-bold animate-pulse'
+                          : 'btn-neutral'
+                      }`}
+                      onClick={() => setIsDischargeModalOpen(true)}
+                      title={admission?.dischargeReady ? "Discharge authorized - click to discharge" : "Discharge patient"}
+                    >
+                      <FaSignOutAlt className="w-4 h-4" />
+                      {admission?.dischargeReady ? 'Discharge Patient (Ready)' : 'Discharge Patient'}
                     </button>
                   </>
                 )}
@@ -452,6 +495,27 @@ const MDAdmittedPatient = () => {
         patientId={patientId}
         dependantId={isViewingDependant ? dependantId : null}
         patientName={summarySubject.fullName}
+      />
+
+      <NurseReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        admissionId={admission?._id || admission?.id}
+        patientId={patientId}
+        dependantId={isViewingDependant ? dependantId : null}
+        patientName={summarySubject.fullName}
+        wardName={admission?.ward || admission?.wardId || 'General Ward'}
+        bedNumber={admission?.bedNumber}
+        onReportSaved={loadAdmission}
+      />
+
+      <DischargePatientModal
+        isOpen={isDischargeModalOpen}
+        onClose={() => setIsDischargeModalOpen(false)}
+        admission={admission}
+        patientName={summarySubject.fullName}
+        onDischarged={loadAdmission}
+        onOpenBillingModal={() => setIsBillingModalOpen(true)}
       />
     </div>
   )

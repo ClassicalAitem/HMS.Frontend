@@ -381,18 +381,9 @@ const WardRoundTab = ({
         }
       }
 
-      // Step 4: If marked as discharge round, also ensure the admission is updated
-      if (form.isDischargeRound && admissionId) {
-        try {
-          await dischargeAdmission(admissionId, form.dischargeNote || form.note)
-        } catch (disErr) {
-          console.warn('dischargeAdmission fallback warning', disErr)
-        }
-      }
-
       toast.success(
         form.isDischargeRound
-          ? 'Patient successfully discharged with final round note and orders created'
+          ? 'Ward round saved! Patient is cleared for discharge. The nursing team will finalize discharge.'
           : 'Ward round saved with all queued prescriptions and lab orders created'
       )
 
@@ -717,7 +708,7 @@ const WardRoundTab = ({
             </div>
           </div>
 
-          {/* Section 3: Final Discharge Round Designation */}
+          {/* Section 3: Doctor Discharge Order Designation */}
           <div className="p-4 bg-base-200/40 rounded-xl border border-base-200 space-y-3">
             <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
@@ -729,11 +720,10 @@ const WardRoundTab = ({
               />
               <div>
                 <span className="font-bold text-xs sm:text-sm text-base-content flex items-center gap-2">
-                
-                  Designate this assessment as the Final Discharge Round
+                  Clear Patient for Discharge (Doctor Discharge Recommendation)
                 </span>
                 <p className="text-[11px] text-base-content/60">
-                  Checking this marks the inpatient hospital admission as discharged and prepares take-home instructions.
+                  Checking this indicates to the nursing team that the patient is medically cleared for discharge. The nurse will review bills, compile reports, and finalize discharge.
                 </p>
               </div>
             </label>
@@ -741,7 +731,7 @@ const WardRoundTab = ({
             {form.isDischargeRound && (
               <div className="pt-2 animate-fadeIn">
                 <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                  Formal Discharge Note*
+                  Doctor's Discharge Instructions & Follow-up Plan*
                 </label>
                 <textarea
                   name="dischargeNote"
@@ -787,7 +777,7 @@ const WardRoundTab = ({
                   </>
                 ) : form.isDischargeRound ? (
                   <>
-                    <FaSignOutAlt className="w-3.5 h-3.5" /> Complete Round & Discharge Patient
+                    <FaSignOutAlt className="w-3.5 h-3.5" /> Save Round & Clear for Discharge
                   </>
                 ) : (
                   <>
@@ -1068,15 +1058,15 @@ const WardRoundTab = ({
                 <FaExclamationTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-lg text-base-content">Confirm Inpatient Discharge</h3>
+                <h3 className="font-bold text-lg text-base-content">Authorize Patient Discharge</h3>
                 <p className="text-xs text-base-content/60">
-                  This action marks the hospital admission as completed
+                  Clear patient for discharge in this ward round
                 </p>
               </div>
             </div>
 
             <p className="text-sm text-base-content/80 leading-relaxed">
-              Are you sure you want to complete this ward round as a <strong>Discharge Round</strong>? This will release the assigned bed and mark the patient&apos;s admission as discharged.
+              Are you sure you want to record this ward round with a <strong>Doctor Discharge Order</strong>? This flags to the nursing team that the patient is medically cleared for discharge. The nurse will review care, finalize billing, and execute the final discharge.
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -1093,7 +1083,7 @@ const WardRoundTab = ({
                 disabled={saving}
                 className="btn btn-sm btn-warning rounded-xl font-semibold gap-2"
               >
-                {saving ? 'Discharging...' : 'Confirm & Discharge'}
+                {saving ? 'Saving...' : 'Authorize Discharge'}
               </button>
             </div>
           </div>
