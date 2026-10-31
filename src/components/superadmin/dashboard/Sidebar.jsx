@@ -84,18 +84,18 @@ const Sidebar = ({ onCloseSidebar }) => {
       path: '/superadmin/registration',
       active: location.pathname === '/superadmin/registration'
     },
-    {
-      icon: FaShieldAlt,
-      label: 'Issues & Support Overview',
-      path: '/superadmin/issues-overview',
-      active: location.pathname === '/superadmin/issues-overview'
-    },
-    {
-      icon: FaTicketAlt,
-      label: 'All Tickets Queue',
-      path: '/tickets',
-      active: location.pathname === '/tickets' || location.pathname.startsWith('/tickets/')
-    },
+    // {
+    //   icon: FaShieldAlt,
+    //   label: 'Issues & Support Overview',
+    //   path: '/superadmin/issues-overview',
+    //   active: location.pathname === '/superadmin/issues-overview'
+    // },
+    // {
+    //   icon: FaTicketAlt,
+    //   label: 'All Tickets Queue',
+    //   path: '/tickets',
+    //   active: location.pathname === '/tickets' || location.pathname.startsWith('/tickets/')
+    // },
     {
       icon: MdSettings,
       label: 'Settings',
