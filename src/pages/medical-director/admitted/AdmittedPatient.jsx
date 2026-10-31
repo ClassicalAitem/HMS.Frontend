@@ -21,6 +21,7 @@ import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
 import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
 import toast from 'react-hot-toast'
+import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaHeartbeat,
   FaNotesMedical,
@@ -295,6 +296,48 @@ const MDAdmittedPatient = () => {
                 )}
               </div>
             </div>
+
+            {/* Discharged Inpatient Information Banner */}
+            {admission?.status === 'discharged' && (
+              <div className="bg-neutral/10 border border-neutral/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fadeIn">
+                <div className="flex items-start sm:items-center gap-3">
+                  <div className="p-2.5 bg-neutral text-neutral-content rounded-xl shrink-0">
+                    <FaSignOutAlt className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="font-bold text-sm text-base-content">
+                        Patient Discharged
+                      </h4>
+                      {admission.dischargedByNurseName && (
+                        <span className="badge badge-neutral badge-sm font-semibold">
+                          Discharged by Nurse: {admission.dischargedByNurseName}
+                        </span>
+                      )}
+                      {admission.dischargedAt && (
+                        <span className="text-xs text-base-content/60">
+                          on {formatNigeriaDateTimeShort(admission.dischargedAt)}
+                        </span>
+                      )}
+                    </div>
+                    {admission.dischargeNotes && (
+                      <p className="text-xs text-base-content/80 mt-1 font-mono">
+                        "{admission.dischargeNotes}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="btn btn-xs sm:btn-sm btn-outline btn-primary gap-1.5"
+                  >
+                    <FaClipboardList className="w-3.5 h-3.5" />
+                    View Reports
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Patient Overview Card */}
             <PatientDetailsCard
