@@ -111,6 +111,36 @@ export const deleteAdmission = async (id) => {
   }
 }
 
+export const createNurseReport = async (admissionId, payload) => {
+  try {
+    const response = await apiClient.post(`/admission/${admissionId}/reports`, payload)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('admissionAPI: createNurseReport error', err)
+    throw err
+  }
+}
+
+export const getNurseReports = async (admissionId) => {
+  try {
+    const response = await apiClient.get(`/admission/${admissionId}/reports`)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('admissionAPI: getNurseReports error', err)
+    throw err
+  }
+}
+
+export const getAdmissionSummaryData = async (admissionId) => {
+  try {
+    const response = await apiClient.get(`/admission/${admissionId}/summary`)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('admissionAPI: getAdmissionSummaryData error', err)
+    throw err
+  }
+}
+
 export default {
   getAdmissions,
   getAdmissionsForConsultation,
@@ -121,5 +151,8 @@ export default {
   confirmAdmission,
   dischargeAdmission,
   createAdmission,
-  deleteAdmission
+  deleteAdmission,
+  createNurseReport,
+  getNurseReports,
+  getAdmissionSummaryData,
 }

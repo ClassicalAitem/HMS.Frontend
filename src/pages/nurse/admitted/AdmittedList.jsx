@@ -393,7 +393,14 @@ const AdmittedList = () => {
                               {item.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <div className="font-semibold text-base-content">{item.name}</div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-base-content">{item.name}</span>
+                                {item.admission?.dischargeReady && (
+                                  <span className="badge badge-warning badge-xs font-bold animate-pulse">
+                                    Ready for Discharge
+                                  </span>
+                                )}
+                              </div>
                               {item.parentPatient && (
                                 <div className="text-xs text-base-content/50">
                                   Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
@@ -470,7 +477,14 @@ const AdmittedList = () => {
                         ) : (
                           <>
                             <td className="py-3.5 px-4 text-xs font-medium text-base-content/80">
-                              {formatNigeriaDateTimeShort(item.admittedAt)}
+                              <div className="flex flex-col gap-1">
+                                <span>{formatNigeriaDateTimeShort(item.admittedAt)}</span>
+                                {item.admission?.dischargeReady && (
+                                  <span className="badge badge-warning badge-xs font-bold w-fit">
+                                    Doctor Cleared
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             
                           </>
@@ -655,6 +669,11 @@ const AdmittedCard = ({ item, onOpen }) => (
         <div className="flex items-center gap-1 mt-1">
           <span className="badge badge-primary badge-xs">{item.ward}</span>
           {item.bedNumber && <span className="badge badge-outline badge-xs">Bed {item.bedNumber}</span>}
+          {item.admission?.dischargeReady && (
+            <span className="badge badge-warning badge-xs font-bold animate-pulse">
+              Ready for Discharge
+            </span>
+          )}
         </div>
       </div>
       <span className="badge badge-success badge-xs gap-1">Admitted</span>

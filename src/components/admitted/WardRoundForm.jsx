@@ -234,12 +234,12 @@ const WardRoundForm = ({ patientId, dependantId, doctorId, consultationId: provi
         name="dischargeNote"
         value={form.dischargeNote}
         onChange={handleChange}
-        placeholder="Discharge note (optional)"
+        placeholder="Discharge instructions / Doctor notes (optional)"
         className="textarea textarea-bordered w-full"
       />
       <label className="flex items-center gap-2">
         <input type="checkbox" name="isDischargeRound" checked={form.isDischargeRound} onChange={handleChange} />
-        This is a discharge round
+        Clear patient for discharge (Doctor recommendation)
       </label>
       <div className="flex justify-end">
         <button type="submit" className="btn btn-primary" disabled={saving}>

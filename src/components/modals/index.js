@@ -27,6 +27,8 @@ export { default as DoctorBillModal } from './DoctorBillModal';
 export { default as AppointmentDetailsModal } from './AppointmentDetailsModal';
 export { default as ConsultationDetailModal } from './ConsultationDetailModal';
 export { default as PrescribeDrugsModal } from './PrescribeDrugsModal';
+export { default as NurseReportModal } from './NurseReportModal';
+export { default as DischargePatientModal } from './DischargePatientModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';
