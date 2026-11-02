@@ -66,12 +66,7 @@ const Registration = () => {
 
   function formatCardName(value) {
     if (!value) return '';
-    return value
-      .toString()
-      .trim()
-      .split(/\s+/)
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-      .join(' ');
+    return value.toString().trim();
   }
 
   // Fetch family and company names on component mount

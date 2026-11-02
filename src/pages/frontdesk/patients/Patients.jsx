@@ -290,47 +290,88 @@ const Patients = () => {
     return age;
   };
 
-  const primaryPatients = useMemo(() => patients.map((patient, index) => ({
-    ...patient,
-    id: patient.id || patient._id,
-    serialNumber: index + 1,
-    recordType: 'primary',
-    name: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Patient',
-    fullName: `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim(),
-    age: calculateAge(patient.dob || patient.dateOfBirth),
-    dependantsCount: (patient.dependants || []).length,
-    dependantsList: patient.dependants || [],
-    cardType: patient.cardType || 'personal',
-    familyName: patient.familyName || '',
-    companyName: patient.companyName || '',
-    status: patient.status || 'Active',
-    isOldPatient: patient.isOldPatient || false,
-  })), [patients]);
+  const primaryPatients = useMemo(() => patients.map((patient, index) => {
+    const firstName = (patient.firstName || '').trim();
+    const middleName = (patient.middleName || '').trim();
+    const lastName = (patient.lastName || '').trim();
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+    const displayName = fullName || 'Unknown Patient';
+    const patientId = patient.id || patient._id;
 
-  const dependantsOnly = useMemo(() => patients.flatMap((patient) => (
-    (patient.dependants || []).map((dependant, index) => ({
-      ...dependant,
-      id: dependant._id || dependant.id || `${patient.id || patient._id}-dep-${index}`,
-      primaryPatientId: patient.id || patient._id,
-      primaryPatientName: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Principal',
-      primaryPatientHospitalId: patient.hospitalId || '—',
-      recordType: 'dependant',
-      isDependant: true,
-      hospitalId: dependant.hospitalId || dependant.dependantHospitalId || `${patient.hospitalId || 'HOS'}-D${index + 1}`,
-      name: `${dependant.firstName || ''} ${dependant.middleName || ''} ${dependant.lastName || ''}`.trim() || 'Unnamed Dependant',
-      age: calculateAge(dependant.dob || dependant.dateOfBirth),
-      relationship: dependant.relationshipType || dependant.relationship || 'Dependant',
-      gender: dependant.gender || '—',
-      phone: dependant.phone || patient.phone || '—',
-      email: dependant.email || patient.email || '—',
+    return {
+      ...patient,
+      id: patientId,
+      patientId,
+      primaryPatientId: patientId,
+      serialNumber: index + 1,
+      recordType: 'primary',
+      isDependant: false,
+      firstName,
+      middleName,
+      lastName,
+      name: displayName,
+      fullName,
+      reversedName: [lastName, firstName, middleName].filter(Boolean).join(' '),
+      age: calculateAge(patient.dob || patient.dateOfBirth),
+      dependantsCount: (patient.dependants || []).length,
+      dependantsList: patient.dependants || [],
       cardType: patient.cardType || 'personal',
       familyName: patient.familyName || '',
       companyName: patient.companyName || '',
-      status: dependant.status || patient.status || 'Active',
+      status: patient.status || 'Active',
       isOldPatient: patient.isOldPatient || false,
-      dependantsCount: 0,
-    }))
-  )).map((item, index) => ({ ...item, serialNumber: index + 1 })), [patients]);
+      patientSnapshot: patient,
+    };
+  }), [patients]);
+
+  const dependantsOnly = useMemo(() => patients.flatMap((patient) => {
+    const guardianFirstName = (patient.firstName || '').trim();
+    const guardianMiddleName = (patient.middleName || '').trim();
+    const guardianLastName = (patient.lastName || '').trim();
+    const guardianName = [guardianFirstName, guardianMiddleName, guardianLastName].filter(Boolean).join(' ') || 'Unknown Principal';
+    const guardianId = patient.id || patient._id;
+
+    return (patient.dependants || []).map((dependant, index) => {
+      const depFirstName = (dependant.firstName || '').trim();
+      const depMiddleName = (dependant.middleName || '').trim();
+      const depLastName = (dependant.lastName || '').trim();
+      const depFullName = [depFirstName, depMiddleName, depLastName].filter(Boolean).join(' ');
+      const depDisplayName = depFullName || 'Unnamed Dependant';
+      const depId = dependant._id || dependant.id || `${guardianId}-dep-${index}`;
+
+      return {
+        ...dependant,
+        id: depId,
+        dependantId: depId,
+        patientId: guardianId,
+        primaryPatientId: guardianId,
+        primaryPatientName: guardianName,
+        primaryPatientHospitalId: patient.hospitalId || '—',
+        patientSnapshot: patient,
+        dependantSnapshot: dependant,
+        recordType: 'dependant',
+        isDependant: true,
+        hospitalId: dependant.hospitalId || dependant.dependantHospitalId || `${patient.hospitalId || 'HOS'}-D${index + 1}`,
+        firstName: depFirstName,
+        middleName: depMiddleName,
+        lastName: depLastName,
+        name: depDisplayName,
+        fullName: depFullName,
+        reversedName: [depLastName, depFirstName, depMiddleName].filter(Boolean).join(' '),
+        age: calculateAge(dependant.dob || dependant.dateOfBirth),
+        relationship: dependant.relationshipType || dependant.relationship || 'Dependant',
+        gender: dependant.gender || '—',
+        phone: dependant.phone || patient.phone || '—',
+        email: dependant.email || patient.email || '—',
+        cardType: patient.cardType || 'personal',
+        familyName: patient.familyName || '',
+        companyName: patient.companyName || '',
+        status: dependant.status || patient.status || 'Active',
+        isOldPatient: patient.isOldPatient || false,
+        dependantsCount: 0,
+      };
+    });
+  }).map((item, index) => ({ ...item, serialNumber: index + 1 })), [patients]);
 
   const allRecords = useMemo(() => [...primaryPatients, ...dependantsOnly]
     .map((item, index) => ({ ...item, serialNumber: index + 1 })), [primaryPatients, dependantsOnly]);
@@ -389,7 +430,7 @@ const Patients = () => {
         <div>
           <button
             type="button"
-            onClick={() => navigate(`/frontdesk/patients/${row.patientId}`, {
+            onClick={() => navigate(`/frontdesk/patients/${row.patientId}${row.dependantId ? `?dependantId=${row.dependantId}` : ''}`, {
               state: {
                 patientSnapshot: row.patientSnapshot,
                 dependantId: row.dependantId,
@@ -438,16 +479,52 @@ const Patients = () => {
       className: 'text-base-content font-medium',
       render: (value, row) => row.isDependant ? (
         <div>
-          <div className="font-semibold text-base-content">{value}</div>
-          <div className="text-[11px] text-base-content/60">Dep. of <strong className="text-primary">{row.primaryPatientName}</strong></div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              navigate(`/frontdesk/patients/${row.primaryPatientId || row.patientId}?dependantId=${row.dependantId || row.id}`, {
+                state: {
+                  patientSnapshot: row.patientSnapshot,
+                  dependantId: row.dependantId || row.id,
+                  dependantSnapshot: row.dependantSnapshot || row,
+                },
+              });
+            }}
+            className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+            title="View Dependant Profile"
+          >
+            {value}
+          </button>
+          <div className="text-[11px] text-base-content/60">
+            Dep. of{' '}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                navigate(`/frontdesk/patients/${row.primaryPatientId || row.patientId}`);
+              }}
+              className="text-primary hover:underline font-semibold"
+              title="View Guardian Profile"
+            >
+              {row.primaryPatientName}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex items-center gap-1">
-          <button type="button" onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            navigate(`/frontdesk/patients/${row.id}`);
-          }} className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              navigate(`/frontdesk/patients/${row.id}`);
+            }}
+            className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+            title="View Patient Profile"
+          >
             {value}
           </button>
           {row.isOldPatient && <span className="badge badge-neutral badge-xs uppercase text-[9px] font-bold">Old Patient</span>}

@@ -57,7 +57,9 @@ const PatientDetails = () => {
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false);
   const location = useLocation();
-  const dependantId = location?.state?.dependantId || null;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const queryDependantId = searchParams.get('dependantId');
+  const dependantId = location?.state?.dependantId || queryDependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
   const [consultations, setConsultations] = useState([]);
@@ -177,7 +179,10 @@ const PatientDetails = () => {
               const dep = res?.data?.data?.dependant || res?.data?.dependant || dependantSnapshot;
               if (mounted) setSubject(dep || dependantSnapshot);
             } catch {
-              if (mounted) setSubject(dependantSnapshot);
+              if (mounted) {
+                const fromPatient = (patient?.dependants || []).find((d) => String(d.id || d._id) === String(dependantId));
+                setSubject(fromPatient || dependantSnapshot);
+              }
             }
           } else {
             if (mounted) setSubject(patient);
@@ -381,6 +386,28 @@ const PatientDetails = () => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-4 lg:p-6">
           {/* Page Header */}
           <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
+
+          {/* Dependant Banner when viewing dependant */}
+          {isViewingDependant && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 px-4 rounded-xl bg-secondary/10 border border-secondary/20 mb-4 shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <span className="badge badge-secondary font-semibold text-xs">Dependant Profile</span>
+                <span className="text-xs sm:text-sm text-base-content/80">
+                  Viewing record for <strong className="text-base-content">{summarySubject?.fullName}</strong>{' '}
+                  <span className="text-base-content/60">
+                    (Guardian: <strong className="text-primary font-medium">{patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Principal Patient'}</strong> — {patient?.hospitalId || '—'})
+                  </span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/frontdesk/patients/${patient?.id || patientId}`)}
+                className="btn btn-xs btn-outline btn-secondary shrink-0 font-medium"
+              >
+                Switch to Guardian
+              </button>
+            </div>
+          )}
 
           {/* Patient Information */}
           <div className="space-y-6">

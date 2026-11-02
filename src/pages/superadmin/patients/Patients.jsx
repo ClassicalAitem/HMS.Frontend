@@ -113,21 +113,38 @@ const StatusBadge = ({ status }) => {
 
   // Process Primary Patients
   const primaryPatients = useMemo(() => {
-    return patients.map((patient, index) => ({
-      ...patient,
-      id: patient.id || patient._id,
-      serialNumber: index + 1,
-      recordType: 'primary',
-      name: `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Patient',
-      fullName: `${patient.firstName || ''} ${patient.middleName || ''} ${patient.lastName || ''}`.trim(),
-      age: calculateAge(patient.dob || patient.dateOfBirth),
-      dependantsCount: (patient.dependants || []).length,
-      dependantsList: patient.dependants || [],
-      cardType: patient.cardType || 'personal',
-      familyName: patient.familyName || '',
-      companyName: patient.companyName || '',
-      status: patient.status || 'Active',
-    }));
+    return patients.map((patient, index) => {
+      const firstName = (patient.firstName || '').trim();
+      const middleName = (patient.middleName || '').trim();
+      const lastName = (patient.lastName || '').trim();
+      const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+      const displayName = fullName || 'Unknown Patient';
+      const patientId = patient.id || patient._id;
+
+      return {
+        ...patient,
+        id: patientId,
+        patientId,
+        primaryPatientId: patientId,
+        serialNumber: index + 1,
+        recordType: 'primary',
+        isDependant: false,
+        firstName,
+        middleName,
+        lastName,
+        name: displayName,
+        fullName,
+        reversedName: [lastName, firstName, middleName].filter(Boolean).join(' '),
+        age: calculateAge(patient.dob || patient.dateOfBirth),
+        dependantsCount: (patient.dependants || []).length,
+        dependantsList: patient.dependants || [],
+        cardType: patient.cardType || 'personal',
+        familyName: patient.familyName || '',
+        companyName: patient.companyName || '',
+        status: patient.status || 'Active',
+        patientSnapshot: patient,
+      };
+    });
   }, [patients]);
 
   // Extract all dependants
@@ -135,12 +152,26 @@ const StatusBadge = ({ status }) => {
     const list = [];
     patients.forEach((patient) => {
       const deps = patient.dependants || [];
-      const primaryName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Unknown Principal';
+      const guardianFirstName = (patient.firstName || '').trim();
+      const guardianMiddleName = (patient.middleName || '').trim();
+      const guardianLastName = (patient.lastName || '').trim();
+      const primaryName = [guardianFirstName, guardianMiddleName, guardianLastName].filter(Boolean).join(' ') || 'Unknown Principal';
+      const guardianId = patient.id || patient._id;
+
       deps.forEach((dep, depIdx) => {
+        const depFirstName = (dep.firstName || '').trim();
+        const depMiddleName = (dep.middleName || '').trim();
+        const depLastName = (dep.lastName || '').trim();
+        const depFullName = [depFirstName, depMiddleName, depLastName].filter(Boolean).join(' ');
+        const depDisplayName = depFullName || 'Unnamed Dependant';
+        const depId = dep._id || dep.id || `${guardianId}-dep-${depIdx}`;
+
         list.push({
           ...dep,
-          id: dep._id || dep.id || `${patient.id || patient._id}-dep-${depIdx}`,
-          primaryPatientId: patient.id || patient._id,
+          id: depId,
+          dependantId: depId,
+          patientId: guardianId,
+          primaryPatientId: guardianId,
           primaryPatientName: primaryName,
           primaryPatientHospitalId: patient.hospitalId || '—',
           primaryCardType: patient.cardType || 'personal',
@@ -148,7 +179,12 @@ const StatusBadge = ({ status }) => {
           recordType: 'dependant',
           isDependant: true,
           hospitalId: dep.hospitalId || dep.dependantHospitalId || `${patient.hospitalId || 'HOS'}-D${depIdx + 1}`,
-          name: `${dep.firstName || ''} ${dep.middleName || ''} ${dep.lastName || ''}`.trim() || 'Unnamed Dependant',
+          firstName: depFirstName,
+          middleName: depMiddleName,
+          lastName: depLastName,
+          name: depDisplayName,
+          fullName: depFullName,
+          reversedName: [depLastName, depFirstName, depMiddleName].filter(Boolean).join(' '),
           age: calculateAge(dep.dob || dep.dateOfBirth),
           relationship: dep.relationshipType || dep.relationship || 'Dependant',
           gender: dep.gender || '—',
@@ -159,6 +195,8 @@ const StatusBadge = ({ status }) => {
           companyName: patient.companyName || '',
           status: dep.status || patient.status || 'Active',
           dependantsCount: 0,
+          patientSnapshot: patient,
+          dependantSnapshot: dep,
         });
       });
     });
@@ -200,10 +238,41 @@ const StatusBadge = ({ status }) => {
         if (row.isDependant) {
           return (
             <div>
-              <div className="font-semibold text-base-content">{value}</div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigate(`/superadmin/patients/patientDetails/${row.primaryPatientId || row.patientId}?dependantId=${row.dependantId || row.id}`, {
+                    state: {
+                      patientSnapshot: row.patientSnapshot,
+                      dependantId: row.dependantId || row.id,
+                      dependantSnapshot: row.dependantSnapshot || row,
+                    },
+                  });
+                }}
+                className="font-semibold text-left bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
+                title="View Dependant Profile"
+              >
+                {value}
+              </button>
               <div className="text-[11px] text-base-content/60 flex items-center gap-1 mt-0.5">
                 <FaChild className="w-3 h-3 text-secondary" />
-                <span>Dep. of <strong className="text-primary">{row.primaryPatientName}</strong></span>
+                <span>
+                  Dep. of{' '}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate(`/superadmin/patients/patientDetails/${row.primaryPatientId || row.patientId}`);
+                    }}
+                    className="text-primary hover:underline font-semibold"
+                    title="View Guardian Profile"
+                  >
+                    {row.primaryPatientName}
+                  </button>
+                </span>
               </div>
             </div>
           );
