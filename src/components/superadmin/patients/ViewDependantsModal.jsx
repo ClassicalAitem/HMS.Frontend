@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaUserFriends, FaTimes, FaBirthdayCake, FaVenusMars, FaIdCard, FaHeartbeat } from 'react-icons/fa';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
@@ -15,7 +16,23 @@ const calculateAge = (dob) => {
 };
 
 const ViewDependantsModal = ({ isOpen, onClose, patient }) => {
+  const navigate = useNavigate();
   if (!isOpen || !patient) return null;
+
+  const handleOpenProfile = (dep) => {
+    onClose();
+    const isSuperadmin = window.location.pathname.startsWith('/superadmin');
+    const basePath = isSuperadmin
+      ? `/superadmin/patients/patientDetails/${patient.id || patient._id}`
+      : `/frontdesk/patients/${patient.id || patient._id}`;
+    navigate(`${basePath}?dependantId=${dep._id || dep.id}`, {
+      state: {
+        patientSnapshot: patient,
+        dependantId: dep._id || dep.id,
+        dependantSnapshot: dep,
+      },
+    });
+  };
 
   const dependants = patient.dependants || [];
   const primaryName = patient.fullName || `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
@@ -93,10 +110,17 @@ const ViewDependantsModal = ({ isOpen, onClose, patient }) => {
                       key={dep._id || dep.id || idx}
                       className="p-4 rounded-xl border border-base-300 bg-base-100 hover:border-primary/40 hover:shadow-md transition-all flex flex-col justify-between"
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-base-content text-base">{depName}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenProfile(dep)}
+                              className="font-bold text-base-content text-base hover:text-primary hover:underline text-left cursor-pointer bg-transparent border-none p-0"
+                              title="Enter Dependant Profile"
+                            >
+                              {depName}
+                            </button>
                             <span className="badge badge-sm badge-outline badge-primary capitalize font-medium">
                               {relationship}
                             </span>
@@ -106,9 +130,19 @@ const ViewDependantsModal = ({ isOpen, onClose, patient }) => {
                             <span>ID: {dep.hospitalId || dep.dependantHospitalId || `${patient.hospitalId || 'HOS'}-D${idx + 1}`}</span>
                           </div>
                         </div>
-                        <span className={`badge badge-sm ${dep.status?.toLowerCase() === 'active' ? 'badge-success' : 'badge-neutral'} capitalize`}>
-                          {dep.status || 'Active'}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenProfile(dep)}
+                            className="btn btn-xs btn-primary font-medium"
+                            title="Enter Dependant Profile"
+                          >
+                            View Profile
+                          </button>
+                          <span className={`badge badge-sm ${dep.status?.toLowerCase() === 'active' ? 'badge-success' : 'badge-neutral'} capitalize`}>
+                            {dep.status || 'Active'}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="mt-3 pt-3 border-t border-base-200 grid grid-cols-2 gap-2 text-xs text-base-content/70">

@@ -59,7 +59,9 @@ const PatientDetails = () => {
   const [isCreateBillOpen, setIsCreateBillOpen] = useState(false);
   const [isSendToHmoOpen, setIsSendToHmoOpen] = useState(false);
   const location = useLocation();
-  const dependantId = location?.state?.dependantId || null;
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+  const queryDependantId = searchParams.get('dependantId');
+  const dependantId = location?.state?.dependantId || queryDependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || null;
   const isViewingDependant = !!dependantId;
   const [consultations, setConsultations] = useState([]);
