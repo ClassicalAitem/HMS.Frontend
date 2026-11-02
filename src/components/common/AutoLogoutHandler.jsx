@@ -5,11 +5,11 @@ import { logoutUser } from '@/store/slices/authSlice';
 import toast from 'react-hot-toast';
 import { FaClock, FaSignOutAlt, FaShieldAlt } from 'react-icons/fa';
 
-// 15 minutes of inactivity timeout; warning shows up 2 minutes before the 15 minutes is complete
-const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000; // 900,000 ms (15 minutes)
-const WARNING_DURATION_MS = 2 * 60 * 1000; // 2 minutes warning countdown before logout (120,000 ms)
-const WARNING_THRESHOLD_MS = INACTIVITY_TIMEOUT_MS - WARNING_DURATION_MS; // 13 minutes (780,000 ms)
-const THROTTLE_MS = 1000; // Throttle event listeners to run at most once per second
+// 30 minutes of inactivity timeout; warning shows up 5 minutes before the 30 minutes is complete
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; 
+const WARNING_DURATION_MS = 5 * 60 * 1000; 
+const WARNING_THRESHOLD_MS = INACTIVITY_TIMEOUT_MS - WARNING_DURATION_MS; 
+const THROTTLE_MS = 1000; 
 const CHECK_INTERVAL_MS = 1000; // Interval for checking inactivity elapsed time
 
 const STORAGE_KEY_LAST_ACTIVITY = 'hms_last_activity';
