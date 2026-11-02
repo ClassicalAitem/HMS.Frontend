@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { IoAddCircleOutline } from 'react-icons/io5';
 import { MdEditNote, MdDeleteOutline } from 'react-icons/md';
 import { RiUserAddLine } from 'react-icons/ri';
@@ -42,6 +43,7 @@ const HmoDependantsSection = ({
   onDeleteHmo,
   onDeleteDependant,
 }) => {
+  const navigate = useNavigate();
   const isViewingDependant = !!viewingDependantId;
 
    if (!patient) {
@@ -102,16 +104,39 @@ const HmoDependantsSection = ({
                 <div className="w-full rounded-lg skeleton h-20" />
               ) : (
                 <div className="p-4 rounded-lg border border-base-300">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 text-sm font-semibold rounded-full bg-primary/10 text-primary shrink-0">
-                      {initials(patient.firstName, patient.lastName)}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">
-                        {patient.firstName} {patient.lastName}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 text-sm font-semibold rounded-full bg-primary/10 text-primary shrink-0">
+                        {initials(patient.firstName, patient.lastName)}
                       </div>
-                      <div className="text-xs text-base-content/50">{patient.hospitalId || '—'}</div>
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {isViewingDependant ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/frontdesk/patients/${patient.id || patient._id}`)}
+                              className="font-semibold text-primary hover:underline text-left cursor-pointer bg-transparent border-none p-0"
+                              title="Switch to Principal Patient"
+                            >
+                              {patient.firstName} {patient.lastName}
+                            </button>
+                          ) : (
+                            `${patient.firstName} ${patient.lastName}`
+                          )}
+                        </div>
+                        <div className="text-xs text-base-content/50">{patient.hospitalId || '—'}</div>
+                      </div>
                     </div>
+                    {isViewingDependant && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/frontdesk/patients/${patient.id || patient._id}`)}
+                        className="btn btn-xs btn-outline btn-primary"
+                        title="Switch back to Guardian"
+                      >
+                        View Principal
+                      </button>
+                    )}
                   </div>
                   <div className="pt-3 mt-3 border-t border-base-300">
                     {patientHmos.length === 0 ? (
@@ -153,7 +178,20 @@ const HmoDependantsSection = ({
                             </div>
                             <div>
                               <div className="text-sm font-semibold flex items-center gap-2">
-                                {fullName}
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/frontdesk/patients/${patient.id || patient._id}?dependantId=${dep.id}`, {
+                                    state: {
+                                      patientSnapshot: patient,
+                                      dependantId: dep.id,
+                                      dependantSnapshot: dep,
+                                    },
+                                  })}
+                                  className="hover:underline hover:text-primary font-semibold text-left cursor-pointer bg-transparent border-none p-0 text-sm text-base-content"
+                                  title="View Dependant Profile"
+                                >
+                                  {fullName}
+                                </button>
                                 {dep.id === viewingDependantId && <span className="badge badge-primary badge-xs text-[10px]">Viewing</span>}
                               </div>
                               <div className="text-xs capitalize text-base-content/50">{relationship}</div>

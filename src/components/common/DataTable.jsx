@@ -7,6 +7,7 @@ const DataTable = ({
   data = [],
   columns = [],
   searchable = true,
+  searchFilter = null,
   sortable = true,
   paginated = true,
   initialEntriesPerPage = 5,
@@ -29,15 +30,69 @@ const DataTable = ({
   const filteredAndSortedData = useMemo(() => {
     let filtered = memoizedData;
 
-    // Apply search filter if searchable
+    // Apply search filter if searchable (token-based, multi-field, order-independent, case-insensitive)
     if (searchable && searchTerm) {
-      filtered = memoizedData.filter(item => {
-        return columns.some(column => {
-          const value = item[column.key];
-          if (value === null || value === undefined) return false;
-          return String(value).toLowerCase().includes(searchTerm.toLowerCase());
+      const cleanTerm = searchTerm.trim().toLowerCase();
+      const tokens = cleanTerm.replace(/[,;]/g, ' ').split(/\s+/).filter(Boolean);
+
+      if (tokens.length > 0) {
+        filtered = memoizedData.filter((item) => {
+          if (!item) return false;
+
+          if (typeof searchFilter === 'function') {
+            return searchFilter(item, searchTerm, tokens);
+          }
+
+          const valuesToSearch = [];
+          columns.forEach((column) => {
+            const val = item[column.key];
+            if (val !== null && val !== undefined && typeof val !== 'object') {
+              valuesToSearch.push(String(val).toLowerCase());
+            }
+          });
+
+          const extraFields = [
+            item.name,
+            item.fullName,
+            item.firstName,
+            item.middleName,
+            item.lastName,
+            item.reversedName,
+            item.primaryPatientName,
+            item.hospitalId,
+            item.primaryPatientHospitalId,
+            item.phone,
+            item.phoneNumber,
+            item.email,
+            item.relationship,
+            item.cardType,
+            item.familyName,
+            item.companyName,
+            item.attendedSearch,
+            item.searchableText,
+            item.lastAttendedBy,
+            item.doctor,
+          ];
+
+          extraFields.forEach((f) => {
+            if (f !== null && f !== undefined && typeof f !== 'object') {
+              valuesToSearch.push(String(f).toLowerCase());
+            }
+          });
+
+          if (item.firstName && item.lastName) {
+            valuesToSearch.push(`${item.firstName} ${item.lastName}`.toLowerCase());
+            valuesToSearch.push(`${item.lastName} ${item.firstName}`.toLowerCase());
+          }
+          if (item.firstName && item.middleName && item.lastName) {
+            valuesToSearch.push(`${item.lastName} ${item.firstName} ${item.middleName}`.toLowerCase());
+            valuesToSearch.push(`${item.firstName} ${item.middleName} ${item.lastName}`.toLowerCase());
+          }
+
+          const combinedText = valuesToSearch.join(' ');
+          return tokens.every((token) => combinedText.includes(token));
         });
-      });
+      }
     }
 
     // Apply sorting if sortable
@@ -139,12 +194,12 @@ const DataTable = ({
               type="text"
               placeholder={searchPlaceholder}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="pl-10 w-full input input-bordered input-sm"
             />
             {searchTerm && (
               <button
-                onClick={() => setSearchTerm('')}
+                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
                 className="absolute right-3 top-1/2 transition-colors transform -translate-y-1/2 text-base-content/50 hover:text-base-content"
               >
                 <IoClose className="w-4 h-4" />
