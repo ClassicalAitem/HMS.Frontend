@@ -9,13 +9,20 @@ import {
 
 const SYSTEMS = [
   'CVS',
-  'RESPIRATORY',
+  'CHEST',
   'ABDOMEN',
   'CNS',
   'MUSCULOSKELETAL',
   'ENT',
   'OTHER',
 ];
+
+const normalizeSystem = (sys) => {
+  if (!sys) return SYSTEMS[0];
+  const upper = sys.toUpperCase();
+  if (upper === 'RESPIRATORY' || upper === 'RESPIRATION') return 'CHEST';
+  return sys;
+};
 
 const emptyFinding = {
   system: 'CVS',
@@ -30,6 +37,7 @@ const AddExaminationModal = ({
   onSkip,
   onSaved,
 }) => {
+
   const [saving, setSaving] = useState(false);
   const [generalAppearance, setGeneralAppearance] = useState('');
   const [generalNotes, setGeneralNotes] = useState('');
@@ -44,7 +52,10 @@ const AddExaminationModal = ({
     setGeneralNotes(examination?.generalNotes || '');
     setFindings(
       examination?.findings?.length
-        ? examination.findings.map((finding) => ({ ...finding }))
+        ? examination.findings.map((finding) => ({
+            ...finding,
+            system: normalizeSystem(finding.system),
+          }))
         : [{ ...emptyFinding }]
     );
     setSuggestions({});
@@ -170,32 +181,6 @@ const AddExaminationModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="max-h-[80vh] space-y-4 overflow-y-auto p-5">
-      
-
-          {/* <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[
-              { field: 'edema', label: 'Edema', value: edema, setter: setEdema },
-            ].map(({ field, label, value, setter }) => (
-              <div key={field}>
-                <input
-                  list={`examination-suggestion-${field}`}
-                  className="input input-bordered input-sm w-full"
-                  placeholder={label}
-                  value={value}
-                  onChange={(e) =>
-                    searchFieldSuggestions(field, e.target.value, setter)
-                  }
-                  disabled={saving}
-                />
-                <datalist id={`examination-suggestion-${field}`}>
-                  {(fieldSuggestions[field] || []).map((item) => (
-                    <option key={item.id || item.phrase} value={item.phrase} />
-                  ))}
-                </datalist>
-              </div>
-            ))} */}
-          {/* </div> */}
-
           <textarea
             className="textarea textarea-bordered w-full"
             placeholder="General examination notes"

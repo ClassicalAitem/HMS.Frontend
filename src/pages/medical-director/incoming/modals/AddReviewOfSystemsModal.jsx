@@ -9,6 +9,12 @@ import {
 import { REVIEW_OF_SYSTEMS } from '@/constants/reviewOfSystem';
 
 const SYSTEMS = Object.values(REVIEW_OF_SYSTEMS);
+const normalizeSystem = (sys) => {
+  if (!sys) return SYSTEMS[0];
+  const lower = sys.toLowerCase();
+  if (lower === 'respiratory' || lower === 'respiration') return 'chest';
+  return sys;
+};
 const emptyReview = { system: SYSTEMS[0], findings: '', isNormal: false };
 
 const AddReviewOfSystemsModal = ({
@@ -29,7 +35,7 @@ const AddReviewOfSystemsModal = ({
 
     setReviews(review
       ? [{
-          system: review.system || SYSTEMS[0],
+          system: normalizeSystem(review.system),
           findings: review.findings || '',
           isNormal: review.isNormal ?? false,
         }]
@@ -155,8 +161,6 @@ const AddReviewOfSystemsModal = ({
                   <option key={suggestion.id || suggestion.phrase} value={suggestion.phrase} />
                 ))}
               </datalist>
-
-         
 
               <label className="label cursor-pointer justify-start gap-10 pt-5">
                 <input type="checkbox" className="checkbox" checked={item.isNormal} onChange={(event) => updateReview(index, 'isNormal', event.target.checked)} disabled={saving} />

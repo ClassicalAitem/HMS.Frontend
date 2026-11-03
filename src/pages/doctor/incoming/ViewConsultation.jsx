@@ -1915,7 +1915,7 @@ const getInventoryMatch = (medication) => {
                                 key={review.id || index}
                                 className="flex justify-between gap-3 border-b border-base-200 last:border-0 pb-2 last:pb-0"
                               >
-                                <span className="font-medium">{review.system}</span>
+                                <span className="font-medium capitalize">{review.system?.toLowerCase() === 'respiratory' || review.system?.toLowerCase() === 'respiration' ? 'chest' : review.system}</span>
                                 <span className="flex items-center gap-2 text-base-content/70 text-right">
                                   {review.findings || (review.isNormal ? 'Normal' : '—')}
                                   {canEdit && (
@@ -1989,7 +1989,7 @@ const getInventoryMatch = (medication) => {
                                     key={finding.id || index}
                                     className="flex justify-between gap-3 border-b border-base-200 last:border-0 pb-1 last:pb-0"
                                   >
-                                    <span className="font-medium">{finding.system}</span>
+                                    <span className="font-medium">{finding.system?.toUpperCase() === 'RESPIRATORY' || finding.system?.toUpperCase() === 'RESPIRATION' ? 'CHEST' : finding.system}</span>
                                     <span className="text-base-content/70 text-right">
                                       {finding.findings || '—'}{' '}
                                       {finding.isNormal && (

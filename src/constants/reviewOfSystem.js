@@ -1,5 +1,5 @@
 export const REVIEW_OF_SYSTEMS = {
-  RESPIRATORY: "respiratory",
+  CHEST: "chest",
   CARDIOVASCULAR: "cardiovascular",
   NEUROLOGICAL: "neurological",
   MUSCULOSKELETAL: "musculoskeletal",
