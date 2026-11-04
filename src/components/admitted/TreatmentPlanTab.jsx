@@ -25,6 +25,7 @@ import {
 import { getInventories } from '@/services/api/inventoryAPI';
 
 const TIME_SLOTS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
+const SLOT_TIMINGS = { Morning: '08:00', Midday: '12:00', Afternoon: '16:00', Evening: '20:00', Night: '22:00' };
 const MAX_CHART_DAYS = 14;
 
 const getFrequencyCount = (frequency) => {
@@ -359,7 +360,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                     <div className="pr-8">
                       <p className="text-xs font-semibold text-base-content/70 uppercase tracking-wider">Prescription Details</p>
                       <p className="text-sm font-medium mt-0.5">
-                        Prescribed by {prescription.doctorName || 'Doctor'} •{' '}
+                        Prescribed by {prescription.doctorName || 'Doctor'} â€¢{' '}
                         {new Date(prescription.createdAt || Date.now()).toLocaleDateString(undefined, {
                           weekday: 'short',
                           year: 'numeric',
@@ -665,7 +666,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                         <span className="text-xs font-bold text-base-content">
                           Ordered by {order.orderedByName || 'Nurse'}
                         </span>
-                        <span className="text-xs text-base-content/50">•</span>
+                        <span className="text-xs text-base-content/50">â€¢</span>
                         <span className="text-xs text-base-content/70">
                           {new Date(order.orderedAt || order.createdAt).toLocaleDateString(undefined, {
                             month: 'short',
@@ -765,7 +766,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
               <p className="text-sm mt-1.5 text-base-content/80">
                 Drug: <strong className="text-base-content font-bold">{activeSlot.drugName}</strong>
                 <span className="opacity-70">
-                  {' '}• Day {activeSlot.dayIdx + 1} ({activeSlot.slotName})
+                  {' '}â€¢ Day {activeSlot.dayIdx + 1} ({activeSlot.slotName})
                 </span>
               </p>
             </div>
@@ -864,7 +865,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                 }}
                 className="btn btn-sm btn-ghost btn-circle"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -1009,7 +1010,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                             className="btn btn-ghost btn-xs btn-circle text-error"
                             title="Remove item"
                           >
-                            ✕
+                            âœ•
                           </button>
                         </div>
                       </div>
