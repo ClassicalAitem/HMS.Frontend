@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
-import { Sidebar, TaskAssigned, MedicationSchedule } from "@/components/nurse";
+import { Sidebar, TaskAssigned, MedicationSchedule, InpatientMedicationAlertsWidget } from "@/components/nurse";
 import { useAppSelector } from "@/store/hooks";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
@@ -133,7 +133,7 @@ const NurseDashboard = () => {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
-              : "—",
+              : "â€”",
           }));
 
         const filteredDependants = dependants
@@ -150,7 +150,7 @@ const NurseDashboard = () => {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
-              : "—",
+              : "â€”",
           }));
 
         const merged = [...filteredPatients, ...filteredDependants].sort((a, b) => {
@@ -217,10 +217,10 @@ const NurseDashboard = () => {
           return {
             headingTag: "Vital Signs Recorded",
             name: nameResolved,
-            patientId: pid || "—",
+            patientId: pid || "â€”",
             time: v?.createdAt
               ? new Date(v.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : "—",
+              : "â€”",
             status: v?.status || "Recorded",
           };
         });
@@ -305,7 +305,7 @@ const NurseDashboard = () => {
               <p className="text-xs sm:text-sm text-base-content/60 flex items-center gap-2">
                 <FaCalendarAlt className="w-3.5 h-3.5 text-primary" />
                 <span>{currentDateFormatted}</span>
-                <span>·</span>
+                <span>Â·</span>
                 <span>Nursing Care &amp; Clinical Triage Station</span>
               </p>
             </div>
@@ -336,7 +336,7 @@ const NurseDashboard = () => {
                   Vitals Recorded
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-primary">
-                  {tasksLoading ? "—" : tasksCount}
+                  {tasksLoading ? "â€”" : tasksCount}
                 </p>
                 <p className="text-[11px] text-base-content/50">Today&apos;s observations</p>
               </div>
@@ -355,7 +355,7 @@ const NurseDashboard = () => {
                   Incoming Queue
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-                  {incomingLoading ? "—" : incomingTotalCount}
+                  {incomingLoading ? "â€”" : incomingTotalCount}
                 </p>
                 <p className="text-[11px] text-base-content/50">Awaiting nurse action</p>
               </div>
@@ -374,7 +374,7 @@ const NurseDashboard = () => {
                   Admitted Patients
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-                  {tasksLoading ? "—" : admittedCount}
+                  {tasksLoading ? "â€”" : admittedCount}
                 </p>
                 <p className="text-[11px] text-base-content/50">Current bed occupancy</p>
               </div>
@@ -393,7 +393,7 @@ const NurseDashboard = () => {
                   Logged Actions
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-                  {activityLoading ? "—" : recentActivity.length}
+                  {activityLoading ? "â€”" : recentActivity.length}
                 </p>
                 <p className="text-[11px] text-base-content/50">Recent nurse entries</p>
               </div>
@@ -411,7 +411,10 @@ const NurseDashboard = () => {
             onRefresh={refreshIncoming}
           />
 
-          {/* Section 2: Recent Clinical Activity Log */}
+          {/* Section 2: Inpatient Medication Schedule */}
+          <InpatientMedicationAlertsWidget />
+
+          {/* Section 3: Recent Clinical Activity Log */}
           <MedicationSchedule
             recentActivity={recentActivity}
             loading={activityLoading}

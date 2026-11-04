@@ -4,6 +4,11 @@ import {
   getTreatmentConsumables,
 } from './dispensesAPI'
 
+export const getAdmissionMedicationAlerts = async () => {
+  const response = await apiClient.get('/nurse/admission-medication-alerts', { skipErrorToast: true })
+  return response.data?.data ?? response.data ?? response
+}
+
 export const administerMedication = async (admissionId, payload) => {
   if (!admissionId) throw new Error('Admission ID is required')
   const response = await apiClient.post(
@@ -28,6 +33,7 @@ export const generateTreatmentBill = async (admissionId) => {
 export { orderTreatmentConsumables, getTreatmentConsumables }
 
 export default {
+  getAdmissionMedicationAlerts,
   administerMedication,
   getMedicationAdministrations,
   generateTreatmentBill,
