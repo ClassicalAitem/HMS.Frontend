@@ -96,8 +96,8 @@ const Login = () => {
           'cashier': '/cashier/dashboard',
           'pharmacist': '/dashboard/pharmacist',
           'hmo': '/dashboard/hmo',
-          'developer': '/developer/tickets',
-          'it-support': '/developer/tickets',
+          'developer': '/developer/logs',
+          'it-support': '/developer/logs',
           'medical-laboratory': '/dashboard/laboratory',
           'medicallaboratory': '/dashboard/laboratory',
           'medical laboratory': '/dashboard/laboratory',
@@ -196,7 +196,7 @@ const Login = () => {
         return '/dashboard/hmo';
       case 'developer':
       case 'it-support':
-        return '/developer/tickets';
+        return '/developer/logs';
       default:
         return '/frontdesk/dashboard';
     }

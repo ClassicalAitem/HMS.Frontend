@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  FaTicketAlt,
   FaTerminal,
   FaHeartbeat,
   FaSignOutAlt,
@@ -23,13 +22,6 @@ const DeveloperSidebar = ({ onCloseSidebar }) => {
     : 'Software Developer';
 
   const menuItems = [
-    {
-      icon: FaTicketAlt,
-      label: 'Bug & Support Tickets',
-      path: '/developer/tickets',
-      active: location.pathname === '/developer/tickets' || location.pathname.startsWith('/tickets'),
-      badge: 'Support',
-    },
     {
       icon: FaTerminal,
       label: 'Live Server Logs',

@@ -228,7 +228,7 @@ const SystemHealthPage = () => {
               <div className="flex items-center gap-2 border-b border-base-200 pb-3">
                 <FaUserShield className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-base-content">
-                  Support Engineering Controls
+                  Engineering Diagnostics & Controls
                 </h3>
               </div>
 
@@ -238,13 +238,10 @@ const SystemHealthPage = () => {
                 </p>
                 <ul className="space-y-2 list-disc list-inside text-xs">
                   <li>
-                    <strong>Blackbox Error Interceptor:</strong> Captures uncaught frontend JavaScript exceptions and HTTP 4xx/5xx requests into tickets automatically.
+                    <strong>Blackbox Error Interceptor:</strong> Captures uncaught frontend JavaScript exceptions and HTTP 4xx/5xx requests for telemetry.
                   </li>
                   <li>
                     <strong>Server Log Streamer:</strong> Query Winston log files on demand without server terminal or SSH credentials.
-                  </li>
-                  <li>
-                    <strong>Ticket Assignment:</strong> Assign complex bugs directly to yourself or IT personnel to coordinate hotfixes.
                   </li>
                 </ul>
 
