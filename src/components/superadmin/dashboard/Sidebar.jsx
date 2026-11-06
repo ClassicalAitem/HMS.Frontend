@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics, MdCalendarMonth } from "react-icons/md";
-import { FaBed, FaTicketAlt, FaShieldAlt } from "react-icons/fa";
+import { FaBed } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -84,18 +84,6 @@ const Sidebar = ({ onCloseSidebar }) => {
       path: '/superadmin/registration',
       active: location.pathname === '/superadmin/registration'
     },
-    // {
-    //   icon: FaShieldAlt,
-    //   label: 'Issues & Support Overview',
-    //   path: '/superadmin/issues-overview',
-    //   active: location.pathname === '/superadmin/issues-overview'
-    // },
-    // {
-    //   icon: FaTicketAlt,
-    //   label: 'All Tickets Queue',
-    //   path: '/tickets',
-    //   active: location.pathname === '/tickets' || location.pathname.startsWith('/tickets/')
-    // },
     {
       icon: MdSettings,
       label: 'Settings',
