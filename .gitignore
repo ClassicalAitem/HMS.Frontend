@@ -22,7 +22,9 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+!.env.example
 .env*.local
-.env.example
+init
+
 .vs/
 config.bat
