@@ -66,6 +66,29 @@ export const getMedicationDispenseSlots = async (admissionId) => {
   return response.data?.data ?? response.data ?? response
 }
 
+export const orderTreatmentConsumables = async (admissionId, payload) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.post(
+    `/dispense/treatment-consumables/${admissionId}`,
+    payload
+  )
+  return response.data?.data ?? response.data ?? response
+}
+
+export const getTreatmentConsumables = async (admissionId) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.get(`/dispense/treatment-consumables/${admissionId}`)
+  return response.data?.data ?? response.data ?? response
+}
+
+export const dispenseTreatmentConsumable = async (consumableOrderId) => {
+  if (!consumableOrderId) throw new Error('Consumable order ID is required')
+  const response = await apiClient.post(
+    `/dispense/treatment-consumables/${consumableOrderId}/dispense`
+  )
+  return response.data?.data ?? response.data ?? response
+}
+
 export const createTreatmentBill = async (admissionId) => {
   if (!admissionId) throw new Error('Admission ID is required')
   const response = await apiClient.post(`/dispense/treatment-bill/${admissionId}`)
@@ -85,6 +108,9 @@ export default {
   updateDispense,
   dispenseMedicationSlot,
   getMedicationDispenseSlots,
+  orderTreatmentConsumables,
+  getTreatmentConsumables,
+  dispenseTreatmentConsumable,
   createTreatmentBill,
   previewTreatmentBill
 }

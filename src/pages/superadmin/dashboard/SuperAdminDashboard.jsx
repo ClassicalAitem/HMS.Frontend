@@ -11,36 +11,17 @@ import {
   FaClipboardCheck,
   FaUsersCog,
   FaBed,
-  FaShieldAlt,
   FaExclamationTriangle,
-  FaCheckCircle,
-  FaClock,
-  FaTicketAlt,
 } from 'react-icons/fa';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
-import { getTicketStats } from '@/services/api/ticketAPI';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchMetrics } from '../../../store/slices/metricsSlice';
 
 const SuperAdminDashboard = () => {
   const dispatch = useAppDispatch();
   const { metrics, isLoading, error } = useAppSelector((state) => state.metrics);
-  const [ticketStats, setTicketStats] = useState({
-    total: 0,
-    open: 0,
-    inProgress: 0,
-    resolved: 0,
-    closed: 0,
-    critical: 0,
-  });
-
   useEffect(() => {
     dispatch(fetchMetrics());
-    getTicketStats().then((res) => {
-      if (res?.data) {
-        setTicketStats(res.data);
-      }
-    }).catch(() => {});
   }, [dispatch]);
 
   const getCurrentDate = () => {
@@ -68,12 +49,9 @@ const SuperAdminDashboard = () => {
     { label: 'Manage Users', description: 'Control staff access and roles', path: '/superadmin/users', icon: FaUsersCog, tone: 'text-secondary bg-secondary/10' },
     { label: 'Appointments', description: 'Review the hospital schedule', path: '/superadmin/appointments', icon: FaCalendarAlt, tone: 'text-info bg-info/10' },
     { label: 'Registration', description: 'Register a new patient', path: '/superadmin/registration', icon: FiUserPlus, tone: 'text-success bg-success/10' },
-    { label: 'Issues & Support Overview', description: 'Monitor hospital bugs and hotfixes', path: '/superadmin/issues-overview', icon: FaShieldAlt, tone: 'text-error bg-error/10' },
     { label: 'Generate Reports', description: 'Export operational insights', path: '/superadmin/reports', icon: FaClipboardCheck, tone: 'text-warning bg-warning/10' },
     { label: 'System Settings', description: 'Configure hospital operations', path: '/superadmin/settings', icon: FiSettings, tone: 'text-error bg-error/10' },
   ];
-
-  const activeIssues = (ticketStats.open || 0) + (ticketStats.inProgress || 0);
 
   return (
     <SuperAdminLayout>
@@ -169,49 +147,6 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Hospital Issues & System Health Quick Executive Banner */}
-      <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-base-100 to-base-200/60 border border-base-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3.5 rounded-2xl bg-primary/10 text-primary shrink-0">
-            <FaShieldAlt className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-base-content">
-                System Glitches & Developer Support Status
-              </h3>
-              {ticketStats.critical > 0 && (
-                <span className="badge badge-error badge-xs font-bold text-white animate-pulse">
-                  {ticketStats.critical} Critical
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-base-content/65 mt-0.5">
-              Direct developer resolution active. Currently {activeIssues} active issues across wards and clinics.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <div className="flex items-center gap-3 text-xs font-mono mr-2">
-            <span className="text-warning font-bold flex items-center gap-1">
-              <FaClock className="w-3 h-3" /> {activeIssues} Active
-            </span>
-            <span className="text-success font-bold flex items-center gap-1">
-              <FaCheckCircle className="w-3 h-3" /> {(ticketStats.resolved || 0) + (ticketStats.closed || 0)} Solved
-            </span>
-          </div>
-
-          <Link
-            to="/superadmin/issues-overview"
-            className="btn btn-sm btn-primary rounded-xl gap-1.5 text-xs font-semibold"
-          >
-            <span>Issues Overview</span>
-            <FiArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
       </div>
 
       {/* Operations command center */}

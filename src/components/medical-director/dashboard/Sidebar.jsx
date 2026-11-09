@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck, FaBed, FaTicketAlt } from "react-icons/fa";
+import { FaThLarge, FaUsers, FaSignOutAlt, FaUserCheck, FaBed } from "react-icons/fa";
 import { FaVials } from "react-icons/fa6";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 import { IoReceiptOutline } from "react-icons/io5";
@@ -102,12 +102,6 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: "Payment Records",
       path: "/dashboard/medical-director/payment-records",
       active: location.pathname.startsWith("/dashboard/medical-director/payment-records"),
-    },
-    {
-      icon: FaTicketAlt,
-      label: "Support Tickets",
-      path: "/tickets",
-      active: location.pathname === "/tickets" || location.pathname.startsWith("/tickets/"),
     },
   ];
 

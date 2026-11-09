@@ -10,7 +10,7 @@ import AppRoutes from './routes/AppRoutes';
 import ShiftCountdown from './components/common/ShiftCountdown';
 import AutoLogoutHandler from './components/common/AutoLogoutHandler';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import SupportFloatingButton from './components/ticket/SupportFloatingButton';
+import { NurseMedicationAlertManager } from './components/nurse';
 import { initDiagnosticsCollector } from './utils/diagnostics';
 
 function App() {
@@ -27,7 +27,7 @@ function App() {
               <div className="App">
                 <AutoLogoutHandler />
                 <ShiftCountdown />
-                <SupportFloatingButton />
+                <NurseMedicationAlertManager />
                 <ErrorBoundary>
                   <AppRoutes />
                 </ErrorBoundary>

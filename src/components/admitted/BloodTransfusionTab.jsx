@@ -6,6 +6,7 @@ import { getInventories } from '@/services/api/inventoryAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaHeartbeat,
+  FaPills,
   FaPlus,
   FaCheckCircle,
   FaClock,
@@ -53,6 +54,10 @@ const BloodTransfusionTab = ({
   const [consumableSearch, setConsumableSearch] = useState('')
   const [selectedConsumables, setSelectedConsumables] = useState([])
   const [savingConsumables, setSavingConsumables] = useState(false)
+  const [showAddPrepsModal, setShowAddPrepsModal] = useState(null)
+  const [savingPreps, setSavingPreps] = useState(false)
+  const [addPrepsList, setAddPrepsList] = useState([])
+  const [addPrepsSearch, setAddPrepsSearch] = useState('')
 
   const [form, setForm] = useState({
     note: '',
@@ -116,11 +121,11 @@ const BloodTransfusionTab = ({
   }, [patientId, dependantId])
 
   useEffect(() => {
-    if (showOrderModal || showConsumablesModal) {
+    if (showOrderModal || showConsumablesModal || showAddPrepsModal) {
       if (labServices.length === 0) loadLabServices()
       if (inventories.length === 0) loadInventories()
     }
-  }, [showOrderModal, showConsumablesModal])
+  }, [showOrderModal, showConsumablesModal, showAddPrepsModal])
 
   const filteredLabServices = useMemo(() => {
     const q = serviceSearch.trim().toLowerCase()
@@ -329,7 +334,75 @@ const BloodTransfusionTab = ({
     }
   }
 
-  const addConsumable = (inventory) => {
+
+  const filteredAddPrepsInventories = useMemo(() => {
+    const q = addPrepsSearch.trim().toLowerCase()
+    if (!q) return []
+    return inventories.filter((inv) => {
+      const name = String(inv?.name || '').toLowerCase()
+      return name.includes(q)
+    }).slice(0, 20)
+  }, [inventories, addPrepsSearch])
+
+  const openAddPrepsModal = (order) => {
+    setShowAddPrepsModal(order)
+    setAddPrepsList([])
+    setAddPrepsSearch('')
+    if (inventories.length === 0) loadInventories()
+  }
+
+  const handleAddPrepMed = (inv) => {
+    const invId = inv.id || inv._id
+    const alreadyInNew = addPrepsList.find((m) => m.medicationId === invId)
+    if (alreadyInNew) return toast.error('Medication already in the new prep list')
+
+    setAddPrepsList((prev) => [
+      ...prev,
+      {
+        medicationId: invId,
+        medicationName: inv.name,
+        dosage: 'STAT',
+        note: '',
+      },
+    ])
+    setAddPrepsSearch('')
+  }
+
+  const handleRemovePrepMed = (medId) => {
+    setAddPrepsList((prev) => prev.filter((m) => m.medicationId !== medId))
+  }
+
+  const handleUpdatePrepMed = (medId, field, value) => {
+    setAddPrepsList((prev) =>
+      prev.map((m) => (m.medicationId === medId ? { ...m, [field]: value } : m))
+    )
+  }
+
+  const handleSubmitAddPreps = async (e) => {
+    e.preventDefault()
+    if (!showAddPrepsModal || addPrepsList.length === 0) {
+      return toast.error('Please select at least one prep medication')
+    }
+
+    setSavingPreps(true)
+    try {
+      const orderId = showAddPrepsModal._id || showAddPrepsModal.id
+      await bloodTransfusionApi.addBloodTransfusionPreps(orderId, addPrepsList)
+      toast.success('Pre-transfusion medications added and queued for pharmacy')
+      setShowAddPrepsModal(null)
+      setAddPrepsList([])
+      setAddPrepsSearch('')
+      await loadOrders()
+    } catch (err) {
+      console.error('Failed to add prep medications', err)
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to add prep medications')
+    } finally {
+      setSavingPreps(false)
+    }
+  }
+
+
+    const addConsumable = (inventory) => {
     const inventoryId = String(inventory.id || inventory._id)
     if (selectedConsumables.some((item) => item.inventoryId === inventoryId)) {
       return toast.error('Consumable already added')
@@ -413,14 +486,21 @@ const BloodTransfusionTab = ({
           </div>
         </div>
 
-        {/* Doctor-Only Order Button */}
+        {/* Order Transfusion / Prep Button */}
         <div className="flex gap-2">
-          {isDoctor && (
+          {(isDoctor || isNurse) && (
             <button
-              onClick={() => setShowOrderModal(true)}
+              onClick={() => {
+                setShowOrderModal(true)
+                setForm({ note: '', bloodGroup: '', units: 1, unitPrice: 0, amount: 0 })
+                setSelectedService(null)
+                setServiceSearch('')
+                setSelectedMeds([])
+                setMedSearch('')
+              }}
               className="btn btn-sm btn-error rounded-xl text-white gap-2 font-semibold shadow-sm"
             >
-              <FaPlus className="w-3 h-3" /> Order Blood Transfusion
+              <FaPlus className="w-3 h-3" /> {isDoctor ? 'Order Blood Transfusion' : 'Order Blood Transfusion & Prep'}
             </button>
           )}
         </div>
@@ -518,26 +598,38 @@ const BloodTransfusionTab = ({
                     </div>
 
                     {/* Prep Medications Display */}
-                    {order.preppingMedications && order.preppingMedications.length > 0 && (
+                    {order.preppingMedications && order.preppingMedications.length > 0 ? (
                       <div className="mt-2 p-2.5 rounded-xl bg-base-200/50 border border-base-300">
                         <div className="text-xs font-semibold text-base-content/70 mb-1 flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
                             <FaPlus className="w-3 h-3 text-primary" /> Pre-Transfusion Medications
                           </div>
-                          {order.isPrepsDispensed ? (
-                            <span className="badge badge-success text-white badge-xs font-bold gap-1">
-                              <FaCheckCircle className="w-2.5 h-2.5" /> Dispensed
-                            </span>
-                          ) : (
-                            <span className="badge badge-warning badge-xs font-bold gap-1">
-                              <FaClock className="w-2.5 h-2.5" /> Pending Pharmacy
-                            </span>
-                          )}
-                          {order.isPrepsAdministered && (
-                            <span className="badge badge-success text-white badge-xs font-bold gap-1">
-                              <FaCheckCircle className="w-2.5 h-2.5" /> Administered
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {order.isPrepsDispensed ? (
+                              <span className="badge badge-success text-white badge-xs font-bold gap-1">
+                                <FaCheckCircle className="w-2.5 h-2.5" /> Dispensed
+                              </span>
+                            ) : (
+                              <span className="badge badge-warning badge-xs font-bold gap-1">
+                                <FaClock className="w-2.5 h-2.5" /> Pending Pharmacy
+                              </span>
+                            )}
+                            {order.isPrepsAdministered && (
+                              <span className="badge badge-success text-white badge-xs font-bold gap-1">
+                                <FaCheckCircle className="w-2.5 h-2.5" /> Administered
+                              </span>
+                            )}
+                            {(isNurse || isDoctor) && order.status !== 'completed' && !order.isCompleted && (
+                              <button
+                                type="button"
+                                onClick={() => openAddPrepsModal(order)}
+                                className="btn btn-xs btn-ghost text-primary font-bold gap-1"
+                                title="Add more pre-transfusion medications"
+                              >
+                                <FaPlus className="w-2.5 h-2.5" /> Add More Preps
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <ul className="text-[11px] space-y-1">
                           {order.preppingMedications.map((med, idx) => (
@@ -551,6 +643,22 @@ const BloodTransfusionTab = ({
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    ) : (
+                      <div className="mt-2 p-2.5 rounded-xl bg-warning/5 border border-dashed border-warning/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-xs text-base-content/80">
+                          <FaExclamationTriangle className="w-3.5 h-3.5 text-warning shrink-0" />
+                          <span>No pre-transfusion medications added by doctor</span>
+                        </div>
+                        {(isNurse || isDoctor) && order.status !== 'completed' && !order.isCompleted && (
+                          <button
+                            type="button"
+                            onClick={() => openAddPrepsModal(order)}
+                            className="btn btn-xs btn-outline btn-primary rounded-lg font-bold gap-1 self-start sm:self-auto"
+                          >
+                            <FaPlus className="w-2.5 h-2.5" /> Add Prep Medications
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -604,6 +712,20 @@ const BloodTransfusionTab = ({
                     )}
                   </div>
 
+                  {/* Doctor Action Button */}
+                  {isDoctor && order.status !== 'completed' && !order.isCompleted && (
+                    <div className="shrink-0 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openAddPrepsModal(order)}
+                        className="btn btn-sm btn-outline btn-secondary rounded-xl font-bold gap-1"
+                        title="Add pre-transfusion medications"
+                      >
+                        <FaPlus className="h-3 w-3" /> Add Prep Meds
+                      </button>
+                    </div>
+                  )}
+
                   {/* Pharmacist Action Button */}
                   {isPharmacist && order.preppingMedications && order.preppingMedications.length > 0 && (
                     <div className="shrink-0 flex flex-col gap-2">
@@ -627,6 +749,16 @@ const BloodTransfusionTab = ({
                   {/* Nurse Action Button */}
                   {isNurse && (
                     <div className="shrink-0 flex flex-col gap-2">
+                      {order.status !== 'completed' && !order.isCompleted && (
+                        <button
+                          type="button"
+                          onClick={() => openAddPrepsModal(order)}
+                          className="btn btn-sm btn-outline btn-secondary rounded-xl font-bold gap-1"
+                          title="Add pre-transfusion medications"
+                        >
+                          <FaPlus className="h-3 w-3" /> Add Transfusion Prep
+                        </button>
+                      )}
                       {!order.isBilled && (
                         <button
                           type="button"
@@ -781,7 +913,7 @@ const BloodTransfusionTab = ({
           <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-base-200 pb-3">
               <h3 className="text-base font-bold text-base-content flex items-center gap-2">
-                <FaHeartbeat className="text-error" /> Order Blood Transfusion
+                <FaHeartbeat className="text-error" /> {isDoctor ? 'Order Blood Transfusion' : 'Order Blood Transfusion & Prep'}
               </h3>
               <button
                 type="button"
@@ -1017,13 +1149,321 @@ const BloodTransfusionTab = ({
                   disabled={saving}
                   className="btn btn-sm btn-error text-white rounded-xl font-semibold gap-2"
                 >
-                  {saving ? 'Placing Order...' : 'Place Transfusion Order'}
+                  {saving ? 'Placing Order...' : isDoctor ? 'Place Transfusion Order' : 'Save Transfusion & Prep Order'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Add Prep Medications to Transfusion Order Modal */}
+      {showAddPrepsModal && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddPrepsModal(null)
+          }}
+        >
+          <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-base-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-base-content flex items-center gap-2">
+                  <FaPills className="text-primary" /> Add Blood Transfusion Prep Medications
+                </h3>
+                <p className="text-xs text-base-content/60 mt-0.5">
+                  Order: {showAddPrepsModal.units || 1} Unit(s) {showAddPrepsModal.bloodGroup ? `· ${showAddPrepsModal.bloodGroup}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPrepsModal(null)}
+                className="btn btn-sm btn-ghost btn-circle"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAddPreps} className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-3">
+                <label className="block text-xs font-bold text-base-content flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FaPlus className="text-primary w-3 h-3" /> Select Pre-Transfusion Medications
+                  </span>
+                  <span className="text-[11px] text-base-content/60 font-normal">Sent to Pharmacy for Dispensing</span>
+                </label>
+
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-2.5 text-base-content/40 text-xs" />
+                  <input
+                    type="text"
+                    value={addPrepsSearch}
+                    onChange={(e) => setAddPrepsSearch(e.target.value)}
+                    placeholder="Search medications (e.g. Frusemide, Hydrocortisone)..."
+                    className="input input-bordered input-sm w-full pl-8 rounded-xl text-xs"
+                    autoFocus
+                  />
+                </div>
+
+                {addPrepsSearch.trim() !== '' && (
+                  <div className="max-h-36 overflow-y-auto border border-base-300 rounded-xl bg-base-100 divide-y divide-base-200 text-xs mt-1">
+                    {loadingInventories ? (
+                      <div className="p-3 text-center text-xs text-base-content/50">Loading medications...</div>
+                    ) : filteredAddPrepsInventories.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-base-content/50">No medications found</div>
+                    ) : (
+                      filteredAddPrepsInventories.map((inv) => (
+                        <div
+                          key={inv.id || inv._id}
+                          onClick={() => handleAddPrepMed(inv)}
+                          className="p-2.5 cursor-pointer flex items-center justify-between hover:bg-base-200/60 transition-colors"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="truncate font-medium">{inv.name}</div>
+                            <div className="text-[10px] text-base-content/50">Stock: {inv.stock ?? '—'} {inv.unit || inv.form || ''}</div>
+                          </div>
+                          <FaPlus className="text-primary opacity-50 w-3 h-3 shrink-0" />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {addPrepsList.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {addPrepsList.map((med) => (
+                      <div
+                        key={med.medicationId}
+                        className="p-2.5 rounded-lg bg-base-100 border border-base-200 text-xs relative pr-8 shadow-2xs"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePrepMed(med.medicationId)}
+                          className="absolute right-2 top-2.5 text-error opacity-60 hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                        <div className="font-bold text-base-content mb-2">{med.medicationName}</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-base-content/60 mb-0.5">Dosage</label>
+                            <input
+                              type="text"
+                              value={med.dosage}
+                              onChange={(e) => handleUpdatePrepMed(med.medicationId, 'dosage', e.target.value)}
+                              placeholder="e.g. 20mg STAT"
+                              className="input input-bordered input-xs w-full rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-base-content/60 mb-0.5">Note to Pharmacist</label>
+                            <input
+                              type="text"
+                              value={med.note}
+                              onChange={(e) => handleUpdatePrepMed(med.medicationId, 'note', e.target.value)}
+                              placeholder="e.g. Pre-transfusion cover"
+                              className="input input-bordered input-xs w-full rounded-md"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-base-300 p-4 text-center text-xs text-base-content/60">
+                    Search inventory and select medications to add to this transfusion prep.
+                  </p>
+                )}
+              </div>
+
+              {/* Already attached preps notice */}
+              {showAddPrepsModal.preppingMedications && showAddPrepsModal.preppingMedications.length > 0 && (
+                <div className="p-3 rounded-xl bg-base-200/40 border border-base-300 text-xs">
+                  <div className="font-semibold text-base-content/70 mb-1">Previously Added Preps:</div>
+                  <ul className="text-[11px] list-disc list-inside text-base-content/60 space-y-0.5">
+                    {showAddPrepsModal.preppingMedications.map((m, i) => (
+                      <li key={i}>{m.medicationName} {m.dosage ? `(${m.dosage})` : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPrepsModal(null)}
+                  className="btn btn-sm btn-ghost rounded-xl"
+                  disabled={savingPreps}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPreps || addPrepsList.length === 0}
+                  className="btn btn-sm btn-primary rounded-xl font-semibold gap-2"
+                >
+                  {savingPreps ? 'Adding Preps...' : 'Save Prep Medications'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Add Prep Medications to Transfusion Order Modal */}
+      {showAddPrepsModal && (
+        <div
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAddPrepsModal(null)
+          }}
+        >
+          <div className="bg-base-100 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-base-300 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-base-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-base-content flex items-center gap-2">
+                  <FaPills className="text-primary" /> Add Blood Transfusion Prep Medications
+                </h3>
+                <p className="text-xs text-base-content/60 mt-0.5">
+                  Order: {showAddPrepsModal.units || 1} Unit(s) {showAddPrepsModal.bloodGroup ? `· ${showAddPrepsModal.bloodGroup}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPrepsModal(null)}
+                className="btn btn-sm btn-ghost btn-circle"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitAddPreps} className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300 space-y-3">
+                <label className="block text-xs font-bold text-base-content flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FaPlus className="text-primary w-3 h-3" /> Select Pre-Transfusion Medications
+                  </span>
+                  <span className="text-[11px] text-base-content/60 font-normal">Sent to Pharmacy for Dispensing</span>
+                </label>
+
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-2.5 text-base-content/40 text-xs" />
+                  <input
+                    type="text"
+                    value={addPrepsSearch}
+                    onChange={(e) => setAddPrepsSearch(e.target.value)}
+                    placeholder="Search medications (e.g. Frusemide, Hydrocortisone)..."
+                    className="input input-bordered input-sm w-full pl-8 rounded-xl text-xs"
+                    autoFocus
+                  />
+                </div>
+
+                {addPrepsSearch.trim() !== '' && (
+                  <div className="max-h-36 overflow-y-auto border border-base-300 rounded-xl bg-base-100 divide-y divide-base-200 text-xs mt-1">
+                    {loadingInventories ? (
+                      <div className="p-3 text-center text-xs text-base-content/50">Loading medications...</div>
+                    ) : filteredAddPrepsInventories.length === 0 ? (
+                      <div className="p-3 text-center text-xs text-base-content/50">No medications found</div>
+                    ) : (
+                      filteredAddPrepsInventories.map((inv) => (
+                        <div
+                          key={inv.id || inv._id}
+                          onClick={() => handleAddPrepMed(inv)}
+                          className="p-2.5 cursor-pointer flex items-center justify-between hover:bg-base-200/60 transition-colors"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="truncate font-medium">{inv.name}</div>
+                            <div className="text-[10px] text-base-content/50">Stock: {inv.stock ?? '—'} {inv.unit || inv.form || ''}</div>
+                          </div>
+                          <FaPlus className="text-primary opacity-50 w-3 h-3 shrink-0" />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {addPrepsList.length > 0 ? (
+                  <div className="space-y-2 mt-2">
+                    {addPrepsList.map((med) => (
+                      <div
+                        key={med.medicationId}
+                        className="p-2.5 rounded-lg bg-base-100 border border-base-200 text-xs relative pr-8 shadow-2xs"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePrepMed(med.medicationId)}
+                          className="absolute right-2 top-2.5 text-error opacity-60 hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                        <div className="font-bold text-base-content mb-2">{med.medicationName}</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] text-base-content/60 mb-0.5">Dosage</label>
+                            <input
+                              type="text"
+                              value={med.dosage}
+                              onChange={(e) => handleUpdatePrepMed(med.medicationId, 'dosage', e.target.value)}
+                              placeholder="e.g. 20mg STAT"
+                              className="input input-bordered input-xs w-full rounded-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-base-content/60 mb-0.5">Note to Pharmacist</label>
+                            <input
+                              type="text"
+                              value={med.note}
+                              onChange={(e) => handleUpdatePrepMed(med.medicationId, 'note', e.target.value)}
+                              placeholder="e.g. Pre-transfusion cover"
+                              className="input input-bordered input-xs w-full rounded-md"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-dashed border-base-300 p-4 text-center text-xs text-base-content/60">
+                    Search inventory and select medications to add to this transfusion prep.
+                  </p>
+                )}
+              </div>
+
+              {/* Already attached preps notice */}
+              {showAddPrepsModal.preppingMedications && showAddPrepsModal.preppingMedications.length > 0 && (
+                <div className="p-3 rounded-xl bg-base-200/40 border border-base-300 text-xs">
+                  <div className="font-semibold text-base-content/70 mb-1">Previously Added Preps:</div>
+                  <ul className="text-[11px] list-disc list-inside text-base-content/60 space-y-0.5">
+                    {showAddPrepsModal.preppingMedications.map((m, i) => (
+                      <li key={i}>{m.medicationName} {m.dosage ? `(${m.dosage})` : ''}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPrepsModal(null)}
+                  className="btn btn-sm btn-ghost rounded-xl"
+                  disabled={savingPreps}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPreps || addPrepsList.length === 0}
+                  className="btn btn-sm btn-primary rounded-xl font-semibold gap-2"
+                >
+                  {savingPreps ? 'Adding Preps...' : 'Save Prep Medications'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showConsumablesModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
           <form onSubmit={submitConsumables} className="w-full max-w-lg space-y-4 rounded-xl border border-base-300 bg-base-100 p-5 shadow-2xl">

@@ -454,7 +454,7 @@ const ConsultationDetailModal = ({
                       <div key={idx} className="p-2.5 rounded-lg border border-base-200 bg-base-100">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-xs font-bold uppercase tracking-wide text-base-content">
-                            {f.system}
+                            {f.system?.toUpperCase() === 'RESPIRATORY' || f.system?.toUpperCase() === 'RESPIRATION' ? 'CHEST' : f.system}
                           </span>
                           <span className={`badge badge-xs ${f.isNormal ? 'badge-success' : 'badge-warning'}`}>
                             {f.isNormal ? 'Normal' : 'Abnormal'}
@@ -480,7 +480,7 @@ const ConsultationDetailModal = ({
                       <div key={idx} className="p-2.5 rounded-lg border border-base-200 bg-base-100">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-xs font-bold uppercase tracking-wide text-base-content">
-                            {item.system}
+                            {item.system?.toLowerCase() === 'respiratory' || item.system?.toLowerCase() === 'respiration' ? 'CHEST' : item.system}
                           </span>
                           <span className={`badge badge-xs ${item.isNormal ? 'badge-success' : 'badge-warning'}`}>
                             {item.isNormal ? 'Normal' : 'Abnormal'}

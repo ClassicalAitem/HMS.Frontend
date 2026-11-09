@@ -5,6 +5,11 @@ export const createBloodTransfusionOrder = async (payload) => {
   return res.data ?? res
 }
 
+export const addBloodTransfusionPreps = async (id, preppingMedications) => {
+  const res = await apiClient.post(`/blood-transfusion/${id}/preps`, { preppingMedications })
+  return res.data ?? res
+}
+
 export const orderBloodTransfusionConsumables = async (id, items) => {
   const res = await apiClient.post(`/blood-transfusion/${id}/consumables`, { items })
   return res.data ?? res
@@ -42,6 +47,7 @@ export const administerBloodTransfusionPreps = async (id) => {
 
 export default {
   createBloodTransfusionOrder,
+  addBloodTransfusionPreps,
   orderBloodTransfusionConsumables,
   startBloodTransfusionOrder,
   completeBloodTransfusionOrder,
