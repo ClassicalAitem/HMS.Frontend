@@ -1,0 +1,24 @@
+#!/usr/bin/env sh
+# =========================================================================
+# Antigravity Pre-Commit Security Hook
+# Intercepts git commit and scans staged files before allowing commit.
+# =========================================================================
+
+echo "🛡️  [Guard] Scanning staged changes before commit..."
+
+node scripts/guard.cjs --staged
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo ""
+  echo "🛑 [BLOCKED] Git commit aborted: Malware or stealth payloads detected!"
+  echo ""
+  echo "How to fix without committing the malware:"
+  echo "  1) Run auto-fix:          npm run guard:fix"
+  echo "  2) Or discard rogue file: git restore <file>"
+  echo ""
+  exit 1
+fi
+
+echo "✅ [Guard] All staged files are clean. Proceeding with commit."
+exit 0

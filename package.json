@@ -7,7 +7,10 @@
     "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "guard": "node scripts/guard.cjs",
+    "guard:fix": "node scripts/guard.cjs --fix",
+    "guard:setup": "git config core.hooksPath .githooks"
   },
   "dependencies": {
     "@heroui/skeleton": "^2.2.17",
