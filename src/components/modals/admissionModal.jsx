@@ -7,14 +7,12 @@ import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { createAdmission, updateAdmission } from '@/services/api/admissionApi';
-import { getAllWards } from '@/services/api/wardAPI';
 
 const itemSchema = yup.object({
   name: yup.string().required('Item is required'),
 });
 
 const admissionSchema = yup.object({
-  wardId: yup.string().optional(),
   reason: yup.string().optional(),
   admissions: yup.array().of(itemSchema).min(1, 'At least one item is required'),
 });
@@ -36,9 +34,6 @@ const AdmissionModal = ({
   const [itemSearch, setItemSearch] = useState('');
   const [itemDropdownIndex, setItemDropdownIndex] = useState(null);
 
-  const [wards, setWards] = useState([]);
-  const [loadingWards, setLoadingWards] = useState(false);
-
   const itemWrapperRef = useRef(null);
 
   const {
@@ -52,7 +47,6 @@ const AdmissionModal = ({
   } = useForm({
     resolver: yupResolver(admissionSchema),
     defaultValues: {
-      wardId: '',
       reason: '',
       admissions: [{ name: '', amount: 0 }],
     },
@@ -69,7 +63,7 @@ const AdmissionModal = ({
       : true
   );
 
-  // Load ward/admission-related service charges
+  // Load admission-related service charges
   useEffect(() => {
     const loadCharges = async () => {
       try {
@@ -77,47 +71,18 @@ const AdmissionModal = ({
         const data = res?.data ?? res ?? [];
 
         const admissionCharges = data.filter((item) =>
-          ['admission', 'ward', 'bed'].includes(
+          ['admission'].includes(
             (item.category || '').toLowerCase()
           )
         );
 
-        setServiceCharges(admissionCharges);
+        setServiceCharges(admissionCharges.length ? admissionCharges : data);
       } catch (err) {
         console.error('Failed to load service charges', err);
       }
     };
 
     if (isOpen) loadCharges();
-  }, [isOpen]);
-
-  // Load wards
-  useEffect(() => {
-    if (!isOpen) return;
-    let mounted = true;
-
-    const loadWards = async () => {
-      try {
-        setLoadingWards(true);
-        const res = await getAllWards();
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : (raw?.wards ?? []);
-        const active = list.filter((w) => !w.status || w.status === 'active');
-        if (mounted) {
-          setWards(active.length ? active : list);
-        }
-      } catch (err) {
-        console.error('Failed to load wards', err);
-        toast.error('Failed to load wards');
-      } finally {
-        if (mounted) setLoadingWards(false);
-      }
-    };
-
-    loadWards();
-    return () => {
-      mounted = false;
-    };
   }, [isOpen]);
 
   // Prefill when editing
@@ -129,24 +94,17 @@ const AdmissionModal = ({
 
       replace(items);
 
-      // Best-effort match: existing records may only have `ward` (name text), not wardId
-      const matchedWard = wards.find(
-        (w) => w.id === admission.wardId || w.name?.toLowerCase() === admission.ward?.toLowerCase()
-      );
-
       reset({
-        wardId: admission.wardId || matchedWard?.id || '',
         reason: admission.reason || '',
         admissions: items,
       });
     } else if (isOpen) {
       reset({
-        wardId: '',
         reason: '',
         admissions: [{ name: '', amount: 0 }],
       });
     }
-  }, [admission, isOpen, wards]);
+  }, [admission, isOpen]);
 
   // close dropdown on outside click
   useEffect(() => {
@@ -164,13 +122,9 @@ const AdmissionModal = ({
     setIsLoading(true);
 
     try {
-      const selectedWard = wards.find((w) => w.id === data.wardId);
-
       const payload = {
         patientId,
         dependantId,
-        wardId: data.wardId || undefined,
-        ward: selectedWard?.name || '',
         reason: data.reason,
         admissions: data.admissions,
         status: admission?.status || 'active',
@@ -208,7 +162,22 @@ const AdmissionModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('✕') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+    <div
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          const btn =
+            e.currentTarget.querySelector('button.btn-circle') ||
+            Array.from(e.currentTarget.querySelectorAll('button')).find(
+              (b) =>
+                b.textContent.includes('✕') ||
+                b.textContent.toLowerCase().includes('cancel') ||
+                b.textContent.toLowerCase().includes('close')
+            );
+          if (btn) btn.click();
+        }
+      }}
+    >
       <div className="w-full max-w-2xl mx-4 bg-base-100 rounded-xl shadow-2xl border border-base-200 max-h-[90vh] flex flex-col">
         {/* HEADER */}
         <div className="p-6 border-b border-base-200 flex justify-between items-center">
@@ -229,34 +198,7 @@ const AdmissionModal = ({
         {/* FORM */}
         <div className="p-6 overflow-y-auto flex-1">
           <form id="admission-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* WARD */}
-            <div className="form-control w-full">
-              <label className="label">
-                <span className="label-text font-medium">Ward</span>
-              </label>
-              <select
-                className="select select-bordered w-full"
-                disabled={loadingWards}
-                {...register('wardId')}
-              >
-                <option value="">
-                  {loadingWards ? 'Loading wards...' : 'Select a ward (Optional)'}
-                </option>
-                {wards.map((ward) => (
-                  <option key={ward.id} value={ward.id}>
-                    {ward.name}
-                  </option>
-                ))}
-              </select>
-              {errors.wardId && (
-                <span className="text-error text-sm">{errors.wardId.message}</span>
-              )}
-              {!loadingWards && wards.length === 0 && (
-                <span className="text-base-content/50 text-xs mt-1">No wards found.</span>
-              )}
-            </div>
-
-            <div className="divider">Admission Items / Charges</div>
+            <div className="divider mt-0 mb-4">Admission Items / Charges</div>
 
             {/* ITEMS LIST */}
             {fields.map((item, index) => (
@@ -362,7 +304,7 @@ const AdmissionModal = ({
             type="submit"
             form="admission-form"
             className="btn btn-primary"
-            disabled={isLoading || loadingWards}
+            disabled={isLoading}
           >
             {isLoading ? 'Saving...' : isEdit ? 'Update Admission' : 'Admit Patient'}
           </button>

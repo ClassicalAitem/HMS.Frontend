@@ -84,7 +84,7 @@ export const dischargeAdmission = async (id, dischargeNotes) => {
 
 export const createAdmission = async (data, contextId, contextType = 'consultation') => {
   try {
-    const requiredFields = ['ward', 'admissions']
+    const requiredFields = ['admissions']
     for (const field of requiredFields) {
       if (!data?.[field]) {
         throw new Error(`Missing required field: ${field}`)
