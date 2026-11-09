@@ -2,6 +2,7 @@ import axios from 'axios';
 import { config } from '../../config/env';
 import { showErrorToast } from '../../utils/errorHandler';
 import { recordFailedRequest } from '../../utils/diagnostics';
+import { broadcastActivity } from '../../utils/authSync';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -15,6 +16,11 @@ const apiClient = axios.create({
 // Request interceptor
 apiClient.interceptors.request.use(
   (config) => {
+    // User activity heartbeat: every API request confirms the session is in active use
+    try {
+      broadcastActivity();
+    } catch {}
+
     // Get token from localStorage
     const directToken = localStorage.getItem('token');
     const persistRoot = localStorage.getItem('persist:root');

@@ -23,6 +23,8 @@ import {
   dispenseTreatmentConsumable,
 } from '@/services/api/dispensesAPI';
 import { getInventories } from '@/services/api/inventoryAPI';
+import { getBillingsByAdmissionId } from '@/services/api/billingAPI';
+import PaymentHmoStatusBadge from '@/components/common/PaymentHmoStatusBadge';
 
 const TIME_SLOTS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 const SLOT_TIMINGS = { Morning: '08:00', Midday: '12:00', Afternoon: '16:00', Evening: '20:00', Night: '22:00' };
@@ -105,6 +107,10 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
   const [submittingConsumables, setSubmittingConsumables] = useState(false);
   const [dispensingConsumableId, setDispensingConsumableId] = useState(null);
 
+  // Billing and HMO status state
+  const [billings, setBillings] = useState([]);
+  const [patientHmo, setPatientHmo] = useState(null);
+
   const fetchData = async () => {
     if (!admissionId) {
       setLoading(false);
@@ -119,21 +125,108 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
       const data = response.data?.data || response.data || [];
       setPrescriptions(data);
 
-      const [adminRecords, dispenseRecords, consumableRecords] = await Promise.all([
+      const [adminRecords, dispenseRecords, consumableRecords, billsRes, admissionRes] = await Promise.all([
         getMedicationAdministrations(admissionId).catch(() => []),
         getMedicationDispenseSlots(admissionId).catch(() => []),
         getTreatmentConsumables(admissionId).catch(() => []),
+        getBillingsByAdmissionId(admissionId).catch(() => []),
+        api.get(`/admission/${admissionId}`).catch(() => null),
       ]);
 
       setAdministrations(Array.isArray(adminRecords) ? adminRecords : []);
       setDispenses(Array.isArray(dispenseRecords) ? dispenseRecords : []);
       setTreatmentConsumables(Array.isArray(consumableRecords) ? consumableRecords : []);
+
+      const rawBills = billsRes?.data?.data ?? billsRes?.data ?? billsRes ?? [];
+      setBillings(Array.isArray(rawBills) ? rawBills : []);
+
+      const admData = admissionRes?.data?.data ?? admissionRes?.data ?? admissionRes;
+      const patientData = admData?.patient;
+      const hmos = Array.isArray(patientData?.hmos) ? patientData.hmos : [];
+      setPatientHmo(hmos.length > 0 ? hmos[0] : null);
     } catch (error) {
       console.error('Failed to load treatment plans:', error);
       toast.error('Failed to load treatment plans.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getMedicationPaymentStatus = (prescription, med) => {
+    const pId = getId(prescription);
+
+    let hmoStatus = med?.hmoStatus || prescription?.hmoStatus || null;
+    let paymentStatus = med?.paymentStatus || prescription?.paymentStatus || null;
+    let isPaid = Boolean(med?.isPaid || prescription?.isPaid);
+
+    // Look for matching item in admission bills
+    for (const bill of billings) {
+      const items = bill.itemDetails || [];
+      const match = items.find((item) => {
+        if (item.prescriptionId && item.prescriptionId === pId) {
+          if (!item.description) return true;
+          return String(item.description).toLowerCase().includes(String(med.drugName || '').toLowerCase());
+        }
+        return String(item.description || '').toLowerCase().includes(String(med.drugName || '').toLowerCase());
+      });
+
+      if (match) {
+        if (match.hmoStatus) hmoStatus = match.hmoStatus;
+        if (match.paymentStatus) paymentStatus = match.paymentStatus;
+        if (match.hmoStatus === 'approved' || match.paymentStatus === 'paid' || match.isCleared || bill.isCleared) {
+          isPaid = true;
+        }
+        break;
+      }
+    }
+
+    const hasHmo = Boolean(patientHmo || hmoStatus);
+    if (!hmoStatus && hasHmo) {
+      hmoStatus = 'pending'; // awaiting HMO decision
+    }
+    if (!paymentStatus) {
+      paymentStatus = isPaid ? 'paid' : 'unpaid';
+    } else if (isPaid) {
+      paymentStatus = 'paid';
+    }
+
+    return { hmoStatus, paymentStatus, isPaid, hasHmo };
+  };
+
+  const getConsumablePaymentStatus = (order) => {
+    const orderId = getId(order);
+    let hmoStatus = order?.hmoStatus || null;
+    let paymentStatus = order?.paymentStatus || null;
+    let isPaid = Boolean(order?.isPaid);
+
+    for (const bill of billings) {
+      const items = bill.itemDetails || [];
+      const match = items.find((item) =>
+        (item.treatmentPlanConsumableOrderId && item.treatmentPlanConsumableOrderId === orderId) ||
+        (order.billingId && (bill.id === order.billingId || bill._id === order.billingId))
+      );
+
+      if (match) {
+        if (match.hmoStatus) hmoStatus = match.hmoStatus;
+        if (match.paymentStatus) paymentStatus = match.paymentStatus;
+        if (match.hmoStatus === 'approved' || match.paymentStatus === 'paid' || match.isCleared || bill.isCleared) {
+          isPaid = true;
+        }
+        break;
+      }
+    }
+
+    const hasHmo = Boolean(patientHmo || hmoStatus);
+    if (!hmoStatus && hasHmo) {
+      hmoStatus = 'pending'; // awaiting HMO decision
+    }
+    if (!paymentStatus) {
+      paymentStatus = isPaid ? 'paid' : 'unpaid';
+    } else if (isPaid) {
+      paymentStatus = 'paid';
+    }
+
+    return { hmoStatus, paymentStatus, isPaid, hasHmo };
   };
 
   useEffect(() => {
@@ -392,6 +485,8 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                           (medicationId ? d.medicationId === medicationId : d.medicationIndex === mIdx)
                       );
 
+                      const medStatus = getMedicationPaymentStatus(prescription, med);
+
                       return (
                         <div key={medicationId || mIdx} className="p-4 space-y-4 hover:bg-base-50/50 transition-colors">
                           {/* Drug header */}
@@ -404,7 +499,15 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <h4 className="font-bold text-base-content text-lg">{med.drugName}</h4>
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <h4 className="font-bold text-base-content text-lg">{med.drugName}</h4>
+                                <PaymentHmoStatusBadge
+                                  hmoStatus={medStatus.hmoStatus}
+                                  paymentStatus={medStatus.paymentStatus}
+                                  hasHmo={medStatus.hasHmo}
+                                  isPaid={medStatus.isPaid}
+                                />
+                              </div>
                               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-base-content/70">
                                 <span>
                                   <strong className="text-base-content/90">Dose:</strong> {med.dosage || med.dosageAmount}{' '}
@@ -655,6 +758,8 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                 const orderId = getId(order) || `tc-${orderIdx}`;
                 const isDispensed = !!order.isDispensed;
 
+                const consumableStatus = getConsumablePaymentStatus(order);
+
                 return (
                   <div
                     key={orderId}
@@ -666,7 +771,7 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                         <span className="text-xs font-bold text-base-content">
                           Ordered by {order.orderedByName || 'Nurse'}
                         </span>
-                        <span className="text-xs text-base-content/50">â€¢</span>
+                        <span className="text-xs text-base-content/50">•</span>
                         <span className="text-xs text-base-content/70">
                           {new Date(order.orderedAt || order.createdAt).toLocaleDateString(undefined, {
                             month: 'short',
@@ -682,7 +787,13 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <PaymentHmoStatusBadge
+                          hmoStatus={consumableStatus.hmoStatus}
+                          paymentStatus={consumableStatus.paymentStatus}
+                          hasHmo={consumableStatus.hasHmo}
+                          isPaid={consumableStatus.isPaid}
+                        />
                         {isDispensed ? (
                           <span className="badge badge-success text-white text-xs font-bold gap-1 shadow-xs">
                             <FaCheckCircle className="w-3 h-3" /> Dispensed by {order.dispensedByName || 'Pharmacist'}

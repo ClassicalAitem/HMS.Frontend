@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { administerMedication, getMedicationAdministrations } from '@/services/api/nurseAPI'
 import { getMedicationDispenseSlots } from '@/services/api/dispensesAPI'
+import { getBillingsByAdmissionId } from '@/services/api/billingAPI'
+import PaymentHmoStatusBadge from '@/components/common/PaymentHmoStatusBadge'
 
 const TIME_SLOTS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night']
 
@@ -49,6 +51,7 @@ const WardRoundTreatmentModal = ({ isOpen, onClose, admissionId, prescriptions =
   const [savingKeys, setSavingKeys] = useState(() => new Set())
   const [notes, setNotes] = useState('')
   const [generatingBill, setGeneratingBill] = useState(false)
+  const [billings, setBillings] = useState([])
 
   const medications = useMemo(
     () => prescriptions.flatMap((prescription, prescriptionIndex) =>
@@ -82,9 +85,12 @@ const WardRoundTreatmentModal = ({ isOpen, onClose, admissionId, prescriptions =
 
     Promise.all([
       getMedicationAdministrations(admissionId),
-      getMedicationDispenseSlots(admissionId)
+      getMedicationDispenseSlots(admissionId),
+      getBillingsByAdmissionId(admissionId).catch(() => []),
     ])
-      .then(([adminRecords, dispenseRecords]) => {
+      .then(([adminRecords, dispenseRecords, billsRes]) => {
+        const rawBills = billsRes?.data?.data ?? billsRes?.data ?? billsRes ?? []
+        setBillings(Array.isArray(rawBills) ? rawBills : [])
         const nextChecked = {}
         const nextTimes = {}
         ;(Array.isArray(adminRecords) ? adminRecords : []).forEach((record) => {
@@ -212,16 +218,47 @@ const WardRoundTreatmentModal = ({ isOpen, onClose, admissionId, prescriptions =
               <tbody>
                 {medications.map((item) => {
                   const frequencyCount = getFrequencyCount(item.medication.frequency)
+                  
+                  // Compute payment & HMO status for medication
+                  let hmoStatus = item.medication.hmoStatus || null
+                  let paymentStatus = item.medication.paymentStatus || null
+                  let isPaid = Boolean(item.medication.isPaid)
+
+                  for (const bill of billings) {
+                    const match = (bill.itemDetails || []).find((bItem) => {
+                      if (bItem.prescriptionId && bItem.prescriptionId === item.prescriptionId) {
+                        return !bItem.description || String(bItem.description).toLowerCase().includes(String(item.medication.drugName).toLowerCase())
+                      }
+                      return String(bItem.description || '').toLowerCase().includes(String(item.medication.drugName).toLowerCase())
+                    })
+                    if (match) {
+                      if (match.hmoStatus) hmoStatus = match.hmoStatus
+                      if (match.paymentStatus) paymentStatus = match.paymentStatus
+                      if (match.hmoStatus === 'approved' || match.paymentStatus === 'paid' || match.isCleared || bill.isCleared) {
+                        isPaid = true
+                      }
+                      break
+                    }
+                  }
+
                   return (
                     <tr key={item.key}>
                       <td className="sticky left-0 z-10 bg-base-100">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <div className="font-semibold text-xs">{item.medication.drugName}</div>
                           <span className="badge badge-outline badge-xs capitalize">
                             {item.medication.medicationType || item.medication.type || 'Medication'}
                           </span>
                         </div>
-                        <div className="text-[10px] text-base-content/60">
+                        <div className="mt-1">
+                          <PaymentHmoStatusBadge
+                            size="xs"
+                            hmoStatus={hmoStatus}
+                            paymentStatus={paymentStatus}
+                            isPaid={isPaid}
+                          />
+                        </div>
+                        <div className="text-[10px] text-base-content/60 mt-1">
                           {item.medication.frequency || 'As prescribed'} ({frequencyCount}/day) · {item.medication.dosage || item.medication.dose || '1 dose'}
                         </div>
                       </td>

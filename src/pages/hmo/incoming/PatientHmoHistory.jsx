@@ -35,8 +35,16 @@ useEffect(() => {
       const flattened = [];
       scoped.forEach(bill => {
         (bill.itemDetails || []).forEach((item, idx) => {
-          const status = item.hmoStatus;
-          if (!status || status === 'pending') return;
+          const status = item.hmoStatus || 'pending';
+          const isItemPaid = Boolean(
+            item.paymentStatus === 'paid' ||
+            item.paymentStatus === 'approved' ||
+            bill.isCleared ||
+            item.isCleared ||
+            status === 'approved'
+          );
+          const paymentStatus = isItemPaid ? 'paid' : (item.paymentStatus || 'unpaid');
+
           flattened.push({
             key: `${bill.id}-${idx}`,
             billId: bill.id,
@@ -47,6 +55,8 @@ useEffect(() => {
             hmoCovered: Number(item.hmoCovered || 0),
             patientOwes: Number(item.patientOwes ?? (Number(item.total || 0) - Number(item.hmoCovered || 0))),
             status,
+            paymentStatus,
+            isPaid: isItemPaid,
             isClaimed: !!item.isClaimed,
             approvedBy: bill.hmoReviewedBy || `${bill.raisedBy?.firstName || ''} ${bill.raisedBy?.lastName || ''}`.trim() || '—',
             approvedAt: bill.hmoReviewedAt || bill.updatedAt || null,
@@ -82,9 +92,10 @@ useEffect(() => {
       }
    };
   const statusBadgeClass = (status) => {
-    if (status === 'approved') return 'badge-success';
+    if (status === 'approved') return 'badge-success text-white';
     if (status === 'partial') return 'badge-warning';
-    if (status === 'rejected') return 'badge-error';
+    if (status === 'rejected') return 'badge-error text-white';
+    if (status === 'pending') return 'bg-warning/20 text-warning-content border-warning/50 font-medium';
     return 'badge-neutral';
   };
 
@@ -195,6 +206,7 @@ useEffect(() => {
                 <th className="text-right">HMO Covered</th>
                 <th className="text-right">Patient Owes</th>
                 <th>Decision</th>
+                <th>Payment Status</th>
                 <th className="text-center">Claimed</th>
                 <th>By</th>
                 <th>When</th>
@@ -212,7 +224,7 @@ useEffect(() => {
                   <td className="text-right text-sm text-error">₦{row.patientOwes.toLocaleString()}</td>
                   <td>
                     <div className="flex items-center gap-2">
-                      <span className={`badge badge-sm ${statusBadgeClass(row.status)}`}>{row.status}</span>
+                      <span className={`badge badge-sm ${statusBadgeClass(row.status)} capitalize`}>{row.status}</span>
                       <button 
                         onClick={() => setEditingRow(row)}
                         className="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-primary"
@@ -221,6 +233,11 @@ useEffect(() => {
                         <FaPen className="w-3 h-3" />
                       </button>
                     </div>
+                  </td>
+                  <td>
+                    <span className={`badge badge-sm font-semibold whitespace-nowrap ${row.isPaid ? 'badge-success text-white' : 'badge-error text-white'}`}>
+                      {row.isPaid ? 'Paid' : 'Unpaid'}
+                    </span>
                   </td>
                   <td className="text-center">
                     <input 

@@ -685,6 +685,7 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
                             <th className="text-right">Price</th>
                             <th className="text-right">Qty</th>
                             <th className="text-right">Total</th>
+                            <th className="text-center">Payment</th>
                             <th className="text-center w-48">HMO Decision</th>
                           </tr>
                         </thead>
@@ -751,6 +752,11 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
                                 <td className="text-right">{item.quantity}</td>
                                 <td className="text-right font-medium">
                                   ₦{Number(item.total || 0).toLocaleString()}
+                                </td>
+                                <td className="text-center">
+                                  <span className={`badge badge-xs font-semibold whitespace-nowrap ${(item.paymentStatus === 'paid' || bill.isCleared || item.isCleared) ? 'badge-success text-white' : 'badge-warning'}`}>
+                                    {(item.paymentStatus === 'paid' || bill.isCleared || item.isCleared) ? 'Paid' : 'Unpaid'}
+                                  </span>
                                 </td>
                                 <td className="text-center">
                                   <div className="flex flex-col items-center gap-2">

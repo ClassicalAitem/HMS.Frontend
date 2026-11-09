@@ -4,6 +4,14 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logoutUser } from '@/store/slices/authSlice';
 import toast from 'react-hot-toast';
 import { FaClock, FaSignOutAlt, FaShieldAlt } from 'react-icons/fa';
+import {
+  broadcastActivity,
+  broadcastLogout,
+  checkOtherTabsActive,
+  getAuthChannel,
+  STORAGE_KEY_LAST_ACTIVITY,
+  STORAGE_KEY_LOGOUT_EVENT,
+} from '@/utils/authSync';
 
 // 30 minutes of inactivity timeout; warning shows up 5 minutes before the 30 minutes is complete
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; 
@@ -11,9 +19,6 @@ const WARNING_DURATION_MS = 5 * 60 * 1000;
 const WARNING_THRESHOLD_MS = INACTIVITY_TIMEOUT_MS - WARNING_DURATION_MS; 
 const THROTTLE_MS = 1000; 
 const CHECK_INTERVAL_MS = 1000; // Interval for checking inactivity elapsed time
-
-const STORAGE_KEY_LAST_ACTIVITY = 'hms_last_activity';
-const STORAGE_KEY_LOGOUT_EVENT = 'hms_inactivity_logout';
 
 /**
  * Format total seconds into a readable MM:SS or m/s string
@@ -37,6 +42,7 @@ const AutoLogoutHandler = () => {
 
   const lastActivityRef = useRef(Date.now());
   const isLoggingOutRef = useRef(false);
+  const isCheckingOtherTabsRef = useRef(false);
   const showWarningRef = useRef(false);
 
   // Keep ref synchronized with state for event handlers
@@ -46,17 +52,14 @@ const AutoLogoutHandler = () => {
 
   // Execute logout
   const handleLogout = useCallback(
-    async (isTimeout = true) => {
+    async (isTimeout = true, shouldBroadcast = true) => {
       if (isLoggingOutRef.current) return;
       isLoggingOutRef.current = true;
       setShowWarning(false);
 
       try {
-        // Broadcast logout event to other open tabs
-        try {
-          localStorage.setItem(STORAGE_KEY_LOGOUT_EVENT, Date.now().toString());
-        } catch {
-          // Ignore localStorage errors
+        if (shouldBroadcast) {
+          broadcastLogout(isTimeout ? 'timeout' : 'manual');
         }
 
         await dispatch(logoutUser());
@@ -77,7 +80,7 @@ const AutoLogoutHandler = () => {
 
         if (isTimeout) {
           toast.dismiss();
-          toast.error('You were logged out due to 15 minutes of inactivity.', {
+          toast.error('You were logged out due to 30 minutes of inactivity.', {
             id: 'inactivity-logout',
             duration: 6000,
             position: 'top-center',
@@ -118,11 +121,8 @@ const AutoLogoutHandler = () => {
     setShowWarning(false);
     setSecondsRemaining(WARNING_DURATION_MS / 1000);
 
-    try {
-      localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, now.toString());
-    } catch {
-      // Ignore localStorage errors
-    }
+    // Broadcast user activity to all other tabs
+    broadcastActivity();
 
     if (isManualExtend) {
       toast.success('Session extended. You are still logged in.', {
@@ -132,17 +132,47 @@ const AutoLogoutHandler = () => {
     }
   }, []);
 
-  // Sync activity across tabs and listen for logout from other tabs
+  // Sync activity across tabs via BroadcastChannel & localStorage
   useEffect(() => {
     if (!isAuthenticated || !token) return;
 
     // Initialize lastActivity timestamp on login
     const initialTime = Date.now();
     lastActivityRef.current = initialTime;
-    try {
-      localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, initialTime.toString());
-    } catch {
-      // Ignore localStorage errors
+    broadcastActivity();
+
+    const authChannel = getAuthChannel();
+
+    const handleChannelMessage = (event) => {
+      const data = event?.data;
+      if (!data) return;
+
+      if (data.type === 'PRE_LOGOUT_PING') {
+        // Another tab is about to log out and checking if this tab is active
+        const isTabVisible = typeof document !== 'undefined' && document.visibilityState === 'visible';
+        const now = Date.now();
+        const isRecentlyActive = now - lastActivityRef.current < WARNING_THRESHOLD_MS;
+
+        if (isTabVisible || isRecentlyActive) {
+          authChannel?.postMessage({
+            type: 'TAB_STILL_ACTIVE',
+            timestamp: lastActivityRef.current || now,
+          });
+        }
+      } else if (data.type === 'USER_ACTIVITY') {
+        const remoteTime = Number(data.timestamp || Date.now());
+        if (remoteTime > lastActivityRef.current) {
+          lastActivityRef.current = remoteTime;
+          setShowWarning(false);
+          setSecondsRemaining(WARNING_DURATION_MS / 1000);
+        }
+      } else if (data.type === 'LOGOUT') {
+        handleLogout(data.reason === 'timeout', false);
+      }
+    };
+
+    if (authChannel) {
+      authChannel.addEventListener('message', handleChannelMessage);
     }
 
     const handleStorageEvent = (event) => {
@@ -153,14 +183,21 @@ const AutoLogoutHandler = () => {
           setShowWarning(false);
           setSecondsRemaining(WARNING_DURATION_MS / 1000);
         }
-      } else if (event.key === STORAGE_KEY_LOGOUT_EVENT) {
-        // Another tab triggered logout
-        handleLogout(false);
+      } else if (event.key === STORAGE_KEY_LOGOUT_EVENT && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          handleLogout(parsed?.reason === 'timeout', false);
+        } catch {
+          handleLogout(false, false);
+        }
       }
     };
 
     window.addEventListener('storage', handleStorageEvent);
     return () => {
+      if (authChannel) {
+        authChannel.removeEventListener('message', handleChannelMessage);
+      }
       window.removeEventListener('storage', handleStorageEvent);
     };
   }, [isAuthenticated, token, handleLogout]);
@@ -188,11 +225,7 @@ const AutoLogoutHandler = () => {
       lastRecorded = now;
 
       lastActivityRef.current = now;
-      try {
-        localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, now.toString());
-      } catch {
-        // Ignore localStorage errors
-      }
+      broadcastActivity();
     };
 
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'wheel', 'click'];
@@ -215,8 +248,8 @@ const AutoLogoutHandler = () => {
       return;
     }
 
-    const checkInactivity = () => {
-      if (isLoggingOutRef.current) return;
+    const checkInactivity = async () => {
+      if (isLoggingOutRef.current || isCheckingOtherTabsRef.current) return;
 
       // Check the latest timestamp from localStorage (in case updated by another tab)
       let lastTime = lastActivityRef.current;
@@ -236,13 +269,32 @@ const AutoLogoutHandler = () => {
       const now = Date.now();
       const elapsed = now - lastTime;
 
-      // 1. If user has been inactive for 15 minutes or longer: auto logout
+      // 1. If user has reached the 30 minute timeout threshold:
+      // BEFORE logging out, verify if ANY other open tab is active/visible
       if (elapsed >= INACTIVITY_TIMEOUT_MS) {
-        handleLogout(true);
+        isCheckingOtherTabsRef.current = true;
+        try {
+          const activeCheck = await checkOtherTabsActive(1200);
+          if (activeCheck.isActive) {
+            // Another tab is active! Reset local activity and cancel logout
+            const freshTime = activeCheck.timestamp || Date.now();
+            lastActivityRef.current = freshTime;
+            setShowWarning(false);
+            setSecondsRemaining(WARNING_DURATION_MS / 1000);
+            return;
+          }
+        } catch (e) {
+          console.warn('Tab activity check error', e);
+        } finally {
+          isCheckingOtherTabsRef.current = false;
+        }
+
+        // All tabs confirmed inactive: log out
+        handleLogout(true, true);
         return;
       }
 
-      // 2. If user is in the final 2 minutes (between 13 and 15 minutes): show warning modal
+      // 2. If user is in the final warning period (last 5 minutes): show warning modal
       if (elapsed >= WARNING_THRESHOLD_MS) {
         const remainingMs = INACTIVITY_TIMEOUT_MS - elapsed;
         const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));

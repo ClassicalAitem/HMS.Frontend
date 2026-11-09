@@ -20,6 +20,11 @@ export const completeBloodTransfusionOrder = async (id) => {
   return res.data ?? res
 }
 
+export const recordBloodTransfusionReaction = async (id, reactionData) => {
+  const res = await apiClient.patch(`/blood-transfusion/${id}/reaction`, reactionData)
+  return res.data ?? res
+}
+
 export const startBloodTransfusionOrder = async (id) => {
   const res = await apiClient.patch(`/blood-transfusion/${id}/start`)
   return res.data ?? res
@@ -51,6 +56,7 @@ export default {
   orderBloodTransfusionConsumables,
   startBloodTransfusionOrder,
   completeBloodTransfusionOrder,
+  recordBloodTransfusionReaction,
   getBloodTransfusionsByPatient,
   dispenseBloodTransfusionPreps,
   dispenseBloodTransfusionConsumables,

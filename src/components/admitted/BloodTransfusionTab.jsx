@@ -38,6 +38,20 @@ const BloodTransfusionTab = ({
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState(null)
   const [startOrderModal, setStartOrderModal] = useState(null)
   const [completeOrderModal, setCompleteOrderModal] = useState(null)
+  const [reactionModal, setReactionModal] = useState(null)
+  const [savingReaction, setSavingReaction] = useState(false)
+  const [reactionForm, setReactionForm] = useState({
+    symptoms: [],
+    customSymptom: '',
+    severity: 'moderate',
+    unitsTransfusedBeforeReaction: '',
+    vitalSigns: { bp: '', pulse: '', temperature: '', spo2: '', respiratoryRate: '' },
+    actionTaken: 'Transfusion stopped immediately. IV line kept open with 0.9% Normal Saline. Attending Physician alerted.',
+    doctorNotified: true,
+    doctorNotifiedName: '',
+    bloodBagReturnedToLab: true,
+    notes: '',
+  })
 
   // Laboratory service charges
   const [labServices, setLabServices] = useState([])
@@ -289,6 +303,83 @@ const BloodTransfusionTab = ({
       toast.error(err?.response?.data?.error || 'Failed to mark completed')
     } finally {
       setCompletingId(null)
+    }
+  }
+
+  const openReactionModal = (order) => {
+    setReactionModal(order)
+    setReactionForm({
+      symptoms: [],
+      customSymptom: '',
+      severity: 'moderate',
+      unitsTransfusedBeforeReaction: order.units || 1,
+      vitalSigns: { bp: '', pulse: '', temperature: '', spo2: '', respiratoryRate: '' },
+      actionTaken: 'Transfusion stopped immediately. IV line kept open with 0.9% Normal Saline. Attending Physician alerted.',
+      doctorNotified: true,
+      doctorNotifiedName: order.doctorName || '',
+      bloodBagReturnedToLab: true,
+      notes: '',
+    })
+  }
+
+  const handleToggleSymptom = (symptom) => {
+    setReactionForm((prev) => {
+      const exists = prev.symptoms.includes(symptom)
+      return {
+        ...prev,
+        symptoms: exists
+          ? prev.symptoms.filter((s) => s !== symptom)
+          : [...prev.symptoms, symptom],
+      }
+    })
+  }
+
+  const handleAddCustomSymptom = () => {
+    if (!reactionForm.customSymptom?.trim()) return
+    const trimmed = reactionForm.customSymptom.trim()
+    if (!reactionForm.symptoms.includes(trimmed)) {
+      setReactionForm((prev) => ({
+        ...prev,
+        symptoms: [...prev.symptoms, trimmed],
+        customSymptom: '',
+      }))
+    } else {
+      setReactionForm((prev) => ({ ...prev, customSymptom: '' }))
+    }
+  }
+
+  const executeRecordReaction = async () => {
+    if (!reactionModal) return
+    const orderId = reactionModal._id || reactionModal.id
+    if (!reactionForm.symptoms.length && !reactionForm.notes.trim()) {
+      toast.error('Please specify at least one reaction symptom or note.')
+      return
+    }
+
+    setSavingReaction(true)
+    try {
+      await bloodTransfusionApi.recordBloodTransfusionReaction(orderId, {
+        symptoms: reactionForm.symptoms,
+        severity: reactionForm.severity,
+        unitsTransfusedBeforeReaction: reactionForm.unitsTransfusedBeforeReaction !== '' ? Number(reactionForm.unitsTransfusedBeforeReaction) : undefined,
+        vitalSigns: reactionForm.vitalSigns,
+        actionTaken: reactionForm.actionTaken,
+        doctorNotified: reactionForm.doctorNotified,
+        doctorNotifiedName: reactionForm.doctorNotifiedName,
+        bloodBagReturnedToLab: reactionForm.bloodBagReturnedToLab,
+        notes: reactionForm.notes,
+      })
+      toast.error('Transfusion stopped: Adverse reaction recorded.', {
+        icon: '⚠️',
+        duration: 5000,
+      })
+      await loadOrders()
+      setReactionModal(null)
+    } catch (err) {
+      console.error('Failed to record transfusion reaction', err)
+      toast.error(err?.response?.data?.error || 'Failed to record reaction')
+    } finally {
+      setSavingReaction(false)
     }
   }
 
@@ -804,23 +895,35 @@ const BloodTransfusionTab = ({
                           )}
                         </button>
                       ) : (
-                        <button
-                          onClick={() => handleCompleteOrder(order)}
-                          disabled={completingId === (order._id || order.id)}
-                          className="btn btn-sm rounded-xl text-white gap-2 font-semibold shadow-sm w-full sm:w-auto btn-success"
-                        >
-                          {completingId === (order._id || order.id) ? (
-                            <>
-                              <span className="loading loading-spinner loading-xs"></span>
-                              Recording...
-                            </>
-                          ) : (
-                            <>
-                              <FaCheckCircle className="w-3.5 h-3.5" />
-                              Mark Completed
-                            </>
-                          )}
-                        </button>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button
+                            onClick={() => handleCompleteOrder(order)}
+                            disabled={completingId === (order._id || order.id)}
+                            className="btn btn-sm rounded-xl text-white gap-2 font-semibold shadow-sm w-full sm:w-auto btn-success"
+                          >
+                            {completingId === (order._id || order.id) ? (
+                              <>
+                                <span className="loading loading-spinner loading-xs"></span>
+                                Recording...
+                              </>
+                            ) : (
+                              <>
+                                <FaCheckCircle className="w-3.5 h-3.5" />
+                                Mark Completed
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openReactionModal(order)}
+                            disabled={completingId === (order._id || order.id)}
+                            className="btn btn-sm rounded-xl text-white gap-2 font-semibold shadow-sm w-full sm:w-auto btn-error"
+                            title="Stop transfusion and document adverse patient reaction"
+                          >
+                            <FaExclamationTriangle className="w-3.5 h-3.5" />
+                            Reaction / Stop
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -851,6 +954,7 @@ const BloodTransfusionTab = ({
                 <tr>
                   <th className="py-3 px-4">Blood Product</th>
                   <th className="py-3 px-4">Billing Status</th>
+                  <th className="py-3 px-4">Transfusion Outcome</th>
                   <th className="py-3 px-4">Ordered By</th>
                   <th className="py-3 px-4">Administered By</th>
                   <th className="py-3 px-4">Administered Timestamp</th>
@@ -878,6 +982,19 @@ const BloodTransfusionTab = ({
                             </div>
                           )}
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {order.status === 'reaction' || order.hasReaction ? (
+                          <span className="badge badge-error/20 text-error font-bold text-xs py-2 px-2.5 border border-error/30 gap-1.5 inline-flex items-center">
+                            <FaExclamationTriangle className="w-3 h-3 shrink-0" />
+                            Adverse Reaction (Stopped)
+                          </span>
+                        ) : (
+                          <span className="badge badge-success/20 text-success font-bold text-xs py-2 px-2.5 border border-success/30 gap-1.5 inline-flex items-center">
+                            <FaCheckCircle className="w-3 h-3 shrink-0" />
+                            Completed Successfully
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-base-content/80">
                         <div className="flex items-center gap-1.5">
@@ -1558,11 +1675,121 @@ const BloodTransfusionTab = ({
                 </div>
                 <div className="text-right">
                   <h4 className="text-[11px] font-semibold text-base-content/50 uppercase tracking-wider mb-1">Status</h4>
-                  <span className="badge badge-success font-bold text-white shadow-sm gap-1.5 py-3 px-3">
-                    <FaCheckCircle className="w-3 h-3" /> Completed
-                  </span>
+                  {selectedHistoryOrder.status === 'reaction' || selectedHistoryOrder.hasReaction ? (
+                    <span className="badge badge-error font-bold text-white shadow-sm gap-1.5 py-3 px-3">
+                      <FaExclamationTriangle className="w-3 h-3" /> Transfusion Reaction Reported
+                    </span>
+                  ) : (
+                    <span className="badge badge-success font-bold text-white shadow-sm gap-1.5 py-3 px-3">
+                      <FaCheckCircle className="w-3 h-3" /> Completed
+                    </span>
+                  )}
                 </div>
               </div>
+
+              {(selectedHistoryOrder.status === 'reaction' || selectedHistoryOrder.hasReaction) && (
+                <div className="p-4 rounded-xl bg-error/10 border-2 border-error/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm text-error flex items-center gap-2">
+                      <FaExclamationTriangle className="w-4 h-4" />
+                      Adverse Transfusion Reaction Report
+                    </span>
+                    <span className="badge badge-error text-white font-bold text-xs uppercase">
+                      {selectedHistoryOrder.reactionDetails?.severity || 'Adverse Event'}
+                    </span>
+                  </div>
+
+                  {selectedHistoryOrder.reactionDetails?.symptoms && selectedHistoryOrder.reactionDetails.symptoms.length > 0 && (
+                    <div>
+                      <span className="text-[11px] font-semibold text-base-content/60 uppercase tracking-wider block mb-1.5">
+                        Symptoms Manifested:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedHistoryOrder.reactionDetails.symptoms.map((s, idx) => (
+                          <span key={idx} className="badge badge-error/20 text-error font-medium text-xs border border-error/30 py-2">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3 text-xs bg-base-100/80 p-3 rounded-lg border border-error/20">
+                    <div>
+                      <span className="text-base-content/60 block">Units/Volume Before Stop:</span>
+                      <span className="font-semibold text-base-content">
+                        {selectedHistoryOrder.reactionDetails?.unitsTransfusedBeforeReaction || selectedHistoryOrder.units || 1} Unit(s)
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-base-content/60 block">Reaction Time:</span>
+                      <span className="font-semibold text-base-content">
+                        {formatNigeriaDateTimeShort(selectedHistoryOrder.reactionDetails?.reactionAt || selectedHistoryOrder.completedAt)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-base-content/60 block">Doctor Notified:</span>
+                      <span className="font-semibold text-base-content">
+                        {selectedHistoryOrder.reactionDetails?.doctorNotified ? `Yes (${selectedHistoryOrder.reactionDetails?.doctorNotifiedName || selectedHistoryOrder.doctorName || 'Doctor'})` : 'No'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-base-content/60 block">Blood Bag to Lab:</span>
+                      <span className="font-semibold text-base-content">
+                        {selectedHistoryOrder.reactionDetails?.bloodBagReturnedToLab ? 'Returned to Blood Bank' : 'Not Returned'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {selectedHistoryOrder.reactionDetails?.vitalSigns && (
+                    <div className="text-xs bg-base-100/80 p-3 rounded-lg border border-error/20">
+                      <span className="text-[11px] font-semibold text-base-content/60 uppercase tracking-wider block mb-1">
+                        Vital Signs at Reaction:
+                      </span>
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
+                        <div className="p-1.5 rounded bg-base-200/50">
+                          <span className="text-[10px] text-base-content/50 block">BP</span>
+                          <span className="font-bold">{selectedHistoryOrder.reactionDetails.vitalSigns.bp || '—'}</span>
+                        </div>
+                        <div className="p-1.5 rounded bg-base-200/50">
+                          <span className="text-[10px] text-base-content/50 block">Pulse</span>
+                          <span className="font-bold">{selectedHistoryOrder.reactionDetails.vitalSigns.pulse ? `${selectedHistoryOrder.reactionDetails.vitalSigns.pulse} bpm` : '—'}</span>
+                        </div>
+                        <div className="p-1.5 rounded bg-base-200/50">
+                          <span className="text-[10px] text-base-content/50 block">Temp</span>
+                          <span className="font-bold">{selectedHistoryOrder.reactionDetails.vitalSigns.temperature ? `${selectedHistoryOrder.reactionDetails.vitalSigns.temperature}°C` : '—'}</span>
+                        </div>
+                        <div className="p-1.5 rounded bg-base-200/50">
+                          <span className="text-[10px] text-base-content/50 block">SpO2</span>
+                          <span className="font-bold">{selectedHistoryOrder.reactionDetails.vitalSigns.spo2 ? `${selectedHistoryOrder.reactionDetails.vitalSigns.spo2}%` : '—'}</span>
+                        </div>
+                        <div className="p-1.5 rounded bg-base-200/50">
+                          <span className="text-[10px] text-base-content/50 block">Resp</span>
+                          <span className="font-bold">{selectedHistoryOrder.reactionDetails.vitalSigns.respiratoryRate ? `${selectedHistoryOrder.reactionDetails.vitalSigns.respiratoryRate}/min` : '—'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedHistoryOrder.reactionDetails?.actionTaken && (
+                    <div className="text-xs">
+                      <span className="text-base-content/60 block font-semibold mb-0.5">Action / Intervention Taken:</span>
+                      <p className="bg-base-100/80 p-2.5 rounded-lg border border-error/20 text-base-content/80">
+                        {selectedHistoryOrder.reactionDetails.actionTaken}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedHistoryOrder.reactionDetails?.notes && (
+                    <div className="text-xs">
+                      <span className="text-base-content/60 block font-semibold mb-0.5">Clinical Remarks:</span>
+                      <p className="bg-base-100/80 p-2.5 rounded-lg border border-error/20 text-base-content/80">
+                        {selectedHistoryOrder.reactionDetails.notes}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <h4 className="font-bold text-sm text-base-content flex items-center gap-2 mb-2">
@@ -1753,6 +1980,275 @@ const BloodTransfusionTab = ({
                 className="btn btn-sm btn-success text-white rounded-xl font-semibold gap-2"
               >
                 {completingId === (completeOrderModal._id || completeOrderModal.id) ? 'Completing...' : 'Mark Completed'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Transfusion Reaction Modal */}
+      {reactionModal && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setReactionModal(null); }}>
+          <div className="bg-base-100 rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-error/30 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-base-200 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-error/10 text-error rounded-xl">
+                  <FaExclamationTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-base-content text-error">
+                    Adverse Blood Transfusion Reaction
+                  </h3>
+                  <p className="text-xs text-base-content/60">
+                    Immediately stop transfusion and record patient clinical reaction
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReactionModal(null)}
+                className="btn btn-sm btn-ghost btn-circle"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="alert alert-error/10 border border-error/30 text-xs text-error font-medium flex items-center gap-2">
+              <FaExclamationTriangle className="w-4 h-4 shrink-0" />
+              <span>
+                Standard Clinical Protocol: Immediately <strong>STOP</strong> transfusion, maintain IV access with 0.9% Normal Saline, alert physician, and save blood pack.
+              </span>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              {/* Severity & Units Infused */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-base-content block mb-1">
+                    Reaction Severity *
+                  </label>
+                  <select
+                    value={reactionForm.severity}
+                    onChange={(e) => setReactionForm({ ...reactionForm, severity: e.target.value })}
+                    className="select select-bordered select-sm w-full font-medium"
+                  >
+                    <option value="mild">Mild (e.g., localized rash, itching)</option>
+                    <option value="moderate">Moderate (e.g., rigors, fever, dyspnea)</option>
+                    <option value="severe">Severe (e.g., severe hypotension, bronchospasm)</option>
+                    <option value="life_threatening">Life-Threatening / Anaphylaxis</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-base-content block mb-1">
+                    Units/Volume Transfused Before Stop
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max={reactionModal.units || 10}
+                    value={reactionForm.unitsTransfusedBeforeReaction}
+                    onChange={(e) => setReactionForm({ ...reactionForm, unitsTransfusedBeforeReaction: e.target.value })}
+                    placeholder={`e.g. 0.5 of ${reactionModal.units || 1} units`}
+                    className="input input-bordered input-sm w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Symptoms Checklist */}
+              <div>
+                <label className="font-bold text-base-content block mb-1.5">
+                  Symptoms Manifested *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto p-2 bg-base-200/40 rounded-xl border border-base-200">
+                  {[
+                    'Fever / Pyrexia (≥ 38°C)',
+                    'Chills / Rigors',
+                    'Urticaria / Hives / Rash',
+                    'Pruritus / Severe Itching',
+                    'Dyspnea / Shortness of Breath',
+                    'Chest / Back / Flank Pain',
+                    'Tachycardia (Rapid Heart Rate)',
+                    'Hypotension (Low BP / Shock)',
+                    'Nausea / Vomiting',
+                    'Facial / Laryngeal Edema',
+                    'Dark / Red Urine (Hemoglobinuria)',
+                    'Restlessness / Anxiety',
+                  ].map((symptom) => {
+                    const checked = reactionForm.symptoms.includes(symptom);
+                    return (
+                      <label
+                        key={symptom}
+                        className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-xs ${
+                          checked ? 'bg-error/15 text-error font-semibold' : 'hover:bg-base-200 text-base-content/80'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleToggleSymptom(symptom)}
+                          className="checkbox checkbox-error checkbox-xs"
+                        />
+                        <span className="truncate">{symptom}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={reactionForm.customSymptom}
+                    onChange={(e) => setReactionForm({ ...reactionForm, customSymptom: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomSymptom(); } }}
+                    placeholder="Other observed symptom..."
+                    className="input input-bordered input-sm flex-1 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomSymptom}
+                    className="btn btn-sm btn-outline btn-neutral"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {/* Vitals at Reaction */}
+              <div>
+                <label className="font-bold text-base-content block mb-1">
+                  Patient Vital Signs at Onset of Reaction
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div>
+                    <span className="text-[10px] text-base-content/60 block mb-0.5">BP (mmHg)</span>
+                    <input
+                      type="text"
+                      placeholder="120/80"
+                      value={reactionForm.vitalSigns.bp}
+                      onChange={(e) => setReactionForm({ ...reactionForm, vitalSigns: { ...reactionForm.vitalSigns, bp: e.target.value } })}
+                      className="input input-bordered input-sm w-full text-xs"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-base-content/60 block mb-0.5">Pulse (bpm)</span>
+                    <input
+                      type="text"
+                      placeholder="110"
+                      value={reactionForm.vitalSigns.pulse}
+                      onChange={(e) => setReactionForm({ ...reactionForm, vitalSigns: { ...reactionForm.vitalSigns, pulse: e.target.value } })}
+                      className="input input-bordered input-sm w-full text-xs"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-base-content/60 block mb-0.5">Temp (°C)</span>
+                    <input
+                      type="text"
+                      placeholder="38.8"
+                      value={reactionForm.vitalSigns.temperature}
+                      onChange={(e) => setReactionForm({ ...reactionForm, vitalSigns: { ...reactionForm.vitalSigns, temperature: e.target.value } })}
+                      className="input input-bordered input-sm w-full text-xs"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-base-content/60 block mb-0.5">SpO2 (%)</span>
+                    <input
+                      type="text"
+                      placeholder="94"
+                      value={reactionForm.vitalSigns.spo2}
+                      onChange={(e) => setReactionForm({ ...reactionForm, vitalSigns: { ...reactionForm.vitalSigns, spo2: e.target.value } })}
+                      className="input input-bordered input-sm w-full text-xs"
+                    />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-base-content/60 block mb-0.5">Resp (/min)</span>
+                    <input
+                      type="text"
+                      placeholder="24"
+                      value={reactionForm.vitalSigns.respiratoryRate}
+                      onChange={(e) => setReactionForm({ ...reactionForm, vitalSigns: { ...reactionForm.vitalSigns, respiratoryRate: e.target.value } })}
+                      className="input input-bordered input-sm w-full text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Interventions / Action Taken */}
+              <div>
+                <label className="font-bold text-base-content block mb-1">
+                  Immediate Actions / Interventions Taken
+                </label>
+                <textarea
+                  rows={2}
+                  value={reactionForm.actionTaken}
+                  onChange={(e) => setReactionForm({ ...reactionForm, actionTaken: e.target.value })}
+                  placeholder="e.g. Transfusion stopped, IV normal saline infused, hydrocortisone given..."
+                  className="textarea textarea-bordered w-full text-xs"
+                />
+              </div>
+
+              {/* Checkboxes: Doctor Notified & Blood Bag to Lab */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-base-200/50 rounded-xl border border-base-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={reactionForm.doctorNotified}
+                    onChange={(e) => setReactionForm({ ...reactionForm, doctorNotified: e.target.checked })}
+                    className="checkbox checkbox-primary checkbox-xs"
+                  />
+                  <span className="font-semibold text-base-content">Attending Doctor Notified</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={reactionForm.bloodBagReturnedToLab}
+                    onChange={(e) => setReactionForm({ ...reactionForm, bloodBagReturnedToLab: e.target.checked })}
+                    className="checkbox checkbox-primary checkbox-xs"
+                  />
+                  <span className="font-semibold text-base-content">Blood Unit Returned to Lab</span>
+                </label>
+              </div>
+
+              {/* Remarks / Notes */}
+              <div>
+                <label className="font-bold text-base-content block mb-1">
+                  Additional Clinical Remarks
+                </label>
+                <textarea
+                  rows={2}
+                  value={reactionForm.notes}
+                  onChange={(e) => setReactionForm({ ...reactionForm, notes: e.target.value })}
+                  placeholder="Any additional doctor or nurse clinical notes regarding the reaction..."
+                  className="textarea textarea-bordered w-full text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-base-200">
+              <button
+                type="button"
+                onClick={() => setReactionModal(null)}
+                className="btn btn-sm btn-ghost rounded-xl"
+                disabled={savingReaction}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeRecordReaction}
+                disabled={savingReaction}
+                className="btn btn-sm btn-error text-white rounded-xl font-bold gap-2"
+              >
+                {savingReaction ? (
+                  <>
+                    <span className="loading loading-spinner loading-xs"></span>
+                    Saving Reaction...
+                  </>
+                ) : (
+                  <>
+                    <FaExclamationTriangle className="w-3.5 h-3.5" />
+                    Confirm Reaction & Stop Transfusion
+                  </>
+                )}
               </button>
             </div>
           </div>

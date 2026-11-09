@@ -14,6 +14,7 @@ import { ReceiptModal } from '@/components/modals';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
+import PaymentHmoStatusBadge from '@/components/common/PaymentHmoStatusBadge';
 
 const CashierAdmissionDetails = () => {
   const { admissionId } = useParams();
@@ -488,6 +489,7 @@ const CashierAdmissionDetails = () => {
                                   <th>Price</th>
                                   <th>Qty</th>
                                   <th>Total</th>
+                                  <th>Status</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -501,6 +503,15 @@ const CashierAdmissionDetails = () => {
                                     <td>₦ {Number(item.price || item.unitPrice || 0).toLocaleString()}</td>
                                     <td>{item.quantity}</td>
                                     <td>₦ {Number(item.total || item.price || 0).toLocaleString()}</td>
+                                    <td>
+                                      <PaymentHmoStatusBadge
+                                        size="xs"
+                                        hmoStatus={item.hmoStatus}
+                                        paymentStatus={bill.isCleared ? 'paid' : (item.paymentStatus || (bill.pseudo ? 'unpaid' : 'pending'))}
+                                        hasHmo={Boolean(summarySubject?.hmos?.length > 0 || item.hmoStatus)}
+                                        isPaid={Boolean(bill.isCleared || item.paymentStatus === 'paid' || item.hmoStatus === 'approved')}
+                                      />
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
