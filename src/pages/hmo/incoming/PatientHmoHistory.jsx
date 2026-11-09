@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { FaPen } from 'react-icons/fa';
 import EditHmoDecisionModal from "@/components/modals/EditHmoDecisionModal";
 
-const PatientHmoHistory = ({ patientId, dependantId = null }) => {
+const PatientHmoHistory = ({ patientId, dependantId = null, historyRefreshKey = 0 }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -69,7 +69,7 @@ useEffect(() => {
   };
   load(); // ← call directly, no need for the outer `if (patientId)` guard anymore
   return () => { mounted = false; };
-}, [patientId, dependantId]);
+}, [patientId, dependantId, historyRefreshKey]);
 
     const safeFormat = (dateVal) => {
       try {

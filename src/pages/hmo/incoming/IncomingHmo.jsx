@@ -23,11 +23,20 @@ const IncomingHmo = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
+  const [sortOrder, setSortOrder] = useState("desc");
   const pageSize = 9;
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
-    const { refreshQueueCount, lastUpdate } = useNotifications();
+  const { refreshQueueCount, lastUpdate } = useNotifications();
+
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'refreshIncoming') setRefreshKey((k) => k + 1);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
 
   useEffect(() => {
@@ -96,7 +105,13 @@ const IncomingHmo = () => {
             };
           });
 
-        if (mounted) setItems([...mappedPatients, ...mappedDependants]);
+        const merged = [...mappedPatients, ...mappedDependants].sort((a, b) => {
+          const aTime = new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime();
+          const bTime = new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime();
+          return bTime - aTime;
+        });
+
+        if (mounted) setItems(merged);
       } catch (err) {
         console.error("IncomingHmo: failed to load patients", err);
         if (mounted) setItems([]);
@@ -127,15 +142,22 @@ const IncomingHmo = () => {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((d) => {
-      const hay = [d?.name, d?.displayId, d?.status, d?.insurance]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
+    const list = !q
+      ? items
+      : items.filter((d) => {
+          const hay = [d?.name, d?.displayId, d?.status, d?.insurance]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return hay.includes(q);
+        });
+
+    return [...list].sort((a, b) => {
+      const aTime = new Date(a.snapshot?.updatedAt || a.snapshot?.createdAt || 0).getTime();
+      const bTime = new Date(b.snapshot?.updatedAt || b.snapshot?.createdAt || 0).getTime();
+      return sortOrder === "desc" ? bTime - aTime : aTime - bTime;
     });
-  }, [items, query]);
+  }, [items, query, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const start = page * pageSize;
@@ -221,7 +243,14 @@ const IncomingHmo = () => {
                   <div className="col-span-2">Patient ID</div>
                   <div className="col-span-2">Type</div>
                   <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Updated</div>
+                  <div
+                    className="col-span-2 flex items-center gap-1 cursor-pointer select-none hover:text-base-content transition-colors"
+                    onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+                    title="Click to toggle sort order"
+                  >
+                    <span>Updated</span>
+                    <span className="text-xs">{sortOrder === "desc" ? "▼" : "▲"}</span>
+                  </div>
                   <div className="col-span-1 text-right">Action</div>
                 </div>
               )}

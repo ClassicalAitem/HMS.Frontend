@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { getDependantById } from "@/services/api/dependantAPI";
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
@@ -116,6 +116,28 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const hmoUserId = currentUser?.id || currentUser?._id;
   const hmoUserName =
     `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
+
+  const [savingItems, setSavingItems] = useState({});
+  const [savedItems, setSavedItems] = useState({});
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+
+  const rawBillingsRef = useRef(rawBillings);
+  rawBillingsRef.current = rawBillings;
+
+  const itemDecisionsRef = useRef(itemDecisions);
+  itemDecisionsRef.current = itemDecisions;
+
+  const billSaveQueues = useRef({});
+  const debounceTimers = useRef({});
+
+  const isAnySaving = useMemo(
+    () => Object.values(savingItems).some(Boolean),
+    [savingItems],
+  );
+  const isAnySaved = useMemo(
+    () => Object.values(savedItems).some(Boolean),
+    [savedItems],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -408,47 +430,260 @@ useEffect(() => {
 }, [patientId, isViewingDependant, dependantId]);
 
 
-  const setDecision = (billingId, itemIdx, status, hmoCovered = 0, isClaimed = false) => {
-    setItemDecisions((prev) => ({
-      ...prev,
-      [billingId]: {
-        ...prev[billingId],
-        [itemIdx]: { ...prev[billingId][itemIdx], status, hmoCovered: Number(hmoCovered) || 0, isClaimed },
-      },
-    }));
-    setHasSavedDecisions(false);
+  const saveItemDecision = async (billingId, itemIdx, status, hmoCovered = 0, isClaimed) => {
+    const itemKey = `${billingId}-${itemIdx}`;
+    const numericCovered = Number(hmoCovered) || 0;
+
+    // 1. Optimistic UI update in itemDecisions state and ref
+    setItemDecisions((prev) => {
+      const updatedBillDecisions = {
+        ...(prev[billingId] || {}),
+        [itemIdx]: {
+          ...(prev[billingId]?.[itemIdx] || {}),
+          status,
+          hmoCovered: numericCovered,
+          isClaimed: isClaimed !== undefined ? isClaimed : (prev[billingId]?.[itemIdx]?.isClaimed || false),
+        },
+      };
+      const next = { ...prev, [billingId]: updatedBillDecisions };
+      itemDecisionsRef.current = next;
+      return next;
+    });
+
+    setSavingItems((prev) => ({ ...prev, [itemKey]: true }));
+    setSavedItems((prev) => ({ ...prev, [itemKey]: false }));
+
+    // 2. Queue save per bill to avoid race conditions
+    const prevQueue = billSaveQueues.current[billingId] || Promise.resolve();
+    const nextQueue = prevQueue
+      .then(async () => {
+        const rawBill = rawBillingsRef.current.find((b) => b.id === billingId);
+        if (!rawBill) return;
+
+        const updatedItems = (rawBill.itemDetails || []).map((item, idx) => {
+          if (idx === itemIdx) {
+            const itemTotal = Number(item.total || 0);
+            let covered = 0;
+            if (status === 'approved') covered = itemTotal;
+            else if (status === 'partial') covered = numericCovered;
+            else covered = 0;
+
+            const patientPays = status === 'pending' ? itemTotal : (itemTotal - covered);
+            return {
+              ...item,
+              hmoStatus: status,
+              hmoCovered: covered,
+              patientOwes: patientPays,
+              isClaimed: isClaimed !== undefined ? isClaimed : (item.isClaimed || false),
+            };
+          }
+
+          // Use the latest decision if already made for other items in this bill
+          const otherDec = itemDecisionsRef.current[billingId]?.[idx];
+          if (otherDec && otherDec.status && otherDec.status !== 'pending') {
+            const itemTotal = Number(item.total || 0);
+            let covered = 0;
+            if (otherDec.status === 'approved') covered = itemTotal;
+            else if (otherDec.status === 'partial') covered = Number(otherDec.hmoCovered) || 0;
+            else covered = 0;
+
+            const patientPays = itemTotal - covered;
+            return {
+              ...item,
+              hmoStatus: otherDec.status,
+              hmoCovered: covered,
+              patientOwes: patientPays,
+              isClaimed: otherDec.isClaimed || false,
+            };
+          }
+
+          return item;
+        });
+
+        const outstandingBill = updatedItems.reduce(
+          (sum, item) => sum + Number(item.patientOwes || 0),
+          0,
+        );
+
+        const hmoCoveredAmount = updatedItems.reduce(
+          (sum, item) => sum + Number(item.hmoCovered || 0),
+          0,
+        );
+
+        await updateBilling(billingId, {
+          itemDetails: updatedItems,
+          outstandingBill,
+          hmoCoveredAmount,
+          hmoApprovedBy: hmoUserName,
+          hmoApprovedById: hmoUserId,
+          hmoApprovedAt: new Date().toISOString(),
+        });
+
+        // Update rawBillings in state and ref
+        setRawBillings((prev) => {
+          const updated = prev.map((b) =>
+            b.id === billingId
+              ? { ...b, itemDetails: updatedItems, outstandingBill, hmoCoveredAmount }
+              : b,
+          );
+          rawBillingsRef.current = updated;
+          return updated;
+        });
+
+        setSavedItems((prev) => ({ ...prev, [itemKey]: true }));
+        setHistoryRefreshKey((k) => k + 1);
+        toast.success('HMO decision saved', { id: `hmo-save-${billingId}-${itemIdx}` });
+      })
+      .catch((err) => {
+        console.error('Failed to autosave HMO decision', err);
+        toast.error(err?.response?.data?.message || 'Failed to autosave decision');
+      })
+      .finally(() => {
+        setSavingItems((prev) => ({ ...prev, [itemKey]: false }));
+      });
+
+    billSaveQueues.current[billingId] = nextQueue;
+    return nextQueue;
+  };
+
+  const handlePartialAmountChange = (billId, idx, maxTotal, val) => {
+    const numericVal = Math.min(Number(val) || 0, Number(maxTotal || 0));
+    const itemKey = `${billId}-${idx}`;
+
+    setItemDecisions((prev) => {
+      const updated = {
+        ...(prev[billId] || {}),
+        [idx]: {
+          ...(prev[billId]?.[idx] || {}),
+          status: 'partial',
+          hmoCovered: numericVal,
+        },
+      };
+      const next = { ...prev, [billId]: updated };
+      itemDecisionsRef.current = next;
+      return next;
+    });
+
+    setSavingItems((prev) => ({ ...prev, [itemKey]: true }));
+    setSavedItems((prev) => ({ ...prev, [itemKey]: false }));
+
+    if (debounceTimers.current[itemKey]) {
+      clearTimeout(debounceTimers.current[itemKey]);
+    }
+
+    debounceTimers.current[itemKey] = setTimeout(() => {
+      saveItemDecision(billId, idx, 'partial', numericVal);
+    }, 600);
+  };
+
+  const handlePartialBlur = (billId, idx, maxTotal, val) => {
+    const itemKey = `${billId}-${idx}`;
+    if (debounceTimers.current[itemKey]) {
+      clearTimeout(debounceTimers.current[itemKey]);
+      delete debounceTimers.current[itemKey];
+    }
+    const numericVal = Math.min(Number(val) || 0, Number(maxTotal || 0));
+    saveItemDecision(billId, idx, 'partial', numericVal);
   };
 
   const toggleClaimed = (billingId, itemIdx) => {
-    setItemDecisions((prev) => ({
-      ...prev,
-      [billingId]: {
-        ...prev[billingId],
-        [itemIdx]: {
-          ...prev[billingId][itemIdx],
-          isClaimed: !prev[billingId][itemIdx]?.isClaimed,
-        },
-      },
-    }));
-    setHasSavedDecisions(false);
+    const current = itemDecisionsRef.current[billingId]?.[itemIdx] || {};
+    const nextClaimed = !current.isClaimed;
+    saveItemDecision(billingId, itemIdx, current.status || 'pending', current.hmoCovered || 0, nextClaimed);
   };
 
-  const setAllDecisions = (status) => {
-    setHasSavedDecisions(false);
-
-    setItemDecisions(() => {
-      const next = {};
+  const handleBulkDecision = async (status) => {
+    setSubmitting(true);
+    try {
+      const nextDecisions = { ...itemDecisionsRef.current };
       billings.forEach((bill) => {
-        next[bill.id] = {};
-        (bill.itemDetails || []).forEach((item, idx) => {
-          next[bill.id][idx] = {
+        if (!nextDecisions[bill.id]) nextDecisions[bill.id] = {};
+        (bill.itemDetails || []).forEach((item) => {
+          nextDecisions[bill.id][item.originalIdx] = {
             status,
             hmoCovered: status === 'approved' ? Number(item.total || 0) : 0,
+            isClaimed: nextDecisions[bill.id]?.[item.originalIdx]?.isClaimed || false,
           };
         });
       });
-      return next;
-    });
+      setItemDecisions(nextDecisions);
+      itemDecisionsRef.current = nextDecisions;
+
+      await Promise.all(
+        billings.map(async (pendingBill) => {
+          const rawBill = rawBillingsRef.current.find((b) => b.id === pendingBill.id);
+          if (!rawBill) return;
+
+          const updatedItems = (rawBill.itemDetails || []).map((item, idx) => {
+            const dec = nextDecisions[pendingBill.id]?.[idx];
+            if (!dec) return item;
+
+            const itemTotal = Number(item.total || 0);
+            const covered = dec.status === 'approved' ? itemTotal : 0;
+            const patientPays = dec.status === 'pending' ? itemTotal : (itemTotal - covered);
+
+            return {
+              ...item,
+              hmoStatus: dec.status,
+              hmoCovered: covered,
+              patientOwes: patientPays,
+              isClaimed: dec.isClaimed || false,
+            };
+          });
+
+          const outstandingBill = updatedItems.reduce(
+            (sum, item) => sum + Number(item.patientOwes || 0),
+            0,
+          );
+          const hmoCoveredAmount = updatedItems.reduce(
+            (sum, item) => sum + Number(item.hmoCovered || 0),
+            0,
+          );
+
+          await updateBilling(pendingBill.id, {
+            itemDetails: updatedItems,
+            outstandingBill,
+            hmoCoveredAmount,
+            hmoApprovedBy: hmoUserName,
+            hmoApprovedById: hmoUserId,
+            hmoApprovedAt: new Date().toISOString(),
+          });
+
+          setRawBillings((prev) => {
+            const updated = prev.map((b) =>
+              b.id === pendingBill.id
+                ? { ...b, itemDetails: updatedItems, outstandingBill, hmoCoveredAmount }
+                : b,
+            );
+            rawBillingsRef.current = updated;
+            return updated;
+          });
+        }),
+      );
+
+      const newSaved = {};
+      billings.forEach((bill) => {
+        (bill.itemDetails || []).forEach((item) => {
+          newSaved[`${bill.id}-${item.originalIdx}`] = true;
+        });
+      });
+      setSavedItems((prev) => ({ ...prev, ...newSaved }));
+      setSavingItems({});
+      setHistoryRefreshKey((k) => k + 1);
+
+      toast.success(
+        status === 'approved'
+          ? 'All items approved & saved'
+          : status === 'rejected'
+            ? 'All items rejected & saved'
+            : 'All items reset & saved',
+      );
+    } catch (err) {
+      console.error('Bulk decision error', err);
+      toast.error('Failed to save all decisions');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const approvedTotal = useMemo(() => {
@@ -486,11 +721,11 @@ useEffect(() => {
   const saveDecisions = async () => {
     await Promise.all(
       billings.map(async (pendingBill) => {
-        const rawBill = rawBillings.find((b) => b.id === pendingBill.id);
+        const rawBill = rawBillingsRef.current.find((b) => b.id === pendingBill.id);
         if (!rawBill) return;
 
         const updatedItems = (rawBill.itemDetails || []).map((item, idx) => {
-          const decision = itemDecisions[pendingBill.id]?.[idx];
+          const decision = itemDecisionsRef.current[pendingBill.id]?.[idx];
           if (!decision) {
             return item;
           }
@@ -503,7 +738,7 @@ useEffect(() => {
             hmoCovered = Number(decision.hmoCovered || 0);
           else hmoCovered = 0;
 
-          const patientPays = itemTotal - hmoCovered;
+          const patientPays = decision.status === 'pending' ? itemTotal : (itemTotal - hmoCovered);
 
           return {
             ...item,
@@ -532,6 +767,16 @@ useEffect(() => {
           hmoApprovedById: hmoUserId,
           hmoApprovedAt: new Date().toISOString(),
         });
+
+        setRawBillings((prev) => {
+          const updated = prev.map((b) =>
+            b.id === pendingBill.id
+              ? { ...b, itemDetails: updatedItems, outstandingBill, hmoCoveredAmount }
+              : b,
+          );
+          rawBillingsRef.current = updated;
+          return updated;
+        });
       }),
     );
   };
@@ -541,10 +786,15 @@ useEffect(() => {
     try {
       await saveDecisions();
       setHasSavedDecisions(true);
-      toast.success('HMO items saved');
-      setTimeout(() => {
-        window.location.reload();
-      }, 700);
+      const newSaved = {};
+      billings.forEach((bill) => {
+        (bill.itemDetails || []).forEach((item) => {
+          newSaved[`${bill.id}-${item.originalIdx}`] = true;
+        });
+      });
+      setSavedItems((prev) => ({ ...prev, ...newSaved }));
+      setHistoryRefreshKey((k) => k + 1);
+      toast.success('All HMO items saved');
     } catch (err) {
       console.error('Save items error', err);
       toast.error(err?.response?.data?.message || 'Failed to save items');
@@ -695,22 +945,22 @@ useEffect(() => {
               <div className="flex gap-2 mb-4">
                 <button
                   className="btn btn-success btn-sm"
-                  onClick={() => setAllDecisions('approved')}
-                  disabled={submitting}
+                  onClick={() => handleBulkDecision('approved')}
+                  disabled={submitting || isAnySaving}
                 >
-                  Approve All
+                  {submitting ? <span className="loading loading-spinner loading-xs" /> : 'Approve All'}
                 </button>
                 <button
                   className="btn btn-error btn-sm"
-                  onClick={() => setAllDecisions('rejected')}
-                  disabled={submitting}
+                  onClick={() => handleBulkDecision('rejected')}
+                  disabled={submitting || isAnySaving}
                 >
-                  Reject All
+                  {submitting ? <span className="loading loading-spinner loading-xs" /> : 'Reject All'}
                 </button>
                 <button
                   className="btn btn-ghost btn-sm"
-                  onClick={() => setAllDecisions('pending')}
-                  disabled={submitting}
+                  onClick={() => handleBulkDecision('pending')}
+                  disabled={submitting || isAnySaving}
                 >
                   ↺ Reset All
                 </button>
@@ -842,7 +1092,7 @@ useEffect(() => {
                                   ₦{Number(item.total || 0).toLocaleString()}
                                 </td>
                                 <td className="text-center">
-                                  <div className="flex flex-col items-center gap-2">
+                                  <div className="flex flex-col items-center gap-1.5">
                                     <div className="flex items-center gap-1">
                                       <button
                                         className={`btn btn-xs ${
@@ -851,20 +1101,22 @@ useEffect(() => {
                                             ? 'btn-success'
                                             : 'btn-outline btn-success'
                                         }`}
-                                        onClick={() =>
-                                          setDecision(
-                                            bill.id,
-                                            idx,
-                                            itemDecisions[bill.id]?.[idx]
-                                              ?.status === 'approved'
+                                        onClick={() => {
+                                          const nextStatus =
+                                            itemDecisions[bill.id]?.[idx]?.status === 'approved'
                                               ? 'pending'
-                                              : 'approved',
-                                            item.total,
-                                          )
-                                        }
-                                        disabled={submitting}
+                                              : 'approved';
+                                          const covered = nextStatus === 'approved' ? item.total : 0;
+                                          saveItemDecision(bill.id, idx, nextStatus, covered);
+                                        }}
+                                        disabled={savingItems[`${bill.id}-${idx}`] || submitting}
                                       >
-                                        ✓ Full
+                                        {savingItems[`${bill.id}-${idx}`] &&
+                                        itemDecisions[bill.id]?.[idx]?.status === 'approved' ? (
+                                          <span className="loading loading-spinner loading-xs" />
+                                        ) : (
+                                          '✓ Full'
+                                        )}
                                       </button>
                                       <button
                                         className={`btn btn-xs ${
@@ -873,20 +1125,25 @@ useEffect(() => {
                                             ? 'btn-warning'
                                             : 'btn-outline btn-warning'
                                         }`}
-                                        onClick={() =>
-                                          setDecision(
-                                            bill.id,
-                                            idx,
-                                            itemDecisions[bill.id]?.[idx]
-                                              ?.status === 'partial'
+                                        onClick={() => {
+                                          const nextStatus =
+                                            itemDecisions[bill.id]?.[idx]?.status === 'partial'
                                               ? 'pending'
-                                              : 'partial',
-                                            0,
-                                          )
-                                        }
-                                        disabled={submitting}
+                                              : 'partial';
+                                          const covered =
+                                            nextStatus === 'partial'
+                                              ? Number(itemDecisions[bill.id]?.[idx]?.hmoCovered || 0)
+                                              : 0;
+                                          saveItemDecision(bill.id, idx, nextStatus, covered);
+                                        }}
+                                        disabled={savingItems[`${bill.id}-${idx}`] || submitting}
                                       >
-                                        ½ Partial
+                                        {savingItems[`${bill.id}-${idx}`] &&
+                                        itemDecisions[bill.id]?.[idx]?.status === 'partial' ? (
+                                          <span className="loading loading-spinner loading-xs" />
+                                        ) : (
+                                          '½ Partial'
+                                        )}
                                       </button>
                                       <button
                                         className={`btn btn-xs ${
@@ -895,22 +1152,35 @@ useEffect(() => {
                                             ? 'btn-error'
                                             : 'btn-outline btn-error'
                                         }`}
-                                        onClick={() =>
-                                          setDecision(
-                                            bill.id,
-                                            idx,
-                                            itemDecisions[bill.id]?.[idx]
-                                              ?.status === 'rejected'
+                                        onClick={() => {
+                                          const nextStatus =
+                                            itemDecisions[bill.id]?.[idx]?.status === 'rejected'
                                               ? 'pending'
-                                              : 'rejected',
-                                            0,
-                                          )
-                                        }
-                                        disabled={submitting}
+                                              : 'rejected';
+                                          saveItemDecision(bill.id, idx, nextStatus, 0);
+                                        }}
+                                        disabled={savingItems[`${bill.id}-${idx}`] || submitting}
                                       >
-                                        ✕ None
+                                        {savingItems[`${bill.id}-${idx}`] &&
+                                        itemDecisions[bill.id]?.[idx]?.status === 'rejected' ? (
+                                          <span className="loading loading-spinner loading-xs" />
+                                        ) : (
+                                          '✕ None'
+                                        )}
                                       </button>
                                     </div>
+
+                                    {/* Auto-save status per item */}
+                                    {savingItems[`${bill.id}-${idx}`] ? (
+                                      <span className="text-[11px] text-info flex items-center gap-1 font-medium">
+                                        <span className="loading loading-spinner loading-xs" />
+                                        Saving...
+                                      </span>
+                                    ) : savedItems[`${bill.id}-${idx}`] ? (
+                                      <span className="text-[11px] text-success flex items-center gap-1 font-medium">
+                                        ✓ Saved
+                                      </span>
+                                    ) : null}
 
                                     {itemDecisions[bill.id]?.[idx]?.status ===
                                       'partial' && (
@@ -926,20 +1196,24 @@ useEffect(() => {
                                           max={Number(item.total || 0)}
                                           value={
                                             itemDecisions[bill.id]?.[idx]
-                                              ?.hmoCovered || ''
+                                              ?.hmoCovered ?? ''
                                           }
-                                          onChange={(e) => {
-                                            const val = Math.min(
-                                              Number(e.target.value) || 0,
-                                              Number(item.total || 0),
-                                            );
-                                            setDecision(
+                                          onChange={(e) =>
+                                            handlePartialAmountChange(
                                               bill.id,
                                               idx,
-                                              'partial',
-                                              val,
-                                            );
-                                          }}
+                                              item.total,
+                                              e.target.value,
+                                            )
+                                          }
+                                          onBlur={(e) =>
+                                            handlePartialBlur(
+                                              bill.id,
+                                              idx,
+                                              item.total,
+                                              e.target.value,
+                                            )
+                                          }
                                           disabled={submitting}
                                         />
                                         <span className="text-xs text-base-content/40">
@@ -1042,11 +1316,21 @@ useEffect(() => {
                       })()}
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {isAnySaving ? (
+                        <span className="badge badge-info gap-1.5 py-3 px-3 text-xs">
+                          <span className="loading loading-spinner loading-xs" />
+                          Autosaving...
+                        </span>
+                      ) : isAnySaved ? (
+                        <span className="badge badge-success/20 text-success gap-1.5 py-3 px-3 text-xs font-medium">
+                          ✓ All changes autosaved
+                        </span>
+                      ) : null}
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={handleSave}
-                        disabled={submitting || billings.length === 0}
+                        disabled={submitting || isAnySaving || billings.length === 0}
                       >
                         {submitting ? (
                           <span className="loading loading-spinner loading-sm" />
@@ -1062,7 +1346,8 @@ useEffect(() => {
             <PatientHmoHistory
               patientId={patient?.id || patientId}
               dependantId={dependantId}
-              />
+              historyRefreshKey={historyRefreshKey}
+            />
           </div>
 
                      
