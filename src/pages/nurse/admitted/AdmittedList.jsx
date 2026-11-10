@@ -9,8 +9,9 @@ import { getVitals } from '@/services/api/vitalsAPI'
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import ConfirmAdmissionModal from '@/pages/nurse/admitted/modal/ConfirmAdmissionModal'
+import WardBedBoard from '@/components/admitted/WardBedBoard'
 import toast from 'react-hot-toast'
-import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock } from 'react-icons/fa'
+import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock, FaTh } from 'react-icons/fa'
 
 const AdmittedList = () => {
   const navigate = useNavigate()
@@ -336,6 +337,17 @@ const AdmittedList = () => {
                 >
                   Pending Admission ({pending.length})
                 </button>
+                <button
+                  onClick={() => setActiveTab('bed-board')}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap ${
+                    activeTab === 'bed-board'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  <FaTh className="w-3.5 h-3.5" />
+                  Ward Bed Board
+                </button>
               </div>
 
               <div className="relative w-full sm:w-80">
@@ -350,6 +362,10 @@ const AdmittedList = () => {
               </div>
             </div>
 
+            {activeTab === 'bed-board' ? (
+              <WardBedBoard userRole="nurse" />
+            ) : (
+              <>
             {/* Mobile Card List (< lg) */}
             <div className="flex flex-col gap-3 lg:hidden">
               {paginated.map((item) => (
@@ -563,6 +579,8 @@ const AdmittedList = () => {
                     : 'There are currently no patients admitted to any hospital ward.'}
                 </p>
               </div>
+            )}
+            </>
             )}
           </section>
         </div>
