@@ -9,6 +9,7 @@ import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
 import ShiftCountdown from './components/common/ShiftCountdown';
 import AutoLogoutHandler from './components/common/AutoLogoutHandler';
+import GlobalShortcutManager from './components/common/GlobalShortcutManager';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { NurseMedicationAlertManager } from './components/nurse';
 import { initDiagnosticsCollector } from './utils/diagnostics';
@@ -25,6 +26,7 @@ function App() {
           <Router>
             <NotificationProvider>
               <div className="App">
+                <GlobalShortcutManager />
                 <AutoLogoutHandler />
                 <ShiftCountdown />
                 <NurseMedicationAlertManager />

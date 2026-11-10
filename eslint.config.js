@@ -26,5 +26,4 @@ export default defineConfig([
       'no-unused-vars': 'off',
     },
   },
-])
-
+]);
