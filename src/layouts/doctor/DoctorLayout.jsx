@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/doctor/dashboard';
 
 const DoctorLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleToggle = () => {
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen((prev) => !prev);
+      } else {
+        setIsDesktopCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('toggle-sidebar', handleToggle);
+    return () => window.removeEventListener('toggle-sidebar', handleToggle);
+  }, []);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    if (window.innerWidth < 1024) {
+      setIsSidebarOpen(!isSidebarOpen);
+    } else {
+      setIsDesktopCollapsed(!isDesktopCollapsed);
+    }
   };
 
   const closeSidebar = () => {
@@ -23,7 +40,9 @@ const DoctorLayout = ({ children }) => {
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-all duration-300 ease-in-out lg:static ${
+          isDesktopCollapsed ? 'lg:w-0 lg:overflow-hidden lg:opacity-0' : 'lg:w-64 lg:translate-x-0 lg:opacity-100'
+        } ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
