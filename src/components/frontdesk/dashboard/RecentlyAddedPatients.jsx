@@ -5,6 +5,7 @@ import { IoSearch, IoClose } from "react-icons/io5";
 import { DataTable } from '@/components/common';
 import { getPatients } from '@/services/api/patientsAPI';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const RecentlyAddedPatients = () => {
   const navigate = useNavigate();
@@ -217,13 +218,7 @@ const RecentlyAddedPatients = () => {
 
         {/* DataTable Component */}
         {isLoading ? (
-          <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-            <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110 p-4 space-y-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="skeleton h-8 w-full" />
-              ))}
-            </div>
-          </div>
+          <KolakLoader />
         ) : (
           <DataTable
             data={filteredPatients}

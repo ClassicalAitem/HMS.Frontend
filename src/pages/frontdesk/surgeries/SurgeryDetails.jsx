@@ -8,6 +8,7 @@ import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList, FaUser, FaPhone, FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const SurgeryDetails = () => {
   const { surgeryId } = useParams();
@@ -30,8 +31,10 @@ const SurgeryDetails = () => {
       const surgeryResponse = await getSurgeryById(surgeryId);
       const surgeryData = surgeryResponse?.data || {};
 
-      // Fetch patient details
-      if (surgeryData.patientId) {
+      // Fetch patient details (reuse populated patient if present)
+      if (surgeryData.patient && typeof surgeryData.patient === 'object' && surgeryData.patient.firstName) {
+        setPatient(surgeryData.patient);
+      } else if (surgeryData.patientId) {
         try {
           const patientResponse = await getPatientById(surgeryData.patientId);
           const patientData = patientResponse?.data || {};
@@ -94,40 +97,7 @@ const SurgeryDetails = () => {
   if (loading) {
     return (
       <FrontdeskLayout>
-        <div className="p-6">
-          <div className="max-w-4xl mx-auto">
-            {/* Header Skeleton */}
-            <div className="flex items-center mb-6">
-              <div className="w-8 h-8 skeleton bg-base-300 mr-3"></div>
-              <div className="w-48 h-8 skeleton bg-base-300"></div>
-            </div>
-
-            {/* Main Content Skeleton */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <div className="w-32 h-6 skeleton bg-base-300 mb-4"></div>
-                  <div className="space-y-3">
-                    <div className="w-full h-4 skeleton bg-base-300"></div>
-                    <div className="w-3/4 h-4 skeleton bg-base-300"></div>
-                    <div className="w-1/2 h-4 skeleton bg-base-300"></div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <div className="w-32 h-6 skeleton bg-base-300 mb-4"></div>
-                  <div className="space-y-3">
-                    <div className="w-full h-4 skeleton bg-base-300"></div>
-                    <div className="w-3/4 h-4 skeleton bg-base-300"></div>
-                    <div className="w-1/2 h-4 skeleton bg-base-300"></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <KolakLoader fullscreen />
       </FrontdeskLayout>
     );
   }

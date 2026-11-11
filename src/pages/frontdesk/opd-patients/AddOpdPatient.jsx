@@ -7,6 +7,7 @@ import { createOpdPatient, getOpdPatientById, updateOpdPatient } from '@/service
 import { showErrorToast, showSuccessToast } from '@/utils/errorHandler';
 import { FaArrowLeft } from 'react-icons/fa';
 import { FrontdeskLayout } from '@/layouts';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const opdPatientSchema = yup.object().shape({
   fullName: yup.string().required('Full name is required').min(2),
@@ -21,6 +22,7 @@ const AddOpdPatient = () => {
   const { id } = useParams();
   const isEdit = !!id;
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(isEdit);
 
   const { register, handleSubmit, formState: { errors }, setValue } = useForm({
     resolver: yupResolver(opdPatientSchema),
@@ -31,6 +33,7 @@ const AddOpdPatient = () => {
     if (isEdit && id) {
       const loadPatient = async () => {
         try {
+          setIsFetching(true);
           const patient = await getOpdPatientById(id);
           const patientData = patient?.data ?? patient;
           setValue('fullName', patientData.fullName || '');
@@ -41,6 +44,8 @@ const AddOpdPatient = () => {
         } catch (error) {
           showErrorToast('Failed to load patient data');
           navigate('/frontdesk/opd-patients');
+        } finally {
+          setIsFetching(false);
         }
       };
       loadPatient();
@@ -80,6 +85,7 @@ const AddOpdPatient = () => {
 
   return (
     <FrontdeskLayout>
+      {(isLoading || isFetching) && <KolakLoader fullscreen />}
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => navigate('/frontdesk/opd-patients')} className="btn btn-ghost btn-sm">
           <FaArrowLeft />

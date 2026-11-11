@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { DataTable } from '@/components/common';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
-import { Skeleton } from '@heroui/skeleton';
 import KolakLoader from '@/components/common/KolakLoader';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import ViewDependantsModal from '@/components/superadmin/patients/ViewDependantsModal';
@@ -60,7 +58,6 @@ const Patients = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState('all');
   const [historyFilter, setHistoryFilter] = useState('all');
   const [historyFromMonth, setHistoryFromMonth] = useState(() => {
@@ -175,15 +172,6 @@ const Patients = () => {
       dispatch(clearPatientsError());
     }
   }, [error, dispatch]);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
 
   const StatusBadge = ({ status }) => {
     const currentStatus = Array.isArray(status) ? status[status.length - 1] : status;
@@ -600,34 +588,11 @@ const Patients = () => {
   ], [navigate]);
 
   return (
-    <div className="flex h-screen">
-            {isLoading && <KolakLoader fullscreen />}
+    <FrontdeskLayout>
+      {isLoading && <KolakLoader fullscreen />}
 
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="flex flex-col gap-3 items-start justify-between mb-6 sm:flex-row sm:items-center">
+      {/* Page Header */}
+      <div className="flex flex-col gap-3 items-start justify-between mb-6 sm:flex-row sm:items-center">
             <div className="w-full sm:w-auto">
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
@@ -729,10 +694,7 @@ const Patients = () => {
               <div className="p-4 card-body 2xl:p-6">
                 {viewMode === 'attended' ? (
                   historyLoading ? (
-                    <div className="flex min-h-48 items-center justify-center gap-3 text-sm text-base-content/60">
-                      <span className="loading loading-spinner loading-md" />
-                      Loading attendance history...
-                    </div>
+                    <KolakLoader />
                   ) : historyError ? (
                     <div className="flex flex-col items-center gap-3 py-12 text-center">
                       <p className="text-sm text-error">{historyError}</p>
@@ -762,34 +724,7 @@ const Patients = () => {
                     />
                   )
                 ) : isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
-                      <table className="table w-full table-zebra">
-                        <thead className="sticky top-0 z-10 bg-base-200">
-                          <tr>
-                            {columns.map((column) => (
-                              <th key={column.key} className="border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider">
-                                {column.title || column.key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Array.from({ length: 10 }).map((_, idx) => (
-                            <tr key={idx} className="text-xs">
-                              {columns.map((col) => (
-                                <td key={`${idx}-${col.key}`} className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${col.className || 'text-base-content/70'}`}>
-                                  <Skeleton>
-                                    <div className="h-3 w-24 rounded bg-base-300"></div>
-                                  </Skeleton>
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <KolakLoader />
                 ) : (
                   <DataTable
                     data={activeData}
@@ -806,18 +741,16 @@ const Patients = () => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <ViewDependantsModal
-        isOpen={isDependantsModalOpen}
-        onClose={() => {
-          setIsDependantsModalOpen(false);
-          setSelectedPatientForDependants(null);
-        }}
-        patient={selectedPatientForDependants}
-      />
-        </div>
+          <ViewDependantsModal
+            isOpen={isDependantsModalOpen}
+            onClose={() => {
+              setIsDependantsModalOpen(false);
+              setSelectedPatientForDependants(null);
+            }}
+            patient={selectedPatientForDependants}
+          />
+        </FrontdeskLayout>
       );
     };
 

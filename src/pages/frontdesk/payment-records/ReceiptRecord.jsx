@@ -1,26 +1,25 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
-import { Header, DataTable } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import { DataTable } from '@/components/common';
+import { FrontdeskLayout } from '@/layouts/frontdesk';
+import KolakLoader from '@/components/common/KolakLoader';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { showErrorToast } from '@/utils/errorHandler';
 
 const FrontDeskPaymentRecords = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleClose = () => {
     setIsModalOpen(false);
   };
 
-
   useEffect(() => {
+    let mounted = true;
     const fetchReceipt = async () => {
       try {
         setIsLoading(true);
@@ -29,55 +28,33 @@ const FrontDeskPaymentRecords = () => {
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
 
-        // const frontdeskDestinations = ['form'];
-        // const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
+        const frontdeskDestinations = ['form', 'consultation', 'laboratory', 'pharmacy', 'admission'];
+        const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
 
-        // Get start of today (midnight local time)
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
+        const mapped = filteredList.map((a, idx) => ({
+          receiptId: a.id,
+          transactionId: a.reference || `Kolak-${idx + 1}`,
+          name: a.billing?.patient ? `${a.billing.patient.firstName || ''} ${a.billing.patient.lastName || ''}`.trim() : 'N/A',
+          paymentMethod: a.paymentMethod || 'N/A',
+          paymentDestination: a.paymentDestination || 'N/A',
+          paidBy: a.paidBy || 'N/A',
+          status: a.status || 'pending',
+          amount: `₦ ${Number(a.amountPaid || 0).toLocaleString()}`,
+          dateTime: formatNigeriaDateTime(a.paidAt || a.updatedAt),
+          cashierName: a.cashier ? `${a.cashier.firstName || ''} ${a.cashier.lastName || ''}`.trim() : 'N/A',
+        }));
 
-        // Get end of today (23:59:59)
-        const endOfToday = new Date();
-        endOfToday.setHours(23, 59, 59, 999);
-
-
-
-
-       // Optional: filter by frontdeskDestinations if you want
-const frontdeskDestinations = ['form', 'consultation', 'laboratory', 'pharmacy', 'admission'];
-const filteredList = list.filter(a => frontdeskDestinations.includes(a.paymentDestination));
-
-const mapped = filteredList.map((a, idx) => ({
-  receiptId: a.id,
-  transactionId: a.reference || `Kolak-${idx + 1}`,
-  name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
-  paymentMethod: a.paymentMethod,
-  paymentDestination: a.paymentDestination || 'N/A',
-  paidBy: a.paidBy || 'N/A',
-  status: a.status || 'pending',
-  amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-  dateTime: formatNigeriaDateTime(a.paidAt || a.updatedAt),
-  cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
-}));
-
-setPaymentRecords(mapped);
+        if (mounted) setPaymentRecords(mapped);
       } catch (error) {
         showErrorToast(error, 'Failed to load payment records');
-        setPaymentRecords([]);
+        if (mounted) setPaymentRecords([]);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
     fetchReceipt();
-  }, [])
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+    return () => { mounted = false; };
+  }, []);
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -292,90 +269,60 @@ const handlePrintReceipt = (payment) => {
   ], []);
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
+    <FrontdeskLayout>
+      {isLoading && <KolakLoader fullscreen />}
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-primary sm:text-3xl 2xl:text-4xl">Payment Receipt Records</h1>
+        <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
       </div>
 
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
+      {/* Filters */}
+      <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2 xl:grid-cols-3">
+        <select className="select select-bordered w-full">
+          <option>All Status</option>
+          <option>Pending</option>
+          <option>Paid</option>
+          <option>Active</option>
+          <option>Reverse</option>
+          <option>declined</option>
+          <option>refunded</option>
+        </select>
+        <select className="select select-bordered w-full">
+          <option>All Methods</option>
+          <option>Cash</option>
+          <option>Transfer</option>
+          <option>Hmo</option>
+          <option>Pos</option>
+        </select>
+        <select className="select select-bordered w-full">
+          <option>All Time</option>
+          <option>Today</option>
+          <option>This Week</option>
+          <option>This Month</option>
+        </select>
+      </div>
 
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold text-primary sm:text-3xl 2xl:text-4xl">Payment Receipt Records</h1>
-            <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
-          </div>
-
-          {/* Filters */}
-          <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-2 xl:grid-cols-3">
-            <select className="select select-bordered w-full">
-              <option>All Status</option>
-              <option>Pending</option>
-              <option>Paid</option>
-              <option>Active</option>
-              <option>Reverse</option>
-              <option>declined</option>
-              <option>refunded</option>
-            </select>
-            <select className="select select-bordered w-full">
-              <option>All Methods</option>
-              <option>Cash</option>
-              <option>Transfer</option>
-              <option>Hmo</option>
-              <option>Pos</option>
-            </select>
-            <select className="select select-bordered w-full">
-              <option>All Time</option>
-              <option>Today</option>
-              <option>This Week</option>
-              <option>This Month</option>
-            </select>
-          </div>
-
-          {/* Payment Records Table */}
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                {isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-96 p-4 space-y-3">
-                      <div className="skeleton h-6 w-52" />
-                      {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="skeleton h-8 w-full" />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <DataTable
-                    data={paymentRecords}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={7}
-                    maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                    showEntries={true}
-                    searchPlaceholder="Search payment records..."
-                  />
-                )}
-              </div>
-            </div>
+      {/* Payment Records Table */}
+      <div className="flex flex-1 w-full min-h-0">
+        <div className="w-full shadow-xl card bg-base-100">
+          <div className="p-4 card-body 2xl:p-6">
+            {isLoading ? (
+              <KolakLoader />
+            ) : (
+              <DataTable
+                data={paymentRecords}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={7}
+                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
+                showEntries={true}
+                searchPlaceholder="Search payment records..."
+              />
+            )}
           </div>
         </div>
       </div>
@@ -422,26 +369,21 @@ const handlePrintReceipt = (payment) => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-base-content/70">Status</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(selectedPayment.status)}`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(selectedPayment.status)}`}>
                     {selectedPayment.status}
                   </span>
-
-
                 </div>
               </div>
 
               <div className="flex gap-3 mt-6">
-      
-      
-
-            <button
-              onClick={() => handlePrintReceipt(selectedPayment)}
-              className="btn btn-ghost btn-xs"
-              title="Print"
-            >
-              <FaPrint className="w-4 h-4 mr-2" />
-              Print Receipt
-            </button>
+                <button
+                  onClick={() => handlePrintReceipt(selectedPayment)}
+                  className="btn btn-ghost btn-xs"
+                  title="Print"
+                >
+                  <FaPrint className="w-4 h-4 mr-2" />
+                  Print Receipt
+                </button>
               </div>
 
               {/* Edit Workflow */}
@@ -453,13 +395,12 @@ const handlePrintReceipt = (payment) => {
                 >
                   Close
                 </button>
-
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </FrontdeskLayout>
   );
 
 };

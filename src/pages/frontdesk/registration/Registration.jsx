@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { FaUpload, FaChevronDown, FaChevronUp, FaUser, FaUsers, FaImage, FaHeartbeat, FaUserPlus } from 'react-icons/fa';
 import { useAppDispatch } from '../../../store/hooks';
 import { addPatient } from '../../../store/slices/patientsSlice';
@@ -15,14 +14,13 @@ import { getErrorMessage } from '@/utils/errorHandler';
 const Registration = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hmoExpanded, setHmoExpanded] = useState(false);
   const [dependentExpanded, setDependentExpanded] = useState(false);
   const [isHmoPatient, setIsHmoPatient] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [familyNames, setFamilyNames] = useState([]);
   const [companyNames, setCompanyNames] = useState([]);
-  const [loadingNames, setLoadingNames] = useState(true);
+  const [loadingNames, setLoadingNames] = useState(false);
   const [formData, setFormData] = useState({
     // Patient Basic Info (matching backend API)
     firstName: '',
@@ -91,14 +89,6 @@ const Registration = () => {
     };
     fetchNames();
   }, []);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -436,34 +426,11 @@ const Registration = () => {
   };
 
   return (
-    <div className="flex h-screen">
-            {(isLoading || loadingNames) && <KolakLoader fullscreen />}
+    <FrontdeskLayout>
+      {isLoading && <KolakLoader fullscreen />}
 
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="mb-6 px-2 sm:px-0">
+      {/* Page Header */}
+      <div className="mb-6 px-2 sm:px-0">
             <h1 className="text-2xl font-bold text-primary sm:pl-6 2xl:text-3xl flex items-center gap-3">
               <FaUserPlus className="text-primary/80" />
               Patient Registration
@@ -1196,9 +1163,7 @@ const Registration = () => {
               </button>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
+    </FrontdeskLayout>
   );
 };
 

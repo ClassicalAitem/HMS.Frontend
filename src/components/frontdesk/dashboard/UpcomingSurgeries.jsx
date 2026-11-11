@@ -6,6 +6,7 @@ import { getAllSurgeries } from '@/services/api/surgeryAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { formatNigeriaDate, formatNigeriaDateShort } from '@/utils/formatDateTimeUtils';
 import { useNavigate } from 'react-router-dom';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const UpcomingSurgeries = () => {
   const [surgeries, setSurgeries] = useState([]);
@@ -47,6 +48,25 @@ const UpcomingSurgeries = () => {
       // Resolve patient names for each surgery
       const surgeriesWithPatientNames = await Promise.all(
         top10Surgeries.map(async (surgery) => {
+          // If surgery.patient is already populated, avoid calling getPatientById!
+          const populatedPatient = surgery.patient;
+          if (populatedPatient && (populatedPatient.firstName || populatedPatient.lastName)) {
+            const patientName = `${populatedPatient.firstName || ''} ${populatedPatient.lastName || ''}`.trim();
+            return {
+              ...surgery,
+              patientName: patientName || 'Unknown Patient',
+              formattedDate: formatDate(surgery.scheduledDate)
+            };
+          }
+
+          if (!surgery.patientId) {
+            return {
+              ...surgery,
+              patientName: 'Unknown Patient',
+              formattedDate: formatDate(surgery.scheduledDate)
+            };
+          }
+
           try {
             const patientResponse = await getPatientById(surgery.patientId);
             const patientData = patientResponse?.data || {};
@@ -68,7 +88,6 @@ const UpcomingSurgeries = () => {
         })
       );
 
-      console.log('🏥 UpcomingSurgeries: Final surgeries with patient names:', surgeriesWithPatientNames);
       setSurgeries(surgeriesWithPatientNames);
     } catch (error) {
       console.error('🏥 UpcomingSurgeries: Error fetching surgeries:', error);
@@ -104,39 +123,8 @@ const UpcomingSurgeries = () => {
 
   if (loading) {
     return (
-      <div className="shadow-sm border border-base-200 card bg-base-100">
-        <div className="py-2 2xl:py-4 card-body">
-          {/* Header Skeleton */}
-          <div className="flex justify-between items-center 2xl:mb-6">
-            <div className="flex items-center space-x-4">
-              <div className="flex justify-center items-center p-1 rounded-full 2xl:p-2 bg-secondary/70">
-                <div className="flex justify-center items-center p-1 rounded-2xl 2xl:p-2 bg-base-200">
-                  <div className="w-4 h-auto 2xl:w-6 skeleton bg-base-300"></div>
-                </div>
-              </div>
-              <div className="w-32 h-4 skeleton bg-base-300"></div>
-            </div>
-            <div className="w-4 h-4 skeleton bg-base-300"></div>
-          </div>
-
-          {/* Surgery List Skeleton */}
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex justify-between items-center p-1 px-2 rounded-lg 2xl:p-2 2xl:px-4 bg-secondary/50">
-                <div className="flex items-center space-x-3">
-                  <div className="2xl:w-2 w-1 2xl:h-2 h-1 rounded-full skeleton bg-base-300"></div>
-                  <div className="w-24 h-3 skeleton bg-base-300"></div>
-                </div>
-                <div className="w-16 h-3 skeleton bg-base-300"></div>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer Skeleton */}
-          <div className="pt-2 border-t 2xl:pt-4 2xl:mt-6 border-base-300">
-            <div className="w-20 h-3 skeleton bg-base-300"></div>
-          </div>
-        </div>
+      <div className="shadow-sm border border-base-200 card bg-base-100 flex items-center justify-center p-8">
+        <KolakLoader size="sm" />
       </div>
     );
   }

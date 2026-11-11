@@ -12,11 +12,10 @@ import { useAppSelector } from '@/store/hooks';
 import { FaUserPlus, FaCalendarPlus } from 'react-icons/fa';
 
 const FrontdeskDashboard = () => {
-  const [loading, setLoading] = React.useState(false);
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isLoading: authLoading } = useAppSelector((state) => state.auth);
   return (
     <FrontdeskLayout>
-      {loading && <KolakLoader fullscreen />}
+      {authLoading && <KolakLoader fullscreen />}
 
       {/* Page Header: actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 2xl:mb-8 gap-4">

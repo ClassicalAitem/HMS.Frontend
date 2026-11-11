@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { DataTable } from '@/components/common';
 import toast from 'react-hot-toast';
 import { getAllOpdPatients, deleteOpdPatient } from '@/services/api/opdPatientAPI';
-import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import KolakLoader from '@/components/common/KolakLoader';
@@ -13,60 +11,40 @@ import { showErrorToast } from '@/utils/errorHandler';
 
 const OpdPatients = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [opdPatients, setOpdPatients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [serviceCharges, setServiceCharges] = useState([]);
-  
 
   useEffect(() => {
+    let mounted = true;
     const fetchData = async () => {
       try {
         setIsLoading(true);
         const patientsResponse = await getAllOpdPatients();
         const patientsData = Array.isArray(patientsResponse) ? patientsResponse : patientsResponse?.data ?? [];
-        setOpdPatients(patientsData);
-
-        try {
-          const chargesResponse = await getServiceCharges();
-          const chargesData = chargesResponse?.data ?? chargesResponse ?? [];
-          const labCharges = chargesData.filter(
-            (item) => (item.category || '').toLowerCase() === 'laboratory'
-          );
-          setServiceCharges(labCharges);
-        } catch (error) {
-          showErrorToast(error, 'Failed to load service charges');
-        }
+        if (mounted) setOpdPatients(patientsData);
       } catch (error) {
         showErrorToast(error, 'Failed to load OPD patients');
-        setOpdPatients([]);
+        if (mounted) setOpdPatients([]);
       } finally {
-        setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
 
     fetchData();
+    return () => { mounted = false; };
   }, []);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const handleDelete = useCallback(async (id) => {
     if (window.confirm('Are you sure you want to delete this OPD patient?')) {
       try {
         await deleteOpdPatient(id);
         toast.success('OPD patient deleted successfully');
-        setOpdPatients(opdPatients.filter((p) => p.id !== id));
+        setOpdPatients((prev) => prev.filter((p) => p.id !== id));
       } catch (error) {
         showErrorToast(error, 'Failed to delete OPD patient');
       }
     }
-  }, [opdPatients]);
+  }, []);
 
   const processedPatients = useMemo(() => {
     return opdPatients.map((patient, index) => {
@@ -80,7 +58,7 @@ const OpdPatients = () => {
         actions: patient.id
       };
     });
-  }, [opdPatients, serviceCharges]);
+  }, [opdPatients]);
 
   const columns = useMemo(() => [
     {
@@ -145,78 +123,57 @@ const OpdPatients = () => {
   ], [ navigate, handleDelete]);
 
   return (
-    <div className="flex h-screen">
-            {isLoading && <KolakLoader fullscreen />}
+    <FrontdeskLayout>
+      {isLoading && <KolakLoader fullscreen />}
 
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
+      <div className="flex flex-col gap-3 items-start justify-between mb-6 sm:flex-row sm:items-center">
+        <div className="w-full sm:w-auto">
+          <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">OPD Patients</h1>
+          <p className="text-sm text-base-content/60 2xl:text-base">Patients without hospital cards needing attention</p>
+        </div>
+        <button 
+          onClick={() => navigate('/frontdesk/opd-patients/new')}
+          className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
+        >
+          <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span className="text-xs 2xl:text-sm">Add OPD Patient</span>
+        </button>
       </div>
 
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="flex flex-col gap-3 items-start justify-between mb-6 sm:flex-row sm:items-center">
-            <div className="w-full sm:w-auto">
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">OPD Patients</h1>
-              <p className="text-sm text-base-content/60 2xl:text-base">Patients without hospital cards needing attention</p>
-            </div>
-            <button 
-              onClick={() => navigate('/frontdesk/opd-patients/new')}
-              className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
-            >
-              <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="text-xs 2xl:text-sm">Add OPD Patient</span>
-            </button>
-          </div>
-
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                {isLoading ? (
-                  <div className="flex justify-center items-center h-64">
-                    <div className="loading loading-spinner loading-lg"></div>
-                  </div>
-                ) : opdPatients.length > 0 ? (
-                  <DataTable
-                    data={processedPatients}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={10}
-                    maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                    showEntries={true}
-                    searchPlaceholder="Search OPD patients..."
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-64">
-                    <p className="text-base-content/60 mb-4">No OPD patients found</p>
-                    <button
-                      onClick={() => navigate('/frontdesk/opd-patients/new')}
-                      className="btn btn-primary btn-sm"
-                    >
-                      Add First OPD Patient
-                    </button>
-                  </div>
-                )}
+      <div className="flex flex-1 w-full min-h-0">
+        <div className="w-full shadow-xl card bg-base-100">
+          <div className="p-4 card-body 2xl:p-6">
+            {isLoading ? (
+              <KolakLoader />
+            ) : opdPatients.length > 0 ? (
+              <DataTable
+                data={processedPatients}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={10}
+                maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                showEntries={true}
+                searchPlaceholder="Search OPD patients..."
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64">
+                <p className="text-base-content/60 mb-4">No OPD patients found</p>
+                <button
+                  onClick={() => navigate('/frontdesk/opd-patients/new')}
+                  className="btn btn-primary btn-sm"
+                >
+                  Add First OPD Patient
+                </button>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
+    </FrontdeskLayout>
   );
 };
 

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { getAllSurgeries } from '@/services/api/surgeryAPI';
-import { getPatientById } from '@/services/api/patientsAPI';
 import { useNavigate } from 'react-router-dom';
 import { GiFirstAidKit } from "react-icons/gi";
 import { FaUserMd, FaCalendarAlt, FaMapMarkerAlt, FaClipboardList } from 'react-icons/fa';
 import { formatNigeriaDateShort, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const Surgeries = () => {
   const [surgeries, setSurgeries] = useState([]);
@@ -106,30 +106,7 @@ const Surgeries = () => {
   if (loading) {
     return (
       <FrontdeskLayout>
-        <div className="p-6">
-          <div className="mb-6">
-            <div className="w-48 h-8 skeleton bg-base-300 mb-2"></div>
-            <div className="w-64 h-4 skeleton bg-base-300"></div>
-          </div>
-          
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="card bg-base-100 shadow-xl">
-                <div className="card-body">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-32 h-4 skeleton bg-base-300"></div>
-                    <div className="w-16 h-4 skeleton bg-base-300"></div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="w-full h-3 skeleton bg-base-300"></div>
-                    <div className="w-3/4 h-3 skeleton bg-base-300"></div>
-                    <div className="w-1/2 h-3 skeleton bg-base-300"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <KolakLoader fullscreen />
       </FrontdeskLayout>
     );
   }

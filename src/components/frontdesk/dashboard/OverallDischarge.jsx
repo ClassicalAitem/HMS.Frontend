@@ -4,6 +4,7 @@ import { CiCalendarDate } from 'react-icons/ci';
 import { IoMdMore } from 'react-icons/io';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { getMetrics } from '../../../services/api/metricsAPI';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const OverallDischarge = () => {
   // Responsive radius hook
@@ -138,41 +139,8 @@ const OverallDischarge = () => {
 
       {/* Loading and Error States */}
       {isLoading && !metricsData && (
-        <div className="flex flex-col justify-between items-center">
-          {/* Header Skeleton */}
-          <div className="flex justify-between items-center w-full mb-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex justify-center items-center p-1 rounded-full 2xl:p-2 bg-secondary/70">
-                <div className="flex justify-center items-center p-1 rounded-2xl 2xl:p-2 bg-base-200">
-                  <div className="w-4 h-auto 2xl:w-6 skeleton bg-base-300"></div>
-                </div>
-              </div>
-              <div className="w-32 h-4 skeleton bg-base-300"></div>
-            </div>
-            <div className="w-4 h-4 skeleton bg-base-300"></div>
-          </div>
-
-          {/* Chart Skeleton */}
-          <div className="relative w-24 h-24 2xl:w-32 2xl:h-32 mb-2">
-            <div className="w-full h-full rounded-full skeleton bg-base-300"></div>
-            {/* Center text skeleton */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-12 h-6 skeleton bg-base-300 mx-auto mb-2"></div>
-                <div className="w-16 h-2 skeleton bg-base-300 mx-auto"></div>
-              </div>
-            </div>
-          </div>
-
-          {/* Legend Skeleton */}
-          <div className="flex flex-wrap justify-center items-center gap-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center space-x-2">
-                <div className="w-2 h-2 rounded-full 2xl:w-3 2xl:h-3 skeleton bg-base-300"></div>
-                <div className="w-16 h-3 skeleton bg-base-300"></div>
-              </div>
-            ))}
-          </div>
+        <div className="flex justify-center items-center py-6">
+          <KolakLoader size="sm" />
         </div>
       )}
       

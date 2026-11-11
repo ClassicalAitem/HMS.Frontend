@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/frontdesk/dashboard';
+import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { EditPatientModal, AddHmoModal, EditHmoModal, AddDependantModal, EditDependantModal, NurseActionModal, CashierActionModal } from '@/components/modals';
 import SendToHmoModal from '@/components/modals/SendToHmoModal';
 import PharmacyActionModal from '@/components/modals/PharmacyActionModal';
@@ -46,7 +45,6 @@ const PatientDetails = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentPatient, isLoading, error } = useAppSelector((state) => state.patients);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddHmoOpen, setIsAddHmoOpen] = useState(false);
   const [hmoTargetDependantId, setHmoTargetDependantId] = useState(null);
@@ -288,14 +286,6 @@ const PatientDetails = () => {
   // Only redirect on error, not on missing patient (let the component handle it)
   // The component will show "Patient not found" message instead of redirecting
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
   const handleEditPatient = (updatedData) => {
     console.log('✅ PatientDetails: Patient updated successfully:', updatedData);
     // The modal already handles the update via Redux
@@ -339,53 +329,30 @@ const PatientDetails = () => {
 
   // Show error state or redirect if no patient (only when not loading)
   if (!currentPatient && !isTransitionLoading) {
-    console.log('❌ PatientDetails: No currentPatient, showing not found message');
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-center">
-          <p className="text-base-content/70">Patient not found</p>
-          <p className="text-sm text-base-content/50 mt-2">Patient ID: {patientId}</p>
-          <button
-            onClick={() => navigate('/frontdesk/patients')}
-            className="btn btn-primary mt-4"
-          >
-            Back to Patients
-          </button>
+      <FrontdeskLayout>
+        <div className="flex justify-center items-center flex-1 h-full min-h-[50vh]">
+          <div className="text-center">
+            <p className="text-base-content/70">Patient not found</p>
+            <p className="text-sm text-base-content/50 mt-2">Patient ID: {patientId}</p>
+            <button
+              onClick={() => navigate('/frontdesk/patients')}
+              className="btn btn-primary mt-4"
+            >
+              Back to Patients
+            </button>
+          </div>
         </div>
-      </div>
+      </FrontdeskLayout>
     );
   }
 
-
   return (
-    <div className="flex h-screen">
-            {isLoading && <KolakLoader fullscreen />}
+    <FrontdeskLayout>
+      {isTransitionLoading && <KolakLoader fullscreen />}
 
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-4 lg:p-6">
-          {/* Page Header */}
-          <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
+      {/* Page Header */}
+      <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
 
           {/* Dependant Banner when viewing dependant */}
           {isViewingDependant && (
@@ -471,7 +438,7 @@ const PatientDetails = () => {
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-base-content">Appointments</h2>
               {appointmentsLoading ? (
-                <div className="flex justify-center py-8"><span className="loading loading-spinner loading-md" /></div>
+                <div className="flex justify-center py-6"><KolakLoader size="sm" /></div>
               ) : appointments.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">No appointments found.</div>
               ) : (
@@ -548,8 +515,6 @@ const PatientDetails = () => {
               />
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Edit Patient Modal */}
       <EditPatientModal
@@ -712,7 +677,7 @@ const PatientDetails = () => {
         defaultAction={PATIENT_STATUS.AWAITING_CONSULTATION}
         onUpdated={() => patientId && dispatch(fetchPatientById(patientId))}
       /> */}
-    </div>
+    </FrontdeskLayout>
   );
 };
 
