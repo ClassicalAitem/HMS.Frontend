@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import ShortcutsCheatSheetModal from './ShortcutsCheatSheetModal';
+import { LogoutModal } from '@/components/modals';
 import { 
   hasActiveTextSelection, 
   transformActiveInputSelection, 
@@ -18,6 +19,7 @@ const GlobalShortcutManager = () => {
   const staffName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   // Expose cheat sheet toggle on window
   useEffect(() => {
@@ -64,6 +66,32 @@ const GlobalShortcutManager = () => {
         return '/developer/system-health';
       default:
         return '/';
+    }
+  }, [normalizedRole]);
+
+  const getRoleIncomingPath = useCallback(() => {
+    switch (normalizedRole) {
+      case 'doctor':
+        return '/dashboard/doctor/incoming';
+      case 'medical-director':
+        return '/dashboard/medical-director/incoming';
+      case 'nurse':
+        return '/dashboard/nurse/incoming';
+      case 'pharmacist':
+        return '/dashboard/pharmacist/incoming';
+      case 'sonographer':
+        return '/dashboard/sonographer/incoming';
+      case 'medical-laboratory':
+      case 'laboratory':
+      case 'lab-technician':
+        return '/dashboard/laboratory/incoming';
+      case 'hmo':
+        return '/dashboard/hmo/incoming';
+      case 'cashier':
+      case 'account-officer':
+        return '/cashier/incoming';
+      default:
+        return null;
     }
   }, [normalizedRole]);
 
@@ -152,6 +180,32 @@ const GlobalShortcutManager = () => {
       }
 
       // =========================================================================
+      // 4. Ctrl + I (Fast Navigation to Role Incoming Page)
+      // =========================================================================
+      if (isCtrlOrCmd && !e.shiftKey && !e.altKey && (key === 'i' || code === 'KeyI')) {
+        const incomingRoute = getRoleIncomingPath();
+        if (incomingRoute) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (location.pathname !== incomingRoute) {
+            navigate(incomingRoute);
+            toast.success('Navigated to Incoming Queue', { id: 'sc-incoming', duration: 1500 });
+          }
+        }
+        return;
+      }
+
+      // =========================================================================
+      // 5. Ctrl + E (Quick Log Out / Exit Session Modal)
+      // =========================================================================
+      if (isCtrlOrCmd && !e.shiftKey && !e.altKey && (key === 'e' || code === 'KeyE')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsLogoutModalOpen(true);
+        return;
+      }
+
+      // =========================================================================
       // 3. Text Transformations inside Inputs / Textareas / Editors
       // =========================================================================
       if (isCtrlOrCmd && e.shiftKey && (key === 'u' || code === 'KeyU')) {
@@ -223,7 +277,7 @@ const GlobalShortcutManager = () => {
       }
 
       // =========================================================================
-      // 8. Alt + 1..7 (Switch Admission Tabs / On-page Tabs)
+      // 8. Alt + 1..7 (Switch Admission Clinical Tabs / On-page Tabs)
       // =========================================================================
       const isAltDigit = e.altKey && !isCtrlOrCmd && (
         ['1', '2', '3', '4', '5', '6', '7'].includes(key) ||
@@ -285,22 +339,29 @@ const GlobalShortcutManager = () => {
       }
 
       // =========================================================================
-      // 10. Esc (Close Modals)
+      // 11. Esc (Close Modals)
       // =========================================================================
       if (key === 'escape') {
         setIsCheatSheetOpen(false);
+        setIsLogoutModalOpen(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [getDashboardPath, location.pathname, navigate, normalizedRole, staffName]);
+  }, [getDashboardPath, getRoleIncomingPath, location.pathname, navigate, normalizedRole, staffName]);
 
   return (
-    <ShortcutsCheatSheetModal
-      isOpen={isCheatSheetOpen}
-      onClose={() => setIsCheatSheetOpen(false)}
-    />
+    <>
+      <ShortcutsCheatSheetModal
+        isOpen={isCheatSheetOpen}
+        onClose={() => setIsCheatSheetOpen(false)}
+      />
+      <LogoutModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+      />
+    </>
   );
 };
 

@@ -212,21 +212,38 @@ const resultRows = useMemo(() => (
   {isViewingDependant ? 'Dependant' : 'Patient'}: <span className="font-semibold text-base-content">{isViewingDependant ? (dependantSnapshot?.fullName || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim() || 'Dependant') : (patientName || 'Loading...')}</span>
 </p>
               </div>
-                          <button
-                className="btn btn-outline btn-sm sm:btn-md self-start sm:self-auto"
-               onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
-                state: {
-                  from: fromIncoming ? 'incoming' : 'patients',
-                  patientSnapshot: patient,
-                  dependantId,
-                  dependantSnapshot: isViewingDependant
-                    ? (dependantCache[dependantId] || dependantSnapshot)
-                    : null,
-                }
-              })}
-              >
-                Back
-              </button>
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline gap-1.5"
+                  onClick={() => navigate('/dashboard/doctor/lab-results')}
+                >
+                  ← Lab Results
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary gap-1.5"
+                  onClick={() => navigate(`/dashboard/doctor/medical-history/${patientId}`, {
+                    state: {
+                      from: location.state?.from || 'lab-results',
+                      patientSnapshot: patient,
+                      dependantId,
+                      dependantSnapshot: isViewingDependant
+                        ? (dependantCache[dependantId] || dependantSnapshot)
+                        : null,
+                    }
+                  })}
+                >
+                  Medical History
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost border border-base-300 gap-1.5"
+                  onClick={() => navigate('/dashboard/doctor/incoming')}
+                >
+                  Incoming Queue
+                </button>
+              </div>
             </div>
           </div>
 
@@ -256,7 +273,13 @@ const resultRows = useMemo(() => (
                         <div className="pt-2 border-t border-base-200/60 flex justify-end">
                           <button
                             className="btn btn-sm btn-ghost text-primary w-full sm:w-auto"
-                            onClick={() => navigate(`/dashboard/doctor/labResults/${row._id}`)}
+                            onClick={() => navigate(`/dashboard/doctor/labResults/${row._id}`, {
+                              state: {
+                                patientId,
+                                from: location.state?.from || 'lab-results',
+                                dependantId,
+                              }
+                            })}
                           >
                             View Details
                           </button>
@@ -296,7 +319,13 @@ const resultRows = useMemo(() => (
                             <td>
                               <button
                                 className="btn btn-sm btn-ghost"
-                                onClick={() => navigate(`/dashboard/doctor/labResults/${row._id}`)}
+                                onClick={() => navigate(`/dashboard/doctor/labResults/${row._id}`, {
+                                  state: {
+                                    patientId,
+                                    from: location.state?.from || 'lab-results',
+                                    dependantId,
+                                  }
+                                })}
                               >
                                 View
                               </button>

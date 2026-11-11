@@ -4,6 +4,7 @@ import { SuperAdminLayout } from '@/layouts/superadmin'
 import { getPatients } from '@/services/api/patientsAPI'
 import { getDependants } from '@/services/api/dependantAPI'
 import { getAdmissions } from '@/services/api/admissionApi'
+import { getAllWards } from '@/services/api/wardAPI'
 import { getVitals } from '@/services/api/vitalsAPI'
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
 import usersAPI from '@/services/api/usersAPI'
@@ -55,7 +56,7 @@ const SuperAdminAdmittedList = () => {
       setLoading(true)
       setError(null)
 
-      const [patientsRes, dependantsRes, admissionsRes, vitalsRes, billingsRes, receiptsRes] =
+      const [patientsRes, dependantsRes, admissionsRes, vitalsRes, billingsRes, receiptsRes, wardsRes] =
         await Promise.allSettled([
           getPatients(),
           getDependants(),
@@ -63,7 +64,12 @@ const SuperAdminAdmittedList = () => {
           getVitals(),
           getAllBillings({ skipErrorToast: true }),
           getAllReceipts({ skipErrorToast: true }),
+          getAllWards(),
         ])
+
+      const rawWards = wardsRes.status === 'fulfilled' ? (wardsRes.value?.data ?? wardsRes.value ?? []) : []
+      const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? [])
+      const wardMap = new Map(wardList.map(w => [String(w._id || w.id), w.name]))
 
       const patients =
         patientsRes.status === 'fulfilled'
@@ -166,10 +172,17 @@ const SuperAdminAdmittedList = () => {
       const dischargedList = []
 
       sortedAdmissions.forEach((adm) => {
-        const doctorId = getDoctorId(adm)
+        // Resolve ward name & bed number cleanly
+        const rawWard = String(adm.wardId || adm.ward?.id || adm.ward?._id || adm.ward || '')
+        const resolvedWard = wardMap.get(rawWard) || adm.ward?.name || adm.wardName || (rawWard && !rawWard.includes('-') ? rawWard : null) || 'Ward Unassigned'
+        const cleanBed = String(adm.bedNumber || adm.bed?.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        const hasAssignedBed = !!cleanBed && !cleanBed.toLowerCase().includes('unassigned')
+
         const admission = {
           ...adm,
           doctorName: adm.doctorName || doctorNames[doctorId] || null,
+          wardName: resolvedWard,
+          bedNumber: cleanBed,
         }
         const isDep = !!adm.dependantId
         let person = null
@@ -223,7 +236,7 @@ const SuperAdminAdmittedList = () => {
 
         if (adm.status === 'discharged') {
           dischargedList.push(item)
-        } else if (!adm.confirmedAt || adm.status === 'pending') {
+        } else if (!adm.confirmedAt || adm.status === 'pending' || !hasAssignedBed) {
           pendingList.push(item)
         } else {
           admittedList.push(item)
@@ -513,8 +526,8 @@ const SuperAdminAdmittedList = () => {
                 adm.admittedByDoctor?.name ||
                 adm.doctorName ||
                 (adm.doctor ? `Dr. ${adm.doctor.firstName || ''} ${adm.doctor.lastName || ''}`.trim() : 'Attending Doctor')
-              const wardName = adm.ward?.name || adm.wardName || 'Ward Unassigned'
-              const bedNum = adm.bedNumber || adm.bed?.bedNumber || 'Pending Bed'
+              const wardName = adm.wardName || adm.ward?.name || 'Ward Unassigned'
+              const bedNum = adm.bedNumber ? `Bed ${adm.bedNumber}` : 'Pending Bed'
               const isDischarged = adm.status === 'discharged'
 
               return (

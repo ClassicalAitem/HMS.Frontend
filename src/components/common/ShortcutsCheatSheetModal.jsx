@@ -6,6 +6,8 @@ const SHORTCUT_GROUPS = [
     category: 'Global Navigation & Screen',
     icon: FaColumns,
     shortcuts: [
+      { keys: ['Ctrl', 'I'], desc: 'Jump directly to your role Incoming Patient Queue' },
+      { keys: ['Ctrl', 'E'], desc: 'Log Out / Exit session prompt' },
       { keys: ['Ctrl', 'K'], desc: 'Instantly focus patient search box to start typing immediately' },
       { keys: ['Alt', 'D'], desc: 'Jump directly to your role Dashboard' },
       { keys: ['Ctrl', 'Shift', 'R'], desc: 'Fast refresh active table/queue without full reload' },

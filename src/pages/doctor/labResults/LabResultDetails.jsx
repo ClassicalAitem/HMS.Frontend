@@ -443,19 +443,64 @@ const displayAttachments = () => {
                   <span className="badge badge-sm badge-outline ml-2">{personType}</span>
                 </p>
               </div>
-              <div className="flex gap-2 no-print">
+              <div className="flex flex-wrap items-center gap-2 no-print">
                 <button
-                  onClick={() => navigate(-1)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  type="button"
+                  onClick={() => {
+                    const targetPatientId = labResult?.patientId || patient?.id || patient?._id;
+                    if (targetPatientId) {
+                      const labPath = isNurse ? `/dashboard/nurse/view-lab-results/${targetPatientId}` : `/dashboard/doctor/view-lab-results/${targetPatientId}`;
+                      navigate(labPath, {
+                        state: {
+                          from: location.state?.from || 'lab-results',
+                          dependantId: labResult?.dependantId,
+                        }
+                      });
+                    } else {
+                      navigate(-1);
+                    }
+                  }}
+                  className="btn btn-sm btn-outline gap-1"
                 >
-                  ← Back
+                  ← All Lab Results
                 </button>
-                {/* <button
-                  onClick={() => navigate(`/dashboard/laboratory/results/edit/${labResultId}`)}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                {!isNurse && (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/dashboard/doctor/lab-results')}
+                    className="btn btn-sm btn-outline gap-1"
+                  >
+                    Lab Queue
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetPatientId = labResult?.patientId || patient?.id || patient?._id;
+                    if (targetPatientId) {
+                      const histPath = isNurse ? `/dashboard/nurse/patient/${targetPatientId}` : `/dashboard/doctor/medical-history/${targetPatientId}`;
+                      navigate(histPath, {
+                        state: {
+                          from: location.state?.from || 'lab-results',
+                          dependantId: labResult?.dependantId,
+                          patientSnapshot: patient,
+                        }
+                      });
+                    } else {
+                      navigate(-1);
+                    }
+                  }}
+                  className="btn btn-sm btn-primary gap-1"
                 >
-                  Edit
-                </button> */}
+                  {isNurse ? 'Patient Details' : 'Medical History'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(isNurse ? '/dashboard/nurse/incoming' : '/dashboard/doctor/incoming')}
+                  className="btn btn-sm btn-ghost border border-base-300 gap-1"
+                >
+                  Incoming Queue
+                </button>
               </div>
             </div>
 

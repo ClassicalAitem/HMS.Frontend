@@ -128,6 +128,50 @@ useEffect(() => {
     }
   };
 
+  const allClaimed = rows.length > 0 && rows.every(r => r.isClaimed);
+
+  const handleClaimAll = async (targetClaimed) => {
+    if (updatingId || rows.length === 0) return;
+    setUpdatingId('bulk');
+    try {
+      const billsToUpdate = [];
+      rawBillings.forEach((bill) => {
+        let changed = false;
+        const newItems = (bill.itemDetails || []).map((item) => {
+          if (Boolean(item.isClaimed) !== targetClaimed) {
+            changed = true;
+            return { ...item, isClaimed: targetClaimed };
+          }
+          return item;
+        });
+        if (changed) {
+          billsToUpdate.push({ billId: bill.id, itemDetails: newItems });
+        }
+      });
+
+      if (billsToUpdate.length > 0) {
+        await Promise.all(
+          billsToUpdate.map((b) => updateBilling(b.billId, { itemDetails: b.itemDetails }))
+        );
+
+        setRawBillings((prev) =>
+          prev.map((b) => {
+            const match = billsToUpdate.find((u) => u.billId === b.id);
+            return match ? { ...b, itemDetails: match.itemDetails } : b;
+          })
+        );
+      }
+
+      setRows((prev) => prev.map((r) => ({ ...r, isClaimed: targetClaimed })));
+      toast.success(targetClaimed ? 'All items marked as claimed' : 'All items marked as unclaimed');
+    } catch (err) {
+      console.error('Failed to update claim statuses', err);
+      toast.error('Failed to update claim status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   const handleEditSave = async (status, hmoCovered) => {
     if (!editingRow) return;
     const bill = rawBillings.find(b => b.id === editingRow.billId);
@@ -191,11 +235,25 @@ useEffect(() => {
   return (
     <div className="card bg-base-100 border border-base-200 mb-6">
       <div className="card-body p-0">
-        <div className="px-5 py-3 bg-base-200/40 border-b border-base-200">
-          <p className="text-sm font-semibold text-base-content">
+        <div className="px-5 py-3 bg-base-200/40 border-b border-base-200 flex items-center justify-between">
+          <p className="text-sm font-semibold text-base-content flex items-center">
             Past HMO Decisions
             <span className="ml-2 badge badge-info badge-sm">{rows.length}</span>
           </p>
+          <button
+            type="button"
+            className={`btn btn-xs ${allClaimed ? 'btn-outline btn-primary' : 'btn-primary'} gap-1 font-medium`}
+            onClick={() => handleClaimAll(!allClaimed)}
+            disabled={!!updatingId || rows.length === 0}
+          >
+            {updatingId === 'bulk' ? (
+              <span className="loading loading-spinner loading-xs" />
+            ) : allClaimed ? (
+              '↺ Unclaim All'
+            ) : (
+              '✓ Claim All'
+            )}
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="table table-sm w-full">
@@ -206,8 +264,19 @@ useEffect(() => {
                 <th className="text-right">HMO Covered</th>
                 <th className="text-right">Patient Owes</th>
                 <th>Decision</th>
-                <th>Payment Status</th>
-                <th className="text-center">Claimed</th>
+                <th className="text-center">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-xs checkbox-primary"
+                      checked={allClaimed}
+                      onChange={() => handleClaimAll(!allClaimed)}
+                      disabled={!!updatingId}
+                      title={allClaimed ? "Unclaim all" : "Claim all"}
+                    />
+                    <span>Claimed</span>
+                  </div>
+                </th>
                 <th>By</th>
                 <th>When</th>
               </tr>
@@ -234,18 +303,13 @@ useEffect(() => {
                       </button>
                     </div>
                   </td>
-                  <td>
-                    <span className={`badge badge-sm font-semibold whitespace-nowrap ${row.isPaid ? 'badge-success text-white' : 'badge-error text-white'}`}>
-                      {row.isPaid ? 'Paid' : 'Unpaid'}
-                    </span>
-                  </td>
                   <td className="text-center">
                     <input 
                       type="checkbox" 
                       className="checkbox checkbox-sm checkbox-primary" 
                       checked={row.isClaimed}
                       onChange={() => toggleClaimed(row)}
-                      disabled={updatingId === row.key}
+                      disabled={updatingId === row.key || updatingId === 'bulk'}
                     />
                   </td>
                   <td className="text-sm">{row.approvedBy}</td>

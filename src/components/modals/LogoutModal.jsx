@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { useNavigate } from 'react-router-dom';
@@ -135,6 +135,30 @@ const LogoutModal = ({ isOpen, onClose }) => {
   const handleCancel = () => {
     onClose();
   };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      const key = (e.key || '').toLowerCase();
+
+      if (key === 'escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      } else if (key === 'enter' || (isCtrlOrCmd && key === 'e')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isLoggingOut && !isLoading) {
+          handleLogout();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, isLoggingOut, isLoading]);
 
   if (!isOpen) return null;
 

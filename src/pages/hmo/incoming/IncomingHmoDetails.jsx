@@ -686,6 +686,71 @@ useEffect(() => {
     }
   };
 
+  const allClaimed = useMemo(() => {
+    if (billings.length === 0) return false;
+    return billings.every((bill) =>
+      (bill.itemDetails || []).every(
+        (item) => itemDecisions[bill.id]?.[item.originalIdx]?.isClaimed,
+      ),
+    );
+  }, [billings, itemDecisions]);
+
+  const handleBulkClaim = async (targetClaimed = true) => {
+    setSubmitting(true);
+    try {
+      const nextDecisions = { ...itemDecisionsRef.current };
+      billings.forEach((bill) => {
+        if (!nextDecisions[bill.id]) nextDecisions[bill.id] = {};
+        (bill.itemDetails || []).forEach((item) => {
+          const current = nextDecisions[bill.id]?.[item.originalIdx] || {};
+          nextDecisions[bill.id][item.originalIdx] = {
+            ...current,
+            isClaimed: targetClaimed,
+          };
+        });
+      });
+      setItemDecisions(nextDecisions);
+      itemDecisionsRef.current = nextDecisions;
+
+      await Promise.all(
+        billings.map(async (pendingBill) => {
+          const rawBill = rawBillingsRef.current.find((b) => b.id === pendingBill.id);
+          if (!rawBill) return;
+
+          const updatedItems = (rawBill.itemDetails || []).map((item, idx) => {
+            const dec = nextDecisions[pendingBill.id]?.[idx];
+            return {
+              ...item,
+              isClaimed: dec?.isClaimed !== undefined ? dec.isClaimed : targetClaimed,
+            };
+          });
+
+          await updateBilling(pendingBill.id, {
+            itemDetails: updatedItems,
+          });
+
+          setRawBillings((prev) => {
+            const updated = prev.map((b) =>
+              b.id === pendingBill.id ? { ...b, itemDetails: updatedItems } : b,
+            );
+            rawBillingsRef.current = updated;
+            return updated;
+          });
+        }),
+      );
+
+      setHistoryRefreshKey((k) => k + 1);
+      toast.success(
+        targetClaimed ? 'All items marked as Claimed' : 'All items marked as Unclaimed',
+      );
+    } catch (err) {
+      console.error('Bulk claim error', err);
+      toast.error('Failed to update claim statuses');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const approvedTotal = useMemo(() => {
     let total = 0;
     billings.forEach((bill) => {
@@ -942,13 +1007,26 @@ useEffect(() => {
 
             {/* Bulk actions */}
             {!loading && billings.length > 0 && (
-              <div className="flex gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-4">
                 <button
                   className="btn btn-success btn-sm"
                   onClick={() => handleBulkDecision('approved')}
                   disabled={submitting || isAnySaving}
                 >
                   {submitting ? <span className="loading loading-spinner loading-xs" /> : 'Approve All'}
+                </button>
+                <button
+                  className={`btn btn-sm ${allClaimed ? 'btn-outline btn-primary' : 'btn-primary'}`}
+                  onClick={() => handleBulkClaim(!allClaimed)}
+                  disabled={submitting || isAnySaving}
+                >
+                  {submitting ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : allClaimed ? (
+                    '↺ Unclaim All'
+                  ) : (
+                    '✓ Claim All'
+                  )}
                 </button>
                 <button
                   className="btn btn-error btn-sm"
@@ -1024,7 +1102,19 @@ useEffect(() => {
                             <th className="text-right">Price</th>
                             <th className="text-right">Qty</th>
                             <th className="text-right">Total</th>
-                            <th className="text-center">Payment</th>
+                            <th className="text-center w-28">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs checkbox-primary"
+                                  checked={allClaimed}
+                                  onChange={() => handleBulkClaim(!allClaimed)}
+                                  disabled={submitting || isAnySaving}
+                                  title={allClaimed ? "Unclaim all" : "Claim all"}
+                                />
+                                <span>Claimed</span>
+                              </div>
+                            </th>
                             <th className="text-center w-48">HMO Decision</th>
                           </tr>
                         </thead>
@@ -1093,9 +1183,14 @@ useEffect(() => {
                                   ₦{Number(item.total || 0).toLocaleString()}
                                 </td>
                                 <td className="text-center">
-                                  <span className={`badge badge-xs font-semibold whitespace-nowrap ${(item.paymentStatus === 'paid' || bill.isCleared || item.isCleared) ? 'badge-success text-white' : 'badge-warning'}`}>
-                                    {(item.paymentStatus === 'paid' || bill.isCleared || item.isCleared) ? 'Paid' : 'Unpaid'}
-                                  </span>
+                                  <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-sm checkbox-primary"
+                                    checked={!!itemDecisions[bill.id]?.[idx]?.isClaimed}
+                                    onChange={() => toggleClaimed(bill.id, idx)}
+                                    disabled={submitting || isAnySaving}
+                                    title="Toggle Claimed status"
+                                  />
                                 </td>
                                 <td className="text-center">
                                   <div className="flex flex-col items-center gap-1.5">

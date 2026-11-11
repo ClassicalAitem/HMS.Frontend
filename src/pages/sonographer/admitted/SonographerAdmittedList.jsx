@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '@/components/common'
 import SonographerSidebar from '@/components/sonographer/dashboard/Sidebar'
-import { getPatients } from '@/services/api/patientsAPI'
+import { getPatients, getPatientById } from '@/services/api/patientsAPI'
 import { getDependants } from '@/services/api/dependantAPI'
 import { getAdmissions } from '@/services/api/admissionApi'
+import { getAllWards } from '@/services/api/wardAPI'
 import { getVitals } from '@/services/api/vitalsAPI'
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
@@ -37,12 +38,17 @@ const AdmittedList = () => {
       setLoading(true)
       setError(null)
 
-      const [admissionsRes, vitalsRes, billingsRes, receiptsRes] = await Promise.allSettled([
+      const [admissionsRes, vitalsRes, billingsRes, receiptsRes, wardsRes] = await Promise.allSettled([
         getAdmissions({ limit: 100 }),
         getVitals({ limit: 100 }),
         getAllBillings({ limit: 100, skipErrorToast: true }),
         getAllReceipts({ limit: 100, skipErrorToast: true }),
+        getAllWards(),
       ])
+
+      const rawWards = wardsRes.status === 'fulfilled' ? (wardsRes.value?.data ?? wardsRes.value ?? []) : []
+      const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? [])
+      const wardMap = new Map(wardList.map(w => [String(w._id || w.id), w.name]))
 
       const allAdmissions = admissionsRes.status === 'fulfilled'
         ? (() => {
@@ -75,6 +81,24 @@ const AdmittedList = () => {
       if (admissionsRes.status === 'rejected') console.error('AdmittedList: getAdmissions failed', admissionsRes.reason)
       const activeAdmissions = allAdmissions.filter(a => a.status !== 'discharged')
 
+      // Resolve missing parent patients for dependants so their Patient ID is always available
+      const missingPatientIds = Array.from(new Set(
+        activeAdmissions
+          .filter(a => a.dependantId && (!a.patient?.hospitalId && !a.dependant?.patient?.hospitalId))
+          .map(a => a.patientId)
+          .filter(Boolean)
+      ))
+      const patientMap = new Map()
+      if (missingPatientIds.length > 0) {
+        const fetched = await Promise.allSettled(missingPatientIds.map(id => getPatientById(id)))
+        fetched.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const p = res.value?.data?.data ?? res.value?.data
+            if (p && (p.id || p._id)) patientMap.set(String(p.id || p._id), p)
+          }
+        })
+      }
+
       // Map latest vitals per patient/dependant ID
       const vitalsMap = new Map()
       allVitals.forEach(v => {
@@ -90,9 +114,21 @@ const AdmittedList = () => {
       const buildItem = (admission) => {
         const isDependant = !!admission.dependantId
         const source = isDependant ? admission.dependant : admission.patient
-        const parentPatient = isDependant ? admission.patient : null
+        const parentPatient = isDependant ? (admission.patient || admission.dependant?.patient || patientMap.get(String(admission.patientId))) : null
+        const parentHospitalId = isDependant
+          ? (parentPatient?.hospitalId || admission.patient?.hospitalId || admission.dependant?.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+          : (source?.hospitalId || admission.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+        const displayId = parentHospitalId || '—'
+
         const targetId = admission.dependantId || admission.patientId
         const latestVitalInfo = vitalsMap.get(targetId)
+
+        // Resolve ward name (translates raw UUID to proper human-readable ward name)
+        const rawWardKey = String(admission.wardId || admission.ward || '')
+        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward'
+
+        // Normalize bed number: avoid "Bed Bed X"
+        const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '')
 
         // Resolve linked billing & payment info for admission
         const admissionIdStr = String(admission._id || admission.id || '')
@@ -167,9 +203,10 @@ const AdmittedList = () => {
           key: `admission-${admission._id || admission.id}`,
           patientId: admission.patientId,
           dependantId: admission.dependantId || null,
+          displayId,
           name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
-          ward: admission.ward || admission.wardId || 'General Ward',
-          bedNumber: admission.bedNumber || '',
+          ward: resolvedWard,
+          bedNumber: cleanBed,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           lastVitalsTime: latestVitalInfo?.createdAt || null,
           relationshipType: isDependant ? source?.relationshipType : null,
@@ -180,8 +217,16 @@ const AdmittedList = () => {
         }
       }
 
-      const pendingItems = activeAdmissions.filter(a => !a.confirmedAt).map(buildItem)
-      const admittedItems = activeAdmissions.filter(a => !!a.confirmedAt).map(buildItem)
+      // Admissions with an assigned bed are currently admitted; admissions without an assigned bed belong in pending
+      const pendingItems = activeAdmissions.filter(a => {
+        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        return !a.confirmedAt || !b || b.toLowerCase().includes('unassigned')
+      }).map(buildItem)
+
+      const admittedItems = activeAdmissions.filter(a => {
+        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        return !!a.confirmedAt && !!b && !b.toLowerCase().includes('unassigned')
+      }).map(buildItem)
 
       setPending(pendingItems)
       setAdmitted(admittedItems)
@@ -204,7 +249,8 @@ const AdmittedList = () => {
     return list.filter(item =>
       item.name.toLowerCase().includes(q) ||
       String(item.ward).toLowerCase().includes(q) ||
-      String(item.bedNumber).toLowerCase().includes(q)
+      String(item.bedNumber).toLowerCase().includes(q) ||
+      String(item.displayId || '').toLowerCase().includes(q)
     )
   }, [list, search])
 
@@ -394,6 +440,11 @@ const AdmittedList = () => {
                             </div>
                             <div>
                               <div className="font-semibold text-base-content">{item.name}</div>
+                              {item.displayId && item.displayId !== '—' && (
+                                <div className="text-xs text-base-content/60 font-mono">
+                                  ID: {item.displayId}
+                                </div>
+                              )}
                               {item.parentPatient && (
                                 <div className="text-xs text-base-content/50">
                                   Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
@@ -590,6 +641,9 @@ const PendingCard = ({ item, onConfirm }) => {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-bold text-sm text-base-content truncate">{item.name}</p>
+          {item.displayId && item.displayId !== '—' && (
+            <p className="text-[11px] text-base-content/60 font-mono">ID: {item.displayId}</p>
+          )}
           {item.type === 'dependant' && (
             <span className="badge badge-info badge-xs mt-1 capitalize">
               {item.relationshipType || 'Dependant'}
@@ -652,6 +706,9 @@ const AdmittedCard = ({ item, onOpen }) => (
     <div className="flex items-start justify-between gap-2">
       <div className="min-w-0">
         <p className="font-bold text-sm text-base-content truncate">{item.name}</p>
+        {item.displayId && item.displayId !== '—' && (
+          <p className="text-[11px] text-base-content/60 font-mono">ID: {item.displayId}</p>
+        )}
         <div className="flex items-center gap-1 mt-1">
           <span className="badge badge-primary badge-xs">{item.ward}</span>
           {item.bedNumber && <span className="badge badge-outline badge-xs">Bed {item.bedNumber}</span>}

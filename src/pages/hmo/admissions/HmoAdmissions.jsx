@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Header } from '@/components/common'
 import HmoSidebar from '@/components/hmo/dashboard/Sidebar'
 import { getAdmissions } from '@/services/api/admissionApi'
-import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
+import { getAllWards } from '@/services/api/wardAPI'
+import { getPatientById } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
-import { FaBed, FaSearch, FaCoins, FaCheckCircle, FaExclamationTriangle, FaClock, FaNotesMedical } from 'react-icons/fa'
+import { FaBed, FaSearch, FaNotesMedical } from 'react-icons/fa'
 
 const HmoAdmissions = () => {
   const navigate = useNavigate()
@@ -30,11 +31,14 @@ const HmoAdmissions = () => {
       setLoading(true)
       setError(null)
 
-      const [admissionsRes, billingsRes, receiptsRes] = await Promise.allSettled([
+      const [admissionsRes, wardsRes] = await Promise.allSettled([
         getAdmissions(),
-        getAllBillings({ skipErrorToast: true }),
-        getAllReceipts({ skipErrorToast: true }),
+        getAllWards(),
       ])
+
+      const rawWards = wardsRes.status === 'fulfilled' ? (wardsRes.value?.data ?? wardsRes.value ?? []) : []
+      const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? [])
+      const wardMap = new Map(wardList.map(w => [String(w._id || w.id), w.name]))
 
       const allAdmissions = admissionsRes.status === 'fulfilled'
         ? (() => {
@@ -43,112 +47,59 @@ const HmoAdmissions = () => {
           })()
         : []
 
-      const allBillings = billingsRes.status === 'fulfilled'
-        ? (() => {
-            const raw = billingsRes.value?.data?.data ?? billingsRes.value?.data ?? []
-            return Array.isArray(raw) ? raw : (raw?.billings ?? [])
-          })()
-        : []
-
-      const allReceipts = receiptsRes.status === 'fulfilled'
-        ? (() => {
-            const raw = receiptsRes.value?.data?.data ?? receiptsRes.value?.data ?? []
-            return Array.isArray(raw) ? raw : (raw?.receipts ?? [])
-          })()
-        : []
-
       if (admissionsRes.status === 'rejected') console.error('HmoAdmissions: getAdmissions failed', admissionsRes.reason)
       
-      // We only want patients who are actively in the ward
-      const activeAdmissions = allAdmissions.filter(a => a.status !== 'discharged' && !!a.confirmedAt)
+      // We only want patients who are actively in the ward with an assigned bed
+      const activeAdmissions = allAdmissions.filter(a => {
+        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        return a.status !== 'discharged' && !!a.confirmedAt && !!b && !b.toLowerCase().includes('unassigned')
+      })
+
+      // Resolve missing parent patients for dependants
+      const missingPatientIds = Array.from(new Set(
+        activeAdmissions
+          .filter(a => a.dependantId && (!a.patient?.hospitalId && !a.dependant?.patient?.hospitalId))
+          .map(a => a.patientId)
+          .filter(Boolean)
+      ))
+      const patientMap = new Map()
+      if (missingPatientIds.length > 0) {
+        const fetched = await Promise.allSettled(missingPatientIds.map(id => getPatientById(id)))
+        fetched.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const p = res.value?.data?.data ?? res.value?.data
+            if (p && (p.id || p._id)) patientMap.set(String(p.id || p._id), p)
+          }
+        })
+      }
 
       const buildItem = (admission) => {
         const isDependant = !!admission.dependantId
         const source = isDependant ? admission.dependant : admission.patient
-        const parentPatient = isDependant ? admission.patient : null
+        const parentPatient = isDependant ? (admission.patient || admission.dependant?.patient || patientMap.get(String(admission.patientId))) : null
+        const parentHospitalId = isDependant
+          ? (parentPatient?.hospitalId || admission.patient?.hospitalId || admission.dependant?.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+          : (source?.hospitalId || admission.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+        const displayId = parentHospitalId || '—'
 
-        // Resolve linked billing & payment info for admission
-        const admissionIdStr = String(admission._id || admission.id || '')
-        const patientIdStr = String(admission.patientId || '')
-        const dependantIdStr = admission.dependantId ? String(admission.dependantId) : null
-
-        let matchedBills = []
-        if (admission.billId) {
-          const bDirect = allBillings.find(b => String(b.id || b._id) === String(admission.billId))
-          if (bDirect) matchedBills.push(bDirect)
-        }
-        if (matchedBills.length === 0) {
-          const itemMatched = allBillings.filter(b =>
-            Array.isArray(b.itemDetails) && b.itemDetails.some(it => String(it.admissionId || '') === admissionIdStr)
-          )
-          if (itemMatched.length > 0) matchedBills.push(...itemMatched)
-        }
-        if (matchedBills.length === 0 && admission.consultationId) {
-          const consultBills = allBillings.filter(b => {
-            const bPatient = String(b.patientId || b.patient?.id || b.patient?._id || '')
-            const bDep = b.dependantId ? String(b.dependantId) : null
-            const sameSubject = dependantIdStr ? bDep === dependantIdStr : bPatient === patientIdStr
-            return sameSubject && Array.isArray(b.itemDetails) && b.itemDetails.some(it =>
-              it.code === 'admission' || it.code === 'bed' || String(it.admissionId || '') === admissionIdStr
-            )
-          })
-          if (consultBills.length > 0) matchedBills.push(...consultBills)
-        }
-
-        let totalAmount = 0
-        let totalPaid = 0
-        let isCleared = false
-
-        if (matchedBills.length > 0) {
-          matchedBills.forEach(bill => {
-            const billIdStr = String(bill.id || bill._id || '')
-            totalAmount += Number(bill.totalAmount || 0)
-            if (bill.isCleared) isCleared = true
-            const receipts = allReceipts.filter(r => String(r.billingId || '') === billIdStr)
-            totalPaid += receipts.reduce((sum, r) => sum + (Number(r.amountPaid) || 0), 0)
-          })
-        }
-
-        // If no matched bills found by items/id, check if admission has estimated fee in admission.admissions
-        if (totalAmount === 0 && Array.isArray(admission.admissions) && admission.admissions.length > 0) {
-          const estimated = admission.admissions.reduce((sum, it) => sum + (Number(it.amount) || 0), 0)
-          if (estimated > 0 && !admission.isBilled) totalAmount = estimated
-        }
-
-        let status = 'unbilled'
-        if (isCleared || (totalAmount > 0 && totalPaid >= totalAmount) || !!admission.paidAt) {
-          status = 'paid'
-        } else if (totalPaid > 0) {
-          status = 'partial'
-        } else if (totalAmount > 0 || admission.isBilled || (admission.billId && matchedBills.length > 0)) {
-          status = 'unpaid'
-        } else {
-          status = 'unbilled'
-        }
-
-        const outstandingAmount = Math.max(0, totalAmount - totalPaid)
-        const paymentInfo = {
-          status,
-          totalAmount,
-          paidAmount: totalPaid,
-          outstandingAmount,
-          isCleared: status === 'paid',
-        }
+        const rawWardKey = String(admission.wardId || admission.ward || '')
+        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward'
+        const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '')
 
         return {
           type: isDependant ? 'dependant' : 'patient',
           key: `admission-${admission._id || admission.id}`,
           patientId: admission.patientId,
-          hospitalId: admission.patient?.hospitalId || 'Unknown',
+          hospitalId: displayId,
+          displayId,
           dependantId: admission.dependantId || null,
           name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
-          ward: admission.ward || admission.wardId || 'General Ward',
-          bedNumber: admission.bedNumber || '',
+          ward: resolvedWard,
+          bedNumber: cleanBed,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           relationshipType: isDependant ? source?.relationshipType : null,
           parentPatient,
           admission,
-          paymentInfo,
           raw: source,
           snapshot: source
         }
@@ -174,8 +125,7 @@ const HmoAdmissions = () => {
       item.name.toLowerCase().includes(q) ||
       String(item.ward).toLowerCase().includes(q) ||
       String(item.bedNumber).toLowerCase().includes(q) ||
-      String(item.hospitalId).toLowerCase().includes(q) ||
-      String(item.patientId).toLowerCase().includes(q)
+      String(item.displayId || '').toLowerCase().includes(q)
     )
   }, [admitted, search])
 
@@ -309,7 +259,6 @@ const HmoAdmissions = () => {
                     <tr>
                       <th className="py-3.5 px-4">Patient Profile</th>
                       <th className="py-3.5 px-4">Ward & Bed Number</th>
-                      <th className="py-3.5 px-4">Billing Status</th>
                       <th className="py-3.5 px-4">Admitted Timestamp</th>
                       <th className="py-3.5 px-4 text-right">Actions</th>
                     </tr>
@@ -327,6 +276,11 @@ const HmoAdmissions = () => {
                               <div className="text-xs font-mono text-base-content/50 mt-0.5">
                                 ID: {item.hospitalId}
                               </div>
+                              {item.parentPatient && (
+                                <div className="text-xs text-base-content/50">
+                                  Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -341,49 +295,6 @@ const HmoAdmissions = () => {
                               <span className="text-xs text-base-content/40 italic">Unassigned Bed</span>
                             )}
                           </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {item.paymentInfo?.status === 'paid' && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="badge badge-success badge-sm font-semibold gap-1">
-                                <FaCheckCircle className="w-3 h-3" /> Fully Paid
-                              </span>
-                              {item.paymentInfo.totalAmount > 0 && (
-                                <span className="text-[11px] font-medium text-success/90">
-                                  ₦{item.paymentInfo.totalAmount.toLocaleString()}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {item.paymentInfo?.status === 'partial' && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="badge badge-warning badge-sm font-semibold gap-1">
-                                <FaCoins className="w-3 h-3" /> Partial Payment
-                              </span>
-                              <span className="text-[11px] font-medium text-warning-content/90">
-                                ₦{item.paymentInfo.paidAmount.toLocaleString()} / ₦{item.paymentInfo.totalAmount.toLocaleString()}
-                              </span>
-                            </div>
-                          )}
-                          {item.paymentInfo?.status === 'unpaid' && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="badge badge-error badge-sm font-semibold gap-1">
-                                <FaExclamationTriangle className="w-3 h-3" /> Unpaid Bill
-                              </span>
-                              {item.paymentInfo.totalAmount > 0 && (
-                                <span className="text-[11px] font-medium text-error/90">
-                                  ₦{item.paymentInfo.totalAmount.toLocaleString()} due
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {item.paymentInfo?.status === 'unbilled' && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="badge badge-ghost badge-sm font-semibold text-base-content/60 gap-1">
-                                <FaClock className="w-3 h-3" /> Not Yet Billed
-                              </span>
-                            </div>
-                          )}
                         </td>
                         <td className="py-3.5 px-4 text-xs font-medium text-base-content/80">
                           {formatNigeriaDateTimeShort(item.admittedAt)}
@@ -477,7 +388,6 @@ const getPageNumbers = (current, total) => {
 }
 
 const AdmittedCard = ({ item, onOpen }) => {
-  const { paymentInfo } = item
   return (
     <div className="bg-base-100 rounded-2xl shadow-sm border border-base-200 p-4 space-y-3">
       <div className="flex items-start justify-between gap-2">
@@ -488,42 +398,6 @@ const AdmittedCard = ({ item, onOpen }) => {
             {item.bedNumber && <span className="badge badge-outline badge-xs">Bed {item.bedNumber}</span>}
           </div>
         </div>
-        
-        {paymentInfo?.status === 'paid' && (
-          <div className="text-right shrink-0">
-            <span className="badge badge-success badge-xs sm:badge-sm font-semibold gap-1">
-              <FaCheckCircle className="w-2.5 h-2.5" /> Fully Paid
-            </span>
-            {paymentInfo.totalAmount > 0 && (
-              <p className="text-[10px] text-success font-medium mt-0.5">₦{paymentInfo.totalAmount.toLocaleString()}</p>
-            )}
-          </div>
-        )}
-        {paymentInfo?.status === 'partial' && (
-          <div className="text-right shrink-0">
-            <span className="badge badge-warning badge-xs sm:badge-sm font-semibold gap-1">
-              <FaCoins className="w-2.5 h-2.5" /> Partial
-            </span>
-            <p className="text-[10px] text-warning font-medium mt-0.5">
-              ₦{paymentInfo.paidAmount.toLocaleString()} / ₦{paymentInfo.totalAmount.toLocaleString()}
-            </p>
-          </div>
-        )}
-        {paymentInfo?.status === 'unpaid' && (
-          <div className="text-right shrink-0">
-            <span className="badge badge-error badge-xs sm:badge-sm font-semibold gap-1">
-              <FaExclamationTriangle className="w-2.5 h-2.5" /> Unpaid
-            </span>
-            {paymentInfo.totalAmount > 0 && (
-              <p className="text-[10px] text-error font-medium mt-0.5">₦{paymentInfo.totalAmount.toLocaleString()}</p>
-            )}
-          </div>
-        )}
-        {paymentInfo?.status === 'unbilled' && (
-          <span className="badge badge-ghost badge-xs sm:badge-sm font-semibold text-base-content/60 gap-1 shrink-0">
-            <FaClock className="w-2.5 h-2.5" /> Unbilled
-          </span>
-        )}
       </div>
 
       <div className="text-xs text-base-content/70 space-y-1 bg-base-200/50 p-2.5 rounded-xl">

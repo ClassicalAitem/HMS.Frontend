@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/common';
 import PharmacistSidebar from '@/components/pharmacist/dashboard/Sidebar';
 import api from '@/services/api/apiClient';
+import { getAllWards } from '@/services/api/wardAPI';
+import { getPatientById } from '@/services/api/patientsAPI';
 import toast from 'react-hot-toast';
 import { FaBed, FaUserInjured } from 'react-icons/fa';
 
@@ -22,9 +24,66 @@ const PharmacyAdmissions = () => {
   const fetchAdmissions = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/admission?status=active');
-      const data = res.data?.data || res.data || [];
-      setAdmissions(data);
+      const [res, wardsRes] = await Promise.allSettled([
+        api.get('/admission?status=active'),
+        getAllWards(),
+      ]);
+
+      const rawWards = wardsRes.status === 'fulfilled' ? (wardsRes.value?.data ?? wardsRes.value ?? []) : [];
+      const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? []);
+      const wardMap = new Map(wardList.map(w => [String(w._id || w.id), w.name]));
+
+      const rawData = res.status === 'fulfilled' ? (res.value?.data?.data || res.value?.data || []) : [];
+      const data = Array.isArray(rawData) ? rawData : [];
+
+      // Filter to only truly admitted patients with an assigned bed
+      const activeList = data.filter((a) => {
+        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '');
+        return a.status !== 'discharged' && !!a.confirmedAt && !!b && !b.toLowerCase().includes('unassigned');
+      });
+
+      // Resolve missing parent patients for dependants
+      const missingPatientIds = Array.from(new Set(
+        activeList
+          .filter(a => a.dependantId && (!a.patient?.hospitalId && !a.dependant?.patient?.hospitalId))
+          .map(a => a.patientId)
+          .filter(Boolean)
+      ));
+      const patientMap = new Map();
+      if (missingPatientIds.length > 0) {
+        const fetched = await Promise.allSettled(missingPatientIds.map(id => getPatientById(id)));
+        fetched.forEach(r => {
+          if (r.status === 'fulfilled') {
+            const p = r.value?.data?.data ?? r.value?.data;
+            if (p && (p.id || p._id)) patientMap.set(String(p.id || p._id), p);
+          }
+        });
+      }
+
+      const formatted = activeList.map((admission) => {
+        const isDep = !!admission.dependantId;
+        const source = isDep ? admission.dependant : admission.patient;
+        const parentPatient = isDep ? (admission.patient || admission.dependant?.patient || patientMap.get(String(admission.patientId))) : null;
+        const parentHospitalId = isDep
+          ? (parentPatient?.hospitalId || admission.patient?.hospitalId || admission.dependant?.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+          : (source?.hospitalId || admission.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId);
+        const displayId = parentHospitalId || '—';
+
+        const rawWardKey = String(admission.wardId || admission.ward || '');
+        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward';
+        const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '');
+
+        return {
+          ...admission,
+          source,
+          parentPatient,
+          displayId,
+          resolvedWard,
+          cleanBed,
+        };
+      });
+
+      setAdmissions(formatted);
     } catch (error) {
       console.error('Failed to load admissions:', error);
       toast.error('Failed to load active admissions.');
@@ -114,9 +173,11 @@ const PharmacyAdmissions = () => {
                             .filter((a) => {
                               if (!searchQuery) return true;
                               const q = searchQuery.toLowerCase();
-                              const name = `${a.patient?.firstName || ''} ${a.patient?.lastName || ''}`.toLowerCase();
-                              const hospId = (a.patient?.hospitalId || a.patientId || '').toLowerCase();
-                              return name.includes(q) || hospId.includes(q);
+                              const name = `${a.source?.firstName || ''} ${a.source?.lastName || ''}`.toLowerCase();
+                              const hospId = (a.displayId || '').toLowerCase();
+                              const ward = (a.resolvedWard || '').toLowerCase();
+                              const bed = (a.cleanBed || '').toLowerCase();
+                              return name.includes(q) || hospId.includes(q) || ward.includes(q) || bed.includes(q);
                             })
                             .map((admission) => (
                               <tr 
@@ -131,21 +192,28 @@ const PharmacyAdmissions = () => {
                                     </div>
                                     <div>
                                       <div className="font-bold text-base-content">
-                                        {admission.patient?.firstName} {admission.patient?.lastName}
+                                        {admission.source?.firstName} {admission.source?.lastName}
                                       </div>
+                                      {admission.parentPatient && (
+                                        <div className="text-xs text-base-content/50">
+                                          Beneficiary of {admission.parentPatient.firstName} {admission.parentPatient.lastName}
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 </td>
                                 <td>
                                   <span className="font-mono text-sm text-base-content/70">
-                                    {admission.patient?.hospitalId || admission.patientId}
+                                    {admission.displayId}
                                   </span>
                                 </td>
                                 <td>
                                   <div className="text-sm">
-                                    <span className="font-medium">{admission.ward || admission.wardId || 'General'}</span>
+                                    <span className="font-medium">{admission.resolvedWard}</span>
                                     <br />
-                                    <span className="text-base-content/60 text-xs">Bed: {admission.bedNumber || 'N/A'}</span>
+                                    <span className="text-base-content/60 text-xs">
+                                      {admission.cleanBed ? `Bed: ${admission.cleanBed}` : 'Bed: N/A'}
+                                    </span>
                                   </div>
                                 </td>
                                 <td>

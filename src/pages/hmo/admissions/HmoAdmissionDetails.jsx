@@ -357,6 +357,33 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
     });
   };
 
+  const allClaimed = useMemo(() => {
+    if (billings.length === 0) return false;
+    return billings.every((bill) =>
+      (bill.itemDetails || []).every(
+        (item) => itemDecisions[bill.id]?.[item.originalIdx]?.isClaimed,
+      ),
+    );
+  }, [billings, itemDecisions]);
+
+  const setAllClaimed = (targetClaimed = true) => {
+    setHasSavedDecisions(false);
+    setItemDecisions((prev) => {
+      const next = { ...prev };
+      billings.forEach((bill) => {
+        if (!next[bill.id]) next[bill.id] = {};
+        (bill.itemDetails || []).forEach((item) => {
+          const itemIdx = item.originalIdx;
+          next[bill.id][itemIdx] = {
+            ...(prev[bill.id]?.[itemIdx] || {}),
+            isClaimed: targetClaimed,
+          };
+        });
+      });
+      return next;
+    });
+  };
+
   const approvedTotal = useMemo(() => {
     let total = 0;
     billings.forEach((bill) => {
@@ -603,13 +630,20 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
 
             {/* Bulk actions */}
             {!loading && billings.length > 0 && (
-              <div className="flex gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-4">
                 <button
                   className="btn btn-success btn-sm"
                   onClick={() => setAllDecisions('approved')}
                   disabled={submitting}
                 >
                   Approve All
+                </button>
+                <button
+                  className={`btn btn-sm ${allClaimed ? 'btn-outline btn-primary' : 'btn-primary'}`}
+                  onClick={() => setAllClaimed(!allClaimed)}
+                  disabled={submitting}
+                >
+                  {allClaimed ? '↺ Unclaim All' : '✓ Claim All'}
                 </button>
                 <button
                   className="btn btn-error btn-sm"
@@ -685,7 +719,19 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
                             <th className="text-right">Price</th>
                             <th className="text-right">Qty</th>
                             <th className="text-right">Total</th>
-                            <th className="text-center">Payment</th>
+                            <th className="text-center w-28">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs checkbox-primary"
+                                  checked={allClaimed}
+                                  onChange={() => setAllClaimed(!allClaimed)}
+                                  disabled={submitting}
+                                  title={allClaimed ? "Unclaim all" : "Claim all"}
+                                />
+                                <span>Claimed</span>
+                              </div>
+                            </th>
                             <th className="text-center w-48">HMO Decision</th>
                           </tr>
                         </thead>
@@ -754,9 +800,14 @@ const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
                                   ₦{Number(item.total || 0).toLocaleString()}
                                 </td>
                                 <td className="text-center">
-                                  <span className={`badge badge-xs font-semibold whitespace-nowrap ${(item.paymentStatus === 'paid' || bill.isCleared || item.isCleared) ? 'badge-success text-white' : 'badge-warning'}`}>
-                                    {(item.paymentStatus === 'paid' || bill.isCleared || item.isCleared) ? 'Paid' : 'Unpaid'}
-                                  </span>
+                                  <input
+                                    type="checkbox"
+                                    className="checkbox checkbox-sm checkbox-primary"
+                                    checked={!!itemDecisions[bill.id]?.[idx]?.isClaimed}
+                                    onChange={() => toggleClaimed(bill.id, idx)}
+                                    disabled={submitting}
+                                    title="Toggle Claimed status"
+                                  />
                                 </td>
                                 <td className="text-center">
                                   <div className="flex flex-col items-center gap-2">

@@ -224,14 +224,15 @@ const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
       return;
     }
 
+    const cleanBed = finalBed.replace(/^bed\s*/i, '');
     setIsSubmitting(true);
     try {
       await confirmAdmission(admissionId, {
         wardId,
-        bedNumber: finalBed,
+        bedNumber: cleanBed || finalBed,
       });
       toast.success(
-        `${item.name} admitted successfully to ${selectedWard?.name || 'Ward'} (${finalBed})`
+        `${item.name} admitted successfully to ${selectedWard?.name || 'Ward'} (Bed ${cleanBed || finalBed})`
       );
       onConfirmed?.();
       onClose();

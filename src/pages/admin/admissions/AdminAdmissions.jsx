@@ -10,6 +10,7 @@ import {
   FaHospitalUser,
 } from "react-icons/fa";
 import { getAdmissions } from "@/services/api/admissionApi";
+import { getAllWards } from "@/services/api/wardAPI";
 import { exportRowsToCsv } from "../reports/adminReportUtils";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
@@ -21,20 +22,32 @@ const AdminAdmissions = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
+  const [wards, setWards] = useState([]);
+
   useEffect(() => {
     let mounted = true;
     const fetchAdmissions = async () => {
       setLoading(true);
       try {
-        const res = await getAdmissions();
-        const list = Array.isArray(res?.data)
-          ? res.data
-          : Array.isArray(res?.data?.data)
-          ? res.data.data
-          : Array.isArray(res)
-          ? res
+        const [res, wardsRes] = await Promise.allSettled([
+          getAdmissions(),
+          getAllWards(),
+        ]);
+        const list = res.status === "fulfilled"
+          ? (Array.isArray(res.value?.data)
+            ? res.value.data
+            : Array.isArray(res.value?.data?.data)
+            ? res.value.data.data
+            : Array.isArray(res.value)
+            ? res.value
+            : [])
           : [];
-        if (mounted) setAdmissions(list);
+        const rawWards = wardsRes.status === "fulfilled" ? (wardsRes.value?.data ?? wardsRes.value ?? []) : [];
+        const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? []);
+        if (mounted) {
+          setAdmissions(list);
+          setWards(wardList);
+        }
       } catch (err) {
         console.error("Error fetching admissions:", err);
       } finally {
@@ -48,26 +61,33 @@ const AdminAdmissions = () => {
     };
   }, []);
 
+  const wardMap = useMemo(() => {
+    return new Map(wards.map(w => [String(w._id || w.id), w.name]));
+  }, [wards]);
+
   const formattedAdmissions = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
 
     return admissions
       .map((adm, idx) => {
-        const patient = adm.patient || {};
-        const ward = adm.ward || adm.wardId || {};
+        const patient = adm.patient || adm.dependant || {};
+        const rawWard = String(adm.wardId || adm.ward?.id || adm.ward?._id || adm.ward || '');
+        const resolvedWard = wardMap.get(rawWard) || adm.ward?.name || adm.wardName || (rawWard && !rawWard.includes('-') ? rawWard : null) || 'General Ward';
+        const cleanBed = String(adm.bedNumber || adm.bed || '').trim().replace(/^bed\s*/i, '');
         const doctor = adm.admittingDoctor || adm.doctor || {};
         const isDischarged = adm.status?.toLowerCase() === "discharged" || Boolean(adm.dischargeDate);
+        const hospId = patient.hospitalId || adm.dependant?.patient?.hospitalId || adm.patientHospitalId || "—";
 
         return {
           id: adm._id || adm.id || `adm-${idx}`,
-          hospitalId: patient.hospitalId || adm.patientHospitalId || "—",
+          hospitalId: hospId,
           patientName:
             [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() ||
             patient.fullName ||
             adm.patientName ||
             "—",
-          wardName: typeof ward === "object" ? ward.name || ward.wardName || "General Ward" : String(ward),
-          bedNumber: adm.bedNumber || adm.bed || "Allocated",
+          wardName: resolvedWard,
+          bedNumber: cleanBed ? `Bed ${cleanBed}` : "Unassigned Bed",
           doctorName:
             [doctor.firstName, doctor.lastName].filter(Boolean).join(" ").trim() ||
             doctor.fullName ||

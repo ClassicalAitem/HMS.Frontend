@@ -4,6 +4,8 @@ import { Header } from '@/components/common'
 import CashierSidebar from '@/components/cashier/dashboard/Sidebar'
 import { getAdmissions } from '@/services/api/admissionApi'
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
+import { getAllWards } from '@/services/api/wardAPI'
+import { getPatientById } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
 import { FaBed, FaSearch, FaCoins, FaCheckCircle, FaExclamationTriangle, FaClock, FaReceipt } from 'react-icons/fa'
@@ -30,11 +32,16 @@ const CashierAdmissions = () => {
       setLoading(true)
       setError(null)
 
-      const [admissionsRes, billingsRes, receiptsRes] = await Promise.allSettled([
+      const [admissionsRes, billingsRes, receiptsRes, wardsRes] = await Promise.allSettled([
         getAdmissions(),
         getAllBillings({ skipErrorToast: true }),
         getAllReceipts({ skipErrorToast: true }),
+        getAllWards(),
       ])
+
+      const rawWards = wardsRes.status === 'fulfilled' ? (wardsRes.value?.data ?? wardsRes.value ?? []) : []
+      const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? [])
+      const wardMap = new Map(wardList.map(w => [String(w._id || w.id), w.name]))
 
       const allAdmissions = admissionsRes.status === 'fulfilled'
         ? (() => {
@@ -59,13 +66,42 @@ const CashierAdmissions = () => {
 
       if (admissionsRes.status === 'rejected') console.error('CashierAdmissions: getAdmissions failed', admissionsRes.reason)
       
-      // We only want patients who are actively in the ward
-      const activeAdmissions = allAdmissions.filter(a => a.status !== 'discharged' && !!a.confirmedAt)
+      // We only want patients who are actively in the ward with an assigned bed
+      const activeAdmissions = allAdmissions.filter(a => {
+        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        return a.status !== 'discharged' && !!a.confirmedAt && !!b && !b.toLowerCase().includes('unassigned')
+      })
+
+      // Resolve missing parent patients for dependants
+      const missingPatientIds = Array.from(new Set(
+        activeAdmissions
+          .filter(a => a.dependantId && (!a.patient?.hospitalId && !a.dependant?.patient?.hospitalId))
+          .map(a => a.patientId)
+          .filter(Boolean)
+      ))
+      const patientMap = new Map()
+      if (missingPatientIds.length > 0) {
+        const fetched = await Promise.allSettled(missingPatientIds.map(id => getPatientById(id)))
+        fetched.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const p = res.value?.data?.data ?? res.value?.data
+            if (p && (p.id || p._id)) patientMap.set(String(p.id || p._id), p)
+          }
+        })
+      }
 
       const buildItem = (admission) => {
         const isDependant = !!admission.dependantId
         const source = isDependant ? admission.dependant : admission.patient
-        const parentPatient = isDependant ? admission.patient : null
+        const parentPatient = isDependant ? (admission.patient || admission.dependant?.patient || patientMap.get(String(admission.patientId))) : null
+        const parentHospitalId = isDependant
+          ? (parentPatient?.hospitalId || admission.patient?.hospitalId || admission.dependant?.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+          : (source?.hospitalId || admission.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
+        const displayId = parentHospitalId || '—'
+
+        const rawWardKey = String(admission.wardId || admission.ward || '')
+        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward'
+        const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '')
 
         // Resolve linked billing & payment info for admission
         const admissionIdStr = String(admission._id || admission.id || '')
@@ -139,10 +175,11 @@ const CashierAdmissions = () => {
           type: isDependant ? 'dependant' : 'patient',
           key: `admission-${admission._id || admission.id}`,
           patientId: admission.patientId,
+          displayId,
           dependantId: admission.dependantId || null,
           name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
-          ward: admission.ward || admission.wardId || 'General Ward',
-          bedNumber: admission.bedNumber || '',
+          ward: resolvedWard,
+          bedNumber: cleanBed,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           relationshipType: isDependant ? source?.relationshipType : null,
           parentPatient,
@@ -172,7 +209,7 @@ const CashierAdmissions = () => {
       item.name.toLowerCase().includes(q) ||
       String(item.ward).toLowerCase().includes(q) ||
       String(item.bedNumber).toLowerCase().includes(q) ||
-      String(item.patientId).toLowerCase().includes(q)
+      String(item.displayId || '').toLowerCase().includes(q)
     )
   }, [admitted, search])
 
@@ -315,9 +352,16 @@ const CashierAdmissions = () => {
                             </div>
                             <div>
                               <div className="font-semibold text-base-content">{item.name}</div>
-                              <div className="text-xs font-mono text-base-content/50 mt-0.5">
-                                ID: {item.patientId}
-                              </div>
+                              {item.displayId && item.displayId !== '—' && (
+                                <div className="text-xs font-mono text-base-content/50 mt-0.5">
+                                  ID: {item.displayId}
+                                </div>
+                              )}
+                              {item.parentPatient && (
+                                <div className="text-xs text-base-content/50">
+                                  Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -524,7 +568,7 @@ const AdmittedCard = ({ item, onOpen }) => {
         </div>
         <div className="flex justify-between">
           <span className="text-base-content/60">Patient ID:</span>
-          <span className="font-medium font-mono text-base-content">{item.patientId}</span>
+          <span className="font-medium font-mono text-base-content">{item.displayId || '—'}</span>
         </div>
       </div>
 

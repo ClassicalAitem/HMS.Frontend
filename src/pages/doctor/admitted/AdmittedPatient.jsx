@@ -280,7 +280,6 @@ const DRAdmittedPatient = () => {
               <div className="flex items-center gap-1.5 min-w-max">
                 <button
                   onClick={() => setActiveTab('vitals')}
-                  title="Alt + 1"
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'vitals'
                       ? 'bg-primary text-primary-content shadow-sm'
@@ -288,13 +287,11 @@ const DRAdmittedPatient = () => {
                   }`}
                 >
                   <FaHeartbeat className="w-4 h-4" />
-                  <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+1</span>
                   Vitals Chart
                 </button>
 
                 <button
                   onClick={() => setActiveTab('ward')}
-                  title="Alt + 2"
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'ward'
                       ? 'bg-primary text-primary-content shadow-sm'
@@ -302,13 +299,11 @@ const DRAdmittedPatient = () => {
                   }`}
                 >
                   <FaNotesMedical className="w-4 h-4" />
-                  <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+2</span>
                   Ward Rounds
                 </button>
 
                 <button
                   onClick={() => setActiveTab('treatment')}
-                  title="Alt + 3"
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'treatment'
                       ? 'bg-primary text-primary-content shadow-sm'
@@ -316,13 +311,11 @@ const DRAdmittedPatient = () => {
                   }`}
                 >
                   <FaPills className="w-4 h-4" />
-                  <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+3</span>
                   Treatment Plan
                 </button>
 
                 <button
                   onClick={() => setActiveTab('blood')}
-                  title="Alt + 4"
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'blood'
                       ? 'bg-primary text-primary-content shadow-sm'
@@ -330,13 +323,11 @@ const DRAdmittedPatient = () => {
                   }`}
                 >
                   <FaTint className="w-4 h-4" />
-                  <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+4</span>
                   Blood Transfusion
                 </button>
 
                 <button
                   onClick={() => setActiveTab('ivfluid')}
-                  title="Alt + 5"
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'ivfluid'
                       ? 'bg-primary text-primary-content shadow-sm'
@@ -344,13 +335,11 @@ const DRAdmittedPatient = () => {
                   }`}
                 >
                   <FaTint className="w-4 h-4" />
-                  <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+5</span>
                   IV Fluid Balance
                 </button>
 
                 <button
                   onClick={() => setActiveTab('ebt')}
-                  title="Alt + 6"
                   className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                     activeTab === 'ebt'
                       ? 'bg-primary text-primary-content shadow-sm'
@@ -358,7 +347,6 @@ const DRAdmittedPatient = () => {
                   }`}
                 >
                   <FaExchangeAlt className="w-4 h-4" />
-                  <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+6</span>
                   Exchange Transfusion (EBT)
                 </button>
 
@@ -366,7 +354,6 @@ const DRAdmittedPatient = () => {
                 {isNeonatal && (
                   <button
                     onClick={() => setActiveTab('neonatal')}
-                    title="Alt + 7"
                     className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
                       activeTab === 'neonatal'
                         ? 'bg-primary text-primary-content shadow-sm'
@@ -374,7 +361,6 @@ const DRAdmittedPatient = () => {
                     }`}
                   >
                     <FaBaby className="w-4 h-4" />
-                    <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+7</span>
                     Neonatal Care (SCBU)
                   </button>
                 )}
