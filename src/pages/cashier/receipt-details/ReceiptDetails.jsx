@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
 import { FaArrowLeft, FaFileInvoice } from 'react-icons/fa';
-import { getAllBillings } from '@/services/api/billingAPI';
+import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDate, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const ReceiptDetails = () => {
   const { receiptId } = useParams();
@@ -18,51 +19,35 @@ const ReceiptDetails = () => {
   const receiptFromState = location?.state?.receiptData || null;
 
   useEffect(() => {
-
     const loadReceipt = async () => {
       try {
         setIsLoading(true);
-        
-        if (receiptFromState) {
-          let enrichedReceipt = { ...receiptFromState };
-          
-          // If receipt doesn't have items, fetch them from the associated billing
-          if (!enrichedReceipt.items || enrichedReceipt.items.length === 0) {
+        let baseReceipt = receiptFromState;
 
-            enrichedReceipt.items = receiptFromState?.billing?.itemDetails || [];
-            try {
-              // Fetch all billings to find the one associated with this receipt
-              const billingsRes = await getAllBillings({ patientId: receiptFromState.patientId });
-              const billings = billingsRes?.data?.data || billingsRes?.data || [];
-              
-              // Find billing(s) that match this receipt by checking if receipt.id is in billing.receiptIds
-              const matchingBillings = billings.filter(b => 
-                b.receiptIds?.includes(receiptFromState.id) || 
-                b.receiptId === receiptFromState.id
-              );
-              
-              // Combine all items from matching billings
-              const allItems = matchingBillings.flatMap(b => b.itemDetails || []);
-              
-              if (allItems.length > 0) {
-                enrichedReceipt.items = allItems;
-              }
-            } catch (err) {
-              console.error('Error fetching billing items for receipt:', err);
-              // Continue without items, they might not be available
-            }
+        if (!baseReceipt && receiptId) {
+          try {
+            const res = await getAllReceipts({ id: receiptId });
+            const list = res?.data?.data || res?.data || [];
+            baseReceipt = Array.isArray(list) ? list.find(r => r.id === receiptId || r._id === receiptId) || list[0] : list;
+          } catch {
+            baseReceipt = null;
+          }
+        }
+
+        if (baseReceipt) {
+          let enrichedReceipt = { ...baseReceipt };
+          
+          if (!enrichedReceipt.items || enrichedReceipt.items.length === 0) {
+            enrichedReceipt.items = baseReceipt?.billing?.itemDetails || [];
           }
           
           setReceipt(enrichedReceipt);
         } else {
-          // Fallback: fetch from API if needed
-          toast.error('Receipt data not found');
-          setError('Receipt data not found');
+          setError('Receipt not found');
         }
       } catch (err) {
         console.error('Error loading receipt:', err);
         setError(err.message || 'Failed to load receipt');
-        toast.error('Failed to load receipt');
       } finally {
         setIsLoading(false);
       }
@@ -74,9 +59,7 @@ const ReceiptDetails = () => {
   if (isLoading) {
     return (
       <CashierLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
+        <KolakLoader fullscreen />
       </CashierLayout>
     );
   }
@@ -168,9 +151,9 @@ const ReceiptDetails = () => {
         </div>
 
         {/* Receipt Items */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6">
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 min-w-0">
           <h3 className="text-xl font-bold text-primary mb-4">Items Paid For</h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full min-w-0">
             <table className="table w-full">
               <thead className="bg-base-200/50">
                 <tr>

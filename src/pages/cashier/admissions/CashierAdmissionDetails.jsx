@@ -54,18 +54,26 @@ const CashierAdmissionDetails = () => {
         let allBillings = Array.isArray(billsRes.data?.data || billsRes.data) ? (billsRes.data?.data || billsRes.data) : [];
         
         let masterBillItems = [];
+        let admissionReceipts = [];
         const billsWithPayments = await Promise.all(allBillings.map(async (bill) => {
           const billId = bill.id || bill._id;
           if (!billId) return { ...bill, paidAmount: 0 };
-          const receiptsRes = await getAllReceipts({ billingId: billId });
-          const billReceipts = receiptsRes.data?.data || receiptsRes.data || [];
-          const paidAmount = (Array.isArray(billReceipts) ? billReceipts : [])
-            .reduce((sum, r) => sum + Number(r.amountPaid || 0), 0);
-          return { ...bill, paidAmount };
+          try {
+            const receiptsRes = await getAllReceipts({ billingId: billId });
+            const billReceipts = receiptsRes.data?.data || receiptsRes.data || [];
+            const safeReceipts = Array.isArray(billReceipts) ? billReceipts : [];
+            admissionReceipts.push(...safeReceipts);
+            const paidAmount = safeReceipts.reduce((sum, r) => sum + Number(r.amountPaid || 0), 0);
+            return { ...bill, paidAmount };
+          } catch {
+            return { ...bill, paidAmount: 0 };
+          }
         }));
         
         allBillings = billsWithPayments;
         setBillings(billsWithPayments);
+        admissionReceipts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setReceipts(admissionReceipts);
 
         allBillings.forEach(bill => {
           (bill.itemDetails || []).forEach(item => {
@@ -168,20 +176,6 @@ const CashierAdmissionDetails = () => {
           ivs: unbilledIvs,
           treatments: unbilledTreatments
         });
-
-        // Fetch receipts for this admission's bills
-        let admissionReceipts = [];
-        for (const bill of billsWithPayments) {
-          try {
-            const rRes = await getAllReceipts({ billingId: bill.id || bill._id });
-            const rData = rRes.data?.data || rRes.data || [];
-            admissionReceipts = [...admissionReceipts, ...(Array.isArray(rData) ? rData : [])];
-          } catch(err) {}
-        }
-        
-        // Sort receipts by date
-        admissionReceipts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setReceipts(admissionReceipts);
       }
     } catch (error) {
       toast.error("Failed to load admission details.");
@@ -395,11 +389,11 @@ const CashierAdmissionDetails = () => {
         />
 
         {/* Outstanding Bills */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 mt-6">
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 mt-6 min-w-0">
           <h3 className="text-xl font-bold text-primary mb-4">
             Admission Billings
           </h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full min-w-0">
             <table className="table w-full">
               <thead>
                 <tr>
@@ -534,11 +528,11 @@ const CashierAdmissionDetails = () => {
         </div>
 
         {/* Payment History */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6">
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-primary">Admission Receipt History</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full min-w-0">
             <table className="table w-full">
               <thead className="bg-base-200">
                 <tr className="text-xs text-base-content/60 uppercase tracking-wide">

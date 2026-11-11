@@ -150,7 +150,7 @@ const CashierDashboard = () => {
 
   return (
     <CashierLayout>
-      {billingLoading && <KolakLoader fullscreen />}
+      {(billingLoading || metricsLoading) && <KolakLoader fullscreen />}
       {/* Page Header: actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 2xl:mb-8 gap-4">
         <div className="w-full md:w-2/3">

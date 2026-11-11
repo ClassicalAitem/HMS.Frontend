@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useMemo, useState } from 'react';
 import { DataTable } from '@/components/common';
 import { CashierLayout } from '@/layouts/cashier';
@@ -7,9 +6,9 @@ import { useNavigate } from 'react-router-dom';
 import { getAllBillings } from '@/services/api/billingAPI';
 import toast from 'react-hot-toast';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const BillingList = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [billings, setBillings] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -30,9 +29,6 @@ const BillingList = () => {
     };
     load();
   }, []);
-
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   const handleView = (row) => {
     const id = row?.id || row?.billingId || row?._id;
@@ -58,14 +54,19 @@ const BillingList = () => {
 
   return (
     <CashierLayout>
+      {loading && <KolakLoader fullscreen />}
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-primary">Billing</h1>
         <p className="text-sm text-base-content/70">View all generated bills</p>
       </div>
 
-      <div className="card bg-base-100 shadow-xl w-full">
-        <div className="card-body p-2 sm:p-4">
-          <div className="overflow-x-auto">
+      <div className="card bg-base-100 shadow-xl w-full min-w-0">
+        <div className="card-body p-2 sm:p-4 min-w-0">
+          {loading ? (
+            <div className="py-20 flex justify-center items-center">
+              <KolakLoader size="lg" />
+            </div>
+          ) : (
             <DataTable
               data={billings}
               columns={columns}
@@ -73,12 +74,10 @@ const BillingList = () => {
               sortable={true}
               paginated={true}
               initialEntriesPerPage={7}
-              maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
               showEntries={true}
               searchPlaceholder="Search billings..."
-              loading={loading}
             />
-          </div>
+          )}
         </div>
       </div>
     </CashierLayout>

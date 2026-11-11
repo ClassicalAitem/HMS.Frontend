@@ -10,7 +10,6 @@ import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/servi
 import { createPatientCredit, getPatientCredits } from '@/services/api/patientCreditAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { ReceiptModal } from '@/components/modals';
-import CreateBillModal from '@/components/modals/CreateBillModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
@@ -29,7 +28,6 @@ const CashierPatientDetails = () => {
   const [receipts, setReceipts] = useState([]);
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-  const [isCreateBillModalOpen, setIsCreateBillModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
   const [selectedBilling, setSelectedBilling] = useState(null);
   const [patientCredits, setPatientCredits] = useState([]);
@@ -270,10 +268,7 @@ const CashierPatientDetails = () => {
   if (isLoading && !snapshot) {
     return (
       <CashierLayout>
-         {isLoading && <KolakLoader fullscreen />}
-        <div className="flex justify-center items-center h-64">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
+        <KolakLoader fullscreen />
       </CashierLayout>
     );
   }
@@ -350,11 +345,11 @@ const CashierPatientDetails = () => {
             
 
         {/* Outstanding Bills */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6">
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 min-w-0">
           <h3 className="text-xl font-bold text-primary mb-4">
             {isViewingDependant ? `${fullName}'s Billings` : 'Patient Billings'}
           </h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full min-w-0">
 
             <table className="table w-full">
               <thead>
@@ -485,14 +480,6 @@ const CashierPatientDetails = () => {
               <span className="w-3 h-3 rounded-full bg-error"></span>
               <span className="text-error font-semibold">Outstanding Balance: ₦{totalOutstanding.toLocaleString()}</span>
             </div>
-
-            <button
-              onClick={() => setIsCreateBillModalOpen(true)}
-              className="btn btn-sm btn-primary"
-            >
-              <FaFileInvoice className="w-4 h-4 mr-1" />
-              Create Bill
-            </button>
           </div>
         </div>
 
@@ -549,7 +536,7 @@ const CashierPatientDetails = () => {
             </label>
           </form>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full min-w-0">
             <table className="table w-full">
               <thead>
                 <tr>
@@ -580,14 +567,14 @@ const CashierPatientDetails = () => {
         </section>
 
         {/* Payment History */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6">
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-bold text-primary">Payment Receipt History</h3>
             <button className="btn btn-ghost btn-circle btn-sm">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full min-w-0">
             <table className="table w-full">
               <thead className="bg-base-200">
                 <tr className="text-xs text-base-content/60 uppercase tracking-wide">
@@ -677,23 +664,7 @@ const CashierPatientDetails = () => {
           onSubmit={handleReceiptSubmit}
         />
       </div>
-            {/* Create Bill Modal */}
-        <CreateBillModal
-          isOpen={isCreateBillModalOpen}
-          onClose={() => setIsCreateBillModalOpen(false)}
-          patientId={patientId}
-          dependantId={dependantId}
-          onSuccess={async () => {
-            try {
-              const billingsRes = await getAllBillings({ patientId });
-              const billingsData = billingsRes?.data?.data || billingsRes?.data || [];
-              setBillings(filterSubjectRecords(Array.isArray(billingsData) ? billingsData : []));
-            } catch (refreshErr) {
-              console.error('Error refreshing billings:', refreshErr);
-            }
-          }}
-        />
-</CashierLayout>
+    </CashierLayout>
   );
 };
 

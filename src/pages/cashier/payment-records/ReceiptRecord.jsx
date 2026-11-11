@@ -1,16 +1,14 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { DataTable } from '@/components/common';
 import { CashierLayout } from '@/layouts/cashier';
-import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
-import { getAllReceipts, updateReceipt, getReceiptsByOpdPatientId } from '@/services/api/billingAPI';
-import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
+import { FaEye, FaPrint } from 'react-icons/fa';
+import { getAllReceipts, updateReceipt } from '@/services/api/billingAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
 import { getDependantById } from '@/services/api/dependantAPI';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const PaymentRecords = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,7 +16,6 @@ const PaymentRecords = () => {
   const [editStatus, setEditStatus] = useState('');
   const [updating, setUpdating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
 
   const handleClose = () => {
     setIsModalOpen(false);
@@ -30,7 +27,7 @@ const PaymentRecords = () => {
     try {
       setUpdating(true);
 
-      const res = await toast.promise(
+      await toast.promise(
         updateReceipt(selectedPayment.receiptId, { status: editStatus || selectedPayment.status }),
         {
           loading: 'Updating payment...',
@@ -38,8 +35,6 @@ const PaymentRecords = () => {
           error: 'Failed to update payment',
         }
       );
-      // const updated = res?.data?.data;
-      // setPaymentRecords(updated)
       setIsEditing(false);
       setUpdating(false);
       handleClose();
@@ -49,70 +44,75 @@ const PaymentRecords = () => {
     }
   };
 
-
   useEffect(() => {
-  const fetchReceipt = async () => {
-    try {
-      setIsLoading(true);
-      const [regularRes, opdPatientsRes] = await Promise.all([getAllReceipts(), getAllOpdPatients()]);
-      const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
-      const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
+    const fetchReceipt = async () => {
+      try {
+        setIsLoading(true);
+        const res = await getAllReceipts();
+        const list = res?.data?.data ?? res?.data ?? [];
+        const receiptList = Array.isArray(list) ? list : [];
 
-      const opdReceiptsPromises = opdPatients.map(patient => getReceiptsByOpdPatientId(patient.id).catch(() => null));
-      const opdReceiptsResults = await Promise.all(opdReceiptsPromises);
-      const opdReceipts = opdReceiptsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
+        // Check for any missing dependants
+        const missingDependantIds = [
+          ...new Set(
+            receiptList
+              .filter(a => a.dependantId && !a.dependant)
+              .map(a => a.dependantId)
+          )
+        ];
 
-      const allReceipts = [...regularList, ...opdReceipts];
-      const list = Array.isArray(allReceipts) ? allReceipts : [];
+        let extraDependantMap = {};
+        if (missingDependantIds.length > 0) {
+          const dependantEntries = await Promise.all(
+            missingDependantIds.map(id =>
+              getDependantById(id)
+                .then(r => [id, r?.data?.data?.dependant || r?.data?.dependant || r?.data])
+                .catch(() => [id, null])
+            )
+          );
+          extraDependantMap = Object.fromEntries(dependantEntries);
+        }
 
-      // ✅ Pull unique dependantIds and fetch them, since the API doesn't nest dependant data on the receipt
-      const dependantIds = [...new Set(list.filter(a => a.dependantId).map(a => a.dependantId))];
-      const dependantEntries = await Promise.all(
-        dependantIds.map(id =>
-          getDependantById(id)
-            .then(res => [id, res?.data?.data?.dependant || res?.data?.dependant || res?.data])
-            .catch(() => [id, null])
-        )
-      );
-      const dependantMap = Object.fromEntries(dependantEntries);
+        const mapped = receiptList.map((a, idx) => {
+          const isForDependant = !!a.dependantId;
+          const dependant = isForDependant ? (a.dependant || extraDependantMap[a.dependantId]) : null;
+          const guardian = a.billing?.patient;
+          const opdPatient = a.billing?.opdPatient;
 
-      const mapped = list.map((a, idx) => {
-        const isForDependant = !!a.dependantId;
-        const dependant = isForDependant ? dependantMap[a.dependantId] : null;
-        const guardian = a.billing.patient;
-        const opdPatient = a.billing.opdPatient;
+          const name = isForDependant
+            ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
+            : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (opdPatient ? `${opdPatient.firstName} ${opdPatient.lastName}` : 'N/A'));
 
-        const name = isForDependant
-          ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
-          : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (opdPatient ? `${opdPatient.firstName} ${opdPatient.lastName}` : 'N/A'));
+          const guardianName = isForDependant && guardian
+            ? `${guardian.firstName} ${guardian.lastName}`
+            : null;
 
-        const guardianName = isForDependant && guardian
-          ? `${guardian.firstName} ${guardian.lastName}`
-          : null;
-
-        return {
-          receiptId: a.id,
-          transactionId: a.reference || `Kolak-${idx + 1}`,
-          name,
-          isForDependant,
-          guardianName,
-          paymentMethod: a.paymentMethod,
-          paymentDestination: a.paymentDestination || 'N/A',
-          paidBy: a.paidBy || 'N/A',
-          status: a.status || 'pending',
-          amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: formatNigeriaDateTime(a.paidAt),
-          cashierName: a.cashier ? `${a.cashier.firstName || ''} ${a.cashier.lastName || ''}`.trim() : 'N/A',
-          bankName: a.bankName || 'N/A',
-        };
-      });
-      setPaymentRecords(mapped);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  fetchReceipt();
-}, [])
+          return {
+            receiptId: a.id,
+            transactionId: a.reference || `Kolak-${idx + 1}`,
+            name,
+            isForDependant,
+            guardianName,
+            paymentMethod: a.paymentMethod,
+            paymentDestination: a.paymentDestination || 'N/A',
+            paidBy: a.paidBy || 'N/A',
+            status: a.status || 'pending',
+            amount: `₦ ${Number(a.amountPaid || 0).toLocaleString()}`,
+            dateTime: formatNigeriaDateTime(a.paidAt || a.createdAt),
+            cashierName: a.cashier ? `${a.cashier.firstName || ''} ${a.cashier.lastName || ''}`.trim() : 'N/A',
+            bankName: a.bankName || 'N/A',
+          };
+        });
+        setPaymentRecords(mapped);
+      } catch (err) {
+        console.error('Failed to fetch receipts:', err);
+        setPaymentRecords([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchReceipt();
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -348,6 +348,7 @@ const handlePrintReceipt = (payment) => {
 
   return (
     <CashierLayout>
+      {isLoading && <KolakLoader fullscreen />}
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-base-content">Payment Receipt Records</h1>
         <p className="text-sm text-base-content/70">View and manage all payment receipt transactions</p>
@@ -380,31 +381,23 @@ const handlePrintReceipt = (payment) => {
         </div>
       </div>
 
-      <div className="card bg-base-100 shadow-xl w-full">
-        <div className="card-body p-2 sm:p-4">
+      <div className="card bg-base-100 shadow-xl w-full min-w-0">
+        <div className="card-body p-2 sm:p-4 min-w-0">
           {isLoading ? (
-            <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-              <div className="overflow-auto max-h-96 p-4 space-y-3">
-                <div className="skeleton h-6 w-52" />
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="skeleton h-8 w-full" />
-                ))}
-              </div>
+            <div className="py-20 flex justify-center items-center">
+              <KolakLoader size="lg" />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <DataTable
-                data={paymentRecords}
-                columns={columns}
-                searchable={true}
-                sortable={true}
-                paginated={true}
-                initialEntriesPerPage={7}
-                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                showEntries={true}
-                searchPlaceholder="Search payment records..."
-              />
-            </div>
+            <DataTable
+              data={paymentRecords}
+              columns={columns}
+              searchable={true}
+              sortable={true}
+              paginated={true}
+              initialEntriesPerPage={7}
+              showEntries={true}
+              searchPlaceholder="Search payment records..."
+            />
           )}
         </div>
       </div>

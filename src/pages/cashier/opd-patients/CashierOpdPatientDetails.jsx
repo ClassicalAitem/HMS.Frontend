@@ -270,10 +270,7 @@ const CashierOpdPatientDetails = () => {
   if (isLoading) {
     return (
       <CashierLayout>
-         {isLoading && <KolakLoader fullscreen />}
-        <div className="flex justify-center items-center h-64">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
+        <KolakLoader fullscreen />
       </CashierLayout>
     );
   }

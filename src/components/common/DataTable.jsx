@@ -15,7 +15,7 @@ const DataTable = ({
   className = "",
   searchPlaceholder = "Search...",
   showEntries = true,
-  maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:min-h-[50vh] 2xl:min-h-[60vh]", // Responsive default
+  maxHeight = "max-h-[62vh]", // Responsive default
   onRowClick = null,
   initialSearchTerm = ""
 }) => {
@@ -236,7 +236,7 @@ const DataTable = ({
   };
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`w-full min-w-0 ${className}`}>
       {/* Search Controls */}
       {searchable && (
         <div className="flex flex-col gap-3 items-stretch mb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -267,7 +267,7 @@ const DataTable = ({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
+      <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100 w-full min-w-0">
 
         {/* ---------- Mobile: stacked label/value cards (below sm) ---------- */}
         <div className={`sm:hidden overflow-auto ${maxHeight}`}>
@@ -305,7 +305,7 @@ const DataTable = ({
         </div>
 
         {/* ---------- Desktop/tablet: table (sm and up) ---------- */}
-        <div className={`hidden sm:block overflow-auto ${maxHeight}`}>
+        <div className={`hidden sm:block overflow-x-auto overflow-y-auto ${maxHeight}`}>
           <table className="table w-full table-zebra">
             <thead className="sticky top-0 z-10 bg-base-200">
               <tr className="">

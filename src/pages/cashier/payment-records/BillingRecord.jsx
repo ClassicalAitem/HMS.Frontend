@@ -1,84 +1,84 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { DataTable } from '@/components/common';
 import { CashierLayout } from '@/layouts/cashier';
-import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
-import cashierData from '@/data/cashierData.json';
-import { getAllBillings, getBillingsByOpdPatientId } from '@/services/api/billingAPI';
-import { getAllOpdPatients } from '@/services/api/opdPatientAPI';
-import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { FaEye, FaPrint } from 'react-icons/fa';
+import { getAllBillings } from '@/services/api/billingAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
+import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const PaymentRecords = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
-  const [billingRecords, setBillingRecords] = useState([]);
   const [selectedBilling, setSelectedBilling] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // useEffect(() => {
-  //   setPaymentRecords(cashierData.paymentRecords);
-  // }, []);
+  useEffect(() => {
+    const fetchBilling = async () => {
+      try {
+        setIsLoading(true);
+        const res = await getAllBillings();
+        const list = res?.data?.data ?? res?.data ?? [];
+        const billingList = Array.isArray(list) ? list : [];
 
-useEffect(() => {
-  const fetchBilling = async() => {
-    try {
-      setIsLoading(true);
-      const [regularRes, opdPatientsRes] = await Promise.all([getAllBillings(), getAllOpdPatients()]);
-      const regularList = regularRes?.data?.data ?? regularRes?.data ?? [];
-      const opdPatients = opdPatientsRes?.data?.data ?? opdPatientsRes?.data ?? [];
+        // Check if any dependant is missing from joined relation
+        const missingDependantIds = [
+          ...new Set(
+            billingList
+              .filter(a => a.dependantId && !a.dependant)
+              .map(a => a.dependantId)
+          )
+        ];
 
-      const opdBillingsPromises = opdPatients.map(patient => getBillingsByOpdPatientId(patient.id).catch(() => null));
-      const opdBillingsResults = await Promise.all(opdBillingsPromises);
-      const opdBillings = opdBillingsResults.filter(res => res).flatMap(res => res?.data?.data ?? res?.data ?? []);
+        let extraDependantMap = {};
+        if (missingDependantIds.length > 0) {
+          const dependantEntries = await Promise.all(
+            missingDependantIds.map(id =>
+              getDependantById(id)
+                .then(r => [id, r?.data?.data?.dependant || r?.data?.dependant || r?.data])
+                .catch(() => [id, null])
+            )
+          );
+          extraDependantMap = Object.fromEntries(dependantEntries);
+        }
 
-      const allBillings = [...regularList, ...opdBillings];
-      const list = Array.isArray(allBillings) ? allBillings : [];
+        const mapped = billingList.map((a) => {
+          const isForDependant = !!a.dependantId;
+          const dependant = isForDependant ? (a.dependant || extraDependantMap[a.dependantId]) : null;
+          const guardian = a.patient;
 
-      const dependantIds = [...new Set(list.filter(a => a.dependantId).map(a => a.dependantId))];
-      const dependantEntries = await Promise.all(
-        dependantIds.map(id =>
-          getDependantById(id)
-            .then(res => [id, res?.data?.data?.dependant || res?.data?.dependant || res?.data])
-            .catch(() => [id, null])
-        )
-      );
-      const dependantMap = Object.fromEntries(dependantEntries);
+          const name = isForDependant
+            ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
+            : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'));
 
-      const mapped = list.map((a, idx) => {
-        const isForDependant = !!a.dependantId;
-        const dependant = isForDependant ? dependantMap[a.dependantId] : null;
-        const guardian = a.patient;
+          const guardianName = isForDependant && guardian
+            ? `${guardian.firstName} ${guardian.lastName}`
+            : null;
 
-        const name = isForDependant
-          ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
-          : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'));
-
-        const guardianName = isForDependant && guardian
-          ? `${guardian.firstName} ${guardian.lastName}`
-          : null;
-
-        return {
-          billingId: a.id,
-          name,
-          isForDependant,
-          guardianName,
-          outstandingBill: `₦ ${Number(a.outstandingBill).toLocaleString()}`,
-          totalAmount: `₦ ${Number(a.totalAmount).toLocaleString()}`,
-          itemDetails: a.itemDetails,
-          amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: formatNigeriaDateTime(a.createdAt),
-          raisedBy: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
-        };
-      });
-      setPaymentRecords(mapped);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  fetchBilling();
-}, [])
+          return {
+            billingId: a.id,
+            name,
+            isForDependant,
+            guardianName,
+            outstandingBill: `₦ ${Number(a.outstandingBill || 0).toLocaleString()}`,
+            totalAmount: `₦ ${Number(a.totalAmount || 0).toLocaleString()}`,
+            itemDetails: a.itemDetails,
+            amount: `₦ ${Number(a.amountPaid || 0).toLocaleString()}`,
+            dateTime: formatNigeriaDateTime(a.createdAt),
+            raisedBy: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
+            cashierName: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
+          };
+        });
+        setPaymentRecords(mapped);
+      } catch (err) {
+        console.error('Failed to fetch billings:', err);
+        setPaymentRecords([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBilling();
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -308,6 +308,7 @@ const handlePrintReceipt = (billing) => {
 
   return (
     <CashierLayout>
+      {isLoading && <KolakLoader fullscreen />}
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-base-content">Billing Records</h1>
         <p className="text-sm text-base-content/70">View and manage all billing transactions</p>
@@ -336,31 +337,23 @@ const handlePrintReceipt = (billing) => {
         </div>
       </div>
 
-      <div className="card bg-base-100 shadow-xl w-full">
-        <div className="card-body p-2 sm:p-4">
+      <div className="card bg-base-100 shadow-xl w-full min-w-0">
+        <div className="card-body p-2 sm:p-4 min-w-0">
           {isLoading ? (
-            <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-              <div className="overflow-auto max-h-96 p-4 space-y-3">
-                <div className="skeleton h-6 w-52" />
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="skeleton h-8 w-full" />
-                ))}
-              </div>
+            <div className="py-20 flex justify-center items-center">
+              <KolakLoader size="lg" />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <DataTable
-                data={paymentRecords}
-                columns={columns}
-                searchable={true}
-                sortable={true}
-                paginated={true}
-                initialEntriesPerPage={7}
-                maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                showEntries={true}
-                searchPlaceholder="Search payment records..."
-              />
-            </div>
+            <DataTable
+              data={paymentRecords}
+              columns={columns}
+              searchable={true}
+              sortable={true}
+              paginated={true}
+              initialEntriesPerPage={7}
+              showEntries={true}
+              searchPlaceholder="Search payment records..."
+            />
           )}
         </div>
       </div>

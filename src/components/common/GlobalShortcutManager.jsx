@@ -142,39 +142,19 @@ const GlobalShortcutManager = () => {
       }
 
       // =========================================================================
-      // 3. Ctrl + K (Fast Patient Search: Instantly focus search & navigate)
+      // 3. Ctrl + K (Fast Patient Search: Instantly focus search on Patient Search page)
       // =========================================================================
       if (isCtrlOrCmd && !e.shiftKey && (key === 'k' || code === 'KeyK')) {
         e.preventDefault();
         e.stopPropagation();
 
-        // Immediately focus Header search bar synchronously without waiting
-        const headerSearchInput = document.getElementById('header-patient-search') || document.querySelector('header input[type="text"]');
-        if (headerSearchInput) {
-          headerSearchInput.focus();
-          headerSearchInput.select();
-        }
-
-        window.dispatchEvent(new CustomEvent('focus-header-search'));
-
         const patientsRoute = getRolePatientsPath(normalizedRole);
-        const isOnPatientsPage = 
-          location.pathname === patientsRoute || 
-          location.pathname.includes('/patients') || 
-          location.pathname.includes('/patient') || 
-          location.pathname.includes('/patientsHistory');
+        const isOnPatientsPage = location.pathname === patientsRoute;
 
         if (!isOnPatientsPage) {
-          navigate(patientsRoute);
-          // Re-affirm focus and expand search after route change
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('focus-header-search'));
-            const input = document.getElementById('header-patient-search') || document.querySelector('header input[type="text"]');
-            if (input) {
-              input.focus();
-              input.select();
-            }
-          }, 80);
+          navigate(patientsRoute, { state: { focusSearch: true } });
+        } else {
+          window.dispatchEvent(new CustomEvent('focus-header-search'));
         }
         return;
       }

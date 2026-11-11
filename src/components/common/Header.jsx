@@ -83,24 +83,35 @@ const Header = ({ onToggleSidebar }) => {
       setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
-      }, 30);
+      }, 50);
     };
     window.addEventListener("focus-header-search", handleFocusSearch);
     return () => window.removeEventListener("focus-header-search", handleFocusSearch);
   }, []);
 
-  // Auto-focus and expand the search bar when opening or navigating to patient pages so the user can immediately type
+  // Handle route change: clear search when leaving patient list page, or focus only when entering via shortcut
   useEffect(() => {
-    const isPatientPage = location.pathname.includes("/patient") || location.pathname.includes("/allPatients");
-    if (isPatientPage) {
+    const targetPath = getRolePatientsPath(userRole);
+    const isOnPatientSearchPage = location.pathname === targetPath;
+
+    if (isOnPatientSearchPage && location.state?.focusSearch) {
       setIsSearchExpanded(true);
       const timer = setTimeout(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
-      }, 100);
+      }, 60);
+      window.history.replaceState({}, "");
       return () => clearTimeout(timer);
     }
-  }, [location.pathname]);
+
+    if (!isOnPatientSearchPage) {
+      if (!urlSearch) {
+        setHeaderSearch("");
+        setIsSearchExpanded(false);
+        window.dispatchEvent(new CustomEvent("apply-table-search", { detail: { query: "" } }));
+      }
+    }
+  }, [location.pathname, location.state, userRole, urlSearch]);
 
   const handleRefresh = () => {
     window.location.reload();
@@ -215,7 +226,6 @@ const Header = ({ onToggleSidebar }) => {
                     autoComplete="off"
                     spellCheck={false}
                     className="input input-sm w-full pl-9 pr-14 text-xs bg-base-200/90 border border-base-300 rounded-xl focus:bg-base-100 focus:border-primary transition-all text-base-content shadow-xs"
-                    autoFocus
                   />
                   <div className="absolute right-1 flex items-center gap-0.5">
                     {headerSearch && (

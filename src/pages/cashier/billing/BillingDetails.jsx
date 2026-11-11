@@ -1,25 +1,28 @@
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from 'react';
 import { CashierLayout } from '@/layouts/cashier';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getBillingById } from '@/services/api/billingAPI';
 import toast from 'react-hot-toast';
+import { FaArrowLeft } from 'react-icons/fa';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const BillingDetails = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { id, billingId } = useParams();
+  const effectiveBillingId = id || billingId;
+  const navigate = useNavigate();
+
   const [billing, setBilling] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { billingId } = useParams();
 
   useEffect(() => {
     const load = async () => {
-      if (!billingId) {
+      if (!effectiveBillingId) {
         toast.error('Missing billing ID');
         return;
       }
       setLoading(true);
       try {
-        const res = await getBillingById(billingId);
+        const res = await getBillingById(effectiveBillingId);
         const data = res?.data?.data || res?.data;
         setBilling(data);
       } catch (error) {
@@ -30,31 +33,37 @@ const BillingDetails = () => {
       }
     };
     load();
-  }, [billingId]);
-
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  }, [effectiveBillingId]);
 
   return (
     <CashierLayout>
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-primary">Billing Details</h1>
-        <p className="text-sm text-base-content/70">Details for billing ID {billingId}</p>
+      {loading && <KolakLoader fullscreen />}
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate(-1)} className="btn btn-ghost btn-sm" title="Go back">
+          <FaArrowLeft className="w-4 h-4" />
+        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Billing Details</h1>
+          <p className="text-sm text-base-content/70">Details for billing ID {effectiveBillingId}</p>
+        </div>
       </div>
 
-      <div className="w-full card bg-base-100 shadow-xl">
-        <div className="card-body p-4 sm:p-6">
-          {loading && <div className="text-base-content/70">Loading...</div>}
-          {!loading && billing && (
+      <div className="w-full card bg-base-100 shadow-xl min-w-0">
+        <div className="card-body p-4 sm:p-6 min-w-0">
+          {loading ? (
+            <div className="py-20 flex justify-center items-center">
+              <KolakLoader size="lg" />
+            </div>
+          ) : billing ? (
             <div className="space-y-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <p className="text-sm text-base-content/70">Billing ID</p>
-                  <p className="text-base font-semibold">{billing.id || billing.billingId || billing._id}</p>
+                  <p className="text-base font-semibold font-mono">{billing.id || billing.billingId || billing._id}</p>
                 </div>
                 <div>
                   <p className="text-sm text-base-content/70">Patient ID</p>
-                  <p className="text-base font-semibold">{billing.patientId}</p>
+                  <p className="text-base font-semibold font-mono">{billing.patientId || '—'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-base-content/70">Payment Method</p>
@@ -62,13 +71,13 @@ const BillingDetails = () => {
                 </div>
                 <div>
                   <p className="text-sm text-base-content/70">Status</p>
-                  <p className="text-base font-semibold">{billing.status || '—'}</p>
+                  <p className="text-base font-semibold capitalize">{billing.status || (billing.isCleared ? 'Cleared' : 'Pending')}</p>
                 </div>
               </div>
 
               <div>
                 <h3 className="text-lg font-semibold mb-2">Items</h3>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto w-full min-w-0">
                   <table className="table w-full">
                     <thead>
                       <tr>
@@ -78,11 +87,11 @@ const BillingDetails = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {(billing.items || []).map((it, idx) => (
+                      {(billing.items || billing.itemDetails || []).map((it, idx) => (
                         <tr key={idx}>
-                          <td>{it.category}</td>
-                          <td>{it.description}</td>
-                          <td className="text-right">₦{Number(it.rate || 0).toLocaleString()}</td>
+                          <td>{it.category || it.code || '—'}</td>
+                          <td>{it.description || '—'}</td>
+                          <td className="text-right">₦{Number(it.rate || it.total || it.price || 0).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -93,14 +102,14 @@ const BillingDetails = () => {
               <div className="flex justify-end">
                 <div className="p-4 rounded-lg bg-base-200">
                   <p className="text-sm text-base-content/70">Total Amount</p>
-                  <p className="text-2xl font-bold">₦{Number(billing.totalAmount || 0).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-primary">₦{Number(billing.totalAmount || 0).toLocaleString()}</p>
                 </div>
               </div>
             </div>
-          )}
-
-          {!loading && !billing && (
-            <div className="text-base-content/70">No billing data found.</div>
+          ) : (
+            <div className="py-12 text-center text-base-content/60">
+              No billing information found.
+            </div>
           )}
         </div>
       </div>

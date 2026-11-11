@@ -94,10 +94,7 @@ const PaymentReceiptHistory = () => {
   if (isLoading) {
     return (
       <CashierLayout>
-        {isLoading && <KolakLoader fullscreen />}
-        <div className="flex justify-center items-center h-64">
-          <div className="loading loading-spinner loading-lg text-primary"></div>
-        </div>
+        <KolakLoader fullscreen />
       </CashierLayout>
     );
   }
@@ -231,9 +228,9 @@ const PaymentReceiptHistory = () => {
         </div>
 
         {/* Receipts Table */}
-        <div className="bg-base-100 rounded-xl shadow-lg p-6">
+        <div className="bg-base-100 rounded-xl shadow-lg p-6 min-w-0">
           {filteredReceipts.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full min-w-0">
               <table className="table w-full">
                 <thead className="bg-base-200/50">
                   <tr>

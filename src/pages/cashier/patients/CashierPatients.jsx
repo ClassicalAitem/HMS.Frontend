@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
@@ -7,11 +6,10 @@ import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
-import PatientsDebug from '@/components/common/PatientsDebug';
-import { Skeleton } from '@heroui/skeleton';
+import KolakLoader from '@/components/common/KolakLoader';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
-const CasihierPati = () => {
+const CashierPatients = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
@@ -284,6 +282,7 @@ const StatusBadge = ({ status }) => {
 
   return (
     <CashierLayout>
+      {isLoading && <KolakLoader fullscreen />}
       <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
@@ -291,28 +290,24 @@ const StatusBadge = ({ status }) => {
         </div>
       </div>
 
-      <div className="w-full">
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body p-2 sm:p-4">
+      <div className="w-full min-w-0">
+        <div className="card bg-base-100 shadow-xl min-w-0">
+          <div className="card-body p-2 sm:p-4 min-w-0">
             {isLoading ? (
-              <div className="flex flex-col gap-2">
-                <div className="h-40 rounded bg-base-200 animate-pulse" />
-                <div className="h-40 rounded bg-base-200 animate-pulse" />
+              <div className="py-20 flex justify-center items-center">
+                <KolakLoader size="lg" />
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <DataTable
-                  data={allPatients}
-                  columns={columns}
-                  searchable={true}
-                  sortable={true}
-                  paginated={true}
-                  initialEntriesPerPage={10}
-                  maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                  showEntries={true}
-                  searchPlaceholder="Search patients..."
-                />
-              </div>
+              <DataTable
+                data={allPatients}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={10}
+                showEntries={true}
+                searchPlaceholder="Search patients..."
+              />
             )}
           </div>
         </div>
@@ -321,4 +316,4 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-export default CasihierPati;
+export default CashierPatients;

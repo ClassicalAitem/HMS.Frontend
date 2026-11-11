@@ -4,7 +4,6 @@ import { CashierLayout } from '@/layouts/cashier';
 import { DataTable } from '@/components/common';
 import toast from 'react-hot-toast';
 import { deleteOpdPatient, getAllOpdPatients } from '@/services/api/opdPatientAPI';
-import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { FaEdit, FaEye, FaTrash } from 'react-icons/fa';
 import KolakLoader from '@/components/common/KolakLoader';
@@ -13,7 +12,6 @@ const CashierOpdPatients = () => {
   const navigate = useNavigate();
   const [opdPatients, setOpdPatients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [serviceCharges, setServiceCharges] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,17 +20,6 @@ const CashierOpdPatients = () => {
         const patientsResponse = await getAllOpdPatients();
         const patientsData = Array.isArray(patientsResponse) ? patientsResponse : patientsResponse?.data ?? [];
         setOpdPatients(patientsData);
-
-        try {
-          const chargesResponse = await getServiceCharges();
-          const chargesData = chargesResponse?.data ?? chargesResponse ?? [];
-          const labCharges = chargesData.filter(
-            (item) => (item.category || '').toLowerCase() === 'laboratory'
-          );
-          setServiceCharges(labCharges);
-        } catch (error) {
-          console.error('Failed to load service charges:', error);
-        }
       } catch (error) {
         console.error('Failed to fetch OPD patients:', error);
         toast.error('Failed to load OPD patients');
@@ -160,11 +147,11 @@ const CashierOpdPatients = () => {
         </button>
       </div>
 
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
+      <div className="card bg-base-100 shadow-xl min-w-0">
+        <div className="card-body p-2 sm:p-4 min-w-0">
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="loading loading-spinner loading-lg"></div>
+            <div className="flex justify-center items-center py-20">
+              <KolakLoader size="lg" />
             </div>
           ) : opdPatients.length > 0 ? (
             <DataTable
@@ -174,7 +161,6 @@ const CashierOpdPatients = () => {
               sortable={true}
               paginated={true}
               initialEntriesPerPage={10}
-              maxHeight="max-h-96"
               showEntries={true}
               searchPlaceholder="Search OPD patients..."
             />

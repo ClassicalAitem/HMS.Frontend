@@ -265,25 +265,13 @@ const Incoming = () => {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
         {loading ? (
-          Array.from({ length: 9 }).map((_, idx) => (
-            <div key={idx} className="p-2 2xl:p-6 rounded-xl border shadow-lg border-text-content bg-base-100">
-              <div className="mb-4">
-                <div className="animate-pulse h-4 w-24 rounded bg-base-300" />
-              </div>
-              <div className="flex items-center mb-4 space-x-4">
-                <div className="w-16 h-16 rounded-full border-2 border-primary bg-base-300 animate-pulse" />
-                <div className="grid grid-cols-2 gap-4 w-full">
-                  <div className="animate-pulse h-3 w-32 rounded bg-base-300" />
-                  <div className="animate-pulse h-3 w-28 rounded bg-base-300" />
-                  <div className="animate-pulse h-3 w-24 rounded bg-base-300" />
-                  <div className="animate-pulse h-3 w-20 rounded bg-base-300" />
-                </div>
-              </div>
-              <div className="flex justify-center items-center mt-6 border-t border-primary/20">
-                <div className="animate-pulse h-4 w-44 rounded bg-base-300" />
-              </div>
-            </div>
-          ))
+          <div className="col-span-full py-16 flex justify-center items-center">
+            <KolakLoader size="lg" />
+          </div>
+        ) : currentPatients.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-base-content/60">
+            No incoming patients at this time
+          </div>
         ) : currentPatients.map((patient) => (
           <div key={`${patient.type}-${patient.id}`} className="p-4 2xl:p-6 rounded-xl border shadow-lg border-text-content bg-base-100">
             <div className="mb-4 flex items-center justify-between gap-2">

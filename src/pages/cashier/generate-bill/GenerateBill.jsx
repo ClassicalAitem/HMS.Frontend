@@ -1,44 +1,64 @@
-/* eslint-disable no-unused-vars */
-import React, { useState } from 'react';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/cashier/dashboard';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { CashierLayout } from '@/layouts/cashier';
 import { FaTimes, FaPlus, FaTrash, FaFileInvoice } from 'react-icons/fa';
-import { useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { createBill } from '@/services/api/billingAPI';
+import { getPatientById } from '@/services/api/patientsAPI';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const GenerateBill = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const { patientId } = useParams();
+
   const [billItems, setBillItems] = useState([
     { id: 1, category: '', description: '', rate: 0 },
     { id: 2, category: '', description: '', rate: 0 }
   ]);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [totalAmount, setTotalAmount] = useState(0);
-  const { patientId } = useParams();
+  const [patientData, setPatientData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  useEffect(() => {
+    if (!patientId) return;
+    const fetchPatient = async () => {
+      try {
+        setIsLoading(true);
+        const res = await getPatientById(patientId);
+        const p = res?.data?.data ?? res?.data;
+        if (p) setPatientData(p);
+      } catch (err) {
+        console.error('Failed to load patient:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPatient();
+  }, [patientId]);
 
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
-  // Sample patient data
-  const patient = {
-    id: patientId || "P-2025-002",
-    name: "Leslie Alexander",
-    photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=1000&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    gender: "Female",
-    phone: "09127911395",
-    insurance: "MedCare HMO",
+  const patient = patientData ? {
+    id: patientData.hospitalId || patientData.id || patientId,
+    name: `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim() || 'Unknown',
+    gender: patientData.gender || '—',
+    phone: patientData.phone || patientData.phoneNumber || '—',
+    insurance: Array.isArray(patientData.hmos) && patientData.hmos.length > 0
+      ? patientData.hmos.map(h => h.provider).filter(Boolean).join(', ')
+      : 'Self-pay',
+    status: patientData.status || 'Active'
+  } : {
+    id: patientId || "—",
+    name: "Patient",
+    gender: "—",
+    phone: "—",
+    insurance: "Self-pay",
     status: "Active"
   };
 
   const addBillItem = () => {
     const newItem = {
-      id: billItems.length + 1,
+      id: Date.now(),
       category: '',
       description: '',
       rate: 0
@@ -64,17 +84,18 @@ const GenerateBill = () => {
     return total;
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     calculateTotal();
   }, [billItems]);
 
   const handleGenerateBill = async () => {
-    try {
-      if (!patientId) {
-        toast.error('Missing patient ID');
-        return;
-      }
+    if (!patientId) {
+      toast.error('Missing patient ID');
+      return;
+    }
 
+    try {
+      setIsSubmitting(true);
       const items = billItems.map(({ category, description, rate }) => ({ category, description, rate }));
       const payload = { items, paymentMethod };
       const promise = createBill(patientId, payload);
@@ -84,182 +105,158 @@ const GenerateBill = () => {
         success: 'Bill generated successfully',
         error: (err) => err?.response?.data?.message || 'Failed to generate bill',
       }, { duration: 3000 });
+      
+      navigate(`/cashier/patient-details/${patientId}`);
     } catch (error) {
-      // Errors are handled by toast.promise
       console.error('GenerateBill: error generating bill', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-      
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-        
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-base-content 2xl:text-4xl">Generate Bill</h1>
-            <button className="btn btn-ghost btn-circle">
-              <FaTimes className="w-5 h-5" />
+    <CashierLayout>
+      {(isLoading || isSubmitting) && <KolakLoader fullscreen />}
+      <div className="flex flex-col min-w-0">
+        {/* Page Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Generate Bill</h1>
+            <p className="text-sm text-base-content/70">Create a billing statement for patient services</p>
+          </div>
+          <button onClick={() => navigate(-1)} className="btn btn-ghost btn-circle" title="Close">
+            <FaTimes className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Patient Information Card */}
+        <div className="p-4 sm:p-6 rounded-xl shadow-sm bg-base-100 border border-base-200 mb-6 min-w-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+                {patient.name.charAt(0)}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-base-content">{patient.name}</h2>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-1 text-xs text-base-content/70">
+                  <p>Gender: <span className="font-medium text-base-content">{patient.gender}</span></p>
+                  <p>Phone: <span className="font-medium text-base-content">{patient.phone}</span></p>
+                  <p>ID: <span className="font-medium font-mono text-base-content">{patient.id}</span></p>
+                  <p>Insurance: <span className="font-medium text-base-content">{patient.insurance}</span></p>
+                </div>
+              </div>
+            </div>
+            <span className="badge badge-info badge-sm capitalize">{patient.status}</span>
+          </div>
+        </div>
+
+        {/* Generate Bill Form */}
+        <div className="p-4 sm:p-6 rounded-xl shadow-sm bg-base-100 border border-base-200 min-w-0">
+          <h3 className="text-lg font-bold text-base-content mb-4">Bill Items</h3>
+          
+          {/* Bill Items */}
+          <div className="mb-6 space-y-3">
+            {billItems.map((item) => (
+              <div key={item.id} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center p-3 rounded-lg bg-base-200/40">
+                <div className="sm:col-span-4">
+                  <label className="text-xs font-medium text-base-content/60 mb-1 block sm:hidden">Category</label>
+                  <select
+                    value={item.category}
+                    onChange={(e) => updateBillItem(item.id, 'category', e.target.value)}
+                    className="select select-bordered select-sm w-full"
+                  >
+                    <option value="">Select Category</option>
+                    <option value="consultation">Consultation</option>
+                    <option value="lab">Lab Test</option>
+                    <option value="xray">X-Ray / Radiology</option>
+                    <option value="surgery">Surgery</option>
+                    <option value="medication">Medication / Pharmacy</option>
+                    <option value="admission">Admission / Bed</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-4">
+                  <label className="text-xs font-medium text-base-content/60 mb-1 block sm:hidden">Description</label>
+                  <input
+                    type="text"
+                    value={item.description}
+                    onChange={(e) => updateBillItem(item.id, 'description', e.target.value)}
+                    className="input input-bordered input-sm w-full"
+                    placeholder="Item description..."
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="text-xs font-medium text-base-content/60 mb-1 block sm:hidden">Rate (₦)</label>
+                  <input
+                    type="number"
+                    value={item.rate || ''}
+                    onChange={(e) => updateBillItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
+                    className="input input-bordered input-sm w-full"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="sm:col-span-1 flex justify-end">
+                  <button
+                    onClick={() => removeBillItem(item.id)}
+                    className="btn btn-ghost btn-xs text-error"
+                    disabled={billItems.length === 1}
+                    title="Remove item"
+                  >
+                    <FaTrash className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <button
+              onClick={addBillItem}
+              className="btn btn-outline btn-sm gap-2"
+            >
+              <FaPlus className="w-3 h-3" />
+              Add Item
             </button>
           </div>
 
-          {/* Patient Information Card */}
-          <div className="p-6 rounded-lg shadow-lg bg-base-200 mb-6">
-            <div className="flex items-center space-x-6">
-              <img
-                src={patient.photo}
-                alt={patient.name}
-                className="w-20 h-20 rounded-full object-cover"
+          {/* Payment Method and Total */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-base-200">
+            <div>
+              <label className="block text-xs font-medium text-base-content/70 mb-1">Payment Method</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="select select-bordered select-sm w-full"
+              >
+                <option value="">Select Payment Method</option>
+                <option value="cash">Cash</option>
+                <option value="bank-transfer">Bank Transfer</option>
+                <option value="debit-card">Debit Card / POS</option>
+                <option value="hmo">HMO / Corporate</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-base-content/70 mb-1">Total Amount</label>
+              <input
+                type="text"
+                value={`₦${totalAmount.toLocaleString()}`}
+                className="input input-bordered input-sm w-full font-bold text-primary"
+                readOnly
               />
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold text-base-content">{patient.name}</h2>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div>
-                    <p className="text-sm text-base-content/70">Gender: {patient.gender}</p>
-                    <p className="text-sm text-base-content/70">Phone: {patient.phone}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-base-content/70">Patient ID: {patient.id}</p>
-                    <p className="text-sm text-base-content/70">Insurance: {patient.insurance}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="badge badge-info">Active</span>
-              </div>
             </div>
           </div>
 
-          {/* Generate Bill Form */}
-          <div className="p-6 rounded-lg shadow-lg bg-base-100">
-            <h3 className="text-xl font-bold text-base-content mb-6">Generate Patient Bill Here</h3>
-            
-            {/* Bill Items */}
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h4 className="text-lg font-semibold text-base-content">Bill Items</h4>
-                <button
-                  onClick={addBillItem}
-                  className="btn btn-primary btn-sm"
-                >
-                  <FaPlus className="w-4 h-4 mr-2" />
-                  Add item
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {billItems.map((item) => (
-                  <div key={item.id} className="grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-3">
-                      <select
-                        value={item.category}
-                        onChange={(e) => updateBillItem(item.id, 'category', e.target.value)}
-                        className="select select-bordered w-full"
-                      >
-                        <option value="">Select Category</option>
-                        <option value="consultation">Consultation</option>
-                        <option value="lab">Lab Test</option>
-                        <option value="xray">X-Ray</option>
-                        <option value="surgery">Surgery</option>
-                        <option value="medication">Medication</option>
-                      </select>
-                    </div>
-                    <div className="col-span-4">
-                      <select
-                        value={item.description}
-                        onChange={(e) => updateBillItem(item.id, 'description', e.target.value)}
-                        className="select select-bordered w-full"
-                      >
-                        <option value="">Select Description</option>
-                        <option value="general-consultation">General Consultation</option>
-                        <option value="blood-test">Blood Test</option>
-                        <option value="chest-xray">Chest X-Ray</option>
-                        <option value="minor-surgery">Minor Surgery</option>
-                        <option value="prescription">Prescription</option>
-                      </select>
-                    </div>
-                    <div className="col-span-3">
-                      <input
-                        type="number"
-                        value={item.rate}
-                        onChange={(e) => updateBillItem(item.id, 'rate', parseFloat(e.target.value) || 0)}
-                        className="input input-bordered w-full"
-                        placeholder="₦0.00"
-                      />
-                    </div>
-                    <div className="col-span-2 flex justify-end">
-                      <button
-                        onClick={() => removeBillItem(item.id)}
-                        className="btn btn-ghost btn-sm text-error"
-                        disabled={billItems.length === 1}
-                      >
-                        <FaTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Payment Method and Total */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-base-content mb-2">Payment Method</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="select select-bordered w-full"
-                >
-                  <option value="">Select Payment Method</option>
-                  <option value="cash">Cash</option>
-                  <option value="bank-transfer">Bank Transfer</option>
-                  <option value="debit-card">Debit Card</option>
-                  <option value="credit-card">Credit Card</option>
-                  <option value="hmo">HMO</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-base-content mb-2">Total Amount</label>
-                <input
-                  type="text"
-                  value={`₦${totalAmount.toLocaleString()}`}
-                  className="input input-bordered w-full"
-                  readOnly
-                />
-              </div>
-            </div>
-
-            {/* Generate Bill Button */}
-            <div className="mt-8">
-              <button className="btn btn-primary btn-lg w-full" onClick={handleGenerateBill}>
-                <FaFileInvoice className="w-5 h-5 mr-2" />
-                Generate Bill
-              </button>
-            </div>
+          {/* Generate Bill Button */}
+          <div className="mt-6">
+            <button
+              className="btn btn-primary w-full gap-2"
+              onClick={handleGenerateBill}
+              disabled={isSubmitting || totalAmount <= 0}
+            >
+              <FaFileInvoice className="w-4 h-4" />
+              Generate Bill
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </CashierLayout>
   );
 };
 
