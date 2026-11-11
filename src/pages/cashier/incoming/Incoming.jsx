@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { CashierLayout } from '@/layouts/cashier';
 import { Md6FtApart } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
-import { getPatients, updatePatientStatus } from '@/services/api/patientsAPI';
+import { getPatients, getPatientById, updatePatientStatus } from '@/services/api/patientsAPI';
 import { getDependants, updateDependantStatus } from '@/services/api/dependantAPI';
 import { formatNigeriaDateTime, formatNigeriaTime } from '@/utils/formatDateTimeUtils';
 import KolakLoader from '@/components/common/KolakLoader';
@@ -78,10 +78,32 @@ const Incoming = () => {
           statusSenderName: p?.statusSenderName,
         }));
 
+      // Fetch any missing parent patients for dependants whose parent is not in the active cashier list
+      const missingParentIds = Array.from(new Set(
+        dependants
+          .map(d => d?.patientId || d?.patient?.id)
+          .filter(id => id && !patientMap.has(id) && !dependants.find(dep => (dep?.patientId === id || dep?.patient?.id === id) && dep?.patient?.hospitalId))
+      ));
+
+      if (missingParentIds.length > 0) {
+        const fetchedParents = await Promise.allSettled(
+          missingParentIds.map(id => getPatientById(id))
+        );
+        fetchedParents.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const p = res.value?.data?.data ?? res.value?.data;
+            if (p && (p.id || p._id)) {
+              patientMap.set(p.id || p._id, p);
+            }
+          }
+        });
+      }
+
       const mappedDependants = dependants
         .filter(matchesStatus)
         .map((d) => {
-          const parentPatient = patientMap.get(d?.patientId);
+          const parentPatient = d?.patient || patientMap.get(d?.patientId);
+          const parentHospitalId = parentPatient?.hospitalId || d?.patient?.hospitalId || patientMap.get(d?.patientId)?.hospitalId;
           return {
             type: 'dependant',
             id: d?.id,
@@ -90,7 +112,7 @@ const Incoming = () => {
             snapshot: d,
             name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
             badge: d?.relationshipType || 'Dependant',
-            displayId: parentPatient?.hospitalId || d?.patientId || '—',
+            displayId: parentHospitalId || '—',
             photo: d?.profilePicture || d?.photo || 'https://randomuser.me/api/portraits/lego/1.jpg',
             gender: d?.gender || '—',
             phone: parentPatient?.phone || parentPatient?.phoneNumber || '—',

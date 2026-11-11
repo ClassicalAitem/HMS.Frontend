@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/common';
 import { Sidebar } from '@/components/doctor/dashboard';
 import { DataTable } from '@/components/common';
@@ -15,9 +15,57 @@ import { DoctorLayout } from '@/components/doctor/doctor';
 
 const PatientsHistory = () => {
   const navigate = useNavigate();
+  
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const searchInputRef = useRef(null);
+  const [query, setQuery] = useState(() => urlSearch || '');
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+
+    // Sync search query when URL search parameter changes
+    useEffect(() => {
+      if (urlSearch) {
+        setQuery(urlSearch);
+      }
+    }, [urlSearch]);
+  
+    // Listen to programmatic search trigger
+    useEffect(() => {
+      const handleApply = (e) => {
+        const q = e?.detail?.query ?? '';
+        setQuery(q);
+      };
+      window.addEventListener('apply-table-search', handleApply);
+      return () => window.removeEventListener('apply-table-search', handleApply);
+    }, []);
+  
+    // Listen to focus shortcut (Ctrl+K)
+    useEffect(() => {
+      const handleFocus = () => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+        }
+      };
+      window.addEventListener('focus-table-search', handleFocus);
+      return () => window.removeEventListener('focus-table-search', handleFocus);
+    }, []);
+  
+    // Real-time synchronization when typing in doctor patient search
+    const handleDoctorSearchChange = (val) => {
+      setQuery(val);
+      window.dispatchEvent(new CustomEvent('sync-header-search', { detail: { query: val } }));
+      const newUrl = new URL(window.location.href);
+      if (val.trim()) {
+        newUrl.searchParams.set('search', val.trim());
+      } else {
+        newUrl.searchParams.delete('search');
+      }
+      window.history.replaceState({}, '', newUrl.toString());
+    };
 
   // Fetch patients from backend
   useEffect(() => {

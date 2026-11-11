@@ -30,6 +30,15 @@ export const generateTreatmentBill = async (admissionId) => {
   return response.data ?? response
 }
 
+export const scheduleMedicationDoses = async (admissionId, payload) => {
+  if (!admissionId) throw new Error('Admission ID is required')
+  const response = await apiClient.post(
+    `/nurse/admissions/${admissionId}/schedule-medications`,
+    payload
+  )
+  return response.data?.data ?? response.data ?? response
+}
+
 export { orderTreatmentConsumables, getTreatmentConsumables }
 
 export default {
@@ -37,6 +46,7 @@ export default {
   administerMedication,
   getMedicationAdministrations,
   generateTreatmentBill,
+  scheduleMedicationDoses,
   orderTreatmentConsumables,
   getTreatmentConsumables,
 }

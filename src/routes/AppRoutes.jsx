@@ -50,7 +50,6 @@ const SendToPharmacy = lazy(() => import("@/pages/doctor/incoming/SendToPharmacy
 const SendToNurse = lazy(() => import("@/pages/doctor/incoming/SendToNurse"));
 const ConsultationDetails = lazy(() => import("@/pages/doctor/incoming/ConsultationDetails"));
 const ViewConsultation = lazy(() => import("@/pages/doctor/incoming/ViewConsultation"));
-const AllPatients = lazy(() => import("@/pages/doctor/allPatients/AllPatients"));
 const Appointment = lazy(() => import("@/pages/doctor/appiontments/Appointment"));
 const MedicalRecordHistory = lazy(() => import("@/pages/medical-director/incoming/MedicalRecordHistory"));
 const DRAdmittedList = lazy(() => import("@/pages/doctor/admitted/AdmittedList"));
@@ -433,6 +432,16 @@ const AppRoutes = () => {
           <NurseIncomingLabResults />
         </ProtectedRoute>
       } />
+      <Route path="/dashboard/nurse/labResults/:labResultId" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director']}>
+          <LabResultDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/nurse/view-lab-results/:patientId" element={
+        <ProtectedRoute allowedRoles={['nurse', 'doctor', 'medical-director']}>
+          <ViewAllLabResults />
+        </ProtectedRoute>
+      } />
 
 
 
@@ -583,11 +592,8 @@ const AppRoutes = () => {
           <AttendedToday />
         </ProtectedRoute>
       } />
-      <Route path="/dashboard/doctor/allPatients" element={
-        <ProtectedRoute allowedRoles={['doctor']}>
-          <AllPatients />
-        </ProtectedRoute>
-      } />
+     
+      
       <Route path="/dashboard/doctor/assign-task" element={
         <ProtectedRoute allowedRoles={['doctor']}>
           <Task />

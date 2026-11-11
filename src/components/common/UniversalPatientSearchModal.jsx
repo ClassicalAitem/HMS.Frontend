@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
 import { getPatients } from '@/services/api/patientsAPI';
 import { FaSearch, FaUser, FaTimes, FaSpinner, FaHospitalUser, FaPhoneAlt, FaIdCard, FaShieldAlt } from 'react-icons/fa';
+import { getRolePatientsPath } from './Header';
 
 const UniversalPatientSearchModal = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -100,8 +101,16 @@ const UniversalPatientSearchModal = ({ isOpen, onClose }) => {
       setSelectedIndex((prev) => (results.length > 0 ? (prev - 1 + results.length) % results.length : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
+      const trimmed = query.trim();
       if (results.length > 0 && results[selectedIndex]) {
         handleSelectPatient(results[selectedIndex]);
+      } else if (trimmed) {
+        const targetPath = getRolePatientsPath(normalizedRole);
+        onClose();
+        navigate(`${targetPath}?search=${encodeURIComponent(trimmed)}`);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('apply-table-search', { detail: { query: trimmed } }));
+        }, 50);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -253,14 +262,29 @@ const UniversalPatientSearchModal = ({ isOpen, onClose }) => {
           })}
         </div>
 
-        {/* Footer Navigation Hints */}
-        <div className="px-4 py-2.5 bg-base-200/50 border-t border-base-200 flex items-center justify-between text-[11px] text-base-content/60">
+        {/* Footer Navigation Hints & Direct Search Button */}
+        <div className="px-4 py-2.5 bg-base-200/50 border-t border-base-200 flex flex-wrap items-center justify-between gap-2 text-[11px] text-base-content/60">
           <div className="flex items-center gap-3">
             <span><kbd className="kbd kbd-xs">↑</kbd> <kbd className="kbd kbd-xs">↓</kbd> Navigate</span>
             <span><kbd className="kbd kbd-xs">Enter</kbd> Select</span>
             <span><kbd className="kbd kbd-xs">Esc</kbd> Close</span>
           </div>
-          <span>Fast Patient Lookup</span>
+          {query.trim() && (
+            <button
+              type="button"
+              onClick={() => {
+                const targetPath = getRolePatientsPath(normalizedRole);
+                onClose();
+                navigate(`${targetPath}?search=${encodeURIComponent(query.trim())}`);
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent('apply-table-search', { detail: { query: query.trim() } }));
+                }, 50);
+              }}
+              className="btn btn-primary btn-xs font-semibold"
+            >
+              Search "{query.trim()}" in Patients List ↵
+            </button>
+          )}
         </div>
       </div>
     </div>

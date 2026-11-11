@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
+import { getPatientById } from "@/services/api/patientsAPI";
 import { hasStatus } from "@/utils/statusUtils";
 import { formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import toast from "react-hot-toast";
@@ -64,19 +65,49 @@ const IncomingLaboratory = () => {
           return;
         }
 
+        const parentHospitalId = isDependant
+          ? (dependant?.patient?.hospitalId || patient?.hospitalId || '—')
+          : (patient?.hospitalId || subject.hospitalId || '—');
+
         subjectsById.set(key, {
           key,
           patientId,
           dependantId: isDependant ? dependantId : null,
           patientType: isDependant ? 'dependant' : 'patient',
           name: `${subject.firstName || ''} ${subject.lastName || ''}`.trim() || subject.fullName || subject.name || 'Unknown Patient',
-          hospitalId: patient?.hospitalId || subject.hospitalId || '—',
+          hospitalId: parentHospitalId,
           status: subject.status,
           requestCount: 1,
           latestRequestAt: requestedAt,
           updatedAt: subject.updatedAt || requestedAt,
         });
       });
+
+      // Resolve missing parent hospital IDs for dependants if needed
+      const missingParentIds = Array.from(subjectsById.values())
+        .filter(s => s.patientType === 'dependant' && (!s.hospitalId || s.hospitalId === '—') && s.patientId)
+        .map(s => s.patientId);
+
+      if (missingParentIds.length > 0) {
+        const fetched = await Promise.allSettled(
+          Array.from(new Set(missingParentIds)).map(id => getPatientById(id))
+        );
+        const parentMap = new Map();
+        fetched.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const p = res.value?.data?.data ?? res.value?.data;
+            if (p && (p.id || p._id) && p.hospitalId) {
+              parentMap.set(p.id || p._id, p.hospitalId);
+            }
+          }
+        });
+        subjectsById.forEach(s => {
+          if (s.patientType === 'dependant' && (!s.hospitalId || s.hospitalId === '—')) {
+            const hid = parentMap.get(s.patientId);
+            if (hid) s.hospitalId = hid;
+          }
+        });
+      }
 
       const incomingSubjects = Array.from(subjectsById.values())
         .sort((first, second) => new Date(second.updatedAt || second.latestRequestAt || 0) - new Date(first.updatedAt || first.latestRequestAt || 0));

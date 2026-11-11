@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FaSearch, FaSort, FaSortUp, FaSortDown, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
 
@@ -15,13 +16,67 @@ const DataTable = ({
   searchPlaceholder = "Search...",
   showEntries = true,
   maxHeight = "max-h-64 sm:max-h-72 md:max-h-80 lg:min-h-[50vh] 2xl:min-h-[60vh]", // Responsive default
-  onRowClick = null
+  onRowClick = null,
+  initialSearchTerm = ""
 }) => {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+
   // State for search, sorting, and pagination
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => initialSearchTerm || urlSearch || '');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [entriesPerPage, setEntriesPerPage] = useState(initialEntriesPerPage);
+  const searchInputRef = useRef(null);
+
+  // Sync searchTerm when URL search param changes
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchTerm(urlSearch);
+      setCurrentPage(1);
+    }
+  }, [urlSearch]);
+
+  // Listen to programmatically applied search (e.g. from Header search bar)
+  useEffect(() => {
+    const handleApplyTableSearch = (e) => {
+      const q = e?.detail?.query ?? '';
+      setSearchTerm(q);
+      setCurrentPage(1);
+    };
+    window.addEventListener('apply-table-search', handleApplyTableSearch);
+    return () => window.removeEventListener('apply-table-search', handleApplyTableSearch);
+  }, []);
+
+  // Listen for focus-table-search shortcut trigger (Ctrl+K)
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    };
+    window.addEventListener('focus-table-search', handleFocusSearch);
+    return () => window.removeEventListener('focus-table-search', handleFocusSearch);
+  }, []);
+
+  // Real-time synchronization when typing directly in DataTable
+  const handleTableSearchChange = (val) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+
+    // Two-way sync: update Header search bar live
+    window.dispatchEvent(new CustomEvent('sync-header-search', { detail: { query: val } }));
+
+    // In-place URL update without page reload
+    const newUrl = new URL(window.location.href);
+    if (val.trim()) {
+      newUrl.searchParams.set('search', val.trim());
+    } else {
+      newUrl.searchParams.delete('search');
+    }
+    window.history.replaceState({}, '', newUrl.toString());
+  };
 
   // Memoized data for performance
   const memoizedData = useMemo(() => data, [data]);
@@ -191,15 +246,18 @@ const DataTable = ({
               <FaSearch className="w-4 h-4 text-base-content/50" />
             </div>
             <input
+              ref={searchInputRef}
               type="text"
               placeholder={searchPlaceholder}
               value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => handleTableSearchChange(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
               className="pl-10 w-full input input-bordered input-sm"
             />
             {searchTerm && (
               <button
-                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                onClick={() => handleTableSearchChange('')}
                 className="absolute right-3 top-1/2 transition-colors transform -translate-y-1/2 text-base-content/50 hover:text-base-content"
               >
                 <IoClose className="w-4 h-4" />

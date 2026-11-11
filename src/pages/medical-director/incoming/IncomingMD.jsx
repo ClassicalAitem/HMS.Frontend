@@ -23,14 +23,6 @@ const prettifyStatus = (status) =>
     .map((s) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))
     .join(", ");
 
-const statusBadgeClass = (reason = "") => {
-  const r = reason.toLowerCase();
-  if (r.includes("completed")) return "badge-success";
-  if (r.includes("in consultation")) return "badge-info";
-  if (r.includes("awaiting")) return "badge-warning";
-  if (r.includes("surgery")) return "badge-secondary";
-  return "badge-neutral";
-};
 
 const IncomingMD = () => {
   const navigate = useNavigate();
@@ -41,7 +33,7 @@ const IncomingMD = () => {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [navigatingId, setNavigatingId] = useState(null);
-  const pageSize = 4;
+  const pageSize = 10;
 
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -105,6 +97,27 @@ const IncomingMD = () => {
 
         // Map dependants
         const patientMap = new Map(patients.map(p => [p.id || p._id, p]));
+
+        // Fetch any missing parent patients for dependants whose parent is not in the active MD queue
+        const missingParentIds = Array.from(new Set(
+          dependants
+            .map(d => d?.patientId || d?.patient?.id)
+            .filter(id => id && !patientMap.has(id) && !dependants.find(dep => (dep?.patientId === id || dep?.patient?.id === id) && dep?.patient?.hospitalId))
+        ));
+
+        if (missingParentIds.length > 0) {
+          const fetchedParents = await Promise.allSettled(
+            missingParentIds.map(id => getPatientById(id))
+          );
+          fetchedParents.forEach(res => {
+            if (res.status === 'fulfilled') {
+              const p = res.value?.data?.data ?? res.value?.data;
+              if (p && (p.id || p._id)) {
+                patientMap.set(p.id || p._id, p);
+              }
+            }
+          });
+        }
         
         const mappedDependants = dependants
           .filter((d) => {
@@ -113,7 +126,8 @@ const IncomingMD = () => {
           })
           
           .map((d) => {
-            const parentPatient = patientMap.get(d?.patientId);
+            const parentPatient = d?.patient || patientMap.get(d?.patientId);
+            const parentHospitalId = parentPatient?.hospitalId || d?.patient?.hospitalId || patientMap.get(d?.patientId)?.hospitalId;
 
             return {
             type: 'dependant',
@@ -121,10 +135,10 @@ const IncomingMD = () => {
             subjectId: d?.id,
             patientId: d?.patientId,          // parent patient ID (for navigation)
             dependantId: d?.id,
-            hospitalId: parentPatient?.hospitalId || null,
+            hospitalId: parentHospitalId || null,
             snapshot: d,
             name: `${d?.firstName || ""} ${d?.lastName || ""}`.trim() || "Unknown",
-            displayId: parentPatient?.hospitalId || d?.patientId || "—",
+            displayId: parentHospitalId || "—",
             reason: prettifyStatus(d?.status) || "Consultation",
             rawStatus: (typeof d?.status === "string" ? d.status : "").toLowerCase(),
             statusSenderName: d?.statusSenderName,

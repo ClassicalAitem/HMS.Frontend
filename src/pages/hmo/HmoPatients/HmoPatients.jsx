@@ -1,6 +1,6 @@
 // src/pages/hmo/history/HMOPatients.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RiFilterLine, RiCloseLine } from 'react-icons/ri';
 import { Header, DataTable } from '@/components/common';
 import Sidebar from '@/components/hmo/dashboard/Sidebar';
@@ -12,16 +12,50 @@ import KolakLoader from '@/components/common/KolakLoader';
 
 const HMOPatients = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const [currentQuery, setCurrentQuery] = useState(() => urlSearch || '');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('reviewed'); // 'reviewed' | 'all'
+  const [activeTab, setActiveTab] = useState('all_patients'); // Default to 'all_patients' (normal hospital registry)
   const [records, setRecords] = useState([]);
   const [allPeople, setAllPeople] = useState([]);
   const [dateFilter, setDateFilter] = useState('all');
   const [decisionFilter, setDecisionFilter] = useState('all');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+
+  // If a search term is present in the URL, automatically switch to All Patients
+  useEffect(() => {
+    if (urlSearch) {
+      setCurrentQuery(urlSearch);
+      setActiveTab('all_patients');
+    }
+  }, [urlSearch]);
+
+  // Two-way sync with Header search bar & shortcuts
+  useEffect(() => {
+    const handleApplyTableSearch = (e) => {
+      const q = (e?.detail?.query ?? '').trim();
+      setCurrentQuery(q);
+      if (q) {
+        setActiveTab('all_patients');
+      }
+    };
+
+    const handleSyncHeaderSearch = (e) => {
+      const q = e?.detail?.query ?? '';
+      setCurrentQuery(q);
+    };
+
+    window.addEventListener('apply-table-search', handleApplyTableSearch);
+    window.addEventListener('sync-header-search', handleSyncHeaderSearch);
+    return () => {
+      window.removeEventListener('apply-table-search', handleApplyTableSearch);
+      window.removeEventListener('sync-header-search', handleSyncHeaderSearch);
+    };
+  }, []);
 
   const activeFilterCount =
     (dateFilter !== 'all' ? 1 : 0) +
@@ -105,7 +139,12 @@ const HMOPatients = () => {
           type: isDependantBill ? 'dependant' : 'patient',
           relationshipType: dependant?.relationshipType || null,
           name,
+          firstName: isDependantBill ? dependant?.firstName : patient?.firstName,
+          lastName: isDependantBill ? dependant?.lastName : patient?.lastName,
+          hospitalId: patient?.hospitalId || patientMap.get(bill.patientId)?.hospitalId || '',
           displayId: patient?.hospitalId || patientMap.get(bill.patientId)?.hospitalId || '—',
+          phone: patient?.phone || patient?.phoneNumber || '',
+          phoneNumber: patient?.phoneNumber || patient?.phone || '',
           decision: overallDecision,
           claimStatus,
           totalAmount: Number(bill.totalAmount || 0),
@@ -131,7 +170,15 @@ const HMOPatients = () => {
         type: 'patient',
         relationshipType: null,
         name: `${p?.firstName || ''} ${p?.lastName || ''}`.trim() || 'Unknown',
+        firstName: p?.firstName || '',
+        middleName: p?.middleName || '',
+        lastName: p?.lastName || '',
+        hospitalId: p?.hospitalId || '',
         displayId: p?.hospitalId || p?.id || '—',
+        phone: p?.phone || p?.phoneNumber || '',
+        phoneNumber: p?.phoneNumber || p?.phone || '',
+        email: p?.email || '',
+        gender: p?.gender || '',
         insurance: Array.isArray(p?.hmos) && p.hmos.length > 0
           ? [...new Set(p.hmos.map(h => h.provider).filter(Boolean))].join(', ')
           : 'Self-pay',
@@ -147,7 +194,15 @@ const HMOPatients = () => {
           type: 'dependant',
           relationshipType: d?.relationshipType || null,
           name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
+          firstName: d?.firstName || '',
+          middleName: d?.middleName || '',
+          lastName: d?.lastName || '',
+          hospitalId: parentPatient?.hospitalId || '',
           displayId: parentPatient?.hospitalId || d?.patientId || '—',
+          phone: d?.phone || d?.phoneNumber || parentPatient?.phone || parentPatient?.phoneNumber || '',
+          phoneNumber: d?.phoneNumber || d?.phone || parentPatient?.phoneNumber || parentPatient?.phone || '',
+          email: d?.email || parentPatient?.email || '',
+          gender: d?.gender || '',
           insurance: Array.isArray(parentPatient?.hmos) && parentPatient.hmos.length > 0
             ? [...new Set(parentPatient.hmos.map(h => h.provider).filter(Boolean))].join(', ')
             : 'Self-pay',
@@ -322,6 +377,13 @@ const HMOPatients = () => {
       className: 'text-base-content/70',
     },
     {
+      key: 'phone',
+      title: 'Phone Number',
+      sortable: true,
+      className: 'text-base-content/70',
+      render: (value, row) => row.phone || row.phoneNumber || '—',
+    },
+    {
       key: 'createdAt',
       title: 'Registered',
       sortable: true,
@@ -371,9 +433,9 @@ const HMOPatients = () => {
             <div>
               <h1 className="text-2xl font-semibold sm:text-3xl">Patients</h1>
               <p className="text-sm text-base-content/70 sm:text-base">
-                {activeTab === 'reviewed'
-                  ? 'Patients whose billing items have been reviewed.'
-                  : 'All patients and dependants registered at the hospital.'}
+                {activeTab === 'all_patients'
+                  ? 'All patients and dependants registered at the hospital.'
+                  : 'Patients whose billing items have been reviewed.'}
               </p>
             </div>
             <div className="flex gap-2">
@@ -388,16 +450,6 @@ const HMOPatients = () => {
 
           <div className="flex gap-2 mb-6">
             <button
-              onClick={() => setActiveTab('reviewed')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                activeTab === 'reviewed'
-                  ? 'bg-primary text-primary-content'
-                  : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
-              }`}
-            >
-              Reviewed Patients {records.length > 0 && `(${records.length})`}
-            </button>
-            <button
               onClick={() => setActiveTab('all_patients')}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 activeTab === 'all_patients'
@@ -406,6 +458,16 @@ const HMOPatients = () => {
               }`}
             >
               All Patients {allPeople.length > 0 && `(${allPeople.length})`}
+            </button>
+            <button
+              onClick={() => setActiveTab('reviewed')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'reviewed'
+                  ? 'bg-primary text-primary-content'
+                  : 'bg-base-100 text-base-content/70 border border-base-300 hover:bg-base-200'
+              }`}
+            >
+              Reviewed Patients {records.length > 0 && `(${records.length})`}
             </button>
           </div>
 
@@ -528,30 +590,49 @@ const HMOPatients = () => {
                     ))}
                   </div>
                 </div>
-              ) : activeTab === 'reviewed' ? (
+              ) : activeTab === 'all_patients' ? (
                 <DataTable
-                  data={filteredRecords}
-                  columns={reviewedColumns}
-                  searchable={true}
-                  sortable={true}
-                  paginated={true}
-                  initialEntriesPerPage={14}
-                  maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
-                  showEntries={true}
-                  searchPlaceholder="Search by name or ID..."
-                />
-              ) : (
-                <DataTable
+                  key="all-patients-table"
                   data={allPeople}
                   columns={allPeopleColumns}
                   searchable={true}
                   sortable={true}
                   paginated={true}
                   initialEntriesPerPage={14}
+                  initialSearchTerm={currentQuery}
                   maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
                   showEntries={true}
-                  searchPlaceholder="Search by name or ID..."
+                  searchPlaceholder="Search patients by name, ID, or phone..."
                 />
+              ) : (
+                <>
+                  {currentQuery.trim() && (
+                    <div className="alert alert-info/10 border border-info/30 text-xs sm:text-sm py-2 px-3 rounded-lg mb-3 flex items-center justify-between">
+                      <span>
+                        Searching in Reviewed Patients. Looking for this patient in the general hospital registry?
+                      </span>
+                      <button
+                        onClick={() => setActiveTab('all_patients')}
+                        className="btn btn-xs btn-primary font-medium"
+                      >
+                        Search All Patients ({allPeople.length}) →
+                      </button>
+                    </div>
+                  )}
+                  <DataTable
+                    key="reviewed-patients-table"
+                    data={filteredRecords}
+                    columns={reviewedColumns}
+                    searchable={true}
+                    sortable={true}
+                    paginated={true}
+                    initialEntriesPerPage={14}
+                    initialSearchTerm={currentQuery}
+                    maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
+                    showEntries={true}
+                    searchPlaceholder="Search reviewed patients by name or ID..."
+                  />
+                </>
               )}
             </div>
           </div>

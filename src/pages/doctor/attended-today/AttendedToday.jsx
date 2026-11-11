@@ -271,13 +271,26 @@ const enriched = useMemo(
                 className="input input-bordered input-sm pl-9 w-full"
               />
             </div>
-            <div className="flex items-center gap-2 justify-between sm:justify-start">
+            <div className="flex items-center gap-2 justify-between sm:justify-end sm:ml-auto flex-wrap">
               {query && (
                 <button onClick={() => setQuery("")} className="btn btn-ghost btn-sm flex-1 sm:flex-none">
                   Clear
                 </button>
               )}
-              <button onClick={onRefresh} className="btn btn-outline btn-sm sm:ml-auto w-full sm:w-auto">
+              {/* Attended Today Count Badge */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20 text-primary font-semibold text-xs sm:text-sm">
+                <FaUserCheck className="w-3.5 h-3.5" />
+                <span>Attended Today:</span>
+                <span className="badge badge-primary badge-sm font-bold text-primary-content">
+                  {events.length}
+                </span>
+                {query && filteredItems.length !== events.length && (
+                  <span className="text-[11px] opacity-75">
+                    ({filteredItems.length} matching)
+                  </span>
+                )}
+              </div>
+              <button onClick={onRefresh} className="btn btn-outline btn-sm w-full sm:w-auto">
                 Refresh
               </button>
             </div>

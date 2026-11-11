@@ -10,8 +10,9 @@ import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import ConfirmAdmissionModal from '@/pages/nurse/admitted/modal/ConfirmAdmissionModal'
 import WardBedBoard from '@/components/admitted/WardBedBoard'
+import MedicationDoseScheduleTab from '@/components/admitted/MedicationDoseScheduleTab'
 import toast from 'react-hot-toast'
-import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock, FaTh } from 'react-icons/fa'
+import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock, FaTh, FaPills } from 'react-icons/fa'
 
 const AdmittedList = () => {
   const navigate = useNavigate()
@@ -217,13 +218,14 @@ const AdmittedList = () => {
 
   useEffect(() => { setCurrentPage(1) }, [activeTab, search])
 
-  const openAdmission = (item) => {
+  const openAdmission = (item, targetTab) => {
     navigate(`/dashboard/nurse/admitted/${item.patientId}`, {
       state: {
         admission: item.admission,
         dependantId: item.dependantId,
         dependantSnapshot: item.type === 'dependant' ? item.raw : null,
         patientSnapshot: item.parentPatient || (item.type === 'patient' ? item.raw : null),
+        activeTab: targetTab || (activeTab === 'medication-schedule' ? 'treatment' : undefined),
         from: 'admitted',
       }
     })
@@ -348,6 +350,17 @@ const AdmittedList = () => {
                   <FaTh className="w-3.5 h-3.5" />
                   Ward Bed Board
                 </button>
+                <button
+                  onClick={() => setActiveTab('medication-schedule')}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap ${
+                    activeTab === 'medication-schedule'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  <FaPills className="w-3.5 h-3.5" />
+                  Next Medication Doses
+                </button>
               </div>
 
               <div className="relative w-full sm:w-80">
@@ -364,6 +377,11 @@ const AdmittedList = () => {
 
             {activeTab === 'bed-board' ? (
               <WardBedBoard userRole="nurse" />
+            ) : activeTab === 'medication-schedule' ? (
+              <MedicationDoseScheduleTab
+                userRole="nurse"
+                onNavigateToAdmission={(item) => openAdmission(item)}
+              />
             ) : (
               <>
             {/* Mobile Card List (< lg) */}

@@ -126,7 +126,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full border-r border-base-200 bg-base-100 pt-16">
+    <div data-sidebar="true" className="flex flex-col w-64 h-full border-r border-base-200 bg-base-100 pt-16">
       {/* Kolak Logo Header */}
     
 

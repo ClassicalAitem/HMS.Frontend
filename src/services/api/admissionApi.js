@@ -141,6 +141,16 @@ export const getAdmissionSummaryData = async (admissionId) => {
   }
 }
 
+export const scheduleMedicationDoses = async (admissionId, payload) => {
+  try {
+    const response = await apiClient.post(`/admission/${admissionId}/schedule-medications`, payload)
+    return response.data ?? {}
+  } catch (err) {
+    console.error('admissionAPI: scheduleMedicationDoses error', err)
+    throw err
+  }
+}
+
 export default {
   getAdmissions,
   getAdmissionsForConsultation,
@@ -155,4 +165,5 @@ export default {
   createNurseReport,
   getNurseReports,
   getAdmissionSummaryData,
+  scheduleMedicationDoses,
 }

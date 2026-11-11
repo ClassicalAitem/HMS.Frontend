@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/common";
 import Sidebar from "@/components/sonographer/dashboard/Sidebar";
-import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
+import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import { getAllOpdPatients, updateOpdPatient } from "@/services/api/opdPatientAPI";
 import toast from "react-hot-toast";
@@ -64,10 +64,34 @@ const SonographerIncoming = () => {
         };
       });
 
+      const patientMap = new Map(rawPatients.map((p) => [p.id || p._id, p]));
+
+      // Fetch any missing parent patients for dependants
+      const missingParentIds = Array.from(new Set(
+        rawDependants
+          .map(d => d?.patientId || d?.patient?.id)
+          .filter(id => id && !patientMap.has(id) && !rawDependants.find(dep => (dep?.patientId === id || dep?.patient?.id === id) && dep?.patient?.hospitalId))
+      ));
+
+      if (missingParentIds.length > 0) {
+        const fetchedParents = await Promise.allSettled(
+          missingParentIds.map(id => getPatientById(id))
+        );
+        fetchedParents.forEach(res => {
+          if (res.status === 'fulfilled') {
+            const p = res.value?.data?.data ?? res.value?.data;
+            if (p && (p.id || p._id)) {
+              patientMap.set(p.id || p._id, p);
+            }
+          }
+        });
+      }
+
       const dependantList = rawDependants.map((d) => {
         const idVal = d.id || d._id;
         const nameVal = `${d.firstName || ""} ${d.lastName || ""}`.trim() || d.fullName || "Unknown Dependant";
-        const parent = d.patient || {};
+        const parent = d.patient || patientMap.get(d.patientId) || {};
+        const parentHospitalId = parent.hospitalId || d.patient?.hospitalId || patientMap.get(d.patientId)?.hospitalId;
         return {
           ...d,
           id: idVal,
@@ -75,7 +99,7 @@ const SonographerIncoming = () => {
           patientId: d.patientId || parent.id || parent._id,
           patientType: "dependant",
           displayName: nameVal,
-          displayId: d.hospitalId || parent.hospitalId || d.patientId || idVal,
+          displayId: parentHospitalId || "—",
           cardType: parent.cardType || d.cardType || "personal",
           dependantInfo: {
             id: idVal,

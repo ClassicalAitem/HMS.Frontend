@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import {
   FaSearch,
@@ -18,13 +19,54 @@ import { exportRowsToCsv } from "../reports/adminReportUtils";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const AdminPatients = () => {
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const searchInputRef = useRef(null);
   const [patients, setPatients] = useState([]);
   const [dependants, setDependants] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(() => urlSearch || "");
   const [filterType, setFilterType] = useState("all"); // 'all', 'principal', 'dependant', 'hmo', 'private'
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+
+  useEffect(() => {
+    if (urlSearch) setSearchTerm(urlSearch);
+  }, [urlSearch]);
+
+  useEffect(() => {
+    const handleApply = (e) => {
+      const q = e?.detail?.query ?? '';
+      setSearchTerm(q);
+      setCurrentPage(1);
+    };
+    window.addEventListener('apply-table-search', handleApply);
+    return () => window.removeEventListener('apply-table-search', handleApply);
+  }, []);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    };
+    window.addEventListener('focus-table-search', handleFocus);
+    return () => window.removeEventListener('focus-table-search', handleFocus);
+  }, []);
+
+  const handleAdminSearchChange = (val) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+    window.dispatchEvent(new CustomEvent('sync-header-search', { detail: { query: val } }));
+    const newUrl = new URL(window.location.href);
+    if (val.trim()) {
+      newUrl.searchParams.set('search', val.trim());
+    } else {
+      newUrl.searchParams.delete('search');
+    }
+    window.history.replaceState({}, '', newUrl.toString());
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -200,13 +242,13 @@ const AdminPatients = () => {
           <div className="flex-1 relative">
             <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 w-4 h-4" />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search by patient name, hospital ID, phone, or scheme..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => handleAdminSearchChange(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
               className="input input-sm w-full pl-10 bg-base-200/50 border-base-300 rounded-lg"
             />
           </div>

@@ -332,4 +332,24 @@ dialog::backdrop {
   background-color: rgba(0, 0, 0, 0.55) !important;
 }
 
+/* ==========================================================================
+   Clinical Documentation & Note Typography
+   Ensures textareas and inputs have clear, legible font size and heavier bold stroke
+   ========================================================================== */
+textarea.textarea,
+textarea,
+.clinical-note-input {
+  font-size: 0.935rem !important;
+  line-height: 1.6 !important;
+  letter-spacing: 0.01em;
+}
+
+/* Clear selection highlight color */
+::selection {
+  background-color: rgba(0, 148, 60, 0.28);
+  color: inherit;
+}
+
+
+
 

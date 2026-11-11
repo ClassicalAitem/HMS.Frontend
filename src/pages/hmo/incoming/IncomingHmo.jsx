@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/hmo/dashboard/Sidebar";
 import { RiSuitcaseLine, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
-import { getPatients, updatePatientStatus } from "@/services/api/patientsAPI";
+import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { normalizeStatus, getStatusBadgeClass, getStatusDisplayText } from "@/utils/statusUtils";
 import { PatientStatusBadge } from "@/components/common";
@@ -84,17 +84,40 @@ const IncomingHmo = () => {
 
         const patientMap = new Map(allPatients.map(p => [p.id || p._id, p]));
 
+        // Fetch any missing parent patients for dependants whose parent is not in the active HMO list
+        const missingParentIds = Array.from(new Set(
+          allDependants
+            .map(d => d?.patientId || d?.patient?.id)
+            .filter(id => id && !patientMap.has(id) && !allDependants.find(dep => (dep?.patientId === id || dep?.patient?.id === id) && dep?.patient?.hospitalId))
+        ));
+
+        if (missingParentIds.length > 0) {
+          const fetchedParents = await Promise.allSettled(
+            missingParentIds.map(id => getPatientById(id))
+          );
+          fetchedParents.forEach(res => {
+            if (res.status === 'fulfilled') {
+              const p = res.value?.data?.data ?? res.value?.data;
+              if (p && (p.id || p._id)) {
+                patientMap.set(p.id || p._id, p);
+              }
+            }
+          });
+        }
+
         const mappedDependants = allDependants
           .filter((d) => hmoStatuses.includes(normalizeStatus(d?.status)))
           .map((d) => {
-            const parentPatient = patientMap.get(d?.patientId);
+            const parentPatient = d?.patient || patientMap.get(d?.patientId);
+            const parentHospitalId = parentPatient?.hospitalId || d?.patient?.hospitalId || patientMap.get(d?.patientId)?.hospitalId;
             return {
               type: 'dependant',
               id: d?.id,
               patientId: d?.patientId,
               dependantId: d?.id,
+              hospitalId: parentHospitalId || null,
               name: `${d?.firstName || ""} ${d?.lastName || ""}`.trim() || "Unknown",
-              displayId: parentPatient?.hospitalId || d?.patientId || "—",
+              displayId: parentHospitalId || "—",
               badge: d?.relationshipType || 'Dependant',
               status: normalizeStatus(d?.status),
               insurance: d?.hmos?.provider || "—",

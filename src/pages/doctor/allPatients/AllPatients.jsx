@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Header, EmptyState, DataTable } from "@/components/common";
 import Sidebar from "@/components/doctor/dashboard/Sidebar";
 import { RiSearchLine } from 'react-icons/ri';
@@ -10,12 +10,57 @@ import { DoctorLayout } from '@/components/doctor/doctor';
 
 const AllPatients = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+  const searchInputRef = useRef(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => urlSearch || '');
   const [page, setPage] = useState(0);
   const pageSize = 9;
+
+  // Sync search query when URL search parameter changes
+  useEffect(() => {
+    if (urlSearch) {
+      setQuery(urlSearch);
+    }
+  }, [urlSearch]);
+
+  // Listen to programmatic search trigger
+  useEffect(() => {
+    const handleApply = (e) => {
+      const q = e?.detail?.query ?? '';
+      setQuery(q);
+    };
+    window.addEventListener('apply-table-search', handleApply);
+    return () => window.removeEventListener('apply-table-search', handleApply);
+  }, []);
+
+  // Listen to focus shortcut (Ctrl+K)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+      }
+    };
+    window.addEventListener('focus-table-search', handleFocus);
+    return () => window.removeEventListener('focus-table-search', handleFocus);
+  }, []);
+
+  // Real-time synchronization when typing in doctor patient search
+  const handleDoctorSearchChange = (val) => {
+    setQuery(val);
+    window.dispatchEvent(new CustomEvent('sync-header-search', { detail: { query: val } }));
+    const newUrl = new URL(window.location.href);
+    if (val.trim()) {
+      newUrl.searchParams.set('search', val.trim());
+    } else {
+      newUrl.searchParams.delete('search');
+    }
+    window.history.replaceState({}, '', newUrl.toString());
+  };
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -178,10 +223,10 @@ const AllPatients = () => {
             <div className="mt-4 flex items-center gap-2">
               <div className="relative w-full max-w-xs">
                 <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/50" />
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patients" className="input input-bordered input-sm pl-9 w-full" />
+                <input ref={searchInputRef} value={query} onChange={(e) => handleDoctorSearchChange(e.target.value)} placeholder="Search patients" autoComplete="off" spellCheck={false} className="input input-bordered input-sm pl-9 w-full" />
               </div>
               {query && (
-                <button onClick={() => setQuery('')} className="btn btn-ghost btn-xs">Clear</button>
+                <button onClick={() => handleDoctorSearchChange('')} className="btn btn-ghost btn-xs">Clear</button>
               )}
             </div>
 

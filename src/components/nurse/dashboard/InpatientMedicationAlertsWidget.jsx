@@ -232,6 +232,11 @@ const InpatientMedicationAlertsWidget = () => {
                       ID: {alert.hospitalId}
                     </span>
                   </div>
+                  {alert.reminderBasis && (
+                    <p className="text-[10px] text-primary font-medium truncate">
+                      ⚡ {alert.reminderBasis}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -264,6 +269,7 @@ const InpatientMedicationAlertsWidget = () => {
                         state: {
                           admission: { _id: alert.admissionId },
                           dependantId: alert.dependantId,
+                          activeTab: 'treatment',
                         },
                       })
                     }

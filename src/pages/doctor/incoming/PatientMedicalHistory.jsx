@@ -1241,7 +1241,8 @@ const dependant = isDependant
             </div>
           )}
 
-          <MedicalHistoryTable
+          <div id="chart-tab-consultations" className="scroll-mt-36">
+            <MedicalHistoryTable
               rows={useMemo(() => (
                 Array.isArray(consultations) ? consultations.map((c) => {
                   const createdTime = c?.createdAt ? new Date(c.createdAt).getTime() : 0;
@@ -1313,8 +1314,8 @@ const dependant = isDependant
                 },
               }
             )}
-
             />
+          </div>
 
           <VitalsHistoryTable 
             sortedVitals={enrichedVitals} 
@@ -1332,51 +1333,53 @@ const dependant = isDependant
 
       
 
-          <div className="shadow-xl card bg-base-100 mb-4">
-            <div className="p-4 card-body">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-base-content">Latest Lab Result</h3>
-                  {labLoading ? (
-                    <div className="skeleton h-4 w-48 mt-2" />
-                  ) : latestLab ? (
-                    <div className="text-sm text-base-content/70 space-y-2">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="badge badge-sm badge-outline">
-                          {latestLab?.forType}
-                        </span>
-                        <span className="font-semibold text-base-content">{latestLab?.forName}</span>
+          <div id="chart-tab-lab" className="scroll-mt-36">
+            <div className="shadow-xl card bg-base-100 mb-4">
+              <div className="p-4 card-body">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-base-content">Latest Lab Result</h3>
+                    {labLoading ? (
+                      <div className="skeleton h-4 w-48 mt-2" />
+                    ) : latestLab ? (
+                      <div className="text-sm text-base-content/70 space-y-2">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="badge badge-sm badge-outline">
+                            {latestLab?.forType}
+                          </span>
+                          <span className="font-semibold text-base-content">{latestLab?.forName}</span>
+                        </div>
+                        <div>
+                          {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
+                        </div>
                       </div>
-                      <div>
-                        {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-base-content/70">No lab results</div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
+                    ) : (
+                      <div className="text-sm text-base-content/70">No lab results</div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="btn btn-outline btn-sm"
+                      disabled={!latestLab}
+                      onClick={() => latestLab && navigate(`/dashboard/doctor/labResults/${latestLab?._id || latestLab?.id}`)}
+                    >
+                      View Lab Result
+                    </button>
+                   <button
                     className="btn btn-outline btn-sm"
-                    disabled={!latestLab}
-                    onClick={() => latestLab && navigate(`/dashboard/doctor/labResults/${latestLab?._id || latestLab?.id}`)}
+                    disabled={!labResults || labResults.length === 0}
+                    onClick={() => navigate(`/dashboard/doctor/view-lab-results/${patientId}`, {
+                      state: {
+                        from: fromIncoming ? "incoming" : "patients",
+                        patientSnapshot: patient,
+                        dependantId,
+                        dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                      },
+                    })}
                   >
-                    View Lab Result
+                    View All
                   </button>
-                 <button
-                  className="btn btn-outline btn-sm"
-                  disabled={!labResults || labResults.length === 0}
-                  onClick={() => navigate(`/dashboard/doctor/view-lab-results/${patientId}`, {
-                    state: {
-                      from: fromIncoming ? "incoming" : "patients",
-                      patientSnapshot: patient,
-                      dependantId,
-                      dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
-                    },
-                  })}
-                >
-                  View All
-                </button>
+                  </div>
                 </div>
               </div>
             </div>

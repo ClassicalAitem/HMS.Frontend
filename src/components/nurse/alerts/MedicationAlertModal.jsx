@@ -249,6 +249,12 @@ const MedicationAlertModal = ({
                       </span>
                     </div>
 
+                    {alert.reminderBasis && (
+                      <p className="text-[11px] text-primary font-medium mt-1">
+                        ⚡ {alert.reminderBasis}
+                      </p>
+                    )}
+
                     {alert.instructions && (
                       <p className="text-xs text-warning-content/90 bg-warning/10 rounded-md p-1.5 font-medium mt-1">
                         Note: {alert.instructions}

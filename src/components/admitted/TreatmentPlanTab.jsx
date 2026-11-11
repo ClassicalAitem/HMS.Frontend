@@ -25,6 +25,7 @@ import {
 import { getInventories } from '@/services/api/inventoryAPI';
 import { getBillingsByAdmissionId } from '@/services/api/billingAPI';
 import PaymentHmoStatusBadge from '@/components/common/PaymentHmoStatusBadge';
+import ScheduleMedicationModal from './ScheduleMedicationModal';
 
 const TIME_SLOTS = ['Morning', 'Midday', 'Afternoon', 'Evening', 'Night'];
 const SLOT_TIMINGS = { Morning: '08:00', Midday: '12:00', Afternoon: '16:00', Evening: '20:00', Night: '22:00' };
@@ -90,6 +91,12 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
   const [doseGiven, setDoseGiven] = useState(1);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scheduleModalData, setScheduleModalData] = useState({
+    isOpen: false,
+    prescription: null,
+    medication: null,
+    medicationIndex: 0,
+  });
 
   // State for dispense/administer records tracking
   const [administrations, setAdministrations] = useState([]);
@@ -417,6 +424,23 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
           </div>
 
           <div className="flex items-center gap-2">
+            {!isPharmacy && prescriptions.length > 0 && prescriptions[0]?.medications?.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setScheduleModalData({
+                    isOpen: true,
+                    prescription: prescriptions[0],
+                    medication: prescriptions[0].medications[0],
+                    medicationIndex: 0,
+                  })
+                }
+                className="btn btn-sm btn-outline btn-primary rounded-xl shadow-xs gap-2 font-semibold"
+              >
+                <FaClock className="w-3.5 h-3.5" />
+                Schedule Now
+              </button>
+            )}
             {!isPharmacy && (
               <button
                 type="button"
@@ -501,12 +525,31 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <h4 className="font-bold text-base-content text-lg">{med.drugName}</h4>
-                                <PaymentHmoStatusBadge
-                                  hmoStatus={medStatus.hmoStatus}
-                                  paymentStatus={medStatus.paymentStatus}
-                                  hasHmo={medStatus.hasHmo}
-                                  isPaid={medStatus.isPaid}
-                                />
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {!isPharmacy && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setScheduleModalData({
+                                          isOpen: true,
+                                          prescription,
+                                          medication: med,
+                                          medicationIndex: mIdx,
+                                        })
+                                      }
+                                      className="btn btn-xs btn-outline btn-primary rounded-lg font-bold gap-1.5 shadow-2xs hover:shadow-xs"
+                                    >
+                                      <FaClock className="w-3 h-3" />
+                                      Schedule Now
+                                    </button>
+                                  )}
+                                  <PaymentHmoStatusBadge
+                                    hmoStatus={medStatus.hmoStatus}
+                                    paymentStatus={medStatus.paymentStatus}
+                                    hasHmo={medStatus.hasHmo}
+                                    isPaid={medStatus.isPaid}
+                                  />
+                                </div>
                               </div>
                               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-base-content/70">
                                 <span>
@@ -525,13 +568,31 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
                                   Note: {med.instructions}
                                 </p>
                               )}
-                              <div className="flex items-center gap-4 mt-2.5">
+                              <div className="flex flex-wrap items-center gap-3 mt-2.5">
                                 <p className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
                                   Dispensed: {medDispenses.length || 0}
                                 </p>
                                 <p className="text-xs font-bold text-success bg-success/10 px-2 py-0.5 rounded">
                                   Administered: {medAdministrations.length || med.dosesGiven || 0}
                                 </p>
+
+                                {Array.isArray(med.scheduledTimes) && med.scheduledTimes.length > 0 && (
+                                  <span className="badge badge-sm badge-outline badge-primary font-semibold text-[11px] gap-1">
+                                    <FaClock className="w-2.5 h-2.5" /> Scheduled: {med.scheduledTimes.join(', ')}
+                                  </span>
+                                )}
+
+                                {med.lastAdministeredAt && (
+                                  <span className="badge badge-sm badge-success text-white font-semibold text-[11px] gap-1">
+                                    <FaCheckCircle className="w-2.5 h-2.5" /> Last Dose: {new Date(med.lastAdministeredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+
+                                {med.nextDoseAt && (
+                                  <span className="badge badge-sm badge-info text-white font-semibold text-[11px] gap-1">
+                                    <FaClock className="w-2.5 h-2.5" /> Next Reminder: {new Date(med.nextDoseAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1185,6 +1246,19 @@ const TreatmentPlanTab = ({ admissionId, isPharmacy = false, isNurse = true, isD
           ></div>
         </div>
       )}
+
+      {/* Schedule Medication Modal */}
+      <ScheduleMedicationModal
+        isOpen={scheduleModalData.isOpen}
+        onClose={() =>
+          setScheduleModalData({ isOpen: false, prescription: null, medication: null, medicationIndex: 0 })
+        }
+        admissionId={admissionId}
+        prescription={scheduleModalData.prescription}
+        medication={scheduleModalData.medication}
+        medicationIndex={scheduleModalData.medicationIndex}
+        onScheduleSuccess={fetchData}
+      />
     </div>
   );
 };

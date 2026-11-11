@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdInventory } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
-import { getPatients, updatePatientStatus } from '@/services/api/patientsAPI'
+import { getPatients, getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import KolakLoader from '@/components/common/KolakLoader'
@@ -65,25 +65,53 @@ const Incoming = () => {
         }))
 
         
+        const patientMap = new Map(patientList.map(p => [p.id || p._id, p]))
+
+        // Fetch any missing parent patients for dependants
+        const missingParentIds = Array.from(new Set(
+          dependantList
+            .map(d => d?.patientId || d?.patient?.id)
+            .filter(id => id && !patientMap.has(id) && !dependantList.find(dep => (dep?.patientId === id || dep?.patient?.id === id) && dep?.patient?.hospitalId))
+        ))
+
+        if (missingParentIds.length > 0) {
+          const fetchedParents = await Promise.allSettled(
+            missingParentIds.map(id => getPatientById(id))
+          );
+          fetchedParents.forEach(res => {
+            if (res.status === 'fulfilled') {
+              const p = res.value?.data?.data ?? res.value?.data;
+              if (p && (p.id || p._id)) {
+                patientMap.set(p.id || p._id, p);
+              }
+            }
+          });
+        }
+        
         const mappedDependants = dependantList
         .filter(d => PHARMACY_STATUSES.has(String(d?.status).toLowerCase()))
-        .map(d => ({
-          type: 'dependant',
-          id: d?.id,
-          patientId: d?.patientId,
-          dependantId: d?.id,
-          name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
-          displayId: d?.patient?.hospitalId || d?.patientId || '—',
-          badge: d?.relationshipType || 'Dependant',
-          status: d?.status || '—',
-          updatedAt: d?.updatedAt || d?.createdAt,
-          cardType: null,
-          familyName: '',
-          companyName: '',
-          snapshot: d,
-          statusUser: d?.statusUser,
-          statusSenderName: d?.statusSenderName,
-        }))
+        .map(d => {
+          const parentPatient = d?.patient || patientMap.get(d?.patientId);
+          const parentHospitalId = parentPatient?.hospitalId || d?.patient?.hospitalId || patientMap.get(d?.patientId)?.hospitalId;
+          return {
+            type: 'dependant',
+            id: d?.id,
+            patientId: d?.patientId,
+            dependantId: d?.id,
+            hospitalId: parentHospitalId || null,
+            name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
+            displayId: parentHospitalId || '—',
+            badge: d?.relationshipType || 'Dependant',
+            status: d?.status || '—',
+            updatedAt: d?.updatedAt || d?.createdAt,
+            cardType: null,
+            familyName: '',
+            companyName: '',
+            snapshot: d,
+            statusUser: d?.statusUser,
+            statusSenderName: d?.statusSenderName,
+          };
+        })
         const combined = [...mappedPatients, ...mappedDependants].sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime()
           const bTime = new Date(b.updatedAt || 0).getTime()

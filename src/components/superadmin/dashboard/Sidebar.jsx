@@ -113,7 +113,7 @@ const Sidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex flex-col w-64 h-full bg-base-100 border-r border-base-200 pt-16">
+    <div data-sidebar="true" className="flex flex-col w-64 h-full bg-base-100 border-r border-base-200 pt-16">
       {/* Navigation Menu */}
       <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-4 space-y-1.5">
         {menuItems.map((item, index) => (

@@ -8,6 +8,7 @@ import { getVitalsByPatient, createVital, updateVital, normalizeVitalsResponse, 
 import { getPatientById } from "@/services/api/patientsAPI";
 import { updatePatientStatus } from "@/services/api/patientsAPI";
 import { getConsultations } from "@/services/api/consultationAPI";
+import { getLabResults } from "@/services/api/labResultsAPI";
 import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
 import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import { getPrescriptionByPatientId } from "@/services/api/prescriptionsAPI";
@@ -100,6 +101,8 @@ const PatientVitalsDetails = () => {
   // Track if prescription/investigation failed to load
   const [prescriptionError, setPrescriptionError] = useState(false);
   const [investigationError, setInvestigationError] = useState(false);
+  const [labResults, setLabResults] = useState([]);
+  const [labLoading, setLabLoading] = useState(false);
 
 
 
@@ -480,6 +483,48 @@ useEffect(() => {
   };
 }, [patientId, isViewingDependant, dependantId]);
 
+  // Load lab results for nurse view
+  useEffect(() => {
+    let mounted = true;
+    const loadLabs = async () => {
+      const pid = resolvedPatientId || patientId;
+      if (!pid) return;
+      try {
+        setLabLoading(true);
+        const res = await getLabResults({ patientId: pid });
+        const raw = res?.data ?? res ?? [];
+        let list = Array.isArray(raw) ? raw : (raw?.data ?? []);
+        if (mounted) setLabResults(list);
+      } catch (err) {
+        console.warn("Failed to load lab results for nurse view", err);
+      } finally {
+        if (mounted) setLabLoading(false);
+      }
+    };
+    loadLabs();
+    return () => { mounted = false; };
+  }, [resolvedPatientId, patientId]);
+
+  const latestLab = useMemo(() => {
+    if (!Array.isArray(labResults) || labResults.length === 0) return null;
+    const sorted = labResults
+      .slice()
+      .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
+    const latest = sorted[0];
+    if (!latest) return null;
+
+    const isDep = isViewingDependant;
+    const forName = isDep
+      ? `${subject?.firstName || ''} ${subject?.lastName || ''}`.trim() || 'Dependant'
+      : `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient';
+
+    return {
+      ...latest,
+      forType: isDep ? 'Dependant' : 'Patient',
+      forName,
+    };
+  }, [labResults, isViewingDependant, subject, patient]);
+
 
   // Helper: Normalize API response structure
   const normalizeUserResponse = (response) => {
@@ -784,6 +829,59 @@ useEffect(() => {
 
              
                              <CurrentVitalsCard patient={summarySubject} latest={enrichedLatest} loading={loading} onRecordOpen={() => setIsRecordOpen(true)} buttonHidden={true} />
+            </div>
+          </div>
+
+          {/* Latest Lab Result Card for Nurses (matching Doctor's view) */}
+          <div className="shadow-xl card bg-base-100 mb-4 border border-base-200">
+            <div className="p-4 card-body">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-medium text-base-content">Latest Lab Result</h3>
+                  {labLoading ? (
+                    <div className="skeleton h-4 w-48 mt-2" />
+                  ) : latestLab ? (
+                    <div className="text-sm text-base-content/70 space-y-1.5 mt-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="badge badge-sm badge-outline">
+                          {latestLab?.forType}
+                        </span>
+                        <span className="font-semibold text-base-content">{latestLab?.forName}</span>
+                      </div>
+                      <div className="text-xs">
+                        {latestLab?.result?.[0]?.code || latestLab?.result?.[0]?.value || '—'} • {latestLab?.createdAt ? formatNigeriaDateTime(latestLab.createdAt) : '—'}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-base-content/70 mt-1">No lab results found for this patient</div>
+                  )}
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={!latestLab}
+                    onClick={() => latestLab && navigate(`/dashboard/nurse/labResults/${latestLab?._id || latestLab?.id}`, {
+                      state: { from: 'patient', patientSnapshot: patient, dependantId }
+                    })}
+                  >
+                    View Lab Result
+                  </button>
+                  <button
+                    className="btn btn-outline btn-sm"
+                    disabled={!labResults || labResults.length === 0}
+                    onClick={() => navigate(`/dashboard/nurse/view-lab-results/${patientId}`, {
+                      state: {
+                        from: "patients",
+                        patientSnapshot: patient,
+                        dependantId,
+                        dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                      },
+                    })}
+                  >
+                    View All
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 

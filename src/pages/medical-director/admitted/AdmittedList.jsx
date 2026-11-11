@@ -9,7 +9,8 @@ import { getVitals } from '@/services/api/vitalsAPI'
 import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import toast from 'react-hot-toast'
-import { FaBed, FaSearch, FaUserInjured, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock } from 'react-icons/fa'
+import MedicationDoseScheduleTab from '@/components/admitted/MedicationDoseScheduleTab'
+import { FaBed, FaSearch, FaUserInjured, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock, FaPills } from 'react-icons/fa'
 
 const MDAdmittedList = () => {
   const navigate = useNavigate()
@@ -213,13 +214,14 @@ const MDAdmittedList = () => {
 
   useEffect(() => { setCurrentPage(1) }, [activeTab, search])
 
-  const openAdmission = (item) => {
+  const openAdmission = (item, targetTab) => {
     navigate(`/dashboard/medical-director/admitted/${item.patientId}`, {
       state: {
         admission: item.admission,
         dependantId: item.dependantId,
         dependantSnapshot: item.type === 'dependant' ? item.raw : null,
         patientSnapshot: item.parentPatient || (item.type === 'patient' ? item.raw : null),
+        activeTab: targetTab || (activeTab === 'medication-schedule' ? 'treatment' : undefined),
         from: 'admitted',
       }
     })
@@ -331,6 +333,17 @@ const MDAdmittedList = () => {
                   <FaClock className="w-3.5 h-3.5 mr-1.5" />
                   Pending ({pending.length})
                 </button>
+                <button
+                  onClick={() => setActiveTab('medication-schedule')}
+                  className={`tab tab-sm sm:tab-md rounded-lg font-medium transition-all ${
+                    activeTab === 'medication-schedule'
+                      ? 'tab-active !bg-primary !text-white shadow-xs'
+                      : 'text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  <FaPills className="w-3.5 h-3.5 mr-1.5" />
+                  Next Medication Doses
+                </button>
               </div>
 
               {/* Search Box */}
@@ -347,7 +360,12 @@ const MDAdmittedList = () => {
             </div>
 
             {/* Content Table / Cards */}
-            {filtered.length === 0 ? (
+            {activeTab === 'medication-schedule' ? (
+              <MedicationDoseScheduleTab
+                userRole="medical-director"
+                onNavigateToAdmission={(item) => openAdmission(item)}
+              />
+            ) : filtered.length === 0 ? (
               <div className="bg-base-100 rounded-2xl p-12 text-center shadow-sm border border-base-200 space-y-3">
                 <FaBed className="w-12 h-12 text-base-content/20 mx-auto" />
                 <h3 className="font-semibold text-base-content text-base">

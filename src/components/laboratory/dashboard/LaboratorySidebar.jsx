@@ -128,7 +128,7 @@ const LaboratorySidebar = ({ onCloseSidebar }) => {
   );
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-base-200 bg-base-100 pt-16">
+    <div data-sidebar="true" className="flex h-full w-64 flex-col border-r border-base-200 bg-base-100 pt-16">
       {/* Logo */}
   
 

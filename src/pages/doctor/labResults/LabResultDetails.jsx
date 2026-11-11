@@ -8,6 +8,8 @@ import { getDependantById } from "@/services/api/dependantAPI";
 import SendLabResultsModal from "@/components/modals/SendLabResultsModal";
 import AttachmentViewerModal from "@/components/modals/AttachmentViewerModal";
 import { Sidebar } from "@/components/doctor/dashboard";
+import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
+import { useAppSelector } from "@/store/hooks";
 import { FaFileImage } from "react-icons/fa";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import { getLabResultColor, ranges } from "@/utils/labResultHelper";
@@ -29,6 +31,9 @@ const LabResultDetails = () => {
   const [isLoadingFiles, setIsLoadingFiles] = useState(false);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
+  const normalizedRole = (user?.role || user?.accountType || '').toLowerCase().trim();
+  const isNurse = normalizedRole === 'nurse';
 
   const toggleSidebar = () => setIsSidebarOpen((value) => !value);
   const closeSidebar = () => setIsSidebarOpen(false);
@@ -364,7 +369,7 @@ const displayAttachments = () => {
     return (
       <div className="flex h-screen bg-base-200">
         <div className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <Sidebar />
+          {isNurse ? <NurseSidebar /> : <Sidebar />}
         </div>
         <div className="flex overflow-hidden flex-col flex-1 min-w-0">
           <Header onToggleSidebar={toggleSidebar} />
@@ -380,7 +385,7 @@ const displayAttachments = () => {
     return (
       <div className="flex h-screen bg-base-200">
         <div className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <Sidebar />
+          {isNurse ? <NurseSidebar /> : <Sidebar />}
         </div>
         <div className="flex overflow-hidden flex-col flex-1 min-w-0">
           <Header onToggleSidebar={toggleSidebar} />
@@ -422,7 +427,7 @@ const displayAttachments = () => {
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
       )}
       <div className={`lab-sidebar fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar />
+        {isNurse ? <NurseSidebar /> : <Sidebar />}
       </div>
 
       <div className="lab-main flex overflow-hidden flex-col flex-1 min-w-0">

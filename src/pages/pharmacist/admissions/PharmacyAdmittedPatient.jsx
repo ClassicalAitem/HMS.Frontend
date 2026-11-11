@@ -36,6 +36,24 @@ const PharmacyAdmittedPatient = () => {
     return () => cancelAnimationFrame(id);
   }, []);
 
+  // Listen to keyboard shortcuts to switch admission tabs (Alt+1 to Alt+4)
+  useEffect(() => {
+    const handleSwitchAdmissionTab = (e) => {
+      const num = e?.detail?.tabNum;
+      const tabMap = {
+        1: 'treatment',
+        2: 'blood',
+        3: 'iv-fluids',
+        4: 'ebt',
+      };
+      if (num && tabMap[num]) {
+        setActiveTab(tabMap[num]);
+      }
+    };
+    window.addEventListener('switch-admission-tab', handleSwitchAdmissionTab);
+    return () => window.removeEventListener('switch-admission-tab', handleSwitchAdmissionTab);
+  }, []);
+
   const loadPatient = async () => {
     try {
       const res = await getPatientById(patientId);
@@ -164,42 +182,50 @@ const PharmacyAdmittedPatient = () => {
             <div className="flex gap-2 border-b border-base-200">
               <button
                 onClick={() => setActiveTab('treatment')}
+                title="Alt + 1"
                 className={`btn btn-sm rounded-none border-b-2 font-bold ${
                   activeTab === 'treatment'
                     ? 'btn-ghost border-primary text-primary'
                     : 'btn-ghost border-transparent text-base-content/60'
                 }`}
               >
+                <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+1</span>
                 Treatment Plans
               </button>
               <button
                 onClick={() => setActiveTab('blood')}
+                title="Alt + 2"
                 className={`btn btn-sm rounded-none border-b-2 font-bold ${
                   activeTab === 'blood'
                     ? 'btn-ghost border-error text-error'
                     : 'btn-ghost border-transparent text-base-content/60'
                 }`}
               >
+                <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+2</span>
                 <FaDroplet className="w-3.5 h-3.5" /> Blood Transfusion Preps
               </button>
               <button
                 onClick={() => setActiveTab('iv-fluids')}
+                title="Alt + 3"
                 className={`btn btn-sm rounded-none border-b-2 font-bold ${
                   activeTab === 'iv-fluids'
                     ? 'btn-ghost border-info text-info'
                     : 'btn-ghost border-transparent text-base-content/60'
                 }`}
               >
+                <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+3</span>
                 <FaTint className="w-3.5 h-3.5" /> IV Fluids Consumables
               </button>
               <button
                 onClick={() => setActiveTab('ebt')}
+                title="Alt + 4"
                 className={`btn btn-sm rounded-none border-b-2 font-bold ${
                   activeTab === 'ebt'
                     ? 'btn-ghost border-secondary text-secondary'
                     : 'btn-ghost border-transparent text-base-content/60'
                 }`}
               >
+                <span className="opacity-75 font-mono text-[10px] bg-base-300/60 px-1 py-0.5 rounded">Alt+4</span>
                 <FaExchangeAlt className="w-3.5 h-3.5" /> EBT Consumables
               </button>
             </div>

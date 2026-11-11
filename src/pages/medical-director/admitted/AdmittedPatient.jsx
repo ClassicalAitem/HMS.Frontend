@@ -50,7 +50,7 @@ const MDAdmittedPatient = () => {
   const [admission, setAdmission] = useState(location?.state?.admission || null)
   const [vitals, setVitals] = useState([])
   const [vitalsLoading, setVitalsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('vitals')
+  const [activeTab, setActiveTab] = useState(location?.state?.activeTab || 'vitals')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [sidebarMounted, setSidebarMounted] = useState(false)
   const [isInvestigationModalOpen, setIsInvestigationModalOpen] = useState(false)

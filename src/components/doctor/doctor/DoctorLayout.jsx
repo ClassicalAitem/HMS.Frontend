@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar } from "@/components/doctor/dashboard";
+import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
+import { useAppSelector } from '@/store/hooks';
 
 const DoctorLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user } = useAppSelector((state) => state.auth);
+  const normalizedRole = (user?.role || user?.accountType || '').toLowerCase().trim();
+  const isNurse = normalizedRole === 'nurse';
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -27,7 +32,7 @@ const DoctorLayout = ({ children }) => {
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <Sidebar onCloseSidebar={closeSidebar} />
+        {isNurse ? <NurseSidebar onCloseSidebar={closeSidebar} /> : <Sidebar onCloseSidebar={closeSidebar} />}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden bg-base-200">
