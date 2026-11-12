@@ -1,18 +1,16 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
-import { Header, DataTable } from '@/components/common';
-import { Sidebar } from '@/components/pharmacist/dashboard';
+import { DataTable } from '@/components/common';
+import { PharmacistLayout } from '@/layouts/pharmacist';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import KolakLoader from '@/components/common/KolakLoader';
 
 const PharmacistPaymentRecords = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(false);
 
 
@@ -62,14 +60,6 @@ const PharmacistPaymentRecords = () => {
     };
     fetchReceipt();
   }, [])
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -283,91 +273,63 @@ const handlePrintReceipt = (payment) => {
   ], []);
 
   return (
-    <div className="flex h-screen">
-            {loading && <KolakLoader fullscreen />}
+    <PharmacistLayout>
+      {isLoading && <KolakLoader fullscreen />}
 
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
+      <div className="flex overflow-y-auto flex-col p-3 py-2 h-full sm:p-6 sm:py-4">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary 2xl:text-4xl">Payment Receipt Records</h1>
+          <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
+        </div>
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
+        {/* Filters */}
+        <div className="flex flex-col gap-3 mb-6 md:flex-row md:flex-wrap">
+          <select className="select select-bordered w-full md:w-auto">
+            <option>All Status</option>
+            <option>Pending</option>
+            <option>Paid</option>
+            <option>Active</option>
+            <option>Reverse</option>
+            <option>declined</option>
+            <option>refunded</option>
+          </select>
+          <select className="select select-bordered">
+            <option>All Methods</option>
+            <option>Cash</option>
+            <option>Transfer</option>
+            <option>Hmo</option>
+            <option>Pos</option>
+          </select>
+          <select className="select select-bordered">
+            <option>All Time</option>
+            <option>Today</option>
+            <option>This Week</option>
+            <option>This Month</option>
+          </select>
+        </div>
 
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-3 py-2 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary 2xl:text-4xl">Payment Receipt Records</h1>
-            <p className="text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-col gap-3 mb-6 md:flex-row md:flex-wrap">
-            <select className="select select-bordered w-full md:w-auto">
-              <option>All Status</option>
-              <option>Pending</option>
-              <option>Paid</option>
-              <option>Active</option>
-              <option>Reverse</option>
-              <option>declined</option>
-              <option>refunded</option>
-            </select>
-            <select className="select select-bordered">
-              <option>All Methods</option>
-              <option>Cash</option>
-              <option>Transfer</option>
-              <option>Hmo</option>
-              <option>Pos</option>
-            </select>
-            <select className="select select-bordered">
-              <option>All Time</option>
-              <option>Today</option>
-              <option>This Week</option>
-              <option>This Month</option>
-            </select>
-          </div>
-
-          {/* Payment Records Table */}
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                {isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-96 p-4 space-y-3">
-                      <div className="skeleton h-6 w-52" />
-                      {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="skeleton h-8 w-full" />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <DataTable
-                    data={paymentRecords}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={7}
-                    maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                    showEntries={true}
-                    searchPlaceholder="Search payment records..."
-                  />
-                )}
-              </div>
+        {/* Payment Records Table */}
+        <div className="flex flex-1 w-full min-h-0">
+          <div className="w-full shadow-xl card bg-base-100">
+            <div className="p-4 card-body 2xl:p-6">
+              {isLoading ? (
+                <div className="py-16 flex justify-center">
+                  <KolakLoader />
+                </div>
+              ) : (
+                <DataTable
+                  data={paymentRecords}
+                  columns={columns}
+                  searchable={true}
+                  sortable={true}
+                  paginated={true}
+                  initialEntriesPerPage={7}
+                  maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
+                  showEntries={true}
+                  searchPlaceholder="Search payment records..."
+                />
+              )}
             </div>
           </div>
         </div>
@@ -449,7 +411,7 @@ const handlePrintReceipt = (payment) => {
           </div>
         </div>
       )}
-    </div>
+    </PharmacistLayout>
   );
 };
 

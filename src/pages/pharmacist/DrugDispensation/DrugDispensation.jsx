@@ -215,9 +215,8 @@ const DrugDispensation = () => {
 
         <div className="rounded-xl bg-base-100 border border-base-300 p-4">
           {loading && (
-            <div className="p-6 flex items-center justify-center">
-              <FiRefreshCw className="animate-spin mr-2" />
-              <span className="text-sm">Loading dispenses...</span>
+            <div className="py-12 flex justify-center">
+              <KolakLoader />
             </div>
           )}
           {error && !loading && (

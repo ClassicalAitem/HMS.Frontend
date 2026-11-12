@@ -10,6 +10,7 @@ import {
   reduceInventory,
 } from '@/services/api/inventoryAPI'
 import { PharmacistLayout } from '@/layouts/pharmacist'
+import KolakLoader from '@/components/common/KolakLoader'
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler'
 import { InventoryFormModal } from '@/components/modals/InventoryFormModal'
 
@@ -206,7 +207,8 @@ const InventoryStocks = () => {
 
   return (
     <PharmacistLayout>
-  <div className="flex h-full flex-col gap-4 overflow-y-auto">
+      {loading && <KolakLoader fullscreen />}
+      <div className="flex h-full flex-col gap-4 overflow-y-auto">
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-primary">Inventory & Stocks</h1>
@@ -221,8 +223,8 @@ const InventoryStocks = () => {
 
         <div className="rounded-xl bg-base-100 border border-base-300 p-4">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="h-40 rounded-xl bg-base-200 animate-pulse" />))}
+            <div className="py-16 flex justify-center">
+              <KolakLoader />
             </div>
           ) : error ? (
             <div className="text-sm text-error">Failed to load inventory.</div>

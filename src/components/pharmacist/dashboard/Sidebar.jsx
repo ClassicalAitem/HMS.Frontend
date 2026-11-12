@@ -11,7 +11,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
 import HospitalFavicon from "@/assets/images/favicon.svg";
-import { path } from 'slate';
 import { useNotifications } from "@/contexts/NotificationContext";
 import NotificationBadge from '@/components/common/NotificationBadge';
 

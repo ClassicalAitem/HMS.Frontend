@@ -184,9 +184,9 @@ const Incoming = () => {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
           {loading ? (
-            Array.from({ length: 6 }).map((_, idx) => (
-              <div key={idx} className="p-4 rounded-xl border bg-base-100 animate-pulse h-36" />
-            ))
+            <div className="col-span-full flex items-center justify-center py-16">
+              <KolakLoader />
+            </div>
           ) : error ? (
             <div className="text-sm text-error">Failed to load incoming patients.</div>
           ) : current.length === 0 ? (

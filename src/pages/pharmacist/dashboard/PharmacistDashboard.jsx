@@ -284,8 +284,8 @@ const PharmacistDashboard = () => {
                 <tbody>
                   {prescriptionsLoading ? (
                     <tr>
-                      <td colSpan={6} className="p-6">
-                        <div className="h-12 w-full rounded bg-base-200 animate-pulse" />
+                      <td colSpan={6} className="py-8">
+                        <KolakLoader />
                       </td>
                     </tr>
                   ) : recentRows.length === 0 ? (

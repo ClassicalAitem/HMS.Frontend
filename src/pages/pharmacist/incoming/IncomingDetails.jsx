@@ -154,33 +154,39 @@ const IncomingDetails = () => {
       setError(null)
 
       try {
-        const invRes = await getInventories()
-        if (mounted) setInventory(invRes?.data ?? [])
+        const [invRes, presRes, pRes] = await Promise.allSettled([
+          getInventories(),
+          getPrescriptionByPatientId(patientId),
+          getPatientById(patientId),
+        ])
 
-        const presRes = await getPrescriptionByPatientId(patientId)
-        const presData = presRes?.data ?? presRes
-        const list = Array.isArray(presData) ? presData : presData ? [presData] : []
+        if (mounted && invRes.status === 'fulfilled') {
+          setInventory(invRes.value?.data ?? [])
+        }
 
-        const filtered = isViewingDependant
-          ? list.filter((p) => p.dependantId === incomingDependantId)
-          : list.filter((p) => !p.dependantId)
+        if (mounted && presRes.status === 'fulfilled') {
+          const presData = presRes.value?.data ?? presRes.value
+          const list = Array.isArray(presData) ? presData : presData ? [presData] : []
 
-        const active = filtered.filter(
-          (p) => ![PRESCRIPTION_STATUS.COMPLETED, PRESCRIPTION_STATUS.CANCELLED].includes(String(p.status).toLowerCase())
-        )
-        const history = filtered
-          .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.COMPLETED)
-          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-        const cancelled = filtered
-          .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.CANCELLED)
-          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+          const filtered = isViewingDependant
+            ? list.filter((p) => p.dependantId === incomingDependantId)
+            : list.filter((p) => !p.dependantId)
 
-        if (mounted) setPrescriptions({ active, history, cancelled })
+          const active = filtered.filter(
+            (p) => ![PRESCRIPTION_STATUS.COMPLETED, PRESCRIPTION_STATUS.CANCELLED].includes(String(p.status).toLowerCase())
+          )
+          const history = filtered
+            .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.COMPLETED)
+            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+          const cancelled = filtered
+            .filter((p) => String(p.status).toLowerCase() === PRESCRIPTION_STATUS.CANCELLED)
+            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
 
-        const pRes = await getPatientById(patientId)
-        const pData = pRes?.data ?? pRes
+          setPrescriptions({ active, history, cancelled })
+        }
 
-        if (mounted) {
+        if (mounted && pRes.status === 'fulfilled') {
+          const pData = pRes.value?.data ?? pRes.value
           setPatient(pData)
           setDependants(pData?.dependants || pData?.dependant || [])
         }
@@ -865,10 +871,8 @@ const getDispenseInfo = (med) => {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-base-content">Consultations</h2>
             {consultationsLoading ? (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div key={index} className="skeleton h-28 w-full rounded-lg" />
-                ))}
+              <div className="py-8 flex justify-center">
+                <KolakLoader />
               </div>
             ) : consultations.length === 0 ? (
               <div className="rounded-lg border border-dashed border-base-300 py-8 text-center text-sm text-base-content/50">
@@ -932,7 +936,9 @@ const getDispenseInfo = (med) => {
 
         <div className="p-6 border rounded-xl bg-base-100">
           {loading ? (
-            <div className="h-20 bg-base-200 animate-pulse" />
+            <div className="py-8 flex justify-center">
+              <KolakLoader />
+            </div>
           ) : error ? (
             <div className="text-error">Error loading prescriptions</div>
           ) : (

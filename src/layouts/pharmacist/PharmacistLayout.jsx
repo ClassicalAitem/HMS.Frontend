@@ -1,35 +1,9 @@
-import React, { useState } from 'react'
-import { Header } from '@/components/common'
-import { Sidebar } from '@/components/pharmacist/dashboard'
+import React from 'react';
+import BaseRoleLayout from '@/layouts/common/BaseRoleLayout';
+import { Sidebar } from '@/components/pharmacist/dashboard';
 
 const PharmacistLayout = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  return <BaseRoleLayout Sidebar={Sidebar}>{children}</BaseRoleLayout>;
+};
 
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v)
-  const closeSidebar = () => setIsSidebarOpen(false)
-
-  return (
-    <div className="flex h-screen w-full overflow-hidden bg-base-300/5">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[260px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/5">
-        <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 py-2 sm:p-4 lg:p-6">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default PharmacistLayout
+export default PharmacistLayout;

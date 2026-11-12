@@ -31,56 +31,50 @@ const Reports = () => {
     const fetchAll = async () => {
       setLoading(true)
       try {
-        const [mRes, dRes, invRes] = await Promise.all([
-          metricsAPI.getMetrics().catch(e => { throw { source: 'metrics', e } }),
-          dispensesAPI.getDispenses().catch(e => { throw { source: 'dispenses', e } }),
-          inventoryAPI.getInventories().catch(e => { throw { source: 'inventory', e } })
+        const [mRes, dRes, invRes] = await Promise.allSettled([
+          metricsAPI.getMetrics(),
+          dispensesAPI.getDispenses(),
+          inventoryAPI.getInventories(),
         ])
 
         if (!mounted) return
 
-        // metricsAPI returns response.data in earlier code
-        setMetrics(mRes?.data ?? mRes)
+        if (mRes.status === 'fulfilled') {
+          const val = mRes.value
+          setMetrics(val?.data ?? val ?? {})
+        }
 
-        // dispenses: map to transaction rows
-        const dispenses = dRes?.data ?? dRes
-        const tx = (Array.isArray(dispenses) ? dispenses : []).map(d => ({
-          id: d._id,
-          date: d.dispensedAt || d.createdAt,
-          medication: d?.prescription?.medications?.[0]?.drugName || d?.items?.[0]?.drugName || 'Unknown',
-          quantity: (d.items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0),
-          amount: d.totalAmount || d.amount || null,
-          status: d.status || 'pending'
-        }))
-        setTransactions(tx)
+        if (dRes.status === 'fulfilled') {
+          const dispenses = dRes.value?.data ?? dRes.value
+          const tx = (Array.isArray(dispenses) ? dispenses : []).map(d => ({
+            id: d._id,
+            date: d.dispensedAt || d.createdAt,
+            medication: d?.prescription?.medications?.[0]?.drugName || d?.items?.[0]?.drugName || 'Unknown',
+            quantity: (d.items || []).reduce((s, it) => s + (Number(it.quantity) || 0), 0),
+            amount: d.totalAmount || d.amount || null,
+            status: d.status || 'pending'
+          }))
+          setTransactions(tx)
+        }
 
-        // inventories: find low stock items
-        const inventories = invRes?.data ?? invRes
-        const low = (Array.isArray(inventories) ? inventories : []).filter(i => {
-          const stock = Number(i.stock ?? i.quantity ?? 0)
-          const reorder = Number(i.reorderLevel ?? i.minStock ?? 0)
-          return stock === 0 || (reorder > 0 && stock <= reorder)
-        }).map(i => ({
-          id: i._id,
-          name: i.name || i.itemName || 'Unknown',
-          minStock: i.reorderLevel ?? i.minStock ?? 0,
-          remaining: Number(i.stock ?? i.quantity ?? 0),
-          supplier: i.supplier || '—'
-        }))
-        setLowStock(low)
-
+        if (invRes.status === 'fulfilled') {
+          const inventories = invRes.value?.data ?? invRes.value
+          const low = (Array.isArray(inventories) ? inventories : []).filter(i => {
+            const stock = Number(i.stock ?? i.quantity ?? 0)
+            const reorder = Number(i.reorderLevel ?? i.minStock ?? 0)
+            return stock === 0 || (reorder > 0 && stock <= reorder)
+          }).map(i => ({
+            id: i._id,
+            name: i.name || i.itemName || 'Unknown',
+            minStock: i.reorderLevel ?? i.minStock ?? 0,
+            remaining: Number(i.stock ?? i.quantity ?? 0),
+            supplier: i.supplier || '—'
+          }))
+          setLowStock(low)
+        }
       } catch (err) {
         console.error('Reports: fetch error', err)
-        // err may be thrown with source
-        const source = err?.source || err
-        const e = err?.e || err
-        const status = e?.response?.status
-        const body = e?.response?.data
-        if (status === 403 || body?.code === 403 || (body && body.success === false && body.code === 403)) {
-          toast.error(body?.message || 'Access denied. Insufficient permission.')
-        } else {
-          toast.error('Failed to load reports data')
-        }
+        toast.error('Failed to load reports data')
       } finally {
         if (mounted) setLoading(false)
       }
@@ -137,16 +131,30 @@ const Reports = () => {
                 </tr>
               </thead>
               <tbody>
-                {(transactions.length ? transactions : []).slice(0,6).map(tx => (
-                  <tr key={tx.id}>
-                    <td className="font-medium">{tx.id}</td>
-                    <td>{tx.date ? formatNigeriaDate(tx.date) : '-'}</td>
-                    <td>{tx.medication}</td>
-                    <td>{tx.quantity}</td>
-                    <td>{tx.amount ? `₦${tx.amount}` : '₦70,890'}</td>
-                    <td>{tx.status === 'dispensed' || tx.status === 'completed' ? <Badge variant="success">Completed</Badge> : <Badge variant="warning">Pending</Badge>}</td>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center">
+                      <KolakLoader />
+                    </td>
                   </tr>
-                ))}
+                ) : transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-base-content/60">
+                      No transactions recorded.
+                    </td>
+                  </tr>
+                ) : (
+                  transactions.slice(0, 6).map((tx) => (
+                    <tr key={tx.id}>
+                      <td className="font-medium">{tx.id}</td>
+                      <td>{tx.date ? formatNigeriaDate(tx.date) : '—'}</td>
+                      <td>{tx.medication}</td>
+                      <td>{tx.quantity}</td>
+                      <td>{tx.amount ? `₦${Number(tx.amount).toLocaleString()}` : '—'}</td>
+                      <td>{tx.status === 'dispensed' || tx.status === 'completed' ? <Badge variant="success">Completed</Badge> : <Badge variant="warning">Pending</Badge>}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

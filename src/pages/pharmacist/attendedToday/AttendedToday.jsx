@@ -7,6 +7,7 @@ import dispensesAPI from "@/services/api/dispensesAPI";
 import { useAppSelector } from "@/store/hooks";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
 import { PharmacistLayout } from "@/layouts/pharmacist";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const isToday = (dateValue) => {
   if (!dateValue) return false;
@@ -162,12 +163,13 @@ const PharmacistAttendedToday = () => {
   const visible = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
 
   const handleView = (row) => {
-    // Navigate to a view, e.g. receipt or drug dispensation. For now, we can just send them to the Drug Dispensation page to see the list of drugs.
-    navigate(`/dashboard/pharmacist/drug-dispensation`);
+    // Navigate to Drug Dispensation page to see the list of drugs.
+    navigate(`/dashboard/pharmacist/DrugDispensation`);
   };
 
   return (
     <PharmacistLayout>
+      {loading && <KolakLoader fullscreen />}
       <div className="flex flex-col flex-1 bg-base-100 min-w-0">
         <div className="overflow-y-auto flex-1 p-4 sm:p-6">
           <div className="mb-6">
@@ -241,11 +243,9 @@ const PharmacistAttendedToday = () => {
 
             <div className="divide-y divide-base-200">
               {loading ? (
-                Array.from({ length: 6 }).map((_, idx) => (
-                  <div key={idx} className="p-4 md:px-5 md:py-4">
-                    <div className="skeleton h-8 w-full rounded" />
-                  </div>
-                ))
+                <div className="py-16 flex justify-center">
+                  <KolakLoader />
+                </div>
               ) : filteredItems.length === 0 ? (
                 <div className="py-16">
                   <EmptyState

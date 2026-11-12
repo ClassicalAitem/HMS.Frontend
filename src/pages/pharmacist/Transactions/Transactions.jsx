@@ -62,7 +62,7 @@ const Transactions = () => {
           description: t.inventoryName || t.itemName || t.description || 'Unknown',
           form: t.inventoryId?.form || '—',
           quantity: t.quantity ?? t.qty ?? 0,
-          price: t.unitPrice ?? t.price ?? '₦70,890',
+          price: t.unitPrice ?? t.price != null ? `₦${Number(t.unitPrice ?? t.price).toLocaleString()}` : '—',
           datetime: t.createdAt || t.date || '-',
           purchaseOrder: t.purchaseOrder || t.orderId || '-',
           status: t.type === 'in' ? 'In' : 'Out',
@@ -199,7 +199,11 @@ const Transactions = () => {
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={10} className="p-4 text-center">Loading...</td></tr>
+                  <tr>
+                    <td colSpan={10} className="py-8 text-center">
+                      <KolakLoader />
+                    </td>
+                  </tr>
                 )}
                 {!loading && !filtered.length && (
                   <tr><td colSpan={10} className="p-4 text-center text-base-content/60">No transactions found</td></tr>
