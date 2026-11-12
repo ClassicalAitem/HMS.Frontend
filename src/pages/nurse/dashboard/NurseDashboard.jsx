@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/common";
-import { Sidebar, TaskAssigned, MedicationSchedule, InpatientMedicationAlertsWidget } from "@/components/nurse";
+import { NurseLayout } from "@/layouts/nurse";
+import { TaskAssigned, MedicationSchedule, InpatientMedicationAlertsWidget } from "@/components/nurse";
 import { useAppSelector } from "@/store/hooks";
 import { getMetrics } from "@/services/api/metricsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
@@ -11,11 +11,8 @@ import KolakLoader from "@/components/common/KolakLoader";
 import {
   FaHeartbeat,
   FaBed,
-  FaUserInjured,
   FaClipboardCheck,
   FaCalendarAlt,
-  FaPlusCircle,
-  FaArrowRight,
 } from "react-icons/fa";
 import { RiArrowLeftRightFill } from "react-icons/ri";
 
@@ -186,18 +183,7 @@ const NurseDashboard = () => {
         });
         const latestFiveVitals = sortedVitals.slice(0, 8);
 
-        let map = patientsById;
-        if (!map || Object.keys(map).length === 0) {
-          try {
-            const patientsRes = await getPatients();
-            const patientsList = Array.isArray(patientsRes?.data) ? patientsRes.data : [];
-            map = buildPatientsMap(patientsList);
-            if (mounted) setPatientsById(map);
-          } catch (e) {
-            console.warn("NurseDashboard: unable to build patients map", e);
-            map = {};
-          }
-        }
+        const map = patientsById || {};
 
         const mapped = latestFiveVitals.map((v) => {
           const pid =
@@ -245,11 +231,6 @@ const NurseDashboard = () => {
   const refreshIncoming = () => setRefreshIncomingKey((k) => k + 1);
   const refreshActivity = () => setRefreshActivityKey((k) => k + 1);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
-  const closeSidebar = () => setIsSidebarOpen(false);
-
   // Current formatted date in Nigeria
   const currentDateFormatted = useMemo(() => {
     return new Date().toLocaleDateString("en-NG", {
@@ -273,47 +254,28 @@ const NurseDashboard = () => {
     : "Nurse On Duty";
 
   return (
-    <div className="flex h-screen max-h-screen w-full overflow-hidden bg-base-200">
+    <NurseLayout>
       {tasksLoading && incomingLoading && <KolakLoader fullscreen />}
 
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        {/* Dedicated Page-Level Smooth Scroll Container */}
-        <main className="flex-1 h-full min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-5">
+      <main className="space-y-5 min-w-0">
           {/* Welcome & Shift Status Banner */}
           <div className="bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-              
+                <h2 className="text-lg sm:text-xl font-bold text-base-content">
+                  {greeting}, {nurseDisplayName} 👋
+                </h2>
               </div>
               <p className="text-xs sm:text-sm text-base-content/60 flex items-center gap-2">
                 <FaCalendarAlt className="w-3.5 h-3.5 text-primary" />
                 <span>{currentDateFormatted}</span>
-                <span>Â·</span>
+                <span>·</span>
                 <span>Nursing Care &amp; Clinical Triage Station</span>
               </p>
             </div>
 
             {/* Quick Action Buttons */}
             <div className="flex flex-wrap items-center gap-2">
-           
-
               <button
                 onClick={() => navigate("/dashboard/nurse/admitted")}
                 className="btn btn-sm btn-outline btn-primary rounded-xl font-semibold gap-1.5 shadow-sm"
@@ -336,7 +298,7 @@ const NurseDashboard = () => {
                   Vitals Recorded
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-primary">
-                  {tasksLoading ? "â€”" : tasksCount}
+                  {tasksLoading ? "—" : tasksCount}
                 </p>
                 <p className="text-[11px] text-base-content/50">Today&apos;s observations</p>
               </div>
@@ -355,7 +317,7 @@ const NurseDashboard = () => {
                   Incoming Queue
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-                  {incomingLoading ? "â€”" : incomingTotalCount}
+                  {incomingLoading ? "—" : incomingTotalCount}
                 </p>
                 <p className="text-[11px] text-base-content/50">Awaiting nurse action</p>
               </div>
@@ -374,7 +336,7 @@ const NurseDashboard = () => {
                   Admitted Patients
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-                  {tasksLoading ? "â€”" : admittedCount}
+                  {tasksLoading ? "—" : admittedCount}
                 </p>
                 <p className="text-[11px] text-base-content/50">Current bed occupancy</p>
               </div>
@@ -393,7 +355,7 @@ const NurseDashboard = () => {
                   Logged Actions
                 </span>
                 <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-                  {activityLoading ? "â€”" : recentActivity.length}
+                  {activityLoading ? "—" : recentActivity.length}
                 </p>
                 <p className="text-[11px] text-base-content/50">Recent nurse entries</p>
               </div>
@@ -421,8 +383,7 @@ const NurseDashboard = () => {
             onRefresh={refreshActivity}
           />
         </main>
-      </div>
-    </div>
+    </NurseLayout>
   );
 };
 

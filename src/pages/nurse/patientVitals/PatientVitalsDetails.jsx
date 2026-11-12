@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
-import NurseSidebar from "@/components/nurse/dashboard/Sidebar";
-import DoctorSidebar from "@/components/doctor/dashboard/Sidebar";
+import { EmptyState } from "@/components/common";
+import { NurseLayout } from "@/layouts/nurse";
+import { DoctorLayout } from "@/layouts/doctor";
 import { useAppSelector } from "@/store/hooks";
 import { getVitalsByPatient, createVital, updateVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -669,37 +669,15 @@ useEffect(() => {
     const enrichedLatest = useMemo(() => enrichedVitals[0] || latest, [enrichedVitals, latest]);
   
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  const LayoutComponent = (role === 'doctor' || role === 'medical-director') ? DoctorLayout : NurseLayout;
 
   return (
-    <div className="flex h-screen">
-       {loading && <KolakLoader fullscreen />}
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
+    <LayoutComponent>
+      {loading && <KolakLoader fullscreen />}
 
-      {/* Sidebar */}
-      <div
-        className={`
-        fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
-        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-      `}
-      >
-        {role === 'doctor' || role === 'medical-director' ? (
-          <DoctorSidebar />
-        ) : (
-          <NurseSidebar onCloseSidebar={closeSidebar} />
-        )}
-      </div>
-
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Header actions */}
-          <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col min-w-0">
+        {/* Header actions */}
+        <div className="flex justify-between items-center mb-4">
             <div>
               <h1 className="text-2xl font-bold text-base-content">Patient Details</h1>
               <p className="text-sm text-base-content/70">Vitals overview and history</p>
@@ -1447,8 +1425,7 @@ useEffect(() => {
             />
           )}
         </div>
-      </div>
-    </div>
+    </LayoutComponent>
   );
 };
 

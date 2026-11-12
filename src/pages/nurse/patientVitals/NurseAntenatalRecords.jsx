@@ -11,6 +11,7 @@ import { LabResultDetailsModal } from "@/components/modals";
 import { usersAPI } from "@/services/api/usersAPI";
 import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import { FaFlask, FaEye, FaUserMd, FaUserNurse, FaHistory, FaClock, FaEdit, FaCheckCircle } from "react-icons/fa";
+import KolakLoader from "@/components/common/KolakLoader";
 
 // Helper: resolve subject ID
 const summarySubjectId = (patient, isViewingDependant, dependantSnapshot) => {
@@ -44,11 +45,6 @@ const NurseAntenatalRecords = () => {
   const [selectedLabResultForModal, setSelectedLabResultForModal] = useState(null);
   const [isLabResultModalOpen, setIsLabResultModalOpen] = useState(false);
   const [showAllLabHistory, setShowAllLabHistory] = useState(false);
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   const normalizeUserResponse = (response) => {
     if (response?.data?.data) return response.data.data;
@@ -404,7 +400,8 @@ const NurseAntenatalRecords = () => {
 
   return (
     <NurseLayout>
-      <div className="space-y-4">
+      {(loading || patientLoading) && <KolakLoader fullscreen />}
+      <div className="space-y-4 min-w-0">
         {/* Page Header */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-2">
             <div>
@@ -439,7 +436,9 @@ const NurseAntenatalRecords = () => {
           </div>
 
           {loading || patientLoading ? (
-            <div className="flex justify-center py-12"><div className="loading loading-spinner loading-lg text-primary" /></div>
+            <div className="flex justify-center py-12">
+              <KolakLoader />
+            </div>
           ) : records.length === 0 ? (
             <div className="card bg-base-100 shadow-sm border border-base-200">
               <div className="card-body p-8 text-center space-y-4">

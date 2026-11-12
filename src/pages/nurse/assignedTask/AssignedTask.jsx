@@ -1,16 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/nurse/dashboard/Sidebar";
+import React, { useState, useEffect, useMemo } from "react";
+import { NurseLayout } from "@/layouts/nurse";
 import taskAPI from "@/services/api/taskAPI";
 import toast from "react-hot-toast";
 import { useAppSelector } from "@/store/hooks";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const AssignedTask = () => {
   const { user } = useAppSelector((state) => state.auth);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [taskToComplete, setTaskToComplete] = useState(null);
+
+  const currentDateFormatted = useMemo(() => {
+    return new Date().toLocaleDateString("en-NG", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }, []);
 
   const nurseName = user?.firstName && user?.lastName 
     ? `Nurse ${user.firstName} ${user.lastName}` 
@@ -33,14 +41,6 @@ const AssignedTask = () => {
   useEffect(() => {
     fetchTasks();
   }, []);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   //function to toggle
   const totalTasks = tasks.length;
@@ -82,45 +82,28 @@ const AssignedTask = () => {
     }
   };
   return (
-    <div className="flex min-h-screen w-full">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
+    <NurseLayout>
+      {loading && <KolakLoader fullscreen />}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
+      <section className="space-y-5 min-w-0">
+        <div className="max-w-fit">
+          <h1 className="text-2xl font-bold text-base-content sm:text-3xl">Assigned Tasks</h1>
+          <p className="text-xs text-base-content/70 sm:text-sm">{currentDateFormatted}</p>
+        </div>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <section className="space-y-5">
-            <div className="max-w-fit">
-              <h1 className="text-2xl font-bold text-base-content sm:text-3xl">Assigned Task</h1>
-              <p className="text-xs text-base-content/70 sm:text-sm">Tuesday, September 9, 2025</p>
+        <div className="grid gap-5 rounded-box bg-base-200 p-3 sm:p-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(260px,0.7fr)] xl:gap-6 min-w-0">
+          <div className="w-full rounded-box bg-base-100 p-4 shadow-sm sm:p-6 min-w-0">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-xl font-semibold text-base-content sm:text-2xl">Registered Tasks</h2>
+              <span className="badge badge-primary badge-outline font-semibold">
+                {completedTasks}/{totalTasks} Completed
+              </span>
             </div>
 
-            <div className="grid gap-5 rounded-box bg-base-200 p-3 sm:p-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(260px,0.7fr)] xl:gap-6">
-              <div className="w-full rounded-box bg-base-100 p-4 shadow-sm sm:p-6">
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <h2 className="text-xl font-semibold text-base-content sm:text-2xl">Registered Tasks</h2>
-                  <p className="text-xs text-base-content/70 sm:text-sm">
-                    Last Updated 1/1/01 12:00AM
-                  </p>
-                </div>
-
-                {loading ? (
-                  <div className="py-12 flex justify-center items-center">
-                    <span className="loading loading-spinner text-primary loading-md"></span>
-                  </div>
+            {loading ? (
+              <div className="py-12 flex justify-center items-center">
+                <KolakLoader />
+              </div>
                 ) : tasks.length === 0 ? (
                   <div className="py-8 text-center text-base-content/50">
                     <p className="text-sm font-medium">No tasks found</p>
@@ -203,8 +186,7 @@ const AssignedTask = () => {
               </div>
             </div>
           </section>
-        </div>
-      </div>
+
       {/* Completion Modal */}
       {taskToComplete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
@@ -249,7 +231,7 @@ const AssignedTask = () => {
           </div>
         </div>
       )}
-    </div>
+    </NurseLayout>
   );
 };
 

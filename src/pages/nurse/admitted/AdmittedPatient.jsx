@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Header } from '@/components/common'
-import NurseSidebar from '@/components/nurse/dashboard/Sidebar'
+import { NurseLayout } from '@/layouts/nurse'
 import { getAdmissionByPatientId } from '@/services/api/admissionApi'
 import { getVitalsByPatient, normalizeVitalsResponse } from '@/services/api/vitalsAPI'
 import { getPatientById } from '@/services/api/patientsAPI'
 import { getDependantById } from '@/services/api/dependantAPI'
 import PatientDetailsCard from '@/components/common/PatientDetailsCard'
+import KolakLoader from '@/components/common/KolakLoader'
 import VitalsTab from '@/components/admitted/VitalsTab'
 import WardRoundTab from '@/components/admitted/WardRoundTab'
 import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
@@ -52,18 +52,11 @@ const AdmittedPatient = () => {
   const [vitals, setVitals] = useState([])
   const [vitalsLoading, setVitalsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState(location?.state?.activeTab || 'vitals')
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [sidebarMounted, setSidebarMounted] = useState(false)
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isDischargeModalOpen, setIsDischargeModalOpen] = useState(false)
 
   const consultationId = admission?.consultationId || admission?.consultation || null
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setSidebarMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   // Load primary patient profile
   useEffect(() => {
@@ -202,33 +195,13 @@ const AdmittedPatient = () => {
     return () => window.removeEventListener('switch-admission-tab', handleSwitchAdmissionTab)
   }, [isNeonatal])
 
-  const SidebarDrawer = () => (
-    <>
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-xs"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
-        } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <NurseSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
-      </div>
-    </>
-  )
-
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-        <div className="overflow-y-auto flex-1">
-          <section className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-            {/* Top Navigation & Status Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+    <NurseLayout>
+      {loading && <KolakLoader fullscreen />}
+
+      <section className="space-y-4 sm:space-y-6 min-w-0">
+        {/* Top Navigation & Status Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => navigate('/dashboard/nurse/admitted')}
@@ -572,8 +545,6 @@ const AdmittedPatient = () => {
               />
             )}
           </section>
-        </div>
-      </div>
 
       <AdmissionBillManagerModal
         isOpen={isBillingModalOpen}
@@ -604,7 +575,7 @@ const AdmittedPatient = () => {
         onDischarged={loadAdmission}
         onOpenBillingModal={() => setIsBillingModalOpen(true)}
       />
-    </div>
+    </NurseLayout>
   )
 }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/nurse/dashboard/Sidebar";
+import { EmptyState } from "@/components/common";
+import { NurseLayout } from "@/layouts/nurse";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
@@ -36,7 +36,6 @@ const statusBadgeClass = (reason = "") => {
 
 const IncomingLabResults = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -44,9 +43,6 @@ const IncomingLabResults = () => {
   const [page, setPage] = useState(0);
   const [navigatingId, setNavigatingId] = useState(null);
   const pageSize = 4;
-
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const closeSidebar = () => setIsSidebarOpen(false);
   const { refreshQueueCount, refreshLabReadyCount, lastUpdate } = useNotifications();
 
 
@@ -245,21 +241,11 @@ const IncomingLabResults = () => {
     refreshLabReadyCount();
 };
   return (
-    <div className="flex h-screen max-h-screen w-full overflow-hidden bg-base-100">
+    <NurseLayout>
       {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden bg-base-100">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <main className="flex-1 h-full min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
-          <div className="mb-6">
+      <section className="space-y-4 sm:space-y-5 min-w-0">
+        <div className="mb-6">
             <div className="flex items-center gap-3">
               <FaVials size={24} className="text-primary" />
               <h1 className="text-2xl font-bold text-primary">Lab Results</h1>
@@ -409,9 +395,8 @@ const IncomingLabResults = () => {
               </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </section>
+    </NurseLayout>
   );
 };
 

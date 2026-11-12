@@ -3,12 +3,14 @@ import { FaUser } from "react-icons/fa6";
 import { FaRegIdBadge } from "react-icons/fa6";
 import apiClient from "@/services/api/apiClient";
 import toast from "react-hot-toast";
+import KolakLoader from "@/components/common/KolakLoader";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 const LoadingScreen = () => (
-  <div className="fixed inset-0 z-50 p-3 bg-black/10 backdrop-blur-[1px] bg-opacity-40 flex justify-center items-center" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
-    <div className="bg-white shadow-lg p-6 rounded-lg">
-      <p className="text-center">Loading investigation details......</p>
+  <div className="fixed inset-0 z-50 p-3 bg-black/20 backdrop-blur-xs flex justify-center items-center">
+    <div className="bg-base-100 shadow-xl p-8 rounded-2xl flex flex-col items-center gap-3">
+      <KolakLoader />
+      <p className="text-center text-sm font-medium text-base-content/70">Loading investigation details...</p>
     </div>
   </div>
 );

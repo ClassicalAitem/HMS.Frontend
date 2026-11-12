@@ -1,35 +1,32 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
-import { Header, DataTable } from '@/components/common';
+import { NurseLayout } from '@/layouts/nurse';
+import { DataTable } from '@/components/common';
 import { FaEye, FaDownload, FaPrint } from 'react-icons/fa';
 import { getAllReceipts } from '@/services/api/billingAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
-import Sidebar from '@/components/nurse/dashboard/Sidebar';
+import KolakLoader from '@/components/common/KolakLoader';
 
 const NursePaymentRecords = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-
   const handleClose = () => {
     setIsModalOpen(false);
   };
-
 
   useEffect(() => {
     const fetchReceipt = async () => {
       try {
         setIsLoading(true);
-        const res = await getAllReceipts({paymentDestination: '' });
-        console.log({res})
+        const res = await getAllReceipts({ paymentDestination: '' });
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.receipts ?? []);
 
         const nurseDestinations = ['medication', 'treatment', 'nursing'];
-        const filteredList = list.filter(a => nurseDestinations.includes(a.paymentDestination));
+        const filteredList = list.filter(a => nurseDestinations.includes(String(a.paymentDestination || '').toLowerCase()));
 
         // Get start of today (midnight local time)
         const startOfToday = new Date();
@@ -45,33 +42,32 @@ const NursePaymentRecords = () => {
           return paidDate >= startOfToday && paidDate <= endOfToday;
         });
 
-        const mapped = todayReceipts.map((a, idx) => ({
-          receiptId: a.id,
-          transactionId: a.reference || `Kolak-${idx + 1}`,
-          name: a.billing.patient ? `${a.billing.patient.firstName} ${a.billing.patient.lastName}` : 'N/A',
-          paymentMethod: a.paymentMethod,
-          paymentDestination: a.paymentDestination || 'N/A',
-          paidBy: a.paidBy || 'N/A',
-          status: a.status || 'pending',
-          amount: `₦ ${Number(a.amountPaid).toLocaleString()}`,
-          dateTime: formatNigeriaDateTime(a.paidAt),
-          cashierName: a.cashier ? `${a.cashier.firstName} ${a.cashier.lastName}` : 'N/A',
-        }));
+        const mapped = todayReceipts.map((a, idx) => {
+          const person = a?.billing?.dependant || a?.billing?.patient || a?.patient || a?.dependant;
+          const patientName = person ? `${person.firstName || ''} ${person.lastName || ''}`.trim() : 'N/A';
+          const cashierPerson = a?.cashier;
+          const cashierName = cashierPerson ? `${cashierPerson.firstName || ''} ${cashierPerson.lastName || ''}`.trim() : 'N/A';
+
+          return {
+            receiptId: a.id || a._id,
+            transactionId: a.reference || `Kolak-${idx + 1}`,
+            name: patientName || 'N/A',
+            paymentMethod: a.paymentMethod || 'N/A',
+            paymentDestination: a.paymentDestination || 'N/A',
+            paidBy: a.paidBy || 'N/A',
+            status: a.status || 'pending',
+            amount: `₦ ${Number(a.amountPaid || 0).toLocaleString()}`,
+            dateTime: a.paidAt ? formatNigeriaDateTime(a.paidAt) : 'N/A',
+            cashierName: cashierName || 'N/A',
+          };
+        });
         setPaymentRecords(mapped);
       } finally {
         setIsLoading(false);
       }
     };
     fetchReceipt();
-  }, [])
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
+  }, []);
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -180,82 +176,35 @@ const NursePaymentRecords = () => {
   ], []);
 
   return (
-    <div className="flex min-h-screen w-full">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
+    <NurseLayout>
+      {isLoading && <KolakLoader fullscreen />}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
+      <div className="flex flex-col min-w-0">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-primary sm:text-3xl 2xl:text-4xl">Payment Receipt Records</h1>
+          <p className="mt-1 text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
+        </div>
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-primary sm:text-3xl 2xl:text-4xl">Payment Receipt Records</h1>
-            <p className="mt-1 text-sm text-base-content/70 2xl:text-base">View and manage all payment receipt transactions</p>
-          </div>
-
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <select className="select select-bordered w-full">
-              <option>All Status</option>
-              <option>Pending</option>
-              <option>Paid</option>
-              <option>Active</option>
-              <option>Reverse</option>
-              <option>declined</option>
-              <option>refunded</option>
-            </select>
-            <select className="select select-bordered w-full">
-              <option>All Methods</option>
-              <option>Cash</option>
-              <option>Transfer</option>
-              <option>Hmo</option>
-              <option>Pos</option>
-            </select>
-            <select className="select select-bordered w-full">
-              <option>All Time</option>
-              <option>Today</option>
-              <option>This Week</option>
-              <option>This Month</option>
-            </select>
-          </div>
-
-          <div className="flex min-h-0 w-full flex-1">
-            <div className="card w-full bg-base-100 shadow-xl">
-              <div className="card-body p-3 sm:p-4 2xl:p-6">
-                {isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-96 p-4 space-y-3">
-                      <div className="skeleton h-6 w-52" />
-                      {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="skeleton h-8 w-full" />
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <DataTable
-                    data={paymentRecords}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={7}
-                    maxHeight="max-h-96 sm:max-h-80 md:max-h-96 lg:max-h-80 2xl:max-h-96"
-                    showEntries={true}
-                    searchPlaceholder="Search payment records..."
-                  />
-                )}
-              </div>
+        <div className="flex min-h-0 w-full flex-1 min-w-0">
+          <div className="card w-full bg-base-100 shadow-sm border border-base-200 min-w-0">
+            <div className="card-body p-3 sm:p-4 2xl:p-6 min-w-0">
+              {isLoading ? (
+                <div className="p-8">
+                  <KolakLoader />
+                </div>
+              ) : (
+                <DataTable
+                  data={paymentRecords}
+                  columns={columns}
+                  searchable={true}
+                  sortable={true}
+                  paginated={true}
+                  initialEntriesPerPage={7}
+                  maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
+                  showEntries={true}
+                  searchPlaceholder="Search payment records..."
+                />
+              )}
             </div>
           </div>
         </div>
@@ -337,7 +286,7 @@ const NursePaymentRecords = () => {
           </div>
         </div>
       )}
-    </div>
+    </NurseLayout>
   );
 };
 

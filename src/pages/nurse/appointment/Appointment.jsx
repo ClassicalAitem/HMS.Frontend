@@ -1,23 +1,21 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
+import { NurseLayout } from '@/layouts/nurse';
 import { DataTable } from '@/components/common';
 import { BookAppointmentModal } from '@/components/modals';
 import AppointmentDetailsModal from '@/components/modals/AppointmentDetailsModal';
-// import appointmentsData from '@/data/appointments.json';
 import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
-import Sidebar from "@/components/nurse/dashboard/Sidebar";
-
+import KolakLoader from '@/components/common/KolakLoader';
 
 const Appointment = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState(formatNigeriaDate(new Date()));
   const [filterOpen, setFilterOpen] = useState(false);
@@ -26,83 +24,57 @@ const Appointment = () => {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
   const [patientsById, setPatientsById] = useState({});
 
-  // Load appointments data from backend
+  // Load appointments data and patients in parallel
   useEffect(() => {
+    let mounted = true;
     const load = async () => {
       try {
-        if (typeof window !== 'undefined') {
-          if (window.__appointmentsLoadInFlight) return;
-          window.__appointmentsLoadInFlight = true;
-        }
-        const res = await toast.promise(
+        setLoading(true);
+        const [apptsRes, patientsRes] = await Promise.allSettled([
           getAllAppointments(),
-          {
-            loading: 'Loading appointments...',
-            success: 'Appointments loaded',
-            error: 'Failed to load appointments'
-          },
-          { id: 'appointments-load' }
-        );
-        const raw = res?.data?.data ?? res?.data ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-        console.log('Raw appointment data:', list);
-        const mapped = list.map((a, idx) => ({
-          id: a?.id || a?._id || a?.appointmentId || idx + 1,
-          patientId: a?.patientId || a?.patient?.id || a?.patient?._id || a?.dependant?.patientId,
-          dependantId: a?.dependantId || a?.dependant?.id || a?.dependant?._id || null,
-          dependant: a?.dependant || null,
-          patient: a?.patient || null,
-          patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
-          date: a?.appointmentDate || a?.date,
-          time: a?.appointmentTime || a?.time, 
-          appointmentType: a?.appointmentType || 'consultation',
-          department: a?.department || 'doctor',
-          status: a?.status || 'Active',
-          raw: a,
-        }));
-        console.log('Mapped appointments:', mapped);
-        setAppointments(mapped);
+          getPatients(),
+        ]);
+
+        if (mounted && patientsRes.status === 'fulfilled') {
+          const raw = patientsRes.value?.data ?? patientsRes.value ?? [];
+          const list = Array.isArray(raw) ? raw : (raw.data ?? []);
+          const map = {};
+          list.forEach((p) => {
+            const name = `${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`.trim() || 'Unknown Patient';
+            const idKeys = [p?.id, p?.patientId, p?.uuid, p?.hospitalId].filter(Boolean);
+            idKeys.forEach((k) => { map[k] = name; });
+          });
+          setPatientsById(map);
+        }
+
+        if (mounted && apptsRes.status === 'fulfilled') {
+          const raw = apptsRes.value?.data?.data ?? apptsRes.value?.data ?? [];
+          const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+          const mapped = list.map((a, idx) => ({
+            id: a?.id || a?._id || a?.appointmentId || idx + 1,
+            patientId: a?.patientId || a?.patient?.id || a?.patient?._id || a?.dependant?.patientId,
+            dependantId: a?.dependantId || a?.dependant?.id || a?.dependant?._id || null,
+            dependant: a?.dependant || null,
+            patient: a?.patient || null,
+            patientName: a?.patientName || a?.patient?.fullName || a?.patientId || 'Unknown',
+            date: a?.appointmentDate || a?.date,
+            time: a?.appointmentTime || a?.time, 
+            appointmentType: a?.appointmentType || 'consultation',
+            department: a?.department || 'doctor',
+            status: a?.status || 'Active',
+            raw: a,
+          }));
+          setAppointments(mapped);
+        }
       } catch (err) {
         console.error('Load appointments error', err);
-        // Fallback: keep existing state
-      }
-      finally {
-        if (typeof window !== 'undefined') {
-          window.__appointmentsLoadInFlight = false;
-        }
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
     load();
+    return () => { mounted = false; };
   }, []);
-
-  useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        const res = await getPatients();
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : (raw.data ?? []);
-        const map = {};
-        list.forEach((p) => {
-          const name = `${p?.firstName || ''} ${p?.middleName || ''} ${p?.lastName || ''}`.trim() || 'Unknown Patient';
-          const idKeys = [p?.id, p?.patientId, p?.uuid, p?.hospitalId].filter(Boolean);
-          idKeys.forEach((k) => { map[k] = name; });
-        });
-        setPatientsById(map);
-      } catch (err) {
-        console.error('Fetch patients for name resolution failed', err);
-        setPatientsById({});
-      }
-    };
-    fetchPatients();
-  }, []);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const StatusBadge = ({ status }) => {
     const getBadgeClass = (status) => {
@@ -289,31 +261,12 @@ const Appointment = () => {
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
+    <NurseLayout>
+      {loading && <KolakLoader fullscreen />}
 
-      {/* Sidebar */}
-      <div className={`${
-        'fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0'
-      } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        {/* Header */}
-        <Header onToggleSidebar={toggleSidebar} />
-
-        {/* Page Content */}
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          {/* Page Header */}
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+      <div className="flex flex-col min-w-0">
+        {/* Page Header */}
+        <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
             <div>
               <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Appointments</h1>
               <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
@@ -375,7 +328,7 @@ const Appointment = () => {
                   sortable={true}
                   paginated={true}
                   initialEntriesPerPage={10}
-                  maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                  maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
                   showEntries={true}
                   searchPlaceholder="Search appointments..."
                   onRowClick={handleRowClick}
@@ -384,7 +337,6 @@ const Appointment = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Book Appointment Modal */}
       <BookAppointmentModal
@@ -405,7 +357,7 @@ const Appointment = () => {
           )));
         }}
       />
-    </div>
+    </NurseLayout>
   );
 };
 

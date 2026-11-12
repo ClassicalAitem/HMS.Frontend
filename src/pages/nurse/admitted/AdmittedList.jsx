@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Header } from '@/components/common'
-import NurseSidebar from '@/components/nurse/dashboard/Sidebar'
-import { getPatients, getPatientById } from '@/services/api/patientsAPI'
-import { getDependants } from '@/services/api/dependantAPI'
+import { NurseLayout } from '@/layouts/nurse'
+import { getPatientById } from '@/services/api/patientsAPI'
 import { getAdmissions } from '@/services/api/admissionApi'
 import { getAllWards } from '@/services/api/wardAPI'
 import { getVitals } from '@/services/api/vitalsAPI'
@@ -12,13 +10,12 @@ import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import ConfirmAdmissionModal from '@/pages/nurse/admitted/modal/ConfirmAdmissionModal'
 import WardBedBoard from '@/components/admitted/WardBedBoard'
 import MedicationDoseScheduleTab from '@/components/admitted/MedicationDoseScheduleTab'
+import KolakLoader from '@/components/common/KolakLoader'
 import toast from 'react-hot-toast'
 import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock, FaTh, FaPills } from 'react-icons/fa'
 
 const AdmittedList = () => {
   const navigate = useNavigate()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [sidebarMounted, setSidebarMounted] = useState(false)
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('admitted') // 'admitted' | 'pending'
   const [currentPage, setCurrentPage] = useState(1)
@@ -29,11 +26,6 @@ const AdmittedList = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [confirmTarget, setConfirmTarget] = useState(null)
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setSidebarMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   const loadData = async () => {
     try {
@@ -281,71 +273,39 @@ const AdmittedList = () => {
     setConfirmTarget(item)
   }
 
-  const SidebarDrawer = () => (
-    <>
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-xs" onClick={() => setIsSidebarOpen(false)} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
-        } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <NurseSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
-      </div>
-    </>
-  )
-
   if (loading) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center space-y-3">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-              <p className="text-sm font-medium text-base-content/70">Loading admitted patients...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <NurseLayout>
+        <KolakLoader fullscreen />
+      </NurseLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
-              <p className="text-sm font-semibold text-error mb-4">{error}</p>
-              <button
-                onClick={loadData}
-                className="btn btn-primary btn-sm rounded-xl"
-              >
-                Try Again
-              </button>
-            </div>
+      <NurseLayout>
+        <div className="flex items-center justify-center flex-1 px-4 py-16">
+          <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-200 max-w-md">
+            <p className="text-sm font-semibold text-error mb-4">{error}</p>
+            <button
+              onClick={loadData}
+              className="btn btn-primary btn-sm rounded-xl font-medium"
+            >
+              Try Again
+            </button>
           </div>
         </div>
-      </div>
+      </NurseLayout>
     )
   }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-        <div className="overflow-y-auto flex-1">
-          <section className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-            {/* Header Title */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-3">
+    <NurseLayout>
+      <section className="space-y-4 sm:space-y-6 min-w-0">
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
                     <FaBed className="w-6 h-6" />
                   </div>
@@ -652,17 +612,15 @@ const AdmittedList = () => {
             </>
             )}
           </section>
-        </div>
-      </div>
 
-      {/* Confirmation Modal */}
-      <ConfirmAdmissionModal
-        isOpen={!!confirmTarget}
-        onClose={() => setConfirmTarget(null)}
-        item={confirmTarget}
-        onConfirmed={loadData}
-      />
-    </div>
+          {/* Confirmation Modal */}
+          <ConfirmAdmissionModal
+            isOpen={!!confirmTarget}
+            onClose={() => setConfirmTarget(null)}
+            item={confirmTarget}
+            onConfirmed={loadData}
+          />
+    </NurseLayout>
   )
 }
 

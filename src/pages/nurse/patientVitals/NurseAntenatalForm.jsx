@@ -499,14 +499,9 @@ const NurseAntenatalForm = () => {
 
   if (loadingPatient || loadingData) {
     return (
-      <div className="flex h-screen bg-base-200/50">
-        <div className="flex-1 flex items-center justify-center flex-col gap-3">
-          <div className="loading loading-spinner loading-lg"></div>
-          <p className="text-base-content/60 text-sm">
-            {loadingData ? "Loading record data..." : "Loading patient..."}
-          </p>
-        </div>
-      </div>
+      <NurseLayout>
+        <KolakLoader fullscreen />
+      </NurseLayout>
     );
   }
 

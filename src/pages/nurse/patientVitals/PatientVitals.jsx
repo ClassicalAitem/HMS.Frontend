@@ -1,22 +1,19 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from "@/components/nurse";
+import { NurseLayout } from '@/layouts/nurse';
 import { DataTable } from '@/components/common';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatients, clearPatientsError } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
-import PatientsDebug from '@/components/common/PatientsDebug';
-import { Skeleton } from '@heroui/skeleton';
+import KolakLoader from '@/components/common/KolakLoader';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const PatientsVitals = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Fetch patients from backend
   useEffect(() => {
@@ -31,15 +28,6 @@ const PatientsVitals = () => {
       dispatch(clearPatientsError());
     }
   }, [error, dispatch]);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
-
 
 const StatusBadge = ({ status }) => {
   const currentStatus = Array.isArray(status)
@@ -248,88 +236,39 @@ const StatusBadge = ({ status }) => {
   ], [navigate]);
 
   return (
-    <div className="flex min-h-screen w-full">
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
-              <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
-            </div>
+    <NurseLayout>
+      <div className="flex flex-col gap-4 min-w-0">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
+            <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
           </div>
+        </div>
 
-          <div className="flex min-h-0 w-full flex-1">
-            <div className="card w-full bg-base-100 shadow-xl">
-              <div className="card-body p-3 sm:p-4 2xl:p-6">
-                {isLoading ? (
-                  <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                    <div className="overflow-auto max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110">
-                      <table className="table w-full table-zebra">
-                        <thead className="sticky top-0 z-10 bg-base-200">
-                          <tr>
-                            {columns.map((column) => (
-                              <th key={column.key} className="border border-base-300 px-4 py-3 text-left text-xs font-medium 2xl:text-sm text-base-content/60 uppercase tracking-wider">
-                                {column.title || column.key}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {Array.from({ length: 10 }).map((_, idx) => (
-                            <tr key={idx} className="text-xs">
-                              {columns.map((col) => (
-                                <td key={`${idx}-${col.key}`} className={`border border-base-300 px-4 2xl:py-3 py-2 2xl:text-sm text-xs ${col.className || 'text-base-content/70'}`}>
-                                  <Skeleton>
-                                    <div className="h-3 w-24 rounded bg-base-300"></div>
-                                  </Skeleton>
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : (
-                  <DataTable
-                    data={processedPatients}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={10}
-                    maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                    showEntries={true}
-                    searchPlaceholder="Search patients..."
-                  />
-                )}
+        <div className="card w-full bg-base-100 shadow-sm border border-base-200 min-w-0">
+          <div className="card-body p-3 sm:p-4 2xl:p-6 min-w-0">
+            {isLoading ? (
+              <div className="p-8">
+                <KolakLoader />
               </div>
-            </div>
+            ) : (
+              <DataTable
+                data={processedPatients}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={10}
+                maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
+                showEntries={true}
+                searchPlaceholder="Search patients..."
+              />
+            )}
           </div>
         </div>
       </div>
+    </NurseLayout>
+  );
+};
 
-          {/* Debug Component - Remove in production */}
-          {/* <PatientsDebug /> */}
-        </div>
-      );
-    };
-
-    export default PatientsVitals;
+export default PatientsVitals;

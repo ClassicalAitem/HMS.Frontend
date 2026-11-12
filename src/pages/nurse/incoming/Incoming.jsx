@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/nurse/dashboard/Sidebar";
+import { EmptyState } from "@/components/common";
+import { NurseLayout } from "@/layouts/nurse";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { hasAnyStatus } from "@/utils/statusUtils";
@@ -16,7 +16,6 @@ import { useNotifications } from "@/contexts/NotificationContext";
 
 const Incoming = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -24,14 +23,6 @@ const Incoming = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [page, setPage] = useState(0);
   const pageSize = 9;
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const closeSidebar = () => {
-    setIsSidebarOpen(false);
-  };
 
   const normalizeStatus = (status) => {
     if (!status) return "";
@@ -270,28 +261,10 @@ const Incoming = () => {
   ];
 
   return (
-    <div className="flex h-screen max-h-screen w-full overflow-hidden bg-base-100">
+    <NurseLayout>
       {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden bg-base-100">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        {/* Dedicated Page-Level Smooth Scroll Container */}
-        <main className="flex-1 h-full min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
+      <section className="space-y-4 sm:space-y-5 min-w-0">
           {/* Header Section */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -557,9 +530,8 @@ const Incoming = () => {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </div>
+        </section>
+    </NurseLayout>
   );
 };
 
