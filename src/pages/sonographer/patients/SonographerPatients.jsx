@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DataTable, Header } from '@/components/common';
-import Sidebar from '@/components/sonographer/dashboard/Sidebar';
+import { DataTable } from '@/components/common';
+import { SonographerLayout } from '@/layouts/sonographer';
+import KolakLoader from '@/components/common/KolakLoader';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearPatientsError, fetchPatients } from '@/store/slices/patientsSlice';
 import { getDependants } from '@/services/api/dependantAPI';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
-import { Skeleton } from '@heroui/skeleton';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const getStatusClass = (status) => {
@@ -213,62 +213,67 @@ const SonographerPatients = () => {
   const isTableLoading = isLoading || isDependantsLoading;
 
   return (
-    <div className="flex h-screen">
-      <div className="hidden lg:block"><Sidebar /></div>
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header />
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-base-content">Patients</h1>
-              <p className="text-sm text-base-content/60">Manage and view all patient and dependant records</p>
-            </div>
-            <div role="tablist" className="tabs tabs-boxed">
-              <button
-                type="button"
-                role="tab"
-                className={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
-                onClick={() => setActiveTab('all')}
-              >
-                All ({allPatients.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
-                onClick={() => setActiveTab('patients')}
-              >
-                Patients ({processedPatients.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
-                onClick={() => setActiveTab('dependants')}
-              >
-                Dependants ({dependants.length})
-              </button>
-            </div>
+    <SonographerLayout>
+      {isTableLoading && <KolakLoader fullscreen />}
+
+      <div className="space-y-6 min-w-0">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-base-content">Patients</h1>
+            <p className="text-sm text-base-content/60">Manage and view all patient and dependant records</p>
           </div>
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                {isTableLoading ? (
-                  <div className="overflow-auto rounded-lg border border-base-300/40">
-                    <table className="table w-full table-zebra">
-                      <thead className="sticky top-0 z-10 bg-base-200"><tr>{columns.map((column) => <th key={column.key}>{column.title}</th>)}</tr></thead>
-                      <tbody>{Array.from({ length: 10 }).map((_, index) => <tr key={index}>{columns.map((column) => <td key={column.key}><Skeleton><div className="h-3 w-24 rounded bg-base-300" /></Skeleton></td>)}</tr>)}</tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <DataTable data={displayedPatients} columns={columns} searchable sortable paginated initialEntriesPerPage={10} maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110" showEntries searchPlaceholder="Search patients..." />
-                )}
-              </div>
+          <div role="tablist" className="tabs tabs-boxed">
+            <button
+              type="button"
+              role="tab"
+              className={`tab ${activeTab === 'all' ? 'tab-active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All ({allPatients.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={`tab ${activeTab === 'patients' ? 'tab-active' : ''}`}
+              onClick={() => setActiveTab('patients')}
+            >
+              Patients ({processedPatients.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              className={`tab ${activeTab === 'dependants' ? 'tab-active' : ''}`}
+              onClick={() => setActiveTab('dependants')}
+            >
+              Dependants ({dependants.length})
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-1 w-full min-h-0">
+          <div className="w-full shadow-xl card bg-base-100">
+            <div className="p-4 card-body 2xl:p-6">
+              {isTableLoading ? (
+                <div className="py-16 flex justify-center">
+                  <KolakLoader />
+                </div>
+              ) : (
+                <DataTable
+                  data={displayedPatients}
+                  columns={columns}
+                  searchable
+                  sortable
+                  paginated
+                  initialEntriesPerPage={10}
+                  maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
+                  showEntries
+                  searchPlaceholder="Search patients..."
+                />
+              )}
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </SonographerLayout>
   );
 };
 

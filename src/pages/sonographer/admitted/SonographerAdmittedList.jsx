@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Header } from '@/components/common'
-import SonographerSidebar from '@/components/sonographer/dashboard/Sidebar'
-import { getPatients, getPatientById } from '@/services/api/patientsAPI'
-import { getDependants } from '@/services/api/dependantAPI'
+import SonographerLayout from '@/layouts/sonographer'
+import KolakLoader from '@/components/common/KolakLoader'
+import { getPatientById } from '@/services/api/patientsAPI'
 import { getAdmissions } from '@/services/api/admissionApi'
 import { getAllWards } from '@/services/api/wardAPI'
 import { getVitals } from '@/services/api/vitalsAPI'
@@ -11,12 +10,10 @@ import { getAllBillings, getAllReceipts } from '@/services/api/billingAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import ConfirmAdmissionModal from '@/pages/nurse/admitted/modal/ConfirmAdmissionModal'
 import toast from 'react-hot-toast'
-import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock } from 'react-icons/fa'
+import { FaBed, FaSearch, FaNotesMedical, FaCheckCircle, FaExclamationTriangle, FaCoins, FaClock } from 'react-icons/fa'
 
 const AdmittedList = () => {
   const navigate = useNavigate()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [sidebarMounted, setSidebarMounted] = useState(false)
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('admitted') // 'admitted' | 'pending'
   const [currentPage, setCurrentPage] = useState(1)
@@ -27,11 +24,6 @@ const AdmittedList = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [confirmTarget, setConfirmTarget] = useState(null)
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setSidebarMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   const loadData = async () => {
     try {
@@ -278,85 +270,51 @@ const AdmittedList = () => {
     setConfirmTarget(item)
   }
 
-  const SidebarDrawer = () => (
-    <>
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-xs" onClick={() => setIsSidebarOpen(false)} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
-        } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <SonographerSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
-      </div>
-    </>
-  )
-
   if (loading) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center space-y-3">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-              <p className="text-sm font-medium text-base-content/70">Loading admitted patients...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SonographerLayout>
+        <KolakLoader fullscreen text="Loading admitted patients..." />
+      </SonographerLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
-              <p className="text-sm font-semibold text-error mb-4">{error}</p>
-              <button
-                onClick={loadData}
-                className="btn btn-primary btn-sm rounded-xl"
-              >
-                Try Again
-              </button>
-            </div>
+      <SonographerLayout>
+        <div className="flex items-center justify-center flex-1 min-h-[60vh] px-4">
+          <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
+            <p className="text-sm font-semibold text-error mb-4">{error}</p>
+            <button
+              onClick={loadData}
+              className="btn btn-primary btn-sm rounded-xl"
+            >
+              Try Again
+            </button>
           </div>
         </div>
-      </div>
+      </SonographerLayout>
     )
   }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-        <div className="overflow-y-auto flex-1">
-          <section className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-            {/* Header Title */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
-                    <FaBed className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">Admitted Patients</h1>
-                    <p className="text-xs sm:text-sm text-base-content/60">
-                      Inpatient admission verification, bed assignment, and continuous laboratory
-                    </p>
-                  </div>
-                </div>
+    <SonographerLayout>
+      <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                <FaBed className="w-6 h-6" />
               </div>
-
-            
+              <div>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">Admitted Patients</h1>
+                <p className="text-xs sm:text-sm text-base-content/60">
+                  Inpatient admission verification, bed assignment, and continuous monitoring
+                </p>
+              </div>
             </div>
+          </div>
+        </div>
 
             {/* Segmented Filter Pills & Search */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-base-100 p-2.5 sm:p-3 rounded-2xl border border-base-200 shadow-sm">
@@ -413,9 +371,9 @@ const AdmittedList = () => {
 
             {/* Desktop DataTable (>= lg) */}
             <div className="hidden lg:block bg-base-100 rounded-2xl shadow-sm border border-base-200 overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
                 <table className="table w-full">
-                  <thead className="bg-base-200/60 text-xs uppercase tracking-wider text-base-content/70">
+                  <thead className="bg-base-200/90 backdrop-blur-xs sticky top-0 z-10 text-xs uppercase tracking-wider text-base-content/70">
                     <tr>
                       <th className="py-3.5 px-4">Patient Profile</th>
                       <th className="py-3.5 px-4">Record Type</th>
@@ -601,18 +559,16 @@ const AdmittedList = () => {
                 </p>
               </div>
             )}
-          </section>
         </div>
-      </div>
 
-      {/* Confirmation Modal */}
-      <ConfirmAdmissionModal
-        isOpen={!!confirmTarget}
-        onClose={() => setConfirmTarget(null)}
-        item={confirmTarget}
-        onConfirmed={loadData}
-      />
-    </div>
+        {/* Confirmation Modal */}
+        <ConfirmAdmissionModal
+          isOpen={!!confirmTarget}
+          onClose={() => setConfirmTarget(null)}
+          item={confirmTarget}
+          onConfirmed={loadData}
+        />
+    </SonographerLayout>
   )
 }
 

@@ -8,3 +8,4 @@ export { AdminLayout } from './admin';
 export { SurgeonLayout } from './surgeon';
 export { HmoLayout } from './hmo';
 export { PharmacistLayout } from './pharmacist';
+export { SonographerLayout } from './sonographer';

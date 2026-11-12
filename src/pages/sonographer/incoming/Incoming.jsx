@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/sonographer/dashboard/Sidebar";
+import { SonographerLayout } from "@/layouts/sonographer";
+import KolakLoader from "@/components/common/KolakLoader";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
 import { getAllOpdPatients, updateOpdPatient } from "@/services/api/opdPatientAPI";
@@ -16,7 +16,6 @@ import { formatNigeriaDateTimeShort } from "@/utils/formatDateTimeUtils";
 
 const SonographerIncoming = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [patients, setPatients] = useState([]);
   const [error, setError] = useState(null);
@@ -221,9 +220,6 @@ const SonographerIncoming = () => {
     refreshQueueCount();
   };
 
-  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-  const closeSidebar = () => setIsSidebarOpen(false);
-
   const typeBadgeConfig = {
     regular: { cls: "badge-ghost", text: "Regular" },
     dependant: { cls: "badge-secondary badge-outline", text: "Dependant" },
@@ -231,161 +227,145 @@ const SonographerIncoming = () => {
   };
 
   return (
-    <div className="flex h-screen bg-base-200">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={closeSidebar} />
-      )}
+    <SonographerLayout>
+      {loading && <KolakLoader fullscreen />}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 gap-4">
-          {/* Page header */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-primary/10 text-primary p-2.5 rounded-xl">
-                <GiUltrasound className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-base-content leading-tight">Incoming Scans</h1>
-                <p className="text-xs sm:text-sm text-base-content/60">Patients awaiting sonography scan uploads</p>
-              </div>
+      <div className="space-y-4 min-w-0">
+        {/* Page header */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 text-primary p-2.5 rounded-xl">
+              <GiUltrasound className="w-6 h-6" />
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-              <div className="relative w-full sm:w-72">
-                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
-                <input
-                  type="text"
-                  placeholder="Search by name or ID"
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  className="input input-bordered input-sm w-full pl-9 rounded-lg bg-base-100"
-                />
-              </div>
-              <ClearAllButton items={patients} updateStatusFn={handleClear} onCleared={fetchIncomingPatients} />
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-base-content leading-tight">Incoming Scans</h1>
+              <p className="text-xs sm:text-sm text-base-content/60">Patients awaiting sonography scan uploads</p>
             </div>
           </div>
 
-          {/* Quick Counter Strip */}
-          {!loading && !error && patients.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <div className="badge badge-sm badge-primary font-semibold">
-                {filteredPatients.length} Waiting
-              </div>
-              {["regular", "dependant", "opd"].map((t) => {
-                const count = patients.filter((p) => p.patientType === t).length;
-                if (!count) return null;
-                return (
-                  <div key={t} className="badge badge-sm badge-ghost capitalize text-base-content/70">
-                    {count} {t}
-                  </div>
-                );
-              })}
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-72">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-base-content/40" />
+              <input
+                type="text"
+                placeholder="Search by name or ID"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="input input-bordered input-sm w-full pl-9 rounded-lg bg-base-100"
+              />
             </div>
-          )}
+            <ClearAllButton items={patients} updateStatusFn={handleClear} onCleared={fetchIncomingPatients} />
+          </div>
+        </div>
 
-          {/* Patient Cards List */}
-          {loading ? (
-            <div className="grid gap-2">
-              {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="h-16 rounded-xl bg-base-100 border border-base-200 animate-pulse" />
-              ))}
+        {/* Quick Counter Strip */}
+        {!loading && !error && patients.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="badge badge-sm badge-primary font-semibold">
+              {filteredPatients.length} Waiting
             </div>
-          ) : error ? (
-            <div className="rounded-xl border border-error/30 bg-error/5 p-5 text-center text-error text-sm">
-              Unable to load patients. Please refresh the page.
-            </div>
-          ) : filteredPatients.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-base-300 py-14 text-center bg-base-100">
-              <GiUltrasound className="w-8 h-8 text-base-content/20" />
-              <p className="text-base-content/60 text-sm">
-                {searchValue ? "No matches for your search." : "No patients awaiting sonography right now."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2">
-              {filteredPatients.map((patient) => {
-                const patientIdValue = patient?.id || patient?._id;
-                const initials = (patient.displayName || "Patient")
-                  .split(" ")
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map((n) => n[0]?.toUpperCase())
-                  .join("");
-                const typeCfg = typeBadgeConfig[patient.patientType] || typeBadgeConfig.regular;
+            {["regular", "dependant", "opd"].map((t) => {
+              const count = patients.filter((p) => p.patientType === t).length;
+              if (!count) return null;
+              return (
+                <div key={t} className="badge badge-sm badge-ghost capitalize text-base-content/70">
+                  {count} {t}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-                return (
-                  <div
-                    key={patientIdValue}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleNavigate(patient)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") handleNavigate(patient);
-                    }}
-                    className="group relative w-full rounded-xl border border-base-200 bg-base-100 px-4 py-2.5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md hover:bg-base-100/90 cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      {/* Avatar + Patient details */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-xs shrink-0">
-                          {initials || "P"}
-                        </div>
+        {/* Patient Cards List */}
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <KolakLoader />
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-error/30 bg-error/5 p-5 text-center text-error text-sm">
+            Unable to load patients. Please refresh the page.
+          </div>
+        ) : filteredPatients.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-base-300 py-14 text-center bg-base-100">
+            <GiUltrasound className="w-8 h-8 text-base-content/20" />
+            <p className="text-base-content/60 text-sm">
+              {searchValue ? "No matches for your search." : "No patients awaiting sonography right now."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            {filteredPatients.map((patient) => {
+              const patientIdValue = patient?.id || patient?._id;
+              const initials = (patient.displayName || "Patient")
+                .split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((n) => n[0]?.toUpperCase())
+                .join("");
+              const typeCfg = typeBadgeConfig[patient.patientType] || typeBadgeConfig.regular;
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm text-base-content truncate group-hover:text-primary transition-colors">
-                              {patient.displayName}
-                            </span>
-                            <span className={`badge badge-xs ${typeCfg.cls}`}>
-                              {typeCfg.text}
-                            </span>
-                            <span className="badge badge-warning badge-xs font-medium">
-                              Awaiting Scan
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-base-content/60 mt-0.5 font-mono">
-                            <span>ID: {patient.displayId}</span>
-                            {patient.updatedAt && (
-                              <span className="font-sans text-[11px] text-base-content/40 hidden sm:inline">
-                                • {formatNigeriaDateTimeShort(patient.updatedAt)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+              return (
+                <div
+                  key={patientIdValue}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleNavigate(patient)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") handleNavigate(patient);
+                  }}
+                  className="group relative w-full rounded-xl border border-base-200 bg-base-100 px-4 py-2.5 shadow-sm transition-all hover:border-primary/40 hover:shadow-md hover:bg-base-100/90 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Avatar + Patient details */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 text-primary font-bold text-xs shrink-0">
+                        {initials || "P"}
                       </div>
 
-                      {/* Right Action buttons */}
-                      <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => handleNavigate(patient)}
-                          className="btn btn-primary btn-xs sm:btn-sm gap-1"
-                        >
-                          <GiUltrasound className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Upload Scan</span>
-                          <span className="sm:hidden">Upload</span>
-                        </button>
-                        <ClearItemButton item={patient} onClear={handleClear} onCleared={fetchIncomingPatients} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-base-content truncate group-hover:text-primary transition-colors">
+                            {patient.displayName}
+                          </span>
+                          <span className={`badge badge-xs ${typeCfg.cls}`}>
+                            {typeCfg.text}
+                          </span>
+                          <span className="badge badge-warning badge-xs font-medium">
+                            Awaiting Scan
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-base-content/60 mt-0.5 font-mono">
+                          <span>ID: {patient.displayId}</span>
+                          {patient.updatedAt && (
+                            <span className="font-sans text-[11px] text-base-content/40 hidden sm:inline">
+                              • {formatNigeriaDateTimeShort(patient.updatedAt)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Right Action buttons */}
+                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => handleNavigate(patient)}
+                        className="btn btn-primary btn-xs sm:btn-sm gap-1"
+                      >
+                        <GiUltrasound className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Upload Scan</span>
+                        <span className="sm:hidden">Upload</span>
+                      </button>
+                      <ClearItemButton item={patient} onClear={handleClear} onCleared={fetchIncomingPatients} />
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
+    </SonographerLayout>
   );
 };
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/sonographer/dashboard/Sidebar";
+import SonographerLayout from "@/layouts/sonographer";
+import KolakLoader from "@/components/common/KolakLoader";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getInvestigations, updateInvestigation, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId } from "@/services/api/investigationRequestAPI";
 import { createLabResult, getLabResults, updateLabResult } from "@/services/api/labResultsAPI";
@@ -72,7 +72,6 @@ const SonographerAdmittedPatientDetails = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [existingLabResult, setExistingLabResult] = useState(null);
   const [patientType, setPatientType] = useState("regular");
   const [dependantId, setDependantId] = useState(null);
@@ -400,9 +399,6 @@ useEffect(() => {
   };
 
 
-  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-  const closeSidebar = () => setIsSidebarOpen(false);
-
   const displaySubjectName = patientType === "dependant"
     ? (dependantInfo?.fullName || `${dependantInfo?.firstName || ''} ${dependantInfo?.lastName || ''}`.trim() || 'Unknown Dependant')
     : (patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown');
@@ -429,46 +425,39 @@ useEffect(() => {
     };
   }, [dependantId, dependantInfo, displaySubjectName, isViewingDependant, patient]);
 
+  if (loading) {
+    return (
+      <SonographerLayout>
+        <KolakLoader fullscreen text="Loading patient admission details..." />
+      </SonographerLayout>
+    );
+  }
+
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="mb-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-3 rounded-full text-primary">
-                  <FaXRay className="w-6 h-6" />
-                </div>
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-base-content">
-                    {existingLabResult ? "Add Scan Files" : "Upload Sonography Scan"}
-                  </h1>
-                  <p className="text-sm sm:text-base text-base-content/70">
-                    {existingLabResult ? "Add additional scan files to existing lab result." : "Upload scan file for the selected patient."}
-                  </p>
-                </div>
+    <SonographerLayout>
+      <div className="flex flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+        <div className="mb-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-primary/10 p-3 rounded-full text-primary">
+                <FaXRay className="w-6 h-6" />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/sonographer/admitted')}>
-                  <FaArrowLeft className="w-4 h-4 mr-1" /> Back
-                </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content">
+                  {existingLabResult ? "Add Scan Files" : "Upload Sonography Scan"}
+                </h1>
+                <p className="text-sm sm:text-base text-base-content/70">
+                  {existingLabResult ? "Add additional scan files to existing lab result." : "Upload scan file for the selected patient."}
+                </p>
               </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/sonographer/admitted')}>
+                <FaArrowLeft className="w-4 h-4 mr-1" /> Back
+              </button>
+            </div>
           </div>
+        </div>
            <PatientDetailsCard
                 patient={patient}
              subject={isViewingDependant ? dependantInfo : patient}
@@ -489,7 +478,7 @@ useEffect(() => {
                   </h2>
                   {loading ? (
                     <div className="py-6 flex justify-center">
-                      <div className="loading loading-spinner loading-sm" />
+                      <KolakLoader text="Loading history..." />
                     </div>
                   ) : radiologyHistory.length === 0 ? (
                     <p className="text-sm text-base-content/50 italic py-2">No prior radiology orders for {displaySubjectName}.</p>
@@ -745,79 +734,77 @@ useEffect(() => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Preview Modal */}
-      {showPreview && previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
-          <div className="bg-base-100 rounded-2xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b border-base-200 flex items-center justify-between sticky top-0 bg-base-100">
-              <h3 className="text-lg font-semibold">{previewFile.name}</h3>
-              <button
-                onClick={() => setShowPreview(false)}
-                className="btn btn-ghost btn-sm btn-circle"
-              >
-                <FaTimes className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6 flex justify-center">
-              {(() => {
-                const isImage = previewFile instanceof File 
-                  ? previewFile.type.startsWith('image/')
-                  : (/^image\//i.test(previewFile?.mimetype || "") || /\.(jpg|jpeg|png|gif|webp)$/i.test(previewFile?.name || previewFile?.filename || ""));
+        {/* Preview Modal */}
+        {showPreview && previewFile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
+            <div className="bg-base-100 rounded-2xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-auto">
+              <div className="p-4 border-b border-base-200 flex items-center justify-between sticky top-0 bg-base-100">
+                <h3 className="text-lg font-semibold">{previewFile.name}</h3>
+                <button
+                  onClick={() => setShowPreview(false)}
+                  className="btn btn-ghost btn-sm btn-circle"
+                >
+                  <FaTimes className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="p-6 flex justify-center">
+                {(() => {
+                  const isImage = previewFile instanceof File 
+                    ? previewFile.type.startsWith('image/')
+                    : (/^image\//i.test(previewFile?.mimetype || "") || /\.(jpg|jpeg|png|gif|webp)$/i.test(previewFile?.name || previewFile?.filename || ""));
+                    
+                  const src = previewFile instanceof File ? URL.createObjectURL(previewFile) : toDataUrl(previewFile);
                   
-                const src = previewFile instanceof File ? URL.createObjectURL(previewFile) : toDataUrl(previewFile);
-                
-                if (isImage && src) {
+                  if (isImage && src) {
+                    return (
+                      <img
+                        src={src}
+                        alt={previewFile.name || previewFile.filename}
+                        className="max-w-full h-auto rounded-lg"
+                      />
+                    );
+                  }
+                  
+                  if (docPreviewLoading) {
+                    return (
+                      <div className="py-10 flex flex-col items-center gap-2">
+                        <span className="loading loading-spinner loading-md" />
+                        <p className="text-sm text-base-content/60">Rendering document…</p>
+                      </div>
+                    );
+                  }
+                  
+                  if (docPreviewHtml) {
+                    return (
+                      <div
+                        className="prose prose-sm max-w-full w-full max-h-[60vh] overflow-y-auto text-left px-2"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docPreviewHtml) }}
+                      />
+                    );
+                  }
+                  
                   return (
-                    <img
-                      src={src}
-                      alt={previewFile.name || previewFile.filename}
-                      className="max-w-full h-auto rounded-lg"
-                    />
-                  );
-                }
-                
-                if (docPreviewLoading) {
-                  return (
-                    <div className="py-10 flex flex-col items-center gap-2">
-                      <span className="loading loading-spinner loading-md" />
-                      <p className="text-sm text-base-content/60">Rendering document…</p>
+                    <div className="text-center py-10">
+                      <FaFileWord className="w-10 h-10 text-primary/50 mx-auto mb-3" />
+                      <p className="text-base-content/70 font-medium">{previewFile.name || previewFile.filename}</p>
+                      <p className="text-sm text-base-content/50 mt-1">
+                        {previewFile instanceof File ? `${(previewFile.size / 1024 / 1024).toFixed(2)} MB · ` : ''}Preview not available
+                      </p>
+                      {!(previewFile instanceof File) && (
+                        <button className="btn btn-primary btn-sm mt-3" onClick={() => downloadFile(previewFile, previewFile.name || previewFile.filename)}>
+                           <FaDownload className="w-3 h-3 mr-1" /> Download Instead
+                        </button>
+                      )}
                     </div>
                   );
-                }
-                
-                if (docPreviewHtml) {
-                  return (
-                    <div
-                      className="prose prose-sm max-w-full w-full max-h-[60vh] overflow-y-auto text-left px-2"
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(docPreviewHtml) }}
-                    />
-                  );
-                }
-                
-                return (
-                  <div className="text-center py-10">
-                    <FaFileWord className="w-10 h-10 text-primary/50 mx-auto mb-3" />
-                    <p className="text-base-content/70 font-medium">{previewFile.name || previewFile.filename}</p>
-                    <p className="text-sm text-base-content/50 mt-1">
-                      {previewFile instanceof File ? `${(previewFile.size / 1024 / 1024).toFixed(2)} MB · ` : ''}Preview not available
-                    </p>
-                    {!(previewFile instanceof File) && (
-                      <button className="btn btn-primary btn-sm mt-3" onClick={() => downloadFile(previewFile, previewFile.name || previewFile.filename)}>
-                         <FaDownload className="w-3 h-3 mr-1" /> Download Instead
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
+                })()}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-    </div>
+        )}
+      </div>
+    </SonographerLayout>
   );
 };
 

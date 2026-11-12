@@ -11,9 +11,9 @@ import HospitalFavicon from "@/assets/images/favicon.svg";
 import NotificationBadge from "@/components/common/NotificationBadge";
 import { useNotifications } from "@/contexts/NotificationContext";
 
-const Sidebar = () => {
+const Sidebar = ({ onCloseSidebar }) => {
   const location = useLocation();
-    const { incomingCount } = useNotifications();
+  const { incomingCount } = useNotifications();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { user } = useAppSelector((state) => state.auth);
 
@@ -33,14 +33,12 @@ const Sidebar = () => {
     }
   };
 
-  const isOnIncoming = location.pathname === '/dashboard/pharmacist/incoming' || location.pathname.startsWith('/dashboard/pharmacist/incoming/');
+  const isOnIncoming = location.pathname.startsWith('/dashboard/sonographer/incoming');
   const isOnPatients = location.pathname === '/dashboard/sonographer/patients';
-
 
   const menuItems = [
     { icon: FaThLarge, label: "Dashboard", path: "/dashboard/sonographer" },
-    { icon: FaInbox, label: "Incoming", path: "/dashboard/sonographer/incoming",  active: isOnIncoming,
-      badge: incomingCount, },
+    { icon: FaInbox, label: "Incoming", path: "/dashboard/sonographer/incoming", active: isOnIncoming, badge: incomingCount },
     { icon: FaUsers, label: "Patients", path: "/dashboard/sonographer/patients", active: isOnPatients },
     { icon: FaBed, label: "Admitted", path: "/dashboard/sonographer/admitted" },
     { icon: FaHistory, label: "Scan History", path: "/dashboard/sonographer/scan-history" },
@@ -49,15 +47,16 @@ const Sidebar = () => {
   const MenuItem = ({ icon: Icon, label, path, active, badge }) => (
     <Link
       to={path}
+      onClick={onCloseSidebar}
       className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
         active
           ? "bg-primary text-primary-content"
           : "text-base-content/70 hover:bg-base-200 hover:text-base-content"
-          }`}
-          >
+      }`}
+    >
       <Icon className="w-5 h-5 shrink-0" />
       <span className="flex-1 text-sm">{label}</span>
-          <NotificationBadge count={badge} />
+      <NotificationBadge count={badge} />
     </Link>
   );
 
@@ -86,6 +85,7 @@ const Sidebar = () => {
       <div className="p-3 space-y-1.5 border-t border-base-200">
         <Link
           to="/change-password"
+          onClick={onCloseSidebar}
           className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors text-base-content/70 hover:bg-base-200 hover:text-base-content"
         >
           <MdLockOutline className="w-5 h-5" />

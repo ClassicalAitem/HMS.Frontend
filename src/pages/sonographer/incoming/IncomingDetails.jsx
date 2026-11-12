@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { getDependantById, updateDependantStatus } from "@/services/api/dependantAPI";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/sonographer/dashboard/Sidebar";
+import { SonographerLayout } from "@/layouts/sonographer";
+import KolakLoader from "@/components/common/KolakLoader";
 import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getInvestigations, updateInvestigation, getInvestigationRequestByOpdPatientId, getInvestigationByPatientId } from "@/services/api/investigationRequestAPI";
 import { createLabResult, getLabResults, updateLabResult } from "@/services/api/labResultsAPI";
@@ -68,7 +68,6 @@ const SonographerIncomingDetails = () => {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [existingLabResult, setExistingLabResult] = useState(null);
   const [patientType, setPatientType] = useState("regular");
   const [dependantId, setDependantId] = useState(null);
@@ -519,9 +518,6 @@ useEffect(() => {
   };
 
 
-  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-  const closeSidebar = () => setIsSidebarOpen(false);
-
   const displaySubjectName = patientType === "dependant"
     ? (dependantInfo?.fullName || `${dependantInfo?.firstName || ''} ${dependantInfo?.lastName || ''}`.trim() || 'Unknown Dependant')
     : (patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown');
@@ -549,23 +545,10 @@ useEffect(() => {
   }, [dependantId, dependantInfo, displaySubjectName, isViewingDependant, patient]);
 
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
+    <SonographerLayout>
+      {loading && <KolakLoader fullscreen />}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
+      <div className="space-y-6 min-w-0">
           <div className="mb-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
@@ -634,7 +617,7 @@ useEffect(() => {
 
                   {loading ? (
                     <div className="py-6 flex justify-center">
-                      <div className="loading loading-spinner loading-sm" />
+                      <KolakLoader />
                     </div>
                   ) : !investigation ? (
                     <p className="text-sm text-base-content/50 italic py-2">
@@ -720,7 +703,7 @@ useEffect(() => {
                   </h2>
                   {loading ? (
                     <div className="py-6 flex justify-center">
-                      <div className="loading loading-spinner loading-sm" />
+                      <KolakLoader />
                     </div>
                   ) : radiologyHistory.length === 0 ? (
                     <p className="text-sm text-base-content/50 italic py-2">No prior radiology orders for {displaySubjectName}.</p>
@@ -960,8 +943,6 @@ useEffect(() => {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Preview Modal */}
       {showPreview && previewFile && (
@@ -1075,7 +1056,8 @@ useEffect(() => {
         </div>
       </div>
     )}
-    </div>
+      </div>
+    </SonographerLayout>
   );
 };
 
