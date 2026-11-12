@@ -11,6 +11,7 @@ import FrontdeskLayout from './frontdesk/FrontdeskLayout';
 import SurgeonLayout from './surgeon/SurgeonLayout';
 import DeveloperLayout from './developer/DeveloperLayout';
 import PharmacistLayout from './pharmacist/PharmacistLayout';
+import HmoLayout from './hmo/HmoLayout';
 
 const RoleBasedLayout = ({ children }) => {
   const { user } = useAppSelector((state) => state.auth);
@@ -31,6 +32,7 @@ const RoleBasedLayout = ({ children }) => {
   if (normalizedRole === 'front-desk') return <FrontdeskLayout>{children}</FrontdeskLayout>;
   if (normalizedRole === 'surgeon') return <SurgeonLayout>{children}</SurgeonLayout>;
   if (normalizedRole === 'pharmacist') return <PharmacistLayout>{children}</PharmacistLayout>;
+  if (normalizedRole === 'hmo') return <HmoLayout>{children}</HmoLayout>;
 
   // Default clean layout for other roles (medical-laboratory, lab-technician, sonographer, etc.)
   return (

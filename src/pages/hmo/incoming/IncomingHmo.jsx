@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/hmo/dashboard/Sidebar";
+import { HmoLayout } from "@/layouts/hmo";
+import { EmptyState } from "@/components/common";
 import { RiSuitcaseLine, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { PATIENT_STATUS } from "@/constants/patientStatus";
@@ -17,7 +17,6 @@ import { useNotifications } from "@/contexts/NotificationContext";
 const IncomingHmo = () => {
   const navigate = useNavigate();
   const [patient, setPatient] = useState([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -26,8 +25,6 @@ const IncomingHmo = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const pageSize = 9;
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
   const { refreshQueueCount, lastUpdate } = useNotifications();
 
   useEffect(() => {
@@ -201,37 +198,19 @@ const IncomingHmo = () => {
   };
 
   return (
-    <div className="flex h-screen w-full">
+    <HmoLayout>
       {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
 
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-5 lg:p-6">
-          <section className="space-y-4 sm:space-y-5">
-            <div>
-              <div className="flex items-center gap-3 sm:gap-5">
-                <RiSuitcaseLine size={24} className="text-primary sm:w-[25px]" />
-                <h1 className="text-2xl font-bold text-primary sm:text-[32px]">Incoming HMO Requests</h1>
-              </div>
-              <p className="mt-1 text-xs text-base-content/70 sm:text-sm">
-                Review patients sent to HMO for approval.
-              </p>
-            </div>
+      <section className="space-y-4 sm:space-y-5 min-w-0">
+        <div>
+          <div className="flex items-center gap-3 sm:gap-5">
+            <RiSuitcaseLine size={24} className="text-primary sm:w-[25px]" />
+            <h1 className="text-2xl font-bold text-primary sm:text-[32px]">Incoming HMO Requests</h1>
+          </div>
+          <p className="mt-1 text-xs text-base-content/70 sm:text-sm">
+            Review patients sent to HMO for approval.
+          </p>
+        </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative w-full max-w-sm">
@@ -280,19 +259,9 @@ const IncomingHmo = () => {
 
               <div className="divide-y divide-base-200">
                 {loading ? (
-                  Array.from({ length: 8 }).map((_, idx) => (
-                    <div key={idx} className="grid grid-cols-12 gap-2 px-5 py-4 items-center">
-                      <div className="col-span-3 space-y-2">
-                        <div className="skeleton h-4 w-36 rounded" />
-                        <div className="skeleton h-3 w-20 rounded" />
-                      </div>
-                      <div className="col-span-2"><div className="skeleton h-4 w-24 rounded" /></div>
-                      <div className="col-span-2"><div className="skeleton h-5 w-24 rounded-full" /></div>
-                      <div className="col-span-2"><div className="skeleton h-5 w-28 rounded-full" /></div>
-                      <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
-                      <div className="col-span-1 flex justify-end"><div className="skeleton h-8 w-16 rounded" /></div>
-                    </div>
-                  ))
+                  <div className="py-16">
+                    <KolakLoader />
+                  </div>
                 ) : filtered.length === 0 ? (
                   <div className="py-16">
                     <EmptyState
@@ -412,9 +381,7 @@ const IncomingHmo = () => {
               )}
             </div>
           </section>
-        </div>
-      </div>
-    </div>
+    </HmoLayout>
   );
 };
 

@@ -5,6 +5,7 @@ import { formatNigeriaDate,formatNigeriaTime } from "@/utils/formatDateTimeUtils
 import toast from "react-hot-toast";
 import { FaPen } from 'react-icons/fa';
 import EditHmoDecisionModal from "@/components/modals/EditHmoDecisionModal";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const PatientHmoHistory = ({ patientId, dependantId = null, historyRefreshKey = 0 }) => {
   const navigate = useNavigate();
@@ -219,10 +220,8 @@ useEffect(() => {
   if (loading) {
     return (
       <div className="card bg-base-100 border border-base-200 mb-6">
-        <div className="card-body p-5 space-y-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="skeleton h-8 w-full" />
-          ))}
+        <div className="card-body p-6 flex items-center justify-center">
+          <KolakLoader />
         </div>
       </div>
     );

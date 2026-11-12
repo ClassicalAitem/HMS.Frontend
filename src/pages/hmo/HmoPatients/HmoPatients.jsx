@@ -2,8 +2,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RiFilterLine, RiCloseLine } from 'react-icons/ri';
-import { Header, DataTable } from '@/components/common';
-import Sidebar from '@/components/hmo/dashboard/Sidebar';
+import { HmoLayout } from '@/layouts/hmo';
+import { DataTable } from '@/components/common';
 import { getAllBillings } from '@/services/api/billingAPI';
 import { getPatients } from '@/services/api/patientsAPI';
 import { getDependants } from '@/services/api/dependantAPI';
@@ -15,7 +15,6 @@ const HMOPatients = () => {
   const [searchParams] = useSearchParams();
   const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
   const [currentQuery, setCurrentQuery] = useState(() => urlSearch || '');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all_patients'); // Default to 'all_patients' (normal hospital registry)
@@ -61,9 +60,6 @@ const HMOPatients = () => {
     (dateFilter !== 'all' ? 1 : 0) +
     (decisionFilter !== 'all' ? 1 : 0) +
     (customFrom || customTo ? 1 : 0);
-
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   const loadHistory = async () => {
     try {
@@ -407,46 +403,28 @@ const HMOPatients = () => {
   ], []);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <HmoLayout>
       {loading && <KolakLoader fullscreen />}
 
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="overflow-y-auto flex-1 p-3 sm:p-6">
-          <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold sm:text-3xl">Patients</h1>
-              <p className="text-sm text-base-content/70 sm:text-base">
-                {activeTab === 'all_patients'
-                  ? 'All patients and dependants registered at the hospital.'
-                  : 'Patients whose billing items have been reviewed.'}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <button className="btn btn-sm" onClick={loadHistory} disabled={loading}>
-                Refresh
-              </button>
-              <button className="btn btn-sm btn-outline" onClick={() => navigate('/dashboard/hmo/incoming')}>
-                ← Back to Incoming
-              </button>
-            </div>
+      <div className="space-y-6 min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold sm:text-3xl">Patients</h1>
+            <p className="text-sm text-base-content/70 sm:text-base">
+              {activeTab === 'all_patients'
+                ? 'All patients and dependants registered at the hospital.'
+                : 'Patients whose billing items have been reviewed.'}
+            </p>
           </div>
+          <div className="flex gap-2">
+            <button className="btn btn-sm" onClick={loadHistory} disabled={loading}>
+              Refresh
+            </button>
+            <button className="btn btn-sm btn-outline" onClick={() => navigate('/dashboard/hmo/incoming')}>
+              ← Back to Incoming
+            </button>
+          </div>
+        </div>
 
           <div className="flex gap-2 mb-6">
             <button
@@ -582,13 +560,8 @@ const HMOPatients = () => {
           <div className="w-full shadow-xl card bg-base-100">
             <div className="p-3 card-body sm:p-4 2xl:p-6">
               {loading ? (
-                <div className="overflow-hidden rounded-lg border border-base-300/40 bg-base-100">
-                  <div className="overflow-auto max-h-96 p-4 space-y-3">
-                    <div className="skeleton h-6 w-40" />
-                    {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="skeleton h-8 w-full" />
-                    ))}
-                  </div>
+                <div className="p-8 flex items-center justify-center">
+                  <KolakLoader />
                 </div>
               ) : activeTab === 'all_patients' ? (
                 <DataTable
@@ -600,7 +573,7 @@ const HMOPatients = () => {
                   paginated={true}
                   initialEntriesPerPage={14}
                   initialSearchTerm={currentQuery}
-                  maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
+                  maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
                   showEntries={true}
                   searchPlaceholder="Search patients by name, ID, or phone..."
                 />
@@ -628,7 +601,7 @@ const HMOPatients = () => {
                     paginated={true}
                     initialEntriesPerPage={14}
                     initialSearchTerm={currentQuery}
-                    maxHeight="max-h-96 sm:max-h-80 md:max-h-100dvh lg:min-h-[50vh] 2xl:min-h-[60vh]"
+                    maxHeight="max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]"
                     showEntries={true}
                     searchPlaceholder="Search reviewed patients by name or ID..."
                   />
@@ -637,8 +610,7 @@ const HMOPatients = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </HmoLayout>
   );
 };
 

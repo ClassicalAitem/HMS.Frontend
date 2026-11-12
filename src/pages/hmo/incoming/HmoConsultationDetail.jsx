@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/hmo/dashboard/Sidebar";
+import { HmoLayout } from "@/layouts/hmo";
+import KolakLoader from "@/components/common/KolakLoader";
 import { getConsultationById } from "@/services/api/consultationAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getPrescriptionsForConsultation } from "@/services/api/prescriptionsAPI";
 import { RiArrowLeftLine } from "react-icons/ri";
-import { FaPrescriptionBottleAlt } from "react-icons/fa";
+import { FaPrescriptionBottleAlt, FaClipboardList } from "react-icons/fa";
 import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
-import { FaClipboardList } from "react-icons/fa";
 
 const Section = ({ title, children }) => (
   <div className="card bg-base-100 border border-base-200 shadow-sm">
@@ -34,54 +33,43 @@ const HmoConsultationDetail = () => {
   const [consultation, setConsultation] = useState(location.state?.consultation || null);
   const [patient, setPatient] = useState(null);
   const [prescriptions, setPrescriptions] = useState([]);
-  const [prescriptionsLoading, setPrescriptionsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   useEffect(() => {
     let mounted = true;
-    const fetchConsultation = async () => {
+    const fetchAllData = async () => {
       try {
         setLoading(true);
-        const res = await getConsultationById(id);
-        const data = res?.data?.data ?? res?.data ?? res;
-        if (mounted) setConsultation(data);
 
-        if (data?.patientId) {
-          const patRes = await getPatientById(data.patientId);
+        const [consultRes, rxRes] = await Promise.allSettled([
+          getConsultationById(id),
+          getPrescriptionsForConsultation(id),
+        ]);
+
+        let consultData = null;
+        if (consultRes.status === 'fulfilled') {
+          consultData = consultRes.value?.data?.data ?? consultRes.value?.data ?? consultRes.value;
+          if (mounted) setConsultation(consultData);
+        }
+
+        if (rxRes.status === 'fulfilled') {
+          const raw = rxRes.value?.data ?? rxRes.value ?? [];
+          const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+          if (mounted) setPrescriptions(list);
+        }
+
+        if (consultData?.patientId) {
+          const patRes = await getPatientById(consultData.patientId).catch(() => null);
           const patData = patRes?.data?.data ?? patRes?.data ?? patRes;
-          if (mounted) setPatient(patData);
+          if (mounted && patData) setPatient(patData);
         }
       } catch (err) {
-        console.error("Failed to load consultation:", err);
+        console.error("Failed to load consultation details:", err);
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    fetchConsultation();
-    return () => { mounted = false; };
-  }, [id]);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchPrescriptions = async () => {
-      try {
-        setPrescriptionsLoading(true);
-        const res = await getPrescriptionsForConsultation(id);
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
-        if (mounted) setPrescriptions(list);
-      } catch (err) {
-        console.error("Failed to load prescriptions for consultation:", err);
-        if (mounted) setPrescriptions([]);
-      } finally {
-        if (mounted) setPrescriptionsLoading(false);
-      }
-    };
-
-    if (id) fetchPrescriptions();
+    if (id) fetchAllData();
     return () => { mounted = false; };
   }, [id]);
 
@@ -98,218 +86,162 @@ const HmoConsultationDetail = () => {
     : (patient?.hmos || []).filter(h => !h.dependantId);
 
   return (
-    <div className="flex min-h-screen w-full">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
+    <HmoLayout>
+      {loading && <KolakLoader fullscreen />}
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
-        <Header onToggleSidebar={() => setIsSidebarOpen(v => !v)} />
-
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-          {/* Back + title */}
-          <div className="flex items-center gap-3 mb-6">
-            <button
-              className="btn btn-ghost btn-sm btn-circle shrink-0"
-              onClick={() => navigate('/dashboard/hmo/consultations')}
-            >
-              <RiArrowLeftLine size={18} />
-            </button>
-            <div className="flex items-center gap-2 min-w-0">
-              <FaClipboardList size={20} className="text-primary shrink-0" />
-              <h1 className="text-lg font-bold text-primary sm:text-xl truncate">Consultation Detail</h1>
-            </div>
+      <div className="space-y-6 min-w-0">
+        {/* Back + title */}
+        <div className="flex items-center gap-3">
+          <button
+            className="btn btn-ghost btn-sm btn-circle shrink-0"
+            onClick={() => navigate('/dashboard/hmo/consultations')}
+          >
+            <RiArrowLeftLine size={18} />
+          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <FaClipboardList size={20} className="text-primary shrink-0" />
+            <h1 className="text-lg font-bold text-primary sm:text-xl truncate">Consultation Detail</h1>
           </div>
+        </div>
 
-          {loading ? (
-            <div className="space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="skeleton h-32 rounded-xl w-full" />
-              ))}
-            </div>
-          ) : !consultation ? (
-            <div className="alert alert-error max-w-md">Consultation not found.</div>
-          ) : (
-            <div className="space-y-4 max-w-4xl">
-
-              {/* Subject banner */}
-              <div className={`rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 ${
-                isDependant ? 'bg-secondary/10 border border-secondary/20' : 'bg-primary/10 border border-primary/20'
-              }`}>
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shrink-0 ${
-                    isDependant ? 'bg-secondary/20 text-secondary' : 'bg-primary/20 text-primary'
-                  }`}>
-                    {subjectName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-base-content truncate">{subjectName}</p>
-                    {isDependant && (
-                      <p className="text-sm text-base-content/60 truncate">
-                        Dependant of {patientName} · {consultation?.dependant?.relationshipType || 'Dependant'}
-                      </p>
-                    )}
-                    {!isDependant && patient?.hospitalId && (
-                      <p className="text-sm text-base-content/60">{patient.hospitalId}</p>
-                    )}
-                  </div>
+        {loading ? (
+          <div className="py-16 flex justify-center">
+            <KolakLoader />
+          </div>
+        ) : !consultation ? (
+          <div className="alert alert-error max-w-md">Consultation not found.</div>
+        ) : (
+          <div className="space-y-4 max-w-4xl">
+            {/* Subject banner */}
+            <div className={`rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 ${
+              isDependant ? 'bg-secondary/10 border border-secondary/20' : 'bg-primary/10 border border-primary/20'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-base ${
+                  isDependant ? 'bg-secondary text-secondary-content' : 'bg-primary text-primary-content'
+                }`}>
+                  {subjectName.charAt(0).toUpperCase()}
                 </div>
-                <span className={`badge shrink-0 ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
-                  {isDependant ? 'Dependant' : 'Patient'}
-                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-base-content text-base">{subjectName}</span>
+                    <span className={`badge badge-sm ${isDependant ? 'badge-secondary' : 'badge-primary'}`}>
+                      {isDependant ? (consultation.dependant?.relationshipType || 'Dependant') : 'Patient'}
+                    </span>
+                  </div>
+                  {isDependant && patientName && (
+                    <p className="text-xs text-base-content/60">Principal: {patientName}</p>
+                  )}
+                  <p className="text-xs text-base-content/50">{consultation.patient?.hospitalId || '—'}</p>
+                </div>
               </div>
 
-              {/* HMO Coverage */}
-              {hmos.length > 0 && (
-                <Section title="HMO Coverage">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {hmos.map(hmo => (
-                      <div key={hmo.id} className="p-3 rounded-lg bg-success/10 border border-success/20">
-                        <p className="font-semibold text-sm text-success capitalize">{hmo.provider || '—'}</p>
-                        <div className="mt-1 space-y-0.5 text-xs text-base-content/70">
-                          <div className="break-words">Member ID: {hmo.memberId || '—'}</div>
-                          {hmo.plan && <div className="break-words">Plan: {hmo.plan}</div>}
-                          <div>Expires: {hmo.expiresAt ? formatNigeriaDate(hmo.expiresAt) : '—'}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
-
-              {/* Consultation overview */}
-              <Section title="Consultation Overview">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <Field label="Visit Reason" value={consultation.visitReason} />
-                  <Field label="Doctor" value={doctorName || '—'} />
-                  <Field label="Date" value={consultation.createdAt ? formatNigeriaDate(consultation.createdAt) : '—'} />
-                  <Field
-                    label="Diagnosis"
-                    value={consultation.diagnosis}
-                    className="col-span-2 sm:col-span-3"
-                  />
-                </div>
-              </Section>
-
-              {/* Prescriptions for this consultation */}
-              <Section title="">
-                <div className="flex items-center gap-2 mb-3 -mt-1">
-                  <FaPrescriptionBottleAlt className="text-success w-4 h-4 shrink-0" />
-                  <h3 className="font-semibold text-base-content text-base">Prescriptions</h3>
-                </div>
-
-                {prescriptionsLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 2 }).map((_, i) => (
-                      <div key={i} className="skeleton h-16 rounded-lg w-full" />
-                    ))}
-                  </div>
-                ) : prescriptions.length === 0 ? (
-                  <div className="text-center py-6 bg-base-200/30 rounded-lg border border-dashed border-base-300">
-                    <p className="text-sm text-base-content/50">No prescriptions for this consultation yet.</p>
-                  </div>
+              {/* HMO plan badge */}
+              <div className="flex flex-col items-end gap-1">
+                {hmos.length > 0 ? (
+                  hmos.map(h => (
+                    <span key={h.id || h._id} className="badge badge-info badge-sm">
+                      {h.provider} {h.plan ? `(${h.plan})` : ''}
+                    </span>
+                  ))
                 ) : (
-                  <div className="space-y-3">
-                    {prescriptions.map((p) => (
-                      <div key={p._id || p.id} className="border border-base-200 rounded-lg p-3">
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className={`badge badge-sm ${
-                            String(p.status).toLowerCase() === 'completed' ? 'badge-success' : 'badge-warning'
-                          }`}>
-                            {p.status || '—'}
-                          </span>
-                          <span className="text-xs text-base-content/50">
-                            {p.createdAt ? formatNigeriaDateTime(p.createdAt) : '—'}
-                          </span>
-                        </div>
-                        <div className="space-y-1.5">
-                          {(p.medications || []).map((med, mIdx) => (
-                            <div key={mIdx} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-                              <span className="font-medium text-base-content">{med.drugName}</span>
-                              <span className="text-base-content/40">•</span>
-                              <span className="text-base-content/70">{med.dosage}</span>
-                              <span className="text-base-content/40">•</span>
-                              <span className="text-base-content/70">{med.frequency}</span>
-                              {med.duration && (
-                                <>
-                                  <span className="text-base-content/40">•</span>
-                                  <span className="text-base-content/70">{med.duration}</span>
-                                </>
-                              )}
+                  <span className="badge badge-ghost badge-sm">No HMO attached</span>
+                )}
+                <span className="text-xs text-base-content/50">
+                  {formatNigeriaDateTime(consultation.createdAt)}
+                </span>
+              </div>
+            </div>
+
+            {/* Visit Details */}
+            <Section title="Visit Details">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <Field label="Visit Reason" value={consultation.visitReason} />
+                <Field label="Department" value={consultation.department} />
+                <Field label="Doctor" value={doctorName || '—'} />
+                <Field label="Consultation Date" value={formatNigeriaDate(consultation.createdAt)} />
+                <Field label="Blood Pressure" value={consultation.vitals?.bloodPressure || consultation.bloodPressure} />
+                <Field label="Temperature" value={consultation.vitals?.temperature ? `${consultation.vitals.temperature} °C` : null} />
+              </div>
+            </Section>
+
+            {/* Diagnosis */}
+            <Section title="Diagnosis">
+              <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.diagnosis || 'No diagnosis recorded'}</p>
+              {consultation.provisionalDiagnosis && (
+                <div className="mt-3 pt-3 border-t border-base-200">
+                  <span className="text-xs text-base-content/50 block mb-1">Provisional Diagnosis</span>
+                  <p className="text-sm text-base-content/70">{consultation.provisionalDiagnosis}</p>
+                </div>
+              )}
+            </Section>
+
+            {/* Prescriptions */}
+            <Section title={`Prescriptions (${prescriptions.length})`}>
+              {prescriptions.length === 0 ? (
+                <p className="text-sm text-base-content/50">No prescriptions attached to this consultation.</p>
+              ) : (
+                <div className="space-y-3">
+                  {prescriptions.map((p, idx) => (
+                    <div key={p.id || idx} className="p-3 bg-base-200/50 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-base-content/70 flex items-center gap-1.5">
+                          <FaPrescriptionBottleAlt className="text-primary" />
+                          Prescription #{idx + 1}
+                        </span>
+                        {p.status && (
+                          <span className="badge badge-sm badge-ghost uppercase text-[10px]">{p.status}</span>
+                        )}
+                      </div>
+                      {Array.isArray(p.medications) && p.medications.length > 0 ? (
+                        <div className="divide-y divide-base-200">
+                          {p.medications.map((m, mIdx) => (
+                            <div key={mIdx} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-xs">
+                              <div>
+                                <span className="font-semibold text-base-content">{m.drugName || m.name || '—'}</span>
+                                {m.dosage && <span className="text-base-content/60 ml-2">{m.dosage}</span>}
+                                {m.frequency && <span className="text-base-content/50 ml-1">· {m.frequency}</span>}
+                                {m.duration && <span className="text-base-content/50 ml-1">· {m.duration}</span>}
+                              </div>
+                              <div className="text-right shrink-0">
+                                {m.quantity && <span className="badge badge-ghost badge-xs">Qty: {m.quantity}</span>}
+                                {m.route && <span className="ml-1 text-base-content/40">{m.route}</span>}
+                              </div>
                             </div>
                           ))}
                         </div>
-                        {p.pharmacistName && (
-                          <p className="text-xs text-base-content/50 mt-2">Dispensed by {p.pharmacistName}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ) : (
+                        <p className="text-xs text-base-content/50">{p.notes || 'No medication details'}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+
+            {/* Medical & Clinical Notes */}
+            {consultation.medicalHistory && (
+              <Section title="Medical History">
+                <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.medicalHistory}</p>
               </Section>
+            )}
 
-              {/* Complaints */}
-              {consultation.complaint?.length > 0 && (
-                <Section title="Complaints">
-                  <div className="space-y-2">
-                    {consultation.complaint.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between gap-2 p-3 rounded-lg bg-base-200/50">
-                        <span className="text-sm font-medium truncate">{c.symptom || '—'}</span>
-                        <span className="text-xs text-base-content/50 shrink-0">{c.durationInDays ? `${c.durationInDays} day(s)` : ''}</span>
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
+            {consultation.allergicHistory && (
+              <Section title="Allergic History">
+                <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.allergicHistory}</p>
+              </Section>
+            )}
 
-              {/* Medical history */}
-              {consultation.medicalHistory && (
-                <Section title="Medical History">
-                  <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.medicalHistory}</p>
-                </Section>
-              )}
-
-              {/* Family history */}
-              {consultation.familyHistory?.length > 0 && (
-                <Section title="Family History">
-                  <div className="space-y-2">
-                    {consultation.familyHistory.map((f, i) => (
-                      <div key={i} className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-base-200/50">
-                        <span className="text-xs text-base-content/50 w-20 shrink-0">{f.relation || '—'}</span>
-                        <span className="text-sm font-medium">{f.condition || '—'}</span>
-                        {f.value && <span className="text-xs text-base-content/50 sm:ml-auto">{f.value}</span>}
-                      </div>
-                    ))}
-                  </div>
-                </Section>
-              )}
-
-              {/* Allergic history */}
-              {consultation.allergicHistory && (
-                <Section title="Allergic History">
-                  <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.allergicHistory}</p>
-                </Section>
-              )}
-
-              {/* Notes */}
-              {consultation.notes && (
-                <Section title="Doctor's Notes">
-                  <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.notes}</p>
-                </Section>
-              )}
-
-            </div>
-          )}
-        </div>
+            {/* Notes */}
+            {consultation.notes && (
+              <Section title="Doctor's Notes">
+                <p className="text-sm text-base-content/80 whitespace-pre-wrap">{consultation.notes}</p>
+              </Section>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </HmoLayout>
   );
 };
 

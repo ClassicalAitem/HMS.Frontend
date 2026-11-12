@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, EmptyState } from "@/components/common";
-import Sidebar from "@/components/hmo/dashboard/Sidebar";
+import { HmoLayout } from "@/layouts/hmo";
+import { EmptyState } from "@/components/common";
 import { RiArrowLeftRightFill, RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { getPatients, getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
 import { getDependants, updateDependantStatus } from "@/services/api/dependantAPI";
@@ -36,7 +36,6 @@ const statusBadgeClass = (reason = "") => {
 
 const IncomingLabResults = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -45,8 +44,6 @@ const IncomingLabResults = () => {
   const [navigatingId, setNavigatingId] = useState(null);
   const pageSize = 4;
 
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const closeSidebar = () => setIsSidebarOpen(false);
   const { refreshQueueCount, refreshLabReadyCount, lastUpdate } = useNotifications();
 
 
@@ -245,29 +242,19 @@ const IncomingLabResults = () => {
     refreshLabReadyCount();
 };
   return (
-    <div className="flex h-screen max-h-screen w-full overflow-hidden bg-base-100">
+    <HmoLayout>
       {loading && <KolakLoader fullscreen />}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
 
-      <div className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden bg-base-100">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <main className="flex-1 h-full min-h-0 overflow-y-auto p-3 sm:p-5 lg:p-6 space-y-4 sm:space-y-5">
-          <div className="mb-6">
-            <div className="flex items-center gap-3">
-              <FaVials size={24} className="text-primary" />
-              <h1 className="text-2xl font-bold text-primary">Lab Results</h1>
-            </div>
-            <p className="text-sm text-base-content/60 mt-1">
-              Patients and dependants with completed lab results ready for review.
-            </p>
+      <section className="space-y-4 sm:space-y-5 min-w-0">
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <FaVials size={24} className="text-primary" />
+            <h1 className="text-2xl font-bold text-primary">Lab Results</h1>
           </div>
+          <p className="text-sm text-base-content/60 mt-1">
+            Patients and dependants with completed lab results ready for review.
+          </p>
+        </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-5">
             <div className="relative w-full sm:max-w-sm">
@@ -301,18 +288,9 @@ const IncomingLabResults = () => {
 
             <div className="divide-y divide-base-200">
               {loading ? (
-                Array.from({ length: 8 }).map((_, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 px-5 py-4 items-center">
-                    <div className="col-span-3 space-y-2">
-                      <div className="skeleton h-4 w-36 rounded" />
-                      <div className="skeleton h-3 w-20 rounded" />
-                    </div>
-                    <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
-                    <div className="col-span-3"><div className="skeleton h-5 w-28 rounded-full" /></div>
-                    <div className="col-span-2"><div className="skeleton h-4 w-20 rounded" /></div>
-                    <div className="col-span-2 flex justify-end"><div className="skeleton h-8 w-16 rounded" /></div>
-                  </div>
-                ))
+                <div className="py-16">
+                  <KolakLoader />
+                </div>
               ) : filteredItems.length === 0 ? (
                 <div className="py-16">
                   <EmptyState
@@ -409,9 +387,8 @@ const IncomingLabResults = () => {
               </div>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </section>
+    </HmoLayout>
   );
 };
 

@@ -1,18 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Header } from '@/components/common'
-import HmoSidebar from '@/components/hmo/dashboard/Sidebar'
+import { HmoLayout } from '@/layouts/hmo'
 import { getAdmissions } from '@/services/api/admissionApi'
 import { getAllWards } from '@/services/api/wardAPI'
 import { getPatientById } from '@/services/api/patientsAPI'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
+import KolakLoader from '@/components/common/KolakLoader'
 import toast from 'react-hot-toast'
 import { FaBed, FaSearch, FaNotesMedical } from 'react-icons/fa'
 
 const HmoAdmissions = () => {
   const navigate = useNavigate()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [sidebarMounted, setSidebarMounted] = useState(false)
   const [search, setSearch] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 8
@@ -20,11 +18,6 @@ const HmoAdmissions = () => {
   const [admitted, setAdmitted] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setSidebarMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   const loadData = async () => {
     try {
@@ -98,34 +91,36 @@ const HmoAdmissions = () => {
           bedNumber: cleanBed,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           relationshipType: isDependant ? source?.relationshipType : null,
-          parentPatient,
+          parentPatient: isDependant ? parentPatient : null,
+          snapshot: source,
           admission,
-          raw: source,
-          snapshot: source
         }
       }
 
-      const admittedItems = activeAdmissions.map(buildItem)
-      setAdmitted(admittedItems)
+      const mappedAdmitted = activeAdmissions.map(buildItem)
+      mappedAdmitted.sort((a, b) => new Date(b.admittedAt || 0) - new Date(a.admittedAt || 0))
+      setAdmitted(mappedAdmitted)
     } catch (err) {
-      console.error('Failed to load admissions', err)
-      setError('Failed to load admitted patients directory')
-      toast.error('Failed to load admissions')
+      console.error('HmoAdmissions load error:', err)
+      setError('Failed to load active admissions. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return admitted
-    return admitted.filter(item =>
-      item.name.toLowerCase().includes(q) ||
-      String(item.ward).toLowerCase().includes(q) ||
-      String(item.bedNumber).toLowerCase().includes(q) ||
-      String(item.displayId || '').toLowerCase().includes(q)
+    const list = admitted
+    if (!search.trim()) return list
+    const q = search.toLowerCase()
+    return list.filter(item =>
+      (item.name || '').toLowerCase().includes(q) ||
+      (item.displayId || '').toLowerCase().includes(q) ||
+      (item.ward || '').toLowerCase().includes(q) ||
+      String(item.bedNumber || '').toLowerCase().includes(q)
     )
   }, [admitted, search])
 
@@ -133,239 +128,220 @@ const HmoAdmissions = () => {
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
     return filtered.slice(start, start + itemsPerPage)
-  }, [filtered, currentPage])
+  }, [filtered, currentPage, itemsPerPage])
 
-  useEffect(() => { setCurrentPage(1) }, [search])
+  const openAdmission = (item) => {
+    const pId = item.patientId || item.admission?.patientId
+    const aId = item.admission?._id || item.admission?.id
 
-  const openPatientDetails = (item) => {
-    if (item.patientId && item.admission) {
-      const targetAdmissionId = item.admission._id || item.admission.id;
-      navigate(`/dashboard/hmo/admissions/${item.patientId}/${targetAdmissionId}`, {
+    if (pId && aId) {
+      navigate(`/dashboard/hmo/admissions/${pId}/${aId}`, {
         state: {
           patientSnapshot: item.type === 'dependant' ? null : item.snapshot,
           dependantId: item.dependantId,
           dependantSnapshot: item.type === 'dependant' ? item.snapshot : null,
-          from: 'admissions',
-        },
+          admission: item.admission
+        }
       });
     } else {
       toast.error('Missing patient ID or admission details');
     }
   }
 
-  const SidebarDrawer = () => (
-    <>
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-xs" onClick={() => setIsSidebarOpen(false)} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
-        } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <HmoSidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
-      </div>
-    </>
-  )
-
-  if (loading) {
-    return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center space-y-3">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-              <p className="text-sm font-medium text-base-content/70">Loading active admissions...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   if (error) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
-              <p className="text-sm font-semibold text-error mb-4">{error}</p>
-              <button onClick={loadData} className="btn btn-primary btn-sm rounded-xl">
-                Try Again
-              </button>
-            </div>
+      <HmoLayout>
+        <div className="flex items-center justify-center min-h-[50vh] px-4">
+          <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
+            <p className="text-sm font-semibold text-error mb-4">{error}</p>
+            <button onClick={loadData} className="btn btn-primary btn-sm rounded-xl">
+              Try Again
+            </button>
           </div>
         </div>
-      </div>
+      </HmoLayout>
     )
   }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-        <div className="overflow-y-auto flex-1">
-          <section className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <HmoLayout>
+      {loading && <KolakLoader fullscreen />}
+
+      <section className="space-y-4 sm:space-y-6 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                <FaBed className="w-6 h-6" />
+              </div>
               <div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
-                    <FaBed className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">Admitted Patients (HMO)</h1>
-                    <p className="text-xs sm:text-sm text-base-content/60">
-                      Review HMO items and charges for patients currently in the ward
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-base-100 p-2.5 sm:p-3 rounded-2xl border border-base-200 shadow-sm">
-              <div className="inline-flex items-center p-2 rounded-xl text-sm font-semibold text-base-content">
-                Total Admitted: {admitted.length}
-              </div>
-
-              <div className="relative w-full sm:w-80">
-                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 text-sm" />
-                <input
-                  type="text"
-                  placeholder="Search by patient ID, name, ward..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="input input-sm sm:input-md input-bordered w-full pl-9 rounded-xl text-xs sm:text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Mobile Card List (< lg) */}
-            <div className="flex flex-col gap-3 lg:hidden">
-              {paginated.map((item) => (
-                <AdmittedCard key={item.key} item={item} onOpen={() => openPatientDetails(item)} />
-              ))}
-            </div>
-
-            {/* Desktop DataTable (>= lg) */}
-            <div className="hidden lg:block bg-base-100 rounded-2xl shadow-sm border border-base-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="table w-full">
-                  <thead className="bg-base-200/60 text-xs uppercase tracking-wider text-base-content/70">
-                    <tr>
-                      <th className="py-3.5 px-4">Patient Profile</th>
-                      <th className="py-3.5 px-4">Ward & Bed Number</th>
-                      <th className="py-3.5 px-4">Admitted Timestamp</th>
-                      <th className="py-3.5 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-base-200 text-sm">
-                    {paginated.map((item) => (
-                      <tr key={item.key} className="hover:bg-base-200/40 transition-colors">
-                        <td className="py-3.5 px-4 font-medium">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                              {item.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="font-semibold text-base-content">{item.name}</div>
-                              <div className="text-xs font-mono text-base-content/50 mt-0.5">
-                                ID: {item.hospitalId}
-                              </div>
-                              {item.parentPatient && (
-                                <div className="text-xs text-base-content/50">
-                                  Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-base-content">{item.ward}</span>
-                            {item.bedNumber ? (
-                              <span className="badge badge-outline badge-sm text-xs">
-                                Bed {item.bedNumber}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-base-content/40 italic">Unassigned Bed</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-xs font-medium text-base-content/80">
-                          {formatNigeriaDateTimeShort(item.admittedAt)}
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => openPatientDetails(item)}
-                            className="btn btn-sm btn-primary rounded-xl gap-2 font-medium"
-                          >
-                            <FaNotesMedical className="w-3.5 h-3.5" />
-                            Review HMO Items
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-6">
-                <div className="join bg-base-100 shadow-sm border border-base-200">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="join-item btn btn-sm"
-                  >
-                    Prev
-                  </button>
-                  {getPageNumbers(currentPage, totalPages).map((page, idx) =>
-                    page === '...' ? (
-                      <button key={`ellipsis-${idx}`} className="join-item btn btn-sm btn-disabled">…</button>
-                    ) : (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`join-item btn btn-sm ${page === currentPage ? 'btn-primary' : ''}`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="join-item btn btn-sm"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {paginated.length === 0 && (
-              <div className="bg-base-100 rounded-2xl border border-base-200 p-12 text-center shadow-sm">
-                <FaBed className="w-12 h-12 mx-auto text-base-content/20 mb-3" />
-                <h3 className="text-base font-bold text-base-content">No Admitted Patients Found</h3>
-                <p className="text-xs text-base-content/60 mt-1 max-w-sm mx-auto">
-                  {search
-                    ? `No admitted records match "${search}". Try searching by another patient name or ward.`
-                    : 'There are currently no active admitted patients.'}
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">Admitted Patients (HMO)</h1>
+                <p className="text-xs sm:text-sm text-base-content/60">
+                  Review HMO items and charges for patients currently in the ward
                 </p>
               </div>
-            )}
-          </section>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-base-100 p-2.5 sm:p-3 rounded-2xl border border-base-200 shadow-sm">
+          <div className="inline-flex items-center p-2 rounded-xl text-sm font-semibold text-base-content">
+            Total Admitted: {admitted.length}
+          </div>
+
+          <div className="relative w-full sm:w-80">
+            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setCurrentPage(1)
+              }}
+              placeholder="Search by patient, ID, or ward..."
+              className="input input-sm w-full pl-9 bg-base-200/50 border-base-300 focus:bg-base-100 rounded-xl"
+            />
+          </div>
+        </div>
+
+        {/* Mobile / Tablet Cards (< lg) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:hidden">
+          {paginated.map((item) => (
+            <AdmittedCard key={item.key} item={item} onOpen={() => openAdmission(item)} />
+          ))}
+        </div>
+
+        {/* Desktop Table (>= lg) */}
+        <div className="hidden lg:block bg-base-100 rounded-2xl shadow-sm border border-base-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="table w-full">
+              <thead className="bg-base-200/60 text-xs uppercase tracking-wider text-base-content/70">
+                <tr>
+                  <th className="py-3.5 px-4">Patient Profile</th>
+                  <th className="py-3.5 px-4">Record Type</th>
+                  <th className="py-3.5 px-4">Ward & Bed Number</th>
+                  <th className="py-3.5 px-4">Admitted Timestamp</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-base-200 text-sm">
+                {paginated.map((item) => (
+                  <tr key={item.key} className="hover:bg-base-200/40 transition-colors">
+                    <td className="py-3.5 px-4 font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                          {item.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-base-content">{item.name}</span>
+                          </div>
+                          {item.displayId && item.displayId !== '—' && (
+                            <div className="text-xs text-base-content/60 font-mono">
+                              ID: {item.displayId}
+                            </div>
+                          )}
+                          {item.parentPatient && (
+                            <div className="text-xs text-base-content/50">
+                              Principal: {item.parentPatient.firstName} {item.parentPatient.lastName}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {item.type === 'dependant' ? (
+                        <span className="badge badge-secondary badge-sm font-semibold">
+                          {item.relationshipType || 'Dependant'}
+                        </span>
+                      ) : (
+                        <span className="badge badge-primary badge-sm font-semibold">
+                          Principal Patient
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-base-content">{item.ward}</span>
+                        {item.bedNumber ? (
+                          <span className="badge badge-neutral badge-sm font-mono">
+                            Bed {item.bedNumber}
+                          </span>
+                        ) : (
+                          <span className="badge badge-ghost badge-sm text-base-content/50">
+                            No Bed
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-xs font-medium text-base-content/80">
+                      <span>{formatNigeriaDateTimeShort(item.admittedAt)}</span>
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => openAdmission(item)}
+                        className="btn btn-sm btn-primary rounded-xl gap-2 font-medium"
+                      >
+                        <FaNotesMedical className="w-3.5 h-3.5" />
+                        Review HMO Items
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-6">
+            <div className="join bg-base-100 shadow-sm border border-base-200">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="join-item btn btn-sm"
+              >
+                Prev
+              </button>
+              {getPageNumbers(currentPage, totalPages).map((page, idx) =>
+                page === '...' ? (
+                  <button key={`ellipsis-${idx}`} className="join-item btn btn-sm btn-disabled">…</button>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`join-item btn btn-sm ${page === currentPage ? 'btn-primary' : ''}`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="join-item btn btn-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {paginated.length === 0 && !loading && (
+          <div className="bg-base-100 rounded-2xl border border-base-200 p-12 text-center shadow-sm">
+            <FaBed className="w-12 h-12 mx-auto text-base-content/20 mb-3" />
+            <h3 className="text-base font-bold text-base-content">No Admitted Patients Found</h3>
+            <p className="text-xs text-base-content/60 mt-1 max-w-sm mx-auto">
+              {search
+                ? `No admitted records match "${search}". Try searching by another patient name or ward.`
+                : 'There are currently no active admitted patients.'}
+            </p>
+          </div>
+        )}
+      </section>
+    </HmoLayout>
   )
 }
 

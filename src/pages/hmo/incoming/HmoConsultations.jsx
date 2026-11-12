@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/hmo/dashboard/Sidebar";
+import { HmoLayout } from "@/layouts/hmo";
+import KolakLoader from "@/components/common/KolakLoader";
 import { getConsultations } from "@/services/api/consultationAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 import { RiSearchLine, RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
@@ -12,15 +12,12 @@ const PAGE_SIZE = 12;
 
 const HmoConsultations = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [consultations, setConsultations] = useState([]);
   const [hmoPatientIds, setHmoPatientIds] = useState(new Set());
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [filterType, setFilterType] = useState("all"); // all | patient | dependant
-
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   useEffect(() => {
     let mounted = true;
@@ -107,30 +104,18 @@ const HmoConsultations = () => {
   };
 
   return (
-    <div className="flex min-h-screen w-full">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
+    <HmoLayout>
+      {loading && <KolakLoader fullscreen />}
 
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-base-100">
-        <Header onToggleSidebar={() => setIsSidebarOpen(v => !v)} />
-
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <FaClipboardList size={22} className="text-primary shrink-0 sm:size-6" />
-            <div className="min-w-0">
-              <h1 className="text-xl font-bold text-primary sm:text-2xl">Consultations</h1>
-              <p className="text-xs text-base-content/60 sm:text-sm">HMO-covered patient and dependant consultations</p>
-            </div>
+      <div className="space-y-6 min-w-0">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <FaClipboardList size={22} className="text-primary shrink-0 sm:size-6" />
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-primary sm:text-2xl">Consultations</h1>
+            <p className="text-xs text-base-content/60 sm:text-sm">HMO-covered patient and dependant consultations</p>
           </div>
+        </div>
 
           {/* Filters */}
           <div className="flex flex-col gap-3 mb-5 sm:flex-row sm:flex-wrap sm:items-center">
@@ -169,10 +154,8 @@ const HmoConsultations = () => {
 
           {/* Grid */}
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="skeleton h-40 rounded-xl" />
-              ))}
+            <div className="py-16 flex justify-center">
+              <KolakLoader />
             </div>
           ) : visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-base-content/50">
@@ -272,8 +255,7 @@ const HmoConsultations = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </HmoLayout>
   );
 };
 

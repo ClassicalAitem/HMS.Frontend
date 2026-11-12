@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header } from "@/components/common";
-import Sidebar from "@/components/hmo/dashboard/Sidebar";
+import { HmoLayout } from "@/layouts/hmo";
 import KolakLoader from "@/components/common/KolakLoader";
 import { getLabResultById, getLabResultFile } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
@@ -16,7 +15,6 @@ const HMOLabResultDetails = () => {
   const { labResultId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [labResult, setLabResult] = useState(null);
   const [patient, setPatient] = useState(null);
@@ -32,8 +30,6 @@ const HMOLabResultDetails = () => {
   const [labTechnician, setLabTechnician] = useState(null);
 
   const effectiveInvestigationId = labResult?.investigationRequestId;
-  const toggleSidebar = () => setIsSidebarOpen((value) => !value);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   useEffect(() => {
     if (location?.state?.investigationId) {
@@ -367,58 +363,29 @@ const HMOLabResultDetails = () => {
     );
   };
 
-  const SidebarDrawer = () => (
-    <>
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden no-print"
-          onClick={closeSidebar}
-        />
-      )}
-      <div
-        className={`lab-sidebar no-print fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-transform duration-300 ease-in-out lg:static lg:w-64 lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-    </>
-  );
-
   if (loading) {
     return (
-      <div className="flex h-screen">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
-          <Header onToggleSidebar={toggleSidebar} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <p className="text-base lg:text-lg text-gray-600 text-center">Loading lab result...</p>
-          </div>
-        </div>
-      </div>
+      <HmoLayout>
+        <KolakLoader fullscreen />
+      </HmoLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen">
-        {loading && <KolakLoader fullscreen />}
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
-          <Header onToggleSidebar={toggleSidebar} />
-          <div className="flex flex-1 items-center justify-center px-4">
-            <div className="text-center">
-              <p className="text-base sm:text-lg text-red-600 mb-4">{error}</p>
-              <button
-                onClick={() => navigate("/dashboard/hmo")}
-                className="px-6 py-2 bg-[#00943C] text-white font-semibold rounded-lg"
-              >
-                Back to Dashboard
-              </button>
-            </div>
+      <HmoLayout>
+        <div className="flex flex-1 items-center justify-center min-h-[50vh] px-4">
+          <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-200 max-w-md">
+            <p className="text-base sm:text-lg text-error mb-4">{error}</p>
+            <button
+              onClick={() => navigate("/dashboard/hmo")}
+              className="btn btn-primary btn-sm font-semibold rounded-lg"
+            >
+              Back to Dashboard
+            </button>
           </div>
         </div>
-      </div>
+      </HmoLayout>
     );
   }
 
@@ -439,16 +406,8 @@ const HMOLabResultDetails = () => {
   };
 
   return (
-    <div className="lab-container flex h-screen bg-base-200">
-      <SidebarDrawer />
-
-      <div className="lab-main flex overflow-hidden flex-col flex-1 min-w-0">
-        <div className="no-print">
-          <Header onToggleSidebar={toggleSidebar} />
-        </div>
-
-        <div className="overflow-y-auto flex-1 min-w-0">
-          <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden">
+    <HmoLayout>
+      <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden min-w-0">
                         <div className="mb-4 sm:mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center no-print">
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl lg:text-[32px] text-[#00943C] font-bold break-words">
@@ -669,18 +628,6 @@ const HMOLabResultDetails = () => {
               `}</style>
             </div>
           </section>
-        </div>
-      </div>
-
-      {/* <SendLabResultsModal
-        isOpen={showSendModal}
-        onClose={() => setShowSendModal(false)}
-        labResultId={labResultId}
-        investigationRequestId={effectiveInvestigationId}
-        patientId={labResult?.patientId}
-        patientName={displayName}
-        onSuccess={() => navigate("/dashboard/hmo")}
-      /> */}
 
       <AttachmentViewerModal
         isOpen={isAttachmentViewerOpen}
@@ -689,7 +636,7 @@ const HMOLabResultDetails = () => {
         initialIndex={currentFileIndex}
         title="Lab Result Attachments"
       />
-    </div>
+    </HmoLayout>
   );
 };
 
