@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Header } from '@/components/common'
-import LaboratorySidebar from '@/components/laboratory/dashboard/LaboratorySidebar'
+import LaboratoryLayout from '@/layouts/laboratory'
+import KolakLoader from '@/components/common/KolakLoader'
 import { getPatients, getPatientById } from '@/services/api/patientsAPI'
 import { getDependants } from '@/services/api/dependantAPI'
 import { getAdmissions } from '@/services/api/admissionApi'
@@ -15,8 +15,6 @@ import { FaBed, FaSearch, FaNotesMedical, FaHeartbeat, FaCheckCircle, FaExclamat
 
 const AdmittedList = () => {
   const navigate = useNavigate()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [sidebarMounted, setSidebarMounted] = useState(false)
   const [search, setSearch] = useState('')
   const [activeTab, setActiveTab] = useState('admitted') // 'admitted' | 'pending'
   const [currentPage, setCurrentPage] = useState(1)
@@ -27,11 +25,6 @@ const AdmittedList = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [confirmTarget, setConfirmTarget] = useState(null)
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setSidebarMounted(true))
-    return () => cancelAnimationFrame(id)
-  }, [])
 
   const loadData = async () => {
     try {
@@ -148,124 +141,148 @@ const AdmittedList = () => {
         }
         if (matchedBills.length === 0 && admission.consultationId) {
           const consultBills = allBillings.filter(b => {
-            const bPatient = String(b.patientId || b.patient?.id || b.patient?._id || '')
-            const bDep = b.dependantId ? String(b.dependantId) : null
-            const sameSubject = dependantIdStr ? bDep === dependantIdStr : bPatient === patientIdStr
-            return sameSubject && Array.isArray(b.itemDetails) && b.itemDetails.some(it =>
-              it.code === 'admission' || it.code === 'bed' || String(it.admissionId || '') === admissionIdStr
-            )
+            const bConsultId = String(b.consultationId || b.consultation || '')
+            return bConsultId && bConsultId === String(admission.consultationId)
           })
           if (consultBills.length > 0) matchedBills.push(...consultBills)
         }
+        if (matchedBills.length === 0) {
+          const admissionTime = new Date(admission.createdAt || admission.admissionDate || 0).getTime()
+          const patientBills = allBillings.filter(b => {
+            const bPat = String(b.patientId || b.patient?._id || b.patient?.id || b.patient || '')
+            const bDep = b.dependantId ? String(b.dependantId) : null
+            if (dependantIdStr) {
+              if (bDep !== dependantIdStr) return false
+            } else {
+              if (bPat !== patientIdStr) return false
+            }
+            const bTime = new Date(b.createdAt || 0).getTime()
+            return Math.abs(bTime - admissionTime) < 48 * 60 * 60 * 1000
+          })
+          if (patientBills.length > 0) matchedBills.push(...patientBills)
+        }
 
+        let paymentStatus = 'unbilled'
         let totalAmount = 0
-        let totalPaid = 0
-        let isCleared = false
+        let paidAmount = 0
+        let outstanding = 0
 
         if (matchedBills.length > 0) {
-          matchedBills.forEach(bill => {
-            const billIdStr = String(bill.id || bill._id || '')
-            totalAmount += Number(bill.totalAmount || 0)
-            if (bill.isCleared) isCleared = true
-            const receipts = allReceipts.filter(r => String(r.billingId || '') === billIdStr)
-            totalPaid += receipts.reduce((sum, r) => sum + (Number(r.amountPaid) || 0), 0)
+          totalAmount = matchedBills.reduce((acc, b) => acc + (Number(b.totalAmount) || 0), 0)
+          paidAmount = matchedBills.reduce((acc, b) => {
+            if (b.paymentStatus === 'paid') return acc + (Number(b.totalAmount) || 0)
+            if (b.paymentStatus === 'partial') return acc + (Number(b.paidAmount) || 0)
+            return acc
+          }, 0)
+
+          const matchedBillIds = new Set(matchedBills.map(b => String(b.id || b._id)))
+          const relatedReceipts = allReceipts.filter(r => {
+            const rBillId = String(r.billId || r.bill?._id || r.bill?.id || '')
+            return matchedBillIds.has(rBillId)
           })
+          const receiptTotal = relatedReceipts.reduce((acc, r) => acc + (Number(r.amountPaid || r.amount) || 0), 0)
+          paidAmount = Math.max(paidAmount, receiptTotal)
+          outstanding = Math.max(0, totalAmount - paidAmount)
+
+          const allPaid = matchedBills.every(b => b.paymentStatus === 'paid') || (totalAmount > 0 && paidAmount >= totalAmount)
+          const anyPartial = matchedBills.some(b => b.paymentStatus === 'partial') || (paidAmount > 0 && paidAmount < totalAmount)
+
+          if (allPaid) {
+            paymentStatus = 'paid'
+          } else if (anyPartial) {
+            paymentStatus = 'partial'
+          } else {
+            paymentStatus = 'unpaid'
+          }
         }
 
-        // If no matched bills found by items/id, check if admission has estimated fee in admission.admissions
-        if (totalAmount === 0 && Array.isArray(admission.admissions) && admission.admissions.length > 0) {
-          const estimated = admission.admissions.reduce((sum, it) => sum + (Number(it.amount) || 0), 0)
-          if (estimated > 0 && !admission.isBilled) totalAmount = estimated
-        }
-
-        let status = 'unbilled'
-        if (isCleared || (totalAmount > 0 && totalPaid >= totalAmount) || !!admission.paidAt) {
-          status = 'paid'
-        } else if (totalPaid > 0) {
-          status = 'partial'
-        } else if (totalAmount > 0 || admission.isBilled || (admission.billId && matchedBills.length > 0)) {
-          status = 'unpaid'
-        } else {
-          status = 'unbilled'
-        }
-
-        const outstandingAmount = Math.max(0, totalAmount - totalPaid)
-        const paymentInfo = {
-          status,
-          totalAmount,
-          paidAmount: totalPaid,
-          outstandingAmount,
-          isCleared: status === 'paid',
-        }
+        const rawStatus = admission.status || 'admitted'
+        const isAwaitingAdmission = rawStatus === 'pending' || rawStatus === 'requested' || rawStatus === 'awaiting_admission'
 
         return {
-          type: isDependant ? 'dependant' : 'patient',
-          key: `admission-${admission._id || admission.id}`,
+          key: admission._id || admission.id,
+          id: admission._id || admission.id,
+          admissionId: admission._id || admission.id,
           patientId: admission.patientId,
-          dependantId: admission.dependantId || null,
+          dependantId: admission.dependantId,
+          name: source
+            ? `${source.firstName || ''} ${source.lastName || ''}`.trim()
+            : 'Unknown Patient',
+          type: isDependant ? 'dependant' : 'patient',
+          relationshipType: admission.dependant?.relationship || null,
+          parentPatient: isDependant ? parentPatient : null,
           displayId,
-          name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
           ward: resolvedWard,
           bedNumber: cleanBed,
-          admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
+          admittedAt: admission.admissionDate || admission.admittedAt || admission.createdAt,
           lastVitalsTime: latestVitalInfo?.createdAt || null,
-          relationshipType: isDependant ? source?.relationshipType : null,
-          parentPatient,
-          admission,
-          paymentInfo,
-          raw: source,
+          paymentInfo: {
+            status: paymentStatus,
+            totalAmount,
+            paidAmount,
+            outstanding,
+            billsCount: matchedBills.length,
+          },
+          status: isAwaitingAdmission ? 'pending' : rawStatus,
+          raw: admission,
         }
       }
 
-      // Admissions with an assigned bed are currently admitted; admissions without an assigned bed belong in pending
-      const pendingItems = activeAdmissions.filter(a => {
-        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '')
-        return !a.confirmedAt || !b || b.toLowerCase().includes('unassigned')
-      }).map(buildItem)
+      const pendingItems = []
+      const admittedItems = []
 
-      const admittedItems = activeAdmissions.filter(a => {
-        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '')
-        return !!a.confirmedAt && !!b && !b.toLowerCase().includes('unassigned')
-      }).map(buildItem)
+      activeAdmissions.forEach(a => {
+        const item = buildItem(a)
+        if (item.status === 'pending') {
+          pendingItems.push(item)
+        } else {
+          admittedItems.push(item)
+        }
+      })
 
       setPending(pendingItems)
       setAdmitted(admittedItems)
     } catch (err) {
-      console.error('Failed to load admissions', err)
-      setError('Failed to load admitted patients directory')
-      toast.error('Failed to load admissions')
+      console.error('AdmittedList: failed to load admitted patients', err)
+      setError('Unable to load admitted patients list. Please check your connection and try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    loadData()
+  }, [])
 
-  const list = activeTab === 'pending' ? pending : admitted
+  const currentList = activeTab === 'admitted' ? admitted : pending
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return list
-    return list.filter(item =>
+    if (!search.trim()) return currentList
+    const q = search.toLowerCase()
+    return currentList.filter(item =>
       item.name.toLowerCase().includes(q) ||
-      String(item.ward).toLowerCase().includes(q) ||
-      String(item.bedNumber).toLowerCase().includes(q) ||
-      String(item.displayId || '').toLowerCase().includes(q)
+      item.displayId.toLowerCase().includes(q) ||
+      item.ward.toLowerCase().includes(q) ||
+      (item.bedNumber && item.bedNumber.toLowerCase().includes(q))
     )
-  }, [list, search])
+  }, [currentList, search])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage))
   const paginated = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage
     return filtered.slice(start, start + itemsPerPage)
-  }, [filtered, currentPage])
+  }, [filtered, currentPage, itemsPerPage])
 
-  useEffect(() => { setCurrentPage(1) }, [activeTab, search])
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, search])
 
   const openAdmission = (item) => {
-    navigate(`/dashboard/laboratory/admitted/${item.patientId}`, {
+    const targetPatientId = item.parentPatient ? (item.parentPatient.id || item.parentPatient._id) : (item.patientId || item.raw?.patientId)
+    navigate(`/dashboard/laboratory/admitted/${targetPatientId}`, {
       state: {
-        admission: item.admission,
+        admissionId: item.admissionId,
+        admission: item.raw,
         dependantId: item.dependantId,
         dependantSnapshot: item.type === 'dependant' ? item.raw : null,
         patientSnapshot: item.parentPatient || (item.type === 'patient' ? item.raw : null),
@@ -278,331 +295,297 @@ const AdmittedList = () => {
     setConfirmTarget(item)
   }
 
-  const SidebarDrawer = () => (
-    <>
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden backdrop-blur-xs" onClick={() => setIsSidebarOpen(false)} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? 'transition-transform duration-300 ease-in-out' : ''
-        } ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <LaboratorySidebar onCloseSidebar={() => setIsSidebarOpen(false)} />
-      </div>
-    </>
-  )
-
-  if (loading) {
+  if (loading && admitted.length === 0 && pending.length === 0) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center space-y-3">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-              <p className="text-sm font-medium text-base-content/70">Loading admitted patients...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <LaboratoryLayout>
+        <KolakLoader fullscreen text="Loading admitted patients..." />
+      </LaboratoryLayout>
     )
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
-              <p className="text-sm font-semibold text-error mb-4">{error}</p>
-              <button
-                onClick={loadData}
-                className="btn btn-primary btn-sm rounded-xl"
-              >
-                Try Again
-              </button>
-            </div>
+      <LaboratoryLayout>
+        <div className="flex items-center justify-center min-h-[60vh] px-4">
+          <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-300 max-w-md">
+            <p className="text-sm font-semibold text-error mb-4">{error}</p>
+            <button
+              onClick={loadData}
+              className="btn btn-primary btn-sm rounded-xl"
+            >
+              Try Again
+            </button>
           </div>
         </div>
-      </div>
+      </LaboratoryLayout>
     )
   }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setIsSidebarOpen(true)} />
-        <div className="overflow-y-auto flex-1">
-          <section className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
-            {/* Header Title */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <LaboratoryLayout>
+      <div className="p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+        {/* Header Title */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                <FaBed className="w-6 h-6" />
+              </div>
               <div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
-                    <FaBed className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">Admitted Patients</h1>
-                    <p className="text-xs sm:text-sm text-base-content/60">
-                      Inpatient admission verification, bed assignment, and continuous laboratory
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-            
-            </div>
-
-            {/* Segmented Filter Pills & Search */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-base-100 p-2.5 sm:p-3 rounded-2xl border border-base-200 shadow-sm">
-              <div className="inline-flex p-1 bg-base-200 rounded-xl gap-1 w-full sm:w-auto overflow-x-auto">
-                <button
-                  onClick={() => setActiveTab('admitted')}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap ${
-                    activeTab === 'admitted'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:text-base-content'
-                  }`}
-                >
-                  <FaBed className="w-3.5 h-3.5" />
-                  Currently Admitted ({admitted.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap ${
-                    activeTab === 'pending'
-                      ? 'bg-primary text-primary-content shadow-sm'
-                      : 'text-base-content/70 hover:text-base-content'
-                  }`}
-                >
-                  Pending Admission ({pending.length})
-                </button>
-              </div>
-
-              <div className="relative w-full sm:w-80">
-                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 text-sm" />
-                <input
-                  type="text"
-                  placeholder="Search by patient, ward, bed..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="input input-sm sm:input-md input-bordered w-full pl-9 rounded-xl text-xs sm:text-sm"
-                />
-              </div>
-            </div>
-
-            {/* Mobile Card List (< lg) */}
-            <div className="flex flex-col gap-3 lg:hidden">
-              {paginated.map((item) => (
-                activeTab === 'pending' ? (
-                  <PendingCard
-                    key={item.key}
-                    item={item}
-                    onConfirm={() => handleConfirmAdmit(item)}
-                  />
-                ) : (
-                  <AdmittedCard key={item.key} item={item} onOpen={() => openAdmission(item)} />
-                )
-              ))}
-            </div>
-
-            {/* Desktop DataTable (>= lg) */}
-            <div className="hidden lg:block bg-base-100 rounded-2xl shadow-sm border border-base-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="table w-full">
-                  <thead className="bg-base-200/60 text-xs uppercase tracking-wider text-base-content/70">
-                    <tr>
-                      <th className="py-3.5 px-4">Patient Profile</th>
-                      <th className="py-3.5 px-4">Record Type</th>
-                      <th className="py-3.5 px-4">Ward & Bed Number</th>
-                      {activeTab === 'pending' ? (
-                        <th className="py-3.5 px-4">Billing / Payment</th>
-                      ) : (
-                        <>
-                          <th className="py-3.5 px-4">Admitted Timestamp</th>
-                        </>
-                      )}
-                      <th className="py-3.5 px-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-base-200 text-sm">
-                    {paginated.map((item) => (
-                      <tr key={item.key} className="hover:bg-base-200/40 transition-colors">
-                        <td className="py-3.5 px-4 font-medium">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                              {item.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="font-semibold text-base-content">{item.name}</div>
-                              {item.displayId && item.displayId !== '—' && (
-                                <div className="text-xs text-base-content/60 font-mono">
-                                  ID: {item.displayId}
-                                </div>
-                              )}
-                              {item.parentPatient && (
-                                <div className="text-xs text-base-content/50">
-                                  Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {item.type === 'dependant' ? (
-                            <span className="badge badge-info badge-sm gap-1 capitalize font-medium">
-                              Dependant ({item.relationshipType || 'Family'})
-                            </span>
-                          ) : (
-                            <span className="badge badge-ghost badge-sm font-medium">Patient</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-base-content">{item.ward}</span>
-                            {item.bedNumber ? (
-                              <span className="badge badge-outline badge-sm text-xs">
-                                Bed {item.bedNumber}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-base-content/40 italic">Unassigned Bed</span>
-                            )}
-                          </div>
-                        </td>
-                        {activeTab === 'pending' ? (
-                          <td className="py-3.5 px-4">
-                            {item.paymentInfo?.status === 'paid' && (
-                              <div className="flex flex-col gap-0.5">
-                                <span className="badge badge-success badge-sm font-semibold gap-1">
-                                  <FaCheckCircle className="w-3 h-3" /> Fully Paid
-                                </span>
-                                {item.paymentInfo.totalAmount > 0 && (
-                                  <span className="text-[11px] font-medium text-success/90">
-                                    ₦{item.paymentInfo.totalAmount.toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {item.paymentInfo?.status === 'partial' && (
-                              <div className="flex flex-col gap-0.5">
-                                <span className="badge badge-warning badge-sm font-semibold gap-1">
-                                  <FaCoins className="w-3 h-3" /> Partial Payment
-                                </span>
-                                <span className="text-[11px] font-medium text-warning-content/90">
-                                  ₦{item.paymentInfo.paidAmount.toLocaleString()} / ₦{item.paymentInfo.totalAmount.toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-                            {item.paymentInfo?.status === 'unpaid' && (
-                              <div className="flex flex-col gap-0.5">
-                                <span className="badge badge-error badge-sm font-semibold gap-1">
-                                  <FaExclamationTriangle className="w-3 h-3" /> Unpaid Bill
-                                </span>
-                                {item.paymentInfo.totalAmount > 0 && (
-                                  <span className="text-[11px] font-medium text-error/90">
-                                    ₦{item.paymentInfo.totalAmount.toLocaleString()} due
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {item.paymentInfo?.status === 'unbilled' && (
-                              <div className="flex flex-col gap-0.5">
-                                <span className="badge badge-ghost badge-sm font-semibold text-base-content/60 gap-1">
-                                  <FaClock className="w-3 h-3" /> Not Yet Billed
-                                </span>
-                              </div>
-                            )}
-                          </td>
-                        ) : (
-                          <>
-                            <td className="py-3.5 px-4 text-xs font-medium text-base-content/80">
-                              {formatNigeriaDateTimeShort(item.admittedAt)}
-                            </td>
-                            
-                          </>
-                        )}
-                        <td className="py-3.5 px-4 text-right">
-                          {activeTab === 'pending' ? (
-                            <button
-                              onClick={() => handleConfirmAdmit(item)}
-                              className="btn btn-sm btn-primary rounded-xl gap-1.5 font-medium shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
-                            >
-                              <FaBed className="w-3.5 h-3.5" />
-                              Assign Bed & Admit
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => openAdmission(item)}
-                              className="btn btn-sm btn-primary rounded-xl gap-2 font-medium"
-                            >
-                              <FaNotesMedical className="w-3.5 h-3.5" />
-                              Open Record
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-6">
-                <div className="join bg-base-100 shadow-sm border border-base-200">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="join-item btn btn-sm"
-                  >
-                    Prev
-                  </button>
-                  {getPageNumbers(currentPage, totalPages).map((page, idx) =>
-                    page === '...' ? (
-                      <button key={`ellipsis-${idx}`} className="join-item btn btn-sm btn-disabled">…</button>
-                    ) : (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`join-item btn btn-sm ${page === currentPage ? 'btn-primary' : ''}`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="join-item btn btn-sm"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {paginated.length === 0 && (
-              <div className="bg-base-100 rounded-2xl border border-base-200 p-12 text-center shadow-sm">
-                <FaBed className="w-12 h-12 mx-auto text-base-content/20 mb-3" />
-                <h3 className="text-base font-bold text-base-content">No Admitted Patients Found</h3>
-                <p className="text-xs text-base-content/60 mt-1 max-w-sm mx-auto">
-                  {search
-                    ? `No admitted records match "${search}". Try searching by another patient name or ward.`
-                    : activeTab === 'pending'
-                    ? 'There are currently no patients pending admission.'
-                    : 'There are currently no patients admitted to any hospital ward.'}
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content">Admitted Patients</h1>
+                <p className="text-xs sm:text-sm text-base-content/60">
+                  Inpatient admission verification, bed assignment, and continuous laboratory
                 </p>
               </div>
-            )}
-          </section>
+            </div>
+          </div>
         </div>
+
+        {/* Segmented Filter Pills & Search */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-base-100 p-2.5 sm:p-3 rounded-2xl border border-base-200 shadow-sm">
+          <div className="inline-flex p-1 bg-base-200 rounded-xl gap-1 w-full sm:w-auto overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('admitted')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap ${
+                activeTab === 'admitted'
+                  ? 'bg-primary text-primary-content shadow-sm'
+                  : 'text-base-content/70 hover:text-base-content'
+              }`}
+            >
+              <FaBed className="w-3.5 h-3.5" />
+              Currently Admitted ({admitted.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 flex-1 sm:flex-none whitespace-nowrap ${
+                activeTab === 'pending'
+                  ? 'bg-primary text-primary-content shadow-sm'
+                  : 'text-base-content/70 hover:text-base-content'
+              }`}
+            >
+              Pending Admission ({pending.length})
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-80">
+            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 text-sm" />
+            <input
+              type="text"
+              placeholder="Search by patient, ward, bed..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input input-sm sm:input-md input-bordered w-full pl-9 rounded-xl text-xs sm:text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Mobile Card List (< lg) */}
+        <div className="flex flex-col gap-3 lg:hidden">
+          {paginated.map((item) => (
+            activeTab === 'pending' ? (
+              <PendingCard
+                key={item.key}
+                item={item}
+                onConfirm={() => handleConfirmAdmit(item)}
+              />
+            ) : (
+              <AdmittedCard key={item.key} item={item} onOpen={() => openAdmission(item)} />
+            )
+          ))}
+        </div>
+
+        {/* Desktop DataTable (>= lg) */}
+        <div className="hidden lg:block bg-base-100 rounded-2xl shadow-sm border border-base-200 overflow-hidden">
+          <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+            <table className="table w-full">
+              <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs uppercase tracking-wider text-base-content/70">
+                <tr>
+                  <th className="py-3.5 px-4">Patient Profile</th>
+                  <th className="py-3.5 px-4">Record Type</th>
+                  <th className="py-3.5 px-4">Ward & Bed Number</th>
+                  {activeTab === 'pending' ? (
+                    <th className="py-3.5 px-4">Billing / Payment</th>
+                  ) : (
+                    <>
+                      <th className="py-3.5 px-4">Admitted Timestamp</th>
+                    </>
+                  )}
+                  <th className="py-3.5 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-base-200 text-sm">
+                {paginated.map((item) => (
+                  <tr key={item.key} className="hover:bg-base-200/40 transition-colors">
+                    <td className="py-3.5 px-4 font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                          {item.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-base-content">{item.name}</div>
+                          {item.displayId && item.displayId !== '—' && (
+                            <div className="text-xs text-base-content/60 font-mono">
+                              ID: {item.displayId}
+                            </div>
+                          )}
+                          {item.parentPatient && (
+                            <div className="text-xs text-base-content/50">
+                              Beneficiary of {item.parentPatient.firstName} {item.parentPatient.lastName}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {item.type === 'dependant' ? (
+                        <span className="badge badge-info badge-sm gap-1 capitalize font-medium">
+                          Dependant ({item.relationshipType || 'Family'})
+                        </span>
+                      ) : (
+                        <span className="badge badge-ghost badge-sm font-medium">Patient</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-base-content">{item.ward}</span>
+                        {item.bedNumber ? (
+                          <span className="badge badge-outline badge-sm text-xs">
+                            Bed {item.bedNumber}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-base-content/40 italic">Unassigned Bed</span>
+                        )}
+                      </div>
+                    </td>
+                    {activeTab === 'pending' ? (
+                      <td className="py-3.5 px-4">
+                        {item.paymentInfo?.status === 'paid' && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="badge badge-success badge-sm font-semibold gap-1">
+                              <FaCheckCircle className="w-3 h-3" /> Fully Paid
+                            </span>
+                            {item.paymentInfo.totalAmount > 0 && (
+                              <span className="text-[11px] font-medium text-success/90">
+                                ₦{item.paymentInfo.totalAmount.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {item.paymentInfo?.status === 'partial' && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="badge badge-warning badge-sm font-semibold gap-1">
+                              <FaCoins className="w-3 h-3" /> Partial Payment
+                            </span>
+                            <span className="text-[11px] font-medium text-warning-content/90">
+                              ₦{item.paymentInfo.paidAmount.toLocaleString()} / ₦{item.paymentInfo.totalAmount.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+                        {item.paymentInfo?.status === 'unpaid' && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="badge badge-error badge-sm font-semibold gap-1">
+                              <FaExclamationTriangle className="w-3 h-3" /> Unpaid Bill
+                            </span>
+                            {item.paymentInfo.totalAmount > 0 && (
+                              <span className="text-[11px] font-medium text-error/90">
+                                ₦{item.paymentInfo.totalAmount.toLocaleString()} due
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {item.paymentInfo?.status === 'unbilled' && (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="badge badge-ghost badge-sm font-semibold text-base-content/60 gap-1">
+                              <FaClock className="w-3 h-3" /> Not Yet Billed
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                    ) : (
+                      <td className="py-3.5 px-4">
+                        <div className="text-xs text-base-content/70">
+                          {formatNigeriaDateTimeShort(item.admittedAt)}
+                        </div>
+                      </td>
+                    )}
+                    <td className="py-3.5 px-4 text-right">
+                      {activeTab === 'pending' ? (
+                        <button
+                          onClick={() => handleConfirmAdmit(item)}
+                          className="btn btn-primary btn-xs sm:btn-sm rounded-xl gap-1.5 font-medium shadow-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        >
+                          <FaBed className="w-3.5 h-3.5" />
+                          Assign Bed & Admit
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openAdmission(item)}
+                          className="btn btn-outline btn-primary btn-xs sm:btn-sm rounded-xl gap-1.5 font-medium hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        >
+                          <FaNotesMedical className="w-3.5 h-3.5" />
+                          Open Admission Record
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between bg-base-100 px-4 py-3 rounded-2xl border border-base-200 shadow-sm text-xs sm:text-sm">
+            <span className="text-base-content/60">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filtered.length)} of {filtered.length} entries
+            </span>
+            <div className="join">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="join-item btn btn-sm"
+              >
+                Prev
+              </button>
+              {getPageNumbers(currentPage, totalPages).map((page, idx) =>
+                page === '...' ? (
+                  <button key={`ellipsis-${idx}`} className="join-item btn btn-sm btn-disabled">...</button>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`join-item btn btn-sm ${page === currentPage ? 'btn-primary' : ''}`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="join-item btn btn-sm"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {paginated.length === 0 && (
+          <div className="bg-base-100 rounded-2xl border border-base-200 p-12 text-center shadow-sm">
+            <FaBed className="w-12 h-12 mx-auto text-base-content/20 mb-3" />
+            <h3 className="text-base font-bold text-base-content">No Admitted Patients Found</h3>
+            <p className="text-xs text-base-content/60 mt-1 max-w-sm mx-auto">
+              {search
+                ? `No admitted records match "${search}". Try searching by another patient name or ward.`
+                : activeTab === 'pending'
+                ? 'There are currently no patients pending admission.'
+                : 'There are currently no patients admitted to any hospital ward.'}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Confirmation Modal */}
@@ -612,7 +595,7 @@ const AdmittedList = () => {
         item={confirmTarget}
         onConfirmed={loadData}
       />
-    </div>
+    </LaboratoryLayout>
   )
 }
 

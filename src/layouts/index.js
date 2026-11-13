@@ -9,3 +9,4 @@ export { SurgeonLayout } from './surgeon';
 export { HmoLayout } from './hmo';
 export { PharmacistLayout } from './pharmacist';
 export { SonographerLayout } from './sonographer';
+export { LaboratoryLayout } from './laboratory';

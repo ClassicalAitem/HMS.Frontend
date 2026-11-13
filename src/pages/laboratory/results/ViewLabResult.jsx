@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Header, HmoStatusBadge } from "@/components/common";
-import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
+import LaboratoryLayout from "@/layouts/laboratory";
+import KolakLoader from "@/components/common/KolakLoader";
+import { HmoStatusBadge } from "@/components/common";
 import { getLabResultById, getLabResultFile } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById, updateOpdPatient } from '@/services/api/opdPatientAPI';
@@ -49,15 +50,8 @@ const ViewLabResult = () => {
   const [showPendingModal, setShowPendingModal] = useState(false);
   const [pendingInvestigationsList, setPendingInvestigationsList] = useState([]);
   const [technicianName, setTechnicianName] = useState('Unknown Technician');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarMounted, setSidebarMounted] = useState(false);
   const [completing, setCompleting] = useState(false);
   const { refreshQueueCount } = useNotifications();
-
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setSidebarMounted(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
 
 const effectiveInvestigationId = 
   labResult?.investigationRequestId || 
@@ -442,24 +436,6 @@ useEffect(() => {
     }
   };
 
-  const SidebarDrawer = () => (
-    <>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      <div
-        className={`lab-sidebar fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform lg:static lg:w-64 lg:translate-x-0 lg:z-auto ${
-          sidebarMounted ? "transition-transform duration-300 ease-in-out" : ""
-        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
-      </div>
-    </>
-  );
-
   const displayField = (label, value) => {
     if (!value) return null;
     const rangeText = ranges[label] ? ` ${ranges[label]}` : '';
@@ -594,37 +570,27 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
-          <Header onToggleSidebar={() => setSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <p className="text-base lg:text-lg text-gray-600 text-center">Loading lab result...</p>
-          </div>
-        </div>
-      </div>
+      <LaboratoryLayout>
+        <KolakLoader fullscreen text="Loading lab result..." />
+      </LaboratoryLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1 min-w-0">
-          <Header onToggleSidebar={() => setSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <div className="text-center">
-              <p className="text-lg text-red-600 mb-4">{error}</p>
-              <button
-                onClick={() => navigate("/dashboard/laboratory")}
-                className="px-6 py-2 bg-[#00943C] text-white font-semibold rounded-lg"
-              >
-                Back to Dashboard
-              </button>
-            </div>
+      <LaboratoryLayout>
+        <div className="flex items-center justify-center min-h-[50vh] px-4">
+          <div className="text-center bg-base-100 p-8 rounded-2xl shadow-sm border border-base-200 max-w-md">
+            <p className="text-lg text-error mb-4">{error}</p>
+            <button
+              onClick={() => navigate("/dashboard/laboratory")}
+              className="btn btn-primary"
+            >
+              Back to Dashboard
+            </button>
           </div>
         </div>
-      </div>
+      </LaboratoryLayout>
     );
   }
 
@@ -817,16 +783,9 @@ const handleComplete = async () => {
 
 
   return (
-    <div className="lab-container flex h-screen bg-base-200">
-      <SidebarDrawer />
-
-      <div className="lab-main flex min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="no-print">
-          <Header onToggleSidebar={() => setSidebarOpen(true)} />
-        </div>
-
-        <div className="overflow-y-auto flex-1">
-          <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden">
+    <LaboratoryLayout>
+      <div className="overflow-y-auto flex-1">
+        <section className="p-3 sm:p-4 lg:p-7 overflow-x-hidden">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center no-print">
               <div>
                 <h1 className="text-2xl lg:text-[32px] text-[#00943C] font-bold">Lab Result Details</h1>
@@ -1104,7 +1063,6 @@ const handleComplete = async () => {
             
           </section>
         </div>
-      </div>
       <AttachmentViewerModal
         isOpen={isAttachmentViewerOpen}
         onClose={() => setIsAttachmentViewerOpen(false)}
@@ -1161,7 +1119,7 @@ const handleComplete = async () => {
           </div>
         </div>
       )}
-    </div>
+    </LaboratoryLayout>
   );
 };
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, HmoStatusBadge } from "@/components/common";
-import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
+import LaboratoryLayout from "@/layouts/laboratory";
+import KolakLoader from "@/components/common/KolakLoader";
+import { HmoStatusBadge } from "@/components/common";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { formatNigeriaTime } from "@/utils/formatDateTimeUtils";
@@ -225,102 +226,86 @@ const LaboratoryDashboard = () => {
     setCompletedTests(allCompletedTests.slice(startIndex, endIndex));
   }, [allCompletedTests, completedPage]);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const closeSidebar = () => setIsSidebarOpen(false);
-
-  const sidebarWrapper = (
-    <>
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <LaboratorySidebar onCloseSidebar={closeSidebar} />
-      </div>
-    </>
-  );
+  if (loading && !allPendingRequests.length && !allCompletedTests.length) {
+    return (
+      <LaboratoryLayout>
+        <KolakLoader fullscreen text="Loading laboratory dashboard..." />
+      </LaboratoryLayout>
+    );
+  }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-base-200">
-      {sidebarWrapper}
-
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Welcome Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                <FaFlask className="w-7 h-7 text-emerald-600" />
-                Laboratory Dashboard
-              </h1>
-              <p className="text-sm text-base-content/70 mt-1">
-                Real-time overview of incoming requests, analyses in progress, and completed laboratory tests
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate('/dashboard/laboratory/incoming')}
-                className="btn btn-sm btn-primary text-white gap-2 shadow-sm"
-              >
-                <FiPlusCircle className="w-4 h-4" />
-                View Incoming
-              </button>
-              <button
-                onClick={() => navigate('/dashboard/laboratory/inventory')}
-                className="btn btn-sm btn-outline border-base-300 gap-2"
-              >
-                <FiBox className="w-4 h-4" />
-                Inventory
-              </button>
-            </div>
+    <LaboratoryLayout>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* Welcome Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <FaFlask className="w-7 h-7 text-emerald-600" />
+              Laboratory Dashboard
+            </h1>
+            <p className="text-sm text-base-content/70 mt-1">
+              Real-time overview of incoming requests, analyses in progress, and completed laboratory tests
+            </p>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/dashboard/laboratory/incoming')}
+              className="btn btn-sm btn-primary text-white gap-2 shadow-sm"
+            >
+              <FiPlusCircle className="w-4 h-4" />
+              View Incoming
+            </button>
+            <button
+              onClick={() => navigate('/dashboard/laboratory/inventory&stocks')}
+              className="btn btn-sm btn-outline border-base-300 gap-2"
+            >
+              <FiBox className="w-4 h-4" />
+              Inventory
+            </button>
+          </div>
+        </div>
 
-          {error && (
-            <div className="alert alert-error shadow-sm">
-              <FiAlertTriangle className="w-5 h-5" />
-              <span>{error}</span>
-            </div>
-          )}
+        {error && (
+          <div className="alert alert-error shadow-sm">
+            <FiAlertTriangle className="w-5 h-5" />
+            <span>{error}</span>
+          </div>
+        )}
 
-          {/* Quick Action Shortcuts */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: "Incoming Requests", path: "/dashboard/laboratory/incoming", icon: FiClock, count: allPendingRequests.length },
-              { label: "Ordered Tests", path: "/dashboard/laboratory/order", icon: FiFileText, count: null },
-              { label: "Completed Tests", path: "/dashboard/laboratory/completed", icon: FiCheckCircle, count: allCompletedTests.length },
-              { label: "Results History", path: "/dashboard/laboratory/results", icon: FiActivity, count: null },
-            ].map((action, i) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={i}
-                  onClick={() => navigate(action.path)}
-                  className="flex items-center justify-between p-3.5 bg-base-100 border border-base-300/80 rounded-xl hover:border-emerald-500 hover:shadow-sm transition-all group text-left"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-base-200 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/40 text-emerald-600">
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-medium text-base-content/80 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
-                        {action.label}
-                      </span>
-                      {action.count !== null && (
-                        <p className="text-xs text-base-content/50">{action.count} active</p>
-                      )}
-                    </div>
+        {/* Quick Action Shortcuts */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Incoming Requests", path: "/dashboard/laboratory/incoming", icon: FiClock, count: allPendingRequests.length },
+            { label: "Ordered Tests", path: "/dashboard/laboratory/ordered", icon: FiFileText, count: null },
+            { label: "Completed Tests", path: "/dashboard/laboratory/completed", icon: FiCheckCircle, count: allCompletedTests.length },
+            { label: "Results History", path: "/dashboard/laboratory/results/history", icon: FiActivity, count: null },
+          ].map((action, i) => {
+            const Icon = action.icon;
+            return (
+              <button
+                key={i}
+                onClick={() => navigate(action.path)}
+                className="flex items-center justify-between p-3.5 bg-base-100 border border-base-300/80 rounded-xl hover:border-emerald-500 hover:shadow-sm transition-all group text-left"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-base-200 group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/40 text-emerald-600">
+                    <Icon className="w-4 h-4" />
                   </div>
-                  <FiArrowRight className="w-3.5 h-3.5 text-base-content/30 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              );
-            })}
-          </div>
+                  <div>
+                    <span className="text-xs font-medium text-base-content/80 group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
+                      {action.label}
+                    </span>
+                    {action.count !== null && (
+                      <p className="text-xs text-base-content/50">{action.count} active</p>
+                    )}
+                  </div>
+                </div>
+                <FiArrowRight className="w-3.5 h-3.5 text-base-content/30 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            );
+          })}
+        </div>
 
           {/* KPI Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -376,10 +361,8 @@ const LaboratoryDashboard = () => {
 
               <div className="space-y-2.5">
                 {loading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((n) => (
-                      <div key={n} className="h-16 bg-base-200 rounded-lg animate-pulse"></div>
-                    ))}
+                  <div className="py-8 flex justify-center">
+                    <KolakLoader text="Loading pending requests..." />
                   </div>
                 ) : pendingRequests.length > 0 ? (
                   pendingRequests.map((req, idx) => (
@@ -466,10 +449,8 @@ const LaboratoryDashboard = () => {
 
               <div className="space-y-2.5">
                 {loading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((n) => (
-                      <div key={n} className="h-16 bg-base-200 rounded-lg animate-pulse"></div>
-                    ))}
+                  <div className="py-8 flex justify-center">
+                    <KolakLoader text="Loading completed tests..." />
                   </div>
                 ) : completedTests.length > 0 ? (
                   completedTests.map((res, idx) => (
@@ -492,7 +473,7 @@ const LaboratoryDashboard = () => {
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs text-base-content/50">{res.date}</span>
                         <button
-                          onClick={() => navigate('/dashboard/laboratory/results')}
+                          onClick={() => navigate('/dashboard/laboratory/results/history')}
                           className="btn btn-xs btn-ghost hover:bg-base-200"
                         >
                           View
@@ -533,8 +514,7 @@ const LaboratoryDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </LaboratoryLayout>
   );
 };
 

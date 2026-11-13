@@ -1358,10 +1358,10 @@ const AppRoutes = () => {
         path="/dashboard/laboratory/results/history"
         element={<LabResultsHistory />}
       />
-      {/* <Route
+      <Route
         path="/dashboard/laboratory/inventoryStocks"
-        element={<InventorySTOCKS />}
-      /> */}
+        element={<InventoryAndStocks />}
+      />
       <Route
         path="/dashboard/laboratory/inventory&stocks"
         element={<InventoryAndStocks />}

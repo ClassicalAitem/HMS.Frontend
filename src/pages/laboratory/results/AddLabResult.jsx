@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Header, HmoStatusBadge } from "@/components/common";
-import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
+import LaboratoryLayout from "@/layouts/laboratory";
+import KolakLoader from "@/components/common/KolakLoader";
+import { HmoStatusBadge } from "@/components/common";
 import { createLabResult, getLabResultById, updateLabResult } from "@/services/api/labResultsAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { getOpdPatientById } from "@/services/api/opdPatientAPI";
@@ -152,7 +153,6 @@ const AddLabResult = () => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [error, setError] = useState(null);
   const [expandedSection, setExpandedSection] = useState("patientInfo");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -852,58 +852,24 @@ const handleComplete = async () => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
-  const [sidebarMounted, setSidebarMounted] = useState(false);
-
-useEffect(() => {
-  // enable transitions only after first paint, so initial state doesn't animate in
-  const id = requestAnimationFrame(() => setSidebarMounted(true));
-  return () => cancelAnimationFrame(id);
-}, []);
-
-const SidebarDrawer = () => (
-  <>
-    {sidebarOpen && (
-      <div
-        className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-        onClick={() => setSidebarOpen(false)}
-      />
-    )}
-    <div
-      className={`fixed inset-y-0 left-0 z-50 transform lg:static lg:translate-x-0 lg:z-auto ${
-        sidebarMounted ? "transition-transform duration-200 ease-in-out" : ""
-      } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
-    >
-      <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
-    </div>
-  </>
-);
-
   if (loading) {
     return (
-      <div className="flex h-screen bg-base-200">
-        <SidebarDrawer />
-        <div className="flex overflow-hidden flex-col flex-1">
-          <Header onToggleSidebar={() => setSidebarOpen(true)} />
-          <div className="flex items-center justify-center flex-1 px-4">
-            <p className="text-base lg:text-lg text-gray-600 text-center">Loading investigation details...</p>
-          </div>
-        </div>
-      </div>
+      <LaboratoryLayout>
+        <KolakLoader fullscreen text="Loading investigation details..." />
+      </LaboratoryLayout>
     );
   }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={() => setSidebarOpen(true)} />
-        <div className="overflow-y-auto flex-1">
-          <section className="p-4 lg:p-7">
-            {error && (
-              <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg border border-red-300">
-                {error}
-              </div>
-            )}
+    <LaboratoryLayout>
+      {saving && <KolakLoader fullscreen text={editing ? "Updating lab result..." : "Saving lab result..."} />}
+      <div className="flex-1 overflow-y-auto">
+        <section className="p-4 lg:p-7">
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg border border-red-300">
+              {error}
+            </div>
+          )}
 
             <div className="mb-6">
               <h1 className="text-2xl lg:text-[32px] text-[#00943C] font-bold">
@@ -1417,19 +1383,18 @@ const SidebarDrawer = () => (
             </div>
           </section>
         </div>
-      </div>
 
-           {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        onConfirm={handleSave}
-        title="Save Lab Result"
-        message="Are you sure you want to save this lab result? This action cannot be undone."
-        confirmText="Save Lab Result"
-        cancelText="Cancel"
-      />
-    </div>
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={isConfirmOpen}
+          onClose={() => setIsConfirmOpen(false)}
+          onConfirm={handleSave}
+          title="Save Lab Result"
+          message="Are you sure you want to save this lab result? This action cannot be undone."
+          confirmText="Save Lab Result"
+          cancelText="Cancel"
+        />
+    </LaboratoryLayout>
   );
 };
 

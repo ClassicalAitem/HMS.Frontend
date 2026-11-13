@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/common";
-import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
+import LaboratoryLayout from "@/layouts/laboratory";
+import KolakLoader from "@/components/common/KolakLoader";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { hasStatus } from "@/utils/statusUtils";
@@ -14,7 +14,6 @@ import { PATIENT_STATUS } from "@/constants/patientStatus";
 
 const IncomingLaboratory = () => {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,9 +21,6 @@ const IncomingLaboratory = () => {
   const hasLoadedRef = useRef(false);
 
   const { lastUpdate } = useNotifications();
-
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   const fetchIncomingPatients = useCallback(async () => {
     try {
@@ -163,114 +159,109 @@ const IncomingLaboratory = () => {
     });
   };
 
-  const sidebarWrapper = (
-    <>
-      {isSidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={closeSidebar}
-        />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <LaboratorySidebar onCloseSidebar={closeSidebar} />
-      </div>
-    </>
-  );
+  if (loading && !patients.length) {
+    return (
+      <LaboratoryLayout>
+        <KolakLoader fullscreen text="Loading incoming lab patients..." />
+      </LaboratoryLayout>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      {sidebarWrapper}
-
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={toggleSidebar} />
-        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <FaFlask className="h-6 w-6 text-primary" aria-hidden="true" />
-              <div>
-                <h1 className="text-2xl font-bold text-base-content">Incoming Lab Patients</h1>
-                <p className="text-sm text-base-content/60">Patients and dependants awaiting laboratory tests</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={fetchIncomingPatients}
-                className="btn btn-sm btn-ghost gap-2 border border-base-300"
-                title="Refresh incoming patients"
-              >
-                <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+    <LaboratoryLayout>
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <FaFlask className="h-6 w-6 text-primary" aria-hidden="true" />
+            <div>
+              <h1 className="text-2xl font-bold text-base-content">Incoming Lab Patients</h1>
+              <p className="text-sm text-base-content/60">Patients and dependants awaiting laboratory tests</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={fetchIncomingPatients}
+              className="btn btn-sm btn-ghost gap-2 border border-base-300"
+              title="Refresh incoming patients"
+            >
+              <FiRefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
 
-          {error && (
-            <div className="alert alert-error shadow-sm">
-              <FiAlertCircle className="w-5 h-5" />
-              <span>{error}</span>
+        {error && (
+          <div className="alert alert-error shadow-sm">
+            <FiAlertCircle className="w-5 h-5" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+          <div className="flex flex-col gap-3 border-b border-base-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="font-semibold">Awaiting Laboratory</h2>
+              <span className="badge badge-ghost badge-sm">{filteredPatients.length}</span>
+            </div>
+            <label className="input input-sm input-bordered flex w-full items-center gap-2 sm:max-w-xs">
+              <FiSearch className="h-4 w-4 text-base-content/40" aria-hidden="true" />
+              <input
+                type="search"
+                placeholder="Search patient or hospital ID"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </label>
+          </div>
+
+          {loading ? (
+            <div className="py-12 flex justify-center">
+              <KolakLoader text="Loading incoming patients..." />
+            </div>
+          ) : filteredPatients.length > 0 ? (
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+              <table className="table table-zebra w-full">
+                <thead className="bg-base-200/90 backdrop-blur-xs sticky top-0 z-10">
+                  <tr>
+                    <th>Patient / Dependant</th>
+                    <th>Hospital ID</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Lab Requests</th>
+                    <th>Updated</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPatients.map((patient) => (
+                    <tr key={patient.key}>
+                      <td className="font-medium">
+                        <span className="inline-flex items-center gap-2"><FiUser aria-hidden="true" />{patient.name}</span>
+                      </td>
+                      <td>{patient.hospitalId}</td>
+                      <td><span className={`badge badge-sm ${patient.dependantId ? 'badge-secondary' : 'badge-primary'}`}>{patient.dependantId ? 'Dependant' : 'Patient'}</span></td>
+                      <td><span className="badge badge-warning badge-sm">Awaiting lab</span></td>
+                      <td>{patient.requestCount}</td>
+                      <td>{patient.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : '—'}</td>
+                      <td>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => viewPatientDetails(patient)}>
+                          <FaEye aria-hidden="true" /> View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="px-4 py-12 text-center text-sm text-base-content/60">
+              {searchTerm ? 'No patients match your search.' : 'No patients or dependants are awaiting laboratory.'}
             </div>
           )}
-
-          <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
-            <div className="flex flex-col gap-3 border-b border-base-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold">Awaiting Laboratory</h2>
-                <span className="badge badge-ghost badge-sm">{filteredPatients.length}</span>
-              </div>
-              <label className="input input-sm input-bordered flex w-full items-center gap-2 sm:max-w-xs">
-                <FiSearch className="h-4 w-4 text-base-content/40" aria-hidden="true" />
-                <input
-                  type="search"
-                  placeholder="Search patient or hospital ID"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                />
-              </label>
-            </div>
-
-            {loading ? (
-              <div className="space-y-3 p-4">
-                {[1, 2, 3, 4].map((item) => <div key={item} className="h-16 animate-pulse rounded-md bg-base-200" />)}
-              </div>
-            ) : filteredPatients.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="table table-zebra w-full">
-                  <thead><tr><th>Patient / Dependant</th><th>Hospital ID</th><th>Type</th><th>Status</th><th>Lab Requests</th><th>Updated</th><th>Action</th></tr></thead>
-                  <tbody>
-                    {filteredPatients.map((patient) => (
-                      <tr key={patient.key}>
-                        <td className="font-medium">
-                          <span className="inline-flex items-center gap-2"><FiUser aria-hidden="true" />{patient.name}</span>
-                        </td>
-                        <td>{patient.hospitalId}</td>
-                        <td><span className={`badge badge-sm ${patient.dependantId ? 'badge-secondary' : 'badge-primary'}`}>{patient.dependantId ? 'Dependant' : 'Patient'}</span></td>
-                        <td><span className="badge badge-warning badge-sm">Awaiting lab</span></td>
-                        <td>{patient.requestCount}</td>
-                        <td>{patient.updatedAt ? formatNigeriaDateTime(patient.updatedAt) : '—'}</td>
-                        <td>
-                          <button type="button" className="btn btn-primary btn-sm" onClick={() => viewPatientDetails(patient)}>
-                            <FaEye aria-hidden="true" /> View Details
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="px-4 py-12 text-center text-sm text-base-content/60">
-                {searchTerm ? 'No patients match your search.' : 'No patients or dependants are awaiting laboratory.'}
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
-    </div>
+        </section>
+      </div>
+    </LaboratoryLayout>
   );
 };
 

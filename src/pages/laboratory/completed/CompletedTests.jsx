@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, HmoStatusBadge } from "@/components/common";
-import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
+import LaboratoryLayout from "@/layouts/laboratory";
+import KolakLoader from "@/components/common/KolakLoader";
+import { HmoStatusBadge } from "@/components/common";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { FiSearch, FiCheckCircle, FiEye, FiRefreshCw } from "react-icons/fi";
@@ -29,6 +30,16 @@ const getPersonType = (item) => {
   return 'Patient';
 };
 
+const formatDateTime = (dateString) => {
+  if (!dateString) return "N/A";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+};
+
 const CompletedTests = () => {
   const navigate = useNavigate();
   const [completedTests, setCompletedTests] = useState([]);
@@ -36,11 +47,7 @@ const CompletedTests = () => {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const itemsPerPage = 10;
-
-  const toggleSidebar = () => setIsSidebarOpen((v) => !v);
-  const closeSidebar = () => setIsSidebarOpen(false);
 
   const hasLoadedRef = React.useRef(false);
 
@@ -66,9 +73,7 @@ const CompletedTests = () => {
           personType: getPersonType(inv),
           hmoStatus: inv.hmoStatus || null,
           patientId: inv.patientId || inv.opdPatientId,
-          date: inv.completedAt
-            ? formatNigeriaTime(inv.completedAt)
-            : formatNigeriaTime(inv.updatedAt || inv.createdAt),
+          date: formatDateTime(inv.completedAt || inv.updatedAt || inv.createdAt),
           completedAt: new Date(inv.completedAt || inv.updatedAt || inv.createdAt || 0),
           isLabResult: false,
         }));
@@ -91,9 +96,7 @@ const CompletedTests = () => {
             personType: getPersonType(res),
             hmoStatus: res.hmoStatus || null,
             patientId: res.patientId || res.opdPatientId,
-            date: res.completedAt
-              ? formatNigeriaTime(res.completedAt)
-              : formatNigeriaTime(res.updatedAt || res.createdAt),
+            date: formatDateTime(res.completedAt || res.updatedAt || res.createdAt),
             completedAt: new Date(res.completedAt || res.updatedAt || res.createdAt || 0),
             isLabResult: true,
           };
@@ -116,7 +119,6 @@ const CompletedTests = () => {
         .sort((a, b) => b.completedAt - a.completedAt);
 
       setCompletedTests(allCompleted);
-      setError(null);
       setError(null);
       hasLoadedRef.current = true;
     } catch (err) {
@@ -164,173 +166,155 @@ const CompletedTests = () => {
     }
   }, [currentPage, totalPages]);
 
-  const sidebarWrapper = (
-    <>
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={closeSidebar} />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <LaboratorySidebar onCloseSidebar={closeSidebar} />
-      </div>
-    </>
-  );
-
   return (
-    <div className="flex h-screen bg-base-200">
-      {sidebarWrapper}
+    <LaboratoryLayout>
+      {loading && !completedTests.length && (
+        <KolakLoader fullscreen text="Loading completed laboratory tests..." />
+      )}
 
-      <div className="flex overflow-hidden flex-col flex-1 min-w-0">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                <FiCheckCircle className="w-7 h-7 text-emerald-600" />
-                Completed Laboratory Tests
-              </h1>
-              <p className="text-sm text-base-content/70 mt-1">
-                Overview of all finalized investigations and verified test results
-              </p>
-            </div>
-            <button
-              onClick={fetchCompletedTests}
-              className="btn btn-sm btn-ghost gap-2 border border-base-300 self-start sm:self-auto"
-            >
-              <FiRefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <FiCheckCircle className="w-7 h-7 text-emerald-600" />
+              Completed Laboratory Tests
+            </h1>
+            <p className="text-sm text-base-content/70 mt-1">
+              Overview of all finalized investigations and verified test results
+            </p>
           </div>
+          <button
+            onClick={() => fetchCompletedTests()}
+            disabled={loading}
+            className="btn btn-sm btn-ghost gap-2 border border-base-300 self-start sm:self-auto"
+          >
+            <FiRefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
 
-          {error && (
-            <div className="alert alert-error shadow-sm">
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Search bar */}
-          <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
-              <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
-              <input
-                type="text"
-                placeholder="Search patient, test name, or ID..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <span className="text-xs text-base-content/60 self-end sm:self-auto">
-              Total Completed: <strong className="text-base-content">{completedTests.length}</strong>
-            </span>
+        {error && (
+          <div className="alert alert-error shadow-sm">
+            <span>{error}</span>
           </div>
+        )}
 
-          {/* List Content */}
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <div key={n} className="bg-base-100 p-4 rounded-xl border border-base-300 animate-pulse h-16"></div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-base-100 rounded-xl border border-base-300/80 p-5 shadow-sm space-y-4">
-              {paginatedTests.length > 0 ? (
-                <>
-                  <div className="space-y-2.5">
-                    {paginatedTests.map((test, index) => (
-                      <div
-                        key={test.key || index}
-                        className="p-3.5 rounded-xl border border-base-200 hover:border-emerald-300 transition-colors flex items-center justify-between gap-3 bg-base-200/30"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-semibold text-sm text-base-content truncate">{test.name}</p>
-                              <span className="badge badge-xs badge-outline text-[10px]">{test.personType}</span>
-                              <HmoStatusBadge status={test.hmoStatus} size="sm" />
-                            </div>
-                            <p className="text-xs text-base-content/70 truncate mt-0.5">{test.testType}</p>
+        {/* Search bar */}
+        <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative w-full sm:w-80">
+            <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
+            <input
+              type="text"
+              placeholder="Search patient, test name, or ID..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <span className="text-xs text-base-content/60 self-end sm:self-auto">
+            Total Completed: <strong className="text-base-content">{completedTests.length}</strong>
+          </span>
+        </div>
+
+        {/* List Content */}
+        {loading && !completedTests.length ? (
+          <div className="py-12 bg-base-100 rounded-xl border border-base-300">
+            <KolakLoader text="Loading completed tests..." />
+          </div>
+        ) : (
+          <div className="bg-base-100 rounded-xl border border-base-300/80 p-5 shadow-sm space-y-4">
+            {paginatedTests.length > 0 ? (
+              <>
+                <div className="space-y-2.5 max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh] overflow-y-auto pr-1">
+                  {paginatedTests.map((test, index) => (
+                    <div
+                      key={test.key || index}
+                      className="p-3.5 rounded-xl border border-base-200 hover:border-emerald-300 transition-colors flex items-center justify-between gap-3 bg-base-200/30"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-sm text-base-content truncate">{test.name}</p>
+                            <span className="badge badge-xs badge-outline text-[10px]">{test.personType}</span>
+                            <HmoStatusBadge status={test.hmoStatus} size="sm" />
                           </div>
-                        </div>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-xs text-base-content/50">{test.date}</span>
-                          {test.isLabResult ? (
-                            <button
-                              onClick={() => navigate(`/dashboard/laboratory/results/${test.id}`)}
-                              className="btn btn-xs btn-outline btn-primary gap-1"
-                            >
-                              <FiEye className="w-3.5 h-3.5" />
-                              View
-                            </button>
-                          ) : (
-                            <span className="badge badge-sm badge-success text-white">Completed</span>
-                          )}
+                          <p className="text-xs text-base-content/70 truncate mt-0.5">{test.testType}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t border-base-200 text-xs">
-                      <span className="text-base-content/60">
-                        Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                        {Math.min(currentPage * itemsPerPage, filteredTests.length)} of {filteredTests.length}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                          disabled={currentPage === 1}
-                          className="btn btn-xs btn-ghost border border-base-300 disabled:opacity-40"
-                        >
-                          Prev
-                        </button>
-                        <span className="px-2 font-medium">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
-                          className="btn btn-xs btn-ghost border border-base-300 disabled:opacity-40"
-                        >
-                          Next
-                        </button>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs text-base-content/50">{test.date}</span>
+                        {test.isLabResult ? (
+                          <button
+                            onClick={() => navigate(`/dashboard/laboratory/results/${test.id}`)}
+                            className="btn btn-xs btn-outline btn-primary gap-1"
+                          >
+                            <FiEye className="w-3.5 h-3.5" />
+                            View
+                          </button>
+                        ) : (
+                          <span className="badge badge-sm badge-success text-white">Completed</span>
+                        )}
                       </div>
                     </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-16">
-                  <FaFlask className="w-12 h-12 mx-auto text-base-content/30 mb-3" />
-                  <h3 className="font-bold text-lg text-base-content">No completed tests found</h3>
-                  <p className="text-sm text-base-content/60 mt-1">
-                    {search ? "No records match your search criteria." : "There are currently no completed tests recorded."}
-                  </p>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-base-200 text-xs">
+                    <span className="text-base-content/60">
+                      Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                      {Math.min(currentPage * itemsPerPage, filteredTests.length)} of {filteredTests.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="btn btn-xs btn-ghost border border-base-300 disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <span className="px-2 font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="btn btn-xs btn-ghost border border-base-300 disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-16">
+                <FaFlask className="w-12 h-12 mx-auto text-base-content/30 mb-3" />
+                <h3 className="font-bold text-lg text-base-content">No completed tests found</h3>
+                <p className="text-sm text-base-content/60 mt-1">
+                  {search ? "No records match your search criteria." : "There are currently no completed tests recorded."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </LaboratoryLayout>
   );
 };
 

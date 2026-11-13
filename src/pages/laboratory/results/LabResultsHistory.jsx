@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header, HmoStatusBadge } from "@/components/common";
-import LaboratorySidebar from "@/components/laboratory/dashboard/LaboratorySidebar";
+import LaboratoryLayout from "@/layouts/laboratory";
+import KolakLoader from "@/components/common/KolakLoader";
+import { HmoStatusBadge } from "@/components/common";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import toast from "react-hot-toast";
 import { FiSearch, FiEye, FiRefreshCw } from "react-icons/fi";
@@ -57,7 +58,6 @@ const formatDate = (dateString) => {
 
 const LabResultsHistory = () => {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [allLabResults, setAllLabResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -122,100 +122,83 @@ const LabResultsHistory = () => {
     }
   }, [currentPage, totalPages]);
 
-  const SidebarDrawer = () => (
-    <>
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 lg:z-auto ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
-      </div>
-    </>
-  );
+  if (loading && !allLabResults.length) {
+    return (
+      <LaboratoryLayout>
+        <KolakLoader fullscreen text="Loading lab results history..." />
+      </LaboratoryLayout>
+    );
+  }
 
   return (
-    <div className="flex h-screen bg-base-200">
-      <SidebarDrawer />
-
-      <div className="flex overflow-hidden flex-col flex-1 min-w-0">
-        <Header onToggleSidebar={() => setSidebarOpen(true)} />
-
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                <FaFlask className="w-7 h-7 text-emerald-600" />
-                Lab Results History
-              </h1>
-              <p className="text-sm text-base-content/70 mt-1">
-                View, search, and verify all recorded laboratory test reports
-              </p>
-            </div>
-            <button
-              onClick={fetchLabResults}
-              className="btn btn-sm btn-ghost gap-2 border border-base-300 self-start sm:self-auto"
-            >
-              <FiRefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+    <LaboratoryLayout>
+      <div className="overflow-y-auto flex-1 p-4 sm:p-6 lg:p-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+              <FaFlask className="w-7 h-7 text-emerald-600" />
+              Lab Results History
+            </h1>
+            <p className="text-sm text-base-content/70 mt-1">
+              View, search, and verify all recorded laboratory test reports
+            </p>
           </div>
+          <button
+            onClick={fetchLabResults}
+            className="btn btn-sm btn-ghost gap-2 border border-base-300 self-start sm:self-auto"
+          >
+            <FiRefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
 
-          {error && (
-            <div className="alert alert-error shadow-sm">
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Search bar */}
-          <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative w-full sm:w-96">
-              <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
-              <input
-                type="text"
-                placeholder="Search by patient name, ID, test type, or technician..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-            <span className="text-xs text-base-content/60 self-end sm:self-auto">
-              Total Reports: <strong className="text-base-content">{allLabResults.length}</strong>
-            </span>
+        {error && (
+          <div className="alert alert-error shadow-sm">
+            <span>{error}</span>
           </div>
+        )}
 
-          {/* Table / Cards */}
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <div key={n} className="bg-base-100 p-5 rounded-xl border border-base-300 animate-pulse h-16"></div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Desktop Table */}
-              <div className="hidden lg:block bg-base-100 rounded-xl border border-base-300/80 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="table table-zebra w-full">
-                    <thead className="bg-emerald-800 text-white font-semibold">
+        {/* Search bar */}
+        <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative w-full sm:w-96">
+            <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
+            <input
+              type="text"
+              placeholder="Search by patient name, ID, test type, or technician..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <span className="text-xs text-base-content/60 self-end sm:self-auto">
+            Total Reports: <strong className="text-base-content">{allLabResults.length}</strong>
+          </span>
+        </div>
+
+        {/* Table / Cards */}
+        {loading ? (
+          <div className="py-12 flex justify-center">
+            <KolakLoader text="Loading reports..." />
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden lg:block bg-base-100 rounded-xl border border-base-300/80 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+                <table className="table table-zebra w-full">
+                  <thead className="bg-emerald-800 text-white font-semibold sticky top-0 z-10">
                       <tr>
                         <th>Patient Name</th>
                         <th>Type</th>
@@ -376,8 +359,7 @@ const LabResultsHistory = () => {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </LaboratoryLayout>
   );
 };
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye } from 'react-icons/fa';
-import { Header } from '@/components/common';
-import LaboratorySidebar from '@/components/laboratory/dashboard/LaboratorySidebar';
+import LaboratoryLayout from '@/layouts/laboratory';
+import KolakLoader from '@/components/common/KolakLoader';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { getDependantById } from '@/services/api/dependantAPI';
@@ -90,7 +90,6 @@ const LaboratoryPatientDetails = () => {
   const [labResultsByInvestigationId, setLabResultsByInvestigationId] = useState({});
   const [labResultLookupFailed, setLabResultLookupFailed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [updatingInvestigationId, setUpdatingInvestigationId] = useState(null);
   const { refreshQueueCount } = useNotifications();
 
@@ -218,160 +217,161 @@ const LaboratoryPatientDetails = () => {
   };
 
   return (
-    <div className="flex h-screen bg-base-200">
-      {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <LaboratorySidebar onCloseSidebar={() => setSidebarOpen(false)} />
-      </div>
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Header onToggleSidebar={() => setSidebarOpen(true)} />
-        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">Patient Details</h1>
-              <p className="text-sm text-base-content/60">{fullName}{dependantId ? ' · Dependant' : ''}</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {patient && (
-                <SendPatientModal
-                  patientId={patient?.id || patient?._id || patientId}
-                  patient={patient}
-                  currentStatus={subject?.status || patient?.status || ''}
-                  defaultDependantId={dependantId}
-                  defaultDependantLabel={dependant ? fullName : undefined}
-                  lockSubject
-                  onUpdated={handlePatientUpdated}
-                  allowedRoles={[
-                    'doctor',
-                    'medical-director',
-                    'nurse',
-                    'pharmacist',
-                    'cashier',
-                    'hmo',
-                    'sonographer',
-                  ]}
-                  containerClass="inline-flex"
-                  buttonClassName="btn btn-primary btn-sm flex items-center gap-2"
-                />
-              )}
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/laboratory/patients')}>
-                <FaArrowLeft aria-hidden="true" /> Back to Patients
-              </button>
-            </div>
+    <LaboratoryLayout>
+      {loading && !patient && (
+        <KolakLoader fullscreen text="Loading patient laboratory details..." />
+      )}
+
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Patient Details</h1>
+            <p className="text-sm text-base-content/60">{fullName}{dependantId ? ' · Dependant' : ''}</p>
           </div>
-
-          <section className="grid gap-4 rounded-lg border border-base-300 bg-base-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-base-content/60">Hospital ID</p><p className="font-medium">{patient?.hospitalId || '—'}</p></div>
-            <div><p className="text-xs text-base-content/60">Gender</p><p className="font-medium capitalize">{subject?.gender || '—'}</p></div>
-            <div><p className="text-xs text-base-content/60">Phone</p><p className="font-medium">{subject?.phone || subject?.phoneNumber || patient?.phone || '—'}</p></div>
-            <div><p className="text-xs text-base-content/60">Status</p><p className="font-medium capitalize">{subject?.status || patient?.status || 'Unknown'}</p></div>
-          </section>
-
-          <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
-            <div className="flex items-center gap-2 border-b border-base-200 px-4 py-3">
-              <FaFlask className="text-primary" aria-hidden="true" />
-              <h2 className="font-semibold">Laboratory Investigation Requests</h2>
-              <span className="badge badge-ghost badge-sm">{investigations.length}</span>
-            </div>
-            {loading ? (
-              <div className="flex justify-center py-12"><span className="loading loading-spinner" /></div>
-            ) : investigations.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-base-content/60">No laboratory investigation requests found.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table table-zebra w-full">
-                  <thead><tr><th>Investigation</th><th>Ordered Tests</th><th>Status</th><th>Priority</th><th>Requested</th></tr></thead>
-                  <tbody>
-                    {investigations.map((request) => (
-                      <tr key={request._id || request.id}>
-                        <td className="font-medium">{request.investigationType || request.type || 'Laboratory'}</td>
-                        <td>
-                          {Array.isArray(request.tests) && request.tests.length > 0 ? (
-                            <div className="flex min-w-max items-start gap-2">
-                              {hasPaymentReadyTest(request) && (
-                                <div className="flex items-center gap-2">
-                                  {!isInvestigationClosed(request.status) ? (
-                                    <button
-                                      type="button"
-                                      className={`btn btn-outline btn-xs whitespace-nowrap ${labResultLookupFailed ? 'btn-disabled' : labResultsByInvestigationId[request._id || request.id] ? 'btn-warning' : 'btn-primary'}`}
-                                      disabled={labResultLookupFailed}
-                                      onClick={() => handleLabResultAction(request)}
-                                    >
-                                      {labResultsByInvestigationId[request._id || request.id]
-                                        ? <FaEdit aria-hidden="true" />
-                                        : <FaPlus aria-hidden="true" />}
-                                      {labResultLookupFailed
-                                        ? 'Unable to Check Result'
-                                        : labResultsByInvestigationId[request._id || request.id]
-                                          ? 'Edit Lab Result'
-                                          : 'Add Lab Result'}
-                                    </button>
-                                  ) : normalizeRequestStatus(request.status) === 'cancelled' ? (
-                                    <span className="badge badge-sm badge-ghost">Cancelled</span>
-                                  ) : normalizeRequestStatus(request.status) === 'completed' && !labResultsByInvestigationId[request._id || request.id] ? (
-                                    <span className="badge badge-sm badge-success">Completed</span>
-                                  ) : null}
-                                  
-                                  {labResultsByInvestigationId[request._id || request.id] && (
-                                    <button
-                                      type="button"
-                                      className="btn btn-outline btn-success btn-xs whitespace-nowrap"
-                                      onClick={() => {
-                                        const res = labResultsByInvestigationId[request._id || request.id];
-                                        navigate(`/dashboard/laboratory/results/${res._id || res.id}`);
-                                      }}
-                                    >
-                                      <FaEye aria-hidden="true" /> View Lab Result
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                              <details className="group min-w-48">
-                                <summary className="cursor-pointer select-none font-medium hover:text-primary">
-                                  {request.tests.length} ordered {request.tests.length === 1 ? 'test' : 'tests'}
-                                </summary>
-                                <ul className="mt-2 space-y-2">
-                                  {request.tests.map((test, index) => (
-                                    <li key={test?.id || test?._id || test?.code || index} className="flex min-w-64 items-center justify-between gap-3 rounded-md border border-base-200 bg-base-100 px-2 py-1.5">
-                                      <span className="min-w-0 text-sm">{typeof test === 'string' ? test : test.name || test.code || 'Test'}</span>
-                                      <TestPaymentBadge test={test} />
-                                    </li>
-                                  ))}
-                                </ul>
-                              </details>
-                            </div>
-                          ) : '—'}
-                        </td>
-                        <td>
-                          <div className="flex min-w-max items-center gap-2">
-                            <span className={`badge badge-sm ${getStatusClass(request.status)}`}>{String(request.status || 'Unknown').replace(/_/g, ' ')}</span>
-                            {normalizeRequestStatus(request.status) === 'requested' && (
-                              <button
-                                type="button"
-                                className="btn btn-primary btn-xs whitespace-nowrap"
-                                disabled={updatingInvestigationId !== null}
-                                onClick={() => handleStartProcessing(request)}
-                              >
-                                {updatingInvestigationId === (request._id || request.id)
-                                  ? <span className="loading loading-spinner loading-xs" />
-                                  : <FaPlay aria-hidden="true" />}
-                                Start Processing
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                        <td className="capitalize">{request.priority || 'Normal'}</td>
-                        <td>{request.createdAt ? formatNigeriaDateTime(request.createdAt) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {patient && (
+              <SendPatientModal
+                patientId={patient?.id || patient?._id || patientId}
+                patient={patient}
+                currentStatus={subject?.status || patient?.status || ''}
+                defaultDependantId={dependantId}
+                defaultDependantLabel={dependant ? fullName : undefined}
+                lockSubject
+                onUpdated={handlePatientUpdated}
+                allowedRoles={[
+                  'doctor',
+                  'medical-director',
+                  'nurse',
+                  'pharmacist',
+                  'cashier',
+                  'hmo',
+                  'sonographer',
+                ]}
+                containerClass="inline-flex"
+                buttonClassName="btn btn-primary btn-sm flex items-center gap-2"
+              />
             )}
-          </section>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/laboratory/patients')}>
+              <FaArrowLeft aria-hidden="true" /> Back to Patients
+            </button>
+          </div>
         </div>
-      </main>
-    </div>
+
+        <section className="grid gap-4 rounded-lg border border-base-300 bg-base-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div><p className="text-xs text-base-content/60">Hospital ID</p><p className="font-medium">{patient?.hospitalId || '—'}</p></div>
+          <div><p className="text-xs text-base-content/60">Gender</p><p className="font-medium capitalize">{subject?.gender || '—'}</p></div>
+          <div><p className="text-xs text-base-content/60">Phone</p><p className="font-medium">{subject?.phone || subject?.phoneNumber || patient?.phone || '—'}</p></div>
+          <div><p className="text-xs text-base-content/60">Status</p><p className="font-medium capitalize">{subject?.status || patient?.status || 'Unknown'}</p></div>
+        </section>
+
+        <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
+          <div className="flex items-center gap-2 border-b border-base-200 px-4 py-3">
+            <FaFlask className="text-primary" aria-hidden="true" />
+            <h2 className="font-semibold">Laboratory Investigation Requests</h2>
+            <span className="badge badge-ghost badge-sm">{investigations.length}</span>
+          </div>
+          {loading ? (
+            <div className="py-12">
+              <KolakLoader text="Loading investigations..." />
+            </div>
+          ) : investigations.length === 0 ? (
+            <p className="px-4 py-10 text-center text-sm text-base-content/60">No laboratory investigation requests found.</p>
+          ) : (
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
+              <table className="table table-zebra w-full">
+                <thead className="sticky top-0 bg-base-200 z-10">
+                  <tr><th>Investigation</th><th>Ordered Tests</th><th>Status</th><th>Priority</th><th>Requested</th></tr>
+                </thead>
+                <tbody>
+                  {investigations.map((request) => (
+                    <tr key={request._id || request.id}>
+                      <td className="font-medium">{request.investigationType || request.type || 'Laboratory'}</td>
+                      <td>
+                        {Array.isArray(request.tests) && request.tests.length > 0 ? (
+                          <div className="flex min-w-max items-start gap-2">
+                            {hasPaymentReadyTest(request) && (
+                              <div className="flex items-center gap-2">
+                                {!isInvestigationClosed(request.status) ? (
+                                  <button
+                                    type="button"
+                                    className={`btn btn-outline btn-xs whitespace-nowrap ${labResultLookupFailed ? 'btn-disabled' : labResultsByInvestigationId[request._id || request.id] ? 'btn-warning' : 'btn-primary'}`}
+                                    disabled={labResultLookupFailed}
+                                    onClick={() => handleLabResultAction(request)}
+                                  >
+                                    {labResultsByInvestigationId[request._id || request.id]
+                                      ? <FaEdit aria-hidden="true" />
+                                      : <FaPlus aria-hidden="true" />}
+                                    {labResultLookupFailed
+                                      ? 'Unable to Check Result'
+                                      : labResultsByInvestigationId[request._id || request.id]
+                                        ? 'Edit Lab Result'
+                                        : 'Add Lab Result'}
+                                  </button>
+                                ) : normalizeRequestStatus(request.status) === 'cancelled' ? (
+                                  <span className="badge badge-sm badge-ghost">Cancelled</span>
+                                ) : normalizeRequestStatus(request.status) === 'completed' && !labResultsByInvestigationId[request._id || request.id] ? (
+                                  <span className="badge badge-sm badge-success">Completed</span>
+                                ) : null}
+                                
+                                {labResultsByInvestigationId[request._id || request.id] && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-outline btn-success btn-xs whitespace-nowrap"
+                                    onClick={() => {
+                                      const res = labResultsByInvestigationId[request._id || request.id];
+                                      navigate(`/dashboard/laboratory/results/${res._id || res.id}`);
+                                    }}
+                                  >
+                                    <FaEye aria-hidden="true" /> View Lab Result
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            <details className="group min-w-48">
+                              <summary className="cursor-pointer select-none font-medium hover:text-primary">
+                                {request.tests.length} ordered {request.tests.length === 1 ? 'test' : 'tests'}
+                              </summary>
+                              <ul className="mt-2 space-y-2">
+                                {request.tests.map((test, index) => (
+                                  <li key={test?.id || test?._id || test?.code || index} className="flex min-w-64 items-center justify-between gap-3 rounded-md border border-base-200 bg-base-100 px-2 py-1.5">
+                                    <span className="min-w-0 text-sm">{typeof test === 'string' ? test : test.name || test.code || 'Test'}</span>
+                                    <TestPaymentBadge test={test} />
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          </div>
+                        ) : '—'}
+                      </td>
+                      <td>
+                        <div className="flex min-w-max items-center gap-2">
+                          <span className={`badge badge-sm ${getStatusClass(request.status)}`}>{String(request.status || 'Unknown').replace(/_/g, ' ')}</span>
+                          {normalizeRequestStatus(request.status) === 'requested' && (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-xs whitespace-nowrap"
+                              disabled={updatingInvestigationId !== null}
+                              onClick={() => handleStartProcessing(request)}
+                            >
+                              {updatingInvestigationId === (request._id || request.id)
+                                ? <span className="loading loading-spinner loading-xs" />
+                                : <FaPlay aria-hidden="true" />}
+                              Start Processing
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="capitalize">{request.priority || 'Normal'}</td>
+                      <td>{request.createdAt ? formatNigeriaDateTime(request.createdAt) : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
+    </LaboratoryLayout>
   );
 };
 
