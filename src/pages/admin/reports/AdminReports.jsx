@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
+import KolakLoader from "@/components/common/KolakLoader";
 import {
   FaUsers,
   FaUserInjured,
@@ -368,6 +369,9 @@ const AdminReports = () => {
 
   return (
     <AdminLayout>
+      {loading && dataStore.patients.length === 0 && (
+        <KolakLoader fullscreen text="Loading reports & registry data..." />
+      )}
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
@@ -588,9 +592,9 @@ const AdminReports = () => {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-base-200">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh] rounded-xl border border-base-200">
               <table className="table table-sm w-full">
-                <thead className="bg-base-200/60 text-xs font-bold text-base-content/70">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content/70">
                   <tr>
                     <th>#</th>
                     <th>Record ID</th>
