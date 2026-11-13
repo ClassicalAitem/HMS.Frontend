@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
 import AdminLayout from "@/layouts/admin/AdminLayout";
+import KolakLoader from "@/components/common/KolakLoader";
 import {
   FaBoxes,
   FaSearch,
@@ -161,6 +162,9 @@ const Stocks = () => {
 
   return (
     <AdminLayout>
+      {loading && mergedStocks.length === 0 && (
+        <KolakLoader fullscreen text="Loading stock inventory..." />
+      )}
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
@@ -319,15 +323,14 @@ const Stocks = () => {
 
         {/* Table */}
         <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-              <p className="text-sm text-base-content/60 mt-4">Loading stock inventory...</p>
+          {loading && paginatedRows.length === 0 ? (
+            <div className="py-20">
+              <KolakLoader text="Loading stock inventory..." />
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
               <table className="table table-zebra w-full text-left">
-                <thead className="bg-base-200/60 text-xs font-bold text-base-content uppercase border-b border-base-200">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content uppercase border-b border-base-200">
                   <tr>
                     <th className="py-3.5 px-4">Department</th>
                     <th className="px-4">Item Name</th>

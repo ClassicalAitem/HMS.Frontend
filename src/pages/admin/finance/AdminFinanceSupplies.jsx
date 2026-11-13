@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
+import KolakLoader from "@/components/common/KolakLoader";
 import {
   FaBoxes,
   FaFileInvoiceDollar,
@@ -240,6 +241,9 @@ const AdminFinanceSupplies = () => {
 
   return (
     <AdminLayout>
+      {loading && dataStore.pharmacy.length === 0 && (
+        <KolakLoader fullscreen text="Loading finance & supplies data..." />
+      )}
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
@@ -420,9 +424,9 @@ const AdminFinanceSupplies = () => {
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-base-200">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh] rounded-xl border border-base-200">
               <table className="table table-sm w-full">
-                <thead className="bg-base-200/60 text-xs font-bold text-base-content/70">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content/70">
                   <tr>
                     <th>Item Name</th>
                     <th>Category</th>

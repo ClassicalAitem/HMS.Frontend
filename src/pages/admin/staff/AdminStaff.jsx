@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useMemo } from "react";
 import AdminLayout from "@/layouts/admin/AdminLayout";
+import KolakLoader from "@/components/common/KolakLoader";
 import {
   FaUsers,
   FaUserMd,
@@ -271,6 +272,9 @@ const AdminStaff = () => {
 
   return (
     <AdminLayout>
+      {loading && users.length === 0 && (
+        <KolakLoader fullscreen text="Loading staff records..." />
+      )}
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
@@ -400,9 +404,9 @@ const AdminStaff = () => {
         {/* View Mode: Directory Table */}
         {viewTab === "directory" ? (
           <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
               <table className="table table-sm w-full">
-                <thead className="bg-base-200/60 text-xs font-bold text-base-content/70">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content/70">
                   <tr>
                     <th>#</th>
                     <th>Staff Member</th>
@@ -414,10 +418,10 @@ const AdminStaff = () => {
                   </tr>
                 </thead>
                 <tbody className="text-xs divide-y divide-base-200">
-                  {loading ? (
+                  {loading && filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-8">
-                        <span className="loading loading-spinner loading-md text-primary" />
+                      <td colSpan={7} className="text-center py-12">
+                        <KolakLoader text="Loading staff directory..." />
                       </td>
                     </tr>
                   ) : filteredUsers.length === 0 ? (

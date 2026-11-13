@@ -91,9 +91,9 @@ const Schedule = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
             <table className="table table-zebra w-full text-left">
-              <thead className="bg-base-200/60 text-xs font-bold text-base-content uppercase border-b border-base-200">
+              <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-xs font-bold text-base-content uppercase border-b border-base-200">
                 <tr>
                   <th className="py-3 px-4">S/N</th>
                   <th className="px-4">Staff Name</th>

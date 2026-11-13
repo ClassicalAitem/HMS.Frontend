@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
+import KolakLoader from "@/components/common/KolakLoader";
 import {
   FaUsers,
   FaUserInjured,
@@ -495,6 +496,9 @@ const AdminDashboard = () => {
 
   return (
     <AdminLayout>
+      {loading && dashboardData.patients.length === 0 && (
+        <KolakLoader fullscreen text="Loading admin overseeing dashboard..." />
+      )}
       <div className="space-y-6">
         {/* Executive Banner */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-200 shadow-sm">
@@ -840,9 +844,9 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
             <table className="table table-zebra w-full text-left text-xs">
-              <thead className="bg-base-200/60 uppercase font-bold text-base-content">
+              <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 uppercase font-bold text-base-content">
                 <tr>
                   <th className="py-3 px-3">Time</th>
                   <th className="px-3">Attending Doctor</th>
@@ -1058,9 +1062,9 @@ const AdminDashboard = () => {
               </Link>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
               <table className="table table-zebra w-full text-left text-xs">
-                <thead className="bg-base-200/60 uppercase font-bold text-base-content">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 uppercase font-bold text-base-content">
                   <tr>
                     <th className="py-2.5 px-3">Hospital ID</th>
                     <th className="px-3">Patient Name</th>
@@ -1113,9 +1117,9 @@ const AdminDashboard = () => {
               </Link>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
               <table className="table table-zebra w-full text-left text-xs">
-                <thead className="bg-base-200/60 uppercase font-bold text-base-content">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 uppercase font-bold text-base-content">
                   <tr>
                     <th className="py-2.5 px-3">Patient Name</th>
                     <th className="px-3">Ward</th>

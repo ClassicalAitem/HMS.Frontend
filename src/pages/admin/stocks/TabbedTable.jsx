@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FiSearch } from "react-icons/fi";
 import doctorIcon from "../../../assets/images/doctorIcon.png";
 import apiClient from "../../../services/api/apiClient";
+import KolakLoader from "@/components/common/KolakLoader";
+import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const TabbedTable = () => {
   const [activeTab, setActiveTab] = useState("pharmacy");
@@ -111,7 +113,7 @@ const TabbedTable = () => {
 
         <div className="flex items-center gap-4">
           <span className="text-[12px] text-base-content/70">
-            Thursday 15th Sep 2025
+            {formatNigeriaDate(new Date())}
           </span>
           <button className="w-[115px] flex items-center gap-2 bg-base-100 px-3 py-2 rounded-md text-sm text-base-content/70 ">
             <img src={doctorIcon} alt="..." />
@@ -121,9 +123,9 @@ const TabbedTable = () => {
       </div>
 
       <div>
-        <div className="overflow-x-auto rounded-lg shadow mt-6">
+        <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh] rounded-lg shadow mt-6">
           <table className="w-full text-[16px]">
-            <thead className="bg-base-200 text-left  ">
+            <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 text-left">
               <tr className="text-[16px] text-base-content/70">
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 p-2 ">Categories</th>
@@ -136,12 +138,14 @@ const TabbedTable = () => {
             <tbody>
               {isLoading && items.length === 0 && (
                 <tr>
-                  <td className="p-3 py-5" colSpan={6}>Loading…</td>
+                  <td className="p-3 py-8 text-center" colSpan={6}>
+                    <KolakLoader text="Loading inventory records..." />
+                  </td>
                 </tr>
               )}
               {error && !isLoading && items.length === 0 && (
                 <tr>
-                  <td className="p-3 py-5" colSpan={6}>{error}</td>
+                  <td className="p-3 py-5 text-center text-error" colSpan={6}>{error}</td>
                 </tr>
               )}
               {data.map((medics, index) => {

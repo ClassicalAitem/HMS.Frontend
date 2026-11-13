@@ -6,6 +6,7 @@ import icon from "../../../assets/images/doctorIcon.png";
 import { usersAPI } from "../../../services/api/usersAPI";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
+import KolakLoader from "@/components/common/KolakLoader";
 
 const StaffList = ({ refreshKey = 0 }) => {
   const [users, setUsers] = useState([]);
@@ -142,9 +143,11 @@ const StaffList = ({ refreshKey = 0 }) => {
         </div>
       </div>
 
-      <div className="flex flex-col gap-5 mt-5 shadow ">
+      <div className="flex flex-col gap-5 mt-5 shadow max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh] overflow-y-auto p-1">
         {loading && (
-          <div className="w-full text-center py-8 text-base-content/70">Loading staff...</div>
+          <div className="w-full py-12 flex justify-center">
+            <KolakLoader text="Loading staff directory..." />
+          </div>
         )}
         {!loading && filtered.length === 0 && (
           <div className="w-full text-center py-8 text-base-content/70">No staff found</div>
