@@ -38,6 +38,7 @@ const AddHistoryModal = ({ isOpen, onClose, onAdd, type, data = [] }) => {
       "Medical History": "medical_history",
       "Medical_History": "medical_history",
       "Gynaecological": "gynaecological",
+      "Obstetrics": "obstetrics",
       "Diagnosis": "diagnosis",
     };
     return categoryMap[typeStr] || typeStr.toLowerCase().replace(/\s+/g, "_");

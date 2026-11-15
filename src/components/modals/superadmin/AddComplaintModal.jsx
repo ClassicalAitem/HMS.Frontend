@@ -17,7 +17,7 @@ const addComplaintSchema = yup.object({
   category: yup
     .string()
     .required('Category is required')
-    .oneOf(['medical_history','symptoms', 'surgical', 'family', 'social', 'allergic', 'diagnosis'], 'Please select a valid category'),
+    .oneOf(['medical_history','symptoms', 'surgical', 'family', 'social', 'allergic', 'gynaecological', 'obstetrics', 'diagnosis'], 'Please select a valid category'),
 
 });
 
@@ -123,6 +123,8 @@ const AddComplaintModal = ({ isOpen, onClose, onMedicalRecordAdded }) => {
                 <option value="family">Family</option>
                 <option value="social">Social</option>
                 <option value="allergic">Allergic</option>
+                <option value="gynaecological">Gynaecological</option>
+                <option value="obstetrics">Obstetrics</option>
                 <option value="diagnosis">Diagnosis</option>
               </select>
               {errors.category && (

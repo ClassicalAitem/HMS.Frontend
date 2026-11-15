@@ -135,11 +135,12 @@ const MedicalData = () => {
       'allergy': 'allergic',
       'medical': 'medical_history',
       'gynaecological': 'gynaecological',
+      'obstetrics': 'obstetrics',
       'diagnosis': 'diagnosis'
     };
 
     const targetCategory = categoryMap[activeTab];
-    return processedComplaints.filter(item => item.rawCategory === targetCategory);
+    return processedComplaints.filter(item => item.rawCategory === targetCategory || (targetCategory === 'obstetrics' && item.rawCategory === 'obstetric'));
   }, [processedComplaints, activeTab]);
 
   // Define columns for DataTable
@@ -224,6 +225,7 @@ const MedicalData = () => {
     { id: 'allergy', label: 'Allergy', icon: FaExclamationTriangle },
     { id: 'medical', label: 'Medical History', icon: FaClipboardList },
     { id: 'gynaecological', label: 'Gynaecological', icon: FaClipboardList },
+    { id: 'obstetrics', label: 'Obstetrics', icon: FaClipboardList },
     { id: 'diagnosis', label: 'Diagnosis', icon: FaStethoscope }
   ];
 

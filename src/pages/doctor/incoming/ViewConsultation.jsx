@@ -128,6 +128,8 @@ const ViewConsultation = () => {
     familyHistory: [],
     socialHistory: [],
     allergyHistory: [],
+    gynaecologicalHistory: [],
+    obstetricsHistory: [],
   });
   const [activeModal, setActiveModal] = useState(null);
   const [medicalRecords, setMedicalRecords] = useState({
@@ -136,6 +138,8 @@ const ViewConsultation = () => {
     family: [],
     social: [],
     allergic: [],
+    gynaecological: [],
+    obstetrics: [],
   });
 
   const [isAdmissionModalOpen, setIsAdmissionModalOpen] = useState(false);
@@ -218,6 +222,12 @@ const ViewConsultation = () => {
       hmos: ownHmos,
     };
   }, [isViewingDependant, subject, dependantSnapshot, patient, dependantId]);
+
+  const isFemale = useMemo(() => {
+    const depGender = consultation?.dependant?.gender || summarySubject?.gender;
+    const patGender = consultation?.patient?.gender || patient?.gender || patient?.sex || summarySubject?.sex;
+    return String(depGender || patGender || '').toLowerCase() === 'female';
+  }, [consultation, summarySubject, patient]);
 
   const isConsultationExpired = useMemo(() => {
     if (!consultation?.createdAt) return false;
@@ -514,6 +524,9 @@ const ViewConsultation = () => {
       gynaecologicalHistory: Array.isArray(consultation.gynaecologicalHistory) ? consultation.gynaecologicalHistory.map((g) =>
         typeof g === 'object' ? g.title || g.name || '' : g,
       ) : [],
+      obstetricsHistory: Array.isArray(consultation.obstetricHistory || consultation.obstetricsHistory) ? (consultation.obstetricHistory || consultation.obstetricsHistory).map((o) =>
+        typeof o === 'object' ? o.title || o.name || '' : o,
+      ) : [],
       surgicalHistory: Array.isArray(consultation.surgicalHistory) ? consultation.surgicalHistory.map((s) =>
         typeof s === 'object' ? s.procedureName || s.procedure || '' : s,
       ) : [],
@@ -550,6 +563,7 @@ const ViewConsultation = () => {
             social: r.filter((x) => x.category === 'social'),
             allergic: r.filter((x) => x.category === 'allergic'),
             gynaecological: r.filter((x) => x.category === 'gynaecological'),
+            obstetrics: r.filter((x) => x.category === 'obstetric' || x.category === 'obstetrics'),
           });
         }
       } catch (err) {
@@ -587,10 +601,18 @@ const ViewConsultation = () => {
           title: m,
           value: '1',
         })),
-        gynaecologicalHistory: editForm.gynaecologicalHistory.map((g) => ({
+        gynaecologicalHistory: isFemale ? (editForm.gynaecologicalHistory || []).map((g) => ({
           title: g,
           value: '1',
-        })),
+        })) : [],
+        obstetricHistory: isFemale ? (editForm.obstetricsHistory || []).map((o) => ({
+          title: o,
+          value: '1',
+        })) : [],
+        obstetricsHistory: isFemale ? (editForm.obstetricsHistory || []).map((o) => ({
+          title: o,
+          value: '1',
+        })) : [],
         allergicHistory: editForm.allergyHistory.map((a) => ({ allergen: a })),
         socialHistory: editForm.socialHistory.map((s) => ({
           title: s,
@@ -1300,18 +1322,34 @@ const getInventoryMatch = (medication) => {
         type="Allergic"
         data={medicalRecords.allergic}
       />
-      <AddHistoryModal
-        isOpen={activeModal === 'gynaecological'}
-        onClose={() => setActiveModal(null)}
-        onAdd={(item) =>
-          setEditForm((prev) => ({
-            ...prev,
-            gynaecologicalHistory: [...prev.gynaecologicalHistory, item],
-          }))
-        }
-        type="Gynaecological"
-        data={medicalRecords.gynaecological}
-      />
+      {isFemale && (
+        <AddHistoryModal
+          isOpen={activeModal === 'gynaecological'}
+          onClose={() => setActiveModal(null)}
+          onAdd={(item) =>
+            setEditForm((prev) => ({
+              ...prev,
+              gynaecologicalHistory: [...prev.gynaecologicalHistory, item],
+            }))
+          }
+          type="Gynaecological"
+          data={medicalRecords.gynaecological}
+        />
+      )}
+      {isFemale && (
+        <AddHistoryModal
+          isOpen={activeModal === 'obstetrics'}
+          onClose={() => setActiveModal(null)}
+          onAdd={(item) =>
+            setEditForm((prev) => ({
+              ...prev,
+              obstetricsHistory: [...(prev.obstetricsHistory || []), item],
+            }))
+          }
+          type="Obstetrics"
+          data={medicalRecords.obstetrics}
+        />
+      )}
       <OrderInvestigationModal
         isOpen={isInvestigationModalOpen}
         onClose={() => {
@@ -2935,78 +2973,156 @@ const getInventoryMatch = (medication) => {
               </div>
 
               {/* Gynaecological History */}
-              <div className="flex gap-4">
-                <div className="mt-1 bg-secondary/10 p-2 rounded-full text-secondary h-min">
-                  <FaFileMedical className="flex-shrink-0" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-semibold text-base-content">
-                      Gynaecological History
-                    </h4>
-                    {isEditMode && (
-                      <button
-                        onClick={() => setActiveModal('gynaecological')}
-                        className="btn btn-xs btn-outline btn-secondary gap-1"
-                      >
-                        <FaPlus className="w-3 h-3" />
-                      </button>
-                    )}
+              {isFemale && (
+                <div className="flex gap-4">
+                  <div className="mt-1 bg-secondary/10 p-2 rounded-full text-secondary h-min">
+                    <FaFileMedical className="flex-shrink-0" />
                   </div>
-                  {isEditMode ? (
-                    <div className="flex flex-wrap gap-2">
-                      {editForm.gynaecologicalHistory.map((item, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm"
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-semibold text-base-content">
+                        Gynaecological History
+                      </h4>
+                      {isEditMode && (
+                        <button
+                          onClick={() => setActiveModal('gynaecological')}
+                          className="btn btn-xs btn-outline btn-secondary gap-1"
                         >
-                          {item}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditForm((prev) => ({
-                                ...prev,
-                                gynaecologicalHistory: prev.gynaecologicalHistory.filter(
-                                  (_, i) => i !== idx,
-                                ),
-                              }))
-                            }
-                            className="text-error hover:text-red-600"
-                          >
-                            <IoCloseCircleOutline className="w-4 h-4" />
-                          </button>
-                        </span>
-                      ))}
-                      {editForm.gynaecologicalHistory.length === 0 && (
-                        <span className="text-sm text-base-content/40 italic">
-                          None added
-                        </span>
+                          <FaPlus className="w-3 h-3" />
+                        </button>
                       )}
                     </div>
-                  ) : (editForm.gynaecologicalHistory || []).length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {(editForm.gynaecologicalHistory || []).map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="badge badge-secondary badge-outline gap-1 h-auto py-1 px-3"
-                        >
-                          <span className="font-medium">
-                            {typeof item === 'object'
-                              ? item.title ||
-                                item.name ||
-                                JSON.stringify(item)
-                              : item}
+                    {isEditMode ? (
+                      <div className="flex flex-wrap gap-2">
+                        {editForm.gynaecologicalHistory.map((item, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  gynaecologicalHistory: prev.gynaecologicalHistory.filter(
+                                    (_, i) => i !== idx,
+                                  ),
+                                }))
+                              }
+                              className="text-error hover:text-red-600"
+                            >
+                              <IoCloseCircleOutline className="w-4 h-4" />
+                            </button>
                           </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-base-content/50 italic">
-                      None recorded
-                    </p>
-                  )}
+                        ))}
+                        {editForm.gynaecologicalHistory.length === 0 && (
+                          <span className="text-sm text-base-content/40 italic">
+                            None added
+                          </span>
+                        )}
+                      </div>
+                    ) : (editForm.gynaecologicalHistory || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {(editForm.gynaecologicalHistory || []).map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="badge badge-secondary badge-outline gap-1 h-auto py-1 px-3"
+                          >
+                            <span className="font-medium">
+                              {typeof item === 'object'
+                                ? item.title ||
+                                  item.name ||
+                                  JSON.stringify(item)
+                                : item}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-base-content/50 italic">
+                        None recorded
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Obstetrics History */}
+              {isFemale && (
+                <div className="flex gap-4">
+                  <div className="mt-1 bg-secondary/10 p-2 rounded-full text-secondary h-min">
+                    <FaFileMedical className="flex-shrink-0" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-semibold text-base-content">
+                        Obstetrics History
+                      </h4>
+                      {isEditMode && (
+                        <button
+                          onClick={() => setActiveModal('obstetrics')}
+                          className="btn btn-xs btn-outline btn-secondary gap-1"
+                        >
+                          <FaPlus className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {isEditMode ? (
+                      <div className="flex flex-wrap gap-2">
+                        {(editForm.obstetricsHistory || []).map((item, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-2 px-3 py-1 bg-base-200 border border-base-300 rounded-full text-sm"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  obstetricsHistory: (prev.obstetricsHistory || []).filter(
+                                    (_, i) => i !== idx,
+                                  ),
+                                }))
+                              }
+                              className="text-error hover:text-red-600"
+                            >
+                              <IoCloseCircleOutline className="w-4 h-4" />
+                            </button>
+                          </span>
+                        ))}
+                        {(editForm.obstetricsHistory || []).length === 0 && (
+                          <span className="text-sm text-base-content/40 italic">
+                            None added
+                          </span>
+                        )}
+                      </div>
+                    ) : (editForm.obstetricsHistory || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {(editForm.obstetricsHistory || []).map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="badge badge-secondary badge-outline gap-1 h-auto py-1 px-3"
+                          >
+                            <span className="font-medium">
+                              {typeof item === 'object'
+                                ? item.title ||
+                                  item.name ||
+                                  JSON.stringify(item)
+                                : item}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-base-content/50 italic">
+                        None recorded
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Family History */}
               <div className="card bg-base-100 shadow-sm border border-base-200">

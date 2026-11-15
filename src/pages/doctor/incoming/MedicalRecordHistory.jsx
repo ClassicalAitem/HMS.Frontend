@@ -125,10 +125,17 @@ const MedicalRecordHistory = () => {
     return patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Patient';
   }, [patient, isViewingDependant, dependantSnapshot]);
 
+  const isFemale = useMemo(() => {
+    const depGender = dependantSnapshot?.gender;
+    const patGender = patient?.gender || patient?.sex;
+    return String(depGender || patGender || '').toLowerCase() === 'female';
+  }, [patient, dependantSnapshot]);
+
   // ─── Aggregation logic ──────────────────────────────────────────────────────
   const aggregated = useMemo(() => {
     const medicalHistory = [];
     const gynaecologicalHistory = [];
+    const obstetricsHistory = [];
     const surgicalHistory = [];
     const allergyHistory = [];
     const familyHistory = [];
@@ -151,6 +158,14 @@ const MedicalRecordHistory = () => {
         const name = typeof item === 'object' ? item.title || item.name || '' : item;
         if (name && !gynaecologicalHistory.find(e => e.name.toLowerCase() === name.toLowerCase())) {
           gynaecologicalHistory.push({ name, date, doctor, consultationId: c._id || c.id });
+        }
+      });
+
+      const obs = c.obstetricHistory || c.obstetricsHistory || [];
+      obs.forEach(item => {
+        const name = typeof item === 'object' ? item.title || item.name || '' : item;
+        if (name && !obstetricsHistory.find(e => e.name.toLowerCase() === name.toLowerCase())) {
+          obstetricsHistory.push({ name, date, doctor, consultationId: c._id || c.id });
         }
       });
 
@@ -194,7 +209,7 @@ const MedicalRecordHistory = () => {
       });
     });
 
-    return { medicalHistory, gynaecologicalHistory, surgicalHistory, allergyHistory, familyHistory, socialHistory };
+    return { medicalHistory, gynaecologicalHistory, obstetricsHistory, surgicalHistory, allergyHistory, familyHistory, socialHistory };
   }, [consultations]);
 
   // ─── Loading State ──────────────────────────────────────────────────────────
@@ -322,46 +337,92 @@ const MedicalRecordHistory = () => {
         </SectionCard>
 
         {/* ─── Gynaecological History ─── */}
-        <SectionCard
-          icon={<FaFileMedical />}
-          title="Gynaecological History"
-          color="text-secondary"
-          count={aggregated.gynaecologicalHistory.length}
-        >
-          {aggregated.gynaecologicalHistory.length > 0 ? (
-            <>
-              <div className="hidden sm:block overflow-x-auto">
-                <table className="table table-sm w-full">
-                  <thead>
-                    <tr className="border-b border-base-200 text-base-content/60 text-xs uppercase tracking-wider">
-                      <th>Condition</th>
-                      <th>Recorded On</th>
-                      <th>Recorded By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {aggregated.gynaecologicalHistory.map((item, idx) => (
-                      <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/30">
-                        <td className="font-medium text-base-content">{item.name}</td>
-                        <td className="text-base-content/60 text-sm">{item.date}</td>
-                        <td className="text-base-content/60 text-sm">{item.doctor}</td>
+        {isFemale && (
+          <SectionCard
+            icon={<FaFileMedical />}
+            title="Gynaecological History"
+            color="text-secondary"
+            count={aggregated.gynaecologicalHistory.length}
+          >
+            {aggregated.gynaecologicalHistory.length > 0 ? (
+              <>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="table table-sm w-full">
+                    <thead>
+                      <tr className="border-b border-base-200 text-base-content/60 text-xs uppercase tracking-wider">
+                        <th>Condition</th>
+                        <th>Recorded On</th>
+                        <th>Recorded By</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="sm:hidden space-y-2.5">
-                {aggregated.gynaecologicalHistory.map((item, idx) => (
-                  <MobileCard key={idx}>
-                    <p className="font-semibold text-base-content text-sm pb-1">{item.name}</p>
-                    <MobileField label="Recorded On" value={item.date} />
-                    <MobileField label="Recorded By" value={item.doctor} />
-                  </MobileCard>
-                ))}
-              </div>
-            </>
-          ) : <EmptyRow message="No gynaecological history recorded across all consultations." />}
-        </SectionCard>
+                    </thead>
+                    <tbody>
+                      {aggregated.gynaecologicalHistory.map((item, idx) => (
+                        <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/30">
+                          <td className="font-medium text-base-content">{item.name}</td>
+                          <td className="text-base-content/60 text-sm">{item.date}</td>
+                          <td className="text-base-content/60 text-sm">{item.doctor}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="sm:hidden space-y-2.5">
+                  {aggregated.gynaecologicalHistory.map((item, idx) => (
+                    <MobileCard key={idx}>
+                      <p className="font-semibold text-base-content text-sm pb-1">{item.name}</p>
+                      <MobileField label="Recorded On" value={item.date} />
+                      <MobileField label="Recorded By" value={item.doctor} />
+                    </MobileCard>
+                  ))}
+                </div>
+              </>
+            ) : <EmptyRow message="No gynaecological history recorded across all consultations." />}
+          </SectionCard>
+        )}
+
+        {/* ─── Obstetrics History ─── */}
+        {isFemale && (
+          <SectionCard
+            icon={<FaFileMedical />}
+            title="Obstetrics History"
+            color="text-secondary"
+            count={aggregated.obstetricsHistory.length}
+          >
+            {aggregated.obstetricsHistory.length > 0 ? (
+              <>
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="table table-sm w-full">
+                    <thead>
+                      <tr className="border-b border-base-200 text-base-content/60 text-xs uppercase tracking-wider">
+                        <th>Condition</th>
+                        <th>Recorded On</th>
+                        <th>Recorded By</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aggregated.obstetricsHistory.map((item, idx) => (
+                        <tr key={idx} className="border-b border-base-200 last:border-0 hover:bg-base-200/30">
+                          <td className="font-medium text-base-content">{item.name}</td>
+                          <td className="text-base-content/60 text-sm">{item.date}</td>
+                          <td className="text-base-content/60 text-sm">{item.doctor}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="sm:hidden space-y-2.5">
+                  {aggregated.obstetricsHistory.map((item, idx) => (
+                    <MobileCard key={idx}>
+                      <p className="font-semibold text-base-content text-sm pb-1">{item.name}</p>
+                      <MobileField label="Recorded On" value={item.date} />
+                      <MobileField label="Recorded By" value={item.doctor} />
+                    </MobileCard>
+                  ))}
+                </div>
+              </>
+            ) : <EmptyRow message="No obstetrics history recorded across all consultations." />}
+          </SectionCard>
+        )}
 
         {/* ─── Surgical History ─── */}
         <SectionCard
