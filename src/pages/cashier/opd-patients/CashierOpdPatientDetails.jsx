@@ -492,7 +492,16 @@ const CashierOpdPatientDetails = () => {
                         <td className="font-medium font-mono text-xs text-base-content/70">
                           {bill.createdAt ? formatNigeriaDateTime(bill.createdAt) : 'N/A'}
                         </td>
-                        <td>₦{Number(bill.totalAmount).toLocaleString()}</td>
+                        <td>
+                          <div className="font-medium">
+                            ₦{Number(bill.subtotalAmount || bill.totalAmount).toLocaleString()}
+                          </div>
+                          {Number(bill.discountAmount) > 0 && (
+                            <span className="badge badge-warning badge-xs font-semibold gap-1 mt-1 block w-fit">
+                              Discount: ₦{Number(bill.discountAmount).toLocaleString()}
+                            </span>
+                          )}
+                        </td>
                         <td>
                           {(() => {
                             const receiptsForBill = receipts.filter((r) => matchesBilling(r, bill));
@@ -636,6 +645,7 @@ const CashierOpdPatientDetails = () => {
         onClose={() => setIsReceiptModalOpen(false)}
         billingId={selectedBillingId}
         patientId={patient?.id || patientId}
+        billing={billings.find((b) => b.id === selectedBillingId)}
         bill={billings.find((b) => b.id === selectedBillingId)}
         onSubmit={handleReceiptSubmit}
       />

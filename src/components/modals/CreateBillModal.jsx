@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { FaTimes, FaPlus, FaMoneyBillWave, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { useAppSelector } from '@/store/hooks';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { createBilling } from '@/services/api/billingAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
@@ -159,6 +161,19 @@ const CreateBillModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [services, setServices] = useState([]);
   const [loadingServices, setLoadingServices] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [discountReason, setDiscountReason] = useState('');
+
+  const location = useLocation();
+  const user = useAppSelector((state) => state.auth.user);
+  const userRole = (user?.accountType || user?.role || '').toLowerCase();
+  const isMedicalDirector =
+    userRole === 'medical-director' ||
+    userRole === 'medical_director' ||
+    userRole === 'superadmin' ||
+    userRole === 'super-admin' ||
+    userRole === 'admin' ||
+    (location?.pathname || '').includes('/medical-director');
 
   const {
     register,
@@ -524,6 +539,13 @@ const CreateBillModal = ({
     reset({ items: [{ serviceChargeId: null, investigationId: null, prescriptionId: null, admissionId: null, appointmentId: null, procedureId: null, code: '', description: '', quantity: 1, price: 0 }] });
   }, [isOpen, defaultItems, patientId, dependantId, admissionId, consultationId, reset]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setDiscountAmount('');
+      setDiscountReason('');
+    }
+  }, [isOpen]);
+
   const items = watch("items");
 
   const grandTotal = items?.reduce((sum, item) => {
@@ -540,6 +562,16 @@ const CreateBillModal = ({
 
   const onSubmit = async (data) => {
     if (!patientId) { toast.error("Patient ID is missing"); return; }
+    const discountNum = Number(discountAmount) || 0;
+    if (discountNum < 0) {
+      toast.error("Discount cannot be negative");
+      return;
+    }
+    if (discountNum > grandTotal) {
+      toast.error(`Discount (₦${discountNum.toLocaleString()}) cannot exceed total bill (₦${grandTotal.toLocaleString()})`);
+      return;
+    }
+
     setIsLoading(true);
     try {
       const payload = {
@@ -556,6 +588,8 @@ const CreateBillModal = ({
           appointmentId: item.appointmentId || item.procedureId || undefined,
         })),
         ...(dependantId && { dependantId }),
+        discountAmount: discountNum,
+        ...(discountNum > 0 && { discountReason: discountReason?.trim() || 'Medical Director Discount' }),
       };
 
       await createBilling(patientId, payload);
@@ -569,6 +603,8 @@ const CreateBillModal = ({
       }
       toast.success('Bill created successfully!');
       reset();
+      setDiscountAmount('');
+      setDiscountReason('');
       if (onSuccess) onSuccess();
       
       onClose();
@@ -790,15 +826,74 @@ const CreateBillModal = ({
               <FaPlus className="w-3 h-3" /> Add Another Item
             </button>
 
+            {/* Medical Director Discount Section */}
+            {isMedicalDirector && (
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-primary">🏷️ Medical Director Discount</span>
+                    <span className="badge badge-primary badge-outline badge-xs">MD Role</span>
+                  </div>
+                  <span className="text-xs text-base-content/60">Optional concession / discount for patient</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-base-content/80 mb-1 block">
+                      Discount Amount (₦)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={grandTotal}
+                      step="any"
+                      placeholder="0.00"
+                      className="input input-bordered input-sm w-full font-semibold text-primary"
+                      value={discountAmount}
+                      onChange={(e) => setDiscountAmount(e.target.value)}
+                    />
+                    {Number(discountAmount) > grandTotal && (
+                      <p className="text-xs text-error mt-1">Discount cannot exceed total bill (₦{grandTotal.toLocaleString()})</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-base-content/80 mb-1 block">
+                      Discount Reason / Note
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Medical Director concession / staff waiver"
+                      className="input input-bordered input-sm w-full"
+                      value={discountReason}
+                      onChange={(e) => setDiscountReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Footer */}
             <div className="pt-4 border-t border-base-200 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
               <div>
-                <span className="text-sm text-base-content/60 block">Grand Total</span>
-                <span className="text-2xl font-bold text-primary">₦{grandTotal.toLocaleString()}</span>
+                <span className="text-xs text-base-content/60 block">Billing Summary</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-primary">
+                    ₦{Math.max(0, grandTotal - (Number(discountAmount) || 0)).toLocaleString()}
+                  </span>
+                  {Number(discountAmount) > 0 && (
+                    <span className="text-sm text-base-content/50 line-through">
+                      ₦{grandTotal.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+                {Number(discountAmount) > 0 && (
+                  <span className="text-xs text-warning font-semibold block mt-0.5">
+                    Discount: -₦{Number(discountAmount).toLocaleString()}
+                  </span>
+                )}
               </div>
               <div className="flex gap-3">
                 <button type="button" className="btn btn-ghost flex-1 sm:flex-none" onClick={onClose} disabled={isLoading}>Cancel</button>
-                <button type="submit" className="btn btn-primary flex-1 sm:flex-none px-8" disabled={isLoading}>
+                <button type="submit" className="btn btn-primary flex-1 sm:flex-none px-8" disabled={isLoading || Number(discountAmount) < 0 || Number(discountAmount) > grandTotal}>
                   {isLoading ? <span className="loading loading-spinner loading-sm"></span> : 'Submit Bill'}
                 </button>
               </div>

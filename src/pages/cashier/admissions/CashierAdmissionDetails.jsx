@@ -613,6 +613,8 @@ const CashierAdmissionDetails = () => {
           isOpen={isReceiptModalOpen}
           onClose={() => setIsReceiptModalOpen(false)}
           billingId={selectedBillingId}
+          billing={billings.find((b) => b.id === selectedBillingId)}
+          bill={billings.find((b) => b.id === selectedBillingId)}
           patientId={admission?.patientId}
           onSubmit={handleReceiptSubmit}
         />

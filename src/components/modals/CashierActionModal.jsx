@@ -137,11 +137,23 @@ const CashierActionModal = ({
                   )}
                   
                   {/* Total Amount */}
-                  <div className="flex justify-end border-t border-base-300 pt-3 mt-3">
+                  <div className="flex justify-between items-end border-t border-base-300 pt-3 mt-3">
+                    <div>
+                      {Number(billingData?.discountAmount) > 0 && (
+                        <div className="space-y-0.5">
+                          <span className="badge badge-warning badge-sm font-semibold">
+                            Discount: ₦{Number(billingData.discountAmount).toLocaleString()}
+                          </span>
+                          {billingData.discountReason && (
+                            <p className="text-[11px] text-base-content/60">Reason: {billingData.discountReason}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     <div className="text-right">
                       <div className="text-xs text-base-content/70 mb-1">Grand Total</div>
                       <div className="text-xl font-bold text-primary">
-                        ₦{(Number(billingData?.totalAmount || billingData?.itemDetail?.reduce((sum, item) => sum + Number(item?.total || 0), 0) || 0)).toLocaleString()}
+                        ₦{(Number(billingData?.subtotalAmount || billingData?.totalAmount || billingData?.itemDetail?.reduce((sum, item) => sum + Number(item?.total || 0), 0) || 0)).toLocaleString()}
                       </div>
                     </div>
                   </div>

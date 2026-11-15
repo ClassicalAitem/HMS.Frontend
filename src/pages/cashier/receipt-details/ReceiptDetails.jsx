@@ -206,6 +206,12 @@ const ReceiptDetails = () => {
                 <span className="text-base-content/70">Subtotal:</span>
                 <span className="font-medium">₦{totalAmount.toLocaleString()}</span>
               </div>
+              {Number(receipt?.billing?.discountAmount) > 0 && (
+                <div className="flex justify-between gap-12 text-warning font-semibold">
+                  <span className="text-base-content/70">Discount Applied:</span>
+                  <span>-₦{Number(receipt.billing.discountAmount).toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between gap-12 text-success">
                 <span className="text-base-content/70">HMO Covered:</span>
                 <span className="font-medium">₦{hmoCoveredTotal.toLocaleString()}</span>

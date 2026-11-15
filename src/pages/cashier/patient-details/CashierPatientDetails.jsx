@@ -386,8 +386,26 @@ const CashierPatientDetails = () => {
 
 
                       <td className="font-medium">{formatNigeriaDateTime(bill.createdAt)}</td>
-                      <td> ₦ {(Number(bill.totalAmount) || 0).toLocaleString()}</td>
-                      <td> ₦ {(bill.isCleared ? 0 : (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0)).toLocaleString()}</td>
+                      <td>
+                        <div className="font-medium">
+                          ₦ {(Number(bill.subtotalAmount || bill.totalAmount) || 0).toLocaleString()}
+                        </div>
+                        {Number(bill.discountAmount) > 0 && (
+                          <span className="badge badge-warning badge-xs font-semibold gap-1 mt-1 block w-fit">
+                            Discount: ₦{Number(bill.discountAmount).toLocaleString()}
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="font-medium">
+                          ₦ {(bill.isCleared ? 0 : (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0)).toLocaleString()}
+                        </div>
+                        {!bill.isCleared && Number(bill.discountAmount) > 0 && (
+                          <span className="text-[11px] text-base-content/60 block">
+                            (₦{Math.max(0, (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0) - Number(bill.discountAmount)).toLocaleString()} with discount)
+                          </span>
+                        )}
+                      </td>
                       <td className="text-success">{bill.raisedBy?.firstName || 'Staff'}{" "}{bill.raisedBy?.lastName || ''}</td>
                       <td className="text-success">{bill.raisedBy?.accountType || '—'}</td>
                       <td>
@@ -421,11 +439,11 @@ const CashierPatientDetails = () => {
                         <td colSpan={7} className="bg-base-200">
                           <div className="p-3">
                             <div className="mb-3 text-sm flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <p className="font-semibold">Total: ₦{Number(bill.totalAmount || 0).toLocaleString()}</p>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <p className="font-semibold">Whole Total: ₦{Number(bill.subtotalAmount || bill.totalAmount || 0).toLocaleString()}</p>
                                 {Number(bill.discountAmount) > 0 && (
-                                  <span className="text-xs text-base-content/70">
-                                    (Subtotal: ₦{Number(bill.subtotalAmount || bill.totalAmount || 0).toLocaleString()}, Discount: ₦{Number(bill.discountAmount).toLocaleString()})
+                                  <span className="badge badge-warning badge-sm font-semibold">
+                                    Medical Director Discount: ₦{Number(bill.discountAmount).toLocaleString()}{bill.discountReason ? ` (${bill.discountReason})` : ''}
                                   </span>
                                 )}
                               </div>

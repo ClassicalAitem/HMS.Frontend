@@ -28,6 +28,8 @@ const SendToCashier = () => {
   const [items, setItems] = useState([]);
   const [diagnosis, setDiagnosis] = useState("");
   const [treatmentNotes, setTreatmentNotes] = useState("");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [discountReason, setDiscountReason] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -60,7 +62,8 @@ const SendToCashier = () => {
 
   const subtotal = useMemo(() => items.reduce((sum, it) => sum + (Number(it.amount) || 0) * (Number(it.qty) || 1), 0), [items]);
   const vat = useMemo(() => Math.round(subtotal * 0.05), [subtotal]);
-  const total = useMemo(() => subtotal + vat, [subtotal, vat]);
+  const discountNum = Number(discountAmount) || 0;
+  const total = useMemo(() => Math.max(0, subtotal + vat - discountNum), [subtotal, vat, discountNum]);
 
   const addOrMergeItem = (item) => {
     setItems((list) => {
@@ -94,7 +97,17 @@ const SendToCashier = () => {
           price: Number(i.amount) || 0,
           total: (Number(i.amount) || 0) * (Number(i.qty) || 1),
         }));
-        const createPromise = createBilling(patientId, { itemDetail, totalAmount: subtotal });
+        if (discountNum > (subtotal + vat)) {
+          toast.error("Discount cannot exceed bill total");
+          setIsSubmitting(false);
+          return;
+        }
+        const createPromise = createBilling(patientId, {
+          itemDetail,
+          totalAmount: subtotal + vat,
+          discountAmount: discountNum,
+          discountReason: discountReason?.trim() || (discountNum > 0 ? 'Medical Director Discount' : undefined),
+        });
         await toast.promise(createPromise, {
           loading: 'Creating bill...',
           success: 'Bill created',
@@ -193,12 +206,54 @@ const SendToCashier = () => {
               </div>
 
               <div className="shadow-xl card bg-base-100">
-                <div className="p-4 card-body">
-                  <h3 className="mb-3 text-lg font-medium text-base-content">Billing Summary</h3>
+                <div className="p-4 card-body space-y-4">
+                  <h3 className="text-lg font-medium text-base-content">Billing Summary</h3>
+                  
+                  {/* Medical Director Discount Controls */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-primary">🏷️ Medical Director Discount</span>
+                      <span className="text-xs text-base-content/60">Optional waiver</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs text-base-content/70 block mb-1">Discount (₦)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max={subtotal + vat}
+                          placeholder="0.00"
+                          className="input input-bordered input-sm w-full font-medium"
+                          value={discountAmount}
+                          onChange={(e) => setDiscountAmount(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-base-content/70 block mb-1">Reason / Note</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Concession"
+                          className="input input-bordered input-sm w-full"
+                          value={discountReason}
+                          onChange={(e) => setDiscountReason(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm"><span className="text-base-content/70">Subtotal</span><span>₦{subtotal.toLocaleString()}</span></div>
                     <div className="flex justify-between text-sm"><span className="text-base-content/70">VAT (5%)</span><span>₦{vat.toLocaleString()}</span></div>
-                    <div className="flex justify-between text-base font-semibold"><span>Total Amount</span><span>₦{total.toLocaleString()}</span></div>
+                    {discountNum > 0 && (
+                      <div className="flex justify-between text-sm text-warning font-semibold">
+                        <span>Discount</span>
+                        <span>-₦{discountNum.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-base font-semibold border-t border-base-200 pt-2">
+                      <span>Total Amount</span>
+                      <span className="text-primary">₦{total.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -148,11 +148,17 @@ const grandTotal =
               </div>
 
               {/* Summary */}
-              <div className="bg-base-100 border border-base-300 rounded-lg p-4 mb-6">
+              <div className="bg-base-100 border border-base-300 rounded-lg p-4 mb-6 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-semibold text-base-content">Grand Total:</span>
                   <span className="text-2xl font-bold text-primary">₦{grandTotal.toLocaleString()}</span>
                 </div>
+                {Number(billingData?.discountAmount) > 0 && (
+                  <div className="flex justify-between items-center text-sm text-warning font-semibold pt-1 border-t border-base-200">
+                    <span>Discount Given:</span>
+                    <span>-₦{Number(billingData.discountAmount).toLocaleString()}{billingData.discountReason ? ` (${billingData.discountReason})` : ''}</span>
+                  </div>
+                )}
                 {billingData?.id && (
                   <div className="text-xs text-base-content/60 mt-2">
                     Bill ID: {billingData.id}

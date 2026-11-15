@@ -3,7 +3,8 @@ import { FaTimes } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { useAppSelector } from '../../store/hooks';
 
-const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit }) => {
+const ReceiptModal = ({ isOpen, onClose, billingId, billing, bill, patientId, onSubmit }) => {
+  const activeBilling = billing || bill;
   const user = useAppSelector((state) => state.auth.user);
   const userFullName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
 
@@ -18,11 +19,19 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
   });
 
   const [selectedItems, setSelectedItems] = useState([]);
+  const [applyDiscount, setApplyDiscount] = useState(false);
+
+  // Reset discount state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setApplyDiscount(false);
+    }
+  }, [isOpen]);
 
   // Initialize selected items (unpaid items)
   useEffect(() => {
-    if (isOpen && billing?.itemDetails) {
-      const unpaidIndices = billing.itemDetails
+    if (isOpen && activeBilling?.itemDetails) {
+      const unpaidIndices = activeBilling.itemDetails
         .map((item, index) => ({ item, index }))
         .filter(({ item }) => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved' && item.isCleared !== true)
         .map(({ index }) => index);
@@ -30,17 +39,28 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
     } else {
       setSelectedItems([]);
     }
-  }, [isOpen, billing]);
+  }, [isOpen, activeBilling]);
 
-  // Update amountPaid when selected items change
+  // Update amountPaid when selected items change or discount is toggled
   useEffect(() => {
-    if (billing?.itemDetails && selectedItems.length > 0) {
-      const total = selectedItems.reduce((sum, idx) => sum + Number(billing.itemDetails[idx].total || 0), 0);
-      setFormData(prev => ({ ...prev, amountPaid: total.toString() }));
-    } else if (selectedItems.length === 0 && isOpen && billing) {
-       setFormData(prev => ({ ...prev, amountPaid: '' }));
+    if (activeBilling?.itemDetails && selectedItems.length > 0) {
+      const grossTotal = selectedItems.reduce((sum, idx) => sum + Number(activeBilling.itemDetails[idx].total || 0), 0);
+      const discountVal = (applyDiscount && Number(activeBilling.discountAmount) > 0)
+        ? Number(activeBilling.discountAmount)
+        : 0;
+      const netAmount = Math.max(0, grossTotal - discountVal);
+      setFormData(prev => ({ ...prev, amountPaid: netAmount.toString() }));
+    } else if ((!activeBilling?.itemDetails || activeBilling.itemDetails.length === 0) && isOpen && activeBilling) {
+      const grossTotal = Number(activeBilling.totalAmount || activeBilling.subtotalAmount || 0);
+      const discountVal = (applyDiscount && Number(activeBilling.discountAmount) > 0)
+        ? Number(activeBilling.discountAmount)
+        : 0;
+      const netAmount = Math.max(0, grossTotal - discountVal);
+      setFormData(prev => ({ ...prev, amountPaid: netAmount.toString() }));
+    } else if (selectedItems.length === 0 && isOpen && activeBilling) {
+      setFormData(prev => ({ ...prev, amountPaid: '' }));
     }
-  }, [selectedItems, billing, isOpen]);
+  }, [selectedItems, activeBilling, isOpen, applyDiscount]);
 
   useEffect(() => {
     if (isOpen) {
@@ -61,25 +81,31 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
   };
 
   const handleSubmit = (e) => {
-    console.log('get data', formData)
     e.preventDefault();
-      onSubmit({ ...formData, paidItemIndices: selectedItems });
-      onClose();
-      // Reset form
-      setFormData({
-        amountPaid: '',
-        paymentMethod: 'Select payment method',
-        paidBy: 'self',
-        paymentDestination: 'Select Destination',
-        bankName: '',
-        senderName: userFullName,
-        sessionId: '',
-      });
+    onSubmit({
+      ...formData,
+      paidItemIndices: selectedItems,
+      applyDiscount,
+      discountAmount: applyDiscount ? Number(activeBilling?.discountAmount || 0) : 0,
+    });
+    onClose();
+    // Reset form
+    setApplyDiscount(false);
+    setFormData({
+      amountPaid: '',
+      paymentMethod: 'Select payment method',
+      paidBy: 'self',
+      paymentDestination: 'Select Destination',
+      bankName: '',
+      senderName: userFullName,
+      sessionId: '',
+    });
   };
 
   const handleCancel = () => {
     onClose();
     // Reset form
+    setApplyDiscount(false);
     setFormData({
       amountPaid: '',
       paymentMethod: 'Select payment method',
@@ -92,6 +118,14 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
   };
 
   if (!isOpen) return null;
+
+  const grossTotal = (activeBilling?.itemDetails && selectedItems.length > 0)
+    ? selectedItems.reduce((sum, idx) => sum + Number(activeBilling.itemDetails[idx].total || 0), 0)
+    : Number(activeBilling?.totalAmount || activeBilling?.subtotalAmount || 0);
+  const discountVal = (applyDiscount && Number(activeBilling?.discountAmount) > 0)
+    ? Number(activeBilling.discountAmount)
+    : 0;
+  const netPayable = Math.max(0, grossTotal - discountVal);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
@@ -117,7 +151,7 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Items to Pay */}
-            {billing && billing.itemDetails && billing.itemDetails.length > 0 && (
+            {activeBilling && activeBilling.itemDetails && activeBilling.itemDetails.length > 0 && (
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-base-content">
@@ -128,12 +162,12 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
                       type="checkbox"
                       className="checkbox checkbox-xs checkbox-primary"
                       checked={
-                        billing.itemDetails.filter(item => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved').length > 0 &&
-                        selectedItems.length === billing.itemDetails.filter(item => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved').length
+                        activeBilling.itemDetails.filter(item => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved').length > 0 &&
+                        selectedItems.length === activeBilling.itemDetails.filter(item => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved').length
                       }
                       onChange={(e) => {
                         if (e.target.checked) {
-                          const unpaidIndices = billing.itemDetails
+                          const unpaidIndices = activeBilling.itemDetails
                             .map((item, index) => ({ item, index }))
                             .filter(({ item }) => item.paymentStatus !== 'paid' && item.hmoStatus !== 'approved' && item.isCleared !== true)
                             .map(({ index }) => index);
@@ -147,8 +181,8 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
                   </label>
                 </div>
                 <div className="bg-base-200 rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
-                  {billing.itemDetails.map((item, index) => {
-                    const isPaid = item.paymentStatus === 'paid' || item.hmoStatus === 'approved' || item.isCleared === true || billing.isCleared;
+                  {activeBilling.itemDetails.map((item, index) => {
+                    const isPaid = item.paymentStatus === 'paid' || item.hmoStatus === 'approved' || item.isCleared === true || activeBilling.isCleared;
                     return (
                       <label key={index} className={`flex items-center justify-between p-2 rounded-md ${isPaid ? 'opacity-50' : 'cursor-pointer hover:bg-base-100'}`}>
                         <div className="flex items-center gap-3">
@@ -179,6 +213,69 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, patientId, onSubmit
                 </div>
               </div>
             )}
+
+            {/* Medical Director Discount Toggle Switch */}
+            {Number(activeBilling?.discountAmount) > 0 && (
+              <div className="p-3.5 bg-warning/10 border border-warning/30 rounded-xl space-y-2 transition-all">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-base-content flex items-center gap-1.5">
+                        🏷️ Medical Director Discount
+                      </span>
+                      <span className="badge badge-warning font-bold text-xs">
+                        -₦{Number(activeBilling.discountAmount).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-base-content/70">
+                      {activeBilling.discountReason ? `Reason: ${activeBilling.discountReason}` : 'Discount granted by Medical Director'}
+                    </p>
+                  </div>
+                  <div className="form-control shrink-0">
+                    <label className="label cursor-pointer p-0 flex flex-col items-center gap-1">
+                      <input
+                        type="checkbox"
+                        className="toggle toggle-warning toggle-md"
+                        checked={applyDiscount}
+                        onChange={(e) => setApplyDiscount(e.target.checked)}
+                      />
+                      <span className="text-[10px] font-bold text-base-content/70">
+                        {applyDiscount ? 'DISCOUNT ON' : 'DISCOUNT OFF'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {applyDiscount ? (
+                  <div className="pt-2 border-t border-warning/20 text-xs text-success font-medium flex items-center gap-1.5">
+                    <span>✓</span>
+                    <span>Discount applied! Total payable is reduced and outstanding balance will automatically clear to ₦0.</span>
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-warning/20 text-xs text-base-content/60">
+                    Switch toggle ON to deduct ₦{Number(activeBilling.discountAmount).toLocaleString()} from payable bill.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Bill Payment Breakdown */}
+            <div className="flex justify-between items-center bg-base-200/60 p-3 rounded-lg text-xs border border-base-200">
+              <div>
+                <span className="text-base-content/60 block">Whole Money (Subtotal)</span>
+                <span className="font-semibold text-sm">₦{grossTotal.toLocaleString()}</span>
+              </div>
+              {applyDiscount && Number(activeBilling?.discountAmount) > 0 && (
+                <div className="text-center text-warning">
+                  <span className="block font-medium">Discount Applied</span>
+                  <span className="font-bold text-sm">-₦{Number(activeBilling.discountAmount).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="text-right">
+                <span className="text-base-content/60 block">Net Payable</span>
+                <span className="font-bold text-base text-primary">₦{netPayable.toLocaleString()}</span>
+              </div>
+            </div>
 
             {/* amount paid & paid by*/}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
