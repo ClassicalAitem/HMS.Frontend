@@ -287,18 +287,6 @@ const WriteDiagnosis = () => {
                   <p className="text-sm text-gray-500">(send to cashier for payments)</p>
                 </button>
               </div>
-              
-              <div className="flex-1">
-                <button 
-                  className="text-left group w-full"
-                  onClick={() => setSendTo(prev => ({ ...prev, pharmacy: !prev.pharmacy }))}
-                >
-                  <h4 className={`text-lg font-medium mb-1 underline decoration-1 underline-offset-4 ${sendTo.pharmacy ? 'text-[#00943C]' : 'text-gray-400'}`}>
-                    Send to Pharmacy
-                  </h4>
-                  <p className="text-sm text-gray-500">(send to Pharmacy for Prescription)</p>
-                </button>
-              </div>
             </div>
           </div>
 

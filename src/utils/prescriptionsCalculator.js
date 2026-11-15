@@ -382,13 +382,16 @@ export function calculatePrescriptionLine({
 
   function resolveInventoryUnit(medType, inv) {
     const r = inv?.unit;
-    if (medType === "tablet" || medType === "cream") {
-      return r === "tube" ? "tube" : "tablet";
+    if (medType === "tablet" || medType === "cream" || medType === "sublingual") {
+      return r === "tube" ? "tube" : (r || "tablet");
+    }
+    if (medType === "rectal") {
+      return r || "suppository";
     }
     if (medType === "syrup" || medType === "gutt" || medType === "infusion") {
       return "ml";
     }
-    if (medType === "injection") {
+    if (medType === "injection" || medType === "subcutaneous") {
       if (r === "iu" || r === "ampoule") return r;
       return "ml";
     }
@@ -398,7 +401,7 @@ export function calculatePrescriptionLine({
   const invUnit = resolveInventoryUnit(medicationType, inventory);
   const unitPrice = packSize > 0 ? sellingPrice / packSize : 0;
 
-  if (medicationType === "injection" && invUnit !== "ampoule") {
+  if ((medicationType === "injection" || medicationType === "subcutaneous") && invUnit !== "ampoule") {
     // Shared vial (ml/iu) — bill the exact fractional amount, nothing wasted.
     return {
       prescribedQuantity: totalInInventoryUnit,

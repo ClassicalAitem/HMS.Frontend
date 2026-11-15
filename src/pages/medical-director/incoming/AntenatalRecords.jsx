@@ -29,9 +29,6 @@ const emptyForm = (doctorName = "") => ({
     oedema: '', constipation: '', urinarySymptoms: '', jaundice: '',
     otherSymptoms: '', vaginalDischarge: '', takenBy: doctorName
   },
-  routineTest: {
-     rvs: '', vdrl: '', pcv: '', hbv: '', abo: '', genotype: ''
-  },
   antenatalExaminations: [],
 
 });
@@ -240,11 +237,6 @@ useEffect(() => {
   const transformBackendToFrontend = (backendData, docName = "") => {
     if (!backendData) return emptyForm(docName);
 
-    const routineSource = (() => {
-      const raw = backendData.routineTest || backendData.routineTests || backendData.presentPregnancyHistories?.[0]?.routineTest || {};
-      if (Array.isArray(raw)) return raw[0] || {};
-      return raw || {};
-    })();
     const parseUrine = (urineStr = '') => {
       const match = String(urineStr || '').match(/^(Protein|Sugar)\s*-\s*(.*)$/i);
       if (!match) return { urineType: '', urineValue: '' };
@@ -292,15 +284,6 @@ useEffect(() => {
         otherSymptoms: backendData.presentPregnancyHistories?.[0]?.otherSymptoms || '',
         vaginalDischarge: backendData.presentPregnancyHistories?.[0]?.vaginalDischarge || '',
         takenBy: backendData.presentPregnancyHistories?.[0]?.takenBy || docName
-      },
-      routineTest: {
-         
-        rvs: routineSource.RVS || routineSource.rvs || '',
-        vdrl: routineSource.VDRL || routineSource.vdrl || '',
-        pcv: routineSource.PCV || routineSource.pcv || '',
-        hbv: routineSource.HBV || routineSource.hbv || '',
-        abo: routineSource.ABO || routineSource.abo || '',
-        genotype: routineSource.GENOTYPE || routineSource.genotype || ''
       },
       antenatalExaminations: (backendData.anteNatalExamination || []).map(item => ({
         date: item.Date ? new Date(item.Date).toISOString().split('T')[0] : '',
@@ -385,15 +368,6 @@ useEffect(() => {
     if (fd.presentPregnancy.vaginalDischarge?.trim()) preg.vaginalDischarge = fd.presentPregnancy.vaginalDischarge.trim();
     if (Object.keys(preg).length > 0) out.presentPregnancyHistories = [preg];
 
-    const routine = {};
-    if (fd.routineTest.rvs?.trim()) routine.RVS = fd.routineTest.rvs.trim();
-    if (fd.routineTest.vdrl?.trim()) routine.VDRL = fd.routineTest.vdrl.trim();
-    if (fd.routineTest.pcv?.trim()) routine.PCV = fd.routineTest.pcv.trim();
-    if (fd.routineTest.hbv?.trim()) routine.HBV = fd.routineTest.hbv.trim();
-    if (fd.routineTest.abo?.trim()) routine.ABO = fd.routineTest.abo.trim();
-    if (fd.routineTest.genotype?.trim()) routine.GENOTYPE = fd.routineTest.genotype.trim();
-    if (Object.keys(routine).length > 0) out.routineTest = [routine];
-
     const exams = fd.antenatalExaminations
       .filter(i => i.date?.trim() || i.heightOfFundus?.trim() || i.bp?.trim() || (i.weight != null && String(i.weight).trim()) || (i.nextVisit != null && String(i.nextVisit).trim()))
       .map(i => ({
@@ -445,7 +419,6 @@ useEffect(() => {
   const updateMedical = (field, value) => setFormData(p => ({ ...p, previousMedicalHistory: { ...p.previousMedicalHistory, [field]: value } }));
   const updateFamily = (field, value) => setFormData(p => ({ ...p, familyHistory: { ...p.familyHistory, [field]: value } }));
   const updatePregnancy = (field, value) => { if (field === 'takenBy') return; setFormData(p => ({ ...p, presentPregnancy: { ...p.presentPregnancy, [field]: value } })); };
-  const updateRoutineTest = (field, value) => setFormData(p => ({ ...p, routineTest: { ...p.routineTest, [field]: value } }));
   const addObstetric = () => setFormData(p => ({ ...p, previousObstetricHistory: [...p.previousObstetricHistory, { date: '', durationOfPregnancy: '', birthWeight: '', complication: '', aliveOrDead: '', ageOfDeath: '', causeOfDeath: '' }] }));
   const updateObstetric = (idx, field, value) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
   const removeObstetric = (idx) => setFormData(p => ({ ...p, previousObstetricHistory: p.previousObstetricHistory.filter((_, i) => i !== idx) }));
@@ -661,51 +634,6 @@ const removeExamination = (idx) => setFormData(p => ({ ...p, antenatalExaminatio
               )}
             </div>
           </div>
-
-         {/* Routine Tests Section */}
-          <div className="card bg-base-100 shadow-sm">
-            <div className="card-body p-3 sm:p-4">
-              <h3 className="card-title text-base sm:text-lg font-semibold mb-3 sm:mb-4">ROUTINE TESTS</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {[
-                  { field: 'rvs', label: 'RVS', type: 'text', placeholder: 'Negative/Positive' },
-                  { field: 'vdrl', label: 'VDRL', type: 'text', placeholder: 'Negative/Positive' },
-                  { field: 'pcv', label: 'PCV', type: 'text', placeholder: 'e.g. 40%' },
-                  { field: 'hbv', label: 'HBV', type: 'text', placeholder: 'Negative/Positive' },
-                  { field: 'abo', label: 'ABO', type: 'text', placeholder: 'Blood Group' },
-                  { field: 'genotype', label: 'Genotype', type: 'select' },
-                  ].map(({ field, label, type, placeholder }) => (
-                  <div key={field}>
-                    <label className="label"><span className="label-text">{label}</span></label>
-                        {type === 'select' ? (
-                    <select
-                      className="select select-bordered select-sm w-full"
-                      value={formData.routineTest[field]}
-                      onChange={(e) => updateRoutineTest(field, e.target.value)}
-                    >
-                      <option value="">Select</option>
-                      <option value="AA">AA</option>
-                      <option value="AS">AS</option>
-                      <option value="SS">SS</option>
-                      <option value="AC">AC</option>
-                      <option value="SC">SC</option>
-                      <option value="CC">CC</option>
-                    </select>
-                     ) : (
-                       <input
-                        type="text"
-                        className="input input-bordered input-sm w-full"
-                        placeholder={placeholder}
-                        value={formData.routineTest[field]}
-                        onChange={(e) => updateRoutineTest(field, e.target.value)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-           
 
         {/* Antenatal Examinations */}
 <div className="card bg-base-100 shadow-sm">

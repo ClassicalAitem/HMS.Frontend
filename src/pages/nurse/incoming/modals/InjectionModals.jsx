@@ -10,7 +10,7 @@ import KolakLoader from "@/components/common/KolakLoader";
 // ─── Helper ───────────────────────────────────────────────────────────────────
 const checkAllCompleted = (medications = []) =>
   medications
-    .filter((med) => med.medicationType === "injection")
+    .filter((med) => ['injection', 'subcutaneous'].includes(med.medicationType))
     .every((med) => med.injectionStatus === "completed");
 
 // Parse "8hly", "12hly", "od", "bd", "tds", "qds" into hours-between-doses
@@ -227,13 +227,13 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
         const sortedScoped = [...scoped].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         let prescriptionData = sortedScoped.find(p => {
           const injectionMeds = (p.medications || []).filter(
-            m => m.medicationType === "injection"
+            m => ['injection', 'subcutaneous'].includes(m.medicationType)
           );
           if (!injectionMeds.length) return false;
           return injectionMeds.some(m => m.injectionStatus !== "completed");
         }) || sortedScoped.find(p => {
           const injectionMeds = (p.medications || []).filter(
-            m => m.medicationType === "injection"
+            m => ['injection', 'subcutaneous'].includes(m.medicationType)
           );
           return injectionMeds.length > 0;
         }) || null;
@@ -362,7 +362,7 @@ const InjectionModals = ({ isOpen, setIsRecordInjection, patientId, dependantId,
 
   const injectionMeds = prescription.medications
   ?.map((med, originalIndex) => ({ ...med, originalIndex }))
-  .filter((med) => med.medicationType === "injection");
+  .filter((med) => ['injection', 'subcutaneous'].includes(med.medicationType));
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (

@@ -30,6 +30,9 @@ const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12
 const MEDICATION_TABS = [
   { value: 'tablet', label: 'Tab/Cap', icon: FaPills },
   { value: 'syrup', label: 'Syr/Susp', icon: FaPrescriptionBottleAlt },
+  { value: 'sublingual', label: 'Sublingual', icon: FaPills },
+  { value: 'rectal', label: 'Rectal Form', icon: FaBoxOpen },
+  { value: 'subcutaneous', label: 'Subcutaneous', icon: FaSyringe },
   { value: 'gutt', label: 'Gutt', icon: FaTint },
   { value: 'cream', label: 'Cream', icon: FaBoxOpen },
   { value: 'infusion', label: 'Infusion', icon: FaTint },
@@ -49,10 +52,15 @@ const currency = (n) => `₦${(Number(n) || 0).toLocaleString(undefined, { maxim
 const getUnitOptions = (medicationType, selectedDrug) => {
   const hasConcentration = hasConcentrationData(selectedDrug);
 
-  if (medicationType === 'tablet') {
+  if (medicationType === 'tablet' || medicationType === 'sublingual') {
     return hasConcentration
       ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'tablet', label: 'tablet(s)/cap(s)' }]
       : [{ value: 'tablet', label: 'tablet(s)/cap(s)' }];
+  }
+  if (medicationType === 'rectal') {
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'suppository', label: 'suppository/suppositories' }, { value: 'enema', label: 'enema' }, { value: 'piece', label: 'piece(s)' }, { value: 'tablet', label: 'tablet(s)' }]
+      : [{ value: 'suppository', label: 'suppository/suppositories' }, { value: 'enema', label: 'enema' }, { value: 'piece', label: 'piece(s)' }, { value: 'tablet', label: 'tablet(s)' }];
   }
   if (medicationType === 'syrup') {
     return hasConcentration
@@ -66,7 +74,7 @@ const getUnitOptions = (medicationType, selectedDrug) => {
       ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'tube', label: 'tube(s)' }]
       : [{ value: 'tube', label: 'tube(s)' }];
   }
-  if (medicationType === 'injection') {
+  if (medicationType === 'injection' || medicationType === 'subcutaneous') {
     const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
     const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
     return hasConcentration ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, physicalOpt] : [physicalOpt];
@@ -81,6 +89,12 @@ const matchesMedicationType = (drug, medicationType) => {
   if (medicationType === 'tablet') {
     return form.includes('tablet') || form.includes('caplet') || form.includes('capsule') || form.includes('suppository') || form.includes('implant') || form.includes('powder') || form.includes('granules') || form.includes('enema');
   }
+  if (medicationType === 'sublingual') {
+    return form.includes('sublingual') || form.includes('buccal') || form.includes('lozenge') || form.includes('tablet');
+  }
+  if (medicationType === 'rectal') {
+    return form.includes('rectal') || form.includes('suppository') || form.includes('enema') || form.includes('pessary');
+  }
   if (medicationType === 'syrup') {
     return form.includes('syrup') || form.includes('suspension') || (form.includes('solution') && !form.includes('topical') && !form.includes('nebulizer')) || form.includes('oral gel');
   }
@@ -93,6 +107,9 @@ const matchesMedicationType = (drug, medicationType) => {
   if (medicationType === 'injection') {
     return form.includes('injection');
   }
+  if (medicationType === 'subcutaneous') {
+    return form.includes('subcutaneous') || form.includes('sc') || form.includes('injection') || form.includes('vial') || form.includes('ampoule');
+  }
   if (medicationType === 'infusion') {
     return form.includes('infusion');
   }
@@ -100,7 +117,7 @@ const matchesMedicationType = (drug, medicationType) => {
 };
 
 const medicationSchema = yup.object().shape({
-  medicationType: yup.string().oneOf(['tablet', 'syrup', 'injection', 'gutt', 'cream', 'infusion']).required(),
+  medicationType: yup.string().oneOf(['tablet', 'syrup', 'injection', 'gutt', 'cream', 'infusion', 'sublingual', 'rectal', 'subcutaneous']).required(),
   drugName: yup.string().required('Drug name is required'),
   dosageAmount: yup.number().typeError('Enter a number').positive('Must be greater than 0').required('Dose amount is required'),
   dosageUnit: yup.string().required('Select a unit'),
@@ -112,12 +129,12 @@ const medicationSchema = yup.object().shape({
   inventoryId: yup.string().nullable(),
   availability: yup.string().oneOf(['available', 'unavailable']).required('Please select the drug from the list or mark it unavailable'),
   dosesGiven: yup.number().transform((value) => (isNaN(value) ? undefined : value)).when('medicationType', {
-    is: 'injection',
+    is: (val) => ['injection', 'subcutaneous'].includes(val),
     then: (schema) => schema.required('Doses given is required'),
     otherwise: (schema) => schema.nullable(),
   }),
   injectionStatus: yup.string().when('medicationType', {
-    is: 'injection',
+    is: (val) => ['injection', 'subcutaneous'].includes(val),
     then: (schema) => schema.required('Injection status is required'),
     otherwise: (schema) => schema.nullable(),
   }),
@@ -361,8 +378,8 @@ const WritePrescription = () => {
             duration: normalizedDuration,
             dosage: `${medData.dosageAmount} ${dosageUnitLabel}`,
             instructions: medData.instructions || undefined,
-            dosesGiven: medData.medicationType === 'injection' ? Number(medData.dosesGiven) : undefined,
-            injectionStatus: medData.medicationType === 'injection' ? medData.injectionStatus : undefined,
+            dosesGiven: ['injection', 'subcutaneous'].includes(medData.medicationType) ? Number(medData.dosesGiven) : undefined,
+            injectionStatus: ['injection', 'subcutaneous'].includes(medData.medicationType) ? medData.injectionStatus : undefined,
             // Server recomputes these from inventory before saving — sent here
             // only so the doctor's on-screen estimate is visible immediately.
             prescribedQuantity: preview?.prescribedQuantity ?? null,
@@ -489,7 +506,7 @@ const WritePrescription = () => {
                           </div>
 
                           {/* Form tabs */}
-                          <div className="tabs tabs-boxed w-fit mb-6">
+                          <div className="tabs tabs-boxed w-fit max-w-full flex-wrap gap-1 mb-6">
                             {MEDICATION_TABS.map((tab) => {
                               const Icon = tab.icon;
                               const active = medicationType === tab.value;
@@ -683,7 +700,7 @@ const WritePrescription = () => {
                                 {...register(`medications.${index}.frequency`)}
                               >
                                 <option value="">Select frequency</option>
-                                {(['injection', 'infusion'].includes(medicationType) ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
+                                {(['injection', 'infusion', 'subcutaneous'].includes(medicationType) ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
                                   <option key={f} value={f}>{f}</option>
                                 ))}
                               </select>

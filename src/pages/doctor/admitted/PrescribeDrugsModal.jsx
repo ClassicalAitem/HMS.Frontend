@@ -17,6 +17,9 @@ const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12
 const MEDICATION_TABS = [
   { value: 'tablet', label: 'Tab/Cap', icon: FaPills },
   { value: 'syrup', label: 'Syr/Susp', icon: FaPrescriptionBottleAlt },
+  { value: 'sublingual', label: 'Sublingual', icon: FaPills },
+  { value: 'rectal', label: 'Rectal Form', icon: FaBoxOpen },
+  { value: 'subcutaneous', label: 'Subcutaneous', icon: FaSyringe },
   { value: 'gutt', label: 'Gutt', icon: FaTint },
   { value: 'cream', label: 'Cream', icon: FaBoxOpen },
   { value: 'infusion', label: 'Infusion', icon: FaTint },
@@ -27,10 +30,15 @@ const currency = (n) => `₦${(Number(n) || 0).toLocaleString(undefined, { maxim
 
 const getUnitOptions = (medicationType, selectedDrug) => {
   const hasConcentration = hasConcentrationData(selectedDrug);
-  if (medicationType === 'tablet') {
+  if (medicationType === 'tablet' || medicationType === 'sublingual') {
     return hasConcentration
       ? [{ value: 'mg', label: 'mg' }, { value: 'tablet', label: 'tablet(s)/cap(s)' }]
       : [{ value: 'tablet', label: 'tablet(s)/cap(s)' }];
+  }
+  if (medicationType === 'rectal') {
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'suppository', label: 'suppository/suppositories' }, { value: 'enema', label: 'enema' }, { value: 'piece', label: 'piece(s)' }, { value: 'tablet', label: 'tablet(s)' }]
+      : [{ value: 'suppository', label: 'suppository/suppositories' }, { value: 'enema', label: 'enema' }, { value: 'piece', label: 'piece(s)' }, { value: 'tablet', label: 'tablet(s)' }];
   }
   if (medicationType === 'syrup') {
     return hasConcentration
@@ -40,7 +48,7 @@ const getUnitOptions = (medicationType, selectedDrug) => {
   if (medicationType === 'gutt') return [{ value: 'ml', label: 'ml' }];
   if (medicationType === 'infusion') return [{ value: 'ml', label: 'ml' }];
   if (medicationType === 'cream') return [{ value: 'tablet', label: 'tube(s)' }];
-  if (medicationType === 'injection') {
+  if (medicationType === 'injection' || medicationType === 'subcutaneous') {
     const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
     const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
     return hasConcentration ? [{ value: 'mg', label: 'mg' }, physicalOpt] : [physicalOpt];
@@ -49,17 +57,21 @@ const getUnitOptions = (medicationType, selectedDrug) => {
 };
 
 const matchesMedicationType = (drug, medicationType) => {
-  if (medicationType === 'tablet') return drug.form === 'Tablet';
-  if (medicationType === 'syrup') return drug.form === 'Syrup';
-  if (medicationType === 'injection') return drug.form === 'Injection';
-  if (medicationType === 'gutt') return drug.form === 'Gutt';
-  if (medicationType === 'cream') return drug.form === 'Cream';
-  if (medicationType === 'infusion') return drug.form === 'Infusion';
+  const form = (drug.form || '').toLowerCase();
+  if (medicationType === 'tablet') return form.includes('tablet') || form.includes('caplet') || form.includes('capsule');
+  if (medicationType === 'sublingual') return form.includes('sublingual') || form.includes('buccal') || form.includes('lozenge') || form.includes('tablet');
+  if (medicationType === 'rectal') return form.includes('rectal') || form.includes('suppository') || form.includes('enema') || form.includes('pessary');
+  if (medicationType === 'syrup') return form.includes('syrup') || form.includes('suspension');
+  if (medicationType === 'injection') return form.includes('injection');
+  if (medicationType === 'subcutaneous') return form.includes('subcutaneous') || form.includes('sc') || form.includes('injection') || form.includes('vial') || form.includes('ampoule');
+  if (medicationType === 'gutt') return form.includes('gutt') || form.includes('drop') || form.includes('spray');
+  if (medicationType === 'cream') return form.includes('cream') || form.includes('ointment') || form.includes('gel');
+  if (medicationType === 'infusion') return form.includes('infusion');
   return false;
 };
 
 const medicationSchema = yup.object().shape({
-  medicationType: yup.string().oneOf(['tablet', 'syrup', 'injection', 'gutt', 'cream', 'infusion']).required(),
+  medicationType: yup.string().oneOf(['tablet', 'syrup', 'injection', 'gutt', 'cream', 'infusion', 'sublingual', 'rectal', 'subcutaneous']).required(),
   drugName: yup.string().required('Drug name is required'),
   dosageAmount: yup.number().typeError('Enter a number').positive('Must be greater than 0').required('Dose amount is required'),
   dosageUnit: yup.string().required('Select a unit'),
@@ -227,7 +239,7 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                     )}
                   </div>
 
-                  <div className="tabs tabs-boxed w-fit mb-4">
+                  <div className="tabs tabs-boxed w-fit max-w-full flex-wrap gap-1 mb-4">
                     {MEDICATION_TABS.map((tab) => {
                       const Icon = tab.icon;
                       const active = medicationType === tab.value;
@@ -366,7 +378,7 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                         onChange={(e) => setValue(`medications.${index}.frequency`, e.target.value)}
                       >
                         <option value="">Select frequency</option>
-                        {(['injection', 'infusion'].includes(medicationType) ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
+                        {(['injection', 'infusion', 'subcutaneous'].includes(medicationType) ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES).map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
                       </select>

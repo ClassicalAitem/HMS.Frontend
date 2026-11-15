@@ -84,6 +84,7 @@ const SendPatientModal = ({
   lockSubject = false,
 }) => {
   const location = useLocation();
+  const isDoctor = location.pathname.includes('/doctor/');
   const isFrontDesk = location.pathname.includes('/frontdesk/');
   const isCashier = location.pathname.includes('/cashier/');
   const isNurse = location.pathname.includes('/nurse/');
@@ -114,6 +115,9 @@ const SendPatientModal = ({
     let roles = Object.keys(roleConfig).filter(r => allowedRoles.includes(r));
     if (roles.includes('medical-laboratory') && roles.includes('labtechnician')) {
       roles = roles.filter(r => r !== 'labtechnician');
+    }
+    if (isDoctor) {
+      roles = roles.filter(r => r !== 'pharmacist' && r !== 'medical-laboratory' && r !== 'labtechnician');
     }
     if (isFrontDesk && !notForConsultation) {
       // Restrict frontdesk to Cashier or HMO if they are here for consultation

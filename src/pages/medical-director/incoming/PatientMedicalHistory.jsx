@@ -1167,11 +1167,9 @@ const dependant = isDependant
                     const pregnancy = latest?.presentPregnancy || latest?.presentPregnancyHistories?.[0];
                     const exams = latest?.anteNatalExamination || latest?.antenatalExaminations || [];
                     const latestExam = exams.slice().sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0))[0];
-                    const routine = Array.isArray(latest?.routineTest) ? latest.routineTest[0] : latest?.routineTest;
-
                     return (
                       <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {/* Pregnancy Overview */}
                           <div className="bg-base-200/50 rounded-xl p-3.5 space-y-2 border border-base-200">
                             <h4 className="font-bold text-xs uppercase text-primary tracking-wider">Pregnancy Overview</h4>
@@ -1227,47 +1225,6 @@ const dependant = isDependant
                               </div>
                             ) : (
                               <p className="text-xs text-base-content/50">No examination entries yet</p>
-                            )}
-                          </div>
-
-                          {/* Routine Screening Results */}
-                          <div className="bg-base-200/50 rounded-xl p-3.5 space-y-2 border border-base-200">
-                            <h4 className="font-bold text-xs uppercase text-success tracking-wider">Routine Screening Results</h4>
-                            {routine ? (
-                              <div className="grid grid-cols-3 gap-1.5 text-center pt-0.5">
-                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
-                                  <span className="text-[10px] text-base-content/60 block">Blood Grp</span>
-                                  <span className="font-bold text-xs text-primary">{routine.ABO || routine.abo || '—'}</span>
-                                </div>
-                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
-                                  <span className="text-[10px] text-base-content/60 block">Genotype</span>
-                                  <span className="font-bold text-xs text-secondary">{routine.GENOTYPE || routine.genotype || '—'}</span>
-                                </div>
-                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
-                                  <span className="text-[10px] text-base-content/60 block">PCV</span>
-                                  <span className="font-bold text-xs text-info">{routine.PCV || routine.pcv || '—'}</span>
-                                </div>
-                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
-                                  <span className="text-[10px] text-base-content/60 block">RVS (HIV)</span>
-                                  <span className={`badge badge-xs ${String(routine.RVS || routine.rvs || '').toLowerCase().includes('neg') ? 'badge-success' : 'badge-ghost'}`}>
-                                    {routine.RVS || routine.rvs || '—'}
-                                  </span>
-                                </div>
-                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
-                                  <span className="text-[10px] text-base-content/60 block">VDRL</span>
-                                  <span className={`badge badge-xs ${String(routine.VDRL || routine.vdrl || '').toLowerCase().includes('neg') ? 'badge-success' : 'badge-ghost'}`}>
-                                    {routine.VDRL || routine.vdrl || '—'}
-                                  </span>
-                                </div>
-                                <div className="bg-base-100 p-1.5 rounded border border-base-200">
-                                  <span className="text-[10px] text-base-content/60 block">HBV</span>
-                                  <span className={`badge badge-xs ${String(routine.HBV || routine.hbv || '').toLowerCase().includes('neg') ? 'badge-success' : 'badge-ghost'}`}>
-                                    {routine.HBV || routine.hbv || '—'}
-                                  </span>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-base-content/50">Routine tests not recorded</p>
                             )}
                           </div>
                         </div>

@@ -20,6 +20,12 @@ const matchesMedicationType = (drug, medicationType) => {
   if (medicationType === 'tablet') {
     return form.includes('tablet') || form.includes('caplet') || form.includes('capsule') || form.includes('suppository') || form.includes('implant') || form.includes('powder') || form.includes('granules') || form.includes('enema');
   }
+  if (medicationType === 'sublingual') {
+    return form.includes('sublingual') || form.includes('buccal') || form.includes('lozenge') || form.includes('tablet');
+  }
+  if (medicationType === 'rectal') {
+    return form.includes('rectal') || form.includes('suppository') || form.includes('enema') || form.includes('pessary');
+  }
   if (medicationType === 'syrup') {
     return form.includes('syrup') || form.includes('suspension') || (form.includes('solution') && !form.includes('topical') && !form.includes('nebulizer')) || form.includes('oral gel');
   }
@@ -31,6 +37,9 @@ const matchesMedicationType = (drug, medicationType) => {
   }
   if (medicationType === 'injection') {
     return form.includes('injection');
+  }
+  if (medicationType === 'subcutaneous') {
+    return form.includes('subcutaneous') || form.includes('sc') || form.includes('injection') || form.includes('vial') || form.includes('ampoule');
   }
   if (medicationType === 'infusion') {
     return form.includes('infusion');
@@ -320,12 +329,16 @@ const PrescriptionModal = ({ isOpen, onClose, consultationId, patientId, onCreat
                 onChange={(e) => {
                   setMedicationType(e.target.value)
                   if (e.target.value === 'syrup' || e.target.value === 'gutt') setDosageUnit('ml')
-                  else if (e.target.value === 'injection') setDosageUnit('ml')
+                  else if (e.target.value === 'injection' || e.target.value === 'subcutaneous') setDosageUnit('ml')
+                  else if (e.target.value === 'rectal') setDosageUnit('suppository')
                   else setDosageUnit('tablet')
                 }}
               >
                 <option value="tablet">Tablet / Cap</option>
                 <option value="syrup">Syrup</option>
+                <option value="sublingual">Sublingual</option>
+                <option value="rectal">Rectal Form</option>
+                <option value="subcutaneous">Subcutaneous</option>
                 <option value="injection">Injection</option>
                 <option value="cream">Cream</option>
                 <option value="gutt">Gutt</option>

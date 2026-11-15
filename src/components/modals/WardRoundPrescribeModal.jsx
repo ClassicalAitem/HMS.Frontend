@@ -16,21 +16,28 @@ const ORAL_FREQUENCIES = ['STAT', 'dly', 'b.d', 'tds', 'qds', 'mane', 'nocte', '
 const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12hly', '24hly', 'mane', 'nocte', 'prn'];
 
 const MEDICATION_TABS = [
-  { value: 'tablet',    label: 'Tab/Cap',   icon: FaPills },
-  { value: 'syrup',     label: 'Syr/Susp',  icon: FaPrescriptionBottleAlt },
-  { value: 'gutt',      label: 'Gutt',      icon: FaTint },
-  { value: 'cream',     label: 'Cream',     icon: FaBoxOpen },
-  { value: 'infusion',  label: 'Infusion',  icon: FaTint },
+  { value: 'tablet', label: 'Tab/Cap', icon: FaPills },
+  { value: 'syrup', label: 'Syr/Susp', icon: FaPrescriptionBottleAlt },
+  { value: 'sublingual', label: 'Sublingual', icon: FaPills },
+  { value: 'rectal', label: 'Rectal Form', icon: FaBoxOpen },
+  { value: 'subcutaneous', label: 'Subcutaneous', icon: FaSyringe },
+  { value: 'gutt', label: 'Gutt', icon: FaTint },
+  { value: 'cream', label: 'Cream', icon: FaBoxOpen },
+  { value: 'infusion', label: 'Infusion', icon: FaTint },
   { value: 'injection', label: 'Injection', icon: FaSyringe },
 ];
 
 const matchesMedicationType = (drug, medicationType) => {
-  if (medicationType === 'tablet')    return drug.form === 'Tablet';
-  if (medicationType === 'syrup')     return drug.form === 'Syrup';
-  if (medicationType === 'injection') return drug.form === 'Injection';
-  if (medicationType === 'gutt')      return drug.form === 'Gutt';
-  if (medicationType === 'cream')     return drug.form === 'Cream';
-  if (medicationType === 'infusion')  return drug.form === 'Infusion';
+  const form = (drug.form || '').toLowerCase();
+  if (medicationType === 'tablet') return form.includes('tablet') || form.includes('caplet') || form.includes('capsule');
+  if (medicationType === 'sublingual') return form.includes('sublingual') || form.includes('buccal') || form.includes('lozenge') || form.includes('tablet');
+  if (medicationType === 'rectal') return form.includes('rectal') || form.includes('suppository') || form.includes('enema') || form.includes('pessary');
+  if (medicationType === 'syrup') return form.includes('syrup') || form.includes('suspension');
+  if (medicationType === 'injection') return form.includes('injection');
+  if (medicationType === 'subcutaneous') return form.includes('subcutaneous') || form.includes('sc') || form.includes('injection') || form.includes('vial') || form.includes('ampoule');
+  if (medicationType === 'gutt') return form.includes('gutt') || form.includes('drop') || form.includes('spray');
+  if (medicationType === 'cream') return form.includes('cream') || form.includes('ointment') || form.includes('gel');
+  if (medicationType === 'infusion') return form.includes('infusion');
   return false;
 };
 
@@ -192,7 +199,7 @@ const WardRoundPrescribeModal = ({ isOpen, onClose, onQueue, initialMedications 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
 
           {meds.map((med, idx) => {
-            const frequencies = ['injection', 'infusion'].includes(med.medicationType)
+            const frequencies = ['injection', 'infusion', 'subcutaneous'].includes(med.medicationType)
               ? INJECTION_FREQUENCIES
               : ORAL_FREQUENCIES;
 
@@ -326,9 +333,11 @@ const WardRoundPrescribeModal = ({ isOpen, onClose, onQueue, initialMedications 
                       <input
                         type="text"
                         placeholder={
-                          med.medicationType === 'injection'
-                            ? 'e.g. 1 ampoule, 500mg'
-                            : 'e.g. 2 tablets, 5ml, 500mg'
+                          ['injection', 'subcutaneous'].includes(med.medicationType)
+                            ? 'e.g. 1 ampoule, 500mg, 10IU'
+                            : med.medicationType === 'rectal'
+                              ? 'e.g. 1 suppository, 1 enema'
+                              : 'e.g. 2 tablets, 5ml, 500mg'
                         }
                         className="input input-bordered w-full"
                         value={med.dose}
