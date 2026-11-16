@@ -10,7 +10,6 @@ const SHORTCUT_GROUPS = [
       { keys: ['Ctrl', 'E'], desc: 'Log Out / Exit session prompt' },
       { keys: ['Ctrl', 'K'], desc: 'Instantly focus patient search box to start typing immediately' },
       { keys: ['Alt', 'D'], desc: 'Jump directly to your role Dashboard' },
-      { keys: ['Ctrl', 'Shift', 'R'], desc: 'Fast refresh active table/queue without full reload' },
       { keys: ['Esc'], desc: 'Close any active modal or dropdown' },
       { keys: ['Ctrl', '/'], desc: 'Open this Keyboard Shortcuts cheat sheet' },
     ],

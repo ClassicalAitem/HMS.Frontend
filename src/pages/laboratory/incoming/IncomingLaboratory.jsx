@@ -42,7 +42,10 @@ const IncomingLaboratory = () => {
         const patient = investigation.patient;
         const isDependant = Boolean(dependant || investigation.dependantId);
         const subject = dependant || patient;
-        if (!subject || !hasStatus(subject.status, PATIENT_STATUS.AWAITING_LAB)) return;
+        const isSubjectAwaiting = hasStatus(subject.status, PATIENT_STATUS.AWAITING_LAB) ||
+          ['awaiting_lab', 'admitted', 'post_surgery_recovery'].includes(String(subject.status || '').toLowerCase()) ||
+          ['requested', 'pending', 'in_progress'].includes(requestStatus);
+        if (!subject || !isSubjectAwaiting) return;
 
         const dependantId = investigation.dependantId || dependant?.id || dependant?._id;
         const patientId = investigation.patientId || patient?.id || patient?._id || dependant?.patientId;

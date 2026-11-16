@@ -29,11 +29,8 @@ const PharmacyAdmissions = () => {
       const rawData = res.status === 'fulfilled' ? (res.value?.data?.data || res.value?.data || []) : [];
       const data = Array.isArray(rawData) ? rawData : [];
 
-      // Filter to only truly admitted patients with an assigned bed
-      const activeList = data.filter((a) => {
-        const b = String(a.bedNumber || '').trim().replace(/^bed\s*/i, '');
-        return a.status !== 'discharged' && !!a.confirmedAt && !!b && !b.toLowerCase().includes('unassigned');
-      });
+      // Filter to all active admissions (both confirmed beds and post-op / awaiting bed confirmation)
+      const activeList = data.filter((a) => a.status !== 'discharged');
 
       // Resolve missing parent patients for dependants
       const missingPatientIds = Array.from(new Set(
@@ -63,8 +60,8 @@ const PharmacyAdmissions = () => {
         const displayId = parentHospitalId || '—';
 
         const rawWardKey = String(admission.wardId || admission.ward || '');
-        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward';
-        const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '');
+        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || (admission.procedureName ? `${admission.procedureName} (Recovery)` : 'General Ward');
+        const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '') || (admission.confirmedAt ? '—' : 'Pending Bed');
 
         return {
           ...admission,

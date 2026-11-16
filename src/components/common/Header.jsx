@@ -280,7 +280,7 @@ const Header = ({ onToggleSidebar }) => {
             <button
               onClick={handleRefresh}
               className="btn btn-ghost btn-circle btn-sm"
-              title="Refresh (Ctrl+Shift+R)"
+              title="Refresh page"
               aria-label="Refresh page"
             >
               <SlRefresh className="h-3.5 w-3.5 sm:h-4 sm:w-4" />

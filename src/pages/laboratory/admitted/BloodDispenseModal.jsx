@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
-const BloodDispenseModal = ({ isOpen, onClose, onSave, patient }) => {
+const BloodDispenseModal = ({ isOpen, onClose, onSave, patient, defaultBloodGroup = '' }) => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     bagNo: '',
-    donorGroup: '',
+    donorGroup: defaultBloodGroup || '',
     expiredDate: '',
     deliveredBy: '',
     dateOut: new Date().toISOString().split('T')[0],
@@ -19,10 +19,11 @@ const BloodDispenseModal = ({ isOpen, onClose, onSave, patient }) => {
     if (isOpen) {
       setFormData((prev) => ({
         ...prev,
+        donorGroup: defaultBloodGroup || prev.donorGroup || '',
         dateOut: new Date().toISOString().split('T')[0],
       }));
     }
-  }, [isOpen]);
+  }, [isOpen, defaultBloodGroup]);
 
   if (!isOpen) return null;
 

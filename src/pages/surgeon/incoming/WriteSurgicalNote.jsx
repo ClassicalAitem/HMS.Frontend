@@ -24,7 +24,9 @@ import {
   FaBoxOpen,
 } from "react-icons/fa";
 import { createSurgery, updateSurgery, getSurgeryById } from "@/services/api/surgeryAPI";
-import { getPatientById } from "@/services/api/patientsAPI";
+import { getPatientById, updatePatientStatus } from "@/services/api/patientsAPI";
+import { updateDependantStatus } from "@/services/api/dependantAPI";
+import { PATIENT_STATUS } from "@/constants/patientStatus";
 import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getAllAppointments } from "@/services/api/appointmentsAPI";
 import { getInventories } from "@/services/api/inventoryAPI";
@@ -1004,7 +1006,19 @@ const CreateSurgicalNote = () => {
             surgeryId: createdSurgeryId,
             status: 'pending',
             medications: rxMedications,
-          });
+          }, createdSurgeryId, 'surgery');
+
+          // Explicitly update patient / dependant status to awaiting_pharmacy so Pharmacist sees them in their queue
+          try {
+            if (dependantId) {
+              await updateDependantStatus(dependantId, { status: PATIENT_STATUS.AWAITING_PHARMACY });
+            } else if (effectivePatientId) {
+              await updatePatientStatus(effectivePatientId, { status: PATIENT_STATUS.AWAITING_PHARMACY });
+            }
+          } catch (stErr) {
+            console.warn("[SurgicalNote] Status update error:", stErr);
+          }
+
           toast.success("Post-operative prescriptions sent to pharmacy!");
         } catch (rxErr) {
           console.warn("[SurgicalNote] Failed to submit prescription order:", rxErr);
@@ -1126,6 +1140,7 @@ const CreateSurgicalNote = () => {
                 patientId={effectivePatientId}
                 dependantId={dependantId}
                 consultationId={consultationId}
+                admissionId={loadedSurgery?.admissionId || editSurgery?.admissionId || undefined}
                 isDoctor={true}
               />
             </div>

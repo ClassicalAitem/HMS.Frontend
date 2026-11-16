@@ -247,17 +247,7 @@ const GlobalShortcutManager = () => {
       }
 
       // =========================================================================
-      // 7. Ctrl + Shift + R (Fast Table Refresh)
-      // =========================================================================
-      if (isCtrlOrCmd && e.shiftKey && (key === 'r' || code === 'KeyR')) {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('fast-refresh-table'));
-        toast.success('Refreshing data...', { id: 'table-refresh', duration: 1200 });
-        return;
-      }
-
-      // =========================================================================
-      // 8. Alt + 1..7 (Switch Admission Clinical Tabs / On-page Tabs)
+      // 7. Alt + 1..7 (Switch Admission Clinical Tabs / On-page Tabs)
       // =========================================================================
       const isAltDigit = e.altKey && !isCtrlOrCmd && (
         ['1', '2', '3', '4', '5', '6', '7'].includes(key) ||

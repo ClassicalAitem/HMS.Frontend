@@ -3,6 +3,9 @@ import toast from 'react-hot-toast'
 import bloodTransfusionApi from '@/services/api/bloodTransfusionApi'
 import { getServiceCharges } from '@/services/api/serviceChargesAPI'
 import { getInventories } from '@/services/api/inventoryAPI'
+import { updatePatientStatus } from '@/services/api/patientsAPI'
+import { updateDependantStatus } from '@/services/api/dependantAPI'
+import { PATIENT_STATUS } from '@/constants/patientStatus'
 import { formatNigeriaDateTimeShort } from '@/utils/formatDateTimeUtils'
 import {
   FaHeartbeat,
@@ -248,7 +251,18 @@ const BloodTransfusionTab = ({
         preppingMedications: selectedMeds.length > 0 ? selectedMeds : undefined,
       })
 
-      toast.success('Transfusion order placed; charges are ready for admission billing')
+      // Update patient / dependant status to awaiting_lab so Laboratory immediately sees them in their queue
+      try {
+        if (dependantId) {
+          await updateDependantStatus(dependantId, { status: PATIENT_STATUS.AWAITING_LAB })
+        } else if (patientId) {
+          await updatePatientStatus(patientId, { status: PATIENT_STATUS.AWAITING_LAB })
+        }
+      } catch (stErr) {
+        console.warn('Failed to update patient status for lab queue:', stErr)
+      }
+
+      toast.success('Transfusion order placed and sent to Laboratory!')
       setShowOrderModal(false)
       setForm({ note: '', bloodGroup: '', units: 1, unitPrice: 0, amount: 0 })
       setSelectedService(null)

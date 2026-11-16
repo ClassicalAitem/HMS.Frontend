@@ -10,7 +10,14 @@ const AdmittedCard = ({ admission, onOpen }) => {
     <div className="p-4 bg-white rounded shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-semibold">{name}</div>
+          <div className="font-semibold flex items-center">
+            {name}
+            {admission.coveredByProcedure && (
+              <span className="badge badge-success badge-sm text-white font-medium ml-2">
+                Covered by Procedure
+              </span>
+            )}
+          </div>
           <div className="text-sm text-muted">Ward: {ward}</div>
         </div>
         <div className="text-right">

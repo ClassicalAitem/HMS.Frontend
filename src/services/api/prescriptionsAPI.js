@@ -65,7 +65,6 @@ export const updatePrescription = async (id, updateData) => {
 
 export const createPrescription = async (data, contextId, contextType = 'consultation') => {
   try {
-    if (!contextId) throw new Error(`A valid ${contextType} ID is required`)
     const payload = data?.medications?.[0] || []
     const requiredFields = ['drugName', 'frequency', 'duration', 'dosageAmount', 'dosageUnit']
     for (const field of requiredFields) {
@@ -73,9 +72,16 @@ export const createPrescription = async (data, contextId, contextType = 'consult
         throw new Error(`Missing required field: ${field}`)
       }
     }
-    const endpoint = contextType === 'antenatal'
-      ? `/prescription/antenatal/${contextId}`
-      : `/prescription/consultation/${contextId}`
+    let endpoint = '/prescription'
+    if (contextType === 'antenatal' && contextId) {
+      endpoint = `/prescription/antenatal/${contextId}`
+    } else if ((contextType === 'surgery' || data?.surgeryId) && (contextId || data?.surgeryId)) {
+      endpoint = `/prescription/surgery/${contextId || data?.surgeryId}`
+    } else if ((contextType === 'admission' || data?.admissionId) && (contextId || data?.admissionId)) {
+      endpoint = `/prescription/admission/${contextId || data?.admissionId}`
+    } else if (contextId) {
+      endpoint = `/prescription/consultation/${contextId}`
+    }
     const response = await apiClient.post(endpoint, data)
     return response.data ?? {}
   } catch (err) {

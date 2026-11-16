@@ -5,6 +5,7 @@ import apiClient from '@/services/api/apiClient'
 import { createBilling, getAllReceipts, getBillingsByAdmissionId } from '@/services/api/billingAPI'
 import { getInvestigationByPatientId } from '@/services/api/investigationRequestAPI'
 import { getServiceCharges } from '@/services/api/serviceChargesAPI'
+import { getAdmissionById } from '@/services/api/admissionApi'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 
 const unwrap = (response) => response?.data?.data ?? response?.data ?? response
@@ -20,6 +21,7 @@ const getId = (record) => record?._id || record?.id
 const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, dependantId, patientName }) => {
   const [billings, setBillings] = useState([])
   const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], treatments: [] })
+  const [admissionData, setAdmissionData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [openBillId, setOpenBillId] = useState(null)
@@ -34,13 +36,19 @@ const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, de
     const loadBillsAndUnbilledItems = async () => {
       setLoading(true)
       setError('')
-      const [billsResult, labsResult, chargesResult, ivsResult, treatmentResult] = await Promise.allSettled([
+      const [billsResult, labsResult, chargesResult, ivsResult, treatmentResult, admResult] = await Promise.allSettled([
         getBillingsByAdmissionId(admissionId),
         getInvestigationByPatientId(patientId),
         getServiceCharges(),
         apiClient.get(`/iv-fluid/patient/${patientId}`),
         apiClient.get(`/dispense/treatment-bill/preview/${admissionId}`),
+        getAdmissionById(admissionId),
       ])
+
+      if (!active) return
+      if (admResult.status === 'fulfilled') {
+        setAdmissionData(unwrap(admResult.value))
+      }
 
       if (!active) return
       if (billsResult.status === 'rejected') {
@@ -222,6 +230,20 @@ const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, de
             <div className="rounded-lg border border-success/30 bg-success/5 p-4"><p className="text-xs text-base-content/60">Amount paid</p><p className="text-xl font-bold text-success">{currency(totals.paid)}</p></div>
             <div className="rounded-lg border border-error/30 bg-error/5 p-4"><p className="text-xs text-base-content/60">Outstanding</p><p className="text-xl font-bold text-error">{currency(totals.outstanding)}</p></div>
           </div>
+
+          {admissionData?.coveredByProcedure && (
+            <div className="flex items-start gap-3 p-4 bg-emerald-50 text-emerald-900 border border-emerald-200 rounded-lg text-xs sm:text-sm">
+              <span className="badge badge-success badge-sm text-white font-bold shrink-0 mt-0.5">Procedure Covered Stay</span>
+              <div>
+                <p className="font-semibold">
+                  Post-operative admission for {admissionData.procedureName || 'Procedure'} is covered by the procedure fee.
+                </p>
+                <p className="text-emerald-700 text-xs mt-1">
+                  Initial bed charges and stay are included (₦0). If procedure stay or allowance is exhausted, or additional specialized items (extra medications, laboratory investigations, special consumables) are required, they can be billed below.
+                </p>
+              </div>
+            </div>
+          )}
 
           {loading ? <div className="flex justify-center p-10"><span className="loading loading-spinner loading-lg" /></div> : error ? <p role="alert" className="py-4 text-center text-error">{error}</p> : <>
             <section>

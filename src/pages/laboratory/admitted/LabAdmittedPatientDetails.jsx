@@ -9,6 +9,7 @@ import { getInvestigationByPatientId, updateInvestigation } from '@/services/api
 import { getAllBillings } from '@/services/api/billingAPI';
 import { getLabResults } from '@/services/api/labResultsAPI';
 import { getBloodDispenseByPatient, createBloodDispense } from '@/services/api/bloodDispenseApi';
+import bloodTransfusionApi from '@/services/api/bloodTransfusionApi';
 import { enrichInvestigationTestPayment } from '@/utils/investigationVisibility';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import toast from 'react-hot-toast';
@@ -98,6 +99,8 @@ const LabAdmittedPatientDetails = () => {
   const [isBloodModalOpen, setIsBloodModalOpen] = useState(false);
   const [isCrossMatchModalOpen, setIsCrossMatchModalOpen] = useState(false);
   const [bloodRecords, setBloodRecords] = useState([]);
+  const [transfusionOrders, setTransfusionOrders] = useState([]);
+  const [selectedTransfusion, setSelectedTransfusion] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -105,7 +108,7 @@ const LabAdmittedPatientDetails = () => {
     const loadDetails = async () => {
       setLoading(true);
       try {
-        const [patientResponse, investigationResponse, billingResponse, labResultsResponse, bloodRecordsResponse] = await Promise.all([
+        const [patientResponse, investigationResponse, billingResponse, labResultsResponse, bloodRecordsResponse, transfusionResponse] = await Promise.all([
           getPatientById(patientId),
           getInvestigationByPatientId(patientId).catch((error) => {
             if (error?.response?.status !== 404) throw error;
@@ -116,7 +119,8 @@ const LabAdmittedPatientDetails = () => {
             console.warn('Could not check existing lab results:', error);
             return null;
           }),
-          getBloodDispenseByPatient(patientId).catch(() => ({ data: [] }))
+          getBloodDispenseByPatient(patientId).catch(() => ({ data: [] })),
+          bloodTransfusionApi.getBloodTransfusionsByPatient(patientId).catch(() => ({ data: [] })),
         ]);
         const patientRecord = unwrapRecord(patientResponse);
         const patientData = Array.isArray(patientRecord) ? patientRecord[0] : patientRecord;
@@ -141,14 +145,18 @@ const LabAdmittedPatientDetails = () => {
           dependantData = dependantRecord?.dependant || dependantRecord;
         }
 
+        const targetAdmissionId = getId(admission?._id || admission?.id || location.state?.admissionId);
         const labRequests = unwrapList(investigationResponse)
           .filter((request) => {
             const type = String(request.type || '').toLowerCase();
             const requestDependantId = getId(request.dependantId || request.dependant);
             const requestPatientId = getId(request.patientId || request.patient);
             const reqConsultationId = getId(request.consultationId || request.consultation);
+            const reqAdmissionId = getId(request.admissionId || request.admission);
 
-            if (admissionConsultationId && reqConsultationId && reqConsultationId !== getId(admissionConsultationId)) {
+            if (targetAdmissionId && reqAdmissionId && reqAdmissionId === targetAdmissionId) {
+              // Tied to this admission, keep it
+            } else if (admissionConsultationId && reqConsultationId && reqConsultationId !== getId(admissionConsultationId)) {
               return false;
             }
 
@@ -173,6 +181,8 @@ const LabAdmittedPatientDetails = () => {
         setLabResultLookupFailed(labResultsResponse === null);
         const bloodList = unwrapList(bloodRecordsResponse);
         setBloodRecords(bloodList);
+        const transfusions = unwrapList(transfusionResponse);
+        setTransfusionOrders(transfusions);
       } catch (error) {
         if (!active) return;
         console.error('Failed to load laboratory patient details:', error);
@@ -284,13 +294,15 @@ const LabAdmittedPatientDetails = () => {
             className={`tab tab-lg ${activeTab === 'investigations' ? 'tab-active font-semibold' : ''}`}
             onClick={() => setActiveTab('investigations')}
           >
-            Lab Requests
+            Lab Requests {investigations.length > 0 && <span className="badge badge-sm badge-primary ml-1.5">{investigations.length}</span>}
           </button>
           <button
             className={`tab tab-lg ${activeTab === 'blood' ? 'tab-active font-semibold text-error' : ''}`}
             onClick={() => setActiveTab('blood')}
           >
-            Blood Dispense
+            Blood Transfusion & Dispense {(transfusionOrders.length > 0 || bloodRecords.length > 0) && (
+              <span className="badge badge-sm badge-error text-white ml-1.5">{transfusionOrders.length + bloodRecords.length}</span>
+            )}
           </button>
         </div>
 
@@ -405,6 +417,96 @@ const LabAdmittedPatientDetails = () => {
 
         {activeTab === 'blood' && (
           <div className="space-y-5">
+            {/* Blood Transfusion Requests from Doctor / Surgeon */}
+            <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100 shadow-sm">
+              <div className="flex items-center justify-between gap-2 border-b border-base-200 px-4 py-3 bg-red-50/60">
+                <div className="flex items-center gap-2">
+                  <FaTint className="text-error" aria-hidden="true" />
+                  <h2 className="font-semibold text-error">Blood Transfusion Requests (Doctor / Surgeon)</h2>
+                  <span className="badge badge-error text-white badge-sm">{transfusionOrders.length}</span>
+                </div>
+              </div>
+              {transfusionOrders.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-base-content/60">No blood transfusion requests ordered for this patient.</p>
+              ) : (
+                <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh]">
+                  <table className="table table-zebra w-full">
+                    <thead className="sticky top-0 bg-base-200 z-10">
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Blood Group</th>
+                        <th>Units</th>
+                        <th>Ordered By</th>
+                        <th>Clinical Notes</th>
+                        <th>Prepping Meds</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transfusionOrders.map((order) => (
+                        <tr key={order._id || order.id}>
+                          <td className="text-xs whitespace-nowrap">
+                            {order.orderedAt || order.createdAt ? formatNigeriaDateTime(order.orderedAt || order.createdAt) : '—'}
+                          </td>
+                          <td>
+                            <span className="badge badge-error text-white font-bold">
+                              {order.bloodGroup || 'Any / Unspecified'}
+                            </span>
+                          </td>
+                          <td className="font-semibold">{order.units || 1} Unit{(order.units || 1) > 1 ? 's' : ''}</td>
+                          <td className="text-xs">{order.doctorName || 'Doctor / Surgeon'}</td>
+                          <td className="max-w-xs truncate text-xs" title={order.note}>{order.note || '—'}</td>
+                          <td className="text-xs">
+                            {order.preppingMedications?.length
+                              ? order.preppingMedications.map((m) => m.medicationName || m.name).join(', ')
+                              : 'None'}
+                          </td>
+                          <td>
+                            <span className={`badge badge-sm capitalize ${
+                              order.status === 'completed'
+                                ? 'badge-success'
+                                : order.status === 'reaction'
+                                ? 'badge-error'
+                                : order.status === 'in_progress'
+                                ? 'badge-info'
+                                : 'badge-warning'
+                            }`}>
+                              {order.status || 'Pending'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-xs whitespace-nowrap"
+                                onClick={() => {
+                                  setSelectedTransfusion(order);
+                                  setIsCrossMatchModalOpen(true);
+                                }}
+                              >
+                                Cross-Match
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-error btn-xs whitespace-nowrap"
+                                onClick={() => {
+                                  setSelectedTransfusion(order);
+                                  setIsBloodModalOpen(true);
+                                }}
+                              >
+                                Dispense Blood
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
             <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
               <div className="flex items-center justify-between gap-2 border-b border-base-200 px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -487,14 +589,22 @@ const LabAdmittedPatientDetails = () => {
 
         <BloodDispenseModal
           isOpen={isBloodModalOpen}
-          onClose={() => setIsBloodModalOpen(false)}
+          onClose={() => {
+            setIsBloodModalOpen(false);
+            setSelectedTransfusion(null);
+          }}
           patient={subject}
+          defaultBloodGroup={selectedTransfusion?.bloodGroup || ''}
           onSave={saveBloodRecord}
         />
         <CrossMatchModal
           isOpen={isCrossMatchModalOpen}
-          onClose={() => setIsCrossMatchModalOpen(false)}
+          onClose={() => {
+            setIsCrossMatchModalOpen(false);
+            setSelectedTransfusion(null);
+          }}
           patient={subject}
+          defaultBloodGroup={selectedTransfusion?.bloodGroup || ''}
           onSave={saveBloodRecord}
         />
       </div>

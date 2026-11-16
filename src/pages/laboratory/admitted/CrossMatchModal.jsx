@@ -3,11 +3,11 @@ import toast from 'react-hot-toast';
 
 const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-const CrossMatchModal = ({ isOpen, onClose, onSave, patient }) => {
+const CrossMatchModal = ({ isOpen, onClose, onSave, patient, defaultBloodGroup = '' }) => {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     crossCheckDate: new Date().toISOString().split('T')[0],
-    patientBloodGroup: '',
+    patientBloodGroup: defaultBloodGroup || '',
     results: '',
     labRepSign: '',
   });
@@ -16,12 +16,12 @@ const CrossMatchModal = ({ isOpen, onClose, onSave, patient }) => {
     if (isOpen) {
       setFormData({
         crossCheckDate: new Date().toISOString().split('T')[0],
-        patientBloodGroup: '',
+        patientBloodGroup: defaultBloodGroup || '',
         results: '',
         labRepSign: '',
       });
     }
-  }, [isOpen]);
+  }, [isOpen, defaultBloodGroup]);
 
   if (!isOpen) return null;
 
