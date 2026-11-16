@@ -356,7 +356,7 @@ const PatientDetails = () => {
         <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-4 lg:p-6">
           {/* Page Header */}
           <PatientPageHeader 
-            onEdit={() => setIsEditModalOpen(true)} 
+            onEdit={() => (isViewingDependant ? setIsEditDependantOpen(true) : setIsEditModalOpen(true))} 
             onDelete={handleDeletePatient}
             onClose={() => navigate('/superadmin/patients/Patients')} 
           />
@@ -661,7 +661,7 @@ const PatientDetails = () => {
       <EditPatientModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        patient={displayPatient}
+        patient={patient}
         onSave={handleEditPatient}
       />
       <AddHmoModal
@@ -670,7 +670,7 @@ const PatientDetails = () => {
           setIsAddHmoOpen(false);
           setHmoTargetDependantId(null);
         }}
-        patient={displayPatient}
+        patient={patient}
         dependantId={hmoTargetDependantId}
         onSuccess={() => {
           if (patientId) {
@@ -683,7 +683,7 @@ const PatientDetails = () => {
       <EditHmoModal
         isOpen={isEditHmoOpen}
         onClose={() => setIsEditHmoOpen(false)}
-        patient={displayPatient}
+        patient={patient}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
@@ -694,7 +694,7 @@ const PatientDetails = () => {
       <AddDependantModal
         isOpen={isAddDependantOpen}
         onClose={() => setIsAddDependantOpen(false)}
-        patient={displayPatient}
+        patient={patient}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
@@ -705,7 +705,8 @@ const PatientDetails = () => {
       <EditDependantModal
         isOpen={isEditDependantOpen}
         onClose={() => setIsEditDependantOpen(false)}
-        patient={displayPatient}
+        patient={patient}
+        initialDependantId={dependantId}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));

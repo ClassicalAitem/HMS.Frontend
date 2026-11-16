@@ -126,7 +126,12 @@ const SurgeonNoteHistory = () => {
                     return <tr key={note._id || note.id} className="hover:bg-base-200/40">
                       <td><div className="flex items-center gap-2"><FaUserInjured className="text-primary" /><div><div className="font-semibold">{patientName(patient)}</div><div className="text-xs text-base-content/50 font-mono">ID: {patient?.hospitalId || pId || "—"}</div></div></div></td>
                       <td><div className="font-medium">{note.procedureName || "Surgical Procedure"}</div><div className="text-xs text-base-content/50 font-mono">{note.procedureCode || "No procedure code"}</div></td>
-                      <td><div className="text-xs">{note.scheduledDate ? formatNigeriaDate(note.scheduledDate) : "—"}</div><div className="text-xs text-base-content/50">{note.startTime ? formatNigeriaTime(note.startTime) : "—"}</div></td>
+                      <td>
+                        <div className="text-xs font-semibold">{note.scheduledDate ? formatNigeriaDate(note.scheduledDate) : "—"}</div>
+                        <div className="text-xs text-base-content/50">
+                          {note.startTime ? formatNigeriaTime(note.startTime) : (note.createdAt ? formatNigeriaTime(note.createdAt) : "—")}
+                        </div>
+                      </td>
                       <td><span className={`badge badge-sm capitalize ${note.status === "completed" ? "badge-success text-white" : note.status === "cancelled" ? "badge-error text-white" : "badge-warning"}`}>{note.status || "scheduled"}</span></td>
                       <td className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
@@ -378,7 +383,7 @@ const SurgeonNoteHistory = () => {
 
                             <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50 mb-1">Theatre Vitals</p>
-                              {note.vitalSigns?.some(v => v.bloodPressure || v.heartRate || v.respiratoryRate || v.temperature || v.oxygenSaturation) ? (
+                              {note.vitalSigns?.some(v => v && (v.bloodPressure || v.heartRate || v.respiratoryRate || v.temperature || v.oxygenSaturation)) ? (
                                 <div className="overflow-x-auto border border-base-200 rounded-lg">
                                   <table className="table table-xs w-full">
                                     <thead>
@@ -392,16 +397,18 @@ const SurgeonNoteHistory = () => {
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {note.vitalSigns.map((v, i) => (
-                                        <tr key={i} className="border-b border-base-200 last:border-0 font-mono">
-                                          <td className="text-base-content/50 font-sans">Reading #{i + 1}</td>
-                                          <td className="font-bold text-base-content">{v.bloodPressure || "—"}</td>
-                                          <td>{v.heartRate ? `${v.heartRate} bpm` : "—"}</td>
-                                          <td>{v.respiratoryRate ? `${v.respiratoryRate} bpm` : "—"}</td>
-                                          <td>{v.temperature ? `${v.temperature} °C` : "—"}</td>
-                                          <td>{v.oxygenSaturation ? `${v.oxygenSaturation}%` : "—"}</td>
-                                        </tr>
-                                      ))}
+                                      {note.vitalSigns
+                                        .filter(v => v && (v.bloodPressure || v.heartRate || v.respiratoryRate || v.temperature || v.oxygenSaturation))
+                                        .map((v, i) => (
+                                          <tr key={i} className="border-b border-base-200 last:border-0 font-mono">
+                                            <td className="text-base-content/50 font-sans">Reading #{i + 1}</td>
+                                            <td className="font-bold text-base-content">{v.bloodPressure || "—"}</td>
+                                            <td>{v.heartRate ? `${v.heartRate} bpm` : "—"}</td>
+                                            <td>{v.respiratoryRate ? `${v.respiratoryRate} bpm` : "—"}</td>
+                                            <td>{v.temperature ? `${v.temperature} °C` : "—"}</td>
+                                            <td>{v.oxygenSaturation ? `${v.oxygenSaturation}%` : "—"}</td>
+                                          </tr>
+                                        ))}
                                     </tbody>
                                   </table>
                                 </div>
@@ -419,7 +426,7 @@ const SurgeonNoteHistory = () => {
                                   </span>
                                 )}
                               </div>
-                              {(note.postOperativeAssessment || note.postOperativeAssessments)?.some(p => (p.medication && p.medication.trim()) || p.drugName) ? (
+                              {(note.postOperativeAssessment || note.postOperativeAssessments)?.some(p => (typeof p === 'string' ? p.trim() : ((p?.medication && p.medication.trim()) || p?.drugName))) ? (
                                 <div className="overflow-x-auto border border-base-200 rounded-lg">
                                   <table className="table table-xs w-full">
                                     <thead>
@@ -434,15 +441,15 @@ const SurgeonNoteHistory = () => {
                                     </thead>
                                     <tbody>
                                       {(note.postOperativeAssessment || note.postOperativeAssessments)
-                                        .filter((p) => p && ((p.medication && p.medication.trim()) || p.drugName))
+                                        .filter((p) => p && (typeof p === 'string' ? p.trim() : ((p.medication && p.medication.trim()) || p.drugName)))
                                         .map((p, i) => {
-                                          const raw = p.medication || p.drugName || "";
+                                          const raw = typeof p === 'string' ? p : (p.medication || p.drugName || "");
                                           const parsed = parseMedicationString(raw);
-                                          const drugName = p.drugName || parsed.drugName || raw || "—";
-                                          const dosage = p.dosage || (p.dosageAmount ? `${p.dosageAmount} ${p.dosageUnit || ''}`.trim() : parsed.dosage) || "—";
-                                          const frequency = p.frequency || parsed.frequency || "—";
-                                          const duration = p.duration || parsed.duration || "—";
-                                          const instructions = p.instructions || parsed.instructions || "—";
+                                          const drugName = (typeof p !== 'string' && p.drugName) ? p.drugName : (parsed.drugName || raw || "—");
+                                          const dosage = (typeof p !== 'string' && p.dosage) ? p.dosage : (p.dosageAmount ? `${p.dosageAmount} ${p.dosageUnit || ''}`.trim() : parsed.dosage) || "—";
+                                          const frequency = (typeof p !== 'string' && p.frequency) ? p.frequency : (parsed.frequency || "—");
+                                          const duration = (typeof p !== 'string' && p.duration) ? p.duration : (parsed.duration || "—");
+                                          const instructions = (typeof p !== 'string' && p.instructions) ? p.instructions : (parsed.instructions || "—");
 
                                           return (
                                             <tr key={i} className="border-b border-base-200 last:border-0 hover:bg-base-200/30">

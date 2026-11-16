@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { updateDependant } from '@/services/api/dependantAPI';
 import { getErrorMessage } from '@/utils/errorHandler';
 
-const EditDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
+const EditDependantModal = ({ isOpen, onClose, patient, initialDependantId, onSuccess }) => {
   const dependants = useMemo(() => patient?.dependants || [], [patient]);
   const [selectedDependantId, setSelectedDependantId] = useState('');
   const [form, setForm] = useState({
@@ -20,14 +20,16 @@ const EditDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
 
   useEffect(() => {
     if (isOpen && dependants.length > 0) {
-      const initialId = dependants[0]?.id || '';
-      setSelectedDependantId(initialId);
-      const initial = dependants.find(d => (d.id || '') === initialId) || {};
+      const targetId = (initialDependantId && dependants.find(d => (d.id || d._id) === initialDependantId))
+        ? initialDependantId
+        : (dependants[0]?.id || dependants[0]?._id || '');
+      setSelectedDependantId(targetId);
+      const initial = dependants.find(d => (d.id || d._id) === targetId) || dependants[0] || {};
       setForm({
         firstName: initial.firstName || '',
         middleName: initial.middleName || '',
         lastName: initial.lastName || '',
-        dob: initial.dob || '',
+        dob: initial.dob ? String(initial.dob).split('T')[0] : '',
         gender: (initial.gender || '').toLowerCase(),
         relationshipType: initial.relationshipType || ''
       });
@@ -35,7 +37,7 @@ const EditDependantModal = ({ isOpen, onClose, patient, onSuccess }) => {
       setSelectedDependantId('');
       setForm({ firstName: '', middleName: '', lastName: '', dob: '', gender: '', relationshipType: '' });
     }
-  }, [isOpen, dependants]);
+  }, [isOpen, dependants, initialDependantId]);
 
   if (!isOpen || !patient) return null;
 

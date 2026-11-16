@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { useAppDispatch } from '../../store/hooks';
 import { editPatient } from '../../store/slices/patientsSlice';
+import { updateDependant } from '@/services/api/dependantAPI';
 import toast from 'react-hot-toast';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import { NIGERIAN_STATES, POPULAR_COUNTRIES } from '@/constants/locationConstants';
 
 const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
   const dispatch = useAppDispatch();
@@ -19,7 +21,10 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     email: '',
     phone: '',
     address: '',
+    country: 'Nigeria',
+    customCountry: '',
     stateOfOrigin: '',
+    customState: '',
     town: '',
     LGA: '',
     dob: '',
@@ -27,6 +32,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     cardType: 'personal',
     familyName: '',
     companyName: '',
+    relationshipType: '',
     
     // Next of Kin
     nextOfKin: {
@@ -40,11 +46,19 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     hmo: []
   });
 
-  console.log('State of origin:  ', patient?.stateOfOrigin);
-
   // Pre-populate form when patient data is available
   useEffect(() => {
     if (patient) {
+      const patientCountry = patient.country || 'Nigeria';
+      const isStandardCountry = POPULAR_COUNTRIES.includes(patientCountry) && patientCountry !== 'Other';
+      const countryVal = isStandardCountry ? patientCountry : (patientCountry ? 'Other' : 'Nigeria');
+      const customCountryVal = isStandardCountry ? '' : (patientCountry || '');
+
+      const patientState = patient.stateOfOrigin || '';
+      const isStandardState = NIGERIAN_STATES.includes(patientState);
+      const stateVal = (countryVal === 'Nigeria' && isStandardState) ? patientState : (patientState ? 'Other' : '');
+      const customStateVal = isStandardState ? '' : (patientState || '');
+
       setFormData({
         firstName: patient.firstName || '',
         lastName: patient.lastName || '',
@@ -52,7 +66,10 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         email: patient.email || '',
         phone: patient.phone || '',
         address: patient.address || '',
-        stateOfOrigin: patient.stateOfOrigin || '',
+        country: countryVal,
+        customCountry: customCountryVal,
+        stateOfOrigin: stateVal,
+        customState: customStateVal,
         town: patient.town || '',
         LGA: patient.LGA || '',
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
@@ -60,6 +77,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         cardType: patient.cardType || 'personal',
         familyName: patient.familyName || '',
         companyName: patient.companyName || '',
+        relationshipType: patient.relationshipType || '',
         
         nextOfKin: {
           name: patient.nextOfKin?.name || '',
@@ -99,8 +117,44 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     setIsLoading(true);
     
     try {
-      console.log('🔄 EditPatientModal: Updating patient:', patient.id);
+      const targetId = patient.id || patient._id;
+      console.log('🔄 EditPatientModal: Updating patient / subject:', targetId);
       console.log('📊 EditPatientModal: Raw form data:', formData);
+
+      // Check if this is a dependant (safety guard)
+      if (patient.relationshipType) {
+        const depPayload = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          middleName: formData.middleName || '',
+          dob: formData.dob,
+          gender: formData.gender,
+          relationshipType: formData.relationshipType || patient.relationshipType,
+        };
+        const savePromise = updateDependant(targetId, depPayload);
+        toast.promise(
+          savePromise,
+          {
+            loading: 'Saving changes...',
+            success: 'Dependant updated successfully',
+            error: (err) => err?.response?.data?.message || 'Failed to update dependant',
+          },
+          { duration: 3000 }
+        );
+        const saved = await savePromise;
+        onSave && onSave(saved?.data || saved);
+        onClose();
+        return;
+      }
+
+      // Compute effective country & state
+      const effectiveCountry = formData.country === 'Other'
+        ? (formData.customCountry?.trim() || 'Other')
+        : (formData.country || 'Nigeria');
+
+      const effectiveState = (formData.country === 'Nigeria' && formData.stateOfOrigin === 'Other')
+        ? (formData.customState?.trim() || '')
+        : (formData.country !== 'Nigeria' ? (formData.customState?.trim() || formData.stateOfOrigin?.trim() || '') : (formData.stateOfOrigin || ''));
 
       // Construct backend-compliant payload
       const updatePayload = {
@@ -121,9 +175,10 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         cardType: formData.cardType || 'personal',
         ...(formData.cardType === 'family' && formData.familyName && { familyName: formData.familyName }),
         ...(formData.cardType === 'company' && formData.companyName && { companyName: formData.companyName }),
-        // Only include optional fields if they have values
+        // Optional location and profile fields
+        ...(effectiveCountry && { country: effectiveCountry }),
+        ...(effectiveState && { stateOfOrigin: effectiveState }),
         ...(formData.email && { email: formData.email }),
-        ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
         ...(formData.town && { town: formData.town }),
         ...(formData.LGA && { LGA: formData.LGA }),
       };
@@ -131,7 +186,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
       console.log('📦 EditPatientModal: PATCH payload:', updatePayload);
 
       const savePromise = dispatch(editPatient({
-        patientId: patient.id,
+        patientId: targetId,
         updateData: updatePayload
       })).unwrap();
 
@@ -342,76 +397,126 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                 </div>
               </div>
 
-              {/* State, Town, LGA Row */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {/* Country, State, Town, LGA Grid */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {/* Country */}
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">State Of Origin</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">SOO</label>
-                       <select
+                  <h4 className="mb-3 text-base font-medium text-base-content">Country</h4>
+                  <label className="block mb-1 text-sm text-base-content/70">Country</label>
+                  <select
+                    name="country"
+                    value={formData.country}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData(prev => ({
+                        ...prev,
+                        country: val,
+                        ...(val !== 'Other' ? { customCountry: '' } : {})
+                      }));
+                    }}
+                    className="w-full select select-bordered"
+                  >
+                    {POPULAR_COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  {formData.country === 'Other' && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        name="customCountry"
+                        value={formData.customCountry}
+                        onChange={handleInputChange}
+                        placeholder="Type country name..."
+                        className="w-full input input-bordered input-sm"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* State of Origin / Province */}
+                <div>
+                  <h4 className="mb-3 text-base font-medium text-base-content">
+                    {formData.country === 'Nigeria' ? 'State of Origin' : 'State / Province'}
+                  </h4>
+                  <label className="block mb-1 text-sm text-base-content/70">
+                    {formData.country === 'Nigeria' ? 'SOO' : 'State / Province'}
+                  </label>
+                  {formData.country === 'Nigeria' ? (
+                    <>
+                      <select
                         name="stateOfOrigin"
                         value={formData.stateOfOrigin}
-                        onChange={handleInputChange}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            stateOfOrigin: val,
+                            ...(val !== 'Other' ? { customState: '' } : {})
+                          }));
+                        }}
                         className="w-full select select-bordered"
                       >
-                    <option >{patient?.stateOfOrigin}</option>
-                    <option value="Abia">Abia</option>
-                    <option value="Abuja">Abuja</option>
-                    <option value="Adamawa">Adamawa</option>
-                    <option value="Akwa Ibom">Akwa Ibom</option>
-                    <option value="Anambra">Anambra</option>
-                    <option value="Bauchi">Bauchi</option>
-                    <option value="Bayelsa">Bayelsa</option>
-                    <option value="Benue">Benue</option>
-                    <option value="Borno">Borno</option>
-                    <option value="Cross River">Cross River</option>
-                    <option value="Delta">Delta</option>
-                    <option value="Ebonyi">Ebonyi</option>
-                    <option value="Edo">Edo</option>
-                    <option value="Ekiti">Ekiti</option>
-                    <option value="Enugu">Enugu</option>
-                    <option value="Gombe">Gombe</option>
-                    <option value="Imo">Imo</option>
-                    <option value="Jigawa">Jigawa</option>
-                    <option value="Kaduna">Kaduna</option>
-                    <option value="Kano">Kano</option>
-                    <option value="Katsina">Katsina</option>
-                    <option value="Kebbi">Kebbi</option>
-                    <option value="Kogi">Kogi</option>
-                    <option value="Kwara">Kwara</option>
-                    <option value="Lagos">Lagos</option>
-                    <option value="Nasarawa">Nasarawa</option>
-                    <option value="Niger">Niger</option>
-                    <option value="Ogun">Ogun</option>
-                    <option value="Ondo">Ondo</option>
-                    <option value="Osun">Osun</option>
-                    <option value="Oyo">Oyo</option>
-                    <option value="Plateau">Plateau</option>
-                    <option value="Rivers">Rivers</option>
-                    <option value="Sokoto">Sokoto</option>
-                    <option value="Taraba">Taraba</option>
-                    <option value="Yobe">Yobe</option>
-                    <option value="Zamfara">Zamfara</option>
-                  </select>
+                        <option value="">Select State</option>
+                        {NIGERIAN_STATES.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                        <option value="Other">Other (Custom State)</option>
+                      </select>
+                      {formData.stateOfOrigin === 'Other' && (
+                        <div className="mt-2">
+                          <input
+                            type="text"
+                            name="customState"
+                            value={formData.customState}
+                            onChange={handleInputChange}
+                            placeholder="Type state name..."
+                            className="w-full input input-bordered input-sm"
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <input
+                      type="text"
+                      name="customState"
+                      value={formData.customState}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Greater Accra, Texas..."
+                      className="w-full input input-bordered"
+                    />
+                  )}
                 </div>
+
+                {/* Town */}
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">Town</h4>
+                  <h4 className="mb-3 text-base font-medium text-base-content">Town / City</h4>
                   <label className="block mb-1 text-sm text-base-content/70">Town</label>
                   <input
                     type="text"
                     name="town"
                     value={formData.town}
                     onChange={handleInputChange}
+                    placeholder="e.g. Ikeja"
                     className="w-full input input-bordered"
                   />
                 </div>
+
+                {/* LGA */}
                 <div>
-                  <h4 className="mb-3 text-base font-medium text-base-content">LGA</h4>
-                  <label className="block mb-1 text-sm text-base-content/70">Local Gov Area</label>
+                  <h4 className="mb-3 text-base font-medium text-base-content">
+                    {formData.country === 'Nigeria' ? 'Local Gov Area' : 'District / County'}
+                  </h4>
+                  <label className="block mb-1 text-sm text-base-content/70">
+                    {formData.country === 'Nigeria' ? 'LGA' : 'District'}
+                  </label>
                   <input
                     type="text"
                     name="LGA"
                     value={formData.LGA}
                     onChange={handleInputChange}
+                    placeholder={formData.country === 'Nigeria' ? 'e.g. Ikeja' : 'District/County'}
                     className="w-full input input-bordered"
                   />
                 </div>

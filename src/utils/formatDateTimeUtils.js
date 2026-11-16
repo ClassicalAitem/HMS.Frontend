@@ -1,7 +1,16 @@
 const NIGERIA_TZ = 'Africa/Lagos';
 
+const isInvalidValue = (val) => {
+  if (!val) return true;
+  if (typeof val === 'string') {
+    const s = val.trim().toLowerCase();
+    return !s || s === 'invalid date' || s === 'null' || s === 'undefined' || s === '—';
+  }
+  return false;
+};
+
 const toUTC = (date) => {
-  if (!date) return null;
+  if (isInvalidValue(date)) return null;
   if (typeof date === 'string' && !date.endsWith('Z') && !date.includes('+')) {
     return date.replace(' ', 'T') + 'Z';
   }
@@ -9,9 +18,14 @@ const toUTC = (date) => {
 };
 
 export const formatNigeriaDate = (date) => {
-  if (!date) return '—';
-  const d = new Date(toUTC(date));
-  if (isNaN(d.getTime())) return typeof date === 'string' && date.trim() ? date : '—';
+  if (isInvalidValue(date)) return '—';
+  const utc = toUTC(date);
+  if (!utc) return '—';
+  const d = new Date(utc);
+  if (isNaN(d.getTime())) {
+    const s = String(date).trim();
+    return isInvalidValue(s) ? '—' : s;
+  }
   return d.toLocaleDateString('en-NG', {
     timeZone: NIGERIA_TZ,
     year: 'numeric',
@@ -21,7 +35,7 @@ export const formatNigeriaDate = (date) => {
 };
 
 export const formatNigeriaTime = (date) => {
-  if (!date) return '—';
+  if (isInvalidValue(date)) return '—';
   if (typeof date === 'string') {
     const trimmed = date.trim();
     const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
@@ -33,8 +47,13 @@ export const formatNigeriaTime = (date) => {
       return `${hour12}:${minute} ${ampm}`;
     }
   }
-  const d = new Date(toUTC(date));
-  if (isNaN(d.getTime())) return typeof date === 'string' && date.trim() ? date : '—';
+  const utc = toUTC(date);
+  if (!utc) return '—';
+  const d = new Date(utc);
+  if (isNaN(d.getTime())) {
+    const s = String(date).trim();
+    return isInvalidValue(s) ? '—' : s;
+  }
   return d.toLocaleTimeString('en-NG', {
     timeZone: NIGERIA_TZ,
     hour: '2-digit',
@@ -44,7 +63,7 @@ export const formatNigeriaTime = (date) => {
 };
 
 export const formatNigeriaTime12Hour = (date) => {
-  if (!date) return '—';
+  if (isInvalidValue(date)) return '—';
   if (typeof date === 'string') {
     const trimmed = date.trim();
     const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
@@ -57,8 +76,13 @@ export const formatNigeriaTime12Hour = (date) => {
       return `${hour12}:${minute}${second} ${ampm}`;
     }
   }
-  const d = new Date(toUTC(date));
-  if (isNaN(d.getTime())) return typeof date === 'string' && date.trim() ? date : '—';
+  const utc = toUTC(date);
+  if (!utc) return '—';
+  const d = new Date(utc);
+  if (isNaN(d.getTime())) {
+    const s = String(date).trim();
+    return isInvalidValue(s) ? '—' : s;
+  }
   return d.toLocaleTimeString('en-NG', {
     timeZone: NIGERIA_TZ,
     hour: '2-digit',

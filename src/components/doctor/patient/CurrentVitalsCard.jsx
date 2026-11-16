@@ -156,8 +156,17 @@ const CurrentVitalsCard = ({ patient, latest, loading, onRecordOpen, buttonHidde
                 <StatCard icon={LuActivity} label="Respiratory" value={isStale ? "—" : (latest?.respiratoryRate ?? "—")} unit="bpm" />
               </div>
             ) : (
-              <div className="py-4 text-center text-sm text-base-content/60">
-                No vital readings recorded yet. Click "Record Vitals" to add.
+              <div className="py-6 flex flex-col items-center justify-center gap-2 text-center text-sm text-base-content/60">
+                <p>No vital readings recorded yet.</p>
+                {!buttonHidden && onRecordOpen && (
+                  <button
+                    type="button"
+                    onClick={onRecordOpen}
+                    className="btn btn-sm btn-primary text-white gap-1.5 mt-1"
+                  >
+                    <TbHeartbeat className="w-4 h-4" /> Record Vitals
+                  </button>
+                )}
               </div>
             )}
 

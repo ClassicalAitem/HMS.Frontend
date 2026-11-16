@@ -352,7 +352,10 @@ const PatientDetails = () => {
       {isTransitionLoading && <KolakLoader fullscreen />}
 
       {/* Page Header */}
-      <PatientPageHeader onEdit={() => setIsEditModalOpen(true)} onClose={() => navigate('/frontdesk/patients')} />
+      <PatientPageHeader
+        onEdit={() => (isViewingDependant ? setIsEditDependantOpen(true) : setIsEditModalOpen(true))}
+        onClose={() => navigate('/frontdesk/patients')}
+      />
 
           {/* Dependant Banner when viewing dependant */}
           {isViewingDependant && (
@@ -520,7 +523,7 @@ const PatientDetails = () => {
       <EditPatientModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        patient={displayPatient}
+        patient={patient}
         onSave={handleEditPatient}
       />
       <AddHmoModal
@@ -561,7 +564,7 @@ const PatientDetails = () => {
       <AddDependantModal
         isOpen={isAddDependantOpen}
         onClose={() => setIsAddDependantOpen(false)}
-        patient={displayPatient}
+        patient={patient}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));
@@ -572,7 +575,8 @@ const PatientDetails = () => {
       <EditDependantModal
         isOpen={isEditDependantOpen}
         onClose={() => setIsEditDependantOpen(false)}
-        patient={displayPatient}
+        patient={patient}
+        initialDependantId={dependantId}
         onSuccess={() => {
           if (patientId) {
             dispatch(fetchPatientById(patientId));

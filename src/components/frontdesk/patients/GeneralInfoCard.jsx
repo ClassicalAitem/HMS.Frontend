@@ -46,6 +46,50 @@ const GeneralInfoCard = ({ patient, isTransitionLoading }) => (
         </div>
 
         <div className="flex flex-col space-y-1">
+          <p className="font-regular text-base-content/70 text-md">Country</p>
+          {isTransitionLoading ? (
+            <div className="skeleton h-4 w-32" />
+          ) : (
+            <span className="font-medium text-md 2xl:text-xl 2xl:font-regular capitalize">
+              {patient.country || 'Nigeria'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col space-y-1">
+          <p className="font-regular text-base-content/70 text-md">State of Origin</p>
+          {isTransitionLoading ? (
+            <div className="skeleton h-4 w-32" />
+          ) : (
+            <span className="font-medium text-md 2xl:text-xl 2xl:font-regular capitalize">
+              {patient.stateOfOrigin || 'Not provided'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col space-y-1">
+          <p className="font-regular text-base-content/70 text-md">Town / City</p>
+          {isTransitionLoading ? (
+            <div className="skeleton h-4 w-32" />
+          ) : (
+            <span className="font-medium text-md 2xl:text-xl 2xl:font-regular capitalize">
+              {patient.town || 'Not provided'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col space-y-1">
+          <p className="font-regular text-base-content/70 text-md">LGA / District</p>
+          {isTransitionLoading ? (
+            <div className="skeleton h-4 w-32" />
+          ) : (
+            <span className="font-medium text-md 2xl:text-xl 2xl:font-regular capitalize">
+              {patient.LGA || 'Not provided'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col space-y-1">
           <p className="font-regular text-base-content/70 text-md">Created</p>
           {isTransitionLoading ? (
             <div className="skeleton h-4 w-36" />

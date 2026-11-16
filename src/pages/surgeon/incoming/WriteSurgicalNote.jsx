@@ -897,13 +897,13 @@ const CreateSurgicalNote = () => {
         ? `${p.durationAmount} ${p.durationUnit}${Number(p.durationAmount) > 1 ? 's' : ''}`
         : '';
       const parts = [
-        p.drugName,
-        p.dosageAmount ? `${p.dosageAmount} ${p.dosageUnit}` : '',
-        p.frequency || '',
+        p.drugName.trim(),
+        p.dosageAmount ? `${p.dosageAmount} ${p.dosageUnit || ''}`.trim() : '',
+        p.frequency ? p.frequency.trim() : '',
         durationStr ? `for ${durationStr}` : '',
-        p.instructions ? `(${p.instructions})` : ''
+        p.instructions ? `(${p.instructions.trim()})` : ''
       ].filter(Boolean);
-      return { medication: parts.join(', ') };
+      return { medication: parts.join(' | ') };
     });
 
     // Prepare payload to match ISurgery
@@ -938,13 +938,15 @@ const CreateSurgicalNote = () => {
           respiration: b.apgarScore.respiration ? Number(b.apgarScore.respiration) : undefined,
         },
       })) : undefined,
-     vitalSigns: form.vitalSigns.map((v) => ({
-        bloodPressure: v.bloodPressure || undefined,
-        heartRate: v.heartRate ? Number(v.heartRate) : undefined,
-        respiratoryRate: v.respiratoryRate ? Number(v.respiratoryRate) : undefined,
-        temperature: v.temperature ? Number(v.temperature) : undefined,
-        oxygenSaturation: v.oxygenSaturation ? Number(v.oxygenSaturation) : undefined,
-      })),
+      vitalSigns: form.vitalSigns
+        .filter((v) => v.bloodPressure || v.heartRate || v.respiratoryRate || v.temperature || v.oxygenSaturation)
+        .map((v) => ({
+          bloodPressure: v.bloodPressure ? String(v.bloodPressure).trim() : undefined,
+          heartRate: v.heartRate !== '' && v.heartRate !== undefined ? Number(v.heartRate) : undefined,
+          respiratoryRate: v.respiratoryRate !== '' && v.respiratoryRate !== undefined ? Number(v.respiratoryRate) : undefined,
+          temperature: v.temperature !== '' && v.temperature !== undefined ? Number(v.temperature) : undefined,
+          oxygenSaturation: v.oxygenSaturation !== '' && v.oxygenSaturation !== undefined ? Number(v.oxygenSaturation) : undefined,
+        })),
       postOperativeAssessment: formattedPostOps.length
         ? formattedPostOps
         : form.postOperativeAssessments
@@ -1358,69 +1360,99 @@ const CreateSurgicalNote = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                       <div>
-                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
-                          Blood Pressure (mmHg)
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 flex items-center justify-between">
+                          <span>Blood Pressure</span>
+                          <span className="text-[10px] text-primary font-bold">mmHg</span>
                         </label>
-                        <input
-                          name="bloodPressure"
-                          placeholder="e.g. 120/80"
-                          value={v.bloodPressure}
-                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'bloodPressure')}
-                          className="input input-bordered input-sm w-full font-mono"
-                        />
+                        <div className="flex items-center rounded-lg border border-base-300 bg-base-100 overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+                          <input
+                            name="bloodPressure"
+                            placeholder="120/80"
+                            value={v.bloodPressure}
+                            onChange={e => handleListChange('vitalSigns', i, e.target.value, 'bloodPressure')}
+                            className="input input-sm border-0 focus:outline-none flex-1 font-mono px-2.5"
+                          />
+                          <span className="px-2 text-[11px] text-base-content/60 bg-base-200/50 font-semibold border-l border-base-300 py-1.5 shrink-0">
+                            mmHg
+                          </span>
+                        </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
-                          Heart Rate (bpm)
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 flex items-center justify-between">
+                          <span>Heart Rate</span>
+                          <span className="text-[10px] text-secondary font-bold">bpm</span>
                         </label>
-                        <input
-                          name="heartRate"
-                          type="number"
-                          placeholder="e.g. 70"
-                          value={v.heartRate}
-                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'heartRate')}
-                          className="input input-bordered input-sm w-full font-mono"
-                        />
+                        <div className="flex items-center rounded-lg border border-base-300 bg-base-100 overflow-hidden focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary/20">
+                          <input
+                            name="heartRate"
+                            type="number"
+                            placeholder="70"
+                            value={v.heartRate}
+                            onChange={e => handleListChange('vitalSigns', i, e.target.value, 'heartRate')}
+                            className="input input-sm border-0 focus:outline-none flex-1 font-mono px-2.5"
+                          />
+                          <span className="px-2 text-[11px] text-base-content/60 bg-base-200/50 font-semibold border-l border-base-300 py-1.5 shrink-0">
+                            bpm
+                          </span>
+                        </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
-                          Resp. Rate (bpm)
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 flex items-center justify-between">
+                          <span>Resp. Rate</span>
+                          <span className="text-[10px] text-info font-bold">bpm</span>
                         </label>
-                        <input
-                          name="respiratoryRate"
-                          type="number"
-                          placeholder="e.g. 20"
-                          value={v.respiratoryRate}
-                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'respiratoryRate')}
-                          className="input input-bordered input-sm w-full font-mono"
-                        />
+                        <div className="flex items-center rounded-lg border border-base-300 bg-base-100 overflow-hidden focus-within:border-info focus-within:ring-1 focus-within:ring-info/20">
+                          <input
+                            name="respiratoryRate"
+                            type="number"
+                            placeholder="20"
+                            value={v.respiratoryRate}
+                            onChange={e => handleListChange('vitalSigns', i, e.target.value, 'respiratoryRate')}
+                            className="input input-sm border-0 focus:outline-none flex-1 font-mono px-2.5"
+                          />
+                          <span className="px-2 text-[11px] text-base-content/60 bg-base-200/50 font-semibold border-l border-base-300 py-1.5 shrink-0">
+                            bpm
+                          </span>
+                        </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
-                          Temperature (°C)
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 flex items-center justify-between">
+                          <span>Temperature</span>
+                          <span className="text-[10px] text-warning font-bold">°C</span>
                         </label>
-                        <input
-                          name="temperature"
-                          type="number"
-                          step="any"
-                          placeholder="e.g. 37.0"
-                          value={v.temperature}
-                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'temperature')}
-                          className="input input-bordered input-sm w-full font-mono"
-                        />
+                        <div className="flex items-center rounded-lg border border-base-300 bg-base-100 overflow-hidden focus-within:border-warning focus-within:ring-1 focus-within:ring-warning/20">
+                          <input
+                            name="temperature"
+                            type="number"
+                            step="any"
+                            placeholder="37.0"
+                            value={v.temperature}
+                            onChange={e => handleListChange('vitalSigns', i, e.target.value, 'temperature')}
+                            className="input input-sm border-0 focus:outline-none flex-1 font-mono px-2.5"
+                          />
+                          <span className="px-2 text-[11px] text-base-content/60 bg-base-200/50 font-semibold border-l border-base-300 py-1.5 shrink-0">
+                            °C
+                          </span>
+                        </div>
                       </div>
                       <div>
-                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
-                          Oxygen (SpO2 %)
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 flex items-center justify-between">
+                          <span>Oxygen (SpO2)</span>
+                          <span className="text-[10px] text-primary font-bold">%</span>
                         </label>
-                        <input
-                          name="oxygenSaturation"
-                          type="number"
-                          placeholder="e.g. 98"
-                          value={v.oxygenSaturation}
-                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'oxygenSaturation')}
-                          className="input input-bordered input-sm w-full font-mono"
-                        />
+                        <div className="flex items-center rounded-lg border border-base-300 bg-base-100 overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+                          <input
+                            name="oxygenSaturation"
+                            type="number"
+                            placeholder="98"
+                            value={v.oxygenSaturation}
+                            onChange={e => handleListChange('vitalSigns', i, e.target.value, 'oxygenSaturation')}
+                            className="input input-sm border-0 focus:outline-none flex-1 font-mono px-2.5"
+                          />
+                          <span className="px-2 text-[11px] text-base-content/60 bg-base-200/50 font-semibold border-l border-base-300 py-1.5 shrink-0">
+                            %
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

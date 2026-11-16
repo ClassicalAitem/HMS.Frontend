@@ -10,6 +10,7 @@ import SearchableNameDropdown from '@/components/common/SearchableNameDropdown';
 import toast from 'react-hot-toast';
 import KolakLoader from '@/components/common/KolakLoader';
 import { getErrorMessage } from '@/utils/errorHandler';
+import { NIGERIAN_STATES, POPULAR_COUNTRIES } from '@/constants/locationConstants';
 
 const Registration = () => {
   const navigate = useNavigate();
@@ -29,7 +30,10 @@ const Registration = () => {
     email: '',
     phone: '',
     address: '',
+    country: 'Nigeria',
+    customCountry: '',
     stateOfOrigin: '',
+    customState: '',
     town: '',
     LGA: '',
     dob: '',
@@ -328,6 +332,15 @@ const Registration = () => {
     setIsLoading(true);
     
     try {
+      // Compute effective country & state
+      const effectiveCountry = formData.country === 'Other'
+        ? (formData.customCountry?.trim() || 'Other')
+        : (formData.country || 'Nigeria');
+
+      const effectiveState = (formData.country === 'Nigeria' && formData.stateOfOrigin === 'Other')
+        ? (formData.customState?.trim() || '')
+        : (formData.country !== 'Nigeria' ? (formData.customState?.trim() || formData.stateOfOrigin?.trim() || '') : (formData.stateOfOrigin || ''));
+
       // Prepare data for API (only include HMO if toggle is ON and provider is filled)
       const nextOfKinTouched = Object.values(formData.nextOfKin).some((value) => String(value || '').trim());
       const patientData = {
@@ -343,8 +356,9 @@ const Registration = () => {
         ...(formData.cardType === 'family' && formData.familyName && { familyName: formatCardName(formData.familyName) }),
         ...(formData.cardType === 'company' && formData.companyName && { companyName: formatCardName(formData.companyName) }),
         isOldPatient: formData.isOldPatient,
+        ...(effectiveCountry && { country: effectiveCountry }),
         ...(formData.email && { email: formData.email }),
-        ...(formData.stateOfOrigin && { stateOfOrigin: formData.stateOfOrigin }),
+        ...(effectiveState && { stateOfOrigin: effectiveState }),
         ...(formData.town && { town: formData.town }),
         ...(formData.LGA && { LGA: formData.LGA }),
         ...(isHmoPatient && formData.hmos[0].provider && {
@@ -384,7 +398,10 @@ const Registration = () => {
           email: '',
           phone: '',
           address: '',
+          country: 'Nigeria',
+          customCountry: '',
           stateOfOrigin: '',
+          customState: '',
           town: '',
           LGA: '',
           dob: '',
@@ -625,78 +642,126 @@ const Registration = () => {
                   </div>
                 </div>
 
-                {/* State, Town, LGA Row */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                {/* Country, State, Town, LGA Grid */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {/* Country */}
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">State Of Origin</h3>
-                    <label className="block mb-1 text-sm text-base-content/70">SOO</label>
+                    <h3 className="mb-3 text-base font-medium text-base-content">Country</h3>
+                    <label className="block mb-1 text-sm text-base-content/70">Country</label>
                     <select
-                      name="stateOfOrigin"
-                      value={formData.stateOfOrigin}
-                      onChange={handleInputChange}
+                      name="country"
+                      value={formData.country}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          country: val,
+                          ...(val !== 'Other' ? { customCountry: '' } : {})
+                        }));
+                      }}
                       className="w-full select select-bordered"
                     >
-                    <option value="Abia">Abia</option>
-                    <option value="">Select State</option>
-                    <option value="Adamawa">Adamawa</option>
-                    <option value="Akwa Ibom">Akwa Ibom</option>
-                    <option value="Anambra">Anambra</option>
-                    <option value="Bauchi">Bauchi</option>
-                    <option value="Bayelsa">Bayelsa</option>
-                    <option value="Benue">Benue</option>
-                    <option value="Borno">Borno</option>
-                    <option value="Cross River">Cross River</option>
-                    <option value="Delta">Delta</option>
-                    <option value="Ebonyi">Ebonyi</option>
-                    <option value="Edo">Edo</option>
-                    <option value="Ekiti">Ekiti</option>
-                    <option value="Enugu">Enugu</option>
-                    <option value="Gombe">Gombe</option>
-                    <option value="Imo">Imo</option>
-                    <option value="Jigawa">Jigawa</option>
-                    <option value="Kaduna">Kaduna</option>
-                    <option value="Kano">Kano</option>
-                    <option value="Katsina">Katsina</option>
-                    <option value="Kebbi">Kebbi</option>
-                    <option value="Kogi">Kogi</option>
-                    <option value="Kwara">Kwara</option>
-                    <option value="Lagos">Lagos</option>
-                    <option value="Nasarawa">Nasarawa</option>
-                    <option value="Niger">Niger</option>
-                    <option value="Ogun">Ogun</option>
-                    <option value="Ondo">Ondo</option>
-                    <option value="Osun">Osun</option>
-                    <option value="Oyo">Oyo</option>
-                    <option value="Plateau">Plateau</option>
-                    <option value="Rivers">Rivers</option>
-                    <option value="Sokoto">Sokoto</option>
-                    <option value="Taraba">Taraba</option>
-                    <option value="Yobe">Yobe</option>
-                    <option value="Zamfara">Zamfara</option>
-
+                      {POPULAR_COUNTRIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
                     </select>
+                    {formData.country === 'Other' && (
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          name="customCountry"
+                          value={formData.customCountry}
+                          onChange={handleInputChange}
+                          placeholder="Type country name..."
+                          className="w-full input input-bordered input-sm"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {/* State of Origin */}
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">Town</h3>
+                    <h3 className="mb-3 text-base font-medium text-base-content">
+                      {formData.country === 'Nigeria' ? 'State of Origin' : 'State / Province'}
+                    </h3>
+                    <label className="block mb-1 text-sm text-base-content/70">
+                      {formData.country === 'Nigeria' ? 'SOO' : 'State / Province'}
+                    </label>
+                    {formData.country === 'Nigeria' ? (
+                      <>
+                        <select
+                          name="stateOfOrigin"
+                          value={formData.stateOfOrigin}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setFormData(prev => ({
+                              ...prev,
+                              stateOfOrigin: val,
+                              ...(val !== 'Other' ? { customState: '' } : {})
+                            }));
+                          }}
+                          className="w-full select select-bordered"
+                        >
+                          <option value="">Select State</option>
+                          {NIGERIAN_STATES.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                          <option value="Other">Other (Custom State)</option>
+                        </select>
+                        {formData.stateOfOrigin === 'Other' && (
+                          <div className="mt-2">
+                            <input
+                              type="text"
+                              name="customState"
+                              value={formData.customState}
+                              onChange={handleInputChange}
+                              placeholder="Type state name..."
+                              className="w-full input input-bordered input-sm"
+                            />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <input
+                        type="text"
+                        name="customState"
+                        value={formData.customState}
+                        onChange={handleInputChange}
+                        placeholder="e.g. Greater Accra, Texas..."
+                        className="w-full input input-bordered"
+                      />
+                    )}
+                  </div>
+
+                  {/* Town */}
+                  <div>
+                    <h3 className="mb-3 text-base font-medium text-base-content">Town / City</h3>
                     <label className="block mb-1 text-sm text-base-content/70">Town</label>
                     <input
                       type="text"
                       name="town"
                       value={formData.town}
                       onChange={handleInputChange}
-                      placeholder="Aba North"
+                      placeholder="e.g. Aba North"
                       className="w-full input input-bordered"
                     />
                   </div>
+
+                  {/* LGA */}
                   <div>
-                    <h3 className="mb-3 text-base font-medium text-base-content">LGA</h3>
-                    <label className="block mb-1 text-sm text-base-content/70">Local Gov Area</label>
+                    <h3 className="mb-3 text-base font-medium text-base-content">
+                      {formData.country === 'Nigeria' ? 'Local Gov Area' : 'District / County'}
+                    </h3>
+                    <label className="block mb-1 text-sm text-base-content/70">
+                      {formData.country === 'Nigeria' ? 'LGA' : 'District'}
+                    </label>
                     <input
                       type="text"
                       name="LGA"
                       value={formData.LGA}
                       onChange={handleInputChange}
-                      placeholder="Aba North"
+                      placeholder={formData.country === 'Nigeria' ? 'e.g. Aba North' : 'District/County'}
                       className="w-full input input-bordered"
                     />
                   </div>
