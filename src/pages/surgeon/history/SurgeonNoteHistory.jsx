@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header, EmptyState } from "@/components/common";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
-import { getAllSurgeries } from "@/services/api/surgeryAPI";
+import { getAllSurgeries, getSurgeryById } from "@/services/api/surgeryAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import { parseMedicationString } from "@/utils/prescriptionsCalculator";
 import { FaFileMedical, FaSearch, FaUserInjured, FaEdit } from "react-icons/fa";
 
 const responseList = (response) => {
@@ -24,6 +25,30 @@ const SurgeonNoteHistory = () => {
   const [error, setError] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedNote, setSelectedNote] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  const handleViewNote = async (note, patient) => {
+    setSelectedNote({ note, patient });
+    setIsModalOpen(true);
+    const surgeryId = note._id || note.id;
+    if (surgeryId) {
+      setModalLoading(true);
+      try {
+        const res = await getSurgeryById(surgeryId);
+        const freshNote = res?.data?.data ?? res?.data ?? res;
+        if (freshNote && (freshNote._id || freshNote.id)) {
+          setSelectedNote({ note: freshNote, patient: patient || freshNote.patient || freshNote.opdPatient || freshNote.dependant });
+          setNotes((prevNotes) =>
+            prevNotes.map((n) => ((n._id || n.id) === surgeryId ? freshNote : n))
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch fresh surgical note details:", err);
+      } finally {
+        setModalLoading(false);
+      }
+    }
+  };
 
   const loadNotes = async () => {
     setLoading(true);
@@ -104,35 +129,30 @@ const SurgeonNoteHistory = () => {
                       <td><div className="text-xs">{note.scheduledDate ? formatNigeriaDate(note.scheduledDate) : "—"}</div><div className="text-xs text-base-content/50">{note.startTime ? formatNigeriaTime(note.startTime) : "—"}</div></td>
                       <td><span className={`badge badge-sm capitalize ${note.status === "completed" ? "badge-success text-white" : note.status === "cancelled" ? "badge-error text-white" : "badge-warning"}`}>{note.status || "scheduled"}</span></td>
                       <td className="text-right">
-                        {note.status === "completed" ? (
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             className="btn btn-xs btn-ghost gap-1 border border-base-300"
-                            onClick={() => {
-                              setSelectedNote({ note, patient });
-                              setIsModalOpen(true);
-                            }}
+                            onClick={() => handleViewNote(note, patient)}
+                            title="View surgical note details"
                           >
-                            <FaSearch /> View
+                            <FaSearch className="text-primary" /> View
                           </button>
-                        ) : (
-                          <button
-                            className="btn btn-xs btn-primary text-white gap-1"
-                            onClick={() =>
-                              navigate(
-                                note.investigationRequestId
-                                  ? `/dashboard/surgeon/write-surgical-note/${note.investigationRequestId}`
-                                  : "/dashboard/surgeon/write-surgical-note",
-                                { state: { from: "history", editSurgery: note } }
-                              )
-                            }
-                          >
-                            {note.status === "in_progress" ? (
-                              <><FaEdit /> Edit Note</>
-                            ) : (
-                              <><FaFileMedical /> Write Note</>
-                            )}
-                          </button>
-                        )}
+                          {note.status !== "completed" && (
+                            <button
+                              className="btn btn-xs btn-primary text-white gap-1"
+                              onClick={() =>
+                                navigate(
+                                  note.investigationRequestId
+                                    ? `/dashboard/surgeon/write-surgical-note/${note.investigationRequestId}?surgeryId=${note._id || note.id}&patientId=${pId}`
+                                    : `/dashboard/surgeon/write-surgical-note?surgeryId=${note._id || note.id}&patientId=${pId}`,
+                                  { state: { from: "history", editSurgery: note } }
+                                )
+                              }
+                            >
+                              <FaEdit /> {note.status === "in_progress" ? "Edit Note" : "Write Note"}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>;
                   })}
@@ -203,20 +223,32 @@ const SurgeonNoteHistory = () => {
                               <p className="text-[11px] uppercase font-semibold text-base-content/50">Phone Number</p>
                               <p className="font-bold text-base text-base-content">{phone}</p>
                             </div>
-                            <div className="sm:col-span-2">
+                            <div>
                               <p className="text-[11px] uppercase font-semibold text-base-content/50">Procedure Name</p>
                               <p className="font-bold text-base text-primary">{procedureName}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase font-semibold text-base-content/50">Procedure Code</p>
+                              <p className="font-bold text-base text-base-content font-mono">{note.procedureCode || "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-[11px] uppercase font-semibold text-base-content/50">Scheduled Date</p>
+                              <p className="font-bold text-base text-base-content">{note.scheduledDate ? formatNigeriaDate(note.scheduledDate) : "—"}</p>
                             </div>
                             <div>
                               <p className="text-[11px] uppercase font-semibold text-base-content/50">Date Added</p>
                               <p className="font-bold text-base text-base-content">{createdAt}</p>
                             </div>
+                            <div>
+                              <p className="text-[11px] uppercase font-semibold text-base-content/50">Operation Room</p>
+                              <p className="font-bold text-base text-base-content">{note.operationRoom || "—"}</p>
+                            </div>
                           </div>
                         </div>
 
-                        {hmos.length > 0 && (
-                          <div className="bg-base-100 p-5 rounded-xl border border-base-200">
-                            <h4 className="text-xs uppercase font-bold mb-3 text-base-content/50">Insurance / HMO</h4>
+                        <div className="bg-base-100 p-5 rounded-xl border border-base-200">
+                          <h4 className="text-xs uppercase font-bold mb-3 text-base-content/50">Insurance / HMO</h4>
+                          {hmos.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                               {hmos.map((h, i) => (
                                 <div key={i} className="flex items-center gap-2 rounded-md bg-base-200 px-3 py-2 text-sm border border-base-300">
@@ -227,88 +259,102 @@ const SurgeonNoteHistory = () => {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <p className="text-sm text-base-content/60 font-mono">—</p>
+                          )}
+                        </div>
 
                         <div className="bg-base-100 p-5 rounded-xl border border-base-200 shadow-sm mt-2">
                           <h4 className="text-xs uppercase font-bold mb-4 text-base-content/50 border-b border-base-200 pb-2">Completed Surgical Report</h4>
                           
                           <div className="space-y-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                               <div>
                                 <p className="text-[10px] uppercase font-semibold text-base-content/50">Surgeon Team</p>
                                 <div className="text-sm font-medium">
-                                  {note.surgeonTeam?.map(s => s.surgeonName).join(", ") || "—"}
+                                  {note.surgeonTeam?.map(s => s.surgeonName).filter(Boolean).join(", ") || "—"}
                                 </div>
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase font-semibold text-base-content/50">Assistants</p>
                                 <div className="text-sm font-medium">
-                                  {note.surgeonAssistants?.map(a => a.assistantName).join(", ") || "—"}
+                                  {note.surgeonAssistants?.map(a => a.assistantName).filter(Boolean).join(", ") || "—"}
                                 </div>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-semibold text-base-content/50">Start Time</p>
-                                <div className="text-sm font-medium">{note.startTime || "—"}</div>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-semibold text-base-content/50">End Time</p>
-                                <div className="text-sm font-medium">{note.endTime || "—"}</div>
                               </div>
                               <div>
                                 <p className="text-[10px] uppercase font-semibold text-base-content/50">Operation Room</p>
                                 <div className="text-sm font-medium">{note.operationRoom || "—"}</div>
                               </div>
                               <div>
+                                <p className="text-[10px] uppercase font-semibold text-base-content/50">Start Time</p>
+                                <div className="text-sm font-medium">{note.startTime ? formatNigeriaTime(note.startTime) : "—"}</div>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase font-semibold text-base-content/50">End Time</p>
+                                <div className="text-sm font-medium">{note.endTime ? formatNigeriaTime(note.endTime) : "—"}</div>
+                              </div>
+                              <div>
                                 <p className="text-[10px] uppercase font-semibold text-base-content/50">Estimated Blood Loss</p>
                                 <div className="text-sm font-medium">{note.estimatedBloodLoss ? `${note.estimatedBloodLoss} ml` : "—"}</div>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase font-semibold text-base-content/50">No. of Swabs Used</p>
+                                <div className="text-sm font-medium">{((note.swabsUsed ?? note.swabUsed) !== undefined && (note.swabsUsed ?? note.swabUsed) !== null && (note.swabsUsed ?? note.swabUsed) !== "") ? `${note.swabsUsed ?? note.swabUsed}` : "—"}</div>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase font-semibold text-base-content/50">Specimens for Histology</p>
+                                <div className="text-sm font-medium capitalize">{note.specimensForHistology ? note.specimensForHistology.replace("_", " ") : "—"}</div>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase font-semibold text-base-content/50">Status</p>
+                                <div className="text-sm font-medium capitalize">{note.status ? note.status.replace("_", " ") : "—"}</div>
                               </div>
                             </div>
 
                             <div>
+                              <p className="text-[10px] uppercase font-semibold text-base-content/50">Surgical Findings</p>
+                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1 font-medium">
+                                {note.surgicalFindings?.trim() || "—"}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] uppercase font-semibold text-base-content/50">Procedure Performed</p>
+                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1 font-medium">
+                                {note.procedure?.trim() || "—"}
+                              </p>
+                            </div>
+
+                            <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50">Operative Notes</p>
-                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1">
-                                {note.notes || "—"}
+                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1 font-medium">
+                                {note.notes?.trim() || "—"}
                               </p>
                             </div>
                             
                             <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50">Outcomes</p>
-                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1">
-                                {note.outcomes || "—"}
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] uppercase font-semibold text-base-content/50">Surgical Findings</p>
-                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1">
-                                {note.surgicalFindings || "—"}
+                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1 font-medium">
+                                {note.outcomes?.trim() || "—"}
                               </p>
                             </div>
                             
                             <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50">Complications</p>
                               <p className={`text-sm whitespace-pre-line p-3 rounded-lg mt-1 font-medium ${note.complications ? 'text-error bg-error/10' : 'text-base-content bg-base-200/50'}`}>
-                                {note.complications || "—"}
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] uppercase font-semibold text-base-content/50">Specimens for Histology</p>
-                              <p className="text-sm text-base-content whitespace-pre-line bg-base-200/50 p-3 rounded-lg mt-1">
-                                {note.specimensForHistology?.replace("_", " ") || "—"}
+                                {note.complications?.trim() || "—"}
                               </p>
                             </div>
 
                             <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50 mb-1">Anesthesia Administered</p>
-                              {note.anesthesiaDosages?.length > 0 ? (
+                              {note.anesthesiaDosages?.some(a => a.anesthesiaType || a.dosage || a.anestheticNote || a.anestheticName) ? (
                                 <div className="overflow-x-auto border border-base-200 rounded-lg">
                                   <table className="table table-xs w-full">
                                     <thead>
                                       <tr className="bg-base-200/50">
+                                        <th className="font-semibold text-base-content/70 w-8">#</th>
                                         <th className="font-semibold text-base-content/70">Type</th>
-                                        <th className="font-semibold text-base-content/70">Name</th>
                                         <th className="font-semibold text-base-content/70">Dosage</th>
                                         <th className="font-semibold text-base-content/70">Notes</th>
                                       </tr>
@@ -316,41 +362,43 @@ const SurgeonNoteHistory = () => {
                                     <tbody>
                                       {note.anesthesiaDosages.map((a, i) => (
                                         <tr key={i} className="border-b border-base-200 last:border-0">
-                                          <td>{a.anesthesiaType || "—"}</td>
-                                          <td>{a.anestheticName || "—"}</td>
+                                          <td className="font-mono text-base-content/50">{i + 1}</td>
+                                          <td className="font-medium">{a.anesthesiaType || "—"}</td>
                                           <td>{a.dosage || "—"}</td>
-                                          <td>{a.anestheticNote || "—"}</td>
+                                          <td>{a.anestheticNote || a.anestheticName || "—"}</td>
                                         </tr>
                                       ))}
                                     </tbody>
                                   </table>
                                 </div>
                               ) : (
-                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg">No anesthesia recorded</p>
+                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg font-mono">—</p>
                               )}
                             </div>
 
                             <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50 mb-1">Theatre Vitals</p>
-                              {note.vitalSigns?.length > 0 ? (
+                              {note.vitalSigns?.some(v => v.bloodPressure || v.heartRate || v.respiratoryRate || v.temperature || v.oxygenSaturation) ? (
                                 <div className="overflow-x-auto border border-base-200 rounded-lg">
                                   <table className="table table-xs w-full">
                                     <thead>
                                       <tr className="bg-base-200/50">
-                                        <th className="font-semibold text-base-content/70">BP</th>
-                                        <th className="font-semibold text-base-content/70">HR</th>
-                                        <th className="font-semibold text-base-content/70">Resp</th>
-                                        <th className="font-semibold text-base-content/70">Temp</th>
-                                        <th className="font-semibold text-base-content/70">SpO2</th>
+                                        <th className="font-semibold text-base-content/70">#</th>
+                                        <th className="font-semibold text-base-content/70">Blood Pressure (mmHg)</th>
+                                        <th className="font-semibold text-base-content/70">Heart Rate (bpm)</th>
+                                        <th className="font-semibold text-base-content/70">Resp. Rate (bpm)</th>
+                                        <th className="font-semibold text-base-content/70">Temperature (°C)</th>
+                                        <th className="font-semibold text-base-content/70">Oxygen (SpO2 %)</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {note.vitalSigns.map((v, i) => (
-                                        <tr key={i} className="border-b border-base-200 last:border-0">
-                                          <td>{v.bloodPressure || "—"}</td>
-                                          <td>{v.heartRate || "—"}</td>
-                                          <td>{v.respiratoryRate || "—"}</td>
-                                          <td>{v.temperature ? `${v.temperature}°C` : "—"}</td>
+                                        <tr key={i} className="border-b border-base-200 last:border-0 font-mono">
+                                          <td className="text-base-content/50 font-sans">Reading #{i + 1}</td>
+                                          <td className="font-bold text-base-content">{v.bloodPressure || "—"}</td>
+                                          <td>{v.heartRate ? `${v.heartRate} bpm` : "—"}</td>
+                                          <td>{v.respiratoryRate ? `${v.respiratoryRate} bpm` : "—"}</td>
+                                          <td>{v.temperature ? `${v.temperature} °C` : "—"}</td>
                                           <td>{v.oxygenSaturation ? `${v.oxygenSaturation}%` : "—"}</td>
                                         </tr>
                                       ))}
@@ -358,65 +406,145 @@ const SurgeonNoteHistory = () => {
                                   </table>
                                 </div>
                               ) : (
-                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg">No vitals recorded</p>
+                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg font-mono">—</p>
                               )}
                             </div>
 
                             <div>
-                              <p className="text-[10px] uppercase font-semibold text-base-content/50 mb-1">Post Operative Assessment</p>
-                              {note.postOperativeAssessment?.length > 0 ? (
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] uppercase font-semibold text-base-content/50">Post Operative Medications</p>
+                                {modalLoading && (
+                                  <span className="flex items-center gap-1 text-[11px] text-primary">
+                                    <span className="loading loading-spinner loading-xs" /> Updating...
+                                  </span>
+                                )}
+                              </div>
+                              {(note.postOperativeAssessment || note.postOperativeAssessments)?.some(p => (p.medication && p.medication.trim()) || p.drugName) ? (
                                 <div className="overflow-x-auto border border-base-200 rounded-lg">
                                   <table className="table table-xs w-full">
                                     <thead>
-                                      <tr className="bg-base-200/50">
-                                        <th className="font-semibold text-base-content/70">Medication</th>
+                                      <tr className="bg-base-200/50 text-base-content/70">
+                                        <th className="font-semibold w-8">#</th>
+                                        <th className="font-semibold">Medication</th>
+                                        <th className="font-semibold">Dosage</th>
+                                        <th className="font-semibold">Frequency</th>
+                                        <th className="font-semibold">Duration</th>
+                                        <th className="font-semibold">Instructions</th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {note.postOperativeAssessment.map((p, i) => (
-                                        <tr key={i} className="border-b border-base-200 last:border-0">
-                                          <td>{p.medication || "—"}</td>
-                                        </tr>
-                                      ))}
+                                      {(note.postOperativeAssessment || note.postOperativeAssessments)
+                                        .filter((p) => p && ((p.medication && p.medication.trim()) || p.drugName))
+                                        .map((p, i) => {
+                                          const raw = p.medication || p.drugName || "";
+                                          const parsed = parseMedicationString(raw);
+                                          const drugName = p.drugName || parsed.drugName || raw || "—";
+                                          const dosage = p.dosage || (p.dosageAmount ? `${p.dosageAmount} ${p.dosageUnit || ''}`.trim() : parsed.dosage) || "—";
+                                          const frequency = p.frequency || parsed.frequency || "—";
+                                          const duration = p.duration || parsed.duration || "—";
+                                          const instructions = p.instructions || parsed.instructions || "—";
+
+                                          return (
+                                            <tr key={i} className="border-b border-base-200 last:border-0 hover:bg-base-200/30">
+                                              <td className="font-mono text-base-content/50">{i + 1}</td>
+                                              <td className="font-bold text-base-content">{drugName}</td>
+                                              <td className="font-mono font-medium">{dosage}</td>
+                                              <td>
+                                                {frequency !== "—" ? (
+                                                  <span className="badge badge-sm badge-outline font-semibold uppercase">{frequency}</span>
+                                                ) : (
+                                                  "—"
+                                                )}
+                                              </td>
+                                              <td>{duration}</td>
+                                              <td>
+                                                {instructions !== "—" ? (
+                                                  <span className="badge badge-sm badge-ghost text-base-content/80 capitalize">{instructions}</span>
+                                                ) : (
+                                                  "—"
+                                                )}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
                                     </tbody>
                                   </table>
                                 </div>
                               ) : (
-                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg">No post operative assessment recorded</p>
+                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg font-mono">—</p>
                               )}
                             </div>
 
                             <div>
                               <p className="text-[10px] uppercase font-semibold text-base-content/50 mb-1">Baby Assessment</p>
-                              {note.babyAssessment?.length > 0 ? (
-                                <div className="overflow-x-auto border border-base-200 rounded-lg">
-                                  <table className="table table-xs w-full">
-                                    <thead>
-                                      <tr className="bg-base-200/50">
-                                        <th className="font-semibold text-base-content/70">Sex</th>
-                                        <th className="font-semibold text-base-content/70">Weight</th>
-                                        <th className="font-semibold text-base-content/70">Condition</th>
-                                        <th className="font-semibold text-base-content/70">APGAR (1 min)</th>
-                                        <th className="font-semibold text-base-content/70">APGAR (5 min)</th>
-                                        <th className="font-semibold text-base-content/70">APGAR (10 min)</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {note.babyAssessment.map((b, i) => (
-                                        <tr key={i} className="border-b border-base-200 last:border-0">
-                                          <td className="capitalize">{b.sex || "—"}</td>
-                                          <td>{b.weight || "—"}</td>
-                                          <td>{b.condition || "—"}</td>
-                                          <td>{b.apgarScore1Min || "—"}</td>
-                                          <td>{b.apgarScore5Min || "—"}</td>
-                                          <td>{b.apgarScore10Min || "—"}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                              {note.babyAssessment?.some(b => b.weight || b.length || b.headCircumference || b.abdominalCircumference || b.randomBloodSugar || b.vitalSign || b.deformity || b.deliveryTime || (b.apgarScore && Object.values(b.apgarScore).some(val => val !== undefined && val !== null && val !== ''))) ? (
+                                <div className="space-y-3">
+                                  {note.babyAssessment.map((b, i) => {
+                                    const apgarTotal = b.apgarScore
+                                      ? [b.apgarScore.appearance, b.apgarScore.pulse, b.apgarScore.grimace, b.apgarScore.activity, b.apgarScore.respiration]
+                                          .filter(val => typeof val === 'number')
+                                          .reduce((acc, curr) => acc + curr, 0)
+                                      : null;
+
+                                    return (
+                                      <div key={i} className="p-3.5 rounded-lg border border-base-200 bg-base-200/30 space-y-3">
+                                        <div className="flex items-center justify-between border-b border-base-200 pb-1.5">
+                                          <span className="text-xs font-bold text-base-content/70 uppercase">Baby #{i + 1}</span>
+                                          {apgarTotal !== null && (
+                                            <span className="badge badge-sm badge-primary font-bold">APGAR: {apgarTotal} / 10</span>
+                                          )}
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Delivery Time</span>
+                                            <span className="font-semibold">{b.deliveryTime ? formatNigeriaDate(b.deliveryTime) : "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Weight</span>
+                                            <span className="font-semibold">{b.weight ? `${b.weight} kg` : "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Length</span>
+                                            <span className="font-semibold">{b.length ? `${b.length} cm` : "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Head Circ.</span>
+                                            <span className="font-semibold">{b.headCircumference ? `${b.headCircumference} cm` : "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Abdominal Circ.</span>
+                                            <span className="font-semibold">{b.abdominalCircumference ? `${b.abdominalCircumference} cm` : "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Blood Sugar (RBS)</span>
+                                            <span className="font-semibold">{b.randomBloodSugar ? `${b.randomBloodSugar} mg/dL` : "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Vital Signs</span>
+                                            <span className="font-semibold">{b.vitalSign || "—"}</span>
+                                          </div>
+                                          <div>
+                                            <span className="text-base-content/50 block font-medium">Deformity</span>
+                                            <span className="font-semibold">{b.deformity || "—"}</span>
+                                          </div>
+                                        </div>
+
+                                        {b.apgarScore && (
+                                          <div className="text-[11px] pt-1 border-t border-base-200 text-base-content/70 flex flex-wrap gap-x-3 gap-y-1">
+                                            <span><strong>Appearance:</strong> {b.apgarScore.appearance ?? "—"}</span>
+                                            <span><strong>Pulse:</strong> {b.apgarScore.pulse ?? "—"}</span>
+                                            <span><strong>Grimace:</strong> {b.apgarScore.grimace ?? "—"}</span>
+                                            <span><strong>Activity:</strong> {b.apgarScore.activity ?? "—"}</span>
+                                            <span><strong>Respiration:</strong> {b.apgarScore.respiration ?? "—"}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ) : (
-                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg">No baby assessment recorded</p>
+                                <p className="text-sm text-base-content/50 bg-base-200/50 p-3 rounded-lg font-mono">—</p>
                               )}
                             </div>
                           </div>

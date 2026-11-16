@@ -428,3 +428,80 @@ export function calculatePrescriptionLine({
     isSingleUnit: false,
   };
 }
+
+/**
+ * Parses freeform or delimited prescription string into structured components.
+ * Example: "Vitamin C, 100 mg, tds, (after meal)"
+ * Output: { drugName: 'Vitamin C', dosage: '100 mg', frequency: 'tds', duration: '', instructions: 'after meal' }
+ */
+export function parseMedicationString(medStr) {
+  if (!medStr || typeof medStr !== 'string') {
+    return { drugName: '', dosage: '', frequency: '', duration: '', instructions: '' };
+  }
+
+  const delimiter = medStr.includes('|') ? '|' : ',';
+  const rawParts = medStr.split(delimiter).map((s) => s.trim()).filter(Boolean);
+
+  if (rawParts.length <= 1) {
+    return { drugName: medStr.trim(), dosage: '', frequency: '', duration: '', instructions: '' };
+  }
+
+  const result = {
+    drugName: rawParts[0] || '',
+    dosage: '',
+    frequency: '',
+    duration: '',
+    instructions: '',
+  };
+
+  const remaining = rawParts.slice(1);
+  const knownFrequencies = new Set([
+    'stat', 'dly', 'daily', 'b.d', 'bd', 'tds', 't.d.s', 'qds', 'q.d.s',
+    'mane', 'nocte', 'prn', 'alt die', 'hly', '4hly', '6hly', '8hly', '12hly', '24hly'
+  ]);
+
+  for (const part of remaining) {
+    const lower = part.toLowerCase().replace(/[()]/g, '').trim();
+
+    if (part.startsWith('(') && part.endsWith(')')) {
+      result.instructions = part.slice(1, -1).trim();
+      continue;
+    }
+    if (
+      lower.includes('meal') ||
+      lower.includes('food') ||
+      lower.includes('water') ||
+      lower.includes('bedtime') ||
+      lower.includes('empty stomach') ||
+      lower.includes('needed')
+    ) {
+      result.instructions = part.replace(/[()]/g, '').trim();
+      continue;
+    }
+
+    if (lower.startsWith('for ') || /^\d+\s*(day|week|month|yr|year|hr|hour)s?$/i.test(lower)) {
+      result.duration = part.replace(/^for\s+/i, '').trim();
+      continue;
+    }
+
+    if (knownFrequencies.has(lower) || knownFrequencies.has(lower.replace(/\./g, ''))) {
+      result.frequency = part;
+      continue;
+    }
+
+    if (/^\d+(\.\d+)?\s*(mg|g|ml|tablet|tab|cap|capsule|suppository|drop|drops|bottle|iu|ampoule|tube|puffs?)s?$/i.test(lower)) {
+      result.dosage = part;
+      continue;
+    }
+
+    if (!result.dosage && /^\d/.test(part)) {
+      result.dosage = part;
+    } else if (!result.frequency && knownFrequencies.has(lower.replace(/\./g, ''))) {
+      result.frequency = part;
+    } else if (!result.instructions) {
+      result.instructions = part.replace(/[()]/g, '').trim();
+    }
+  }
+
+  return result;
+}

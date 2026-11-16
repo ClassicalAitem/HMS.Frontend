@@ -6,7 +6,7 @@ import CurrentVitalsCard from "@/components/doctor/patient/CurrentVitalsCard";
 import VitalsHistoryTable from "@/components/doctor/patient/VitalsHistoryTable";
 import SendPatientModal from "@/components/modals/SendPatientModal";
 import Sidebar from "@/components/surgeon/dashboard/Sidebar";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   FaProcedures,
   FaUserMd,
@@ -19,14 +19,117 @@ import {
   FaPlus,
   FaTrashAlt,
   FaTimes,
+  FaTint,
+  FaPrescriptionBottleAlt,
+  FaBoxOpen,
 } from "react-icons/fa";
-import { createSurgery, updateSurgery } from "@/services/api/surgeryAPI";
+import { createSurgery, updateSurgery, getSurgeryById } from "@/services/api/surgeryAPI";
 import { getPatientById } from "@/services/api/patientsAPI";
-import { getVitalsByPatient, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
+import { getVitalsByPatient, createVital, normalizeVitalsResponse, getLatestVital, sortVitalsByTime } from "@/services/api/vitalsAPI";
 import { getAllAppointments } from "@/services/api/appointmentsAPI";
+import { getInventories } from "@/services/api/inventoryAPI";
+import { createPrescription } from "@/services/api/prescriptionsAPI";
+import { buildDurationString, hasConcentrationData, parseMedicationString } from "@/utils/prescriptionsCalculator";
+import BloodTransfusionTab from "@/components/admitted/BloodTransfusionTab";
 import avatarImg from "@/assets/images/incomingLogo.jpg";
 import toast from "react-hot-toast";
 import PatientHeaderActions from "@/components/doctor/patient/PatientHeaderActions";
+
+const ORAL_FREQUENCIES = ['STAT', 'dly', 'b.d', 'tds', 'qds', 'mane', 'nocte', 'prn', 'alt die'];
+const INJECTION_FREQUENCIES = ['STAT', 'dly', 'hly', '4hly', '6hly', '8hly', '12hly', '24hly', 'mane', 'nocte', 'prn'];
+
+const MEDICATION_TABS = [
+  { value: 'tablet', label: 'Tab/Cap', icon: FaPills },
+  { value: 'syrup', label: 'Syr/Susp', icon: FaPrescriptionBottleAlt },
+  { value: 'sublingual', label: 'Sublingual', icon: FaPills },
+  { value: 'rectal', label: 'Rectal Form', icon: FaBoxOpen },
+  { value: 'subcutaneous', label: 'Subcutaneous', icon: FaSyringe },
+  { value: 'gutt', label: 'Gutt', icon: FaTint },
+  { value: 'cream', label: 'Cream', icon: FaBoxOpen },
+  { value: 'infusion', label: 'Infusion', icon: FaTint },
+  { value: 'injection', label: 'Injection', icon: FaSyringe },
+];
+
+const getUnitOptions = (medicationType, selectedDrug) => {
+  const hasConcentration = hasConcentrationData(selectedDrug);
+
+  if (medicationType === 'tablet' || medicationType === 'sublingual') {
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'tablet', label: 'tablet(s)/cap(s)' }]
+      : [{ value: 'tablet', label: 'tablet(s)/cap(s)' }];
+  }
+  if (medicationType === 'rectal') {
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'suppository', label: 'suppository' }, { value: 'enema', label: 'enema' }, { value: 'piece', label: 'piece(s)' }, { value: 'tablet', label: 'tablet(s)' }]
+      : [{ value: 'suppository', label: 'suppository' }, { value: 'enema', label: 'enema' }, { value: 'piece', label: 'piece(s)' }, { value: 'tablet', label: 'tablet(s)' }];
+  }
+  if (medicationType === 'syrup') {
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'ml', label: 'ml' }]
+      : [{ value: 'ml', label: 'ml' }];
+  }
+  if (medicationType === 'gutt') return [{ value: 'bottle', label: 'bottle(s)' }, { value: 'ml', label: 'drops' }];
+  if (medicationType === 'infusion') return [{ value: 'ml', label: 'ml' }];
+  if (medicationType === 'cream') {
+    return hasConcentration
+      ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, { value: 'tube', label: 'tube(s)' }]
+      : [{ value: 'tube', label: 'tube(s)' }];
+  }
+  if (medicationType === 'injection' || medicationType === 'subcutaneous') {
+    const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
+    const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
+    return hasConcentration ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, physicalOpt] : [physicalOpt];
+  }
+  return [{ value: 'unit', label: 'unit' }];
+};
+
+const matchesMedicationType = (drug, medicationType) => {
+  const form = (drug.form || '').toLowerCase();
+  if (!form) return false;
+
+  if (medicationType === 'tablet') {
+    return form.includes('tablet') || form.includes('caplet') || form.includes('capsule') || form.includes('suppository') || form.includes('implant') || form.includes('powder') || form.includes('granules') || form.includes('enema');
+  }
+  if (medicationType === 'sublingual') {
+    return form.includes('sublingual') || form.includes('buccal') || form.includes('lozenge') || form.includes('tablet');
+  }
+  if (medicationType === 'rectal') {
+    return form.includes('rectal') || form.includes('suppository') || form.includes('enema') || form.includes('pessary');
+  }
+  if (medicationType === 'syrup') {
+    return form.includes('syrup') || form.includes('suspension') || (form.includes('solution') && !form.includes('topical') && !form.includes('nebulizer')) || form.includes('oral gel');
+  }
+  if (medicationType === 'cream') {
+    return form.includes('cream') || form.includes('ointment') || form.includes('gel') || form.includes('lotion') || form.includes('shampoo') || form.includes('lacquer') || form.includes('preparation');
+  }
+  if (medicationType === 'gutt') {
+    return form.includes('drop') || form.includes('spray') || form.includes('inhaler') || form.includes('inhalation') || form.includes('nebulizer') || form.includes('gutt') || form.includes('mouthwash') || form.includes('gas');
+  }
+  if (medicationType === 'injection') {
+    return form.includes('injection');
+  }
+  if (medicationType === 'subcutaneous') {
+    return form.includes('subcutaneous') || form.includes('sc') || form.includes('injection') || form.includes('vial') || form.includes('ampoule');
+  }
+  if (medicationType === 'infusion') {
+    return form.includes('infusion');
+  }
+  return false;
+};
+
+const initialPrescription = {
+  medicationType: 'tablet',
+  drugName: '',
+  dosageAmount: '',
+  dosageUnit: 'tablet',
+  frequency: '',
+  durationAmount: '',
+  durationUnit: 'day',
+  instructions: '',
+  inventoryId: null,
+  availability: 'available',
+  _selectedDrug: null,
+};
 
 
 const initialApgarScore = {
@@ -107,11 +210,15 @@ const CreateSurgicalNote = () => {
   const { investigationRequestId: paramInvestigationRequestId, consultationId, patientId: paramPatientId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const querySurgeryId = searchParams.get('surgeryId') || searchParams.get('id');
+  const queryPatientId = searchParams.get('patientId');
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
   const appointmentSnapshot = location?.state?.appointmentSnapshot;
-  const editSurgery = location?.state?.editSurgery || null;
-  const isEditMode = !!editSurgery;
+  const [loadedSurgery, setLoadedSurgery] = useState(location?.state?.editSurgery || null);
+  const editSurgery = loadedSurgery;
+  const isEditMode = !!editSurgery || !!querySurgeryId;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen((v) => !v);
@@ -119,6 +226,7 @@ const CreateSurgicalNote = () => {
 
   const initialPatientId =
     paramPatientId ||
+    queryPatientId ||
     location?.state?.patientId ||
     appointmentSnapshot?.patientId ||
     (appointmentSnapshot?.patient && (appointmentSnapshot.patient.id || appointmentSnapshot.patient._id)) ||
@@ -136,6 +244,21 @@ const CreateSurgicalNote = () => {
   const [vitalsLoading, setVitalsLoading] = useState(false);
   const [vitals, setVitals] = useState([]);
   const [sortedVitals, setSortedVitals] = useState([]);
+
+  // Record vitals modal state (for theatre/surgery room)
+  const [isRecordVitalsOpen, setIsRecordVitalsOpen] = useState(false);
+  const [recordVitalsLoading, setRecordVitalsLoading] = useState(false);
+  const [recordVitalsError, setRecordVitalsError] = useState("");
+  const [recordVitalsForm, setRecordVitalsForm] = useState({
+    bp: "",
+    pulse: "",
+    temperature: "",
+    spo2: "",
+    respiratoryRate: "",
+    weight: "",
+    height: "",
+    notes: "",
+  });
 
   const dependantId = location?.state?.dependantId || appointmentSnapshot?.dependantId || null;
   const dependantSnapshot = location?.state?.dependantSnapshot || appointmentSnapshot?.dependant || null;
@@ -158,30 +281,33 @@ const CreateSurgicalNote = () => {
     return () => { mounted = false; };
   }, [patientId]);
 
-  useEffect(() => {
-    if (!patientId) return;
-    let mounted = true;
+  const fetchPatientVitals = async (targetId) => {
+    const pid = targetId || patientId || initialPatientId;
+    if (!pid) return;
     setVitalsLoading(true);
-    getVitalsByPatient(patientId)
-      .then((response) => {
-        const list = normalizeVitalsResponse(response)
-          .filter((vital) => (isViewingDependant ? vital.dependantId === dependantId : !vital.dependantId));
-        if (mounted) {
-          setVitals(list);
-          setLatestVital(getLatestVital(list));
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          setVitals([]);
-          setLatestVital(null);
-        }
-      })
-      .finally(() => {
-        if (mounted) setVitalsLoading(false);
-      });
-    return () => { mounted = false; };
-  }, [patientId, dependantId, isViewingDependant]);
+    try {
+      const response = await getVitalsByPatient(pid);
+      const list = normalizeVitalsResponse(response)
+        .filter((vital) => (isViewingDependant ? vital.dependantId === dependantId : !vital.dependantId));
+      setVitals(list);
+      const latest = getLatestVital(list);
+      setLatestVital(latest);
+      return latest;
+    } catch (err) {
+      console.error("[SurgicalNote] Error fetching vitals:", err);
+      setVitals([]);
+      setLatestVital(null);
+      return null;
+    } finally {
+      setVitalsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const pid = patientId || initialPatientId;
+    if (!pid) return;
+    fetchPatientVitals(pid);
+  }, [patientId, initialPatientId, dependantId, isViewingDependant]);
 
   useEffect(() => {
     if (vitals.length > 0) {
@@ -242,6 +368,52 @@ const CreateSurgicalNote = () => {
     return () => { mounted = false; };
   }, []);
 
+  const [activeMainTab, setActiveMainTab] = useState("surgical_note");
+  const [prescriptions, setPrescriptions] = useState([{ ...initialPrescription }]);
+  const [drugList, setDrugList] = useState([]);
+  const [drugDropdownIndex, setDrugDropdownIndex] = useState(null);
+  const [drugSearch, setDrugSearch] = useState("");
+  const drugWrapperRef = React.useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getInventories()
+      .then((res) => {
+        const list = Array.isArray(res?.data) ? res.data : (res?.data?.data ?? res ?? []);
+        if (mounted) setDrugList(Array.isArray(list) ? list : []);
+      })
+      .catch((err) => console.error('[SurgicalNote] Error fetching inventories:', err));
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (drugWrapperRef.current && !drugWrapperRef.current.contains(e.target)) {
+        setDrugDropdownIndex(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  useEffect(() => {
+    if (!querySurgeryId || loadedSurgery) return;
+    let mounted = true;
+    getSurgeryById(querySurgeryId)
+      .then((res) => {
+        if (!mounted) return;
+        const s = res?.data?.data ?? res?.data ?? res;
+        if (s && (s._id || s.id)) {
+          setLoadedSurgery(s);
+          const pId = s.patientId || s.opdPatientId || s.dependantId;
+          if (pId && !patientId) setPatientId(pId);
+          if (s.patient && !patient) setPatient(s.patient);
+        }
+      })
+      .catch((err) => console.error("[WriteSurgicalNote] Error loading surgery by ID:", err));
+    return () => { mounted = false; };
+  }, [querySurgeryId, loadedSurgery, patientId, patient]);
+
   useEffect(() => {
     if (!editSurgery) return;
     setForm((prev) => ({
@@ -259,7 +431,13 @@ const CreateSurgicalNote = () => {
       outcomes: editSurgery.outcomes || "",
       surgeonTeam: editSurgery.surgeonTeam?.length ? editSurgery.surgeonTeam : [{ surgeonName: "" }],
       surgeonAssistants: editSurgery.surgeonAssistants?.length ? editSurgery.surgeonAssistants : [{ assistantName: "" }],
-      anesthesiaDosages: editSurgery.anesthesiaDosages?.length ? editSurgery.anesthesiaDosages : [{ anesthesiaType: "", dosage: "", anestheticName: "", anestheticNote: "" }],
+      anesthesiaDosages: editSurgery.anesthesiaDosages?.length
+        ? editSurgery.anesthesiaDosages.map(a => ({
+            anesthesiaType: a.anesthesiaType || "",
+            dosage: a.dosage || "",
+            anestheticNote: a.anestheticNote || "",
+          }))
+        : [{ anesthesiaType: "", dosage: "", anestheticNote: "" }],
       vitalSigns: editSurgery.vitalSigns?.length ? editSurgery.vitalSigns : [{
         bloodPressure: '', heartRate: '', respiratoryRate: '', temperature: '', oxygenSaturation: '',
       }],
@@ -270,9 +448,33 @@ const CreateSurgicalNote = () => {
       swabUsed: editSurgery.swabsUsed ?? '',
       specimensForHistology: editSurgery.specimensForHistology || "not_sent",
       surgicalFindings: editSurgery.surgicalFindings || "",
+      procedure: editSurgery.procedure || "",
       showBaby: !!editSurgery.babyAssessment?.length,
     }));
     setProcedureSearch(editSurgery.procedureName || "");
+
+    if (editSurgery.postOperativeAssessment?.length) {
+      const existingMeds = editSurgery.postOperativeAssessment
+        .filter((p) => p && (p.medication || p.drugName))
+        .map((p) => {
+          const raw = p.medication || p.drugName || "";
+          const parsed = parseMedicationString(raw);
+          const dosageMatch = parsed.dosage ? parsed.dosage.match(/^([\d.]+)\s*(.*)$/) : null;
+          const durationMatch = parsed.duration ? parsed.duration.match(/^([\d.]+)\s*(.*)$/) : null;
+
+          return {
+            ...initialPrescription,
+            drugName: parsed.drugName || raw,
+            dosageAmount: dosageMatch ? dosageMatch[1] : (parsed.dosage || ""),
+            dosageUnit: dosageMatch && dosageMatch[2] ? dosageMatch[2].toLowerCase() : 'tablet',
+            frequency: parsed.frequency || '',
+            durationAmount: durationMatch ? durationMatch[1] : (parsed.duration || ''),
+            durationUnit: durationMatch && durationMatch[2] ? durationMatch[2].toLowerCase().replace(/s$/, '') : 'day',
+            instructions: parsed.instructions || '',
+          };
+        });
+      setPrescriptions(existingMeds.length ? existingMeds : [{ ...initialPrescription }]);
+    }
   }, [editSurgery]);
 
   useEffect(() => {
@@ -332,6 +534,15 @@ const CreateSurgicalNote = () => {
     };
   }, [dependantId, dependantSnapshot, isViewingDependant, patient, patientId, patientName]);
 
+  const effectivePatientId = useMemo(() => (
+    patientId ||
+    patient?.id ||
+    patient?._id ||
+    appointmentSnapshot?.patientId ||
+    (appointmentSnapshot?.patient && (appointmentSnapshot.patient.id || appointmentSnapshot.patient._id)) ||
+    summarySubject?.id
+  ), [patientId, patient, appointmentSnapshot, summarySubject]);
+
   const [form, setForm] = useState({
     procedureName: "",
     procedureCode: "",
@@ -344,7 +555,7 @@ const CreateSurgicalNote = () => {
     outcomes: "",
     surgeonTeam: [{ surgeonName: "" }],
     surgeonAssistants: [{ assistantName: "" }],
-    anesthesiaDosages: [{ anesthesiaType: "", dosage: "", anestheticName: "", anestheticNote: "" }],
+    anesthesiaDosages: [{ anesthesiaType: "", dosage: "", anestheticNote: "" }],
     vitalSigns: [{
       bloodPressure: '',
       heartRate: '',
@@ -359,8 +570,179 @@ const CreateSurgicalNote = () => {
     swabUsed: '',
     specimensForHistology: "not_sent",
     surgicalFindings: "",
+    procedure: "",
     showBaby: false,
   });
+
+  // Handle submitting vitals recorded in surgery / theatre room
+  const handleRecordVitalsSubmit = async (e) => {
+    e.preventDefault();
+    setRecordVitalsError("");
+
+    const hasReading =
+      recordVitalsForm.bp ||
+      recordVitalsForm.pulse ||
+      recordVitalsForm.temperature ||
+      recordVitalsForm.spo2 ||
+      recordVitalsForm.respiratoryRate ||
+      recordVitalsForm.weight ||
+      recordVitalsForm.height;
+
+    if (!hasReading) {
+      setRecordVitalsError("Please enter at least one vital sign measurement.");
+      return;
+    }
+
+    setRecordVitalsLoading(true);
+    try {
+      const targetId = effectivePatientId || patientId || initialPatientId;
+      const payload = {
+        patientId: targetId,
+        dependantId: dependantId || undefined,
+        consultationId: consultationId || undefined,
+        bp: recordVitalsForm.bp ? recordVitalsForm.bp.trim() : undefined,
+        pulse: recordVitalsForm.pulse ? Number(recordVitalsForm.pulse) : undefined,
+        temperature: recordVitalsForm.temperature ? Number(recordVitalsForm.temperature) : undefined,
+        spo2: recordVitalsForm.spo2 ? Number(recordVitalsForm.spo2) : undefined,
+        respiratoryRate: recordVitalsForm.respiratoryRate ? Number(recordVitalsForm.respiratoryRate) : undefined,
+        weight: recordVitalsForm.weight ? Number(recordVitalsForm.weight) : undefined,
+        height: recordVitalsForm.height ? Number(recordVitalsForm.height) : undefined,
+        notes: recordVitalsForm.notes ? recordVitalsForm.notes.trim() : "Recorded in Theatre / Surgery room",
+      };
+
+      await createVital(payload);
+
+      // Auto-sync into theatre vital signs form immediately
+      const bp = recordVitalsForm.bp ? recordVitalsForm.bp.trim() : "";
+      const hr = recordVitalsForm.pulse ? String(recordVitalsForm.pulse) : "";
+      const rr = recordVitalsForm.respiratoryRate ? String(recordVitalsForm.respiratoryRate) : "";
+      const temp = recordVitalsForm.temperature ? String(recordVitalsForm.temperature) : "";
+      const o2 = recordVitalsForm.spo2 ? String(recordVitalsForm.spo2) : "";
+
+      setForm((prev) => {
+        const existing = prev.vitalSigns || [];
+        const updatedFirst = {
+          bloodPressure: bp || existing[0]?.bloodPressure || "",
+          heartRate: hr || existing[0]?.heartRate || "",
+          respiratoryRate: rr || existing[0]?.respiratoryRate || "",
+          temperature: temp || existing[0]?.temperature || "",
+          oxygenSaturation: o2 || existing[0]?.oxygenSaturation || "",
+        };
+        return {
+          ...prev,
+          vitalSigns: [updatedFirst, ...existing.slice(1)],
+        };
+      });
+
+      await fetchPatientVitals(targetId);
+
+      toast.success("Vitals recorded and auto-synced to surgery notes!");
+      setIsRecordVitalsOpen(false);
+      setRecordVitalsForm({
+        bp: "",
+        pulse: "",
+        temperature: "",
+        spo2: "",
+        respiratoryRate: "",
+        weight: "",
+        height: "",
+        notes: "",
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || "Failed to record vitals";
+      setRecordVitalsError(msg);
+      toast.error(msg);
+    } finally {
+      setRecordVitalsLoading(false);
+    }
+  };
+
+  // Auto-sync theatre vitals on initial load or whenever latest vitals change
+  useEffect(() => {
+    if (isEditMode) return;
+    const v = enrichedLatest || latestVital;
+    if (!v) return;
+
+    const bp = v.bp || v.bloodPressure || '';
+    const hr = v.pulse ? String(v.pulse) : (v.heartRate ? String(v.heartRate) : '');
+    const rr = v.respiratoryRate ? String(v.respiratoryRate) : '';
+    const temp = v.temperature ? String(v.temperature) : '';
+    const o2 = v.spo2 ? String(v.spo2) : (v.oxygenSaturation ? String(v.oxygenSaturation) : '');
+
+    if (!bp && !hr && !rr && !temp && !o2) return;
+
+    setForm((prev) => {
+      const existing = prev.vitalSigns || [];
+      const first = existing[0] || {};
+      const isFirstEmpty = !first.bloodPressure && !first.heartRate && !first.respiratoryRate && !first.temperature && !first.oxygenSaturation;
+      if (!isFirstEmpty) return prev;
+
+      return {
+        ...prev,
+        vitalSigns: [{
+          bloodPressure: bp,
+          heartRate: hr,
+          respiratoryRate: rr,
+          temperature: temp,
+          oxygenSaturation: o2,
+        }, ...(prev.vitalSigns?.slice(1) || [])],
+      };
+    });
+  }, [enrichedLatest, latestVital, isEditMode]);
+
+  // Prescription field handlers for post-operative recovery
+  const handlePrescriptionChange = (idx, field, value) => {
+    setPrescriptions((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleSelectDrug = (idx, drug) => {
+    const medType = prescriptions[idx]?.medicationType || 'tablet';
+    const opts = getUnitOptions(medType, drug);
+    setPrescriptions((prev) =>
+      prev.map((item, i) =>
+        i === idx
+          ? {
+              ...item,
+              drugName: drug.name,
+              inventoryId: drug._id || drug.id,
+              availability: 'available',
+              _selectedDrug: drug,
+              dosageUnit: opts[0]?.value || item.dosageUnit || '',
+            }
+          : item
+      )
+    );
+    setDrugDropdownIndex(null);
+    setDrugSearch('');
+  };
+
+  const handleSelectUnavailableDrug = (idx, customName) => {
+    setPrescriptions((prev) =>
+      prev.map((item, i) =>
+        i === idx
+          ? {
+              ...item,
+              drugName: customName,
+              inventoryId: null,
+              availability: 'unavailable',
+              _selectedDrug: null,
+            }
+          : item
+      )
+    );
+    setDrugDropdownIndex(null);
+    setDrugSearch('');
+  };
+
+  const addPrescriptionRow = () => {
+    setPrescriptions((prev) => [...prev, { ...initialPrescription }]);
+  };
+
+  const removePrescriptionRow = (idx) => {
+    setPrescriptions((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   useEffect(() => {
     if (!appointmentSnapshot) return;
@@ -508,21 +890,36 @@ const CreateSurgicalNote = () => {
       return;
     }
 
+    // Prepare post-operative medications summary from prescriptions
+    const validPrescriptions = prescriptions.filter(p => p.drugName && p.drugName.trim());
+    const formattedPostOps = validPrescriptions.map(p => {
+      const durationStr = p.durationAmount
+        ? `${p.durationAmount} ${p.durationUnit}${Number(p.durationAmount) > 1 ? 's' : ''}`
+        : '';
+      const parts = [
+        p.drugName,
+        p.dosageAmount ? `${p.dosageAmount} ${p.dosageUnit}` : '',
+        p.frequency || '',
+        durationStr ? `for ${durationStr}` : '',
+        p.instructions ? `(${p.instructions})` : ''
+      ].filter(Boolean);
+      return { medication: parts.join(', ') };
+    });
+
     // Prepare payload to match ISurgery
     const payload = {
       ...form,
+      procedure: form.procedure ? form.procedure.trim() : undefined,
       appointmentId: appointmentSnapshot?._id || appointmentSnapshot?.id || undefined,
       patientId: effectivePatientId,
       dependantId: dependantId || undefined,
       surgeonTeam: form.surgeonTeam.filter((s) => s.surgeonName.trim()),
       surgeonAssistants: form.surgeonAssistants.filter((a) => a.assistantName.trim()),
       anesthesiaDosages: form.anesthesiaDosages.map(a => ({
-        ...a,
-        anesthesiaType: a.anesthesiaType.trim(),
-        dosage: a.dosage.trim(),
-        anestheticName: a.anestheticName?.trim(),
-        anestheticNote: a.anestheticNote?.trim()
-      })).filter((a) => a.anesthesiaType || a.dosage || a.anestheticName || a.anestheticNote),
+        anesthesiaType: a.anesthesiaType?.trim() || "",
+        dosage: a.dosage?.trim() || "",
+        anestheticNote: a.anestheticNote?.trim() || "",
+      })).filter((a) => a.anesthesiaType || a.dosage || a.anestheticNote),
       estimatedBloodLoss: form.estimatedBloodLoss ? Number(form.estimatedBloodLoss) : undefined,
       swabUsed: form.swabUsed ? Number(form.swabUsed) : undefined,
       babyAssessment: form.showBaby ? form.babyAssessment.map((b) => ({
@@ -548,27 +945,80 @@ const CreateSurgicalNote = () => {
         temperature: v.temperature ? Number(v.temperature) : undefined,
         oxygenSaturation: v.oxygenSaturation ? Number(v.oxygenSaturation) : undefined,
       })),
-      postOperativeAssessment: form.postOperativeAssessments
-        .filter((m) => m.medication?.trim())
-        .map((m) => ({ medication: m.medication.trim() })),
+      postOperativeAssessment: formattedPostOps.length
+        ? formattedPostOps
+        : form.postOperativeAssessments
+            .filter((m) => m.medication?.trim())
+            .map((m) => ({ medication: m.medication.trim() })),
     };
 
     try {
-      if (isEditMode) {
-        await updateSurgery(editSurgery._id || editSurgery.id, payload);
+      let surgeryResult = null;
+      const targetSurgeryId = editSurgery?._id || editSurgery?.id || querySurgeryId;
+      if (isEditMode && targetSurgeryId) {
+        surgeryResult = await updateSurgery(targetSurgeryId, payload);
         toast.success("Surgical note updated successfully!");
       } else {
-        await createSurgery(payload);
+        surgeryResult = await createSurgery(payload);
         toast.success("Surgical note submitted successfully!");
       }
 
+      const createdSurgeryId = (
+        surgeryResult?.data?._id ||
+        surgeryResult?.data?.id ||
+        surgeryResult?._id ||
+        surgeryResult?.id ||
+        targetSurgeryId
+      );
+
+      // Create prescription in pharmacy queue if medications were entered
+      if (validPrescriptions.length > 0) {
+        try {
+          const rxMedications = validPrescriptions.map((med) => {
+            const normalizedDuration = buildDurationString(med.durationAmount, med.durationUnit) || (med.durationAmount ? `${med.durationAmount}/7` : '1/7');
+            const dosageUnitLabel = med.dosageUnit === 'tablet'
+              ? (Number(med.dosageAmount) === 1 ? 'tablet' : 'tablets')
+              : (med.dosageUnit || 'tablet');
+            return {
+              medicationType: med.medicationType || 'tablet',
+              drugName: med.drugName.trim(),
+              dosage: `${med.dosageAmount || 1} ${dosageUnitLabel}`,
+              dosageAmount: med.dosageAmount ? Number(med.dosageAmount) : 1,
+              dosageUnit: med.dosageUnit || 'tablet',
+              frequency: med.frequency || 'STAT',
+              duration: normalizedDuration,
+              instructions: med.instructions ? med.instructions.trim() : undefined,
+              inventoryId: med.inventoryId || null,
+              availability: med.availability || 'available',
+              dosesGiven: ['injection', 'subcutaneous'].includes(med.medicationType) ? 0 : undefined,
+              injectionStatus: ['injection', 'subcutaneous'].includes(med.medicationType) ? 'pending' : undefined,
+            };
+          });
+
+          await createPrescription({
+            patientId: effectivePatientId,
+            ...(dependantId ? { dependantId } : {}),
+            ...(consultationId ? { consultationId } : {}),
+            surgeryId: createdSurgeryId,
+            status: 'pending',
+            medications: rxMedications,
+          });
+          toast.success("Post-operative prescriptions sent to pharmacy!");
+        } catch (rxErr) {
+          console.warn("[SurgicalNote] Failed to submit prescription order:", rxErr);
+        }
+      }
+
+      const isFromHistory = location?.state?.from === "history" || !!querySurgeryId;
       navigate(
-        fromIncoming
+        isFromHistory
+          ? '/dashboard/surgeon/surgical-notes'
+          : fromIncoming
           ? '/dashboard/surgeon/incoming'
           : consultationId
           ? `/dashboard/medical-director/medical-history/${effectivePatientId}/consultation/${consultationId}`
-          : '/dashboard/surgeon/incoming',
-        { state: { from: fromIncoming ? "incoming" : "patients", patientSnapshot: patient } },
+          : '/dashboard/surgeon/surgical-notes',
+        { state: { from: fromIncoming ? "incoming" : "history", patientSnapshot: patient } },
       );
     } catch (err) {
       const message = err?.response?.data?.message || err.message;
@@ -609,10 +1059,18 @@ const CreateSurgicalNote = () => {
         <div className="overflow-y-auto flex flex-col gap-4 p-3 sm:p-4 lg:p-5 h-full">
           {/* PAGE HEADER */}
           <PatientHeaderActions
-                      title="Surgical Note"
-                      subtitle="Document the procedure, team, and post-operative care"
-                      fromIncoming={fromIncoming}
-                      onBack={() => navigate(fromIncoming ? "/dashboard/surgeon/incoming" : "/dashboard/surgeon/appointments")}
+            title="Surgical Note"
+            subtitle="Document the procedure, team, and post-operative care"
+            fromIncoming={fromIncoming}
+            onBack={() =>
+              navigate(
+                location?.state?.from === "history" || !!querySurgeryId
+                  ? "/dashboard/surgeon/surgical-notes"
+                  : fromIncoming
+                  ? "/dashboard/surgeon/incoming"
+                  : "/dashboard/surgeon/appointments"
+              )
+            }
           />
 
 
@@ -623,49 +1081,66 @@ const CreateSurgicalNote = () => {
           )}
 
           {/* Patient Info */}
-            <PatientDetailsCard
-              patientId={patientId}
-              patient={patient}
-              summarySubject={summarySubject}
-              isViewingDependant={isViewingDependant}
-            />
+          <PatientDetailsCard
+            patientId={patientId}
+            patient={patient}
+            summarySubject={summarySubject}
+            isViewingDependant={isViewingDependant}
+          />
 
-{/*           
-            <SendPatientModal
-              patientId={patientId}
-              patient={patient}
-              defaultDependantId={dependantId}
-              defaultDependantLabel={summarySubject?.fullName}
-              lockSubject
-              allowedRoles={["nurse", "doctor", "cashier", "hmo"]}
-              onUpdated={() => toast.success("Patient status updated")}
-            />
-      */}
-
-          {/* Vitals Overview */}
-          <div className="grid grid-cols-1 gap-6">
-            <CurrentVitalsCard
-              patient={summarySubject}
-              latest={enrichedLatest}
-              loading={vitalsLoading}
-              buttonHidden={true}
-            />
-            
-            {/* <VitalsHistoryTable 
-              sortedVitals={enrichedVitals} 
-              loading={vitalsLoading}
-              patientName={summarySubject?.fullName || "Patient"}
-              onViewAll={() => navigate(`/dashboard/surgeon/view-vitals/${patientId}`, {
-                state: {
-                  from: fromIncoming ? "incoming" : "patients",
-                  dependantId,
-                  dependantSnapshot: isViewingDependant ? (dependantSnapshot) : null,
-                },
-              })}
-            /> */}
+          {/* Centered Main Tab Switcher */}
+          <div className="flex justify-center w-full my-1">
+            <div className="tabs tabs-boxed bg-base-100 p-1.5 shadow-sm border border-base-200 rounded-2xl gap-2 inline-flex">
+              <button
+                type="button"
+                className={`tab px-6 py-2 rounded-xl font-bold transition-all duration-200 flex items-center gap-2 ${
+                  activeMainTab === 'surgical_note'
+                    ? 'tab-active bg-primary text-white shadow-sm'
+                    : 'hover:bg-base-200 text-base-content/70'
+                }`}
+                onClick={() => setActiveMainTab('surgical_note')}
+              >
+                <FaProcedures className="w-4 h-4" />
+                Surgical Note
+              </button>
+              <button
+                type="button"
+                className={`tab px-6 py-2 rounded-xl font-bold transition-all duration-200 flex items-center gap-2 ${
+                  activeMainTab === 'blood_transfusion'
+                    ? 'tab-active bg-error text-white shadow-sm'
+                    : 'hover:bg-base-200 text-base-content/70'
+                }`}
+                onClick={() => setActiveMainTab('blood_transfusion')}
+              >
+                <FaTint className={`w-4 h-4 ${activeMainTab === 'blood_transfusion' ? 'text-white' : 'text-error'}`} />
+                Blood Transfusion
+              </button>
+            </div>
           </div>
 
-          <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+          {activeMainTab === 'blood_transfusion' ? (
+            <div className="card bg-base-100 border border-base-200 shadow-sm p-4 sm:p-6">
+              <BloodTransfusionTab
+                patientId={effectivePatientId}
+                dependantId={dependantId}
+                consultationId={consultationId}
+                isDoctor={true}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Vitals Overview */}
+              <div className="grid grid-cols-1 gap-6">
+                <CurrentVitalsCard
+                  patient={summarySubject}
+                  latest={enrichedLatest}
+                  loading={vitalsLoading}
+                  onRecordOpen={() => setIsRecordVitalsOpen(true)}
+                  buttonHidden={false}
+                />
+              </div>
+
+              <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             {/* PROCEDURE & SCHEDULING */}
             <SectionCard
               icon={FaProcedures}
@@ -817,28 +1292,49 @@ const CreateSurgicalNote = () => {
             <SectionCard
               icon={FaSyringe}
               title="Anesthesia"
-              subtitle="Type, name, and dosage administered"
+              subtitle="Type and dosage administered"
               tone="secondary"
             >
               <div className="space-y-4">
                 {form.anesthesiaDosages.map((a, i) => (
-                  <div key={i} className="flex flex-col gap-2 p-3 rounded-xl bg-base-200/40 border border-base-200 relative">
+                  <div key={i} className="flex flex-col gap-3 p-3.5 rounded-xl bg-base-200/40 border border-base-200 relative">
                     {form.anesthesiaDosages.length > 1 && (
                       <div className="absolute top-2 right-2">
                         <RemoveRowButton onClick={() => removeFromList('anesthesiaDosages', i)} />
                       </div>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                      <input placeholder="Anesthesia type (e.g. General, Local)" value={a.anesthesiaType || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anesthesiaType')} className="input input-bordered w-full" />
-                      <input placeholder="Dosage" value={a.dosage || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'dosage')} className="input input-bordered w-full" />
-                      <input placeholder="Anesthetic Name" value={a.anestheticName || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anestheticName')} className="input input-bordered w-full" />
-                      <input placeholder="Anesthetic Note" value={a.anestheticNote || ""} onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anestheticNote')} className="input input-bordered w-full" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                      <Field label="Anesthesia Type">
+                        <input
+                          placeholder="e.g. General, Local, Spinal"
+                          value={a.anesthesiaType || ""}
+                          onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anesthesiaType')}
+                          className="input input-bordered w-full"
+                        />
+                      </Field>
+                      <Field label="Dosage">
+                        <input
+                          placeholder="e.g. 50mg, 10ml"
+                          value={a.dosage || ""}
+                          onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'dosage')}
+                          className="input input-bordered w-full"
+                        />
+                      </Field>
+                      <Field label="Anesthetic Note" className="md:col-span-2">
+                        <textarea
+                          placeholder="Enter anesthetic notes or remarks..."
+                          value={a.anestheticNote || ""}
+                          onChange={e => handleListChange('anesthesiaDosages', i, e.target.value, 'anestheticNote')}
+                          className="textarea textarea-bordered w-full"
+                          rows={3}
+                        />
+                      </Field>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-2">
-                <AddRowButton label="Add Anesthesia" onClick={() => addToList('anesthesiaDosages', { anesthesiaType: "", dosage: "", anestheticName: "", anestheticNote: "" })} />
+                <AddRowButton label="Add Anesthesia" onClick={() => addToList('anesthesiaDosages', { anesthesiaType: "", dosage: "", anestheticNote: "" })} />
               </div>
             </SectionCard>
 
@@ -851,19 +1347,82 @@ const CreateSurgicalNote = () => {
             >
               <div className="space-y-3">
                 {form.vitalSigns.map((v, i) => (
-                  <div key={i} className="p-3 rounded-xl bg-base-200/40 border border-base-200">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                      <input name="bloodPressure" placeholder="Blood pressure" value={v.bloodPressure} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'bloodPressure')} className="input input-bordered input-sm" />
-                      <input name="heartRate" placeholder="Heart rate" value={v.heartRate} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'heartRate')} className="input input-bordered input-sm" />
-                      <input name="respiratoryRate" placeholder="Resp. rate" value={v.respiratoryRate} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'respiratoryRate')} className="input input-bordered input-sm" />
-                      <input name="temperature" placeholder="Temperature" value={v.temperature} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'temperature')} className="input input-bordered input-sm" />
-                      <input name="oxygenSaturation" placeholder="O2 saturation" value={v.oxygenSaturation} onChange={e => handleListChange('vitalSigns', i, e.target.value, 'oxygenSaturation')} className="input input-bordered input-sm" />
-                    </div>
-                    {form.vitalSigns.length > 1 && (
-                      <div className="flex justify-end mt-2">
+                  <div key={i} className="p-3.5 rounded-xl bg-base-200/40 border border-base-200 relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-base-content/60 uppercase tracking-wider">
+                        Reading #{i + 1}
+                      </span>
+                      {form.vitalSigns.length > 1 && (
                         <RemoveRowButton onClick={() => removeFromList('vitalSigns', i)} />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                          Blood Pressure (mmHg)
+                        </label>
+                        <input
+                          name="bloodPressure"
+                          placeholder="e.g. 120/80"
+                          value={v.bloodPressure}
+                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'bloodPressure')}
+                          className="input input-bordered input-sm w-full font-mono"
+                        />
                       </div>
-                    )}
+                      <div>
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                          Heart Rate (bpm)
+                        </label>
+                        <input
+                          name="heartRate"
+                          type="number"
+                          placeholder="e.g. 70"
+                          value={v.heartRate}
+                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'heartRate')}
+                          className="input input-bordered input-sm w-full font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                          Resp. Rate (bpm)
+                        </label>
+                        <input
+                          name="respiratoryRate"
+                          type="number"
+                          placeholder="e.g. 20"
+                          value={v.respiratoryRate}
+                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'respiratoryRate')}
+                          className="input input-bordered input-sm w-full font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                          Temperature (°C)
+                        </label>
+                        <input
+                          name="temperature"
+                          type="number"
+                          step="any"
+                          placeholder="e.g. 37.0"
+                          value={v.temperature}
+                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'temperature')}
+                          className="input input-bordered input-sm w-full font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                          Oxygen (SpO2 %)
+                        </label>
+                        <input
+                          name="oxygenSaturation"
+                          type="number"
+                          placeholder="e.g. 98"
+                          value={v.oxygenSaturation}
+                          onChange={e => handleListChange('vitalSigns', i, e.target.value, 'oxygenSaturation')}
+                          className="input input-bordered input-sm w-full font-mono"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -880,6 +1439,17 @@ const CreateSurgicalNote = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="Surgical Findings" className="md:col-span-2">
                   <textarea name="surgicalFindings" value={form.surgicalFindings} onChange={handleChange} className="textarea textarea-bordered w-full" rows={3} />
+                </Field>
+
+                <Field label="Procedure" className="md:col-span-2">
+                  <textarea
+                    name="procedure"
+                    value={form.procedure || ""}
+                    onChange={handleChange}
+                    className="textarea textarea-bordered w-full"
+                    rows={3}
+                    placeholder="Enter detailed surgical procedure performed..."
+                  />
                 </Field>
 
                 <Field label="Estimated Blood Loss (EBL)">
@@ -917,20 +1487,242 @@ const CreateSurgicalNote = () => {
             <SectionCard
               icon={FaPills}
               title="Post-Operative Medications"
-              subtitle="Prescribed for recovery"
+              subtitle="Prescribed for recovery and post-op care"
               tone="accent"
             >
-              <div className="space-y-2">
-                {form.postOperativeAssessments.map((m, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input placeholder="Medication" value={m.medication} onChange={e => handleListChange('postOperativeAssessments', i, e.target.value, 'medication')} className="input input-bordered flex-1" />
-                    {form.postOperativeAssessments.length > 1 && (
-                      <RemoveRowButton onClick={() => removeFromList('postOperativeAssessments', i)} />
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-4">
+                {prescriptions.map((p, idx) => {
+                  const medicationType = p.medicationType || 'tablet';
+                  const unitOptions = getUnitOptions(medicationType, p._selectedDrug);
+                  const isInjectionType = ['injection', 'infusion', 'subcutaneous'].includes(medicationType);
+                  const freqList = isInjectionType ? INJECTION_FREQUENCIES : ORAL_FREQUENCIES;
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3.5 sm:p-4 rounded-xl bg-base-200/40 border border-base-200 relative transition-all"
+                    >
+                      {/* Row Header: Label & Remove */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-base-200">
+                        <div className="flex items-center gap-2">
+                          <span className="badge badge-primary badge-sm font-bold">Rx #{idx + 1}</span>
+                          <span className="text-xs font-semibold text-base-content/70">Medication Category</span>
+                        </div>
+                        {prescriptions.length > 1 && (
+                          <RemoveRowButton onClick={() => removePrescriptionRow(idx)} />
+                        )}
+                      </div>
+
+                      {/* Compact Medication Tabs */}
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {MEDICATION_TABS.map((tab) => {
+                          const Icon = tab.icon;
+                          const active = medicationType === tab.value;
+                          return (
+                            <button
+                              key={tab.value}
+                              type="button"
+                              className={`btn btn-xs gap-1.5 rounded-lg normal-case font-medium transition-all ${
+                                active
+                                  ? 'btn-primary text-white shadow-xs'
+                                  : 'btn-ghost bg-base-100 hover:bg-base-200 border border-base-200 text-base-content/70'
+                              }`}
+                              onClick={() => {
+                                const opts = getUnitOptions(tab.value, null);
+                                handlePrescriptionChange(idx, 'medicationType', tab.value);
+                                handlePrescriptionChange(idx, 'frequency', '');
+                                handlePrescriptionChange(idx, 'drugName', '');
+                                handlePrescriptionChange(idx, '_selectedDrug', null);
+                                handlePrescriptionChange(idx, 'inventoryId', null);
+                                handlePrescriptionChange(idx, 'availability', undefined);
+                                handlePrescriptionChange(idx, 'dosageAmount', '');
+                                handlePrescriptionChange(idx, 'durationAmount', '');
+                                handlePrescriptionChange(idx, 'durationUnit', 'day');
+                                handlePrescriptionChange(idx, 'dosageUnit', opts[0]?.value || '');
+                              }}
+                            >
+                              <Icon className="w-3 h-3" />
+                              <span className="text-xs">{tab.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Fields Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {/* Drug Name Autocomplete */}
+                        <div className="sm:col-span-2 relative" ref={drugDropdownIndex === idx ? drugWrapperRef : null}>
+                          <label className="text-xs font-semibold text-base-content/70 mb-1 block">Drug Name</label>
+                          <input
+                            type="text"
+                            placeholder="Search or enter drug name..."
+                            className="input input-bordered input-sm w-full"
+                            value={drugDropdownIndex === idx ? drugSearch : p.drugName || ""}
+                            onFocus={(e) => {
+                              setDrugDropdownIndex(idx);
+                              setDrugSearch(p.drugName || "");
+                              e.target.select();
+                            }}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setDrugSearch(val);
+                              setDrugDropdownIndex(idx);
+                              handlePrescriptionChange(idx, 'drugName', val);
+                              handlePrescriptionChange(idx, 'inventoryId', null);
+                              handlePrescriptionChange(idx, 'availability', undefined);
+                              handlePrescriptionChange(idx, '_selectedDrug', null);
+                            }}
+                            autoComplete="off"
+                          />
+
+                          {drugDropdownIndex === idx && (
+                            <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-xl max-h-56 overflow-auto">
+                              <ul className="py-1">
+                                {drugList
+                                  .filter((drug) => matchesMedicationType(drug, medicationType))
+                                  .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true))
+                                  .map((drug) => (
+                                    <li
+                                      key={drug._id || drug.id}
+                                      onClick={() => handleSelectDrug(idx, drug)}
+                                      className="px-3 py-2 text-xs hover:bg-base-200 cursor-pointer flex justify-between items-center"
+                                    >
+                                      <div>
+                                        <span className="font-semibold text-base-content">{drug.name}</span>
+                                        {(drug.form || drug.strength) && (
+                                          <span className="text-base-content/50 ml-2">
+                                            {[drug.form, drug.strength].filter(Boolean).join(' - ')}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {drug.stock !== undefined && (
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                          drug.stock > 0 ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+                                        }`}>
+                                          Stock: {drug.stock}
+                                        </span>
+                                      )}
+                                    </li>
+                                  ))}
+
+                                {(() => {
+                                  const matching = drugList
+                                    .filter((drug) => matchesMedicationType(drug, medicationType))
+                                    .filter((drug) => (drugSearch ? drug.name?.toLowerCase().includes(drugSearch.toLowerCase()) : true));
+                                  if (matching.length === 0 && drugSearch.trim()) {
+                                    return (
+                                      <li
+                                        onClick={() => handleSelectUnavailableDrug(idx, drugSearch.trim())}
+                                        className="px-3 py-2 text-xs hover:bg-warning/10 cursor-pointer border-t border-base-200 text-warning font-medium"
+                                      >
+                                        + Prescribe "{drugSearch.trim()}" (not in inventory)
+                                      </li>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </ul>
+                            </div>
+                          )}
+
+                          {p.drugName && p._selectedDrug && (
+                            <div className="mt-1 flex items-center gap-2 text-[11px] text-base-content/70">
+                              <span>Available: {p._selectedDrug.form || 'N/A'} {p._selectedDrug.strength ? `- ${p._selectedDrug.strength}` : ''}</span>
+                              {p._selectedDrug.stock !== undefined && (
+                                <span className={p._selectedDrug.stock > 0 ? 'text-success font-semibold' : 'text-warning font-semibold'}>
+                                  (Stock: {p._selectedDrug.stock})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {p.availability === 'unavailable' && (
+                            <span className="badge badge-warning badge-xs mt-1">Not in stock — patient to source externally</span>
+                          )}
+                        </div>
+
+                        {/* Dose: Amount + Unit */}
+                        <div>
+                          <label className="text-xs font-semibold text-base-content/70 mb-1 block">Dose</label>
+                          <div className="flex gap-1.5">
+                            <input
+                              type="number"
+                              step="any"
+                              placeholder="e.g. 1"
+                              className="input input-bordered input-sm flex-1 min-w-0"
+                              value={p.dosageAmount || ""}
+                              onChange={(e) => handlePrescriptionChange(idx, 'dosageAmount', e.target.value)}
+                            />
+                            <select
+                              className="select select-bordered select-sm w-28 text-xs"
+                              value={p.dosageUnit || unitOptions[0]?.value || ""}
+                              onChange={(e) => handlePrescriptionChange(idx, 'dosageUnit', e.target.value)}
+                            >
+                              {unitOptions.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Frequency */}
+                        <div>
+                          <label className="text-xs font-semibold text-base-content/70 mb-1 block">Frequency</label>
+                          <select
+                            className="select select-bordered select-sm w-full text-xs"
+                            value={p.frequency || ""}
+                            onChange={(e) => handlePrescriptionChange(idx, 'frequency', e.target.value)}
+                          >
+                            <option value="">Select frequency</option>
+                            {freqList.map((f) => (
+                              <option key={f} value={f}>{f}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Duration */}
+                        <div>
+                          <label className="text-xs font-semibold text-base-content/70 mb-1 block">Duration</label>
+                          <div className="flex gap-1.5">
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="e.g. 5"
+                              className="input input-bordered input-sm flex-1 min-w-0"
+                              value={p.durationAmount || ""}
+                              onChange={(e) => handlePrescriptionChange(idx, 'durationAmount', e.target.value)}
+                            />
+                            <select
+                              className="select select-bordered select-sm w-24 text-xs"
+                              value={p.durationUnit || "day"}
+                              onChange={(e) => handlePrescriptionChange(idx, 'durationUnit', e.target.value)}
+                            >
+                              <option value="day">Day(s)</option>
+                              <option value="week">Week(s)</option>
+                              <option value="month">Month(s)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Instructions */}
+                        <div className="sm:col-span-2 lg:col-span-3">
+                          <label className="text-xs font-semibold text-base-content/70 mb-1 block">Instructions / Special Notes</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Take after meals, with plenty of water..."
+                            className="input input-bordered input-sm w-full"
+                            value={p.instructions || ""}
+                            onChange={(e) => handlePrescriptionChange(idx, 'instructions', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <AddRowButton label="Add Medication" onClick={() => addToList('postOperativeAssessments', { medication: "" })} />
+              <div className="mt-3">
+                <AddRowButton label="Add Prescription / Medication" onClick={addPrescriptionRow} />
+              </div>
             </SectionCard>
 
             {/* NOTES */}
@@ -1052,6 +1844,172 @@ const CreateSurgicalNote = () => {
               </button>
             </div>
           </form>
+          </>
+          )}
+
+          {/* Record Vitals Modal (Surgery / Theatre room) */}
+          {isRecordVitalsOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+              <div className="card w-full max-w-xl bg-base-100 shadow-2xl border border-base-200">
+                <div className="p-5 border-b border-base-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-error/10 text-error rounded-xl">
+                      <FaHeartbeat className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base text-base-content">
+                        Record Patient Vitals (Theatre)
+                      </h3>
+                      <p className="text-xs text-base-content/60">
+                        {summarySubject?.fullName || "Patient"} • Record surgery room vital readings
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost btn-circle"
+                    onClick={() => {
+                      setIsRecordVitalsOpen(false);
+                      setRecordVitalsError("");
+                    }}
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleRecordVitalsSubmit} className="p-5 space-y-4">
+                  {recordVitalsError && (
+                    <div className="alert alert-error text-xs py-2 shadow-xs">
+                      {recordVitalsError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Blood Pressure (mmHg)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 120/80"
+                        className="input input-bordered input-sm w-full font-mono"
+                        value={recordVitalsForm.bp}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, bp: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Heart Rate / Pulse (bpm)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 75"
+                        className="input input-bordered input-sm w-full font-mono"
+                        value={recordVitalsForm.pulse}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, pulse: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Respiratory Rate (bpm)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 18"
+                        className="input input-bordered input-sm w-full font-mono"
+                        value={recordVitalsForm.respiratoryRate}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, respiratoryRate: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Temperature (°C)
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="e.g. 36.8"
+                        className="input input-bordered input-sm w-full font-mono"
+                        value={recordVitalsForm.temperature}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, temperature: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Oxygen Saturation (SpO2 %)
+                      </label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 98"
+                        className="input input-bordered input-sm w-full font-mono"
+                        value={recordVitalsForm.spo2}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, spo2: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Weight (kg) <span className="text-base-content/40 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="e.g. 70"
+                        className="input input-bordered input-sm w-full font-mono"
+                        value={recordVitalsForm.weight}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, weight: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-semibold text-base-content/70 mb-1 block">
+                        Theatre Notes / Remarks
+                      </label>
+                      <textarea
+                        placeholder="Additional vitals notes taken in surgery room..."
+                        className="textarea textarea-bordered textarea-sm w-full"
+                        rows={2}
+                        value={recordVitalsForm.notes}
+                        onChange={(e) => setRecordVitalsForm((f) => ({ ...f, notes: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-base-200">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => {
+                        setIsRecordVitalsOpen(false);
+                        setRecordVitalsError("");
+                      }}
+                      disabled={recordVitalsLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-primary text-white"
+                      disabled={recordVitalsLoading}
+                    >
+                      {recordVitalsLoading ? (
+                        <>
+                          <span className="loading loading-spinner loading-xs" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save & Sync Vitals"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
