@@ -4,11 +4,69 @@ import { getWardRoundRelatedByConsultation } from '@/services/api/wardRoundApi';
 import { getExaminationByConsultationId } from '@/services/api/examinationAPI';
 import { getReviewOfSystemsByConsultationId } from '@/services/api/reviewOfSystemAPI';
 import { getAdmissionsForConsultation } from '@/services/api/admissionApi';
+import { getAllBillings } from '@/services/api/billingAPI';
+import { getPatientById } from '@/services/api/patientsAPI';
+import { getAllAppointments } from '@/services/api/appointmentsAPI';
+import apiClient from '@/services/api/apiClient';
 import { 
   FiUser, 
   FiClock, 
-  FiAlertCircle 
+  FiAlertCircle,
+  FiCheckCircle,
+  FiXCircle,
 } from 'react-icons/fi';
+
+export const HmoStatusBadge = ({ status, size = 'sm', className = '' }) => {
+  if (!status) return null;
+  const norm = String(status).toLowerCase().trim();
+  if (norm === 'none' || norm === 'private' || norm === 'self_pay') return null;
+
+  const sizeClasses = {
+    xs: 'badge-xs text-[10px] py-0.5 px-1.5',
+    sm: 'badge-sm text-xs py-1 px-2',
+    md: 'badge-md text-xs py-1.5 px-2.5',
+    lg: 'badge-lg text-sm py-2 px-3',
+  };
+  const sizeClass = sizeClasses[size] || sizeClasses.sm;
+
+  if (norm === 'approved' || norm === 'hmo_approved') {
+    return (
+      <span className={`badge badge-success text-white font-semibold gap-1 inline-flex items-center shadow-xs ${sizeClass} ${className}`}>
+        <FiCheckCircle className="w-3 h-3 shrink-0" />
+        <span>Approved</span>
+      </span>
+    );
+  }
+
+  if (norm === 'rejected' || norm === 'hmo_rejected') {
+    return (
+      <span className={`badge badge-error text-white font-semibold gap-1 inline-flex items-center shadow-xs ${sizeClass} ${className}`}>
+        <FiXCircle className="w-3 h-3 shrink-0" />
+        <span>Rejected</span>
+      </span>
+    );
+  }
+
+  if (norm === 'partial' || norm === 'partially_approved') {
+    return (
+      <span className={`badge badge-info text-white font-semibold gap-1 inline-flex items-center shadow-xs ${sizeClass} ${className}`}>
+        <FiAlertCircle className="w-3 h-3 shrink-0" />
+        <span>Partial</span>
+      </span>
+    );
+  }
+
+  if (norm === 'pending' || norm === 'awaiting_hmo') {
+    return (
+      <span className={`badge badge-warning text-warning-content font-semibold gap-1 inline-flex items-center shadow-xs ${sizeClass} ${className}`}>
+        <FiClock className="w-3 h-3 shrink-0" />
+        <span>Pending</span>
+      </span>
+    );
+  }
+
+  return null;
+};
 
 const EmptyNote = ({ children = 'None recorded' }) => (
   <p className="text-sm text-base-content/40 italic">{children}</p>
@@ -48,8 +106,15 @@ const ConsultationDetailModal = ({
   if (!consultation) return null;
 
   const consultationId = consultation.id || consultation._id;
+  const initialPatientId = consultation.patientId || consultation.patient?.id || consultation.patient?._id;
+  const initialDependantId = consultation.dependantId || consultation.dependant?.id || consultation.dependant?._id;
 
   const [loading, setLoading] = useState(false);
+  const [hmosData, setHmosData] = useState([]);
+  const [billingsData, setBillingsData] = useState([]);
+  const [patientDetails, setPatientDetails] = useState(consultation.patient || null);
+  const [proceduresData, setProceduresData] = useState([]);
+
   const [detailData, setDetailData] = useState({
     consultation: consultation,
     prescriptions: propPrescriptions || consultation.prescriptions || [],
@@ -66,11 +131,17 @@ const ConsultationDetailModal = ({
     const fetchAllRelated = async () => {
       setLoading(true);
       try {
-        const [relatedRes, examRes, rosRes, admRes] = await Promise.allSettled([
+        const ptId = initialPatientId || consultation.patient?.id || consultation.patient?._id;
+
+        const [relatedRes, examRes, rosRes, admRes, hmosRes, billingsRes, ptRes, aptRes] = await Promise.allSettled([
           getWardRoundRelatedByConsultation(consultationId),
           getExaminationByConsultationId(consultationId),
           getReviewOfSystemsByConsultationId(consultationId),
           getAdmissionsForConsultation(consultationId),
+          ptId ? apiClient.get('/hmo', { params: { patientId: ptId } }) : Promise.resolve(null),
+          ptId ? getAllBillings({ patientId: ptId }) : Promise.resolve(null),
+          ptId ? getPatientById(ptId) : Promise.resolve(null),
+          ptId ? getAllAppointments({ patientId: ptId }) : Promise.resolve(null),
         ]);
 
         if (!mounted) return;
@@ -109,6 +180,44 @@ const ConsultationDetailModal = ({
           if (list.length > 0) admData = list;
         }
 
+        if (hmosRes.status === 'fulfilled') {
+          const raw = hmosRes.value?.data?.data ?? hmosRes.value?.data ?? [];
+          const list = Array.isArray(raw) ? raw : [];
+          setHmosData(list);
+        }
+
+        if (billingsRes.status === 'fulfilled') {
+          const raw = billingsRes.value?.data?.data ?? billingsRes.value?.data ?? [];
+          const list = Array.isArray(raw) ? raw : (raw?.billings || []);
+          setBillingsData(list);
+        }
+
+        if (ptRes.status === 'fulfilled') {
+          const raw = ptRes.value?.data?.data ?? ptRes.value?.data ?? ptRes.value;
+          if (raw) {
+            setPatientDetails(raw);
+            if (Array.isArray(raw.hmos) && raw.hmos.length > 0) {
+              setHmosData((prev) => (prev.length > 0 ? prev : raw.hmos));
+            }
+          }
+        }
+
+        if (aptRes.status === 'fulfilled') {
+          const rawApt = aptRes.value?.data?.data ?? aptRes.value?.data ?? [];
+          const apts = Array.isArray(rawApt) ? rawApt : (rawApt?.appointments || []);
+          const procedureList = apts.filter((a) => {
+            const isSurgery = (a.appointmentType || '').toLowerCase() === 'surgery' || (a.appointmentType || '').toLowerCase() === 'procedure';
+            if (!isSurgery) return false;
+            if (a.consultationId && String(a.consultationId) === String(consultationId)) return true;
+            if (ptId && String(a.patientId || '') === String(ptId)) {
+              if (initialDependantId) return String(a.dependantId || '') === String(initialDependantId);
+              return !a.dependantId;
+            }
+            return false;
+          });
+          setProceduresData(procedureList);
+        }
+
         setDetailData({
           consultation: enrichedConsult,
           prescriptions: fetchedPres,
@@ -129,10 +238,13 @@ const ConsultationDetailModal = ({
     return () => {
       mounted = false;
     };
-  }, [consultationId]);
+  }, [consultationId, initialPatientId, initialDependantId]);
 
   const c = detailData.consultation || consultation;
   const isDependant = !!c.dependantId;
+  const patientId = c.patientId || c.patient?.id || c.patient?._id || initialPatientId;
+  const dependantId = c.dependantId || c.dependant?.id || c.dependant?._id || initialDependantId;
+
   const subjectName = isDependant
     ? `${c.dependant?.firstName || ''} ${c.dependant?.lastName || ''}`.trim() || 'Dependant'
     : `${c.patient?.firstName || ''} ${c.patient?.lastName || ''}`.trim() || 'Patient';
@@ -141,9 +253,164 @@ const ConsultationDetailModal = ({
   const prescriptions = detailData.prescriptions || [];
   const investigations = detailData.investigations || [];
   const admissions = detailData.admissions || [];
+  const procedures = proceduresData || [];
   const exam = detailData.examinations;
   const examFindings = exam?.findings || [];
   const ros = detailData.reviewOfSystems || [];
+
+  // HMO Coverage & Status Resolution
+  const subjectHmos = isDependant && dependantId
+    ? hmosData.filter((h) => h.dependantId === dependantId)
+    : hmosData.filter((h) => !h.dependantId);
+  const activeHmos = subjectHmos.length > 0 ? subjectHmos : hmosData;
+
+  const hasHmoCoverage = Boolean(
+    activeHmos.length > 0 ||
+    c.hmo ||
+    c.hmoStatus ||
+    c.hmoApprovalStatus ||
+    c.patient?.hmo ||
+    patientDetails?.hmos?.length > 0 ||
+    c.paidBy === 'hmo'
+  );
+
+  const derivedHmoStatus = (() => {
+    if (c.hmoStatus) return String(c.hmoStatus).toLowerCase();
+    if (c.hmoApprovalStatus) return String(c.hmoApprovalStatus).toLowerCase();
+
+    // Check relevant billings items
+    const pIds = new Set(prescriptions.map((p) => String(p.id || p._id)).filter(Boolean));
+    const invIds = new Set(investigations.map((i) => String(i.id || i._id)).filter(Boolean));
+
+    const relevantItems = [];
+    for (const bill of billingsData) {
+      for (const item of bill.itemDetails || []) {
+        const matchesConsult = item.consultationId && String(item.consultationId) === String(consultationId);
+        const matchesPres = item.prescriptionId && pIds.has(String(item.prescriptionId));
+        const matchesInv = item.investigationId && invIds.has(String(item.investigationId));
+        if (matchesConsult || matchesPres || matchesInv) {
+          relevantItems.push(item);
+        }
+      }
+    }
+
+    if (relevantItems.length > 0) {
+      const statuses = relevantItems.map((it) => String(it.hmoStatus || 'pending').toLowerCase());
+      const hasApp = statuses.includes('approved');
+      const hasRej = statuses.includes('rejected');
+      const hasPart = statuses.includes('partial');
+      const hasPend = statuses.includes('pending');
+
+      if (hasPart || (hasApp && hasRej)) return 'partial';
+      if (hasPend && (hasApp || hasRej)) return 'partial';
+      if (hasPend && !hasApp && !hasRej) return 'pending';
+      if (hasApp && !hasRej) return 'approved';
+      if (hasRej && !hasApp) return 'rejected';
+    }
+
+    const ptStatus = String(patientDetails?.status || c.patient?.status || '').toLowerCase();
+    if (ptStatus === 'hmo_approved') return 'approved';
+    if (ptStatus === 'hmo_rejected') return 'rejected';
+    if (ptStatus === 'awaiting_hmo') return 'pending';
+
+    return hasHmoCoverage ? 'pending' : 'none';
+  })();
+
+  const effectiveHmoStatus = derivedHmoStatus;
+
+  const getMedHmoStatus = (med, pres) => {
+    if (!hasHmoCoverage) return null;
+    if (med?.hmoStatus) return med.hmoStatus;
+    if (pres?.hmoStatus) return pres.hmoStatus;
+
+    const pId = String(pres?.id || pres?._id || '');
+    for (const bill of billingsData) {
+      for (const item of bill.itemDetails || []) {
+        const matchPId = item.prescriptionId && String(item.prescriptionId) === pId;
+        const matchName = item.description && med?.drugName && String(item.description).toLowerCase().includes(String(med.drugName).toLowerCase());
+        if (matchPId || matchName) {
+          if (item.hmoStatus) return item.hmoStatus;
+        }
+      }
+    }
+
+    return effectiveHmoStatus || 'pending';
+  };
+
+  const getTestHmoStatus = (test, inv) => {
+    if (!hasHmoCoverage) return null;
+    if (test?.hmoStatus) return test.hmoStatus;
+    if (inv?.hmoStatus) return inv.hmoStatus;
+
+    const invId = String(inv?.id || inv?._id || '');
+    const tName = typeof test === 'string' ? test : (test?.name || '');
+    for (const bill of billingsData) {
+      for (const item of bill.itemDetails || []) {
+        const matchInvId = item.investigationId && String(item.investigationId) === invId;
+        const matchName = item.description && tName && String(item.description).toLowerCase().includes(String(tName).toLowerCase());
+        if (matchInvId || matchName) {
+          if (item.hmoStatus) return item.hmoStatus;
+        }
+      }
+    }
+
+    return effectiveHmoStatus || 'pending';
+  };
+
+  const getProcedureHmoStatus = (proc) => {
+    if (!hasHmoCoverage) return null;
+    if (proc?.hmoStatus) return proc.hmoStatus;
+
+    const procName = proc?.procedureName || proc?.procedure || proc?.title || (typeof proc === 'string' ? proc : '');
+    const pId = String(proc?.id || proc?._id || proc?.appointmentId || '');
+
+    for (const bill of billingsData) {
+      for (const item of bill.itemDetails || []) {
+        const matchProcId = item.appointmentId && String(item.appointmentId) === pId;
+        const matchName = item.description && procName && String(item.description).toLowerCase().includes(String(procName).toLowerCase());
+        if (matchProcId || matchName) {
+          if (item.hmoStatus) return item.hmoStatus;
+        }
+      }
+    }
+
+    return effectiveHmoStatus || 'pending';
+  };
+
+  const getAdmissionHmoStatus = (adm) => {
+    if (!hasHmoCoverage) return null;
+    if (adm?.hmoStatus) return adm.hmoStatus;
+
+    const admId = String(adm?.id || adm?._id || '');
+    for (const bill of billingsData) {
+      for (const item of bill.itemDetails || []) {
+        if (item.admissionId && String(item.admissionId) === admId) {
+          if (item.hmoStatus) return item.hmoStatus;
+        }
+      }
+    }
+
+    return effectiveHmoStatus || 'pending';
+  };
+
+  const getAdmissionItemHmoStatus = (item, adm) => {
+    if (!hasHmoCoverage) return null;
+    if (item?.hmoStatus) return item.hmoStatus;
+
+    const admId = String(adm?.id || adm?._id || '');
+    const itemName = item?.name || '';
+    for (const bill of billingsData) {
+      for (const bItem of bill.itemDetails || []) {
+        const matchAdm = bItem.admissionId && String(bItem.admissionId) === admId;
+        const matchName = bItem.description && itemName && String(bItem.description).toLowerCase().includes(String(itemName).toLowerCase());
+        if (matchAdm || matchName) {
+          if (bItem.hmoStatus) return bItem.hmoStatus;
+        }
+      }
+    }
+
+    return effectiveHmoStatus || 'pending';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
@@ -517,11 +784,14 @@ const ConsultationDetailModal = ({
                       <div key={pres.id || pres._id || idx} className="p-4 bg-base-100">
                         {/* Prescription Metadata Row */}
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-base-200 text-xs">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-base-content">Prescription #{idx + 1}</span>
                             <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
                               {pres.status || 'pending'}
                             </span>
+                            {hasHmoCoverage && (
+                              <HmoStatusBadge status={getMedHmoStatus(null, pres)} size="xs" />
+                            )}
                           </div>
                           <div className="text-base-content/60 flex items-center gap-2">
                             <span>Ordered {pres.createdAt ? formatNigeriaDateTime(pres.createdAt) : '—'}</span>
@@ -532,38 +802,62 @@ const ConsultationDetailModal = ({
 
                         {/* Medications */}
                         <div className="space-y-3">
-                          {(pres.medications || []).map((med, mIdx) => (
-                            <div
-                              key={mIdx}
-                              className="p-3 rounded-lg bg-base-200/50 border-l-4 border-success flex flex-col gap-1"
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-sm font-bold text-base-content">{med.drugName}</span>
-                                {med.route && (
-                                  <span className="badge badge-outline badge-xs uppercase">{med.route}</span>
+                          {(pres.medications || []).map((med, mIdx) => {
+                            const drugForm = med.form || med.dosageForm || med.drugForm || med.medicationType || med.type;
+                            return (
+                              <div
+                                key={mIdx}
+                                className="p-3 rounded-lg bg-base-200/50 border-l-4 border-success flex flex-col gap-1"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-bold text-base-content">{med.drugName}</span>
+                                    {drugForm && (
+                                      <span className="badge badge-secondary/15 text-secondary border-secondary/30 badge-xs capitalize font-medium">
+                                        {drugForm}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {hasHmoCoverage && (
+                                      <HmoStatusBadge status={getMedHmoStatus(med, pres)} size="xs" />
+                                    )}
+                                    {med.route && (
+                                      <span className="badge badge-outline badge-xs uppercase">{med.route}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-base-content/70 mt-1">
+                                  <div>
+                                    <span className="text-base-content/50">Form: </span>
+                                    <span className="font-medium text-base-content capitalize">{drugForm || '—'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-base-content/50">Dosage: </span>
+                                    <span className="font-medium text-base-content">{med.dosage || '—'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-base-content/50">Frequency: </span>
+                                    <span className="font-medium text-base-content">{med.frequency || '—'}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-base-content/50">Duration: </span>
+                                    <span className="font-medium text-base-content">{med.duration || '—'}</span>
+                                  </div>
+                                </div>
+                                {med.notes && (
+                                  <p className="text-xs text-base-content/80 mt-1 italic">
+                                    Note: {med.notes}
+                                  </p>
+                                )}
+                                {med.instructions && (
+                                  <p className="text-xs text-base-content/80 mt-1 italic">
+                                    Instructions: {med.instructions}
+                                  </p>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-base-content/70 mt-1">
-                                <div>
-                                  <span className="text-base-content/50">Dosage: </span>
-                                  <span className="font-medium text-base-content">{med.dosage || '—'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-base-content/50">Frequency: </span>
-                                  <span className="font-medium text-base-content">{med.frequency || '—'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-base-content/50">Duration: </span>
-                                  <span className="font-medium text-base-content">{med.duration || '—'}</span>
-                                </div>
-                              </div>
-                              {med.notes && (
-                                <p className="text-xs text-base-content/80 mt-1 italic">
-                                  Note: {med.notes}
-                                </p>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -577,9 +871,9 @@ const ConsultationDetailModal = ({
             </div>
           </details>
 
-          {/* Section 5: Ordered Labs & Investigations */}
+          {/* Section 5: Ordered Labs, Scans & Investigations */}
           <details className="collapse collapse-arrow border border-base-200 bg-base-100 rounded-xl overflow-hidden" open>
-            <SectionHeader title="Ordered Labs & Investigations" count={investigations.length} badgeColor="badge-warning" />
+            <SectionHeader title="Ordered Labs, Scans & Investigations" count={investigations.length} badgeColor="badge-warning" />
             <div className="collapse-content p-4 pt-2 border-t border-base-200">
               {investigations.length > 0 ? (
                 <div className="divide-y divide-base-200 border border-base-200 rounded-xl overflow-hidden">
@@ -605,7 +899,7 @@ const ConsultationDetailModal = ({
                       <div key={inv.id || inv._id || idx} className="p-4 bg-base-100">
                         {/* Investigation Metadata Row */}
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-base-200 text-xs">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-base-content">Investigation Order #{idx + 1}</span>
                             <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
                               {inv.status || 'requested'}
@@ -613,6 +907,9 @@ const ConsultationDetailModal = ({
                             <span className={`badge ${priorityClass} badge-sm uppercase font-semibold`}>
                               {inv.priority || 'normal'}
                             </span>
+                            {hasHmoCoverage && (
+                              <HmoStatusBadge status={getTestHmoStatus(null, inv)} size="xs" />
+                            )}
                           </div>
                           <div className="text-base-content/60 flex items-center gap-2">
                             <span>Ordered {inv.createdAt ? formatNigeriaDateTime(inv.createdAt) : '—'}</span>
@@ -634,9 +931,14 @@ const ConsultationDetailModal = ({
                                   <span className="badge badge-xs badge-outline ml-2">Custom</span>
                                 )}
                               </div>
-                              {t.sampleType && (
-                                <span className="text-xs text-base-content/60">{t.sampleType}</span>
-                              )}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {hasHmoCoverage && (
+                                  <HmoStatusBadge status={getTestHmoStatus(t, inv)} size="xs" />
+                                )}
+                                {t.sampleType && (
+                                  <span className="text-xs text-base-content/60">{t.sampleType}</span>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -671,6 +973,89 @@ const ConsultationDetailModal = ({
             </div>
           </details>
 
+          {/* Section: Clinical Procedures & Surgeries */}
+          {(procedures.length > 0 || hasArray(c.surgicalHistory)) && (
+            <details className="collapse collapse-arrow border border-base-200 bg-base-100 rounded-xl overflow-hidden" open>
+              <SectionHeader
+                title="Procedures & Surgical Notes"
+                count={procedures.length || c.surgicalHistory?.length}
+                badgeColor="badge-info"
+              />
+              <div className="collapse-content p-4 pt-2 border-t border-base-200 space-y-3">
+                {procedures.length > 0 ? (
+                  <div className="divide-y divide-base-200 border border-base-200 rounded-xl overflow-hidden">
+                    {procedures.map((proc, idx) => {
+                      const procStatus = (proc.status || 'scheduled').toLowerCase();
+                      const procStatusClass =
+                        procStatus === 'completed'
+                          ? 'badge-success'
+                          : procStatus === 'cancelled'
+                          ? 'badge-error'
+                          : 'badge-warning';
+
+                      return (
+                        <div key={proc.id || proc._id || proc.appointmentId || idx} className="p-4 bg-base-100">
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-base-200 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-base-content">
+                                Procedure #{idx + 1}
+                              </span>
+                              <span className={`badge ${procStatusClass} badge-sm capitalize font-medium`}>
+                                {proc.status || 'scheduled'}
+                              </span>
+                              {hasHmoCoverage && (
+                                <HmoStatusBadge status={getProcedureHmoStatus(proc)} size="xs" />
+                              )}
+                            </div>
+                            <span className="text-base-content/60">
+                              {proc.scheduledDate || proc.date ? formatNigeriaDate(proc.scheduledDate || proc.date) : (proc.createdAt ? formatNigeriaDate(proc.createdAt) : '—')}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between p-2.5 rounded-lg bg-base-200/50 border-l-4 border-info text-sm">
+                            <div>
+                              <span className="font-medium text-base-content">
+                                {proc.procedureName || proc.procedure || proc.title || 'Surgical Procedure'}
+                              </span>
+                              {proc.procedureCode && (
+                                <span className="badge badge-xs badge-ghost ml-2 font-mono">
+                                  {proc.procedureCode}
+                                </span>
+                              )}
+                            </div>
+                            {hasHmoCoverage && (
+                              <HmoStatusBadge status={getProcedureHmoStatus(proc)} size="xs" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {c.surgicalHistory.map((s, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-base-200/50 border-l-4 border-info text-sm"
+                      >
+                        <div>
+                          <span className="font-medium text-base-content">{s.procedureName || s}</span>
+                          {s.dateOfSurgery && (
+                            <span className="text-xs text-base-content/50 ml-2">
+                              ({formatNigeriaDate(s.dateOfSurgery)})
+                            </span>
+                          )}
+                        </div>
+                        {hasHmoCoverage && (
+                          <HmoStatusBadge status={getProcedureHmoStatus(s)} size="xs" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
           {/* Section 6: Admission Details */}
           <details className="collapse collapse-arrow border border-base-200 bg-base-100 rounded-xl overflow-hidden" open={admissions.length > 0}>
             <SectionHeader title="Hospital Admission Details" count={admissions.length} badgeColor="badge-secondary" />
@@ -693,11 +1078,14 @@ const ConsultationDetailModal = ({
                         className="p-4 rounded-xl border border-base-200 bg-base-100 shadow-sm space-y-3"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-base-200 text-xs">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-bold text-sm text-base-content">Admission #{idx + 1}</span>
                             <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
                               {adm.status || 'active'}
                             </span>
+                            {hasHmoCoverage && (
+                              <HmoStatusBadge status={effectiveHmoStatus} size="xs" />
+                            )}
                           </div>
                           <span className="text-base-content/60">
                             Admitted {adm.createdAt ? formatNigeriaDateTime(adm.createdAt) : '—'}
@@ -728,7 +1116,12 @@ const ConsultationDetailModal = ({
                             <div className="divide-y divide-base-200 border border-base-200 rounded-lg overflow-hidden text-xs">
                               {adm.admissions.map((item, iIdx) => (
                                 <div key={iIdx} className="p-2 flex justify-between items-center bg-base-100">
-                                  <span className="font-medium text-base-content">{item.name || 'Admission Service'}</span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium text-base-content">{item.name || 'Admission Service'}</span>
+                                    {hasHmoCoverage && (
+                                      <HmoStatusBadge status={effectiveHmoStatus} size="xs" />
+                                    )}
+                                  </div>
                                   {item.amount && (
                                     <span className="font-mono text-base-content/80">₦{Number(item.amount).toLocaleString()}</span>
                                   )}
