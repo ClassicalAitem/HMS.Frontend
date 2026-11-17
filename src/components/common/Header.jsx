@@ -10,7 +10,7 @@ export const getRolePatientsPath = (role = "") => {
   const norm = (role || "").toLowerCase().trim().replace(/_/g, "-");
   switch (norm) {
     case "doctor":
-      return "/dashboard/doctor/patientsHistory";
+      return "/dashboard/doctor/patientshistory";
     case "nurse":
       return "/dashboard/nurse/patient";
     case "front-desk":

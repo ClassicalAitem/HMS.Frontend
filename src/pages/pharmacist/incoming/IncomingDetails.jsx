@@ -8,7 +8,8 @@ import { getConsultations } from '@/services/api/consultationAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
-import { getInventories, createInventory } from '@/services/api/inventoryAPI'
+import { getInventories, createInventory, updateInventory } from '@/services/api/inventoryAPI'
+import { getErrorMessage } from '@/utils/errorHandler'
 import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal } from '@/components/modals'
 import { InventoryFormModal } from '@/components/modals/InventoryFormModal'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
@@ -48,6 +49,11 @@ const IncomingDetails = () => {
   const [dispenseModalRows, setDispenseModalRows] = useState(null)
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
   const [addingInventoryFor, setAddingInventoryFor] = useState(null)
+  const [editingInventory, setEditingInventory] = useState(null)
+  const [priceEditingItem, setPriceEditingItem] = useState(null)
+  const [quickPriceInput, setQuickPriceInput] = useState('')
+  const [quickPackPriceInput, setQuickPackPriceInput] = useState('')
+  const [savingPrice, setSavingPrice] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [doctors, setDoctors] = useState({}) 
   const [dependants, setDependants] = useState([])
@@ -374,24 +380,19 @@ const getDispenseInfo = (med) => {
     })
   }
 
-  const renderMedCard = (m, isHistory = false) => (
+  const renderMedCard = (m, isHistory = false) => {
+    const matchedInv = m.inventoryItem || findInventoryMatch(m)
+
+    return (
       <div
-      key={`${m._id || m.drugName}-${m.drugName}`}
-      className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
-    >
-      <div className="flex items-center justify-between mb-2 pb-2 border-b border-base-200">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
-            {m.availabilityInfo.label}
-          </span>
-          {!isHistory && m.availabilityInfo.label === 'Not Stocked by Hospital' && (
-            <button 
-              className="btn btn-xs btn-outline btn-primary ml-2"
-              onClick={() => setAddingInventoryFor(m)}
-            >
-              Add to Inventory
-            </button>
-          )}
+        key={`${m._id || m.drugName}-${m.drugName}`}
+        className={`p-3 rounded-lg border ${isHistory ? 'bg-base-200 opacity-70' : 'bg-base-100'}`}
+      >
+        <div className="flex items-center justify-between mb-2 pb-2 border-b border-base-200">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`badge badge-sm font-medium ${m.availabilityInfo.badgeClass}`}>
+              {m.availabilityInfo.label}
+            </span>
             {m.hmoStatus === 'approved' ? (
               <span className="badge badge-sm badge-success font-medium">Covered by HMO</span>
             ) : m.hmoStatus === 'partial' ? (
@@ -403,46 +404,77 @@ const getDispenseInfo = (med) => {
             ) : (
               <span className="badge badge-sm badge-warning font-medium">Unpaid</span>
             )}
+          </div>
         </div>
-      </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
-        <div>
-          <div className="font-semibold text-base">{m.drugName}</div>
-          <div className="text-sm text-base-content/70">
-            {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
-          </div>
-          <div className="text-sm mt-1">Dosage: {m.dosage}</div>
-          <div className="text-sm">Frequency: {m.frequency}</div>
-          <div className="text-sm">Duration: {m.duration}</div>
-          <div className="text-sm font-medium text-primary mt-1">
-            Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
-          </div>
-        </div>
-        <div className="text-sm sm:text-right space-y-2">
-          <div className="bg-base-200/70 p-2.5 rounded-lg border border-base-300 min-w-[140px] text-left sm:text-right">
-            <div className="text-[11px] uppercase tracking-wide text-base-content/60 font-semibold">
-              {m.isSingleUnit ? 'Item Price' : 'Unit Price'}
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+          <div>
+            <div className="font-semibold text-base">{m.drugName}</div>
+            <div className="text-sm text-base-content/70">
+              {m.form || ''} {m.strength ? `• ${m.strength}` : ''}
             </div>
-            <div className="text-sm font-medium text-base-content">
-              ₦{Number(m.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div className="text-[11px] uppercase tracking-wide text-base-content/60 font-semibold mt-1">
-              Amount
-            </div>
-            <div className="text-base font-bold text-primary">
-              ₦{Number(m.lineTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <div className="text-sm mt-1">Dosage: {m.dosage}</div>
+            <div className="text-sm">Frequency: {m.frequency}</div>
+            <div className="text-sm">Duration: {m.duration}</div>
+            <div className="text-sm font-medium text-primary mt-1">
+              Prescribed: {formatQty(m.prescribedQty)}{m.suggestedUnit ? ` ${m.suggestedUnit}` : ' unit(s)'}
             </div>
           </div>
-          {m.instructions && (
-            <div className="text-xs bg-base-200 p-1.5 rounded">
-              Instruction: {m.instructions}
+          <div className="text-sm sm:text-right space-y-2 w-full sm:w-auto flex-shrink-0">
+            <div className="bg-base-200/70 p-2.5 rounded-lg border border-base-300 min-w-[150px] text-left sm:text-right">
+              <div className="text-[11px] uppercase tracking-wide text-base-content/60 font-semibold">
+                {m.isSingleUnit ? 'Item Price' : 'Unit Price'}
+              </div>
+              <div className="text-sm font-medium text-base-content">
+                ₦{Number(m.unitPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
+              <div className="text-[11px] uppercase tracking-wide text-base-content/60 font-semibold mt-1">
+                Amount
+              </div>
+              <div className="text-base font-bold text-primary">
+                ₦{Number(m.lineTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </div>
             </div>
-          )}
+
+            {!isHistory && (
+              <div className="flex items-center gap-1.5 justify-start sm:justify-end">
+                {matchedInv && (
+                  <button
+                    type="button"
+                    className="btn btn-xs btn-outline btn-primary"
+                    onClick={() => openPriceEditor(m, matchedInv)}
+                    title="Change unit price directly"
+                  >
+                    Change Price
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-xs btn-outline border-base-300 hover:border-primary hover:text-primary"
+                  onClick={() => {
+                    if (matchedInv) {
+                      setEditingInventory(matchedInv)
+                    } else {
+                      setAddingInventoryFor(m)
+                    }
+                  }}
+                  title="Edit item and price"
+                >
+                  Edit Item
+                </button>
+              </div>
+            )}
+
+            {m.instructions && (
+              <div className="text-xs bg-base-200 p-1.5 rounded text-left sm:text-right">
+                Instruction: {m.instructions}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   const computeMedRows = (p) => {
     const isForDependant = !!p.dependantId
@@ -461,6 +493,7 @@ const getDispenseInfo = (med) => {
 
       return {
         ...m,
+        inventoryItem: dispenseInfo.inv,
         form: dispenseInfo.inv?.form,
         strength: dispenseInfo.inv?.strength,
         status: p.status,
@@ -546,6 +579,88 @@ const getDispenseInfo = (med) => {
       setAddingInventoryFor(null)
     } catch (error) {
       console.error(error)
+    }
+  }
+
+  const handleEditInventory = async (id, payload) => {
+    const p = updateInventory(id, payload)
+    toast.promise(p, {
+      loading: 'Updating item...',
+      success: 'Item updated successfully',
+      error: (e) => getErrorMessage(e, 'Failed to update item'),
+    })
+    try {
+      await p
+      const res = await getInventories()
+      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
+      setInventory(list)
+      setEditingInventory(null)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const openPriceEditor = (med, inv) => {
+    const packSize = Number(inv?.packSize) || 1
+    const currentSellingPrice = Number(inv?.sellingPrice) || 0
+    const calculatedUnitPrice = packSize > 0 ? currentSellingPrice / packSize : currentSellingPrice
+    setPriceEditingItem({ med, inv })
+    setQuickPriceInput(calculatedUnitPrice ? String(Number(calculatedUnitPrice.toFixed(2))) : '0')
+    setQuickPackPriceInput(currentSellingPrice ? String(currentSellingPrice) : '0')
+  }
+
+  const handleUnitPriceChange = (val) => {
+    setQuickPriceInput(val)
+    const num = Number(val)
+    if (!Number.isNaN(num) && priceEditingItem?.inv) {
+      const packSize = Number(priceEditingItem.inv.packSize) || 1
+      const isSingle = priceEditingItem.med?.isSingleUnit || packSize <= 1
+      const calculatedPackPrice = isSingle ? num : num * packSize
+      setQuickPackPriceInput(String(Number(calculatedPackPrice.toFixed(2))))
+    }
+  }
+
+  const handlePackPriceChange = (val) => {
+    setQuickPackPriceInput(val)
+    const num = Number(val)
+    if (!Number.isNaN(num) && priceEditingItem?.inv) {
+      const packSize = Number(priceEditingItem.inv.packSize) || 1
+      const calculatedUnitPrice = packSize > 0 ? num / packSize : num
+      setQuickPriceInput(String(Number(calculatedUnitPrice.toFixed(2))))
+    }
+  }
+
+  const handleQuickPriceSave = async (e) => {
+    if (e) e.preventDefault()
+    if (!priceEditingItem?.inv) return
+
+    const inv = priceEditingItem.inv
+    const id = inv._id || inv.id
+
+    const newSellingPrice = Number(quickPackPriceInput)
+    if (Number.isNaN(newSellingPrice) || newSellingPrice < 0) {
+      toast.error('Please enter a valid price')
+      return
+    }
+
+    setSavingPrice(true)
+    const p = updateInventory(id, { sellingPrice: newSellingPrice })
+    toast.promise(p, {
+      loading: 'Updating price...',
+      success: 'Price updated successfully',
+      error: (err) => getErrorMessage(err, 'Failed to update price'),
+    })
+
+    try {
+      await p
+      const res = await getInventories()
+      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
+      setInventory(list)
+      setPriceEditingItem(null)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSavingPrice(false)
     }
   }
 
@@ -770,7 +885,7 @@ const getDispenseInfo = (med) => {
             {medRows.map((m) => renderMedCard(m, isHistory))}
 
             <div className="flex items-center justify-between p-3 bg-base-200/80 rounded-lg border border-base-300 font-semibold">
-              <span className="text-sm text-base-content/80">Total Inventory Amount:</span>
+              <span className="text-sm text-base-content/80">Total Amount:</span>
               <span className="text-primary text-lg font-bold">
                 ₦{totalPrescriptionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
@@ -946,7 +1061,7 @@ const getDispenseInfo = (med) => {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-2 border-b border-base-200 gap-2">
                 <h3 className="font-semibold text-lg text-primary">Active Prescriptions</h3>
                 <div className="badge badge-lg badge-primary/10 text-primary border-primary/20 font-bold px-3 py-3">
-                  Total of Inventories: ₦{prescriptions.active.reduce((acc, p) => acc + computeMedRows(p).reduce((sum, m) => sum + (Number(m.lineTotal) || 0), 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  Total Amount: ₦{prescriptions.active.reduce((acc, p) => acc + computeMedRows(p).reduce((sum, m) => sum + (Number(m.lineTotal) || 0), 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               {prescriptions.active.length ? (
@@ -991,12 +1106,153 @@ const getDispenseInfo = (med) => {
 
         {addingInventoryFor && (
           <InventoryFormModal
+            title="Edit Item"
             item={{ 
               name: addingInventoryFor.drugName, 
               description: `Dosage: ${addingInventoryFor.dosage || ''}\nFrequency: ${addingInventoryFor.frequency || ''}\nDuration: ${addingInventoryFor.duration || ''}`.trim()
             }}
             onClose={() => setAddingInventoryFor(null)}
             onSubmit={handleCreateInventory}
+          />
+        )}
+
+        {/* Quick Unit Price Change Modal */}
+        {priceEditingItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/50"
+              onClick={() => {
+                if (!savingPrice) setPriceEditingItem(null)
+              }}
+            />
+            <div className="z-10 w-full max-w-md card bg-base-100 p-5 shadow-2xl border border-base-200">
+              <div className="flex justify-between items-center mb-3 pb-2 border-b border-base-200">
+                <div>
+                  <h3 className="font-bold text-lg text-base-content">Change Item Price</h3>
+                  <p className="text-xs text-base-content/60">
+                    Update price for {priceEditingItem.inv?.name || priceEditingItem.med?.drugName}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm btn-circle"
+                  disabled={savingPrice}
+                  onClick={() => setPriceEditingItem(null)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Item Summary Box */}
+                <div className="bg-base-200/60 p-3 rounded-lg text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-base-content/60">Form & Strength:</span>
+                    <span className="font-medium text-base-content">
+                      {priceEditingItem.inv?.form || '—'} {priceEditingItem.inv?.strength ? `• ${priceEditingItem.inv.strength}` : ''}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-base-content/60">Pack Size:</span>
+                    <span className="font-medium text-base-content">
+                      {priceEditingItem.inv?.packSize || 1} {priceEditingItem.inv?.unit || 'unit(s)'} per pack
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-base-content/60">Current Selling Price:</span>
+                    <span className="font-medium text-base-content">
+                      ₦{Number(priceEditingItem.inv?.sellingPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Price inputs */}
+                <form onSubmit={handleQuickPriceSave} className="space-y-3">
+                  <div>
+                    <label className="label py-1">
+                      <span className="label-text font-semibold text-xs">
+                        Unit Price (₦) <span className="text-error">*</span>
+                      </span>
+                      <span className="label-text-alt text-[11px] text-base-content/60">
+                        Price charged per single unit
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={quickPriceInput}
+                      onChange={(e) => handleUnitPriceChange(e.target.value)}
+                      placeholder="0.00"
+                      className="input input-bordered input-sm w-full font-medium"
+                      required
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <label className="label py-1">
+                      <span className="label-text font-semibold text-xs">
+                        Pack / Selling Price (₦)
+                      </span>
+                      <span className="label-text-alt text-[11px] text-base-content/60">
+                        Total pack inventory price
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={quickPackPriceInput}
+                      onChange={(e) => handlePackPriceChange(e.target.value)}
+                      placeholder="0.00"
+                      className="input input-bordered input-sm w-full font-medium"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs text-primary underline"
+                      onClick={() => {
+                        const invToEdit = priceEditingItem.inv
+                        setPriceEditingItem(null)
+                        setEditingInventory(invToEdit)
+                      }}
+                    >
+                      Open Full Inventory Modal
+                    </button>
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        disabled={savingPrice}
+                        onClick={() => setPriceEditingItem(null)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary btn-sm"
+                        disabled={savingPrice}
+                      >
+                        {savingPrice ? 'Saving...' : 'Save Price'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full Edit Inventory Modal */}
+        {editingInventory && (
+          <InventoryFormModal
+            title="Edit Item"
+            item={editingInventory}
+            onClose={() => setEditingInventory(null)}
+            onSubmit={(payload) => handleEditInventory(editingInventory._id || editingInventory.id, payload)}
           />
         )}
 

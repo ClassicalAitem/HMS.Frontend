@@ -3,7 +3,6 @@ import { PharmacistLayout } from '@/layouts/pharmacist'
 import { MdInventory } from 'react-icons/md'
 import { useNavigate } from 'react-router-dom'
 import { getPatients, getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
-import { getPrescriptions } from '@/services/api/prescriptionsAPI'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo'
 import KolakLoader from '@/components/common/KolakLoader'
@@ -28,10 +27,9 @@ const Incoming = () => {
     setLoading(true)
     setError(null)
     try {
-      const [patientsRes, dependantsRes, prescriptionsRes] = await Promise.allSettled([
+      const [patientsRes, dependantsRes] = await Promise.allSettled([
         getPatients({ status: 'awaiting_pharmacy', limit: 100 }),
         getDependants({ status: 'awaiting_pharmacy', limit: 100 }),
-        getPrescriptions({ status: 'pending', limit: 100 }),
       ])
 
       const patientList = patientsRes.status === 'fulfilled'
@@ -45,12 +43,7 @@ const Incoming = () => {
           })()
         : []
 
-      const rawPrescriptions = prescriptionsRes.status === 'fulfilled'
-        ? (prescriptionsRes.value?.data ?? prescriptionsRes.value ?? [])
-        : []
-      const pendingPrescriptionList = Array.isArray(rawPrescriptions) ? rawPrescriptions : []
-
-      const PHARMACY_STATUSES = new Set(['awaiting_pharmacy'])
+      const PHARMACY_STATUSES = new Set(['awaiting_pharmacy', 'awaiting_pharmacist'])
 
       const mappedPatients = patientList
         .filter(p => PHARMACY_STATUSES.has(String(p?.status).toLowerCase()))
@@ -119,61 +112,7 @@ const Incoming = () => {
             statusSenderName: d?.statusSenderName,
           };
         })
-        const existingKeys = new Set(
-          [...mappedPatients, ...mappedDependants].map((i) => i.dependantId ? `dep:${i.dependantId}` : `pat:${i.patientId}`)
-        );
-
-        // Also add any patients or dependants with pending prescriptions (e.g. admitted post-op patients)
-        const pendingRxItems = [];
-        for (const rx of pendingPrescriptionList) {
-          const rxPatId = rx.patientId || rx.patient?.id || rx.patient?._id;
-          const rxDepId = rx.dependantId || rx.dependant?.id || rx.dependant?._id;
-          const key = rxDepId ? `dep:${rxDepId}` : `pat:${rxPatId}`;
-          if (!key || key === 'pat:undefined' || existingKeys.has(key)) continue;
-
-          existingKeys.add(key);
-          const p = rx.patient || patientMap.get(rxPatId);
-          const d = rx.dependant;
-
-          if (rxDepId && d) {
-            const parentPatient = d?.patient || p || patientMap.get(d?.patientId);
-            const parentHospitalId = parentPatient?.hospitalId || d?.patient?.hospitalId;
-            pendingRxItems.push({
-              type: 'dependant',
-              id: d?.id || rxDepId,
-              patientId: rxPatId,
-              dependantId: rxDepId,
-              hospitalId: parentHospitalId || null,
-              name: `${d?.firstName || ''} ${d?.lastName || ''}`.trim() || 'Unknown',
-              displayId: parentHospitalId || '—',
-              badge: d?.relationshipType || 'Dependant',
-              status: d?.status || 'awaiting_pharmacy',
-              updatedAt: rx.updatedAt || rx.createdAt,
-              cardType: null,
-              familyName: '',
-              companyName: '',
-              snapshot: d,
-            });
-          } else if (rxPatId) {
-            const patObj = p || rx.patient;
-            pendingRxItems.push({
-              type: 'patient',
-              id: rxPatId,
-              patientId: rxPatId,
-              dependantId: null,
-              name: `${patObj?.firstName || ''} ${patObj?.lastName || ''}`.trim() || 'Unknown',
-              displayId: patObj?.hospitalId || rxPatId || '—',
-              status: patObj?.status || 'awaiting_pharmacy',
-              updatedAt: rx.updatedAt || rx.createdAt,
-              cardType: patObj?.cardType || 'personal',
-              familyName: patObj?.familyName || '',
-              companyName: patObj?.companyName || '',
-              snapshot: patObj || rx,
-            });
-          }
-        }
-
-        const combined = [...mappedPatients, ...mappedDependants, ...pendingRxItems].sort((a, b) => {
+        const combined = [...mappedPatients, ...mappedDependants].sort((a, b) => {
           const aTime = new Date(a.updatedAt || 0).getTime()
           const bTime = new Date(b.updatedAt || 0).getTime()
           return bTime - aTime // newest first

@@ -249,6 +249,7 @@ const { mappedPatients, mappedDependants } = useMemo(() => {
           e.stopPropagation();
           navigate(`/dashboard/medical-director/medical-history/${row.parentPatientId || row.id || row._id}`, {
             state: {
+              from: 'patients',
               patientSnapshot: row.type === 'dependant' ? null : row,
               dependantId: row.dependantId,
               dependantSnapshot: row.type === 'dependant' ? row : null,

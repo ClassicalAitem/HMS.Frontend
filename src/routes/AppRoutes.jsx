@@ -526,6 +526,11 @@ const AppRoutes = () => {
       <PatientsHistory />
     </ProtectedRoute>
   } />
+  <Route path="/dashboard/doctor/patientsHistory" element={
+    <ProtectedRoute allowedRoles={['doctor']}>
+      <PatientsHistory />
+    </ProtectedRoute>
+  } />
   <Route path="/dashboard/doctor/medical-history/:patientId/add" element={
     <ProtectedRoute allowedRoles={['doctor']}>
       <AddDiagnosis />

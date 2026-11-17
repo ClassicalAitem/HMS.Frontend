@@ -8,7 +8,7 @@ const UNIT_LABELS = {
   ampoule: 'Ampoule',
 };
 
-export function InventoryFormModal({ item, onClose, onSubmit }) {
+export function InventoryFormModal({ item, title, onClose, onSubmit }) {
   const isEdit = !!item?._id;
   const [form, setForm] = useState({
     name: item?.name || '',
@@ -92,7 +92,7 @@ export function InventoryFormModal({ item, onClose, onSubmit }) {
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="z-10 w-full max-w-lg card bg-base-100 p-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium">{isEdit ? 'Edit Item' : 'Add Item'}</h3>
+          <h3 className="font-medium">{title || (isEdit ? 'Edit Item' : 'Add Item')}</h3>
           <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
         </div>
 

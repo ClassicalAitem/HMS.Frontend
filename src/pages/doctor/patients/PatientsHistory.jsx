@@ -243,7 +243,12 @@ const StatusBadge = ({ status }) => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            navigate(`/dashboard/doctor/medical-history/${row.id}`);
+            navigate(`/dashboard/doctor/medical-history/${row.id}`, {
+              state: {
+                from: 'patientsHistory',
+                patientSnapshot: row,
+              },
+            });
           }}
           className="font-medium bg-transparent border-none cursor-pointer text-primary hover:text-primary/80 hover:underline"
         >
