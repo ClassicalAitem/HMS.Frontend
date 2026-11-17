@@ -320,40 +320,113 @@ const ConsultationDetailModal = ({
 
   const getMedHmoStatus = (med, pres) => {
     if (!hasHmoCoverage) return null;
-    if (med?.hmoStatus) return med.hmoStatus;
-    if (pres?.hmoStatus) return pres.hmoStatus;
 
-    const pId = String(pres?.id || pres?._id || '');
-    for (const bill of billingsData) {
-      for (const item of bill.itemDetails || []) {
-        const matchPId = item.prescriptionId && String(item.prescriptionId) === pId;
-        const matchName = item.description && med?.drugName && String(item.description).toLowerCase().includes(String(med.drugName).toLowerCase());
-        if (matchPId || matchName) {
-          if (item.hmoStatus) return item.hmoStatus;
+    if (med) {
+      // 1. Check direct HMO status on medication object
+      if (med.hmoStatus && String(med.hmoStatus).toLowerCase() !== 'pending') {
+        return med.hmoStatus;
+      }
+      if (med.hmoApprovalStatus && String(med.hmoApprovalStatus).toLowerCase() !== 'pending') {
+        return med.hmoApprovalStatus;
+      }
+
+      // 2. Look for matching medication line in billings
+      const pId = String(pres?.id || pres?._id || '');
+      const medName = String(med.drugName || med.name || '').trim().toLowerCase();
+
+      let matchedBillItem = null;
+      for (const bill of billingsData) {
+        for (const item of bill.itemDetails || []) {
+          const itemDesc = String(item.description || '').trim().toLowerCase();
+          const nameMatch = medName && (itemDesc.includes(medName) || medName.includes(itemDesc));
+          const idMatch =
+            (item.inventoryId && med.inventoryId && String(item.inventoryId) === String(med.inventoryId)) ||
+            (item.medicationId && med.id && String(item.medicationId) === String(med.id));
+
+          const itemPId = item.prescriptionId ? String(item.prescriptionId) : null;
+          if (itemPId && pId && itemPId === pId && (nameMatch || idMatch)) {
+            matchedBillItem = item;
+            break;
+          }
+          if (!matchedBillItem && (nameMatch || idMatch)) {
+            matchedBillItem = item;
+          }
+        }
+        if (matchedBillItem && matchedBillItem.prescriptionId && String(matchedBillItem.prescriptionId) === pId) {
+          break;
         }
       }
+
+      if (matchedBillItem) {
+        const status = matchedBillItem.hmoStatus || matchedBillItem.hmoApprovalStatus;
+        if (status) return status;
+      }
+
+      // 3. Fallback to direct 'pending' if specified on the med
+      if (med.hmoStatus) return med.hmoStatus;
+
+      // 4. Fallback to prescription-level HMO status
+      if (pres?.hmoStatus) return pres.hmoStatus;
+      if (pres?.hmoApprovalStatus) return pres.hmoApprovalStatus;
+
+      // 5. Fallback to overall effective HMO status
+      return effectiveHmoStatus || 'pending';
     }
 
+    // Header level inquiry (when med is null)
+    if (pres?.hmoStatus) return pres.hmoStatus;
+    if (pres?.hmoApprovalStatus) return pres.hmoApprovalStatus;
     return effectiveHmoStatus || 'pending';
   };
 
   const getTestHmoStatus = (test, inv) => {
     if (!hasHmoCoverage) return null;
-    if (test?.hmoStatus) return test.hmoStatus;
-    if (inv?.hmoStatus) return inv.hmoStatus;
 
-    const invId = String(inv?.id || inv?._id || '');
-    const tName = typeof test === 'string' ? test : (test?.name || '');
-    for (const bill of billingsData) {
-      for (const item of bill.itemDetails || []) {
-        const matchInvId = item.investigationId && String(item.investigationId) === invId;
-        const matchName = item.description && tName && String(item.description).toLowerCase().includes(String(tName).toLowerCase());
-        if (matchInvId || matchName) {
-          if (item.hmoStatus) return item.hmoStatus;
+    if (test) {
+      if (typeof test === 'object') {
+        if (test.hmoStatus && String(test.hmoStatus).toLowerCase() !== 'pending') return test.hmoStatus;
+        if (test.hmoApprovalStatus && String(test.hmoApprovalStatus).toLowerCase() !== 'pending') return test.hmoApprovalStatus;
+      }
+
+      const invId = String(inv?.id || inv?._id || '');
+      const tName = typeof test === 'string' ? test : (test?.name || test?.testName || '');
+      const normTName = tName.trim().toLowerCase();
+
+      let matchedBillItem = null;
+      for (const bill of billingsData) {
+        for (const item of bill.itemDetails || []) {
+          const itemDesc = String(item.description || '').trim().toLowerCase();
+          const nameMatch = normTName && (itemDesc.includes(normTName) || normTName.includes(itemDesc));
+          const idMatch = (item.testId && test?.id && String(item.testId) === String(test.id));
+
+          const itemInvId = item.investigationId ? String(item.investigationId) : null;
+          if (itemInvId && invId && itemInvId === invId && (nameMatch || idMatch)) {
+            matchedBillItem = item;
+            break;
+          }
+          if (!matchedBillItem && (nameMatch || idMatch)) {
+            matchedBillItem = item;
+          }
+        }
+        if (matchedBillItem && matchedBillItem.investigationId && String(matchedBillItem.investigationId) === invId) {
+          break;
         }
       }
+
+      if (matchedBillItem) {
+        const status = matchedBillItem.hmoStatus || matchedBillItem.hmoApprovalStatus;
+        if (status) return status;
+      }
+
+      if (typeof test === 'object' && test?.hmoStatus) return test.hmoStatus;
+      if (inv?.hmoStatus) return inv.hmoStatus;
+      if (inv?.hmoApprovalStatus) return inv.hmoApprovalStatus;
+
+      return effectiveHmoStatus || 'pending';
     }
 
+    if (inv?.hmoStatus) return inv.hmoStatus;
+    if (inv?.hmoApprovalStatus) return inv.hmoApprovalStatus;
     return effectiveHmoStatus || 'pending';
   };
 
@@ -361,13 +434,14 @@ const ConsultationDetailModal = ({
     if (!hasHmoCoverage) return null;
     if (proc?.hmoStatus) return proc.hmoStatus;
 
-    const procName = proc?.procedureName || proc?.procedure || proc?.title || (typeof proc === 'string' ? proc : '');
+    const procName = String(proc?.procedureName || proc?.procedure || proc?.title || (typeof proc === 'string' ? proc : '')).trim().toLowerCase();
     const pId = String(proc?.id || proc?._id || proc?.appointmentId || '');
 
     for (const bill of billingsData) {
       for (const item of bill.itemDetails || []) {
-        const matchProcId = item.appointmentId && String(item.appointmentId) === pId;
-        const matchName = item.description && procName && String(item.description).toLowerCase().includes(String(procName).toLowerCase());
+        const itemDesc = String(item.description || '').trim().toLowerCase();
+        const matchProcId = pId && item.appointmentId && String(item.appointmentId) === pId;
+        const matchName = procName && (itemDesc.includes(procName) || procName.includes(itemDesc));
         if (matchProcId || matchName) {
           if (item.hmoStatus) return item.hmoStatus;
         }
@@ -786,11 +860,20 @@ const ConsultationDetailModal = ({
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-base-200 text-xs">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-base-content">Prescription #{idx + 1}</span>
-                            <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
-                              {pres.status || 'pending'}
-                            </span>
-                            {hasHmoCoverage && (
-                              <HmoStatusBadge status={getMedHmoStatus(null, pres)} size="xs" />
+                            {pres.medications?.length > 0 && (
+                              <span className="badge badge-ghost badge-sm text-base-content/70 font-normal">
+                                {pres.medications.length} {pres.medications.length === 1 ? 'item' : 'items'}
+                              </span>
+                            )}
+                            {(presStatus === 'dispensed' || presStatus === 'completed') && (
+                              <span className="badge badge-success text-white badge-sm capitalize font-medium">
+                                Dispensed
+                              </span>
+                            )}
+                            {presStatus === 'cancelled' && (
+                              <span className="badge badge-error text-white badge-sm capitalize font-medium">
+                                Cancelled
+                              </span>
                             )}
                           </div>
                           <div className="text-base-content/60 flex items-center gap-2">
@@ -804,6 +887,7 @@ const ConsultationDetailModal = ({
                         <div className="space-y-3">
                           {(pres.medications || []).map((med, mIdx) => {
                             const drugForm = med.form || med.dosageForm || med.drugForm || med.medicationType || med.type;
+                            const isMedDispensed = med.dispensedStatus === 'dispensed' || med.status === 'dispensed' || presStatus === 'dispensed';
                             return (
                               <div
                                 key={mIdx}
@@ -819,8 +903,17 @@ const ConsultationDetailModal = ({
                                     )}
                                   </div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    {hasHmoCoverage && (
+                                    {hasHmoCoverage ? (
                                       <HmoStatusBadge status={getMedHmoStatus(med, pres)} size="xs" />
+                                    ) : (
+                                      <span className={`badge ${med.isPaid || med.paymentStatus === 'paid' ? 'badge-success text-white' : 'badge-warning text-warning-content'} badge-xs capitalize font-medium`}>
+                                        {med.isPaid || med.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+                                      </span>
+                                    )}
+                                    {isMedDispensed && (
+                                      <span className="badge badge-success badge-outline badge-xs capitalize font-medium">
+                                        Dispensed
+                                      </span>
                                     )}
                                     {med.route && (
                                       <span className="badge badge-outline badge-xs uppercase">{med.route}</span>
@@ -901,15 +994,19 @@ const ConsultationDetailModal = ({
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-base-200 text-xs">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-base-content">Investigation Order #{idx + 1}</span>
-                            <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
-                              {inv.status || 'requested'}
-                            </span>
+                            {inv.tests?.length > 0 && (
+                              <span className="badge badge-ghost badge-sm text-base-content/70 font-normal">
+                                {inv.tests.length} {inv.tests.length === 1 ? 'test' : 'tests'}
+                              </span>
+                            )}
+                            {(invStatus === 'completed' || invStatus === 'sample_collected' || invStatus === 'in_progress') && (
+                              <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
+                                {inv.status}
+                              </span>
+                            )}
                             <span className={`badge ${priorityClass} badge-sm uppercase font-semibold`}>
                               {inv.priority || 'normal'}
                             </span>
-                            {hasHmoCoverage && (
-                              <HmoStatusBadge status={getTestHmoStatus(null, inv)} size="xs" />
-                            )}
                           </div>
                           <div className="text-base-content/60 flex items-center gap-2">
                             <span>Ordered {inv.createdAt ? formatNigeriaDateTime(inv.createdAt) : '—'}</span>
@@ -932,8 +1029,12 @@ const ConsultationDetailModal = ({
                                 )}
                               </div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                {hasHmoCoverage && (
+                                {hasHmoCoverage ? (
                                   <HmoStatusBadge status={getTestHmoStatus(t, inv)} size="xs" />
+                                ) : (
+                                  <span className={`badge ${t.isPaid || t.paymentStatus === 'paid' ? 'badge-success text-white' : 'badge-warning text-warning-content'} badge-xs capitalize font-medium`}>
+                                    {t.isPaid || t.paymentStatus === 'paid' ? 'Paid' : 'Pending'}
+                                  </span>
                                 )}
                                 {t.sampleType && (
                                   <span className="text-xs text-base-content/60">{t.sampleType}</span>
@@ -1003,9 +1104,6 @@ const ConsultationDetailModal = ({
                               <span className={`badge ${procStatusClass} badge-sm capitalize font-medium`}>
                                 {proc.status || 'scheduled'}
                               </span>
-                              {hasHmoCoverage && (
-                                <HmoStatusBadge status={getProcedureHmoStatus(proc)} size="xs" />
-                              )}
                             </div>
                             <span className="text-base-content/60">
                               {proc.scheduledDate || proc.date ? formatNigeriaDate(proc.scheduledDate || proc.date) : (proc.createdAt ? formatNigeriaDate(proc.createdAt) : '—')}
@@ -1083,9 +1181,6 @@ const ConsultationDetailModal = ({
                             <span className={`badge ${statusClass} badge-sm capitalize font-medium`}>
                               {adm.status || 'active'}
                             </span>
-                            {hasHmoCoverage && (
-                              <HmoStatusBadge status={effectiveHmoStatus} size="xs" />
-                            )}
                           </div>
                           <span className="text-base-content/60">
                             Admitted {adm.createdAt ? formatNigeriaDateTime(adm.createdAt) : '—'}
