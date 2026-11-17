@@ -25,8 +25,8 @@ export const recordBloodTransfusionReaction = async (id, reactionData) => {
   return res.data ?? res
 }
 
-export const startBloodTransfusionOrder = async (id) => {
-  const res = await apiClient.patch(`/blood-transfusion/${id}/start`)
+export const startBloodTransfusionOrder = async (id, payload = {}) => {
+  const res = await apiClient.patch(`/blood-transfusion/${id}/start`, payload)
   return res.data ?? res
 }
 

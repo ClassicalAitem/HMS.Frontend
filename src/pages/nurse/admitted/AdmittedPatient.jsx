@@ -15,6 +15,7 @@ import BloodAvailabilityTab from '@/components/admitted/BloodAvailabilityTab'
 import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
+import TimedTherapyTab from '@/components/admitted/TimedTherapyTab'
 import AdmissionBillManagerModal from '@/components/modals/AdmissionBillManagerModal'
 import NurseReportModal from '@/components/modals/NurseReportModal'
 import DischargePatientModal from '@/components/modals/DischargePatientModal'
@@ -27,6 +28,7 @@ import {
   FaExchangeAlt,
   FaBaby,
   FaBed,
+  FaLungs,
   FaArrowLeft,
   FaFileInvoice,
   FaPills,
@@ -449,6 +451,18 @@ const AdmittedPatient = () => {
                   Exchange Transfusion (EBT)
                 </button>
 
+                <button
+                  onClick={() => setActiveTab('timedTherapies')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'timedTherapies'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaLungs className="w-4 h-4" />
+                  Oxygen & Therapies
+                </button>
+
                 {/* Neonatal Care Tab (Option A: age <= 28 days) */}
                 {isNeonatal && (
                   <button
@@ -534,6 +548,16 @@ const AdmittedPatient = () => {
                 dependantId={dependantId}
                 consultationId={consultationId}
                 isDoctor={false}
+              />
+            )}
+
+            {activeTab === 'timedTherapies' && (
+              <TimedTherapyTab
+                patientId={patientId}
+                dependantId={dependantId}
+                admissionId={admission?._id || admission?.id}
+                isDoctor={false}
+                isNurse={true}
               />
             )}
 

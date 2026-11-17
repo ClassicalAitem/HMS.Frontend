@@ -17,6 +17,7 @@ import IvFluidTab from '@/components/admitted/IvFluidTab'
 import EbtTab from '@/components/admitted/EbtTab'
 import NeonatalCareTab from '@/components/admitted/NeonatalCareTab'
 import TreatmentPlanTab from '@/components/admitted/TreatmentPlanTab'
+import TimedTherapyTab from '@/components/admitted/TimedTherapyTab'
 import toast from 'react-hot-toast'
 import {
   FaHeartbeat,
@@ -25,6 +26,7 @@ import {
   FaExchangeAlt,
   FaBaby,
   FaBed,
+  FaLungs,
   FaArrowLeft,
   FaCashRegister,
   FaPaperPlane,
@@ -350,6 +352,18 @@ const DRAdmittedPatient = () => {
                   Exchange Transfusion (EBT)
                 </button>
 
+                <button
+                  onClick={() => setActiveTab('timedTherapies')}
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
+                    activeTab === 'timedTherapies'
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'text-base-content/70 hover:bg-base-200'
+                  }`}
+                >
+                  <FaLungs className="w-4 h-4" />
+                  Oxygen & Therapies
+                </button>
+
                 {/* Neonatal Care Tab (Option A: age <= 28 days) */}
                 {isNeonatal && (
                   <button
@@ -435,6 +449,16 @@ const DRAdmittedPatient = () => {
                 dependantId={dependantId}
                 consultationId={consultationId}
                 isDoctor={true}
+              />
+            )}
+
+            {activeTab === 'timedTherapies' && (
+              <TimedTherapyTab
+                patientId={patientId}
+                dependantId={dependantId}
+                admissionId={admission?.id || admission?._id}
+                isDoctor={true}
+                isNurse={false}
               />
             )}
 
