@@ -106,6 +106,8 @@ const Login = () => {
           'laboratory': '/dashboard/laboratory',
           'sonographer': '/dashboard/sonographer',
           'surgeon': '/dashboard/surgeon',
+          'human-resource': '/dashboard/hr',
+          'hr': '/dashboard/hr',
         };
         const roleOrType = user.role || user.accountType;
         redirectPath = roleRoutes[roleOrType] || '/frontdesk/dashboard';
@@ -197,6 +199,9 @@ const Login = () => {
       case 'developer':
       case 'it-support':
         return '/developer/logs';
+      case 'human-resource':
+      case 'hr':
+        return '/dashboard/hr';
       default:
         return '/frontdesk/dashboard';
     }

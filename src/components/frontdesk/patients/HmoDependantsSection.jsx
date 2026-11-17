@@ -9,9 +9,9 @@ import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 const initials = (firstName, lastName) =>
   `${(firstName || '').charAt(0)}${(lastName || '').charAt(0)}`.toUpperCase() || '—';
 
-const HmoPlanChip = ({ hmo, onDeleteHmo }) => (
+const HmoPlanChip = ({ hmo, onDeleteHmo, readOnly }) => (
   <div className="p-2 mt-2 rounded-lg bg-success/10 relative group border border-success/20">
-    {onDeleteHmo && (
+    {!readOnly && onDeleteHmo && (
       <button 
         type="button" 
         onClick={() => onDeleteHmo(hmo)}
@@ -34,6 +34,8 @@ const HmoDependantsSection = ({
   patient,
   isTransitionLoading,
   viewingDependantId,
+  readOnly = false,
+  baseRoute = '/frontdesk/patients',
   onAddHmo,
   onEditHmo,
   onAddDependant,
@@ -72,7 +74,7 @@ const HmoDependantsSection = ({
         <h3 className="flex items-center justify-between mb-4 text-lg font-medium text-primary">
           HMO & Dependants Information
           <span className="flex items-center gap-2">
-            {!isViewingDependant && (
+            {!isViewingDependant && !readOnly && (
               <>
                 <label className="text-sm label text-base-content">HMO</label>
                 <div className="tooltip tooltip-primary tooltip-bottom" data-tip="Add HMO Plan">
@@ -114,7 +116,7 @@ const HmoDependantsSection = ({
                           {isViewingDependant ? (
                             <button
                               type="button"
-                              onClick={() => navigate(`/frontdesk/patients/${patient.id || patient._id}`)}
+                              onClick={() => navigate(`${baseRoute}/${patient.id || patient._id}`)}
                               className="font-semibold text-primary hover:underline text-left cursor-pointer bg-transparent border-none p-0"
                               title="Switch to Principal Patient"
                             >
@@ -130,7 +132,7 @@ const HmoDependantsSection = ({
                     {isViewingDependant && (
                       <button
                         type="button"
-                        onClick={() => navigate(`/frontdesk/patients/${patient.id || patient._id}`)}
+                        onClick={() => navigate(`${baseRoute}/${patient.id || patient._id}`)}
                         className="btn btn-xs btn-outline btn-primary"
                         title="Switch back to Guardian"
                       >
@@ -142,7 +144,7 @@ const HmoDependantsSection = ({
                     {patientHmos.length === 0 ? (
                       <div className="text-xs text-base-content/50">No HMO plan on file</div>
                     ) : (
-                      patientHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} onDeleteHmo={onDeleteHmo} />)
+                      patientHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} onDeleteHmo={onDeleteHmo} readOnly={readOnly} />)
                     )}
                   </div>
                 </div>
@@ -180,7 +182,7 @@ const HmoDependantsSection = ({
                               <div className="text-sm font-semibold flex items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => navigate(`/frontdesk/patients/${patient.id || patient._id}?dependantId=${dep.id}`, {
+                                  onClick={() => navigate(`${baseRoute}/${patient.id || patient._id}?dependantId=${dep.id}`, {
                                     state: {
                                       patientSnapshot: patient,
                                       dependantId: dep.id,
@@ -198,37 +200,39 @@ const HmoDependantsSection = ({
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-1">
-                            <div className="tooltip tooltip-primary tooltip-left" data-tip={`Add HMO for ${dep.firstName || 'dependant'}`}>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-xs btn-circle text-primary"
-                                onClick={() => onAddHmoForDependant(dep)}
-                              >
-                                <IoAddCircleOutline className="text-base" />
-                              </button>
-                            </div>
-                            <div className="tooltip tooltip-primary tooltip-left" data-tip={`Edit HMO for ${dep.firstName || 'dependant'}`}>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-xs btn-circle text-primary"
-                                onClick={() => onEditHmoForDependant && onEditHmoForDependant(dep)}
-                              >
-                                <MdEditNote className="text-base" />
-                              </button>
-                            </div>
-                            {onDeleteDependant && (
-                              <div className="tooltip tooltip-error tooltip-left" data-tip="Delete Dependant">
+                          {!readOnly && (
+                            <div className="flex items-center gap-1">
+                              <div className="tooltip tooltip-primary tooltip-left" data-tip={`Add HMO for ${dep.firstName || 'dependant'}`}>
                                 <button
                                   type="button"
-                                  className="btn btn-ghost btn-xs btn-circle text-error/70 hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => onDeleteDependant(dep)}
+                                  className="btn btn-ghost btn-xs btn-circle text-primary"
+                                  onClick={() => onAddHmoForDependant(dep)}
                                 >
-                                  <MdDeleteOutline className="text-base" />
+                                  <IoAddCircleOutline className="text-base" />
                                 </button>
                               </div>
-                            )}
-                          </div>
+                              <div className="tooltip tooltip-primary tooltip-left" data-tip={`Edit HMO for ${dep.firstName || 'dependant'}`}>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs btn-circle text-primary"
+                                  onClick={() => onEditHmoForDependant && onEditHmoForDependant(dep)}
+                                >
+                                  <MdEditNote className="text-base" />
+                                </button>
+                              </div>
+                              {onDeleteDependant && (
+                                <div className="tooltip tooltip-error tooltip-left" data-tip="Delete Dependant">
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-xs btn-circle text-error/70 hover:text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={() => onDeleteDependant(dep)}
+                                  >
+                                    <MdDeleteOutline className="text-base" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 mt-2 text-xs gap-y-1 gap-x-3 text-base-content/70">
@@ -240,7 +244,7 @@ const HmoDependantsSection = ({
                           {depHmos.length === 0 ? (
                             <div className="text-xs text-base-content/50">No HMO plan</div>
                           ) : (
-                            depHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} onDeleteHmo={onDeleteHmo} />)
+                            depHmos.map((hmo) => <HmoPlanChip key={hmo.id} hmo={hmo} onDeleteHmo={onDeleteHmo} readOnly={readOnly} />)
                           )}
                         </div>
                       </div>

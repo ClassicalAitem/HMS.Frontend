@@ -2,9 +2,30 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/common';
 import { Sidebar, FilterUsers } from '@/components/superadmin';
 import { DataTable } from '@/components/common';
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaUserMd, FaUserNurse, FaUserTie, FaToggleOn, FaToggleOff, FaKey } from 'react-icons/fa';
+import {
+  FaPlus,
+  FaEdit,
+  FaTrash,
+  FaUserShield,
+  FaUserMd,
+  FaUserNurse,
+  FaUserTie,
+  FaUsers,
+  FaUserClock,
+  FaBan,
+  FaCheckCircle,
+  FaToggleOn,
+  FaToggleOff,
+  FaKey,
+} from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchUsers, deleteUser, toggleUserStatus, clearUsersError } from '../../../store/slices/usersSlice';
+import {
+  fetchUsers,
+  deleteUser,
+  toggleUserStatus,
+  toggleUserLeaveStatus,
+  clearUsersError,
+} from '../../../store/slices/usersSlice';
 import { AddUserModal, EditUserModal, ResetPasswordModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
@@ -19,6 +40,14 @@ const ManageUsers = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+
+  // Leave toggle confirmation modal state
+  const [leaveModalData, setLeaveModalData] = useState({
+    isOpen: false,
+    user: null,
+    targetStatus: false,
+  });
+  const [togglingLeaveId, setTogglingLeaveId] = useState(null);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,6 +92,44 @@ const ManageUsers = () => {
     setSelectedStatus(e.target.value);
   };
 
+  // Leave toggle handler
+  const handleLeaveCheckboxClick = (user, currentLeaveStatus) => {
+    setLeaveModalData({
+      isOpen: true,
+      user,
+      targetStatus: !currentLeaveStatus,
+    });
+  };
+
+  const confirmLeaveStatusChange = async () => {
+    const { user, targetStatus } = leaveModalData;
+    if (!user) return;
+
+    setTogglingLeaveId(user.id);
+    setLeaveModalData({ isOpen: false, user: null, targetStatus: false });
+
+    try {
+      const result = await dispatch(
+        toggleUserLeaveStatus({ userId: user.id, isOnLeave: targetStatus })
+      );
+
+      if (toggleUserLeaveStatus.fulfilled.match(result)) {
+        toast.success(
+          targetStatus
+            ? `${user.firstName} ${user.lastName} is now ON LEAVE. System login has been locked.`
+            : `${user.firstName} ${user.lastName} returned from leave. System login is restored.`
+        );
+        dispatch(fetchUsers());
+      } else {
+        toast.error(result.payload || 'Failed to update leave status');
+      }
+    } catch (err) {
+      toast.error('Failed to update leave status');
+    } finally {
+      setTogglingLeaveId(null);
+    }
+  };
+
   // Filter users based on search term, role, and status
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' ||
@@ -71,7 +138,11 @@ const ManageUsers = () => {
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.shift?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole = selectedRole === 'all' || user.accountType === selectedRole || (selectedRole === 'medical-laboratory' && user.accountType === 'lab-technician');
+    const matchesRole = selectedRole === 'all' ||
+      user.accountType === selectedRole ||
+      (selectedRole === 'human-resource' && (user.accountType === 'human-resource' || user.accountType === 'hr')) ||
+      (selectedRole === 'medical-laboratory' && user.accountType === 'lab-technician');
+
     const matchesStatus = selectedStatus === 'all' ||
       (selectedStatus === 'active' && user.isActive) ||
       (selectedStatus === 'inactive' && !user.isActive);
@@ -89,6 +160,9 @@ const ManageUsers = () => {
         return <FaUserMd className="w-4 h-4" />;
       case 'nurse':
         return <FaUserNurse className="w-4 h-4" />;
+      case 'human-resource':
+      case 'hr':
+        return <FaUsers className="w-4 h-4" />;
       default:
         return <FaUserShield className="w-4 h-4" />;
     }
@@ -119,6 +193,11 @@ const ManageUsers = () => {
         return 'badge badge-outline badge-primary';
       case 'sonographer':
         return 'badge badge-outline badge-info';
+      case 'human-resource':
+      case 'hr':
+        return 'badge badge-primary font-semibold';
+      case 'hmo':
+        return 'badge badge-accent';
       default:
         return 'badge badge-neutral';
     }
@@ -126,6 +205,7 @@ const ManageUsers = () => {
 
   const formatRole = (accountType) => {
     if (!accountType) return 'Unknown';
+    if (accountType === 'human-resource' || accountType === 'hr') return 'Human Resources';
     return accountType
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -136,6 +216,7 @@ const ManageUsers = () => {
     ...user,
     name: `${user.firstName} ${user.lastName}`,
     roleDisplay: formatRole(user.accountType),
+    isOnLeave: Boolean(user.isOnLeave),
     lastLoginFormatted: user.lastLogin ? formatNigeriaDate(user.lastLogin) : 'Never',
     createdAtFormatted: formatNigeriaDate(user.createdAt),
   }));
@@ -213,6 +294,49 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
           </span>
         </div>
       )
+    },
+    {
+      key: 'isOnLeave',
+      title: 'On Leave (Lock Login)',
+      sortable: true,
+      className: 'text-center',
+      render: (value, row) => {
+        const isOnLeave = Boolean(row.isOnLeave);
+        const isToggling = togglingLeaveId === row.id;
+
+        return (
+          <div className="inline-flex flex-col items-center gap-1">
+            {isToggling ? (
+              <span className="loading loading-spinner loading-xs text-warning" />
+            ) : (
+              <label
+                className={`cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border transition-all ${
+                  isOnLeave
+                    ? 'bg-warning/15 border-warning/40 text-warning-content font-bold shadow-xs'
+                    : 'bg-base-200/40 border-base-300 hover:border-warning/50 text-base-content/70'
+                }`}
+                title={isOnLeave ? 'Staff is currently on leave (login blocked)' : 'Staff is on duty'}
+              >
+                <input
+                  type="checkbox"
+                  checked={isOnLeave}
+                  onChange={() => handleLeaveCheckboxClick(row, isOnLeave)}
+                  className="checkbox checkbox-xs checkbox-warning"
+                />
+                <span className="text-xs">
+                  {isOnLeave ? 'On Leave' : 'On Duty'}
+                </span>
+              </label>
+            )}
+
+            {isOnLeave && (
+              <span className="text-[10px] text-error font-medium flex items-center gap-0.5">
+                <FaBan className="w-2.5 h-2.5" /> Login Blocked
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: 'isDefaultPassword',
@@ -400,6 +524,98 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
           onClose={() => setIsResetPasswordModalOpen(false)}
           user={selectedUser}
         />
+
+      {/* Leave Status Confirmation Modal */}
+      {leaveModalData.isOpen && leaveModalData.user && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-md">
+            <h3 className="font-bold text-lg text-base-content flex items-center gap-2">
+              <FaUserClock className="text-warning w-5 h-5" />
+              <span>
+                {leaveModalData.targetStatus
+                  ? 'Confirm Place on Leave'
+                  : 'Confirm Return from Leave'}
+              </span>
+            </h3>
+
+            <p className="py-4 text-sm text-base-content/80 leading-relaxed">
+              Are you sure you want to mark{' '}
+              <strong className="text-base-content">
+                {leaveModalData.user.firstName} {leaveModalData.user.lastName}
+              </strong>{' '}
+              ({leaveModalData.user.accountType}) as{' '}
+              <span
+                className={`badge badge-sm font-bold ${
+                  leaveModalData.targetStatus
+                    ? 'badge-warning'
+                    : 'badge-success text-white'
+                }`}
+              >
+                {leaveModalData.targetStatus ? 'ON LEAVE' : 'ON DUTY'}
+              </span>
+              ?
+            </p>
+
+            {leaveModalData.targetStatus ? (
+              <div className="p-3.5 rounded-xl bg-error/10 border border-error/20 text-xs text-error font-medium flex items-start gap-2.5 mb-4">
+                <FaBan className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Important:</strong> When placed on leave, this staff
+                  member will be strictly <strong>blocked from logging into the HMS</strong>{' '}
+                  until returned from leave.
+                </span>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-xl bg-success/10 border border-success/20 text-xs text-success font-medium flex items-start gap-2.5 mb-4">
+                <FaCheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>
+                  System login access will be immediately restored for this staff
+                  member.
+                </span>
+              </div>
+            )}
+
+            <div className="modal-action">
+              <button
+                type="button"
+                onClick={() =>
+                  setLeaveModalData({
+                    isOpen: false,
+                    user: null,
+                    targetStatus: false,
+                  })
+                }
+                className="btn btn-sm btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmLeaveStatusChange}
+                className={`btn btn-sm ${
+                  leaveModalData.targetStatus
+                    ? 'btn-warning text-warning-content font-bold'
+                    : 'btn-success text-white'
+                }`}
+              >
+                {leaveModalData.targetStatus
+                  ? 'Yes, Place On Leave'
+                  : 'Yes, Return to Duty'}
+              </button>
+            </div>
+          </div>
+          <div
+            className="modal-backdrop"
+            onClick={() =>
+              setLeaveModalData({
+                isOpen: false,
+                user: null,
+                targetStatus: false,
+              })
+            }
+          />
+        </div>
+      )}
 
       {/* Debug Component - Remove in production */}
       {/* <div className="hidden fixed right-4 bottom-4 z-50">

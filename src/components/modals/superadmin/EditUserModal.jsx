@@ -24,7 +24,24 @@ const editUserSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['admin', 'doctor', 'medical-director', 'nurse', 'frontdesk', 'front-desk', 'cashier', 'pharmacist', 'medical-laboratory', 'lab-technician', 'sonographer'], 'Please select a valid role'),
+    .oneOf([
+      'admin',
+      'doctor',
+      'medical-director',
+      'nurse',
+      'frontdesk',
+      'front-desk',
+      'cashier',
+      'pharmacist',
+      'medical-laboratory',
+      'lab-technician',
+      'sonographer',
+      'surgeon',
+      'hmo',
+      'human-resource',
+      'hr'
+    ], 'Please select a valid role'),
+  isOnLeave: yup.boolean().notRequired(),
   departmentId: yup
     .string()
     .notRequired(),
@@ -69,6 +86,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       role: '',
       departmentId: '',
       shift: '',
+      isOnLeave: false,
     },
   });
 
@@ -83,7 +101,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
       setValue('role', user.accountType || '');
       setValue('departmentId', '');
       setValue('shift', user.shift || '');
-      setValue('confirmPassword', '');
+      setValue('isOnLeave', Boolean(user.isOnLeave));
     }
   }, [user, isOpen, setValue]);
 
@@ -96,6 +114,7 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
         firstName: data.firstName.trim(),
         lastName: data.lastName.trim(),
         accountType: data.role,
+        isOnLeave: Boolean(data.isOnLeave),
       };
 
       // Only add departmentId if it's selected
@@ -247,6 +266,9 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
                 <option value="medical-laboratory">Medical Laboratory</option>
                 <option value="pharmacist">Pharmacist</option>
                 <option value="sonographer">Sonographer</option>
+                <option value="surgeon">Surgeon</option>
+                <option value="hmo">HMO</option>
+                <option value="human-resource">Human Resources (HR)</option>
               </select>
               {errors.role && (
                 <label className="label">
@@ -296,6 +318,26 @@ const EditUserModal = ({ isOpen, onClose, user, onUserUpdated }) => {
                   <span className="label-text-alt text-error">{errors.shift.message}</span>
                 </label>
               )}
+            </div>
+
+            {/* On Leave Status (Lock Login) */}
+            <div className="p-3.5 rounded-xl bg-base-200/50 border border-base-300">
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span className="font-semibold text-sm text-base-content block">
+                    On Leave Status (Lock Login)
+                  </span>
+                  <span className="text-xs text-base-content/60 block mt-0.5">
+                    When active, this staff member will be strictly locked from logging into the HMS.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-warning toggle-sm"
+                  {...register('isOnLeave')}
+                  disabled={isLoading}
+                />
+              </label>
             </div>
 
             {/* Role-specific info */}

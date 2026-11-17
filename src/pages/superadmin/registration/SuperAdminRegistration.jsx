@@ -36,7 +36,22 @@ const registrationSchema = yup.object({
     .string()
     .required('Role is required')
     .oneOf(
-      ['admin', 'doctor', 'medical-director', 'nurse', 'front-desk', 'cashier', 'medical-laboratory', 'lab-technician', 'surgeon', 'pharmacist', 'hmo', 'sonographer'],
+      [
+        'admin',
+        'doctor',
+        'medical-director',
+        'nurse',
+        'front-desk',
+        'cashier',
+        'medical-laboratory',
+        'lab-technician',
+        'surgeon',
+        'pharmacist',
+        'hmo',
+        'sonographer',
+        'human-resource',
+        'hr',
+      ],
       'Please select a valid role'
     ),
 
@@ -102,7 +117,7 @@ const onSubmit = async (data) => {
 
     let response;
 
-    if (data.role === 'admin') {
+    if (data.role === 'admin' || data.role === 'human-resource' || data.role === 'hr') {
       response = await usersAPI.createAdmin(userData);
     } else {
       response = await usersAPI.createUser(userData);
@@ -247,6 +262,7 @@ const onSubmit = async (data) => {
                     <option value="pharmacist">Pharmacist</option>
                     <option value="hmo">HMO</option>
                     <option value="sonographer">Sonographer</option>
+                    <option value="human-resource">Human Resources (HR)</option>
                   </select>
                   {errors.role && (
                     <p className="mt-1 text-xs text-error">{errors.role.message}</p>
@@ -304,7 +320,7 @@ const onSubmit = async (data) => {
                 </div>
 
                 {/* Role-specific info */}
-                {watchedRole === 'admin' && (
+                {(watchedRole === 'admin' || watchedRole === 'human-resource') && (
                   <div className="alert alert-info">
                     <div className="flex">
                       <div className="flex-shrink-0">
@@ -314,7 +330,9 @@ const onSubmit = async (data) => {
                       </div>
                       <div className="ml-3">
                         <p className="text-sm">
-                          Admin users will be created using the dedicated admin creation endpoint.
+                          {watchedRole === 'admin'
+                            ? 'Admin users will be created using the dedicated administrative creation endpoint.'
+                            : 'Human Resources (HR) staff will have management access to staff leave status, queues oversight, and patient directories.'}
                         </p>
                       </div>
                     </div>

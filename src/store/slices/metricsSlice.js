@@ -50,6 +50,8 @@ const metricsSlice = createSlice({
       totalMonthlyRevenue: 0,
       totalTodayAppointment: 0,
       totalDepartments: 0,
+      totalStaff: 0,
+      totalOnLeaveStaff: 0,
       totalActiveStaff: 0,
       totalDoctors: 0,
       totalNurses: 0,

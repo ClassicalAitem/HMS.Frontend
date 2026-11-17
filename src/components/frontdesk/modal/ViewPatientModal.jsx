@@ -15,7 +15,7 @@ const ViewPatientModal = ({ patientId, patient }) => {
   const goTo = (subject) => {
     setIsOpen(false);
     if (subject.type === 'dependant') {
-      navigate(location.pathname, {
+      navigate(`${location.pathname}?dependantId=${subject.id}`, {
         state: { dependantId: subject.id, dependantSnapshot: subject.raw },
       });
     } else {

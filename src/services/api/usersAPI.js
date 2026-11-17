@@ -60,6 +60,12 @@ export const usersAPI = {
     const response = await apiClient.patch(`${API_ENDPOINTS.DISABLE_ENABLE_ACCOUNT}/${userId}`, { isDisabled });
     return response;
   },
+
+  // Toggle staff leave status (on leave / return from leave)
+  toggleLeaveStatus: async (userId, isOnLeave) => {
+    const response = await apiClient.patch(`/user/toggleLeaveStatus/${userId}`, { isOnLeave });
+    return response;
+  },
 };
 
 export default usersAPI;

@@ -44,6 +44,7 @@ export const fetchUsers = createAsyncThunk(
           departmentName: user.department?.name || null,
           isActive: !user.isDisabled,
           isDisabled: user.isDisabled,
+          isOnLeave: Boolean(user.isOnLeave),
           isDeleted: user.isDeleted,
           lastLogin: user.lastLogin,
           loginCount: user.loginCount,
@@ -163,6 +164,29 @@ export const toggleUserStatus = createAsyncThunk(
       }
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Failed to toggle user status Refresh the page or try again later.'));
+    }
+  }
+);
+
+export const toggleUserLeaveStatus = createAsyncThunk(
+  'users/toggleUserLeaveStatus',
+  async ({ userId, isOnLeave }, { rejectWithValue }) => {
+    try {
+      const response = await usersAPI.toggleLeaveStatus(userId, isOnLeave);
+      const userData = response?.data?.data || response?.data;
+      const hasSuccess = response?.data?.success !== false;
+
+      if (hasSuccess && userData) {
+        return {
+          id: userData.id || userId,
+          isOnLeave: Boolean(isOnLeave),
+          ...userData,
+        };
+      } else {
+        throw new Error(response?.data?.message || 'Failed to update leave status');
+      }
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error, 'Failed to update leave status. Refresh the page or try again later.'));
     }
   }
 );
@@ -296,6 +320,27 @@ const usersSlice = createSlice({
         state.error = null;
       })
       .addCase(toggleUserStatus.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload;
+      })
+
+      // Toggle user leave status
+      .addCase(toggleUserLeaveStatus.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(toggleUserLeaveStatus.fulfilled, (state, action) => {
+        state.isLoading = false;
+        const index = state.users.findIndex(user => user.id === action.payload.id);
+        if (index !== -1) {
+          state.users[index] = { ...state.users[index], ...action.payload };
+        }
+        if (state.currentUser?.id === action.payload.id) {
+          state.currentUser = { ...state.currentUser, ...action.payload };
+        }
+        state.error = null;
+      })
+      .addCase(toggleUserLeaveStatus.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
       });

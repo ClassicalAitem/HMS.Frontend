@@ -8,10 +8,9 @@ import { getConsultations } from '@/services/api/consultationAPI'
 import { getPatientById, updatePatientStatus } from '@/services/api/patientsAPI'
 import { getAllBillings } from '@/services/api/billingAPI'
 import { updateDependantStatus } from '@/services/api/dependantAPI'
-import { getInventories, createInventory, updateInventory } from '@/services/api/inventoryAPI'
+import { getInventories } from '@/services/api/inventoryAPI'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { AddDrugModal, DispenseConfirmModal, ConsultationDetailModal } from '@/components/modals'
-import { InventoryFormModal } from '@/components/modals/InventoryFormModal'
 import { PATIENT_STATUS } from '@/constants/patientStatus'
 import toast from 'react-hot-toast'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
@@ -48,12 +47,6 @@ const IncomingDetails = () => {
   const [isSelectModalOpen, setIsSelectModalOpen] = useState(false)
   const [dispenseModalRows, setDispenseModalRows] = useState(null)
   const [dispenseSubmitting, setDispenseSubmitting] = useState(false)
-  const [addingInventoryFor, setAddingInventoryFor] = useState(null)
-  const [editingInventory, setEditingInventory] = useState(null)
-  const [priceEditingItem, setPriceEditingItem] = useState(null)
-  const [quickPriceInput, setQuickPriceInput] = useState('')
-  const [quickPackPriceInput, setQuickPackPriceInput] = useState('')
-  const [savingPrice, setSavingPrice] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
   const [doctors, setDoctors] = useState({}) 
   const [dependants, setDependants] = useState([])
@@ -436,35 +429,6 @@ const getDispenseInfo = (med) => {
               </div>
             </div>
 
-            {!isHistory && (
-              <div className="flex items-center gap-1.5 justify-start sm:justify-end">
-                {matchedInv && (
-                  <button
-                    type="button"
-                    className="btn btn-xs btn-outline btn-primary"
-                    onClick={() => openPriceEditor(m, matchedInv)}
-                    title="Change unit price directly"
-                  >
-                    Change Price
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-xs btn-outline border-base-300 hover:border-primary hover:text-primary"
-                  onClick={() => {
-                    if (matchedInv) {
-                      setEditingInventory(matchedInv)
-                    } else {
-                      setAddingInventoryFor(m)
-                    }
-                  }}
-                  title="Edit item and price"
-                >
-                  Edit Item
-                </button>
-              </div>
-            )}
-
             {m.instructions && (
               <div className="text-xs bg-base-200 p-1.5 rounded text-left sm:text-right">
                 Instruction: {m.instructions}
@@ -566,102 +530,6 @@ const getDispenseInfo = (med) => {
   const handlePrescriptionAction = (p) => {
     setPendingAction({ prescriptionIds: [p._id] })
     setDispenseModalRows(buildDispenseRowsForPrescriptions([p]))
-  }
-
-  const handleCreateInventory = async (payload) => {
-    const p = createInventory(payload)
-    toast.promise(p, { loading: 'Creating item...', success: 'Item created', error: 'Failed creating item' })
-    try {
-      await p
-      const res = await getInventories()
-      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
-      setInventory(list)
-      setAddingInventoryFor(null)
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  const handleEditInventory = async (id, payload) => {
-    const p = updateInventory(id, payload)
-    toast.promise(p, {
-      loading: 'Updating item...',
-      success: 'Item updated successfully',
-      error: (e) => getErrorMessage(e, 'Failed to update item'),
-    })
-    try {
-      await p
-      const res = await getInventories()
-      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
-      setInventory(list)
-      setEditingInventory(null)
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
-  const openPriceEditor = (med, inv) => {
-    const packSize = Number(inv?.packSize) || 1
-    const currentSellingPrice = Number(inv?.sellingPrice) || 0
-    const calculatedUnitPrice = packSize > 0 ? currentSellingPrice / packSize : currentSellingPrice
-    setPriceEditingItem({ med, inv })
-    setQuickPriceInput(calculatedUnitPrice ? String(Number(calculatedUnitPrice.toFixed(2))) : '0')
-    setQuickPackPriceInput(currentSellingPrice ? String(currentSellingPrice) : '0')
-  }
-
-  const handleUnitPriceChange = (val) => {
-    setQuickPriceInput(val)
-    const num = Number(val)
-    if (!Number.isNaN(num) && priceEditingItem?.inv) {
-      const packSize = Number(priceEditingItem.inv.packSize) || 1
-      const isSingle = priceEditingItem.med?.isSingleUnit || packSize <= 1
-      const calculatedPackPrice = isSingle ? num : num * packSize
-      setQuickPackPriceInput(String(Number(calculatedPackPrice.toFixed(2))))
-    }
-  }
-
-  const handlePackPriceChange = (val) => {
-    setQuickPackPriceInput(val)
-    const num = Number(val)
-    if (!Number.isNaN(num) && priceEditingItem?.inv) {
-      const packSize = Number(priceEditingItem.inv.packSize) || 1
-      const calculatedUnitPrice = packSize > 0 ? num / packSize : num
-      setQuickPriceInput(String(Number(calculatedUnitPrice.toFixed(2))))
-    }
-  }
-
-  const handleQuickPriceSave = async (e) => {
-    if (e) e.preventDefault()
-    if (!priceEditingItem?.inv) return
-
-    const inv = priceEditingItem.inv
-    const id = inv._id || inv.id
-
-    const newSellingPrice = Number(quickPackPriceInput)
-    if (Number.isNaN(newSellingPrice) || newSellingPrice < 0) {
-      toast.error('Please enter a valid price')
-      return
-    }
-
-    setSavingPrice(true)
-    const p = updateInventory(id, { sellingPrice: newSellingPrice })
-    toast.promise(p, {
-      loading: 'Updating price...',
-      success: 'Price updated successfully',
-      error: (err) => getErrorMessage(err, 'Failed to update price'),
-    })
-
-    try {
-      await p
-      const res = await getInventories()
-      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
-      setInventory(list)
-      setPriceEditingItem(null)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSavingPrice(false)
-    }
   }
 
   const handleCancelPrescription = async (p) => {
@@ -1101,158 +969,6 @@ const getDispenseInfo = (med) => {
             isSuperAdmin={isSuperAdmin}
             onCancel={() => setDispenseModalRows(null)}
             onConfirm={(finalRows) => submitDispense(finalRows, pendingAction)}
-          />
-        )}
-
-        {addingInventoryFor && (
-          <InventoryFormModal
-            title="Edit Item"
-            item={{ 
-              name: addingInventoryFor.drugName, 
-              description: `Dosage: ${addingInventoryFor.dosage || ''}\nFrequency: ${addingInventoryFor.frequency || ''}\nDuration: ${addingInventoryFor.duration || ''}`.trim()
-            }}
-            onClose={() => setAddingInventoryFor(null)}
-            onSubmit={handleCreateInventory}
-          />
-        )}
-
-        {/* Quick Unit Price Change Modal */}
-        {priceEditingItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/50"
-              onClick={() => {
-                if (!savingPrice) setPriceEditingItem(null)
-              }}
-            />
-            <div className="z-10 w-full max-w-md card bg-base-100 p-5 shadow-2xl border border-base-200">
-              <div className="flex justify-between items-center mb-3 pb-2 border-b border-base-200">
-                <div>
-                  <h3 className="font-bold text-lg text-base-content">Change Item Price</h3>
-                  <p className="text-xs text-base-content/60">
-                    Update price for {priceEditingItem.inv?.name || priceEditingItem.med?.drugName}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm btn-circle"
-                  disabled={savingPrice}
-                  onClick={() => setPriceEditingItem(null)}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Item Summary Box */}
-                <div className="bg-base-200/60 p-3 rounded-lg text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-base-content/60">Form & Strength:</span>
-                    <span className="font-medium text-base-content">
-                      {priceEditingItem.inv?.form || '—'} {priceEditingItem.inv?.strength ? `• ${priceEditingItem.inv.strength}` : ''}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-base-content/60">Pack Size:</span>
-                    <span className="font-medium text-base-content">
-                      {priceEditingItem.inv?.packSize || 1} {priceEditingItem.inv?.unit || 'unit(s)'} per pack
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-base-content/60">Current Selling Price:</span>
-                    <span className="font-medium text-base-content">
-                      ₦{Number(priceEditingItem.inv?.sellingPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Price inputs */}
-                <form onSubmit={handleQuickPriceSave} className="space-y-3">
-                  <div>
-                    <label className="label py-1">
-                      <span className="label-text font-semibold text-xs">
-                        Unit Price (₦) <span className="text-error">*</span>
-                      </span>
-                      <span className="label-text-alt text-[11px] text-base-content/60">
-                        Price charged per single unit
-                      </span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={quickPriceInput}
-                      onChange={(e) => handleUnitPriceChange(e.target.value)}
-                      placeholder="0.00"
-                      className="input input-bordered input-sm w-full font-medium"
-                      required
-                      autoFocus
-                    />
-                  </div>
-
-                  <div>
-                    <label className="label py-1">
-                      <span className="label-text font-semibold text-xs">
-                        Pack / Selling Price (₦)
-                      </span>
-                      <span className="label-text-alt text-[11px] text-base-content/60">
-                        Total pack inventory price
-                      </span>
-                    </label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={quickPackPriceInput}
-                      onChange={(e) => handlePackPriceChange(e.target.value)}
-                      placeholder="0.00"
-                      className="input input-bordered input-sm w-full font-medium"
-                    />
-                  </div>
-
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-xs text-primary underline"
-                      onClick={() => {
-                        const invToEdit = priceEditingItem.inv
-                        setPriceEditingItem(null)
-                        setEditingInventory(invToEdit)
-                      }}
-                    >
-                      Open Full Inventory Modal
-                    </button>
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        disabled={savingPrice}
-                        onClick={() => setPriceEditingItem(null)}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="btn btn-primary btn-sm"
-                        disabled={savingPrice}
-                      >
-                        {savingPrice ? 'Saving...' : 'Save Price'}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Full Edit Inventory Modal */}
-        {editingInventory && (
-          <InventoryFormModal
-            title="Edit Item"
-            item={editingInventory}
-            onClose={() => setEditingInventory(null)}
-            onSubmit={(payload) => handleEditInventory(editingInventory._id || editingInventory.id, payload)}
           />
         )}
 

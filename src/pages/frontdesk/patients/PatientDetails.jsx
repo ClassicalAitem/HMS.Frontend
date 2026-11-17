@@ -357,31 +357,9 @@ const PatientDetails = () => {
         onClose={() => navigate('/frontdesk/patients')}
       />
 
-          {/* Dependant Banner when viewing dependant */}
-          {isViewingDependant && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 px-4 rounded-xl bg-secondary/10 border border-secondary/20 mb-4 shadow-sm">
-              <div className="flex items-center gap-2.5">
-                <span className="badge badge-secondary font-semibold text-xs">Dependant Profile</span>
-                <span className="text-xs sm:text-sm text-base-content/80">
-                  Viewing record for <strong className="text-base-content">{summarySubject?.fullName}</strong>{' '}
-                  <span className="text-base-content/60">
-                    (Guardian: <strong className="text-primary font-medium">{patient?.fullName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Principal Patient'}</strong> — {patient?.hospitalId || '—'})
-                  </span>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate(`/frontdesk/patients/${patient?.id || patientId}`)}
-                className="btn btn-xs btn-outline btn-secondary shrink-0 font-medium"
-              >
-                Switch to Guardian
-              </button>
-            </div>
-          )}
-
-          {/* Patient Information */}
-          <div className="space-y-6">
-            <div className="space-y-6">
+      {/* Patient Information */}
+      <div className="space-y-6">
+        <div className="space-y-6">
            
             <PatientDetailsCard
               patient={displayPatient}

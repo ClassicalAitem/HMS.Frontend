@@ -74,6 +74,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       'labtechnician': '/dashboard/laboratory',
       'laboratory': '/dashboard/laboratory',
       'sonographer': '/dashboard/sonographer',
+      'human-resource': '/dashboard/hr',
+      'hr': '/dashboard/hr',
     };
     
     const roleOrType = userRole || 'frontdesk';

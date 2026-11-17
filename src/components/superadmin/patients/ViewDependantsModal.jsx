@@ -22,8 +22,11 @@ const ViewDependantsModal = ({ isOpen, onClose, patient }) => {
   const handleOpenProfile = (dep) => {
     onClose();
     const isSuperadmin = window.location.pathname.startsWith('/superadmin');
+    const isHr = window.location.pathname.startsWith('/dashboard/hr');
     const basePath = isSuperadmin
       ? `/superadmin/patients/patientDetails/${patient.id || patient._id}`
+      : isHr
+      ? `/dashboard/hr/patients/${patient.id || patient._id}`
       : `/frontdesk/patients/${patient.id || patient._id}`;
     navigate(`${basePath}?dependantId=${dep._id || dep.id}`, {
       state: {

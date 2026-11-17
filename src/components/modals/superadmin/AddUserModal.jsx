@@ -30,7 +30,23 @@ const addUserSchema = yup.object({
   role: yup
     .string()
     .required('Role is required')
-    .oneOf(['admin', 'doctor','medical-director', 'nurse', 'front-desk', 'cashier', 'pharmacist', 'medical-laboratory', 'lab-technician', 'hmo', 'surgeon', 'sonographer'], 'Please select a valid role'),
+    .oneOf([
+      'admin',
+      'doctor',
+      'medical-director',
+      'nurse',
+      'front-desk',
+      'frontdesk',
+      'cashier',
+      'pharmacist',
+      'medical-laboratory',
+      'lab-technician',
+      'hmo',
+      'surgeon',
+      'sonographer',
+      'human-resource',
+      'hr'
+    ], 'Please select a valid role'),
   shift: yup
     .string()
     .nullable()
@@ -90,7 +106,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
 
       // Call the appropriate API based on role
       let response;
-      if (data.role === 'admin') {
+      if (data.role === 'admin' || data.role === 'human-resource' || data.role === 'hr') {
         response = await usersAPI.createAdmin(userData);
       } else {
         // For other roles, use the general createUser endpoint
@@ -244,6 +260,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
                 <option value="hmo">HMO</option>
                 <option value="surgeon">Surgeon</option>
                 <option value="sonographer">Sonographer</option>
+                <option value="human-resource">Human Resources (HR)</option>
               </select>
               {errors.role && (
                 <label className="label">

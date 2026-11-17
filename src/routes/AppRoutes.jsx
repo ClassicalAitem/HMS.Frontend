@@ -221,6 +221,15 @@ const PharmacistAttendedToday = lazy(() => import("@/pages/pharmacist/attendedTo
 const PharmacyAdmissions = lazy(() => import("@/pages/pharmacist/admissions/PharmacyAdmissions"));
 const PharmacyAdmittedPatient = lazy(() => import("@/pages/pharmacist/admissions/PharmacyAdmittedPatient"));
 
+// HR Dashboard & Management Routes
+const HrDashboard = lazy(() => import("@/pages/hr/dashboard/HrDashboard"));
+const HrDoctorQueue = lazy(() => import("@/pages/hr/queue/DoctorQueue"));
+const HrNurseQueue = lazy(() => import("@/pages/hr/queue/NurseQueue"));
+const HrStaffManagement = lazy(() => import("@/pages/hr/staff/HrStaffManagement"));
+const HrAttendance = lazy(() => import("@/pages/hr/attendance/HrAttendance"));
+const HrPatients = lazy(() => import("@/pages/hr/patients/HrPatients"));
+const HrPatientDetails = lazy(() => import("@/pages/hr/patients/HrPatientDetails"));
+
 
 
 const RouteLoader = () => (
@@ -1454,6 +1463,43 @@ const AppRoutes = () => {
       <Route path="/admin/system-logs" element={
         <ProtectedRoute allowedRoles={['developer', 'it-support', 'super-admin']}>
           <SystemLogsPage />
+        </ProtectedRoute>
+      } />
+
+      {/* ====================================  HR Dashboard & Workspaces  ===================================================== */}
+      <Route path="/dashboard/hr" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hr/doctor-queue" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrDoctorQueue />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hr/nurse-queue" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrNurseQueue />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hr/staff" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrStaffManagement />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hr/attendance" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrAttendance />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hr/patients" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrPatients />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hr/patients/:patientId" element={
+        <ProtectedRoute allowedRoles={['human-resource', 'hr', 'super-admin']}>
+          <HrPatientDetails />
         </ProtectedRoute>
       } />
 

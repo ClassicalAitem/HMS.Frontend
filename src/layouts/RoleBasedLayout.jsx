@@ -14,6 +14,7 @@ import PharmacistLayout from './pharmacist/PharmacistLayout';
 import HmoLayout from './hmo/HmoLayout';
 import SonographerLayout from './sonographer/SonographerLayout';
 import LaboratoryLayout from './laboratory/LaboratoryLayout';
+import HrLayout from './hr/HrLayout';
 
 const RoleBasedLayout = ({ children }) => {
   const { user } = useAppSelector((state) => state.auth);
@@ -26,6 +27,7 @@ const RoleBasedLayout = ({ children }) => {
     return <DeveloperLayout>{children}</DeveloperLayout>;
   }
   if (normalizedRole === 'super-admin') return <SuperAdminLayout>{children}</SuperAdminLayout>;
+  if (normalizedRole === 'human-resource' || normalizedRole === 'hr') return <HrLayout>{children}</HrLayout>;
   if (normalizedRole === 'admin') return <AdminLayout>{children}</AdminLayout>;
   if (normalizedRole === 'medical-director') return <MedicalDirectorLayout>{children}</MedicalDirectorLayout>;
   if (normalizedRole === 'doctor') return <DoctorLayout>{children}</DoctorLayout>;
