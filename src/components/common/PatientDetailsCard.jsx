@@ -221,7 +221,7 @@ const PatientDetailsCard = ({
                 >
                   <span className="text-base-content/80 font-medium">
                     {h.provider || '—'} <span className="text-base-content/50">({h.plan || '—'})</span>
-                    {h.memberId && <span className="text-base-content/40 ml-1">· #{h.memberId}</span>}
+                    {h.memberId && <span className="text-base-content/40 ml-1">· {h.memberId}</span>}
                   </span>
                   <span className={`badge badge-xs ${isExpired(h) ? 'badge-error' : 'badge-info'}`}>
                     {isExpired(h) ? 'Expired' : 'Active'}
