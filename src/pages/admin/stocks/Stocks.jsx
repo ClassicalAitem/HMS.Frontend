@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
 import AdminLayout from "@/layouts/admin/AdminLayout";
 import KolakLoader from "@/components/common/KolakLoader";
@@ -12,10 +11,9 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-import { TbChartDots2 } from "react-icons/tb";
 import { getInventories } from "@/services/api/inventoryAPI";
 import { getLaboratoryInventories } from "@/services/api/labInventoryApi";
-import { exportRowsToCsv, formatCurrency } from "../reports/adminReportUtils";
+import { exportRowsToCsv } from "../reports/adminReportUtils";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 
 const Stocks = () => {
@@ -69,7 +67,6 @@ const Stocks = () => {
     pharmacyItems.forEach((item, idx) => {
       const stock = Number(item.stock || item.quantity || 0);
       const reorder = Number(item.reorderLevel || 10);
-      const price = Number(item.sellingPrice || item.price || item.costPrice || 0);
       const status = stock <= 0 ? "Out of Stock" : stock <= reorder ? "Low Stock" : "In Stock";
 
       list.push({
@@ -79,7 +76,6 @@ const Stocks = () => {
         category: item.category || "Prescription Medicine",
         stock,
         reorder,
-        unitPrice: price,
         expiryDate: item.expiryDate || "",
         status,
         batch: item.batchNumber || "—",
@@ -89,7 +85,6 @@ const Stocks = () => {
     labItems.forEach((item, idx) => {
       const stock = Number(item.stock || item.quantity || 0);
       const reorder = Number(item.reorderLevel || 10);
-      const price = Number(item.sellingPrice || item.price || 0);
       const status = stock <= 0 ? "Out of Stock" : stock <= reorder ? "Low Stock" : "In Stock";
 
       list.push({
@@ -99,7 +94,6 @@ const Stocks = () => {
         category: item.category || "Diagnostic Reagent",
         stock,
         reorder,
-        unitPrice: price,
         expiryDate: item.expiryDate || "",
         status,
         batch: item.batchNumber || "—",
@@ -136,8 +130,6 @@ const Stocks = () => {
   const lowStockPercentage = totalCount > 0 ? (lowStockCount / totalCount) * 100 : 0;
   const outOfStockPercentage = totalCount > 0 ? (outOfStockCount / totalCount) * 100 : 0;
 
-  const totalValuation = mergedStocks.reduce((sum, item) => sum + item.stock * item.unitPrice, 0);
-
   const totalRows = mergedStocks.length;
   const totalPages = Math.ceil(totalRows / itemsPerPage) || 1;
   const paginatedRows = useMemo(() => {
@@ -152,7 +144,6 @@ const Stocks = () => {
       { key: "category", label: "Category" },
       { key: "stock", label: "Current Stock" },
       { key: "reorder", label: "Reorder Alert" },
-      { key: "unitPrice", label: "Unit Price" },
       { key: "batch", label: "Batch No" },
       { key: "expiryDate", label: "Expiry Date" },
       { key: "status", label: "Status" },
@@ -252,17 +243,6 @@ const Stocks = () => {
             <span className="text-[11px] text-primary font-semibold">Managed by Central Pharmacy</span>
           </div>
 
-          <div className="md:col-span-3 bg-base-100 rounded-2xl p-6 border border-base-200 shadow-sm flex flex-col justify-between">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-base-content/60 uppercase">Stock Valuation</span>
-              <TbChartDots2 className="w-5 h-5 text-secondary" />
-            </div>
-            <div className="my-2">
-              <h4 className="text-2xl font-extrabold text-base-content truncate">{formatCurrency(totalValuation)}</h4>
-              <p className="text-xs text-base-content/60 mt-1">Estimated asset inventory value</p>
-            </div>
-            <span className="text-[11px] text-secondary font-semibold">Consumables & drugs combined</span>
-          </div>
         </div>
 
         {/* Tab & Filter Controls */}
@@ -337,7 +317,6 @@ const Stocks = () => {
                     <th className="px-4">Category</th>
                     <th className="px-4">Stock Level</th>
                     <th className="px-4">Reorder Alert</th>
-                    <th className="px-4">Unit Tariff</th>
                     <th className="px-4">Batch No</th>
                     <th className="px-4">Expiry Date</th>
                     <th className="px-4">Status</th>
@@ -346,7 +325,7 @@ const Stocks = () => {
                 <tbody className="divide-y divide-base-200 text-sm">
                   {paginatedRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-base-content/50">
+                      <td colSpan={8} className="py-12 text-center text-base-content/50">
                         No inventory items found.
                       </td>
                     </tr>
@@ -368,9 +347,6 @@ const Stocks = () => {
                         <td className="px-4 py-3 text-base-content/80 text-xs">{item.category}</td>
                         <td className="px-4 py-3 font-bold text-base-content">{item.stock}</td>
                         <td className="px-4 py-3 text-base-content/70">{item.reorder}</td>
-                        <td className="px-4 py-3 font-medium text-base-content">
-                          {formatCurrency(item.unitPrice)}
-                        </td>
                         <td className="px-4 py-3 font-mono text-xs text-base-content/80">{item.batch}</td>
                         <td className="px-4 py-3 text-base-content/70 whitespace-nowrap">
                           {item.expiryDate ? formatNigeriaDate(item.expiryDate) : "—"}

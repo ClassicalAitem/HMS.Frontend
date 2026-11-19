@@ -90,7 +90,6 @@ const MDAdmittedPatient = lazy(() => import("@/pages/medical-director/admitted/A
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard/AdminDashboard"));
 const Schedule = lazy(() => import("@/pages/admin/schedule/Schedule"));
 const Stocks = lazy(() => import("@/pages/admin/stocks/Stocks"));
-const Invoice = lazy(() => import("@/pages/admin/invoice/Invoice"));
 const Users = lazy(() => import("@/pages/admin/users/Users"));
 const StaffList = lazy(() => import("@/pages/admin/users/StaffList"));
 const AdminReports = lazy(() => import("@/pages/admin/reports/AdminReports"));
@@ -903,17 +902,12 @@ const AppRoutes = () => {
           <Stocks />
         </ProtectedRoute>
       } />
-      <Route path="/dashboard/admin/invoice" element={
-        <ProtectedRoute allowedRoles={['admin']}>
-          <Invoice />
-        </ProtectedRoute>
-      } />
       <Route path="/dashboard/admin/staff" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminStaff />
         </ProtectedRoute>
       } />
-      <Route path="/dashboard/admin/finance-supplies" element={
+      <Route path="/dashboard/admin/supplies" element={
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminFinanceSupplies />
         </ProtectedRoute>

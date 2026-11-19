@@ -49,10 +49,9 @@ const Sidebar = ({ onCloseSidebar }) => {
     location.pathname.startsWith("/dashboard/admin/staff") ||
     location.pathname.startsWith("/dashboard/admin/users");
 
-  const isFinanceActive =
-    location.pathname.startsWith("/dashboard/admin/finance-supplies") ||
-    location.pathname.startsWith("/dashboard/admin/stocks") ||
-    location.pathname.startsWith("/dashboard/admin/invoice");
+  const isSuppliesActive =
+    location.pathname.startsWith("/dashboard/admin/supplies") ||
+    location.pathname.startsWith("/dashboard/admin/stocks");
 
   const menuItems = [
     {
@@ -75,9 +74,9 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
     {
       icon: FaBoxes,
-      label: "Finance & Supplies",
-      path: "/dashboard/admin/finance-supplies",
-      active: isFinanceActive,
+      label: "Supplies & Inventory",
+      path: "/dashboard/admin/supplies",
+      active: isSuppliesActive,
     },
   ];
 

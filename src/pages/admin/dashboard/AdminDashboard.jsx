@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AdminLayout from "@/layouts/admin/AdminLayout";
@@ -687,7 +686,7 @@ const AdminDashboard = () => {
             </div>
           </Link>
 
-          {/* 9. Attended Today by Doctors (Replaced Financial Invoices/Revenue) */}
+          {/* 9. Attended Today by Doctors */}
           <div
             className="p-5 rounded-2xl bg-base-100 border border-base-200 hover:border-primary/50 hover:shadow-md transition-all group"
           >
