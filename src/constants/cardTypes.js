@@ -24,6 +24,29 @@ export const CARD_TYPE_STYLES = {
   emergency: 'badge badge-error',
   antenatal: 'badge badge-warning',
 };
+
+export const MAX_CARD_LIMIT = 2;
+
+export const normalizeCardTypes = (cardTypes, currentCardType) => {
+  let parsedTypes = [];
+  if (Array.isArray(cardTypes)) {
+    parsedTypes = cardTypes;
+  } else if (typeof cardTypes === 'string' && cardTypes.trim()) {
+    parsedTypes = cardTypes.split(',').map((t) => t.trim());
+  }
+  const types = [...parsedTypes];
+  if (currentCardType && typeof currentCardType === 'string' && currentCardType.trim()) {
+    types.push(currentCardType.trim());
+  }
+  const unique = [...new Set(types.filter(Boolean))];
+  return unique.length > 0 ? unique : ['personal'];
+};
+
+export const getDependantCardTypes = (dependant) =>
+  Array.isArray(dependant?.cardTypes)
+    ? normalizeCardTypes(dependant.cardTypes)
+    : normalizeCardTypes(undefined, dependant?.cardType);
+
 export const SERVICE_CHARGE_CATEGORY = {
   LABORATORY:  "laboratory",
   ADMISSION : "admission",

@@ -50,3 +50,13 @@ export const updateAnteNatalRecord = async (patientId, index, data) => {
 
   return response.data?.data || response.data;
 };
+
+export const updateAnteNatalDelivery = async (patientId, recordId, data) => {
+  if (!patientId || !recordId) throw new Error('Patient ID and antenatal record ID are required');
+  const response = await apiClient.patch(
+    `/anteNatalRecord/${patientId}/records/${recordId}/delivery`,
+    data,
+    { timeout: 30000 }
+  );
+  return response.data?.data || response.data;
+};

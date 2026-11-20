@@ -29,6 +29,10 @@ import SendPatientModal from "@/components/modals/SendPatientModal";
 import { getAnteNatalRecordByPatientId } from "@/services/api/anteNatalAPI";
 import AdmissionHistoryTable from "@/components/medical-director/patient/AdmissionHistoryTable";
 import { formatNigeriaDate, formatNigeriaTime } from "@/utils/formatDateTimeUtils";
+import {
+  findActivePostnatalRecord,
+  POSTNATAL_VALIDITY_MS,
+} from "@/utils/postnatalWindow";
 import toast from "react-hot-toast";
 import { getAdmissionByPatientId } from "@/services/api/admissionApi";
 import { getSurgeryByInvestigationRequestId } from "@/services/api/surgeryAPI";
@@ -87,6 +91,7 @@ const [latest, setLatest] = useState(null);
   const [serviceCharges, setServiceCharges] = useState([]);
   
   const { refreshQueueCount } = useNotifications();
+
     const [consultation, setConsultation] = useState(null);
   const [labRequests, setLabRequests] = useState([]);
   const [labInvestigations, setLabInvestigations] = useState([]);
@@ -95,7 +100,8 @@ const [latest, setLatest] = useState(null);
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [billDefaults, setBillDefaults] = useState([]);
   const [antenatalRecords, setAntenatalRecords] = useState([]);
-  const [antenatalLoading, setAntenatalLoading] = useState(false);
+  const [antenatalLoading, setAntenatalLoading] = useState(!!patientId);
+  const [postnatalNow, setPostnatalNow] = useState(Date.now());
 const [dependantCache, setDependantCache] = useState({});
 const [billedItemIds, setBilledItemIds] = useState(new Set());
 
@@ -687,6 +693,22 @@ const latestLab = useMemo(() => {
 
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  const activePostnatalRecord = useMemo(
+    () => findActivePostnatalRecord(antenatalRecords, postnatalNow),
+    [antenatalRecords, postnatalNow]
+  );
+  const activePostnatalRecordId = activePostnatalRecord?._id || activePostnatalRecord?.id;
+  useEffect(() => {
+    const deliveryTime = new Date(activePostnatalRecord?.delivery?.deliveryAt).getTime();
+    if (!Number.isFinite(deliveryTime)) return undefined;
+
+    const timer = setTimeout(
+      () => setPostnatalNow(Date.now()),
+      Math.max(0, deliveryTime + POSTNATAL_VALIDITY_MS - Date.now())
+    );
+    return () => clearTimeout(timer);
+  }, [activePostnatalRecord]);
   const closeSidebar = () => setIsSidebarOpen(false);
 
   // Refresh lab investigations after billing
@@ -1166,6 +1188,29 @@ const dependant = isDependant
                     >
                       <span>+</span> {antenatalRecords.length > 0 ? 'Add New Record' : 'Add First Record'}
                     </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm w-full sm:w-auto"
+                      disabled={antenatalLoading || !activePostnatalRecordId}
+                      title={activePostnatalRecordId ? 'Start a postnatal visit' : 'Available only during an active 41-day postnatal period'}
+                      onClick={() => navigate(
+                        `/dashboard/medical-director/medical-history/${patientId}/add`,
+                        {
+                          state: {
+                            from: fromIncoming ? "incoming" : "patients",
+                            patientSnapshot: patient,
+                            dependantId: activePostnatalRecord?.dependantId || null,
+                            dependantSnapshot: activePostnatalRecord?.dependantId
+                              ? (subject || dependantSnapshot)
+                              : null,
+                            consultationType: "postnatal",
+                            antenatalRecordId: activePostnatalRecordId,
+                          },
+                        }
+                      )}
+                    >
+                      Add Post Natal
+                    </button>
                   </div>
                 </div>
 
@@ -1281,7 +1326,7 @@ const dependant = isDependant
 
                   return {
                     id: c?._id || c?.id,
-                    type: "Consultation",
+                    type: c?.consultationType === "postnatal" ? "Post Natal" : "Consultation",
                     diagnosis: c?.diagnosis || "—",
                     time: c?.createdAt ? formatNigeriaTime(c.createdAt) : "—",
                     date: c?.createdAt ? formatNigeriaDate(c.createdAt) : "—",
@@ -1296,6 +1341,7 @@ const dependant = isDependant
               // eslint-disable-next-line react-hooks/exhaustive-deps
               ), [consultations, patientName])}
               loading={loading}
+              addDisabled={antenatalLoading || !!activePostnatalRecord}
             onAdd={() => navigate(
               `/dashboard/medical-director/medical-history/${patientId}/add`,
               {

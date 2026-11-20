@@ -1,22 +1,37 @@
-/* eslint-disable no-unused-vars */
 import React, { useMemo, useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { updateDependant } from '@/services/api/dependantAPI';
 import { getErrorMessage } from '@/utils/errorHandler';
+import { useAppSelector } from '@/store/hooks';
+import { CARD_TYPE_LABELS, MAX_CARD_LIMIT, getDependantCardTypes, normalizeCardTypes } from '@/constants/cardTypes';
 
 const EditDependantModal = ({ isOpen, onClose, patient, initialDependantId, onSuccess }) => {
+  const { user } = useAppSelector((state) => state.auth);
+  const userRole = (user?.role || user?.accountType || '').toLowerCase().trim().replace(/_/g, '-');
+  const canEditCardType = ['frontdesk', 'front-desk', 'super-admin', 'admin', 'developer'].includes(userRole) || !userRole;
   const dependants = useMemo(() => patient?.dependants || [], [patient]);
   const [selectedDependantId, setSelectedDependantId] = useState('');
+  const selectedDependant = dependants.find((d) => (d.id || d._id) === selectedDependantId) || {};
+  const originalCardTypes = getDependantCardTypes(selectedDependant);
+  const guardianCardTypes = normalizeCardTypes(patient?.cardTypes, patient?.cardType);
   const [form, setForm] = useState({
     firstName: '',
     middleName: '',
     lastName: '',
     dob: '',
     gender: '',
-    relationshipType: ''
+    relationshipType: '',
+    cardType: '',
+    cardTypes: [],
+    familyName: '',
+    companyName: ''
   });
+  const addedCardTypes = form.cardTypes.filter((type) => !originalCardTypes.includes(type));
+  const inheritedFamilyAvailable =
+    guardianCardTypes.includes('family') && !form.cardTypes.includes('family');
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   useEffect(() => {
     if (isOpen && dependants.length > 0) {
@@ -31,11 +46,17 @@ const EditDependantModal = ({ isOpen, onClose, patient, initialDependantId, onSu
         lastName: initial.lastName || '',
         dob: initial.dob ? String(initial.dob).split('T')[0] : '',
         gender: (initial.gender || '').toLowerCase(),
-        relationshipType: initial.relationshipType || ''
+        relationshipType: initial.relationshipType || '',
+        cardType: initial.cardType || '',
+        cardTypes: getDependantCardTypes(initial),
+        familyName: initial.familyName || '',
+        companyName: initial.companyName || ''
       });
+      setPaymentConfirmed(false);
     } else {
       setSelectedDependantId('');
-      setForm({ firstName: '', middleName: '', lastName: '', dob: '', gender: '', relationshipType: '' });
+      setForm({ firstName: '', middleName: '', lastName: '', dob: '', gender: '', relationshipType: '', cardType: '', cardTypes: [], familyName: '', companyName: '' });
+      setPaymentConfirmed(false);
     }
   }, [isOpen, dependants, initialDependantId]);
 
@@ -43,15 +64,20 @@ const EditDependantModal = ({ isOpen, onClose, patient, initialDependantId, onSu
 
   const onSelectChange = (id) => {
     setSelectedDependantId(id);
-    const selected = dependants.find(d => (d.id || '') === id) || {};
+    const selected = dependants.find(d => (d.id || d._id) === id) || {};
     setForm({
       firstName: selected.firstName || '',
       middleName: selected.middleName || '',
       lastName: selected.lastName || '',
       dob: selected.dob || '',
       gender: (selected.gender || '').toLowerCase(),
-      relationshipType: selected.relationshipType || ''
+      relationshipType: selected.relationshipType || '',
+      cardType: selected.cardType || '',
+      cardTypes: getDependantCardTypes(selected),
+      familyName: selected.familyName || '',
+      companyName: selected.companyName || ''
     });
+    setPaymentConfirmed(false);
   };
 
 const handleChange = (field, value) =>
@@ -62,6 +88,14 @@ const handleChange = (field, value) =>
     if (!form.firstName || !form.lastName || !form.relationshipType) {
       return 'First name, last name, and relationship type are required';
     }
+    if (form.cardTypes.length > MAX_CARD_LIMIT) {
+      return `A dependant can hold a maximum of ${MAX_CARD_LIMIT} cards`;
+    }
+    if (canEditCardType && addedCardTypes.length > 0 && !paymentConfirmed) {
+      return 'Confirm that payment for the new card was verified outside HMS';
+    }
+    if (canEditCardType && form.cardTypes.includes('family') && !form.familyName.trim()) return 'Family name is required for a family card';
+    if (canEditCardType && form.cardTypes.includes('company') && !form.companyName.trim()) return 'Company name is required for a company card';
     if (form.dob) {
       const isoPattern = /^\d{4}-\d{2}-\d{2}$/; // YYYY-MM-DD
       if (!isoPattern.test(form.dob)) return 'Date of birth must be in YYYY-MM-DD format';
@@ -72,13 +106,30 @@ const handleChange = (field, value) =>
   };
 
   const collectChangedFields = () => {
-    const original = dependants.find(d => (d.id || '') === selectedDependantId) || {};
+    const original = dependants.find(d => (d.id || d._id) === selectedDependantId) || {};
     const payload = {};
     Object.entries(form).forEach(([key, val]) => {
+      if (['cardType', 'cardTypes', 'familyName', 'companyName'].includes(key)) return;
       const origVal = (original[key] || '').toString().toLowerCase();
       const newVal = (val || '').toString().toLowerCase();
-      if (val !== undefined && newVal !== origVal) payload[key] = val;
+      if (val !== undefined && newVal !== origVal) payload[key] = val || null;
     });
+    const originalCardTypes = getDependantCardTypes(original);
+    const cardListChanged =
+      form.cardTypes.length !== originalCardTypes.length ||
+      form.cardTypes.some((type) => !originalCardTypes.includes(type));
+    if (
+      canEditCardType &&
+      (cardListChanged || (form.cardType || null) !== (original.cardType || null))
+    ) {
+      payload.cardTypes = form.cardTypes;
+      if ((form.cardType || null) !== (original.cardType || null)) {
+        payload.cardType = form.cardType || null;
+      }
+      if (form.cardTypes.includes('family')) payload.familyName = form.familyName || null;
+      if (form.cardTypes.includes('company')) payload.companyName = form.companyName || null;
+      if (addedCardTypes.length > 0) payload.paymentConfirmed = true;
+    }
     return payload;
   };
 
@@ -92,7 +143,6 @@ const handleChange = (field, value) =>
       toast('No changes detected', { icon: 'ℹ️' });
       return;
     }
-
     setIsLoading(true);
     try {
       const promise = updateDependant(selectedDependantId, updates);
@@ -145,7 +195,7 @@ const handleChange = (field, value) =>
                 >
                   {dependants.length === 0 && <option value="">No dependants</option>}
                   {dependants.map((d) => (
-                    <option key={d.id || `${d.firstName}-${d.lastName}`} value={d.id || ''}>
+                    <option key={d.id || d._id || `${d.firstName}-${d.lastName}`} value={d.id || d._id || ''}>
                       {d.firstName} {d.middleName ? d.middleName + ' ' : ''}{d.lastName} ({d.relationshipType || 'N/A'})
                     </option>
                   ))}
@@ -223,6 +273,118 @@ const handleChange = (field, value) =>
                       </select>
                     </div>
             </div>
+
+            {canEditCardType && (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-base-content">
+                      Registered cards for this dependant (Maximum {MAX_CARD_LIMIT} Cards)
+                    </h3>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${form.cardTypes.length >= MAX_CARD_LIMIT ? 'bg-warning/20 text-warning-content' : 'text-base-content/60'}`}>
+                      {form.cardTypes.length}/{MAX_CARD_LIMIT} registered
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {Object.entries(CARD_TYPE_LABELS).map(([type, label]) => {
+                      const registered = form.cardTypes.includes(type);
+                      const previouslyRegistered = originalCardTypes.includes(type);
+                      const limitReached = !registered && form.cardTypes.length >= MAX_CARD_LIMIT;
+                      return (
+                        <label
+                          key={type}
+                          className={`flex items-center gap-2 text-sm ${previouslyRegistered ? 'cursor-not-allowed opacity-80' : limitReached ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          title={limitReached ? `Maximum limit of ${MAX_CARD_LIMIT} cards reached` : ''}
+                        >
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-sm checkbox-primary"
+                            checked={registered}
+                            disabled={previouslyRegistered || limitReached}
+                            onChange={(e) => {
+                              if (e.target.checked && form.cardTypes.length >= MAX_CARD_LIMIT) {
+                                toast.error(`A dependant can hold a maximum of ${MAX_CARD_LIMIT} cards`);
+                                return;
+                              }
+                              setForm((current) => ({
+                                ...current,
+                                cardTypes: e.target.checked
+                                  ? [...current.cardTypes, type]
+                                  : current.cardTypes.filter((item) => item !== type),
+                                cardType: e.target.checked
+                                  ? type
+                                  : current.cardType === type
+                                    ? ''
+                                    : current.cardType,
+                              }));
+                              if (e.target.checked) setPaymentConfirmed(false);
+                            }}
+                          />
+                          <span className={registered ? "font-semibold text-primary" : ""}>
+                            {label} Card {previouslyRegistered && <span className="text-xs text-base-content/50">(Registered)</span>}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-base-content/60">
+                    Registered cards cannot be removed. Dependants can hold a maximum of {MAX_CARD_LIMIT} cards. Adding a card requires payment confirmation outside HMS.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block mb-1 text-sm text-base-content/70">Current card for future visits</label>
+                  <select
+                    className="w-full select select-bordered"
+                    value={form.cardType}
+                    onChange={(e) => handleChange('cardType', e.target.value)}
+                  >
+                    <option value="">No individual card selected</option>
+                    {form.cardTypes.map((type) => (
+                      <option key={type} value={type}>{CARD_TYPE_LABELS[type]} Card</option>
+                    ))}
+                    {inheritedFamilyAvailable && (
+                      <option value="family">Family Card (guardian coverage)</option>
+                    )}
+                  </select>
+                  {inheritedFamilyAvailable && (
+                    <p className="mt-1 text-xs text-base-content/60">
+                      The guardian's family card is available without changing the guardian's card or registering a separate family card.
+                    </p>
+                  )}
+                  {form.cardTypes.includes('family') && (
+                    <input
+                      type="text"
+                      className="mt-2 w-full input input-bordered"
+                      placeholder="Family name"
+                      value={form.familyName}
+                      onChange={(e) => handleChange('familyName', e.target.value)}
+                    />
+                  )}
+                  {form.cardTypes.includes('company') && (
+                    <input
+                      type="text"
+                      className="mt-2 w-full input input-bordered"
+                      placeholder="Company name"
+                      value={form.companyName}
+                      onChange={(e) => handleChange('companyName', e.target.value)}
+                    />
+                  )}
+                </div>
+
+                {addedCardTypes.length > 0 && (
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 checkbox checkbox-sm checkbox-primary"
+                      checked={paymentConfirmed}
+                      onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                    />
+                    <span>I confirm payment for the added card was verified outside HMS.</span>
+                  </label>
+                )}
+              </div>
+            )}
 
             <div className="flex justify-end space-x-2">
               <button type="button" className="btn" onClick={handleCancel} disabled={isLoading}>Cancel</button>

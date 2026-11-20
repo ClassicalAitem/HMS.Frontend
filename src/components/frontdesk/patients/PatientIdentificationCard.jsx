@@ -1,5 +1,6 @@
 import React from 'react';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
+import { CARD_TYPE_LABELS } from '@/constants/cardTypes';
 
 // Using DaisyUI/Tailwind skeleton classes to mirror nurse pages
 
@@ -12,7 +13,7 @@ const getInitials = (firstName, lastName) => {
   return `${firstInitial}${lastInitial}` || 'U';
 };
 
-const PatientIdentificationCard = ({ patient, isTransitionLoading }) => (
+const PatientIdentificationCard = ({ patient, isTransitionLoading, isViewingDependant }) => (
   <div className="shadow-xl card bg-base-100">
     <div className="flex flex-col p-6 card-body">
       <div className="flex flex-row items-center space-x-4">
@@ -79,11 +80,30 @@ const PatientIdentificationCard = ({ patient, isTransitionLoading }) => (
         {isTransitionLoading ? (
           <div className="skeleton h-12 w-full rounded-box" />
         ) : (
-          <PatientCardTypeInfo
-            cardType={patient.cardType}
-            familyName={patient.familyName}
-            companyName={patient.companyName}
-          />
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <PatientCardTypeInfo
+                cardType={patient.cardType}
+                familyName={patient.familyName}
+                companyName={patient.companyName}
+              />
+              {Array.isArray(patient.cardTypes) && patient.cardTypes.length > 1 && (
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-base-content/60">Other cards:</span>
+                  {patient.cardTypes.filter((t) => t !== patient.cardType).map((t) => (
+                    <span key={t} className="badge badge-outline badge-xs capitalize">
+                      {CARD_TYPE_LABELS[t] || t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {isViewingDependant && patient.individualCardType && (
+              <p className="mt-2 text-xs text-base-content/60">
+                This dependant's card is separate; the guardian's card remains unchanged.
+              </p>
+            )}
+          </>
         )}
       </div>
 

@@ -304,6 +304,7 @@ const Patients = () => {
       dependantsCount: (patient.dependants || []).length,
       dependantsList: patient.dependants || [],
       cardType: patient.cardType || 'personal',
+      cardTypes: patient.cardTypes || (patient.cardType ? [patient.cardType] : ['personal']),
       familyName: patient.familyName || '',
       companyName: patient.companyName || '',
       status: patient.status || 'Active',
@@ -351,9 +352,12 @@ const Patients = () => {
         gender: dependant.gender || '—',
         phone: dependant.phone || patient.phone || '—',
         email: dependant.email || patient.email || '—',
-        cardType: patient.cardType || 'personal',
-        familyName: patient.familyName || '',
-        companyName: patient.companyName || '',
+        cardType: dependant.cardType || patient.cardType || 'personal',
+        cardTypes: dependant.cardTypes || (dependant.cardType ? [dependant.cardType] : (patient.cardTypes || [patient.cardType || 'personal'])),
+        individualCardType: dependant.cardType || null,
+        guardianCardType: patient.cardType || 'personal',
+        familyName: dependant.familyName || patient.familyName || '',
+        companyName: dependant.companyName || patient.companyName || '',
         status: dependant.status || patient.status || 'Active',
         isOldPatient: patient.isOldPatient || false,
         dependantsCount: 0,
@@ -582,7 +586,12 @@ const Patients = () => {
       sortable: true,
       className: 'text-base-content/70',
       render: (value, row) => (
-        <PatientCardTypeInfo cardType={value} familyName={row.familyName} companyName={row.companyName} />
+        <div className="flex flex-col items-start gap-1">
+          <PatientCardTypeInfo cardType={value} familyName={row.familyName} companyName={row.companyName} />
+          {row.isDependant && row.individualCardType && row.guardianCardType === 'family' && (
+            <span className="text-[10px] text-base-content/60">Guardian family coverage remains</span>
+          )}
+        </div>
       )
     }
   ], [navigate]);

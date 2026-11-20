@@ -1334,9 +1334,14 @@ const ViewConsultation = () => {
     </div>
 
     <div className="min-w-0 flex-1">
-      <h1 className="text-lg sm:text-2xl font-bold text-base-content truncate">
-        Consultation Details
-      </h1>
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="text-lg sm:text-2xl font-bold text-base-content truncate">
+          Consultation Details
+        </h1>
+        {consultation?.consultationType === 'postnatal' && (
+          <span className="badge badge-secondary">Postnatal visit</span>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-4 gap-y-1 text-xs sm:text-sm text-base-content/70 mt-1">
         <span className="flex items-center gap-1 whitespace-nowrap">

@@ -1,16 +1,21 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaChevronDown, FaChevronUp } from 'react-icons/fa';
-import { useAppDispatch } from '../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { editPatient } from '../../store/slices/patientsSlice';
 import { updateDependant } from '@/services/api/dependantAPI';
 import toast from 'react-hot-toast';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { NIGERIAN_STATES, POPULAR_COUNTRIES } from '@/constants/locationConstants';
+import { CARD_TYPE_LABELS, MAX_CARD_LIMIT, normalizeCardTypes } from '@/constants/cardTypes';
 
 const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const userRole = (user?.role || user?.accountType || '').toLowerCase().trim().replace(/_/g, '-');
+  const canEditCardType = ['frontdesk', 'front-desk', 'super-admin', 'admin', 'developer'].includes(userRole) || !userRole;
+  const existingCardTypes = normalizeCardTypes(patient?.cardTypes, patient?.cardType || 'personal');
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [hmoExpanded, setHmoExpanded] = useState(false);
   const [dependentExpanded, setDependentExpanded] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,6 +35,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     dob: '',
     gender: '',
     cardType: 'personal',
+    cardTypes: ['personal'],
     familyName: '',
     companyName: '',
     relationshipType: '',
@@ -45,6 +51,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
     // HMO (for display only - not editable in this modal)
     hmo: []
   });
+  const addedCardTypes = formData.cardTypes.filter((type) => !existingCardTypes.includes(type));
 
   // Pre-populate form when patient data is available
   useEffect(() => {
@@ -58,6 +65,9 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
       const isStandardState = NIGERIAN_STATES.includes(patientState);
       const stateVal = (countryVal === 'Nigeria' && isStandardState) ? patientState : (patientState ? 'Other' : '');
       const customStateVal = isStandardState ? '' : (patientState || '');
+
+      const normalizedCards = normalizeCardTypes(patient.cardTypes, patient.cardType || 'personal');
+      const activeCard = patient.cardType || normalizedCards[0] || 'personal';
 
       setFormData({
         firstName: patient.firstName || '',
@@ -74,7 +84,8 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         LGA: patient.LGA || '',
         dob: patient.dob ? new Date(patient.dob).toISOString().split('T')[0] : '',
         gender: patient.gender || '',
-        cardType: patient.cardType || 'personal',
+        cardType: activeCard,
+        cardTypes: normalizedCards,
         familyName: patient.familyName || '',
         companyName: patient.companyName || '',
         relationshipType: patient.relationshipType || '',
@@ -88,6 +99,7 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
         
         hmo: patient.hmos || []
       });
+      setPaymentConfirmed(false);
     }
   }, [patient]);
 
@@ -114,6 +126,22 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (formData.cardTypes.length > MAX_CARD_LIMIT) {
+      toast.error(`A patient can hold a maximum of ${MAX_CARD_LIMIT} cards`);
+      return;
+    }
+    if (addedCardTypes.length > 0 && !paymentConfirmed) {
+      toast.error('Confirm that payment for the new card was verified outside HMS');
+      return;
+    }
+    if (formData.cardTypes.includes('family') && !(formData.familyName?.trim() || patient.familyName)) {
+      toast.error('Family name is required for a family card');
+      return;
+    }
+    if (formData.cardTypes.includes('company') && !(formData.companyName?.trim() || patient.companyName)) {
+      toast.error('Company name is required for a company card');
+      return;
+    }
     setIsLoading(true);
     
     try {
@@ -130,6 +158,15 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
           dob: formData.dob,
           gender: formData.gender,
           relationshipType: formData.relationshipType || patient.relationshipType,
+          cardTypes: formData.cardTypes,
+          cardType: formData.cardType || formData.cardTypes[0] || null,
+          ...(formData.cardTypes.includes('family') && (formData.familyName?.trim() || patient.familyName) && {
+            familyName: formData.familyName?.trim() || patient.familyName,
+          }),
+          ...(formData.cardTypes.includes('company') && (formData.companyName?.trim() || patient.companyName) && {
+            companyName: formData.companyName?.trim() || patient.companyName,
+          }),
+          ...(addedCardTypes.length > 0 && { paymentConfirmed: true }),
         };
         const savePromise = updateDependant(targetId, depPayload);
         toast.promise(
@@ -172,9 +209,15 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
           relationship: formData.nextOfKin.relationship,
         },
         status: patient.status || 'registered',
-        cardType: formData.cardType || 'personal',
-        ...(formData.cardType === 'family' && formData.familyName && { familyName: formData.familyName }),
-        ...(formData.cardType === 'company' && formData.companyName && { companyName: formData.companyName }),
+        cardTypes: formData.cardTypes,
+        cardType: formData.cardType || formData.cardTypes[0] || 'personal',
+        ...(formData.cardTypes.includes('family') && (formData.familyName?.trim() || patient.familyName) && {
+          familyName: formData.familyName?.trim() || patient.familyName,
+        }),
+        ...(formData.cardTypes.includes('company') && (formData.companyName?.trim() || patient.companyName) && {
+          companyName: formData.companyName?.trim() || patient.companyName,
+        }),
+        ...(addedCardTypes.length > 0 && { paymentConfirmed: true }),
         // Optional location and profile fields
         ...(effectiveCountry && { country: effectiveCountry }),
         ...(effectiveState && { stateOfOrigin: effectiveState }),
@@ -285,50 +328,150 @@ const EditPatientModal = ({ isOpen, onClose, patient, onSave }) => {
                 </div>
               </div>
 
-              {/* Card Type */}
+              {/* Card Information */}
               <div className="mb-6">
-                <h4 className="mb-3 text-base font-medium text-base-content">Card Type</h4>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-1">
+                  <h4 className="text-base font-semibold text-base-content">Patient Cards</h4>
+                  <span className="text-xs text-base-content/60">
+                    Patients can have multiple cards (e.g. Personal + Antenatal). The frontdesk selects the active card for use.
+                  </span>
+                </div>
+
+                {/* Registered Cards (Array of cards) */}
+                <div className="p-4 rounded-lg bg-base-200/50 border border-base-300">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium text-base-content">
+                      Registered Cards (Maximum {MAX_CARD_LIMIT} Cards)
+                    </label>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${formData.cardTypes.length >= MAX_CARD_LIMIT ? 'bg-warning/20 text-warning-content' : 'text-base-content/60'}`}>
+                      {formData.cardTypes.length}/{MAX_CARD_LIMIT} registered
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {Object.entries(CARD_TYPE_LABELS).map(([type, label]) => {
+                      const registered = formData.cardTypes.includes(type);
+                      const previouslyRegistered = existingCardTypes.includes(type);
+                      const limitReached = !registered && formData.cardTypes.length >= MAX_CARD_LIMIT;
+                      return (
+                        <label
+                          key={type}
+                          className={`flex items-center gap-2 text-sm ${previouslyRegistered ? 'cursor-not-allowed opacity-80' : limitReached ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          title={limitReached ? `Maximum limit of ${MAX_CARD_LIMIT} cards reached` : ''}
+                        >
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-sm checkbox-primary"
+                            checked={registered}
+                            disabled={previouslyRegistered || !canEditCardType || limitReached}
+                            onChange={(e) => {
+                              if (e.target.checked && formData.cardTypes.length >= MAX_CARD_LIMIT) {
+                                toast.error(`A patient can hold a maximum of ${MAX_CARD_LIMIT} cards`);
+                                return;
+                              }
+                              setFormData((current) => {
+                                const cardTypes = e.target.checked
+                                  ? [...current.cardTypes, type]
+                                  : current.cardTypes.filter((item) => item !== type);
+                                const cardType = e.target.checked
+                                  ? type
+                                  : current.cardType === type
+                                    ? (cardTypes[0] || 'personal')
+                                    : current.cardType;
+                                return {
+                                  ...current,
+                                  cardTypes,
+                                  cardType,
+                                };
+                              });
+                              if (e.target.checked) setPaymentConfirmed(false);
+                            }}
+                          />
+                          <span className={registered ? "font-semibold text-primary" : ""}>
+                            {label} Card {previouslyRegistered && <span className="text-xs text-base-content/50">(Registered)</span>}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-base-content/60">
+                    Maximum {MAX_CARD_LIMIT} cards per patient. Patients can hold a Personal Card and an Antenatal Card alongside each other, or a Family Card and Antenatal Card.
+                  </p>
+                </div>
+
+                {/* Active Card Selection */}
+                <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-3">
                   <div>
-                    <label className="block mb-1 text-sm text-base-content/70">Card Type</label>
+                    <label className="block mb-1 text-sm font-medium text-base-content/70">
+                      Active Card for Current Visit *
+                    </label>
                     <select
                       name="cardType"
                       value={formData.cardType}
-                      onChange={handleInputChange}
+                      disabled={!canEditCardType}
+                      onChange={(e) => setFormData((current) => ({ ...current, cardType: e.target.value }))}
                       className="w-full select select-bordered"
+                      required
                     >
-                      <option value="personal">Personal Card</option>
-                      <option value="family">Family Card</option>
-                      <option value="company">Company Card</option>
-                      <option value="emergency">Emergency Card</option>
-                      <option value="antenatal">Antenatal Card</option>
+                      {!formData.cardType && <option value="">Select active card</option>}
+                      {formData.cardTypes.map((type) => (
+                        <option key={type} value={type}>{CARD_TYPE_LABELS[type]} Card</option>
+                      ))}
                     </select>
+                    <span className="text-xs text-base-content/60">
+                      Frontdesk chooses which registered card is active for use at the moment.
+                    </span>
                   </div>
-                  {formData.cardType === 'family' && (
+
+                  {formData.cardTypes.includes('family') && (
                     <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Family Name</label>
+                      <label className="block mb-1 text-sm font-medium text-base-content/70">
+                        Family Name {formData.cardType === 'family' ? '*' : ''}
+                      </label>
                       <input
                         type="text"
                         name="familyName"
                         value={formData.familyName}
+                        disabled={!canEditCardType}
                         onChange={handleInputChange}
+                        placeholder="e.g. Adebayo Family"
                         className="w-full input input-bordered"
+                        required={formData.cardType === 'family'}
                       />
                     </div>
                   )}
-                  {formData.cardType === 'company' && (
+
+                  {formData.cardTypes.includes('company') && (
                     <div>
-                      <label className="block mb-1 text-sm text-base-content/70">Company Name</label>
+                      <label className="block mb-1 text-sm font-medium text-base-content/70">
+                        Company Name {formData.cardType === 'company' ? '*' : ''}
+                      </label>
                       <input
                         type="text"
                         name="companyName"
                         value={formData.companyName}
+                        disabled={!canEditCardType}
                         onChange={handleInputChange}
+                        placeholder="e.g. Acme Corp"
                         className="w-full input input-bordered"
+                        required={formData.cardType === 'company'}
                       />
                     </div>
                   )}
                 </div>
+
+                {addedCardTypes.length > 0 && (
+                  <label className="mt-3 flex items-start gap-2 text-sm p-3 bg-warning/10 border border-warning/20 rounded-lg">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-sm checkbox-warning mt-0.5"
+                      checked={paymentConfirmed}
+                      onChange={(e) => setPaymentConfirmed(e.target.checked)}
+                    />
+                    <span>
+                      I confirm the card payment for newly added card ({addedCardTypes.map(t => CARD_TYPE_LABELS[t]).join(', ')}) was verified outside HMS.
+                    </span>
+                  </label>
+                )}
               </div>
 
               {/* Contact Information */}

@@ -36,6 +36,7 @@ export const loginUser = createAsyncThunk(
             email: userData.email,
             phoneNumber: userData.phoneNumber,
             role: userData.accountType,
+            accountType: userData.accountType,
             isDefaultPassword: userData.isDefaultPassword,
             isActive: userData.isActive,
             isDisabled: userData.isDisabled,

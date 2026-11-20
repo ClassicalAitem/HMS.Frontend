@@ -8,6 +8,7 @@ import { getPrescriptionsByAntenatalId } from "@/services/api/prescriptionsAPI";
 import { getInvestigationsByAntenatalId } from "@/services/api/investigationRequestAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { LabResultDetailsModal } from "@/components/modals";
+import PostnatalWorkflowPanel from "@/components/antenatal/PostnatalWorkflowPanel";
 import { usersAPI } from "@/services/api/usersAPI";
 import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTimeUtils";
 import { FaFlask, FaEye, FaUserMd, FaUserNurse, FaHistory, FaClock, FaEdit, FaCheckCircle } from "react-icons/fa";
@@ -641,6 +642,11 @@ const NurseAntenatalRecords = () => {
                           {/* Full Expanded Record Details */}
                           {isSelected && (
                             <div className="mt-5 pt-4 border-t border-base-200 space-y-5">
+                              <PostnatalWorkflowPanel
+                                key={getAntenatalRecordId(record)}
+                                patientId={patientId}
+                                record={record}
+                              />
                               {/* Audit Trail & Staff Follow-up Banner */}
                               {(() => {
                                 const creator = getCreatorDetails(record);

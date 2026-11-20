@@ -31,6 +31,8 @@ const AddDiagnosis = () => {
   const navigate = useNavigate();
   const fromIncoming = location?.state?.from === "incoming";
   const snapshot = location?.state?.patientSnapshot;
+  const isPostnatalConsultation = location?.state?.consultationType === "postnatal";
+  const antenatalRecordId = location?.state?.antenatalRecordId || null;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [loadingPatient, setLoadingPatient] = useState(!!patientId && !snapshot);
@@ -64,7 +66,7 @@ const [createdConsultationId, setCreatedConsultationId] = useState(null);
   const [gynaecologicalHistory, setGynaecologicalHistory] = useState([]);
   const [obstetricsHistory, setObstetricsHistory] = useState([]);
   const [notes, setNotes] = useState("");
-  const [visitReason, setVisitReason] = useState("");
+  const [visitReason, setVisitReason] = useState(isPostnatalConsultation ? "Postnatal care" : "");
   const [historyOfPresentingComplaint, setHistoryOfPresentingComplaint] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [cid, setCid] = useState(null);
@@ -339,11 +341,19 @@ const isFemale = useMemo(() => {
 const handleConfirmSave = async () => {
   setIsConfirmOpen(false);
   if (!patientId) return;
+  if (isPostnatalConsultation && !antenatalRecordId) {
+    toast.error("An active antenatal record is required for a postnatal consultation");
+    return;
+  }
 
     const payload = {
       patientId,
       doctorId: user?.id || user?._id,
       doctorName: user?.fullName || `${user?.firstName || ""} ${user?.lastName || ""}`.trim(),
+      ...(isPostnatalConsultation && {
+        consultationType: "postnatal",
+        antenatalRecordId,
+      }),
       ...(selectedDependantId && { dependantId: selectedDependantId }),
       ...(selectedDependantId && selectedDependant && { dependant: selectedDependant }),
       visitReason,
@@ -431,7 +441,9 @@ const handleConfirmSave = async () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 w-full justify-between">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold text-base-content">Add New Consultation</h1>
+                <h1 className="text-2xl font-semibold text-base-content">
+                  {isPostnatalConsultation ? "Add Post Natal Consultation" : "Add New Consultation"}
+                </h1>
                 <div className="flex items-center gap-1 flex-col">
                  <p className="text-sm text-base-content/70">{summarySubjectName || ""}</p>
                   <p className="text-sm text-base-content/70">{summarySubject?.hospitalId || patient?.hospitalId || patientId || "—"}</p>
@@ -815,8 +827,8 @@ const handleConfirmSave = async () => {
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmSave}
         title="Save Consultation"
-        message="Are you sure you want to save this consultation? This action cannot be undone."
-        confirmText="Save Consultation"
+        message={`Are you sure you want to save this ${isPostnatalConsultation ? "postnatal " : ""}consultation? This action cannot be undone.`}
+        confirmText={isPostnatalConsultation ? "Save Post Natal Consultation" : "Save Consultation"}
         cancelText="Cancel"
       />
       <AddReviewOfSystemsModal

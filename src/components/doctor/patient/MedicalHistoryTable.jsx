@@ -1,6 +1,16 @@
 import React, { useState, useMemo } from "react";
 
-const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, onViewMedicalHistory, scopedToSingleSubject = false, loading = false }) => {
+const MedicalHistoryTable = ({
+  rows,
+  onAdd,
+  onViewDetails,
+  onEdit,
+  onViewAll,
+  onViewMedicalHistory,
+  scopedToSingleSubject = false,
+  loading = false,
+  addDisabled = false,
+}) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 2;
 
@@ -25,6 +35,8 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, on
             <button
               className="btn btn-success btn-sm w-full sm:w-auto"
               onClick={onAdd}
+              disabled={addDisabled}
+              title={addDisabled ? 'Use Add Post Natal during the active 41-day postnatal period' : undefined}
             >
               + Add New Consultation
             </button>
@@ -61,6 +73,7 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, on
                 <thead>
                   <tr className="border-b border-base-200">
                     <th className="text-base-content/60 font-semibold">Patient</th>
+                    <th className="text-base-content/60 font-semibold">Type</th>
                     <th className="text-base-content/60 font-semibold">Diagnosis</th>
                     <th className="text-base-content/60 font-semibold">Date</th>
                     <th className="text-base-content/60 font-semibold">Time</th>
@@ -87,6 +100,12 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, on
                               </span>
                             )}
                           </div>
+                        </td>
+
+                        <td className="py-3">
+                          <span className={`badge badge-sm ${row.type === "Post Natal" ? "badge-secondary" : "badge-ghost"}`}>
+                            {row.type || "Consultation"}
+                          </span>
                         </td>
 
                         <td className="py-3">
@@ -145,6 +164,9 @@ const MedicalHistoryTable = ({ rows, onAdd, onViewDetails, onEdit, onViewAll, on
                       <div className="flex flex-col gap-0.5 min-w-0">
                         <span className="font-medium text-base-content truncate">
                           {row.forName || "—"}
+                        </span>
+                        <span className={`badge badge-sm w-fit ${row.type === "Post Natal" ? "badge-secondary" : "badge-ghost"}`}>
+                          {row.type || "Consultation"}
                         </span>
                         {!scopedToSingleSubject && (
                           <span

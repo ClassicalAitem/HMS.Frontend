@@ -20,6 +20,7 @@ import { calculateDispenseQuantity, calculatePrescriptionLine } from "@/utils/pr
 import { getLabResults } from "@/services/api/labResultsAPI";
 import { LabResultDetailsModal } from "@/components/modals";
 import MedicalDirectorLayout from "@/layouts/medical-director/MedicalDirectorLayout";
+import PostnatalWorkflowPanel from "@/components/antenatal/PostnatalWorkflowPanel";
 import { FaFlask, FaCheckCircle, FaEye, FaFileAlt, FaUserMd, FaUserNurse, FaHistory, FaClock, FaEdit } from "react-icons/fa";
 
 const AntenatalRecordDetails = () => {
@@ -828,6 +829,11 @@ const handleOrderCreated = () => {
                         {/* Selected Record Details rendered inside the record card */}
                         {selectedRecord && getAntenatalRecordId(selectedRecord) === getAntenatalRecordId(record) && (
                           <div className="mt-4 pt-4 border-t border-base-200 space-y-4 sm:space-y-6">
+                            <PostnatalWorkflowPanel
+                              key={getAntenatalRecordId(selectedRecord)}
+                              patientId={patientId}
+                              record={selectedRecord}
+                            />
                             {/* Audit Trail & Staff Follow-up Banner */}
                             {(() => {
                               const creator = getCreatorDetails(selectedRecord);

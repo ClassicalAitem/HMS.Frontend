@@ -127,7 +127,7 @@ export const getUniqueFamilyNames = async () => {
     const patients = Array.isArray(response?.data) ? response.data : [];
 
     const familyNames = patients
-      .filter(p => p.cardType === 'family' && p.familyName)
+      .filter(p => (p.cardTypes || [p.cardType]).includes('family') && p.familyName)
       .map(p => p.familyName)
       .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
       .sort();
@@ -145,7 +145,7 @@ export const getUniqueCompanyNames = async () => {
     const patients = Array.isArray(response?.data) ? response.data : [];
 
     const companyNames = patients
-      .filter(p => p.cardType === 'company' && p.companyName)
+      .filter(p => (p.cardTypes || [p.cardType]).includes('company') && p.companyName)
       .map(p => p.companyName)
       .filter((value, index, self) => self.indexOf(value) === index) // Remove duplicates
       .sort();
