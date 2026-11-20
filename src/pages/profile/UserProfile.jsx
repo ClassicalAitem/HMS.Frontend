@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUserProfile } from '@/store/slices/authSlice';
 import usersAPI from '@/services/api/usersAPI';
+import shiftAccessAPI from '@/services/api/shiftAccessAPI';
 import toast from 'react-hot-toast';
 import {
   FaUserCircle,
@@ -20,6 +21,12 @@ import {
   FaIdBadge,
   FaHospital,
   FaClock,
+  FaHistory,
+  FaUserCheck,
+  FaUserTimes,
+  FaSync,
+  FaCheck,
+  FaBan,
 } from 'react-icons/fa';
 
 const generateInitials = (firstName, lastName) => {
@@ -111,6 +118,54 @@ const UserProfile = () => {
 
     fetchLatestProfile();
   }, [dispatch]);
+
+  const userRole = String(user?.role || user?.accountType || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[_ ]/g, '-');
+  const isManager = ['super-admin', 'superadmin', 'human-resource', 'hr'].includes(userRole);
+
+  const [shiftRequests, setShiftRequests] = useState([]);
+  const [allStaffRequests, setAllStaffRequests] = useState([]);
+  const [activeShiftTab, setActiveShiftTab] = useState(isManager ? 'staff_requests' : 'my_history');
+  const [isLoadingShiftRequests, setIsLoadingShiftRequests] = useState(false);
+  const [reviewingId, setReviewingId] = useState(null);
+
+  const fetchShiftRequests = React.useCallback(async () => {
+    setIsLoadingShiftRequests(true);
+    try {
+      const myRes = await shiftAccessAPI.getMyRequests();
+      setShiftRequests(myRes?.data?.data || []);
+
+      if (isManager) {
+        const allRes = await shiftAccessAPI.getAllRequests();
+        setAllStaffRequests(allRes?.data?.data || []);
+      }
+    } catch (err) {
+      console.warn('Could not load shift access requests:', err?.message);
+    } finally {
+      setIsLoadingShiftRequests(false);
+    }
+  }, [isManager]);
+
+  useEffect(() => {
+    fetchShiftRequests();
+  }, [fetchShiftRequests]);
+
+  const handleReviewRequest = async (requestId, decisionStatus) => {
+    setReviewingId(requestId);
+    try {
+      await shiftAccessAPI.reviewRequest(requestId, {
+        status: decisionStatus,
+      });
+      toast.success(`Request ${decisionStatus} successfully!`);
+      fetchShiftRequests();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to review request');
+    } finally {
+      setReviewingId(null);
+    }
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -651,6 +706,253 @@ const UserProfile = () => {
           </div>
         </div>
       </form>
+
+      {/* Shift Access & Overtime History Card */}
+      <div className="card bg-base-100 shadow-sm border border-base-200 p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-200 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+              <FaHistory className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-base-content">
+                {isManager ? "Hospital Shift Access & Overtime Requests" : "Shift & Overtime Access History"}
+              </h3>
+              <p className="text-xs text-base-content/60">
+                {isManager
+                  ? "Review staff requests for double shifts, overtime extensions, and grant emergency hospital access."
+                  : "Track requests submitted to Super Admin or HR for double shifts and overtime extensions."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {isManager && (
+              <div className="join">
+                <button
+                  type="button"
+                  onClick={() => setActiveShiftTab('staff_requests')}
+                  className={`btn btn-sm join-item text-xs font-semibold ${
+                    activeShiftTab === 'staff_requests' ? 'btn-primary' : 'btn-ghost'
+                  }`}
+                >
+                  <span>Staff Requests</span>
+                  {allStaffRequests.filter((r) => r.status === 'pending').length > 0 && (
+                    <span className="badge badge-warning badge-xs font-bold ml-1">
+                      {allStaffRequests.filter((r) => r.status === 'pending').length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveShiftTab('my_history')}
+                  className={`btn btn-sm join-item text-xs font-semibold ${
+                    activeShiftTab === 'my_history' ? 'btn-primary' : 'btn-ghost'
+                  }`}
+                >
+                  <span>My History</span>
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={fetchShiftRequests}
+              disabled={isLoadingShiftRequests}
+              className="btn btn-ghost btn-circle btn-sm text-base-content/70"
+              title="Refresh shift requests"
+            >
+              <FaSync className={`w-3.5 h-3.5 ${isLoadingShiftRequests ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Content Table */}
+        {activeShiftTab === 'staff_requests' && isManager ? (
+          <div className="overflow-x-auto">
+            {allStaffRequests.length === 0 ? (
+              <div className="text-center py-8 text-xs text-base-content/60">
+                No shift access requests recorded yet.
+              </div>
+            ) : (
+              <table className="table table-sm w-full text-xs">
+                <thead>
+                  <tr className="bg-base-200/60 text-base-content/70">
+                    <th>Staff Name</th>
+                    <th>Role / Shift</th>
+                    <th>Request Type</th>
+                    <th>Reason</th>
+                    <th>Date Requested</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allStaffRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-base-200/40">
+                      <td className="font-bold text-base-content">{req.userName}</td>
+                      <td>
+                        <div className="flex flex-col">
+                          <span className="capitalize font-semibold">{req.userRole}</span>
+                          <span className="text-[10px] text-base-content/60 capitalize">
+                            {req.userShift ? `${req.userShift} Shift` : 'Flexible'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="badge badge-outline badge-sm text-[10px] capitalize">
+                          {req.requestType?.replace(/_/g, ' ') || 'Double Shift'}
+                        </span>
+                      </td>
+                      <td className="max-w-xs truncate" title={req.reason}>
+                        {req.reason}
+                      </td>
+                      <td>
+                        {new Date(req.createdAt).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td>
+                        {req.status === 'approved' && (
+                          <span className="badge badge-success text-white badge-xs gap-1 font-semibold">
+                            <FaCheck className="w-2 h-2" /> Approved
+                          </span>
+                        )}
+                        {req.status === 'pending' && (
+                          <span className="badge badge-warning badge-xs gap-1 font-semibold">
+                            Pending
+                          </span>
+                        )}
+                        {req.status === 'rejected' && (
+                          <span className="badge badge-error text-white badge-xs gap-1 font-semibold">
+                            <FaBan className="w-2 h-2" /> Rejected
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {req.status === 'pending' ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleReviewRequest(req.id, 'approved')}
+                              disabled={reviewingId === req.id}
+                              className="btn btn-success btn-xs text-white gap-1"
+                              title="Approve access"
+                            >
+                              <FaCheck className="w-2.5 h-2.5" />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleReviewRequest(req.id, 'rejected')}
+                              disabled={reviewingId === req.id}
+                              className="btn btn-error btn-xs text-white gap-1"
+                              title="Reject access"
+                            >
+                              <FaBan className="w-2.5 h-2.5" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-base-content/50 italic">
+                            {req.reviewedBy ? `Reviewed by ${req.reviewerName || 'Admin'}` : 'Processed'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            {shiftRequests.length === 0 ? (
+              <div className="text-center py-8 text-xs text-base-content/60">
+                You have not submitted any extra shift access requests.
+              </div>
+            ) : (
+              <table className="table table-sm w-full text-xs">
+                <thead>
+                  <tr className="bg-base-200/60 text-base-content/70">
+                    <th>Date Requested</th>
+                    <th>Type</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Reviewer & Notes</th>
+                    <th>Access Valid Until</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shiftRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-base-200/40">
+                      <td>
+                        {new Date(req.createdAt).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td>
+                        <span className="badge badge-outline badge-sm text-[10px] capitalize">
+                          {req.requestType?.replace(/_/g, ' ') || 'Double Shift'}
+                        </span>
+                      </td>
+                      <td className="max-w-xs truncate" title={req.reason}>
+                        {req.reason}
+                      </td>
+                      <td>
+                        {req.status === 'approved' && (
+                          <span className="badge badge-success text-white badge-xs gap-1 font-semibold">
+                            <FaCheck className="w-2 h-2" /> Approved
+                          </span>
+                        )}
+                        {req.status === 'pending' && (
+                          <span className="badge badge-warning badge-xs gap-1 font-semibold">
+                            Pending
+                          </span>
+                        )}
+                        {req.status === 'rejected' && (
+                          <span className="badge badge-error text-white badge-xs gap-1 font-semibold">
+                            <FaBan className="w-2 h-2" /> Rejected
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {req.reviewerName ? (
+                          <div className="flex flex-col">
+                            <span className="font-semibold">{req.reviewerName}</span>
+                            {req.note && <span className="text-[10px] text-base-content/60 italic">{req.note}</span>}
+                          </div>
+                        ) : (
+                          <span className="text-base-content/50">—</span>
+                        )}
+                      </td>
+                      <td>
+                        {req.grantedUntil ? (
+                          <span className="font-medium text-success">
+                            {new Date(req.grantedUntil).toLocaleString('en-GB', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-base-content/50">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
