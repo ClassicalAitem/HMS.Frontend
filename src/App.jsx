@@ -12,6 +12,7 @@ import AutoLogoutHandler from './components/common/AutoLogoutHandler';
 import GlobalShortcutManager from './components/common/GlobalShortcutManager';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { NurseMedicationAlertManager } from './components/nurse';
+import { ProfileCompletionModal } from './components/modals';
 import { initDiagnosticsCollector } from './utils/diagnostics';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
                 <AutoLogoutHandler />
                 <ShiftCountdown />
                 <NurseMedicationAlertManager />
+                <ProfileCompletionModal />
                 <ErrorBoundary>
                   <AppRoutes />
                 </ErrorBoundary>

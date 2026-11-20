@@ -156,9 +156,14 @@ const Sidebar = ({ onCloseSidebar }) => {
       </div>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-base-200">
-        <div className="flex items-center gap-3">
-          <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10 shrink-0">
+      <div className="p-3 border-t border-base-200">
+        <Link
+          to="/profile"
+          onClick={onCloseSidebar}
+          className="flex items-center gap-3 p-2 rounded-xl hover:bg-base-200/80 transition-colors group cursor-pointer"
+          title="View profile"
+        >
+          <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10 shrink-0 group-hover:scale-105 transition-transform">
             {user?.profilePicture ? (
               <img
                 src={user.profilePicture}
@@ -172,14 +177,14 @@ const Sidebar = ({ onCloseSidebar }) => {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-base-content truncate">
+            <p className="text-sm font-bold text-base-content truncate group-hover:text-primary transition-colors">
               {user?.firstName && user?.lastName
                 ? `Dr. ${user.firstName} ${user.lastName}`
                 : "Dr. Clinician"}
             </p>
             <p className="text-xs text-primary font-semibold">{formatRole(user?.role)}</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Logout Modal */}

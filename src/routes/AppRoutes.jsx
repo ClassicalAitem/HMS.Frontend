@@ -6,6 +6,9 @@ import ForgotPassword from "@/pages/auth/ForgotPassword";
 import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
+import RoleBasedLayout from "@/layouts/RoleBasedLayout";
+
+const UserProfile = lazy(() => import("@/pages/profile/UserProfile"));
 
 const SystemLogsPage = lazy(() => import("@/pages/developer/SystemLogsPage"));
 const SystemHealthPage = lazy(() => import("@/pages/developer/SystemHealthPage"));
@@ -259,6 +262,13 @@ const AppRoutes = () => {
       <Route path="/change-password" element={
         <ProtectedRoute>
           <ChangePassword />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <RoleBasedLayout>
+            <UserProfile />
+          </RoleBasedLayout>
         </ProtectedRoute>
       } />
 

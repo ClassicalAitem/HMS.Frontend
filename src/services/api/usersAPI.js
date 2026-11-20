@@ -66,6 +66,18 @@ export const usersAPI = {
     const response = await apiClient.patch(`/user/toggleLeaveStatus/${userId}`, { isOnLeave });
     return response;
   },
+
+  // Get current logged-in user profile
+  getProfile: async () => {
+    const response = await apiClient.get('/user/profile');
+    return response;
+  },
+
+  // Update current logged-in user profile
+  updateProfile: async (profileData) => {
+    const response = await apiClient.patch('/user/profile', profileData);
+    return response;
+  },
 };
 
 export default usersAPI;

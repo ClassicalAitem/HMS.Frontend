@@ -35,6 +35,10 @@ export const loginUser = createAsyncThunk(
             lastName: userData.lastName,
             email: userData.email,
             phoneNumber: userData.phoneNumber,
+            address: userData.address || '',
+            isProfileCompleted: Boolean(userData.isProfileCompleted),
+            dob: userData.dob || null,
+            nextOfKin: userData.nextOfKin || null,
             role: userData.accountType,
             accountType: userData.accountType,
             isDefaultPassword: userData.isDefaultPassword,
@@ -209,6 +213,17 @@ const authSlice = createSlice({
         state.user.isDefaultPassword = false;
       }
     },
+    updateUserProfile: (state, action) => {
+      if (state.user) {
+        state.user = {
+          ...state.user,
+          ...action.payload,
+          isProfileCompleted: action.payload.isProfileCompleted !== undefined
+            ? Boolean(action.payload.isProfileCompleted)
+            : state.user.isProfileCompleted,
+        };
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -335,6 +350,7 @@ export const {
   incrementLoginAttempts,
   resetLoginAttempts,
   passwordChanged,
+  updateUserProfile,
 } = authSlice.actions;
 
 export default authSlice.reducer;

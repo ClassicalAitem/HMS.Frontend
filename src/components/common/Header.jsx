@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
-import { FaBars, FaSearch, FaKeyboard, FaTimes } from "react-icons/fa";
+import { FaBars, FaSearch, FaKeyboard, FaTimes, FaUserCircle } from "react-icons/fa";
 import { SlRefresh } from "react-icons/sl";
 import ThemeSwitcher from "./ThemeSwitcher";
 import HospitalFavicon from "@/assets/images/favicon.svg";
@@ -277,6 +277,18 @@ const Header = ({ onToggleSidebar }) => {
               <FaKeyboard className="h-4 w-4" />
             </button>
             <ThemeSwitcher className="2xl:h-4 2xl:w-4" />
+            <button
+              onClick={() => navigate('/profile')}
+              className={`btn btn-ghost btn-circle btn-sm ${
+                location.pathname === '/profile'
+                  ? 'text-primary bg-primary/10'
+                  : 'text-base-content/70 hover:text-base-content'
+              }`}
+              title="My Profile"
+              aria-label="My Profile"
+            >
+              <FaUserCircle className="h-4 w-4" />
+            </button>
             <button
               onClick={handleRefresh}
               className="btn btn-ghost btn-circle btn-sm"
