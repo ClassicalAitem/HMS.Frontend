@@ -1,6 +1,24 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { MdAdd } from 'react-icons/md'
-import { FaFileUpload } from 'react-icons/fa'
+import { 
+  FaFileUpload, 
+  FaFileDownload, 
+  FaSearch, 
+  FaTimes, 
+  FaBoxes, 
+  FaCheckCircle, 
+  FaExclamationTriangle, 
+  FaClock, 
+  FaBan, 
+  FaPills, 
+  FaEdit, 
+  FaSyncAlt, 
+  FaLayerGroup,
+  FaWarehouse,
+  FaInfoCircle
+} from 'react-icons/fa'
+import { RiRefreshLine } from 'react-icons/ri'
+import { GiMedicines } from 'react-icons/gi'
 import toast from 'react-hot-toast'
 import {
   getInventories,
@@ -11,6 +29,7 @@ import {
 } from '@/services/api/inventoryAPI'
 import { PharmacistLayout } from '@/layouts/pharmacist'
 import KolakLoader from '@/components/common/KolakLoader'
+import { EmptyState } from '@/components/common'
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler'
 import { InventoryFormModal } from '@/components/modals/InventoryFormModal'
 
@@ -21,32 +40,65 @@ const UNIT_LABELS = {
   ampoule: 'Ampoule',
   tube: 'Tube',
 }
+
 const pricePerUnit = (item) => {
   const packSize = Number(item.packSize) || 1
   const sellingPrice = Number(item.sellingPrice) || 0
   return sellingPrice / packSize
 }
 
-// Builds a compact page list like [1, '...', 4, 5, 6, '...', 35] —
-// always shows first, last, current, and one neighbor on each side.
+// Compact pagination numbers generator
 const getPageNumbers = (current, total) => {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-
   const pages = [1]
   const start = Math.max(2, current - 1)
   const end = Math.min(total - 1, current + 1)
-
   if (start > 2) pages.push('...')
   for (let p = start; p <= end; p += 1) pages.push(p)
   if (end < total - 1) pages.push('...')
   pages.push(total)
-
   return pages
+}
+
+const getExpiryStatus = (expiryDate) => {
+  if (!expiryDate) return { text: 'No expiry', badgeClass: 'bg-base-200 text-base-content/50', days: null }
+  const exp = new Date(expiryDate).getTime()
+  if (isNaN(exp)) return { text: 'Invalid date', badgeClass: 'bg-base-200 text-base-content/50', days: null }
+  const now = Date.now()
+  const days = Math.ceil((exp - now) / (1000 * 60 * 60 * 24))
+
+  if (days < 0) {
+    return { text: `Expired (${Math.abs(days)}d ago)`, badgeClass: 'bg-error text-white font-bold', days }
+  }
+  if (days <= 30) {
+    return { text: `Expiring in ${days}d`, badgeClass: 'bg-warning/20 text-warning-content border border-warning/40 font-bold', days }
+  }
+  if (days <= 90) {
+    return { text: `${days} days left`, badgeClass: 'bg-info/15 text-info border border-info/30 font-medium', days }
+  }
+  return { 
+    text: new Date(expiryDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), 
+    badgeClass: 'bg-base-200 text-base-content/70', 
+    days 
+  }
+}
+
+const getStockStatus = (item) => {
+  const stock = Number(item.stock) || 0
+  const reorder = Number(item.reorderLevel) || 0
+  if (stock === 0) {
+    return { label: 'Out of Stock', badgeClass: 'bg-error/15 text-error border border-error/30 font-bold', level: 'out' }
+  }
+  if (stock <= reorder) {
+    return { label: `Low Stock (${stock})`, badgeClass: 'bg-warning/15 text-warning-content border border-warning/30 font-bold', level: 'low' }
+  }
+  return { label: `In Stock (${stock})`, badgeClass: 'bg-success/15 text-success border border-success/30 font-semibold', level: 'ok' }
 }
 
 const InventoryStocks = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -55,10 +107,11 @@ const InventoryStocks = () => {
   const [restockingFor, setRestockingFor] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 7
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  const fetch = async () => {
-    setLoading(true)
+  const fetchInventoryData = useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true)
+    else setLoading(true)
     setError(null)
     try {
       const res = await getInventories()
@@ -75,56 +128,81 @@ const InventoryStocks = () => {
       showErrorToast(err, 'Failed to load inventory')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetch() }, [])
+  useEffect(() => {
+    fetchInventoryData()
+  }, [fetchInventoryData])
 
+  // Aggregate stock counts
   const totalItems = items.length
-  const inStockCount = items.filter(i => Number(i.stock) > 0).length
-  const lowStockCount = items.filter(i => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0)).length
-  const expiringSoonCount = items.filter(i => {
-    if (!i.expiryDate) return false
-    const diff = (new Date(i.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    return diff <= 30 && diff >= 0
-  }).length
-  const expiredCount = items.filter(i => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now()).length
+  const inStockCount = useMemo(() => items.filter((i) => Number(i.stock) > 0).length, [items])
+  const lowStockCount = useMemo(() => items.filter((i) => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0)).length, [items])
+  const outOfStockCount = useMemo(() => items.filter((i) => Number(i.stock) === 0).length, [items])
+  const expiringSoonCount = useMemo(() => {
+    return items.filter((i) => {
+      if (!i.expiryDate) return false
+      const diff = (new Date(i.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      return diff <= 30 && diff >= 0
+    }).length
+  }, [items])
+  const expiredCount = useMemo(() => {
+    return items.filter((i) => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now()).length
+  }, [items])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = items.filter(i =>
+    let list = items.filter((i) =>
       !q ||
       (i.name || '').toLowerCase().includes(q) ||
       (i.strength || '').toLowerCase().includes(q) ||
-      (i.form || '').toLowerCase().includes(q)
+      (i.form || '').toLowerCase().includes(q) ||
+      (i.batchNumber || '').toLowerCase().includes(q) ||
+      (i.supplier || '').toLowerCase().includes(q)
     )
-    if (activeTab === 'low') list = list.filter(i => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0))
-    if (activeTab === 'out') list = list.filter(i => Number(i.stock) === 0)
-    if (activeTab === 'recent') {
-      list = list.slice().sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
-    }
-    if (activeTab === 'expiring') {
-      list = list.filter(i => {
+
+    if (activeTab === 'in_stock') {
+      list = list.filter((i) => Number(i.stock) > 0)
+    } else if (activeTab === 'low') {
+      list = list.filter((i) => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0))
+    } else if (activeTab === 'out') {
+      list = list.filter((i) => Number(i.stock) === 0)
+    } else if (activeTab === 'expiring') {
+      list = list.filter((i) => {
         if (!i.expiryDate) return false
         const diff = (new Date(i.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         return diff <= 30 && diff >= 0
       })
+    } else if (activeTab === 'expired') {
+      list = list.filter((i) => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now())
+    } else if (activeTab === 'recent') {
+      list = list.slice().sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
     }
-    if (activeTab === 'expired') {
-      list = list.filter(i => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now())
-    }
+
     if (activeTab !== 'recent') {
       list = list.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     }
     return list
   }, [items, search, activeTab])
 
+  // Reset page when filtering
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, activeTab, itemsPerPage])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
   const pageItems = filtered.slice(startIndex, startIndex + itemsPerPage)
 
   const exportCsv = (list) => {
     try {
-      const rows = list.map(i => ({
+      if (list.length === 0) {
+        toast.error('No items to export')
+        return
+      }
+      const rows = list.map((i) => ({
         id: i._id,
         name: i.name,
         strength: i.strength || '',
@@ -142,27 +220,26 @@ const InventoryStocks = () => {
         description: i.description || '',
       }))
       const header = Object.keys(rows[0] || {}).join(',') + '\n'
-      const csv = header + rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+      const csv = header + rows.map((r) => Object.values(r).map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
       const blob = new Blob([csv], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'inventory.csv'
+      a.download = `inventory_${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
+      toast.success('Inventory exported successfully')
     } catch (e) {
       showErrorToast(e, 'Export failed')
     }
   }
 
-  const lowStock = (i) => (Number(i.stock) === 0 ? 'out' : (Number(i.stock) <= Number(i.reorderLevel || 0) ? 'low' : 'ok'))
-
   const handleAdd = async (payload) => {
     const p = createInventory(payload)
-    toast.promise(p, { loading: 'Creating item...', success: 'Item created', error: (e) => getErrorMessage(e, 'Failed creating item') })
+    toast.promise(p, { loading: 'Creating item...', success: 'Item created successfully', error: (e) => getErrorMessage(e, 'Failed creating item') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setShowAdd(false)
     } catch (error) {
       console.error(error)
@@ -171,10 +248,10 @@ const InventoryStocks = () => {
 
   const handleEdit = async (id, payload) => {
     const p = updateInventory(id, payload)
-    toast.promise(p, { loading: 'Updating item...', success: 'Item updated', error: (e) => getErrorMessage(e, 'Failed updating item') })
+    toast.promise(p, { loading: 'Updating item...', success: 'Item updated successfully', error: (e) => getErrorMessage(e, 'Failed updating item') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setEditing(null)
     } catch (error) {
       console.error(error)
@@ -183,10 +260,10 @@ const InventoryStocks = () => {
 
   const handleRestock = async (id, payload) => {
     const p = restockInventory(id, payload)
-    toast.promise(p, { loading: 'Restocking...', success: 'Restocked', error: (e) => getErrorMessage(e, 'Failed to restock item') })
+    toast.promise(p, { loading: 'Restocking...', success: 'Restocked successfully', error: (e) => getErrorMessage(e, 'Failed to restock item') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setRestockingFor(null)
     } catch (error) {
       console.error(error)
@@ -198,7 +275,7 @@ const InventoryStocks = () => {
     toast.promise(p, { loading: 'Reducing stock...', success: 'Stock reduced successfully', error: (e) => getErrorMessage(e, 'Failed to reduce stock') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setRestockingFor(null)
     } catch (error) {
       console.error(error)
@@ -208,182 +285,604 @@ const InventoryStocks = () => {
   return (
     <PharmacistLayout>
       {loading && <KolakLoader fullscreen />}
-      <div className="flex h-full flex-col gap-4 overflow-y-auto">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-primary">Inventory & Stocks</h1>
-            <p className="text-xs text-base-content/70">Manage medicines, restock and view transactions</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <button className="btn btn-outline btn-sm flex items-center gap-2" onClick={() => setShowCsvUpload(true)}><FaFileUpload /> Import CSV</button>
-            <button className="btn btn-primary btn-sm flex items-center gap-2" onClick={() => setShowAdd(true)}><MdAdd /> Add new item</button>
-          </div>
-        </div>
+      <div className="flex flex-col flex-1 bg-base-100 min-w-0">
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-6">
 
-        <div className="rounded-xl bg-base-100 border border-base-300 p-4">
-          {loading ? (
-            <div className="py-16 flex justify-center">
-              <KolakLoader />
+          {/* PAGE HEADER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-[#00943C]/10 text-[#00943C]">
+                <GiMedicines size={24} />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-base-content">Inventory & Stocks</h1>
+                <p className="text-xs sm:text-sm text-base-content/60 mt-0.5">
+                  Manage hospital pharmacy stock, restock medications, and track batch expiries
+                </p>
+              </div>
             </div>
-          ) : error ? (
-            <div className="text-sm text-error">Failed to load inventory.</div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                <StatCard label="Total Items" value={totalItems} sub="Unique medications" />
-                <StatCard label="In Stock" value={inStockCount} sub={`${totalItems ? Math.round((inStockCount / totalItems) * 100) : 0}% availability`} subClass="text-success/70" />
-                <StatCard label="Low Stock" value={lowStockCount} sub="Needs reordering" subClass="text-warning/70" />
-                <StatCard label="Expiring Soon" value={expiringSoonCount} sub="Within 30 days" subClass="text-error/70" />
-                <StatCard label="Expired" value={expiredCount} sub="Past expiry date" subClass="text-error/70" />
+
+            {/* ACTION BUTTONS */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => fetchInventoryData(true)}
+                disabled={refreshing}
+                className="btn btn-outline border-base-300 hover:border-primary hover:bg-primary/5 hover:text-primary btn-sm gap-2"
+                title="Refresh inventory list"
+              >
+                <RiRefreshLine className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span className="text-xs font-semibold">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+              </button>
+
+              <button
+                onClick={() => exportCsv(filtered)}
+                className="btn btn-outline border-base-300 hover:border-success hover:bg-success/5 hover:text-success btn-sm gap-1.5"
+                title="Export filtered items to CSV"
+              >
+                <FaFileDownload className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold">Export CSV</span>
+              </button>
+
+              <button
+                onClick={() => setShowCsvUpload(true)}
+                className="btn btn-outline border-base-300 hover:border-primary hover:bg-primary/5 hover:text-primary btn-sm gap-1.5"
+                title="Bulk import items from CSV"
+              >
+                <FaFileUpload className="w-3.5 h-3.5" />
+                <span className="text-xs font-semibold">Import CSV</span>
+              </button>
+
+              <button
+                onClick={() => setShowAdd(true)}
+                className="btn btn-primary btn-sm gap-1.5 font-bold shadow-xs"
+              >
+                <MdAdd className="w-4 h-4" />
+                <span className="text-xs">Add New Item</span>
+              </button>
+            </div>
+          </div>
+
+          {/* TOP 5 KPI STAT CARDS WITH INTERACTIVE FILTERING */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+            
+            {/* 1. Total Items */}
+            <div
+              onClick={() => setActiveTab('all')}
+              className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+                activeTab === 'all'
+                  ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+                  : 'border-base-300 hover:border-base-content/30'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Total Items</span>
+                  <div className="text-2xl sm:text-3xl font-black text-base-content mt-1">
+                    {totalItems}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-base-200 text-base-content">
+                  <FaBoxes className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-base-content/60 flex items-center justify-between">
+                <span>Unique medicines</span>
+                {activeTab === 'all' && <span className="badge badge-primary badge-xs font-bold">Active</span>}
+              </div>
+            </div>
+
+            {/* 2. In Stock */}
+            <div
+              onClick={() => setActiveTab('in_stock')}
+              className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+                activeTab === 'in_stock'
+                  ? 'border-success ring-2 ring-success/20 bg-success/5'
+                  : 'border-base-300 hover:border-base-content/30'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">In Stock</span>
+                  <div className="text-2xl sm:text-3xl font-black text-success mt-1">
+                    {inStockCount}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-success/10 text-success">
+                  <FaCheckCircle className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-success font-medium flex items-center justify-between">
+                <span>{totalItems ? Math.round((inStockCount / totalItems) * 100) : 0}% available</span>
+                {activeTab === 'in_stock' && <span className="badge badge-success badge-xs font-bold text-white">Active</span>}
+              </div>
+            </div>
+
+            {/* 3. Low Stock */}
+            <div
+              onClick={() => setActiveTab('low')}
+              className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+                activeTab === 'low'
+                  ? 'border-warning ring-2 ring-warning/20 bg-warning/5'
+                  : 'border-base-300 hover:border-base-content/30'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Low Stock</span>
+                  <div className="text-2xl sm:text-3xl font-black text-warning mt-1">
+                    {lowStockCount}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-warning/10 text-warning">
+                  <FaExclamationTriangle className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-warning-content/80 font-medium flex items-center justify-between">
+                <span>Needs reorder</span>
+                {activeTab === 'low' && <span className="badge badge-warning badge-xs font-bold">Active</span>}
+              </div>
+            </div>
+
+            {/* 4. Expiring Soon */}
+            <div
+              onClick={() => setActiveTab('expiring')}
+              className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+                activeTab === 'expiring'
+                  ? 'border-info ring-2 ring-info/20 bg-info/5'
+                  : 'border-base-300 hover:border-base-content/30'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Expiring Soon</span>
+                  <div className="text-2xl sm:text-3xl font-black text-info mt-1">
+                    {expiringSoonCount}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-info/10 text-info">
+                  <FaClock className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-info font-medium flex items-center justify-between">
+                <span>Within 30 days</span>
+                {activeTab === 'expiring' && <span className="badge badge-info badge-xs font-bold text-white">Active</span>}
+              </div>
+            </div>
+
+            {/* 5. Expired */}
+            <div
+              onClick={() => setActiveTab('expired')}
+              className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1 ${
+                activeTab === 'expired'
+                  ? 'border-error ring-2 ring-error/20 bg-error/5'
+                  : 'border-base-300 hover:border-base-content/30'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Expired</span>
+                  <div className="text-2xl sm:text-3xl font-black text-error mt-1">
+                    {expiredCount}
+                  </div>
+                </div>
+                <div className="p-2.5 rounded-xl bg-error/10 text-error">
+                  <FaBan className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-error font-medium flex items-center justify-between">
+                <span>Past shelf life</span>
+                {activeTab === 'expired' && <span className="badge badge-error badge-xs font-bold text-white">Active</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* MAIN CARD: TOOLBAR + TABLE */}
+          <div className="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+            
+            {/* FILTER TOOLBAR */}
+            <div className="p-4 sm:p-5 bg-base-100 border-b border-base-200 flex flex-col gap-3.5">
+              
+              {/* Row 1: Search + Quick Stats */}
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 w-3.5 h-3.5" />
+                  <input
+                    type="text"
+                    placeholder="Search medication, strength, form, batch number, supplier..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="input input-sm input-bordered w-full pl-9 pr-8 text-xs rounded-xl"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                    >
+                      <FaTimes className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 self-end md:self-auto">
+                  <span className="text-xs text-base-content/60 font-medium">
+                    Showing <strong className="text-primary font-bold">{filtered.length}</strong> of{' '}
+                    <strong className="text-base-content">{totalItems}</strong> medications
+                  </span>
+
+                  {/* Rows per page selector */}
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                    className="select select-bordered select-xs text-xs rounded-lg"
+                    aria-label="Items per page"
+                  >
+                    <option value={10}>10 per page</option>
+                    <option value={20}>20 per page</option>
+                    <option value={50}>50 per page</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {[
-                    ['all', 'All Items'],
-                    ['low', 'Low Stock'],
-                    ['out', 'Out of Stock'],
-                    ['expiring', 'Expiring Soon'],
-                    ['expired', 'Expired'],
-                    ['recent', 'Recent Activity'],
-                  ].map(([key, label]) => (
+              {/* Row 2: Category Filter Tabs */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-2.5 border-t border-base-200">
+                <span className="text-xs font-semibold text-base-content/60 mr-1.5 flex items-center gap-1">
+                  <FaLayerGroup className="w-3 h-3 text-primary" /> Filter:
+                </span>
+
+                {[
+                  { key: 'all', label: 'All Items', count: totalItems },
+                  { key: 'in_stock', label: 'In Stock', count: inStockCount },
+                  { key: 'low', label: 'Low Stock', count: lowStockCount, warn: lowStockCount > 0 },
+                  { key: 'out', label: 'Out of Stock', count: outOfStockCount, danger: outOfStockCount > 0 },
+                  { key: 'expiring', label: 'Expiring Soon', count: expiringSoonCount, info: expiringSoonCount > 0 },
+                  { key: 'expired', label: 'Expired', count: expiredCount, danger: expiredCount > 0 },
+                  { key: 'recent', label: 'Recent Activity', count: null },
+                ].map(({ key, label, count, warn, danger, info }) => {
+                  const isActive = activeTab === key
+                  return (
                     <button
                       key={key}
-                      className={`px-2 py-1 rounded ${activeTab === key ? 'bg-primary text-primary-content' : 'bg-base-200'}`}
-                      onClick={() => { setActiveTab(key); setCurrentPage(1) }}
+                      type="button"
+                      onClick={() => setActiveTab(key)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-primary text-primary-content shadow-xs'
+                          : 'bg-base-200 text-base-content/70 hover:text-base-content hover:bg-base-300'
+                      }`}
                     >
-                      {label}
+                      <span>{label}</span>
+                      {count !== null && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            isActive
+                              ? 'bg-primary-content/20 text-primary-content'
+                              : danger
+                                ? 'bg-error/20 text-error'
+                                : warn
+                                  ? 'bg-warning/20 text-warning-content'
+                                  : info
+                                    ? 'bg-info/20 text-info'
+                                    : 'bg-base-300 text-base-content/60'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      )}
                     </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input className="input input-sm input-bordered" placeholder="Search Medications..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }} />
-                  <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
+                  )
+                })}
+
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="btn btn-ghost btn-xs text-error font-medium ml-auto"
+                  >
+                    Clear Search
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* CONTENT AREA */}
+            {loading ? (
+              <div className="py-20 flex justify-center">
+                <KolakLoader />
+              </div>
+            ) : error ? (
+              <div className="py-16 text-center text-sm text-error">
+                {error}
+                <div className="mt-3">
+                  <button onClick={() => fetchInventoryData(true)} className="btn btn-sm btn-outline btn-error">
+                    Try Again
+                  </button>
                 </div>
               </div>
+            ) : filtered.length === 0 ? (
+              <div className="py-16">
+                <EmptyState
+                  title="No medications found"
+                  description={
+                    search
+                      ? `No inventory items matched "${search}".`
+                      : activeTab !== 'all'
+                        ? `No items found under the "${activeTab}" filter category.`
+                        : 'No medicines recorded in the inventory yet.'
+                  }
+                  actionLabel={search || activeTab !== 'all' ? 'Reset Filters' : 'Add First Item'}
+                  onAction={() => {
+                    if (search || activeTab !== 'all') {
+                      setSearch('')
+                      setActiveTab('all')
+                    } else {
+                      setShowAdd(true)
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="table w-full text-xs">
+                    <thead>
+                      <tr className="bg-base-200/60 border-b border-base-200 text-base-content/60 uppercase tracking-wider text-[11px]">
+                        <th className="py-3 px-4 font-bold">Medication</th>
+                        <th className="py-3 px-3 font-bold">Category & Form</th>
+                        <th className="py-3 px-3 font-bold">Batch & Expiry</th>
+                        <th className="py-3 px-3 font-bold">Stock Status</th>
+                        <th className="py-3 px-3 font-bold">Pack Size</th>
+                        <th className="py-3 px-3 font-bold">Pack Price</th>
+                        <th className="py-3 px-3 font-bold">Price / Unit</th>
+                        <th className="py-3 px-4 text-right font-bold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-base-200">
+                      {pageItems.map((item) => {
+                        const stockStat = getStockStatus(item)
+                        const expiryStat = getExpiryStatus(item.expiryDate)
+                        const unitName = UNIT_LABELS[item.unit] || item.unit || 'Tablet'
+                        const packSizeNum = Number(item.packSize) || 1
+                        const stockNum = Number(item.stock) || 0
+                        const reorderNum = Number(item.reorderLevel) || 0
 
-              {/* Mobile cards */}
-              <div className="block md:hidden">
-                <div className="grid grid-cols-1 gap-4">
-                  {pageItems.map(item => (
-                    <div key={item._id} className="p-4 rounded-xl border flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{item.name}</div>
-                        <div className={`text-xs px-2 py-1 rounded ${lowStock(item) === 'out' ? 'bg-error/10 text-error' : lowStock(item) === 'low' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
-                          {lowStock(item) === 'out' ? 'Out of stock' : lowStock(item) === 'low' ? 'Low stock' : 'In stock'}
+                        return (
+                          <tr key={item._id} className="hover:bg-base-200/40 transition-colors">
+                            {/* Medication Name & Supplier */}
+                            <td className="py-3 px-4 min-w-[180px]">
+                              <div className="font-bold text-sm text-base-content">{item.name}</div>
+                              <div className="text-[11px] text-base-content/50 flex items-center gap-1.5 mt-0.5">
+                                {item.supplier ? (
+                                  <span>Supplier: {item.supplier}</span>
+                                ) : (
+                                  <span className="italic">No supplier listed</span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Category & Form */}
+                            <td className="py-3 px-3 min-w-[130px]">
+                              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-base-200 text-base-content/80 font-semibold text-[11px]">
+                                <FaPills className="w-2.5 h-2.5 text-primary opacity-80" />
+                                <span>{item.form || 'Tablet'}</span>
+                              </div>
+                              {item.strength && (
+                                <div className="text-[11px] font-medium text-base-content/60 mt-0.5">
+                                  {item.strength}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Batch & Expiry */}
+                            <td className="py-3 px-3 min-w-[140px]">
+                              <div className="font-mono text-[11px] font-bold text-base-content/80">
+                                {item.batchNumber ? `Batch: ${item.batchNumber}` : <span className="text-base-content/40 italic">No batch</span>}
+                              </div>
+                              <div className="mt-1">
+                                <span className={`badge badge-xs px-2 py-0.5 text-[10px] ${expiryStat.badgeClass}`}>
+                                  {expiryStat.text}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Stock Status + Indicator */}
+                            <td className="py-3 px-3 min-w-[150px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`badge badge-sm py-1 px-2 text-[11px] ${stockStat.badgeClass}`}>
+                                  {stockStat.label}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-base-content/50 mt-1">
+                                Reorder at: <strong className="text-base-content/70">{reorderNum}</strong> {unitName}s
+                              </div>
+                            </td>
+
+                            {/* Pack Size */}
+                            <td className="py-3 px-3 font-semibold text-base-content/80">
+                              {packSizeNum} {unitName}{packSizeNum > 1 ? 's' : ''}/pack
+                            </td>
+
+                            {/* Pack Price */}
+                            <td className="py-3 px-3 font-bold text-base-content">
+                              {item.sellingPrice != null ? `₦${Number(item.sellingPrice).toLocaleString()}` : '—'}
+                            </td>
+
+                            {/* Price / Unit */}
+                            <td className="py-3 px-3 font-semibold text-primary">
+                              ₦{pricePerUnit(item).toFixed(2)}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => setRestockingFor(item)}
+                                  className="btn btn-outline border-primary/40 hover:bg-primary hover:border-primary text-primary hover:text-white btn-xs font-semibold gap-1"
+                                  title="Restock or reduce stock"
+                                >
+                                  <FaSyncAlt className="w-2.5 h-2.5" />
+                                  <span>Restock</span>
+                                </button>
+                                <button
+                                  onClick={() => setEditing(item)}
+                                  className="btn btn-ghost btn-xs text-base-content/70 hover:text-base-content gap-1 font-semibold"
+                                  title="Edit medication details"
+                                >
+                                  <FaEdit className="w-2.5 h-2.5" />
+                                  <span>Edit</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="block md:hidden divide-y divide-base-200">
+                  {pageItems.map((item) => {
+                    const stockStat = getStockStatus(item)
+                    const expiryStat = getExpiryStatus(item.expiryDate)
+                    const unitName = UNIT_LABELS[item.unit] || item.unit || 'Tablet'
+                    const packSizeNum = Number(item.packSize) || 1
+
+                    return (
+                      <div key={item._id} className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-bold text-base text-base-content">{item.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-base-content/60">
+                              <span className="font-semibold">{item.form || 'Tablet'}</span>
+                              {item.strength && <span>• {item.strength}</span>}
+                            </div>
+                          </div>
+                          <span className={`badge badge-sm py-1 px-2 text-[11px] ${stockStat.badgeClass}`}>
+                            {stockStat.label}
+                          </span>
+                        </div>
+
+                        {/* Middle info grid */}
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-base-200/40 p-2.5 rounded-xl border border-base-200">
+                          <div>
+                            <span className="text-base-content/50">Stock: </span>
+                            <strong className="text-base-content font-bold">{item.stock ?? 0} {unitName}s</strong>
+                          </div>
+                          <div>
+                            <span className="text-base-content/50">Pack Size: </span>
+                            <span className="text-base-content font-medium">{packSizeNum} {unitName}/pack</span>
+                          </div>
+                          <div>
+                            <span className="text-base-content/50">Pack Price: </span>
+                            <span className="text-base-content font-bold">₦{item.sellingPrice ?? '—'}</span>
+                          </div>
+                          <div>
+                            <span className="text-base-content/50">Unit Price: </span>
+                            <span className="text-primary font-bold">₦{pricePerUnit(item).toFixed(2)}</span>
+                          </div>
+                          <div className="col-span-2 flex items-center justify-between pt-1 border-t border-base-200">
+                            <span className="text-base-content/50 font-mono text-[11px]">
+                              {item.batchNumber ? `Batch: ${item.batchNumber}` : 'No batch'}
+                            </span>
+                            <span className={`badge badge-xs ${expiryStat.badgeClass}`}>
+                              {expiryStat.text}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            onClick={() => setEditing(item)}
+                            className="btn btn-ghost btn-xs text-base-content/70 font-semibold"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setRestockingFor(item)}
+                            className="btn btn-primary btn-xs font-semibold gap-1"
+                          >
+                            <FaSyncAlt className="w-2.5 h-2.5" />
+                            <span>Restock</span>
+                          </button>
                         </div>
                       </div>
-                      <div className="text-sm text-base-content/70">{item.form} {item.strength}</div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div>Stock: <span className="font-medium">{item.stock ?? 0} {UNIT_LABELS[item.unit] || 'tablet'}</span></div>
-                        <div>Pack: <span className="font-medium">{item.packSize ?? 1} {UNIT_LABELS[item.unit] || 'tablet'}/pack</span></div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div>Pack price: <span className="font-medium">₦{item.sellingPrice ?? '—'}</span></div>
-                        <div>Per unit: <span className="font-medium">₦{pricePerUnit(item).toFixed(2)}</span></div>
-                      </div>
-                      <div className="flex justify-end gap-2 mt-2">
-                        <button className="btn btn-ghost btn-sm" onClick={() => setEditing(item)}>Edit</button>
-                        <button className="btn btn-outline btn-sm" onClick={() => setRestockingFor(item)}>Restock</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Desktop table */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="table w-full">
-                  <thead>
-                    <tr className="bg-base-200">
-                      <th>Item</th>
-                      <th>Form / Strength</th>
-                      <th>Unit</th>
-                      <th>Pack Size</th>
-                      <th>Stock</th>
-                      <th>Reorder Level</th>
-                      <th>Pack Price</th>
-                      <th>Price / Unit</th>
-                      <th>Expiry Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageItems.map(item => (
-                      <tr key={item._id}>
-                        <td>{item.name}</td>
-                        <td>{item.form} {item.strength}</td>
-                        <td>{UNIT_LABELS[item.unit] || 'Tablet'}</td>
-                        <td>{item.packSize ?? 1}</td>
-                        <td>{item.stock ?? 0}</td>
-                        <td>{item.reorderLevel ?? 0}</td>
-                        <td>{item.sellingPrice != null ? `₦${item.sellingPrice}` : '—'}</td>
-                        <td>₦{pricePerUnit(item).toFixed(2)}</td>
-                        <td>{item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '—'}</td>
-                        <td>
-                          <div className="flex gap-2">
-                            <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
-                            <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between text-xs text-base-content/60">
-                <div>
-                  Showing Result for {
-                    { all: 'All Items', low: 'Low Stock', out: 'Out of Stock', expiring: 'Expiring Soon', expired: 'Expired Items', recent: 'Recent Activity' }[activeTab]
-                  } ({filtered.length} Total)
-                </div>
-                <div className="join">
-                  <button
-                    className="join-item btn btn-ghost btn-xs"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </button>
-
-                  {getPageNumbers(currentPage, Math.max(1, Math.ceil(filtered.length / itemsPerPage))).map((page, idx) =>
-                    page === '...' ? (
-                      <button key={`ellipsis-${idx}`} className="join-item btn btn-ghost btn-xs btn-disabled">…</button>
-                    ) : (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`join-item btn btn-ghost btn-xs ${currentPage === page ? 'bg-primary text-white' : ''}`}
-                      >
-                        {page}
-                      </button>
                     )
-                  )}
-
-                  <button
-                    className="join-item btn btn-ghost btn-xs"
-                    disabled={currentPage === Math.max(1, Math.ceil(filtered.length / itemsPerPage))}
-                    onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(filtered.length / itemsPerPage)), p + 1))}
-                  >
-                    Next
-                  </button>
+                  })}
                 </div>
-              </div>
-            </>
-          )}
+
+                {/* PAGINATION BAR */}
+                <div className="p-4 border-t border-base-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-100">
+                  <div className="text-xs text-base-content/60">
+                    Showing <strong className="text-base-content">{startIndex + 1}</strong> to{' '}
+                    <strong className="text-base-content">{Math.min(startIndex + itemsPerPage, filtered.length)}</strong> of{' '}
+                    <strong className="text-base-content">{filtered.length}</strong> items
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="join">
+                      <button
+                        className="join-item btn btn-sm btn-outline border-base-300"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      >
+                        «
+                      </button>
+
+                      {getPageNumbers(currentPage, totalPages).map((p, idx) =>
+                        p === '...' ? (
+                          <button key={`ellipsis-${idx}`} className="join-item btn btn-sm btn-disabled pointer-events-none">
+                            …
+                          </button>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => setCurrentPage(p)}
+                            className={`join-item btn btn-sm ${
+                              currentPage === p
+                                ? 'bg-primary text-white font-bold border-primary'
+                                : 'btn-outline border-base-300'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+
+                      <button
+                        className="join-item btn btn-sm btn-outline border-base-300"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        »
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
+        {/* MODALS */}
         {showAdd && <InventoryFormModal onClose={() => setShowAdd(false)} onSubmit={handleAdd} />}
+        {editing && (
+          <InventoryFormModal
+            item={editing}
+            onClose={() => setEditing(null)}
+            onSubmit={(payload) => handleEdit(editing._id, payload)}
+          />
+        )}
         {showCsvUpload && (
           <InventoryCsvUploadModal
             items={items}
             onClose={() => setShowCsvUpload(false)}
-            onUploadSuccess={() => { fetch(); setShowCsvUpload(false) }}
+            onUploadSuccess={() => {
+              fetchInventoryData()
+              setShowCsvUpload(false)
+            }}
           />
         )}
-        {editing && <InventoryFormModal item={editing} onClose={() => setEditing(null)} onSubmit={(payload) => handleEdit(editing._id, payload)} />}
         {restockingFor && (
           <RestockModal
             item={restockingFor}
@@ -399,23 +898,14 @@ const InventoryStocks = () => {
 
 export default InventoryStocks
 
-function StatCard({ label, value, sub, subClass = 'text-base-content/60' }) {
-  return (
-    <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-      <div className="text-sm text-base-content/70">{label}</div>
-      <div className="text-3xl font-bold">{value}</div>
-      <div className={`text-xs ${subClass}`}>{sub}</div>
-    </div>
-  )
-}
-
-// --- Inline modal components ---
-
+// --- INLINE RESTOCK & REDUCE MODAL ---
 function RestockModal({ item, onClose, onSubmit, onReduce }) {
   const [mode, setMode] = useState('restock')
   const [packs, setPacks] = useState('')
   const [batchNumber, setBatchNumber] = useState(item.batchNumber || '')
-  const [expiryDate, setExpiryDate] = useState(item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '')
+  const [expiryDate, setExpiryDate] = useState(
+    item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : ''
+  )
   const [costPrice, setCostPrice] = useState('')
   const [sellingPrice, setSellingPrice] = useState('')
 
@@ -502,27 +992,30 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center p-4"
       onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose()
-        }
+        if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="z-10 w-full max-w-md card bg-base-100 p-5 shadow-xl">
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs" onClick={onClose} />
+      <div className="z-10 w-full max-w-md card bg-base-100 p-5 shadow-2xl border border-base-300 rounded-2xl">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="font-semibold text-lg">
-            {mode === 'restock' ? 'Restock Stock' : 'Reduce Stock'}
-          </h3>
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-lg ${mode === 'restock' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}`}>
+              <FaSyncAlt className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-lg text-base-content">
+              {mode === 'restock' ? 'Restock Medication' : 'Reduce Stock'}
+            </h3>
+          </div>
           <button className="btn btn-ghost btn-sm btn-circle" onClick={onClose} aria-label="Close modal">✕</button>
         </div>
 
         {/* Tab switcher */}
-        <div className="grid grid-cols-2 p-1 bg-base-200 rounded-lg mb-3">
+        <div className="grid grid-cols-2 p-1 bg-base-200 rounded-xl mb-3">
           <button
             type="button"
-            className={`py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               mode === 'restock'
-                ? 'bg-primary text-primary-content shadow-sm'
+                ? 'bg-primary text-primary-content shadow-xs'
                 : 'text-base-content/70 hover:text-base-content'
             }`}
             onClick={() => setMode('restock')}
@@ -531,9 +1024,9 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
           </button>
           <button
             type="button"
-            className={`py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               mode === 'reduce'
-                ? 'bg-error text-error-content shadow-sm'
+                ? 'bg-error text-white shadow-xs'
                 : 'text-base-content/70 hover:text-base-content'
             }`}
             onClick={() => setMode('reduce')}
@@ -543,18 +1036,18 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
         </div>
 
         {/* Item Stock Summary Banner */}
-        <div className="bg-base-200/50 rounded-lg p-3 mb-3 border border-base-300/60">
+        <div className="bg-base-200/50 rounded-xl p-3 mb-3 border border-base-300/60">
           <div className="flex items-center justify-between text-xs">
             <div>
-              <span className="font-semibold text-base-content">{item.name}</span>
-              <span className="text-base-content/70 ml-1">({item.form} {item.strength})</span>
+              <span className="font-bold text-base-content">{item.name}</span>
+              <span className="text-base-content/70 ml-1 font-medium">({item.form} {item.strength})</span>
             </div>
-            <span className="badge badge-sm badge-outline">Batch: {item.batchNumber || 'N/A'}</span>
+            <span className="badge badge-sm badge-outline font-mono">Batch: {item.batchNumber || 'N/A'}</span>
           </div>
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-base-300/40 text-xs">
-            <span className="text-base-content/70">Current Stock:</span>
+            <span className="text-base-content/70 font-medium">Current Available Stock:</span>
             <span className="font-bold text-sm text-primary">
-              {currentStock} <span className="text-xs font-normal text-base-content/70">{unit}</span>
+              {currentStock} <span className="text-xs font-normal text-base-content/70">{unit}s</span>
               {packSize > 1 && (
                 <span className="text-[11px] font-normal text-base-content/60 ml-1">
                   ({(currentStock / packSize).toFixed(1)} packs)
@@ -569,16 +1062,16 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
             <div>
               <label className="text-xs text-base-content/70 block mb-1 font-medium">
                 {item.unit === 'tablet'
-                  ? 'Number of tablets to add'
+                  ? 'Number of tablets to add *'
                   : item.unit === 'tube'
-                    ? 'Number of tubes to add'
+                    ? 'Number of tubes to add *'
                     : item.unit === 'ampoule'
-                      ? `Number of ampoules to add (each pack ${packSize})`
-                      : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to add (each ${packSize} ${unit})`}
+                      ? `Number of ampoules to add (each pack ${packSize}) *`
+                      : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to add (each ${packSize} ${unit}) *`}
               </label>
               <input
-                className="input input-bordered input-sm w-full"
-                placeholder="e.g. 10"
+                className="input input-bordered input-sm w-full text-xs rounded-xl"
+                placeholder="e.g. 50"
                 type="number"
                 min="1"
                 value={packs}
@@ -587,59 +1080,63 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
             </div>
 
             {packs && Number(packs) > 0 && (
-              <div className="p-2.5 rounded-lg text-xs bg-success/10 text-success-content border border-success/30">
-                This adds <span className="font-semibold">{restockUnits} {unit}</span> to stock ({currentStock} → <span className="font-semibold">{currentStock + restockUnits} {unit}</span>).
+              <div className="p-2.5 rounded-xl text-xs bg-success/10 text-success border border-success/30 font-medium">
+                Adding <span className="font-bold">{restockUnits} {unit}s</span> to stock: ({currentStock} → <span className="font-bold">{currentStock + restockUnits} {unit}s</span>).
               </div>
             )}
 
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Batch Number</label>
-              <input
-                className="input input-bordered input-sm w-full"
-                placeholder="Batch number"
-                value={batchNumber}
-                onChange={(e) => setBatchNumber(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-base-content/70 block mb-1 font-medium">Batch Number</label>
+                <input
+                  className="input input-bordered input-sm w-full text-xs rounded-xl"
+                  placeholder="e.g. BATCH-01"
+                  value={batchNumber}
+                  onChange={(e) => setBatchNumber(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-base-content/70 block mb-1 font-medium">Expiry Date</label>
+                <input
+                  className="input input-bordered input-sm w-full text-xs rounded-xl"
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Expiry Date (optional)</label>
-              <input
-                className="input input-bordered input-sm w-full"
-                type="date"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-              />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-base-content/70 block mb-1 font-medium">Cost Price (Pack)</label>
+                <input
+                  className="input input-bordered input-sm w-full text-xs rounded-xl"
+                  placeholder="₦ Cost"
+                  type="number"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="text-xs text-base-content/70 block mb-1 font-medium">Selling Price (Pack)</label>
+                <input
+                  className="input input-bordered input-sm w-full text-xs rounded-xl"
+                  placeholder="₦ Selling"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Cost Price (per pack, optional)</label>
-              <input
-                className="input input-bordered input-sm w-full"
-                placeholder="Cost price (optional)"
-                type="number"
-                value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-base-content/70 block mb-1">Selling Price (per pack, optional)</label>
-              <input
-                className="input input-bordered input-sm w-full"
-                placeholder="Selling price (optional)"
-                type="number"
-                min="0"
-                step="any"
-                value={sellingPrice}
-                onChange={(e) => setSellingPrice(e.target.value)}
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-base-200">
               <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={submitting}>Cancel</button>
               <button
-                className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm font-bold shadow-xs"
                 onClick={handleRestockSubmit}
                 disabled={submitting || !packs || Number(packs) <= 0}
               >
@@ -652,15 +1149,15 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
             <div>
               <label className="text-xs text-base-content/70 block mb-1 font-medium">
                 {item.unit === 'tablet'
-                  ? 'Number of tablets to remove'
+                  ? 'Number of tablets to remove *'
                   : item.unit === 'tube'
-                    ? 'Number of tubes to remove'
+                    ? 'Number of tubes to remove *'
                     : item.unit === 'ampoule'
-                      ? `Number of ampoules to remove (each pack ${packSize})`
-                      : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to remove (each ${packSize} ${unit})`}
+                      ? `Number of ampoules to remove (each pack ${packSize}) *`
+                      : `Number of ${unit === 'ml' ? 'bottles/vials' : 'packs'} to remove (each ${packSize} ${unit}) *`}
               </label>
               <input
-                className={`input input-bordered input-sm w-full ${isReduceOver ? 'input-error' : ''}`}
+                className={`input input-bordered input-sm w-full text-xs rounded-xl ${isReduceOver ? 'input-error' : ''}`}
                 placeholder="e.g. 5"
                 type="number"
                 min="1"
@@ -670,19 +1167,19 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
             </div>
 
             {reducePacks && Number(reducePacks) > 0 && (
-              <div className={`p-2.5 rounded-lg text-xs ${isReduceOver ? 'bg-error/15 text-error border border-error/30' : 'bg-warning/15 text-warning-content border border-warning/30'}`}>
+              <div className={`p-2.5 rounded-xl text-xs font-medium ${isReduceOver ? 'bg-error/15 text-error border border-error/30' : 'bg-warning/15 text-warning-content border border-warning/30'}`}>
                 {isReduceOver ? (
-                  <span>⚠️ Cannot remove {reduceUnits} {unit}. Available stock is only {currentStock} {unit}.</span>
+                  <span>⚠️ Cannot remove {reduceUnits} {unit}s. Available stock is only {currentStock} {unit}s.</span>
                 ) : (
-                  <span>This removes <span className="font-semibold">{reduceUnits} {unit}</span> from stock ({currentStock} → <span className="font-semibold">{currentStock - reduceUnits} {unit}</span>).</span>
+                  <span>Removing <span className="font-bold">{reduceUnits} {unit}s</span> from stock ({currentStock} → <span className="font-bold">{currentStock - reduceUnits} {unit}s</span>).</span>
                 )}
               </div>
             )}
 
             <div>
-              <label className="text-xs text-base-content/70 block mb-1 font-medium">Reason for Reduction</label>
+              <label className="text-xs text-base-content/70 block mb-1 font-medium">Reason for Reduction *</label>
               <select
-                className="select select-bordered select-sm w-full"
+                className="select select-bordered select-sm w-full text-xs rounded-xl"
                 value={reduceReason}
                 onChange={(e) => setReduceReason(e.target.value)}
               >
@@ -693,21 +1190,21 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
             </div>
 
             <div>
-              <label className="text-xs text-base-content/70 block mb-1">
+              <label className="text-xs text-base-content/70 block mb-1 font-medium">
                 {reduceReason === 'Other (Specify)' ? 'Specify Reason *' : 'Additional Notes (optional)'}
               </label>
               <input
-                className="input input-bordered input-sm w-full"
-                placeholder={reduceReason === 'Other (Specify)' ? 'e.g. Lost during relocation' : 'e.g. Expired batch 12A, broken vial during handling'}
+                className="input input-bordered input-sm w-full text-xs rounded-xl"
+                placeholder={reduceReason === 'Other (Specify)' ? 'e.g. Lost during pharmacy relocation' : 'e.g. Expired batch, damaged bottle cap'}
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-base-200">
               <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={submitting}>Cancel</button>
               <button
-                className="btn btn-error btn-sm text-white"
+                className="btn btn-error btn-sm text-white font-bold shadow-xs"
                 onClick={handleReduceSubmit}
                 disabled={
                   submitting ||
@@ -727,6 +1224,7 @@ function RestockModal({ item, onClose, onSubmit, onReduce }) {
   )
 }
 
+// --- CSV IMPORT MODAL ---
 function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
   const [csvText, setCsvText] = useState('')
   const [previewRows, setPreviewRows] = useState([])
@@ -734,25 +1232,21 @@ function InventoryCsvUploadModal({ items = [], onClose, onUploadSuccess }) {
   const [isLoading, setIsLoading] = useState(false)
 
   const FORM_ALIASES = {
-  tablet: 'Tablet',
-  tab: 'Tablet',
-  cap: 'Tablet',
-  capsule: 'Tablet',
-  susp: 'Syrup',
-  suspension: 'Syrup',
-  syrup: 'Syrup',
-  injection: 'Injection',
-  injectiong: 'Injection', // typo present in source data
-}
+    tablet: 'Tablet',
+    tab: 'Tablet',
+    cap: 'Tablet',
+    capsule: 'Tablet',
+    susp: 'Syrup',
+    suspension: 'Syrup',
+    syrup: 'Syrup',
+    injection: 'Injection',
+    injectiong: 'Injection',
+  }
 
-const normalizeForm = (rawForm) => {
-  const key = String(rawForm || '').trim().toLowerCase()
-  return FORM_ALIASES[key] || 'Tablet' // unmapped/unknown/empty forms default to Tablet
-}
-
-const makeDuplicateKey = (name, strength, form, batchNumber) =>
-  [name, strength, form, batchNumber].map((v) => String(v || '').trim().toLowerCase()).join('|')
-
+  const normalizeForm = (rawForm) => {
+    const key = String(rawForm || '').trim().toLowerCase()
+    return FORM_ALIASES[key] || 'Tablet'
+  }
 
   const parseCsvLine = (line) => {
     const values = []
@@ -761,7 +1255,12 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
     for (let i = 0; i < line.length; i += 1) {
       const char = line[i]
       if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') { current += '"'; i += 1 } else { inQuotes = !inQuotes }
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"'
+          i += 1
+        } else {
+          inQuotes = !inQuotes
+        }
       } else if (char === ',' && !inQuotes) {
         values.push(current.trim())
         current = ''
@@ -863,7 +1362,7 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
       const description = String(item.description || item.notes || '').trim()
 
       if (strength) payload.strength = strength
-      payload.unit = ['tablet', 'ml', 'iu', 'ampoule'].includes(unit) ? unit : 'tablet'
+      payload.unit = ['tablet', 'ml', 'iu', 'ampoule', 'tube'].includes(unit) ? unit : 'tablet'
       payload.packSize = packSizeValue !== '' ? Number(packSizeValue) : 1
       if (packsValue !== '') payload.packs = Number(packsValue)
       if (costPriceValue !== '') payload.costPrice = Number(costPriceValue)
@@ -918,25 +1417,11 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
     const failureResults = results.filter((r) => r.status === 'rejected')
     const duplicateCount = skippedDuplicateRows.length + additionalSkipped
 
-    const messages = []
-    if (failureResults.length) messages.push(`${failureResults.length} item(s) failed to upload`)
-    if (duplicateCount) messages.push(`${duplicateCount} item(s) already exist; use restock instead`)
-    if (skippedInvalidRows.length) messages.push(`${skippedInvalidRows.length} invalid row(s) skipped`)
-
     if (successCount > 0) {
-      toast.success(duplicateCount ? `Imported ${successCount} item(s); ${duplicateCount} already exist. Use restock instead.` : `Imported ${successCount} item(s)`)
+      toast.success(duplicateCount ? `Imported ${successCount} item(s); ${duplicateCount} duplicates skipped.` : `Imported ${successCount} item(s)`)
       onUploadSuccess()
     } else if (duplicateCount && !failureResults.length) {
       toast.success(`${duplicateCount} item(s) already exist; use restock instead.`)
-    }
-
-    if (messages.length && (failureResults.length || !successCount)) {
-      toast(() => (
-        <div>
-          <div>{messages.join(' and ')}</div>
-          {failureResults.length > 0 && <div className="text-xs text-error">Some rows could not be imported.</div>}
-        </div>
-      ))
     }
 
     if (failureResults.length > 0) {
@@ -950,42 +1435,75 @@ const makeDuplicateKey = (name, strength, form, batchNumber) =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { const btn = e.currentTarget.querySelector('button.btn-circle') || Array.from(e.currentTarget.querySelectorAll('button')).find(b => b.textContent.includes('\u2715') || b.textContent.toLowerCase().includes('cancel') || b.textContent.toLowerCase().includes('close')); if (btn) btn.click(); } }}>
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="z-10 w-full max-w-lg card bg-base-100 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs" onClick={onClose} />
+      <div className="z-10 w-full max-w-lg card bg-base-100 p-5 shadow-2xl border border-base-300 rounded-2xl">
         <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-medium">Import Inventory from CSV</h3>
-            <p className="text-sm text-base-content/70">Upload a CSV file to add many inventory items at once.</p>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+              <FaFileUpload className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-base-content">Import Inventory from CSV</h3>
+              <p className="text-xs text-base-content/60">Bulk upload medication catalog and stocks</p>
+            </div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={isLoading}>Close</button>
+          <button className="btn btn-ghost btn-sm btn-circle" onClick={onClose} disabled={isLoading}>✕</button>
         </div>
 
-        <div className="mb-4 p-3 bg-base-200 rounded-lg">
-          <button className="btn btn-sm btn-ghost w-full" onClick={downloadTemplate}>Download CSV Template</button>
-          <p className="text-xs text-base-content/70 mt-2">
-            <strong>name</strong> and <strong>form</strong> (Tablet, Syrup, or Injection) are required. For liquids/injections set <strong>unit</strong> (ml/iu) and <strong>packSize</strong> (volume per bottle/vial). Duplicates are automatically skipped.
-          </p>
+        <div className="mb-4 p-3.5 bg-base-200/60 rounded-xl border border-base-300/60 flex items-start gap-3">
+          <FaInfoCircle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-base-content/70">
+            <div className="font-semibold text-base-content mb-1">CSV Template Guide:</div>
+            Ensure your file contains columns: <code className="font-mono text-primary font-bold">name</code>, <code className="font-mono text-primary font-bold">form</code> (Tablet, Syrup, Injection), <code className="font-mono">strength</code>, <code className="font-mono">stock</code>. Duplicates are skipped.
+            <div className="mt-2.5">
+              <button
+                type="button"
+                className="btn btn-outline btn-xs border-primary text-primary hover:bg-primary hover:text-white font-semibold gap-1"
+                onClick={downloadTemplate}
+              >
+                <FaFileDownload className="w-3 h-3" />
+                <span>Download Sample Template</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="form-control mb-4">
-          <label className="label"><span className="font-medium label-text">Select CSV File</span></label>
-          <input type="file" accept=".csv" onChange={handleFileChange} disabled={isLoading} className="file-input file-input-bordered w-full" />
-          {fileName && <span className="text-xs text-base-content/70 mt-2">Selected: {fileName}</span>}
+          <label className="label py-1"><span className="text-xs font-bold text-base-content">Select CSV File</span></label>
+          <input
+            type="file"
+            accept=".csv"
+            onChange={handleFileChange}
+            disabled={isLoading}
+            className="file-input file-input-bordered file-input-sm w-full rounded-xl text-xs"
+          />
+          {fileName && <span className="text-xs text-primary font-medium mt-1.5">Selected: {fileName}</span>}
         </div>
 
         {previewRows.length > 0 && (
-          <div className="mb-4 p-3 bg-base-200 rounded-lg max-h-40 overflow-y-auto">
-            <p className="text-sm font-medium text-base-content mb-2">Preview</p>
-            <div className="text-xs font-mono text-base-content/70 space-y-1">
-              {previewRows.map((line, index) => (<div key={index}>{line}</div>))}
+          <div className="mb-4 p-3 bg-base-200/50 rounded-xl border border-base-300 max-h-36 overflow-y-auto">
+            <p className="text-xs font-bold text-base-content mb-1.5">Preview (First 5 rows):</p>
+            <div className="text-[11px] font-mono text-base-content/70 space-y-1">
+              {previewRows.map((line, index) => (
+                <div key={index} className="truncate">{line}</div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="flex justify-end gap-2">
-          <button className="btn btn-ghost" onClick={onClose} disabled={isLoading}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleUpload} disabled={isLoading || !csvText}>
+        <div className="flex justify-end gap-2 pt-2 border-t border-base-200">
+          <button className="btn btn-ghost btn-sm text-xs" onClick={onClose} disabled={isLoading}>Cancel</button>
+          <button
+            className="btn btn-primary btn-sm text-xs font-bold shadow-xs"
+            onClick={handleUpload}
+            disabled={isLoading || !csvText}
+          >
             {isLoading ? 'Uploading...' : 'Upload CSV'}
           </button>
         </div>
