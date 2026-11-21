@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { MdOutlineDashboard, MdSupervisorAccount, MdSecurity, MdStorage, MdSettings, MdAnalytics, MdCalendarMonth } from "react-icons/md";
-import { FaBed } from "react-icons/fa";
+import { FaBed, FaFileInvoiceDollar } from "react-icons/fa";
 import { Link, useLocation } from 'react-router-dom';
 import { LogoutModal } from '@/components/modals';
 import { useAppSelector } from '@/store/hooks';
@@ -65,6 +65,12 @@ const Sidebar = ({ onCloseSidebar }) => {
       label: 'Patients',
       path: '/superadmin/patients',
       active: location.pathname === '/superadmin/patients' || location.pathname.startsWith('/superadmin/patients/:patientId')
+    },
+    {
+      icon: FaFileInvoiceDollar,
+      label: 'Patient Billings',
+      path: '/superadmin/billings',
+      active: location.pathname.startsWith('/superadmin/billings')
     },
     {
       icon: FaBed,

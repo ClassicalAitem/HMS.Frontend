@@ -13,6 +13,11 @@ const PaymentRecords = () => {
   const { user } = useAppSelector((state) => state.auth);
   const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
   const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+  const discountApproverLabel = ['super-admin', 'superadmin'].includes(userRole)
+    ? 'Super Admin'
+    : userRole === 'admin'
+    ? 'Admin'
+    : 'Medical Director';
 
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedBilling, setSelectedBilling] = useState(null);
@@ -494,6 +499,7 @@ const handlePrintReceipt = (billing) => {
         onClose={() => setIsDiscountModalOpen(false)}
         billing={discountBilling}
         patientName={discountBilling?.patient ? `${discountBilling.patient.firstName} ${discountBilling.patient.lastName}` : (discountBilling?.opdPatient ? `${discountBilling.opdPatient.firstName} ${discountBilling.opdPatient.lastName}` : 'Patient')}
+        approverRole={discountApproverLabel}
         onSuccess={fetchBilling}
       />
     </CashierLayout>

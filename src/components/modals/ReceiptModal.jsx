@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { useAppSelector } from '../../store/hooks';
+import { getDiscountDisplay } from '@/utils/discountUtils';
 
 const ReceiptModal = ({ isOpen, onClose, billingId, billing, bill, patientId, onSubmit }) => {
   const activeBilling = billing || bill;
@@ -223,14 +224,17 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, bill, patientId, on
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-sm text-base-content flex items-center gap-1.5">
-                        🏷️ Medical Director Discount
+                        🏷️ {(() => {
+                          const discInfo = getDiscountDisplay(activeBilling);
+                          return discInfo?.title || 'Discount';
+                        })()}
                       </span>
                       <span className="badge badge-warning font-bold text-xs">
                         -₦{Number(activeBilling.discountAmount).toLocaleString()}
                       </span>
                     </div>
                     <p className="text-xs text-base-content/70">
-                      {activeBilling.discountReason ? `Reason: ${activeBilling.discountReason}` : 'Discount granted by Medical Director'}
+                      {activeBilling.discountReason ? `Reason: ${activeBilling.discountReason}` : 'Discount granted by Super Admin / Medical Director'}
                     </p>
                   </div>
                   <div className="form-control shrink-0">

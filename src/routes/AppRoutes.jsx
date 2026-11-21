@@ -124,6 +124,7 @@ const GenerateReports = lazy(() => import("@/pages/superadmin/reports/GenerateRe
 const ManageUsers = lazy(() => import("@/pages/superadmin/users/ManageUsers"));
 const SuperAdminPatients = lazy(() => import("@/pages/superadmin/patients/Patients"));
 const SuperPatientDetails = lazy(() => import("@/pages/superadmin/patients/PatientDetails"));
+const SuperAdminBillings = lazy(() => import("@/pages/superadmin/billings/SuperAdminBillings"));
 const SuperAdminAdmittedList = lazy(() => import("@/pages/superadmin/admitted/SuperAdminAdmittedList"));
 const SuperAdminAdmittedPatient = lazy(() => import("@/pages/superadmin/admitted/SuperAdminAdmittedPatient"));
 const SuperAdminRegistration = lazy(() => import("@/pages/superadmin/registration/SuperAdminRegistration"));
@@ -1025,6 +1026,11 @@ const AppRoutes = () => {
       <Route path="/superadmin/patients/patientDetails/:patientId" element={
         <ProtectedRoute allowedRoles={['super-admin']}>
           <SuperPatientDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/superadmin/billings" element={
+        <ProtectedRoute allowedRoles={['super-admin', 'superadmin', 'admin', 'medical-director']}>
+          <SuperAdminBillings />
         </ProtectedRoute>
       } />
       <Route path="/superadmin/admitted" element={

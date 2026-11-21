@@ -9,7 +9,10 @@ const AdjustDiscountModal = ({
   billing,
   patientName = 'Patient',
   onSuccess,
+  approverRole = 'Medical Director', // 'Medical Director' | 'Super Admin' | 'Admin'
 }) => {
+  // Human-readable label for display
+  const roleLabel = approverRole || 'Medical Director';
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,12 +46,18 @@ const AdjustDiscountModal = ({
   useEffect(() => {
     if (isOpen && billing) {
       setDiscountAmount(existingDiscount > 0 ? String(existingDiscount) : '');
-      setDiscountReason(billing.discountReason || 'Medical Director Discount');
+      const prevReason = (billing.discountReason || '').trim();
+      const isGenericRoleDiscount = /^(medical director|super admin|admin) discount$/i.test(prevReason);
+      setDiscountReason(
+        isGenericRoleDiscount || !prevReason
+          ? `${roleLabel} Discount`
+          : prevReason
+      );
     } else if (!isOpen) {
       setDiscountAmount('');
       setDiscountReason('');
     }
-  }, [isOpen, billing, existingDiscount]);
+  }, [isOpen, billing, existingDiscount, roleLabel]);
 
   if (!isOpen || !billing) return null;
 
@@ -59,14 +68,14 @@ const AdjustDiscountModal = ({
   const handlePercentageClick = (pct) => {
     const calculated = Math.round((subtotal * pct) / 100);
     setDiscountAmount(String(calculated));
-    if (!discountReason) {
-      setDiscountReason(`${pct}% Medical Director Discount`);
+    if (!discountReason || /^\d+%\s+.*Discount$/i.test(discountReason) || /^(medical director|super admin|admin) discount$/i.test(discountReason)) {
+      setDiscountReason(`${pct}% ${roleLabel} Discount`);
     }
   };
 
   const handleFullWaiver = () => {
     setDiscountAmount(String(subtotal));
-    setDiscountReason('Full Medical Waiver approved by Medical Director');
+    setDiscountReason(`Full Medical Waiver approved by ${roleLabel}`);
   };
 
   const handleSubmit = async (e) => {
@@ -83,7 +92,7 @@ const AdjustDiscountModal = ({
     }
 
     if (discountNum > 0 && !discountReason.trim()) {
-      toast.error('Please provide a reason for the Medical Director discount.');
+      toast.error(`Please provide a reason for the ${roleLabel} discount.`);
       return;
     }
 
@@ -123,7 +132,7 @@ const AdjustDiscountModal = ({
             </div>
             <div>
               <h3 className="font-bold text-base text-base-content">
-                Grant / Adjust Medical Director Discount
+                Grant / Adjust {roleLabel} Discount
               </h3>
               <p className="text-xs text-base-content/60">
                 Patient: <span className="font-semibold text-base-content">{patientName}</span>
@@ -202,7 +211,7 @@ const AdjustDiscountModal = ({
           {/* Discount Amount Input */}
           <div>
             <label className="block text-xs font-semibold text-base-content mb-1">
-              Medical Director Discount Amount (₦) *
+              {roleLabel} Discount Amount (₦) *
             </label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-sm font-bold text-base-content/50">₦</span>
@@ -226,7 +235,7 @@ const AdjustDiscountModal = ({
           {/* Reason Input */}
           <div>
             <label className="block text-xs font-semibold text-base-content mb-1">
-              Reason for Medical Director Discount {discountNum > 0 && <span className="text-error">*</span>}
+              Reason for {roleLabel} Discount {discountNum > 0 && <span className="text-error">*</span>}
             </label>
             <input
               type="text"
@@ -249,7 +258,7 @@ const AdjustDiscountModal = ({
                 <span className="font-semibold text-base-content">₦{subtotal.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-warning font-semibold">
-                <span>Medical Director Discount:</span>
+                <span>{roleLabel} Discount:</span>
                 <span>-₦{discountNum.toLocaleString()}</span>
               </div>
               <div className="flex justify-between border-t border-primary/20 pt-1 font-bold">

@@ -160,7 +160,11 @@ const Sidebar = ({ onCloseSidebar }) => {
         <Link
           to="/profile"
           onClick={onCloseSidebar}
-          className="flex items-center gap-3 p-2 rounded-xl hover:bg-base-200/80 transition-colors group cursor-pointer"
+          className={`flex items-center gap-3 p-2 rounded-xl transition-colors group cursor-pointer ${
+            location.pathname === "/profile"
+              ? "bg-primary/10 text-primary ring-1 ring-primary/30"
+              : "hover:bg-base-200/80"
+          }`}
           title="View profile"
         >
           <div className="flex justify-center items-center w-10 h-10 rounded-full bg-primary/10 shrink-0 group-hover:scale-105 transition-transform">

@@ -92,6 +92,11 @@ const CashierOpdPatientDetails = () => {
   const { user } = useAppSelector((state) => state.auth);
   const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
   const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+  const discountApproverLabel = ['super-admin', 'superadmin'].includes(userRole)
+    ? 'Super Admin'
+    : userRole === 'admin'
+    ? 'Admin'
+    : 'Medical Director';
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [selectedBilling, setSelectedBilling] = useState(null);
   const [patient, setPatient] = useState(null);
@@ -679,6 +684,7 @@ const CashierOpdPatientDetails = () => {
         onClose={() => setIsDiscountModalOpen(false)}
         billing={selectedBilling}
         patientName={patient ? `${patient.firstName} ${patient.lastName}` : 'OPD Patient'}
+        approverRole={discountApproverLabel}
         onSuccess={loadAll}
       />
     </CashierLayout>

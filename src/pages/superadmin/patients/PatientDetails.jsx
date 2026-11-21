@@ -35,11 +35,14 @@ import {
   normalizeVitalsResponse,
 } from '@/services/api/vitalsAPI';
 import { formatNigeriaDate, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
+import { getDiscountDisplay } from '@/utils/discountUtils';
 import { getDependantById, deleteDependant } from '@/services/api/dependantAPI';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 import ViewPatientModal from '@/components/frontdesk/modal/ViewPatientModal';
 import { ConsultationDetailModal } from '@/components/modals';
-import { FaBed } from 'react-icons/fa';
+import AdjustDiscountModal from '@/components/modals/AdjustDiscountModal';
+import { getAllBillings } from '@/services/api/billingAPI';
+import { FaBed, FaFileInvoiceDollar, FaTag } from 'react-icons/fa';
 import { deletePatient } from '@/services/api/patientsAPI';
 import { deleteHmo } from '@/services/api/hmoAPI';
 
@@ -76,6 +79,41 @@ const PatientDetails = () => {
   const [vitalsLoading, setVitalsLoading] = useState(true);
   const [admissions, setAdmissions] = useState([]);
   const [admissionsLoading, setAdmissionsLoading] = useState(true);
+  const [billings, setBillings] = useState([]);
+  const [billingsLoading, setBillingsLoading] = useState(true);
+  const [openBillingRow, setOpenBillingRow] = useState(null);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [selectedBillingForDiscount, setSelectedBillingForDiscount] = useState(null);
+
+  const toggleBillingRow = (id) => {
+    setOpenBillingRow((prev) => (prev === id ? null : id));
+  };
+
+  const loadBillings = async () => {
+    if (!patientId) return;
+    try {
+      setBillingsLoading(true);
+      const res = await getAllBillings({ patientId });
+      const raw = res?.data?.data || res?.data || [];
+      const list = Array.isArray(raw) ? raw : [];
+      const scoped = list.filter((item) => (
+        isViewingDependant && dependantId
+          ? String(item?.dependantId) === String(dependantId)
+          : !item?.dependantId
+      ));
+      scoped.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      setBillings(scoped);
+    } catch (err) {
+      console.error('Error fetching patient billings in Super Admin:', err);
+      setBillings([]);
+    } finally {
+      setBillingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBillings();
+  }, [patientId, isViewingDependant, dependantId]);
 
   // Prefer snapshot passed from Incoming; fallback to store
   const snapshot = location?.state?.patientSnapshot || null;
@@ -617,6 +655,216 @@ const PatientDetails = () => {
                         </div>
               
 
+              {/* Patient Billings & Discount Management */}
+              <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 min-w-0 border border-base-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-primary flex items-center gap-2">
+                      <FaFileInvoiceDollar className="w-5 h-5 text-primary" />
+                      <span>{isViewingDependant ? `${summarySubject?.fullName || 'Dependant'}'s Billings` : 'Patient Billings'}</span>
+                    </h3>
+                    <p className="text-xs text-base-content/60">
+                      Itemized history of billed services, tests, and medications. Grant or adjust discounts.
+                    </p>
+                  </div>
+                  {billings.length > 0 && (
+                    <span className="badge badge-primary badge-outline text-xs">
+                      {billings.length} {billings.length === 1 ? 'Bill' : 'Bills'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto w-full min-w-0">
+                  <table className="table w-full">
+                    <thead>
+                      <tr className="border-b border-base-200 text-xs font-semibold text-base-content/70">
+                        <th className="w-8"></th>
+                        <th>Date & Time</th>
+                        <th>Total amount</th>
+                        <th>Outstanding Bills</th>
+                        <th>Raised By</th>
+                        <th>Role</th>
+                        <th className="text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billingsLoading ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-8 text-base-content/50">
+                            Loading billings...
+                          </td>
+                        </tr>
+                      ) : billings.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="text-center py-8 text-base-content/50">
+                            No billing records found{isViewingDependant ? ' for this dependant' : ''}.
+                          </td>
+                        </tr>
+                      ) : (
+                        billings.map((bill) => {
+                          const gross = Number(bill.subtotalAmount || bill.totalAmount || 0);
+                          const disc = Number(bill.discountAmount || 0);
+                          const out = bill.isCleared
+                            ? 0
+                            : Number(bill.outstandingBill !== undefined ? bill.outstandingBill : bill.totalAmount || 0);
+                          const isOpen = openBillingRow === bill.id;
+
+                          return (
+                            <React.Fragment key={bill.id}>
+                              <tr className="text-sm hover:bg-base-200/40 transition-colors border-b border-base-200">
+                                <td
+                                  onClick={() => toggleBillingRow(bill.id)}
+                                  className="cursor-pointer select-none text-center text-primary font-bold"
+                                  title={isOpen ? 'Collapse items' : 'Expand items'}
+                                >
+                                  {isOpen ? '▼' : '▶'}
+                                </td>
+
+                                <td className="font-medium whitespace-nowrap">
+                                  {formatNigeriaDateTime(bill.createdAt)}
+                                </td>
+
+                                <td>
+                                  <div className="font-semibold text-base-content">
+                                    ₦{gross.toLocaleString()}
+                                  </div>
+                                  {disc > 0 && (
+                                    <span className="badge badge-warning badge-xs font-semibold gap-1 mt-1 block w-fit">
+                                      Discount: ₦{disc.toLocaleString()}
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td>
+                                  <div className={`font-semibold ${out > 0 ? 'text-warning' : 'text-success'}`}>
+                                    ₦{out.toLocaleString()}
+                                  </div>
+                                  {disc > 0 && out > 0 && (
+                                    <span className="text-[11px] text-warning block">
+                                      (After ₦{disc.toLocaleString()} discount)
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="text-success font-medium">
+                                  {bill.raisedBy?.firstName || 'Staff'} {bill.raisedBy?.lastName || ''}
+                                </td>
+
+                                <td className="text-success text-xs uppercase font-medium">
+                                  {bill.raisedBy?.accountType || '—'}
+                                </td>
+
+                                <td className="text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {bill.isCleared ? (
+                                      <span className="badge badge-sm badge-success">Completed</span>
+                                    ) : (
+                                      <span className="badge badge-sm badge-warning">Awaiting Payment</span>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedBillingForDiscount(bill);
+                                        setIsDiscountModalOpen(true);
+                                      }}
+                                      className="btn btn-xs btn-outline btn-warning gap-1"
+                                      title="Medical Director / Super Admin: Grant or adjust discount"
+                                    >
+                                      <FaTag className="w-2.5 h-2.5" />
+                                      <span>{disc > 0 ? 'Edit Discount' : 'Add Discount'}</span>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+
+                              {/* Collapsible item details */}
+                              {isOpen && (
+                                <tr>
+                                  <td colSpan={7} className="bg-base-200/50 p-4 border-b border-base-200">
+                                    <div className="bg-base-100 rounded-xl p-4 border border-base-200 shadow-sm">
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-base-200 text-xs">
+                                        <div>
+                                          <span className="font-bold text-sm text-base-content">
+                                            Whole Total: ₦{gross.toLocaleString()}
+                                          </span>
+                                          {disc > 0 && (() => {
+                                            const discInfo = getDiscountDisplay(bill);
+                                            return (
+                                              <span className="text-warning font-semibold ml-3">
+                                                • {discInfo?.badgeText || `Discount: ₦${disc.toLocaleString()}`}
+                                              </span>
+                                            );
+                                          })()}
+                                        </div>
+                                        <div className="font-bold text-primary text-sm">
+                                          Net Payable: ₦{Math.max(0, gross - disc).toLocaleString()}
+                                        </div>
+                                      </div>
+
+                                      <div className="overflow-x-auto">
+                                        <table className="table table-compact w-full text-xs">
+                                          <thead>
+                                            <tr className="text-base-content/60 border-b border-base-200">
+                                              <th>Description</th>
+                                              <th>Code</th>
+                                              <th>Price</th>
+                                              <th>Qty</th>
+                                              <th>Total</th>
+                                              <th>Status</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {!bill.itemDetails || bill.itemDetails.length === 0 ? (
+                                              <tr>
+                                                <td colSpan={6} className="text-center py-4 text-base-content/50">
+                                                  No item details recorded.
+                                                </td>
+                                              </tr>
+                                            ) : (
+                                              bill.itemDetails.map((item, idx) => (
+                                                <tr key={idx} className="border-b border-base-200/60">
+                                                  <td className="font-medium text-base-content">
+                                                    {item.description || item.code || 'Medical Item'}
+                                                  </td>
+                                                  <td className="uppercase text-base-content/70">
+                                                    {item.code || 'general'}
+                                                  </td>
+                                                  <td>₦{Number(item.price || 0).toLocaleString()}</td>
+                                                  <td>{item.quantity || 1}</td>
+                                                  <td className="font-semibold text-base-content">
+                                                    ₦{Number(item.total || 0).toLocaleString()}
+                                                  </td>
+                                                  <td>
+                                                    <span
+                                                      className={`badge badge-xs font-semibold ${
+                                                        bill.isCleared || item.status === 'paid'
+                                                          ? 'badge-success'
+                                                          : 'badge-warning'
+                                                      }`}
+                                                    >
+                                                      {bill.isCleared || item.status === 'paid' ? 'Paid' : 'Pending'}
+                                                    </span>
+                                                  </td>
+                                                </tr>
+                                              ))
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* General Info */}
               <GeneralInfoCard patient={displayPatient} isTransitionLoading={isTransitionLoading} />
 
@@ -763,6 +1011,20 @@ const PatientDetails = () => {
               ? { ...appointment, status: updated?.status }
               : appointment
           )));
+        }}
+      />
+
+      {/* Adjust Discount Modal */}
+      <AdjustDiscountModal
+        isOpen={isDiscountModalOpen}
+        onClose={() => {
+          setIsDiscountModalOpen(false);
+          setSelectedBillingForDiscount(null);
+        }}
+        billing={selectedBillingForDiscount}
+        patientName={summarySubject?.fullName || displayPatient?.name || 'Patient'}
+        onSuccess={() => {
+          loadBillings();
         }}
       />
     </div>

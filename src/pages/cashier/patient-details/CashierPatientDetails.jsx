@@ -27,6 +27,11 @@ const CashierPatientDetails = () => {
   const { user } = useAppSelector((state) => state.auth);
   const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
   const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+  const discountApproverLabel = ['super-admin', 'superadmin'].includes(userRole)
+    ? 'Super Admin'
+    : userRole === 'admin'
+    ? 'Admin'
+    : 'Medical Director';
   const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [openRow, setOpenRow] = useState(null);
   const [billings, setBillings] = useState([]);
@@ -415,42 +420,47 @@ const CashierPatientDetails = () => {
                       <td className="text-success">{bill.raisedBy?.firstName || 'Staff'}{" "}{bill.raisedBy?.lastName || ''}</td>
                       <td className="text-success">{bill.raisedBy?.accountType || '—'}</td>
                       <td>
-                        <div className="flex items-center gap-1.5">
-                          {bill.isCleared ? (
-                            <button
-                              className="btn btn-sm btn-ghost"
-                              disabled
-                            >
-                              Completed
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setSelectedBillingId(bill.id);
-                                setSelectedBilling(bill);
-                                setIsReceiptModalOpen(true);
-                              }}
-                              className="btn btn-sm btn-ghost"
-                            >
-                              Pay now
-                            </button>
-                          )}
+                        {(() => {
+                          const isBillFullyPaid = bill.isCleared || (bill.outstandingBill !== undefined && Number(bill.outstandingBill) <= 0);
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              {isBillFullyPaid ? (
+                                <button
+                                  className="btn btn-sm btn-ghost text-success"
+                                  disabled
+                                >
+                                  Completed
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setSelectedBillingId(bill.id);
+                                    setSelectedBilling(bill);
+                                    setIsReceiptModalOpen(true);
+                                  }}
+                                  className="btn btn-sm btn-ghost"
+                                >
+                                  Pay now
+                                </button>
+                              )}
 
-                          {isMedicalDirector && !bill.isCleared && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedBilling(bill);
-                                setIsDiscountModalOpen(true);
-                              }}
-                              className="btn btn-xs btn-outline btn-warning gap-1"
-                              title="Medical Director: Grant or adjust discount"
-                            >
-                              <FaTag className="w-2.5 h-2.5" />
-                              <span>{Number(bill.discountAmount) > 0 ? 'Edit Discount' : 'Discount'}</span>
-                            </button>
-                          )}
-                        </div>
+                              {isMedicalDirector && !isBillFullyPaid && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBilling(bill);
+                                    setIsDiscountModalOpen(true);
+                                  }}
+                                  className="btn btn-xs btn-outline btn-warning gap-1"
+                                  title="Grant or adjust discount"
+                                >
+                                  <FaTag className="w-2.5 h-2.5" />
+                                  <span>{Number(bill.discountAmount) > 0 ? 'Edit Discount' : 'Discount'}</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
 
@@ -464,11 +474,19 @@ const CashierPatientDetails = () => {
                             <div className="mb-3 text-sm flex items-center justify-between">
                               <div className="flex flex-wrap items-center gap-3">
                                 <p className="font-semibold">Whole Total: ₦{Number(bill.subtotalAmount || bill.totalAmount || 0).toLocaleString()}</p>
-                                {Number(bill.discountAmount) > 0 && (
-                                  <span className="badge badge-warning badge-sm font-semibold">
-                                    Medical Director Discount: ₦{Number(bill.discountAmount).toLocaleString()}{bill.discountReason ? ` (${bill.discountReason})` : ''}
-                                  </span>
-                                )}
+                                {Number(bill.discountAmount) > 0 && (() => {
+                                  const rawReason = (bill.discountReason || '').trim();
+                                  const cleanedReason = rawReason
+                                    .replace(/^(super[-_\s]?admin|medical[-_\s]?director|admin)\s*/i, '')
+                                    .replace(/\bapproved by\s+(super[-_\s]?admin|medical[-_\s]?director|admin)\b/i, '')
+                                    .trim();
+                                  const hasCustomReason = cleanedReason && !/^discount$/i.test(cleanedReason);
+                                  return (
+                                    <span className="badge badge-warning badge-sm font-semibold">
+                                      🏷️ Discount: ₦{Number(bill.discountAmount).toLocaleString()}{hasCustomReason ? ` (${cleanedReason})` : ''}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                               {bill.itemDetails?.some(item => !!item.admissionId) && (
                                 <span className="badge badge-primary font-semibold text-xs ml-4">
@@ -711,6 +729,7 @@ const CashierPatientDetails = () => {
           onClose={() => setIsDiscountModalOpen(false)}
           billing={selectedBilling}
           patientName={patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
+          approverRole={discountApproverLabel}
           onSuccess={async () => {
             try {
               const billingsRes = await getAllBillings({ patientId });

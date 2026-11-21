@@ -45,7 +45,7 @@ const BaseRoleLayout = ({ children, Sidebar, sidebarProps = {} }) => {
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] transform transition-all duration-300 ease-in-out lg:static ${
+        className={`fixed inset-y-0 left-0 z-50 w-[82vw] max-w-[280px] h-full lg:h-full shrink-0 transform transition-all duration-300 ease-in-out lg:static ${
           isDesktopCollapsed ? 'lg:w-0 lg:overflow-hidden lg:opacity-0' : 'lg:w-64 lg:translate-x-0 lg:opacity-100'
         } ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
