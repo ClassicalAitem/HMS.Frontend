@@ -20,11 +20,72 @@ import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { getErrorMessage } from '@/utils/errorHandler';
 
+const isAppointmentInDateRange = (appointmentDateStr, filter, customStart, customEnd) => {
+  if (filter === 'all') return true;
+  if (!appointmentDateStr) return false;
+
+  let aptDate;
+  if (typeof appointmentDateStr === 'string' && appointmentDateStr.includes('T')) {
+    aptDate = new Date(appointmentDateStr);
+  } else if (typeof appointmentDateStr === 'string') {
+    const parts = appointmentDateStr.trim().split(/[-/]/);
+    if (parts.length === 3 && parts[0].length === 4) {
+      aptDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    } else {
+      aptDate = new Date(appointmentDateStr);
+    }
+  } else {
+    aptDate = new Date(appointmentDateStr);
+  }
+
+  if (isNaN(aptDate.getTime())) return false;
+
+  const aptYear = aptDate.getFullYear();
+  const aptMonth = aptDate.getMonth();
+  const aptDay = aptDate.getDate();
+
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDay = now.getDate();
+
+  if (filter === 'today') {
+    return aptYear === todayYear && aptMonth === todayMonth && aptDay === todayDay;
+  }
+
+  const aptTime = new Date(aptYear, aptMonth, aptDay).getTime();
+
+  if (filter === 'week') {
+    const dayOfWeek = (now.getDay() + 6) % 7;
+    const startOfWeek = new Date(todayYear, todayMonth, todayDay - dayOfWeek, 0, 0, 0, 0).getTime();
+    const endOfWeek = new Date(todayYear, todayMonth, todayDay - dayOfWeek + 6, 23, 59, 59, 999).getTime();
+    return aptTime >= startOfWeek && aptTime <= endOfWeek;
+  }
+
+  if (filter === 'month') {
+    const startOfMonth = new Date(todayYear, todayMonth, 1, 0, 0, 0, 0).getTime();
+    const endOfMonth = new Date(todayYear, todayMonth + 1, 0, 23, 59, 59, 999).getTime();
+    return aptTime >= startOfMonth && aptTime <= endOfMonth;
+  }
+
+  if (filter === 'custom') {
+    if (!customStart && !customEnd) return true;
+    const s = customStart ? new Date(`${customStart}T00:00:00`).getTime() : 0;
+    const e = customEnd ? new Date(`${customEnd}T23:59:59.999`).getTime() : Infinity;
+    return aptTime >= s && aptTime <= e;
+  }
+
+  return true;
+};
+
 const Appointments = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
@@ -141,9 +202,16 @@ const Appointments = () => {
 
   // Filtered Appointments
   const filteredAppointments = useMemo(() => {
-    if (statusFilter === 'all') return appointments;
-    return appointments.filter((a) => a.status === statusFilter);
-  }, [appointments, statusFilter]);
+    return appointments
+      .filter((a) => statusFilter === 'all' || a.status === statusFilter)
+      .filter((a) => isAppointmentInDateRange(a.date, dateFilter, customStartDate, customEndDate))
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date || '1970-01-01'}T${a.time || '00:00:00'}`).getTime();
+        const dateB = new Date(`${b.date || '1970-01-01'}T${b.time || '00:00:00'}`).getTime();
+        if (!isNaN(dateA) && !isNaN(dateB) && dateA !== dateB) return dateB - dateA;
+        return (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
+      });
+  }, [appointments, statusFilter, dateFilter, customStartDate, customEndDate]);
 
   const processedData = useMemo(() => {
     return filteredAppointments.map((a, idx) => ({
@@ -360,52 +428,120 @@ const Appointments = () => {
           </div>
 
           {/* Filter Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-base-100 p-2.5 rounded-xl border border-base-300 shadow-sm">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <button 
-                onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  statusFilter === 'all' 
-                    ? 'bg-primary text-primary-content shadow-sm' 
-                    : 'bg-base-200 text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                All ({metrics.total})
-              </button>
-              <button 
-                onClick={() => setStatusFilter('scheduled')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  statusFilter === 'scheduled' 
-                    ? 'bg-primary text-primary-content shadow-sm' 
-                    : 'bg-base-200 text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                Scheduled ({metrics.scheduled})
-              </button>
-              <button 
-                onClick={() => setStatusFilter('completed')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  statusFilter === 'completed' 
-                    ? 'bg-primary text-primary-content shadow-sm' 
-                    : 'bg-base-200 text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                Completed ({metrics.completed})
-              </button>
-              <button 
-                onClick={() => setStatusFilter('cancelled')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  statusFilter === 'cancelled' 
-                    ? 'bg-primary text-primary-content shadow-sm' 
-                    : 'bg-base-200 text-base-content/70 hover:text-base-content'
-                }`}
-              >
-                Cancelled ({metrics.cancelled})
-              </button>
+          <div className="flex flex-col gap-3 bg-base-100 p-3 rounded-xl border border-base-300 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Status Filters */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-semibold text-base-content/60 mr-1">Status:</span>
+                <button 
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    statusFilter === 'all' 
+                      ? 'bg-primary text-primary-content shadow-sm' 
+                      : 'bg-base-200 text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  All ({metrics.total})
+                </button>
+                <button 
+                  onClick={() => setStatusFilter('scheduled')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    statusFilter === 'scheduled' 
+                      ? 'bg-primary text-primary-content shadow-sm' 
+                      : 'bg-base-200 text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  Scheduled ({metrics.scheduled})
+                </button>
+                <button 
+                  onClick={() => setStatusFilter('completed')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    statusFilter === 'completed' 
+                      ? 'bg-primary text-primary-content shadow-sm' 
+                      : 'bg-base-200 text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  Completed ({metrics.completed})
+                </button>
+                <button 
+                  onClick={() => setStatusFilter('cancelled')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    statusFilter === 'cancelled' 
+                      ? 'bg-primary text-primary-content shadow-sm' 
+                      : 'bg-base-200 text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  Cancelled ({metrics.cancelled})
+                </button>
+              </div>
+
+              <div className="text-xs text-base-content/60 font-medium">
+                Showing <strong className="text-primary font-bold">{processedData.length}</strong> records
+              </div>
             </div>
-            <div className="text-xs text-base-content/50">
-              Showing {processedData.length} records
+
+            {/* Date Filters */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-base-200">
+              <span className="text-xs font-semibold text-base-content/60 mr-1">Date:</span>
+              {[
+                { id: 'all', label: 'All Dates' },
+                { id: 'today', label: 'Today' },
+                { id: 'week', label: 'This Week' },
+                { id: 'month', label: 'This Month' },
+                { id: 'custom', label: 'Custom Range' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setDateFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    dateFilter === f.id
+                      ? 'bg-primary text-primary-content shadow-sm'
+                      : 'bg-base-200 text-base-content/70 hover:text-base-content'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
             </div>
+
+            {dateFilter === 'custom' && (
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-200 text-xs">
+                <span className="text-base-content/70 font-semibold flex items-center gap-1">
+                  <FaCalendarAlt className="text-primary w-3 h-3" /> Select Day Range:
+                </span>
+                <div className="flex items-center gap-1.5 bg-base-200/60 px-3 py-1.5 rounded-xl border border-base-300">
+                  <span className="text-base-content/60 font-medium">From:</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="bg-transparent text-xs font-semibold outline-none cursor-pointer text-base-content"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 bg-base-200/60 px-3 py-1.5 rounded-xl border border-base-300">
+                  <span className="text-base-content/60 font-medium">To:</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="bg-transparent text-xs font-semibold outline-none cursor-pointer text-base-content"
+                  />
+                </div>
+                {(customStartDate || customEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }}
+                    className="btn btn-ghost btn-xs text-error"
+                  >
+                    Clear Range
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Table */}
