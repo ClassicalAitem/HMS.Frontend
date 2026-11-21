@@ -11,7 +11,7 @@ import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import ViewDependantsModal from '@/components/superadmin/patients/ViewDependantsModal';
 import { getConsultations } from '@/services/api/consultationAPI';
 import { getAllAnteNatalRecords } from '@/services/api/anteNatalAPI';
-import { FaUsers, FaUser, FaChild, FaClipboardList } from 'react-icons/fa';
+import { FaUsers, FaUser, FaChild, FaClipboardList, FaCalendarAlt } from 'react-icons/fa';
 
 const unwrapList = (response, collectionKey) => {
   const data = response?.data?.data ?? response?.data ?? response ?? [];
@@ -20,36 +20,31 @@ const unwrapList = (response, collectionKey) => {
   return [];
 };
 
-const getMonthBounds = (month) => {
-  if (!month) return null;
-  const [year, monthNumber] = month.split('-').map(Number);
-  if (!year || !monthNumber || monthNumber < 1 || monthNumber > 12) return null;
-  return {
-    start: new Date(year, monthNumber - 1, 1),
-    end: new Date(year, monthNumber, 1),
-  };
-};
-
-const getHistoryDateBounds = (filter, fromMonth, toMonth) => {
+// Day-level date bounds calculation (supports custom exact day ranges, not just months)
+const getDateBounds = (filter, fromDate, toDate) => {
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
   if (filter === 'today') {
-    return { start: today, end: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1) };
+    return { start: startOfToday, end: endOfToday };
   }
   if (filter === 'week') {
-    const start = new Date(today);
-    start.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-    return { start, end: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7) };
+    const dayOfWeek = (startOfToday.getDay() + 6) % 7; // Monday = 0
+    const start = new Date(startOfToday);
+    start.setDate(startOfToday.getDate() - dayOfWeek);
+    return { start, end: endOfToday };
   }
   if (filter === 'month') {
-    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    return { start, end: endOfToday };
   }
-  if (filter === 'range') {
-    const startBounds = getMonthBounds(fromMonth);
-    const endBounds = getMonthBounds(toMonth);
-    if (!startBounds || !endBounds || startBounds.start > endBounds.start) return null;
-    return { start: startBounds.start, end: endBounds.end };
+  if (filter === 'range' || filter === 'custom') {
+    if (!fromDate && !toDate) return null;
+    const start = fromDate ? new Date(`${fromDate}T00:00:00`) : new Date(0);
+    const end = toDate ? new Date(`${toDate}T23:59:59.999`) : new Date();
+    if (start > end) return null;
+    return { start, end };
   }
   return null;
 };
@@ -59,15 +54,17 @@ const Patients = () => {
   const dispatch = useAppDispatch();
   const { patients, isLoading, error } = useAppSelector((state) => state.patients);
   const [viewMode, setViewMode] = useState('all');
-  const [historyFilter, setHistoryFilter] = useState('all');
-  const [historyFromMonth, setHistoryFromMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const [historyToMonth, setHistoryToMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+
+  // Registration date filter state
+  const [regDateFilter, setRegDateFilter] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'range'
+  const [regFromDate, setRegFromDate] = useState('');
+  const [regToDate, setRegToDate] = useState('');
+
+  // Attendance history date filter state (day-level)
+  const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'today' | 'week' | 'month' | 'range'
+  const [historyFromDate, setHistoryFromDate] = useState('');
+  const [historyToDate, setHistoryToDate] = useState('');
+
   const [historyRecords, setHistoryRecords] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(null);
@@ -176,109 +173,105 @@ const Patients = () => {
   const StatusBadge = ({ status }) => {
     const currentStatus = Array.isArray(status) ? status[status.length - 1] : status;
 
-  const getBadgeClass = (statusValue) => {
-    switch (statusValue?.toLowerCase()) {
-      case 'registered':
-      case 'active':
-        return 'badge badge-success';
-      case 'inactive':
-        return 'badge badge-neutral';
+    const getBadgeClass = (statusValue) => {
+      switch (statusValue?.toLowerCase()) {
+        case 'registered':
+        case 'active':
+          return 'badge badge-success';
+        case 'inactive':
+          return 'badge badge-neutral';
 
-      case 'awaiting_front_desk':
-      case 'awaiting_payment':
-      case 'awaiting_vitals':
-      case 'awaiting_consultation':
-      case 'awaiting_doctor':
-      case 'awaiting_md':
-      case 'awaiting_sampling':
-      case 'awaiting_review':
-      case 'awaiting_injection':
-      case 'awaiting_cashier':
-      case 'awaiting_hmo':
-      case 'awaiting_nurse':
-      case 'awaiting_lab':
-      case 'awaiting_sonographer':
-      case 'awaiting_radiology':
-      case 'awaiting_pharmacy':
-      case 'awaiting_admission':
-      case 'awaiting_surgery':
-      case 'awaiting_discharge_approval':
-      case 'awaiting_follow_up':
-        return 'badge badge-warning';
+        case 'awaiting_front_desk':
+        case 'awaiting_payment':
+        case 'awaiting_vitals':
+        case 'awaiting_consultation':
+        case 'awaiting_doctor':
+        case 'awaiting_md':
+        case 'awaiting_sampling':
+        case 'awaiting_review':
+        case 'awaiting_injection':
+        case 'awaiting_cashier':
+        case 'awaiting_hmo':
+        case 'awaiting_nurse':
+        case 'awaiting_lab':
+        case 'awaiting_sonographer':
+        case 'awaiting_radiology':
+        case 'awaiting_pharmacy':
+        case 'awaiting_admission':
+        case 'awaiting_surgery':
+        case 'awaiting_discharge_approval':
+        case 'awaiting_follow_up':
+          return 'badge badge-warning';
 
-      case 'vitals_completed':
-      case 'in_consultation':
-      case 'consultation_completed':
-      case 'sampling_completed':
-      case 'review_completed':
-      case 'injection_completed':
-      case 'lab_in_progress':
-      case 'lab_completed':
-      case 'sonography_completed':
-      case 'radiology_in_progress':
-      case 'radiology_completed':
-      case 'pharmacy_completed':
-      case 'discharge_in_progress':
-      case 'post_surgery_recovery':
-      case 'post_surgery_observation':
-        return 'badge badge-info';
+        case 'vitals_completed':
+        case 'in_consultation':
+        case 'consultation_completed':
+        case 'sampling_completed':
+        case 'review_completed':
+        case 'injection_completed':
+        case 'lab_in_progress':
+        case 'lab_completed':
+        case 'sonography_completed':
+        case 'radiology_in_progress':
+        case 'radiology_completed':
+        case 'pharmacy_completed':
+        case 'discharge_in_progress':
+        case 'post_surgery_recovery':
+        case 'post_surgery_observation':
+          return 'badge badge-info';
 
-      case 'admitted':
-      case 'under_observation':
-        return 'badge badge-primary';
+        case 'admitted':
+        case 'under_observation':
+          return 'badge badge-primary';
 
-      case 'hmo_approved':
-      case 'payment_completed':
-      case 'surgery_completed':
-      case 'discharged':
-      case 'follow_up_completed':
-      case 'completed':
-        return 'badge badge-success';
+        case 'hmo_approved':
+        case 'payment_completed':
+        case 'surgery_completed':
+        case 'discharged':
+        case 'follow_up_completed':
+        case 'completed':
+          return 'badge badge-success';
 
-      case 'surgery_in_progress':
-      case 'isolated':
-        return 'badge badge-error';
+        case 'surgery_in_progress':
+        case 'isolated':
+          return 'badge badge-error';
 
-      case 'hmo_rejected':
-      case 'no_show':
-      case 'cancelled':
-        return 'badge badge-error';
+        case 'hmo_rejected':
+        case 'no_show':
+        case 'cancelled':
+          return 'badge badge-error';
 
-      case 'transferred':
-      case 'referred':
-      case 'deceased':
-        return 'badge badge-neutral';
+        case 'transferred':
+        case 'referred':
+        case 'deceased':
+          return 'badge badge-neutral';
 
-      default:
-        return 'badge badge-neutral';
-    }
-  };
+        default:
+          return 'badge badge-neutral';
+      }
+    };
 
     const displayValue = Array.isArray(status)
       ? status.map((value) => value.replace(/_/g, ' ')).join(', ')
       : status;
 
     return (
-    <span className={`${getBadgeClass(currentStatus)} text-xs capitalize`}>
-      {displayValue || 'Active'}
-    </span>
-  );
-};
-
-  // Calculate age from date of birth
-  const calculateAge = (dob) => {
-    if (!dob) return 'N/A';
-    const today = new Date();
-    const birthDate = new Date(dob);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
+      <span className={`${getBadgeClass(currentStatus)} text-xs capitalize`}>
+        {displayValue || 'Active'}
+      </span>
+    );
   };
 
-  const primaryPatients = useMemo(() => patients.map((patient, index) => {
+  // Sort patients so the latest registered/added is ALWAYS at the top (newest first)
+  const sortedPatients = useMemo(() => {
+    return [...patients].sort((a, b) => {
+      const at = new Date(a.createdAt || a.registrationDate || 0).getTime();
+      const bt = new Date(b.createdAt || b.registrationDate || 0).getTime();
+      return bt - at;
+    });
+  }, [patients]);
+
+  const primaryPatients = useMemo(() => sortedPatients.map((patient, index) => {
     const firstName = (patient.firstName || '').trim();
     const middleName = (patient.middleName || '').trim();
     const lastName = (patient.lastName || '').trim();
@@ -300,7 +293,6 @@ const Patients = () => {
       name: displayName,
       fullName,
       reversedName: [lastName, firstName, middleName].filter(Boolean).join(' '),
-      age: calculateAge(patient.dob || patient.dateOfBirth),
       dependantsCount: (patient.dependants || []).length,
       dependantsList: patient.dependants || [],
       cardType: patient.cardType || 'personal',
@@ -310,10 +302,11 @@ const Patients = () => {
       status: patient.status || 'Active',
       isOldPatient: patient.isOldPatient || false,
       patientSnapshot: patient,
+      createdAtDate: new Date(patient.createdAt || patient.registrationDate || 0),
     };
-  }), [patients]);
+  }), [sortedPatients]);
 
-  const dependantsOnly = useMemo(() => patients.flatMap((patient) => {
+  const dependantsOnly = useMemo(() => sortedPatients.flatMap((patient) => {
     const guardianFirstName = (patient.firstName || '').trim();
     const guardianMiddleName = (patient.middleName || '').trim();
     const guardianLastName = (patient.lastName || '').trim();
@@ -347,7 +340,6 @@ const Patients = () => {
         name: depDisplayName,
         fullName: depFullName,
         reversedName: [depLastName, depFirstName, depMiddleName].filter(Boolean).join(' '),
-        age: calculateAge(dependant.dob || dependant.dateOfBirth),
         relationship: dependant.relationshipType || dependant.relationship || 'Dependant',
         gender: dependant.gender || '—',
         phone: dependant.phone || patient.phone || '—',
@@ -361,19 +353,50 @@ const Patients = () => {
         status: dependant.status || patient.status || 'Active',
         isOldPatient: patient.isOldPatient || false,
         dependantsCount: 0,
+        createdAtDate: new Date(dependant.createdAt || patient.createdAt || 0),
       };
     });
-  }).map((item, index) => ({ ...item, serialNumber: index + 1 })), [patients]);
+  }).sort((a, b) => b.createdAtDate.getTime() - a.createdAtDate.getTime())
+    .map((item, index) => ({ ...item, serialNumber: index + 1 })), [sortedPatients]);
 
-  const allRecords = useMemo(() => [...primaryPatients, ...dependantsOnly]
-    .map((item, index) => ({ ...item, serialNumber: index + 1 })), [primaryPatients, dependantsOnly]);
+  const allRecords = useMemo(() => {
+    return [...primaryPatients, ...dependantsOnly]
+      .sort((a, b) => b.createdAtDate.getTime() - a.createdAtDate.getTime())
+      .map((item, index) => ({ ...item, serialNumber: index + 1 }));
+  }, [primaryPatients, dependantsOnly]);
 
-  const activeData = viewMode === 'primary' ? primaryPatients : viewMode === 'dependants' ? dependantsOnly : allRecords;
-  const historyBounds = getHistoryDateBounds(historyFilter, historyFromMonth, historyToMonth);
+  const activeBaseData = viewMode === 'primary' ? primaryPatients : viewMode === 'dependants' ? dependantsOnly : allRecords;
+
+  // Registration Date Bounds
+  const regDateBounds = useMemo(() => {
+    return getDateBounds(regDateFilter, regFromDate, regToDate);
+  }, [regDateFilter, regFromDate, regToDate]);
+
+  // Filtered active registered patients
+  const activeData = useMemo(() => {
+    if (regDateFilter === 'all') return activeBaseData;
+    if (!regDateBounds) {
+      if (regDateFilter === 'range') return [];
+      return activeBaseData;
+    }
+
+    return activeBaseData
+      .filter((item) => {
+        const t = item.createdAtDate?.getTime() || 0;
+        return t >= regDateBounds.start.getTime() && t <= regDateBounds.end.getTime();
+      })
+      .map((item, index) => ({ ...item, serialNumber: index + 1 }));
+  }, [activeBaseData, regDateFilter, regDateBounds]);
+
+  // History Date Bounds (day-level range)
+  const historyBounds = useMemo(() => {
+    return getDateBounds(historyFilter, historyFromDate, historyToDate);
+  }, [historyFilter, historyFromDate, historyToDate]);
+
   const attendedPatients = useMemo(() => {
     if (historyFilter === 'range' && !historyBounds) return [];
     const filteredEntries = historyRecords.filter(({ date }) => (
-      !historyBounds || (date >= historyBounds.start && date < historyBounds.end)
+      !historyBounds || (date >= historyBounds.start && date <= historyBounds.end)
     ));
     const grouped = new Map();
 
@@ -412,7 +435,7 @@ const Patients = () => {
 
   const attendanceColumns = useMemo(() => [
     { key: 'serialNumber', title: 'S/n', sortable: true, className: 'text-base-content font-medium' },
-    { key: 'hospitalId', title: 'Hospital ID', sortable: true, className: 'text-base-content font-medium' },
+    { key: 'hospitalId', title: 'Hospital ID', sortable: true, className: 'text-base-content font-medium font-mono' },
     {
       key: 'name',
       title: 'Patient / Subject Name',
@@ -450,7 +473,7 @@ const Patients = () => {
     { key: 'attendedSearch', title: '', className: 'hidden' },
   ], [navigate]);
 
-  // Define table columns
+  // Define table columns (Age and Phone Number removed per user request)
   const columns = useMemo(() => [
     {
       key: 'serialNumber',
@@ -462,7 +485,7 @@ const Patients = () => {
       key: 'hospitalId',
       title: 'Hospital ID',
       sortable: true,
-      className: 'text-base-content font-medium'
+      className: 'text-base-content font-medium font-mono'
     },
     {
       key: 'name',
@@ -543,18 +566,6 @@ const Patients = () => {
       )
     },
     {
-      key: 'age',
-      title: 'Age',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'phone',
-      title: 'Phone Number',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
       key: 'email',
       title: 'Email',
       sortable: true,
@@ -565,7 +576,7 @@ const Patients = () => {
       key: 'status',
       title: 'Status',
       className: 'text-base-content/70',
-      render: (value, row) => <StatusBadge status={value} />
+      render: (value) => <StatusBadge status={value} />
     },
     {
       key: 'dependantsCount',
@@ -602,165 +613,263 @@ const Patients = () => {
 
       {/* Page Header */}
       <div className="flex flex-col gap-3 items-start justify-between mb-6 sm:flex-row sm:items-center">
-            <div className="w-full sm:w-auto">
-              <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
-              <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all patient records</p>
-            </div>
-                <button 
-                  onClick={() => navigate('/frontdesk/registration')}
-                  className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
-                >
-                  <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <span className="text-xs 2xl:text-sm">Add Patient</span>
-                </button>
+        <div className="w-full sm:w-auto">
+          <h1 className="text-2xl font-bold text-base-content 2xl:text-3xl">Patients</h1>
+          <p className="text-sm text-base-content/60 2xl:text-base">Manage and view all registered patient records</p>
+        </div>
+        <button 
+          onClick={() => navigate('/frontdesk/registration')}
+          className="btn btn-primary btn-sm w-full sm:w-auto 2xl:btn-md"
+        >
+          <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span className="text-xs 2xl:text-sm">Add Patient</span>
+        </button>
+      </div>
+
+      {/* Statistics badges */}
+      <div className="flex items-center gap-2 mb-4 text-xs overflow-x-auto">
+        <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <FaUser className="text-primary w-3.5 h-3.5" /> Primary: <strong>{primaryPatients.length}</strong>
+        </div>
+        <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <FaChild className="text-secondary w-3.5 h-3.5" /> Dependants: <strong>{dependantsOnly.length}</strong>
+        </div>
+        <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <FaUsers className="text-success w-3.5 h-3.5" /> Total Registered: <strong>{allRecords.length}</strong>
+        </div>
+      </div>
+
+      {/* View Mode Tabs */}
+      <div className="flex items-center justify-between bg-base-100 p-2 rounded-xl border border-base-300 shadow-sm mb-4 gap-2">
+        <div className="flex items-center gap-1 bg-base-200 p-1 rounded-lg overflow-x-auto w-full sm:w-auto">
+          {[
+            ['all', 'All Records', allRecords.length, FaUsers],
+            ['primary', 'Primary Patients', primaryPatients.length, FaUser],
+            ['dependants', 'Dependants Only', dependantsOnly.length, FaChild],
+            ['attended', 'Attended Patients', attendedPatients.length, FaClipboardList],
+          ].map(([mode, label, count, Icon]) => (
+            <button 
+              key={mode} 
+              type="button" 
+              onClick={() => setViewMode(mode)} 
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === mode ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/70 hover:text-base-content'}`}
+            >
+              <Icon className="w-3.5 h-3.5" /> {label} ({count})
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* REGISTRATION DATE FILTER BAR (FOR ALL, PRIMARY, DEPENDANTS TABS) */}
+      {viewMode !== 'attended' && (
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 rounded-xl border border-base-300 bg-base-100 p-3 shadow-sm">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-xs font-semibold text-base-content/70 mr-1 flex items-center gap-1">
+              <FaCalendarAlt className="text-primary w-3 h-3" /> Registered:
+            </span>
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'today', label: 'Today' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' },
+              { id: 'range', label: 'Custom Range' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setRegDateFilter(f.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  regDateFilter === f.id
+                    ? 'bg-primary text-primary-content shadow-sm'
+                    : 'bg-base-200/80 text-base-content/70 hover:text-base-content hover:bg-base-300/60'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
 
-          <div className="flex items-center gap-2 mb-4 text-xs overflow-x-auto">
-            <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-              <FaUser className="text-primary w-3.5 h-3.5" /> Primary: <strong>{primaryPatients.length}</strong>
-            </div>
-            <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-              <FaChild className="text-secondary w-3.5 h-3.5" /> Dependants: <strong>{dependantsOnly.length}</strong>
-            </div>
-            <div className="px-3 py-1.5 rounded-lg bg-base-100 border border-base-300 shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-              <FaUsers className="text-success w-3.5 h-3.5" /> Total: <strong>{allRecords.length}</strong>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between bg-base-100 p-2 rounded-xl border border-base-300 shadow-sm mb-4 gap-2">
-            <div className="flex items-center gap-1 bg-base-200 p-1 rounded-lg overflow-x-auto">
-              {[
-                ['all', 'All Records', allRecords.length, FaUsers],
-                ['primary', 'Primary Patients', primaryPatients.length, FaUser],
-                ['dependants', 'Dependants Only', dependantsOnly.length, FaChild],
-                ['attended', 'Attended Patients', attendedPatients.length, FaClipboardList],
-              ].map(([mode, label, count, Icon]) => (
-                <button key={mode} type="button" onClick={() => setViewMode(mode)} className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === mode ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/70 hover:text-base-content'}`}>
-                  <Icon className="w-3.5 h-3.5" /> {label} ({count})
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {viewMode === 'attended' && (
-            <div className="flex flex-col gap-3 mb-4 rounded-xl border border-base-300 bg-base-100 p-3 shadow-sm sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <label htmlFor="attendance-date-filter" className="mb-1 block text-xs font-semibold text-base-content/70">
-                  Attendance period
-                </label>
-                <select
-                  id="attendance-date-filter"
-                  className="select select-bordered select-sm w-full sm:w-48"
-                  value={historyFilter}
-                  onChange={(event) => setHistoryFilter(event.target.value)}
-                >
-                  <option value="all">All time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This week</option>
-                  <option value="month">This month</option>
-                  <option value="range">Month range</option>
-                </select>
+          {regDateFilter === 'range' && (
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="flex items-center gap-1.5 bg-base-200/60 px-2.5 py-1 rounded-lg border border-base-300">
+                <span className="text-base-content/60 font-medium">From:</span>
+                <input
+                  type="date"
+                  value={regFromDate}
+                  onChange={(e) => setRegFromDate(e.target.value)}
+                  className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+                />
               </div>
-              {historyFilter === 'range' && (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                  <div>
-                    <label htmlFor="attendance-from-month" className="mb-1 block text-xs font-semibold text-base-content/70">
-                      From month
-                    </label>
-                    <input
-                      id="attendance-from-month"
-                      type="month"
-                      className="input input-bordered input-sm w-full"
-                      value={historyFromMonth}
-                      onChange={(event) => setHistoryFromMonth(event.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="attendance-to-month" className="mb-1 block text-xs font-semibold text-base-content/70">
-                      To month
-                    </label>
-                    <input
-                      id="attendance-to-month"
-                      type="month"
-                      className="input input-bordered input-sm w-full"
-                      value={historyToMonth}
-                      onChange={(event) => setHistoryToMonth(event.target.value)}
-                    />
-                  </div>
-                </div>
+              <div className="flex items-center gap-1.5 bg-base-200/60 px-2.5 py-1 rounded-lg border border-base-300">
+                <span className="text-base-content/60 font-medium">To:</span>
+                <input
+                  type="date"
+                  value={regToDate}
+                  onChange={(e) => setRegToDate(e.target.value)}
+                  className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+                />
+              </div>
+              {(regFromDate || regToDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRegFromDate('');
+                    setRegToDate('');
+                  }}
+                  className="btn btn-ghost btn-xs text-error"
+                >
+                  Clear
+                </button>
               )}
-              <p className="text-xs text-base-content/60">
-                Showing patients with a consultation or antenatal record in the selected period.
-              </p>
             </div>
           )}
 
-          {/* Patients Table */}
-          <div className="flex flex-1 w-full min-h-0">
-            <div className="w-full shadow-xl card bg-base-100">
-              <div className="p-4 card-body 2xl:p-6">
-                {viewMode === 'attended' ? (
-                  historyLoading ? (
-                    <KolakLoader />
-                  ) : historyError ? (
-                    <div className="flex flex-col items-center gap-3 py-12 text-center">
-                      <p className="text-sm text-error">{historyError}</p>
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-sm"
-                        onClick={() => setHistoryRefreshKey((key) => key + 1)}
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  ) : historyFilter === 'range' && !historyBounds ? (
-                    <div className="py-12 text-center text-sm text-warning">
-                      The start month must be the same as or earlier than the end month.
-                    </div>
-                  ) : (
-                    <DataTable
-                      data={attendedPatients}
-                      columns={attendanceColumns}
-                      searchable={true}
-                      sortable={true}
-                      paginated={true}
-                      initialEntriesPerPage={10}
-                      maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                      showEntries={true}
-                      searchPlaceholder="Search attended patients..."
-                    />
-                  )
-                ) : isLoading ? (
-                  <KolakLoader />
-                ) : (
-                  <DataTable
-                    data={activeData}
-                    columns={columns}
-                    searchable={true}
-                    sortable={true}
-                    paginated={true}
-                    initialEntriesPerPage={10}
-                    maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
-                    showEntries={true}
-                    searchPlaceholder="Search patients..."
-                  />
-                )}
-              </div>
-            </div>
+          <div className="text-xs text-base-content/70 font-medium ml-auto">
+            Showing <strong className="text-primary font-bold">{activeData.length}</strong> patients in selected range
+          </div>
+        </div>
+      )}
+
+      {/* ATTENDED PATIENTS DATE FILTER BAR */}
+      {viewMode === 'attended' && (
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 rounded-xl border border-base-300 bg-base-100 p-3 shadow-sm">
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-xs font-semibold text-base-content/70 mr-1 flex items-center gap-1">
+              <FaCalendarAlt className="text-primary w-3 h-3" /> Attendance Period:
+            </span>
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'today', label: 'Today' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' },
+              { id: 'range', label: 'Custom Day Range' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setHistoryFilter(f.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  historyFilter === f.id
+                    ? 'bg-primary text-primary-content shadow-sm'
+                    : 'bg-base-200/80 text-base-content/70 hover:text-base-content hover:bg-base-300/60'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
 
-          <ViewDependantsModal
-            isOpen={isDependantsModalOpen}
-            onClose={() => {
-              setIsDependantsModalOpen(false);
-              setSelectedPatientForDependants(null);
-            }}
-            patient={selectedPatientForDependants}
-          />
-        </FrontdeskLayout>
-      );
-    };
+          {historyFilter === 'range' && (
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="flex items-center gap-1.5 bg-base-200/60 px-2.5 py-1 rounded-lg border border-base-300">
+                <span className="text-base-content/60 font-medium">From Date:</span>
+                <input
+                  type="date"
+                  value={historyFromDate}
+                  onChange={(e) => setHistoryFromDate(e.target.value)}
+                  className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 bg-base-200/60 px-2.5 py-1 rounded-lg border border-base-300">
+                <span className="text-base-content/60 font-medium">To Date:</span>
+                <input
+                  type="date"
+                  value={historyToDate}
+                  onChange={(e) => setHistoryToDate(e.target.value)}
+                  className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+                />
+              </div>
+              {(historyFromDate || historyToDate) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistoryFromDate('');
+                    setHistoryToDate('');
+                  }}
+                  className="btn btn-ghost btn-xs text-error"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
 
-    export default Patients;
+          <div className="text-xs text-base-content/70 font-medium ml-auto">
+            Showing <strong className="text-primary font-bold">{attendedPatients.length}</strong> attended patients
+          </div>
+        </div>
+      )}
+
+      {/* Patients Table */}
+      <div className="flex flex-1 w-full min-h-0">
+        <div className="w-full shadow-xl card bg-base-100">
+          <div className="p-4 card-body 2xl:p-6">
+            {viewMode === 'attended' ? (
+              historyLoading ? (
+                <KolakLoader />
+              ) : historyError ? (
+                <div className="flex flex-col items-center gap-3 py-12 text-center">
+                  <p className="text-sm text-error">{historyError}</p>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setHistoryRefreshKey((key) => key + 1)}
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : historyFilter === 'range' && !historyBounds ? (
+                <div className="py-12 text-center text-sm text-warning">
+                  Please pick a valid start date that is on or before the end date.
+                </div>
+              ) : (
+                <DataTable
+                  data={attendedPatients}
+                  columns={attendanceColumns}
+                  searchable={true}
+                  sortable={true}
+                  paginated={true}
+                  initialEntriesPerPage={10}
+                  maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                  showEntries={true}
+                  searchPlaceholder="Search attended patients..."
+                />
+              )
+            ) : isLoading ? (
+              <KolakLoader />
+            ) : regDateFilter === 'range' && !regDateBounds ? (
+              <div className="py-12 text-center text-sm text-warning">
+                Please pick a valid start date that is on or before the end date.
+              </div>
+            ) : (
+              <DataTable
+                data={activeData}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginated={true}
+                initialEntriesPerPage={10}
+                maxHeight="max-h-48 sm:max-h-94 md:max-h-64 lg:max-h-84 2xl:max-h-110"
+                showEntries={true}
+                searchPlaceholder="Search patients by name, KOLAK ID, card type..."
+              />
+            )}
+          </div>
+        </div>
+      </div>
+
+      <ViewDependantsModal
+        isOpen={isDependantsModalOpen}
+        onClose={() => {
+          setIsDependantsModalOpen(false);
+          setSelectedPatientForDependants(null);
+        }}
+        patient={selectedPatientForDependants}
+      />
+    </FrontdeskLayout>
+  );
+};
+
+export default Patients;

@@ -3,7 +3,6 @@ import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { 
   UpcomingSurgeries, 
   OverallDischarge, 
-  RecentlyAddedPatients,
   RecentlyAttendedPatients
 } from '@/components/frontdesk';
 import KolakLoader from '@/components/common/KolakLoader';
@@ -49,11 +48,6 @@ const FrontdeskDashboard = () => {
           </div>
           
           <div className="flex flex-col gap-4">
-            {/* Recently Added Patients Table */}
-            <div className="flex flex-1 w-full min-h-0">   
-              <RecentlyAddedPatients />
-            </div>
-
             {/* Recently Attended To Patients Table */}
             <div className="flex flex-1 w-full min-h-0">   
               <RecentlyAttendedPatients />

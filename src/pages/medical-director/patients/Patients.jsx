@@ -282,18 +282,6 @@ const { mappedPatients, mappedDependants } = useMemo(() => {
       )
     },
     {
-      key: 'age',
-      title: 'Age',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
-      key: 'phone',
-      title: 'Phone Number',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
       key: 'email',
       title: 'Email',
       sortable: true,

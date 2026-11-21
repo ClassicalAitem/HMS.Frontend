@@ -10,10 +10,73 @@ import { toast } from "react-hot-toast";
 import { getAllAppointments, createAppointment } from "@/services/api/appointmentsAPI";
 import { getPatients } from "@/services/api/patientsAPI";
 
+const isAppointmentInDateRange = (appointmentDateStr, filter, customStart, customEnd) => {
+  if (filter === 'all') return true;
+  if (!appointmentDateStr) return false;
+
+  let aptDate;
+  if (typeof appointmentDateStr === 'string' && appointmentDateStr.includes('T')) {
+    aptDate = new Date(appointmentDateStr);
+  } else if (typeof appointmentDateStr === 'string') {
+    const parts = appointmentDateStr.trim().split(/[-/]/);
+    if (parts.length === 3 && parts[0].length === 4) {
+      aptDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    } else {
+      aptDate = new Date(appointmentDateStr);
+    }
+  } else {
+    aptDate = new Date(appointmentDateStr);
+  }
+
+  if (isNaN(aptDate.getTime())) return false;
+
+  const aptYear = aptDate.getFullYear();
+  const aptMonth = aptDate.getMonth();
+  const aptDay = aptDate.getDate();
+
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDay = now.getDate();
+
+  if (filter === 'today') {
+    return aptYear === todayYear && aptMonth === todayMonth && aptDay === todayDay;
+  }
+
+  const aptTime = new Date(aptYear, aptMonth, aptDay).getTime();
+
+  if (filter === 'week') {
+    const dayOfWeek = (now.getDay() + 6) % 7;
+    const startOfWeek = new Date(todayYear, todayMonth, todayDay - dayOfWeek, 0, 0, 0, 0).getTime();
+    const endOfWeek = new Date(todayYear, todayMonth, todayDay - dayOfWeek + 6, 23, 59, 59, 999).getTime();
+    return aptTime >= startOfWeek && aptTime <= endOfWeek;
+  }
+
+  if (filter === 'month') {
+    const startOfMonth = new Date(todayYear, todayMonth, 1, 0, 0, 0, 0).getTime();
+    const endOfMonth = new Date(todayYear, todayMonth + 1, 0, 23, 59, 59, 999).getTime();
+    return aptTime >= startOfMonth && aptTime <= endOfMonth;
+  }
+
+  if (filter === 'custom') {
+    if (!customStart && !customEnd) return true;
+    const s = customStart ? new Date(`${customStart}T00:00:00`).getTime() : 0;
+    const e = customEnd ? new Date(`${customEnd}T23:59:59.999`).getTime() : Infinity;
+    return aptTime >= s && aptTime <= e;
+  }
+
+  return true;
+};
+
 const Appointment = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const [selectedDate, setSelectedDate] = useState("7/18/17");
+  
+  // Real date filters
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+
   const [filterOpen, setFilterOpen] = useState(false);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -35,6 +98,7 @@ const Appointment = () => {
         const list = Array.isArray(raw) ? raw : raw.appointments ?? [];
         const mapped = list.map((a, idx) => ({
           id: a?.id || a?._id || a?.appointmentId || idx + 1,
+          appointmentId: a?.id || a?._id || a?.appointmentId,
           patientId: a?.patientId,
           dependantId: a?.dependantId || null,
           dependant: a?.dependant || null,
@@ -44,6 +108,7 @@ const Appointment = () => {
           time: a?.appointmentTime || a?.time,
           appointmentType: a?.department || a?.appointmentType || "General",
           status: a?.status || "Active",
+          createdAt: a?.createdAt,
         }));
         setAppointments(mapped);
       } catch (err) {
@@ -54,11 +119,11 @@ const Appointment = () => {
   }, []);
 
   useEffect(() => {
-    const fetchPatients = async () => {
+    const loadPatients = async () => {
       try {
         const res = await getPatients();
-        const raw = res?.data ?? res ?? [];
-        const list = Array.isArray(raw) ? raw : raw.data ?? [];
+        const raw = res?.data?.data ?? res?.data ?? [];
+        const list = Array.isArray(raw) ? raw : (raw.data ?? []);
         const map = {};
         list.forEach((p) => {
           const name = `${p?.firstName || ""} ${p?.middleName || ""} ${p?.lastName || ""}`.trim() || "Unknown Patient";
@@ -66,35 +131,12 @@ const Appointment = () => {
           idKeys.forEach((k) => { map[k] = name; });
         });
         setPatientsById(map);
-      } catch (err) {
-        console.error("Medical director Appointments: fetch patients error", err);
-        setPatientsById({});
-      }
+      } catch {}
     };
-    fetchPatients();
+    loadPatients();
   }, []);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
-
-  const StatusBadge = ({ status }) => {
-    const getBadgeClass = (s) => {
-      switch ((s || "").toLowerCase()) {
-        case "completed":
-          return "badge badge-primary text-white";
-        case "scheduled":
-          return "badge badge-outline badge-info";
-        case "cancelled":
-          return "badge badge-error text-white";
-        default:
-          return "badge badge-neutral text-white";
-      }
-    };
-    return <div className={getBadgeClass(status)}>{status}</div>;
-  };
-
   const resolvePatientName = (a) => {
-    // Dependant appointment — use the embedded dependant name, not the guardian
     if (a?.dependantId) {
       const depName = `${a?.dependant?.firstName || ""} ${a?.dependant?.lastName || ""}`.trim();
       return depName || "Dependant";
@@ -104,68 +146,76 @@ const Appointment = () => {
     return resolved || a?.patientName || a?.patient?.fullName || "Unknown";
   };
 
-  const processedAppointments = useMemo(() => appointments.map(a => ({
-    ...a,
-    patientName: resolvePatientName(a),
-  })), [appointments, patientsById]);
+  const filteredAppointments = useMemo(() => {
+    return appointments
+      .filter((a) => isAppointmentInDateRange(a.date, dateFilter, customStartDate, customEndDate))
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date || '1970-01-01'}T${a.time || '00:00:00'}`).getTime();
+        const dateB = new Date(`${b.date || '1970-01-01'}T${b.time || '00:00:00'}`).getTime();
+        if (!isNaN(dateA) && !isNaN(dateB) && dateA !== dateB) return dateB - dateA;
+        return (new Date(b.createdAt || 0).getTime()) - (new Date(a.createdAt || 0).getTime());
+      })
+      .map((a, index) => ({
+        ...a,
+        serialNumber: index + 1,
+        patientName: resolvePatientName(a),
+      }));
+  }, [appointments, dateFilter, customStartDate, customEndDate, patientsById]);
+
+  const StatusBadge = ({ status }) => {
+    const getBadgeClass = (status) => {
+      switch (status?.toLowerCase()) {
+        case "completed":
+          return "badge badge-primary text-white";
+        case "scheduled":
+          return "badge badge-outline badge-info";
+        case "cancelled":
+          return "badge badge-error text-white";
+        case "in_progress":
+          return "badge badge-warning";
+        default:
+          return "badge badge-neutral text-white";
+      }
+    };
+    return (
+      <div className={`${getBadgeClass(status)} text-xs font-semibold`}>
+        {status}
+      </div>
+    );
+  };
 
   const columns = useMemo(() => [
-    { key: "id", title: "S/n", sortable: true, className: "text-base-content font-medium" },
+    {
+      key: "serialNumber",
+      title: "S/N",
+      sortable: true,
+      className: "text-base-content font-medium w-16",
+      render: (value, row, index) => value || index + 1,
+    },
     {
       key: "patientName",
       title: "Patient Name",
       sortable: true,
       className: "text-base-content font-medium",
-      render: (v, row) => (
+      render: (value, row) => (
         <div className="flex items-center gap-2">
-          <span>{v}</span>
+          <span className="font-semibold">{value}</span>
           {row.dependantId && (
             <span className="badge badge-secondary badge-xs">
-              {row.dependant?.relationshipType || 'Dependant'}
+              {row.dependant?.relationshipType || "Dependant"}
             </span>
           )}
         </div>
       ),
     },
-    { key: "date", title: "Date", sortable: true, className: "text-base-content/70" },
-    { key: "time", title: "Time", sortable: true, className: "text-base-content/70" },
-    { key: "appointmentType", title: "Appointment type", sortable: true, className: "text-base-content/70" },
-    { key: "status", title: "Status", className: "text-base-content/70", render: (v) => <StatusBadge status={v} /> },
+    { key: "date", title: "Date", sortable: true, className: "text-base-content/70 font-mono text-xs" },
+    { key: "time", title: "Time", sortable: true, className: "text-base-content/70 font-mono text-xs" },
+    { key: "appointmentType", title: "Appointment Type", sortable: true, className: "text-base-content/70 capitalize" },
+    { key: "status", title: "Status", sortable: true, className: "text-base-content/70", render: (value, row) => <StatusBadge status={value} /> },
   ], []);
 
-  const getCurrentDate = () => {
-    const today = new Date();
-    const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
-    return today.toLocaleDateString("en-US", options);
-  };
-
-  const todayStats = useMemo(() => {
-    const isSameDay = (d) => {
-      if (!d) return false;
-      const parsed = new Date(d);
-      if (!isNaN(parsed.getTime())) {
-        const now = new Date();
-        return parsed.getFullYear() === now.getFullYear() && parsed.getMonth() === now.getMonth() && parsed.getDate() === now.getDate();
-      }
-      return false;
-    };
-    const normalize = (s) => (s || '').toLowerCase();
-    let todayTotal = 0, todayConfirmed = 0, pending = 0, confirmed = 0, cancelled = 0;
-    processedAppointments.forEach((a) => {
-      const status = normalize(a.status);
-      if (isSameDay(a.date)) {
-        todayTotal += 1;
-        if (status.includes('confirmed') || status.includes('completed')) todayConfirmed += 1;
-      }
-      if (status.includes('pending') || status.includes('await') || status.includes('scheduled')) pending += 1;
-      if (status.includes('confirmed') || status.includes('completed')) confirmed += 1;
-      if (status.includes('cancel')) cancelled += 1;
-    });
-    return { todayTotal, todayConfirmed, pending, confirmed, cancelled };
-  }, [processedAppointments]);
-
   const handleRowClick = (appointment) => {
-    const appointmentId = appointment.id || appointment.appointmentId || appointment._id;
+    const appointmentId = appointment.appointmentId || appointment.id || appointment._id;
     if (appointmentId) {
       setSelectedAppointmentId(appointmentId);
       setIsDetailsModalOpen(true);
@@ -178,7 +228,11 @@ const Appointment = () => {
     try {
       await toast.promise(
         createAppointment(appointmentData),
-        { loading: "Saving appointment...", success: "Appointment saved", error: (e) => e?.message || "Failed to save appointment" }
+        {
+          loading: "Saving appointment...",
+          success: "Appointment saved",
+          error: "Failed to save appointment",
+        }
       );
       setIsBookModalOpen(false);
       const res = await getAllAppointments();
@@ -186,98 +240,162 @@ const Appointment = () => {
       const list = Array.isArray(raw) ? raw : raw.appointments ?? [];
       const mapped = list.map((a, idx) => ({
         id: a?.id || a?._id || a?.appointmentId || idx + 1,
+        appointmentId: a?.id || a?._id || a?.appointmentId,
         patientId: a?.patientId,
+        dependantId: a?.dependantId || null,
+        dependant: a?.dependant || null,
+        patient: a?.patient || null,
         patientName: a?.patientName || a?.patient?.fullName || a?.patientId || "Unknown",
         date: a?.appointmentDate || a?.date,
         time: a?.appointmentTime || a?.time,
-        appointmentType: a?.department || a?.appointmentType || "Medical Director",
+        appointmentType: a?.department || a?.appointmentType || "General",
         status: a?.status || "Active",
+        createdAt: a?.createdAt,
       }));
       setAppointments(mapped);
-    } catch (err) {
-      console.error("Medical Director Appointments: create error", err);
-      toast.error(err?.message || "Failed to book appointment");
-    }
+    } catch {}
   };
 
+  const todayStats = useMemo(() => {
+    const total = appointments.length;
+    const completed = appointments.filter((a) => a.status?.toLowerCase() === "completed").length;
+    const confirmed = appointments.filter((a) => a.status?.toLowerCase() === "scheduled").length;
+    const cancelled = appointments.filter((a) => a.status?.toLowerCase() === "cancelled").length;
+    return { total, completed, confirmed, cancelled };
+  }, [appointments]);
+
+  const filterLabel = useMemo(() => {
+    switch (dateFilter) {
+      case "today": return "Today";
+      case "week": return "This Week";
+      case "month": return "This Month";
+      case "custom": return customStartDate && customEndDate ? `${customStartDate} to ${customEndDate}` : "Custom Range";
+      default: return "All Appointments";
+    }
+  }, [dateFilter, customStartDate, customEndDate]);
+
   return (
-    <div className="flex h-screen">
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      <div className="flex overflow-hidden flex-col flex-1 bg-base-300/20 min-w-0">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-2 py-1 h-full sm:p-6 sm:py-4">
-          <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:justify-between sm:items-start">
+    <div className="flex h-screen bg-base-200">
+      <Sidebar isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+      <div className="flex overflow-hidden flex-col flex-1">
+        <Header setIsSidebarOpen={setIsSidebarOpen} />
+        <div className="overflow-y-auto flex-1 p-3 sm:p-4 2xl:p-6">
+          <div className="flex flex-col gap-3 justify-between items-start mb-4 sm:flex-row sm:items-center">
             <div>
-              <h1 className="text-xl font-bold text-base-content sm:text-2xl 2xl:text-3xl">Appointments</h1>
-              <p className="text-sm text-base-content/60 2xl:text-base">{getCurrentDate()}</p>
+              <h1 className="text-xl font-bold sm:text-2xl 2xl:text-3xl text-base-content">Appointments</h1>
+              <p className="text-xs sm:text-sm text-base-content/60">Overview of patient appointments and schedule</p>
             </div>
-            <button className="btn btn-primary btn-sm 2xl:btn-md w-full sm:w-auto" onClick={() => setIsBookModalOpen(true)}>
-              <svg className="w-4 h-4 2xl:w-5 2xl:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="text-xs 2xl:text-sm">Book Appointment</span>
+            <button className="w-full btn btn-primary btn-sm sm:w-auto" onClick={() => setIsBookModalOpen(true)}>
+              Book Appointment
             </button>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4 sm:gap-4">
             <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-xs sm:text-sm text-base-content">Today's Appointment</div>
-              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.todayTotal}</div>
-              <div className="text-xs text-base-content/70">{todayStats.todayConfirmed} confirmed</div>
+              <div className="text-xs sm:text-sm text-base-content">Total</div>
+              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.total}</div>
+              <div className="text-xs text-base-content/70">Total Appointments</div>
             </div>
             <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-xs sm:text-sm text-base-content">Pending</div>
-              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.pending}</div>
-              <div className="text-xs text-base-content/70">Awaiting confirmation</div>
+              <div className="text-xs sm:text-sm text-base-content">Completed</div>
+              <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.completed}</div>
+              <div className="text-xs text-base-content/70">Total Completed</div>
             </div>
             <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
-              <div className="text-xs sm:text-sm text-base-content">Confirmed</div>
+              <div className="text-xs sm:text-sm text-base-content">Scheduled</div>
               <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.confirmed}</div>
               <div className="text-xs text-base-content/70">Ready to proceed</div>
             </div>
             <div className="p-3 sm:p-4 rounded-lg border border-base-300 bg-base-100">
               <div className="text-xs sm:text-sm text-base-content">Cancelled</div>
               <div className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-semibold text-base-content">{todayStats.cancelled}</div>
-              <div className="text-xs text-base-content/70">Cancelled Today</div>
+              <div className="text-xs text-base-content/70">Cancelled</div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
-            <div className="flex gap-3 items-center">
-              <button className="flex gap-2 items-center btn btn-sm" onClick={() => setFilterOpen(!filterOpen)}>
-                <PiSlidersLight className="w-4 h-4 rotate-90" />
-                <span className="text-xs">Filter</span>
-              </button>
-            </div>
-            <div className="flex gap-3 items-center">
-              <div className="dropdown dropdown-end">
-                <label tabIndex={0} className="flex gap-2 items-center btn btn-outline btn-sm">
-                  <FaCalendarAlt className="w-3 h-3" />
-                  <span className="text-xs">{selectedDate}</span>
-                  <FaChevronDown className="w-3 h-3" />
-                </label>
-                <ul tabIndex={0} className="p-2 mt-1 w-52 shadow dropdown-content menu bg-base-100 rounded-box">
-                  <li><a onClick={() => setSelectedDate("7/18/17")}>7/18/17</a></li>
-                  <li><a onClick={() => setSelectedDate("7/19/17")}>7/19/17</a></li>
-                  <li><a onClick={() => setSelectedDate("7/20/17")}>7/20/17</a></li>
-                </ul>
+          {/* Filter Bar */}
+          <div className="flex flex-col gap-3 mb-4 rounded-2xl border border-base-200 bg-base-100 p-3 shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  className={`flex gap-2 items-center btn btn-sm ${filterOpen ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setFilterOpen(!filterOpen)}
+                >
+                  <PiSlidersLight className="w-4 h-4 rotate-90" />
+                  <span className="text-xs">Search Filter</span>
+                </button>
+
+                {[
+                  { id: "all", label: "All" },
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "This Week" },
+                  { id: "month", label: "This Month" },
+                  { id: "custom", label: "Custom Range" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setDateFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                      dateFilter === f.id
+                        ? "bg-primary text-primary-content shadow-sm"
+                        : "bg-base-200/80 text-base-content/70 hover:text-base-content hover:bg-base-300/60"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-xs text-base-content/70 font-medium ml-auto">
+                Showing <strong className="text-primary font-bold">{filteredAppointments.length}</strong> appointments ({filterLabel})
               </div>
             </div>
+
+            {dateFilter === "custom" && (
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-base-200 text-xs">
+                <span className="text-base-content/70 font-semibold flex items-center gap-1">
+                  <FaCalendarAlt className="text-primary w-3 h-3" /> Select Date Range:
+                </span>
+                <div className="flex items-center gap-1.5 bg-base-200/60 px-3 py-1.5 rounded-xl border border-base-300">
+                  <span className="text-base-content/60 font-medium">From:</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5 bg-base-200/60 px-3 py-1.5 rounded-xl border border-base-300">
+                  <span className="text-base-content/60 font-medium">To:</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer"
+                  />
+                </div>
+                {(customStartDate || customEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomStartDate("");
+                      setCustomEndDate("");
+                    }}
+                    className="btn btn-ghost btn-xs text-error font-semibold"
+                  >
+                    Clear Dates
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-1 w-full min-h-0">
             <div className="w-full shadow-xl card bg-base-100">
               <div className="p-3 card-body sm:p-4 2xl:p-6">
                 <DataTable
-                  data={processedAppointments}
+                  data={filteredAppointments}
                   columns={columns}
                   searchable={filterOpen}
                   sortable={true}

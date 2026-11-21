@@ -321,12 +321,6 @@ const StatusBadge = ({ status }) => {
       )
     },
     {
-      key: 'age',
-      title: 'Age',
-      sortable: true,
-      className: 'text-base-content/70'
-    },
-    {
       key: 'dependantsCount',
       title: 'Dependants',
       className: 'text-base-content/70',
@@ -355,12 +349,6 @@ const StatusBadge = ({ status }) => {
         }
         return <span className="text-xs text-base-content/40">—</span>;
       }
-    },
-    {
-      key: 'phone',
-      title: 'Phone Number',
-      sortable: true,
-      className: 'text-base-content/70'
     },
     {
       key: 'cardType',
