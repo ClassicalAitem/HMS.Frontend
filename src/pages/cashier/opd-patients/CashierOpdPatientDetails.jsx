@@ -7,11 +7,13 @@ import { getBillingsByOpdPatientId, getReceiptsByOpdPatientId, createReceipt, cr
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
 import { createInvestigationRequestForCashier, getInvestigationRequestByOpdPatientId } from '@/services/api/investigationRequestAPI';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
-import { FaArrowLeft, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaArrowLeft, FaPlus, FaTrash, FaTag } from 'react-icons/fa';
 import ReceiptModal from '@/components/modals/ReceiptModal';
+import AdjustDiscountModal from '@/components/modals/AdjustDiscountModal';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
 import KolakLoader from '@/components/common/KolakLoader';
+import { useAppSelector } from '@/store/hooks';
 
 const TestSearchInput = ({ serviceCharges, onSelect, placeholder = 'Search lab test...' }) => {
   const [search, setSearch] = useState('');
@@ -87,6 +89,11 @@ const CashierOpdPatientDetails = () => {
   const { patientId } = useParams();
   const navigate = useNavigate();
 
+  const { user } = useAppSelector((state) => state.auth);
+  const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
+  const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [selectedBilling, setSelectedBilling] = useState(null);
   const [patient, setPatient] = useState(null);
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
@@ -518,19 +525,36 @@ const CashierOpdPatientDetails = () => {
                           {(() => {
                             const receiptsForBill = receipts.filter((r) => matchesBilling(r, bill));
                             const totalPaid = receiptsForBill.reduce((sum, r) => sum + Number(r.amountPaid || 0), 0);
-                            const outstandingAmount = Number(bill.totalAmount || 0) - totalPaid;
-
-                            if (outstandingAmount <= 0) {
-                              return <button className="btn btn-sm btn-ghost btn-success" disabled>Completed</button>;
-                            }
+                            const outstandingAmount = Math.max(0, Number(bill.totalAmount || 0) - totalPaid);
 
                             return (
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => { setSelectedBillingId(bill.id); setIsReceiptModalOpen(true); }}
-                              >
-                                Pay Now
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                {outstandingAmount <= 0 ? (
+                                  <button className="btn btn-sm btn-ghost btn-success" disabled>Completed</button>
+                                ) : (
+                                  <button
+                                    className="btn btn-sm btn-primary"
+                                    onClick={() => { setSelectedBillingId(bill.id); setIsReceiptModalOpen(true); }}
+                                  >
+                                    Pay Now
+                                  </button>
+                                )}
+
+                                {isMedicalDirector && outstandingAmount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedBilling(bill);
+                                      setIsDiscountModalOpen(true);
+                                    }}
+                                    className="btn btn-xs btn-outline btn-warning gap-1"
+                                    title="Medical Director: Grant or adjust discount"
+                                  >
+                                    <FaTag className="w-2.5 h-2.5" />
+                                    <span>{Number(bill.discountAmount) > 0 ? 'Edit Discount' : 'Discount'}</span>
+                                  </button>
+                                )}
+                              </div>
                             );
                           })()}
                         </td>
@@ -648,6 +672,14 @@ const CashierOpdPatientDetails = () => {
         billing={billings.find((b) => b.id === selectedBillingId)}
         bill={billings.find((b) => b.id === selectedBillingId)}
         onSubmit={handleReceiptSubmit}
+      />
+
+      <AdjustDiscountModal
+        isOpen={isDiscountModalOpen}
+        onClose={() => setIsDiscountModalOpen(false)}
+        billing={selectedBilling}
+        patientName={patient ? `${patient.firstName} ${patient.lastName}` : 'OPD Patient'}
+        onSuccess={loadAll}
       />
     </CashierLayout>
   );

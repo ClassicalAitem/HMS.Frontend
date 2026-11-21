@@ -11,6 +11,7 @@ import { formatNigeriaDate, formatNigeriaDateTime } from "@/utils/formatDateTime
 import { getErrorMessage } from "@/utils/errorHandler";
 import KolakLoader from "@/components/common/KolakLoader";
 import { EmptyState } from "@/components/common";
+import { StaffProfileModal } from "@/components/modals";
 import toast from "react-hot-toast";
 import {
   FaUsers,
@@ -429,13 +430,17 @@ const HrStaffManagement = () => {
                       >
                         {/* Name & Email */}
                         <td className="py-3 pl-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                          <div
+                            onClick={() => setDetailsUser(user)}
+                            className="flex items-center gap-3 cursor-pointer group"
+                            title="Click to view full staff profile details"
+                          >
+                            <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-primary group-hover:text-primary-content transition-colors">
                               {user.firstName?.[0]?.toUpperCase() || "S"}
                               {user.lastName?.[0]?.toUpperCase() || ""}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-bold text-sm text-base-content truncate">
+                              <p className="font-bold text-sm text-primary group-hover:underline truncate">
                                 {user.firstName} {user.lastName}
                               </p>
                               <p className="text-xs text-base-content/60 truncate">
@@ -644,153 +649,13 @@ const HrStaffManagement = () => {
         )}
 
         {/* Staff Profile Details Modal */}
-        {detailsUser && (
-          <div className="modal modal-open">
-            <div className="modal-box rounded-2xl max-w-lg p-6 relative">
-              <button
-                onClick={() => setDetailsUser(null)}
-                className="btn btn-xs btn-circle btn-ghost absolute right-4 top-4"
-              >
-                ✕
-              </button>
-
-              <div className="flex items-center gap-3.5 mb-5 pb-4 border-b border-base-200">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xl">
-                  {detailsUser.firstName?.[0]?.toUpperCase()}
-                  {detailsUser.lastName?.[0]?.toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-base-content">
-                    {detailsUser.firstName} {detailsUser.lastName}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span
-                      className={`badge badge-sm font-semibold capitalize ${getRoleBadgeStyle(
-                        detailsUser.accountType
-                      )}`}
-                    >
-                      {String(detailsUser.accountType || "staff").replace(/-/g, " ")}
-                    </span>
-                    {detailsUser.isOnLeave ? (
-                      <span className="badge badge-sm badge-warning font-semibold">
-                        On Leave (Locked)
-                      </span>
-                    ) : (
-                      <span className="badge badge-sm badge-success font-semibold text-white">
-                        On Duty / Active
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Details List */}
-              <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-base-200/50">
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Email Address</span>
-                    <p className="font-bold text-base-content mt-0.5">
-                      {detailsUser.email}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Phone Number</span>
-                    <p className="font-bold text-base-content mt-0.5">
-                      {detailsUser.phoneNumber || "Not provided"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-base-200/50">
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Assigned Department</span>
-                    <p className="font-bold text-base-content mt-0.5">
-                      {detailsUser.departmentName || "General"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Shift Schedule</span>
-                    <p className="font-bold text-base-content capitalize mt-0.5">
-                      {detailsUser.shift || "Morning / Standard"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-base-200/50">
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Account Status</span>
-                    <p className="font-bold mt-0.5 text-base-content">
-                      {detailsUser.isDisabled ? "Disabled" : "Active"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Leave Governance</span>
-                    <p
-                      className={`font-bold mt-0.5 ${
-                        detailsUser.isOnLeave ? "text-warning" : "text-success"
-                      }`}
-                    >
-                      {detailsUser.isOnLeave
-                        ? "Currently On Leave (Blocked)"
-                        : "Active (Login Permitted)"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-base-200/50">
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Created Date</span>
-                    <p className="font-bold text-base-content mt-0.5">
-                      {detailsUser.createdAt
-                        ? formatNigeriaDate(detailsUser.createdAt)
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-base-content/60 font-semibold">Last System Login</span>
-                    <p className="font-bold text-base-content mt-0.5">
-                      {detailsUser.lastLogin
-                        ? formatNigeriaDateTime(detailsUser.lastLogin)
-                        : "Never logged in"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="modal-action flex items-center justify-between mt-6 pt-3 border-t border-base-200">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const u = detailsUser;
-                    setDetailsUser(null);
-                    handleLeaveCheckboxClick(u, Boolean(u.isOnLeave));
-                  }}
-                  className={`btn btn-sm rounded-xl gap-1.5 ${
-                    detailsUser.isOnLeave
-                      ? "btn-success text-white"
-                      : "btn-warning"
-                  }`}
-                >
-                  <FaUserClock className="w-3.5 h-3.5" />
-                  <span>
-                    {detailsUser.isOnLeave
-                      ? "Return to Duty"
-                      : "Mark On Leave"}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDetailsUser(null)}
-                  className="btn btn-sm btn-ghost rounded-xl"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <StaffProfileModal
+          isOpen={Boolean(detailsUser)}
+          onClose={() => setDetailsUser(null)}
+          user={detailsUser}
+          onUserUpdated={() => dispatch(fetchUsers())}
+          onToggleLeave={handleLeaveCheckboxClick}
+        />
       </div>
     </HrLayout>
   );

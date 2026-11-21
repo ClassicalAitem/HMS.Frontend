@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FiUser } from "react-icons/fi";
 import { MdOutlineKeyboardArrowDown } from "react-icons/md";
 import { SlCalender } from "react-icons/sl";
+import { FaEye } from "react-icons/fa";
 import icon from "../../../assets/images/doctorIcon.png";
 import { usersAPI } from "../../../services/api/usersAPI";
 import toast from "react-hot-toast";
 import { formatNigeriaDate } from "@/utils/formatDateTimeUtils";
 import KolakLoader from "@/components/common/KolakLoader";
+import { StaffProfileModal } from "@/components/modals";
 
 const StaffList = ({ refreshKey = 0 }) => {
   const [users, setUsers] = useState([]);
@@ -14,6 +16,7 @@ const StaffList = ({ refreshKey = 0 }) => {
   const [roleFilter, setRoleFilter] = useState("all");
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStaff, setSelectedStaff] = useState(null);
 
   const roleLabels = useMemo(() => ({
     "doctor": "Doctors",
@@ -154,59 +157,91 @@ const StaffList = ({ refreshKey = 0 }) => {
         )}
         {!loading && filtered.map((staffInfo, index) => {
           return (
-            <div key={index} className="w-full border border-base-300 rounded-md">
-              <div className="flex items-center justify-between rounded-[10px] bg-base-100 py-6 px-20 bolder bolder-black bolder-2">
-                <div className="p-1 border-4 border-primary rounded-full">
-                  <div className="w-[90px] h-[90px] rounded-full border-[3px] border-primary flex items-center justify-center bg-primary text-white text-xl font-semibold">
-                    {staffInfo.firstName?.[0] || "S"}
+            <div
+              key={index}
+              onClick={() => setSelectedStaff(staffInfo)}
+              className="w-full border border-base-300 rounded-xl overflow-hidden hover:border-primary/50 transition-all cursor-pointer group shadow-xs"
+              title="Click to view full staff profile"
+            >
+              <div className="flex flex-col md:flex-row items-center justify-between rounded-[10px] bg-base-100 py-5 px-6 sm:px-10 gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="p-1 border-2 border-primary rounded-2xl shrink-0">
+                    <div className="w-16 h-16 rounded-xl border-2 border-primary flex items-center justify-center bg-primary text-white text-xl font-bold">
+                      {staffInfo.firstName?.[0] || "S"}{staffInfo.lastName?.[0] || ""}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-base text-primary group-hover:underline">
+                      {`${staffInfo.firstName || ""} ${staffInfo.lastName || ""}`}
+                    </h3>
+                    <p className="text-xs text-base-content/60 capitalize mt-0.5">
+                      {staffInfo.accountType?.replace(/-/g, ' ') || "Staff"}
+                    </p>
+                    <span className="badge badge-sm badge-ghost font-mono text-[10px] mt-1">
+                      ID: {staffInfo.id?.slice(0, 8)}...
+                    </span>
                   </div>
                 </div>
 
-                <div className="w-[222px]">
-                  <div className="flex gap-5">
-                    <p>Name:</p>
-                    <span>{`${staffInfo.firstName || ""} ${staffInfo.lastName || ""}`}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-2 text-xs text-base-content/80 flex-1 max-w-xl">
+                  <div>
+                    <span className="text-base-content/50 block font-medium">Email:</span>
+                    <span className="font-semibold truncate block">{staffInfo.email || "—"}</span>
                   </div>
-
-                  <div className="flex gap-9">
-                    <p>Role:</p>
-                    <span>{staffInfo.accountType?.replace(/\b\w/g, c => c.toUpperCase()).replace('-', ' ') || "—"}</span>
+                  <div>
+                    <span className="text-base-content/50 block font-medium">Phone:</span>
+                    <span className="font-semibold">{staffInfo.phoneNumber || "—"}</span>
                   </div>
-
-                  <div className="flex gap-3">
-                    <p>Gender:</p>
-                    <span>{staffInfo.gender || "—"}</span>
+                  <div>
+                    <span className="text-base-content/50 block font-medium">Shift:</span>
+                    <span className="font-semibold capitalize">{staffInfo.shift || "Flexible"}</span>
                   </div>
-
-                  <div className="flex gap-9">
-                    <p>DOB:</p>
-                    <span>{staffInfo.dateOfBirth ? formatNigeriaDate(staffInfo.dateOfBirth) : "—"}</span>
+                  <div>
+                    <span className="text-base-content/50 block font-medium">Status:</span>
+                    <span className={`badge badge-xs font-semibold ${staffInfo.isDisabled ? 'badge-error' : 'badge-success text-white'}`}>
+                      {staffInfo.isDisabled ? 'Disabled' : 'Active'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-base-content/50 block font-medium">Leave:</span>
+                    <span className={`badge badge-xs font-semibold ${staffInfo.isOnLeave ? 'badge-warning' : 'badge-ghost'}`}>
+                      {staffInfo.isOnLeave ? 'On Leave' : 'On Duty'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-base-content/50 block font-medium">Profile:</span>
+                    <span className={`badge badge-xs font-semibold ${staffInfo.isProfileCompleted ? 'badge-success text-white' : 'badge-warning'}`}>
+                      {staffInfo.isProfileCompleted ? 'Complete' : 'Incomplete'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="w-[512px]">
-                  <div className="flex gap-9">
-                    <p>Address:</p>
-                    <span>{staffInfo.address || "—"}</span>
-                  </div>
-                  <div className="flex gap-5">
-                    <p>Email Address:</p>
-                    <span>{staffInfo.email || "—"}</span>
-                  </div>
-                  <div className="flex gap-6">
-                    <p>Marital Status:</p>
-                    <span>{staffInfo.maritalStatus || "—"}</span>
-                  </div>
-                  <div className="flex gap-5">
-                    <p>State Of Origin:</p>
-                    <span>{staffInfo.stateOfOrigin || "—"}</span>
-                  </div>
+                <div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedStaff(staffInfo);
+                    }}
+                    className="btn btn-sm btn-outline btn-primary gap-1.5 font-semibold text-xs"
+                  >
+                    <FaEye className="w-3.5 h-3.5" />
+                    <span>View Profile</span>
+                  </button>
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Staff Profile Modal */}
+      <StaffProfileModal
+        isOpen={Boolean(selectedStaff)}
+        onClose={() => setSelectedStaff(null)}
+        user={selectedStaff}
+      />
     </div>
   );
 };

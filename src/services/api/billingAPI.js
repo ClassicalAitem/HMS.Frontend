@@ -325,6 +325,14 @@ export const updateBilling = async (billingId, data) => {
   return response.data;
 };
 
+export const applyDiscount = async (billingId, { discountAmount, discountReason }) => {
+  const response = await apiClient.patch(`/billing/${billingId}/discount`, {
+    discountAmount,
+    discountReason,
+  });
+  return response.data;
+};
+
 export default {
   createBill,
   createBilling,
@@ -341,4 +349,5 @@ export default {
   updateReceipt,
   deleteBilling,
   updateBilling,
+  applyDiscount,
 };

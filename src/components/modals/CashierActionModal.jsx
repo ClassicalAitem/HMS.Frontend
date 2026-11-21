@@ -151,9 +151,14 @@ const CashierActionModal = ({
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-base-content/70 mb-1">Grand Total</div>
+                      {Number(billingData?.discountAmount) > 0 && (
+                        <div className="text-xs text-base-content/60 mb-0.5">
+                          Subtotal: ₦{(Number(billingData?.subtotalAmount || billingData?.itemDetail?.reduce((sum, item) => sum + Number(item?.total || 0), 0) || 0)).toLocaleString()}
+                        </div>
+                      )}
+                      <div className="text-xs text-base-content/70 mb-1">Grand Total (Net Payable)</div>
                       <div className="text-xl font-bold text-primary">
-                        ₦{(Number(billingData?.subtotalAmount || billingData?.totalAmount || billingData?.itemDetail?.reduce((sum, item) => sum + Number(item?.total || 0), 0) || 0)).toLocaleString()}
+                        ₦{Math.max(0, (Number(billingData?.subtotalAmount || billingData?.totalAmount || billingData?.itemDetail?.reduce((sum, item) => sum + Number(item?.total || 0), 0) || 0) - Number(billingData?.discountAmount || 0))).toLocaleString()}
                       </div>
                     </div>
                   </div>

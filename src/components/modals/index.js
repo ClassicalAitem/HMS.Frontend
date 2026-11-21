@@ -30,6 +30,8 @@ export { default as PrescribeDrugsModal } from './PrescribeDrugsModal';
 export { default as NurseReportModal } from './NurseReportModal';
 export { default as DischargePatientModal } from './DischargePatientModal';
 export { default as ProfileCompletionModal } from './ProfileCompletionModal';
+export { default as AdjustDiscountModal } from './AdjustDiscountModal';
+export { default as StaffProfileModal } from './StaffProfileModal';
 
 // Super Admin Modals
 export { default as AddUserModal } from './superadmin/AddUserModal';

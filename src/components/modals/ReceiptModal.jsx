@@ -19,14 +19,16 @@ const ReceiptModal = ({ isOpen, onClose, billingId, billing, bill, patientId, on
   });
 
   const [selectedItems, setSelectedItems] = useState([]);
-  const [applyDiscount, setApplyDiscount] = useState(false);
+  const [applyDiscount, setApplyDiscount] = useState(true);
 
-  // Reset discount state when modal opens/closes
+  // When modal opens, default discount to ON if activeBilling has discountAmount > 0
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen && activeBilling) {
+      setApplyDiscount(Number(activeBilling.discountAmount) > 0);
+    } else if (!isOpen) {
       setApplyDiscount(false);
     }
-  }, [isOpen]);
+  }, [isOpen, activeBilling]);
 
   // Initialize selected items (unpaid items)
   useEffect(() => {

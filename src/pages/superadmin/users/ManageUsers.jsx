@@ -17,6 +17,7 @@ import {
   FaToggleOn,
   FaToggleOff,
   FaKey,
+  FaEye,
 } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import {
@@ -26,7 +27,7 @@ import {
   toggleUserLeaveStatus,
   clearUsersError,
 } from '../../../store/slices/usersSlice';
-import { AddUserModal, EditUserModal, ResetPasswordModal } from '../../../components/modals';
+import { AddUserModal, EditUserModal, ResetPasswordModal, StaffProfileModal } from '../../../components/modals';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/utils/errorHandler';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
@@ -40,6 +41,15 @@ const ManageUsers = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+
+  // Full Staff Profile Modal state
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileUser, setProfileUser] = useState(null);
+
+  const handleOpenProfile = (user) => {
+    setProfileUser(user);
+    setIsProfileModalOpen(true);
+  };
 
   // Leave toggle confirmation modal state
   const [leaveModalData, setLeaveModalData] = useState({
@@ -260,7 +270,29 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
       key: 'name',
       title: 'Name',
       sortable: true,
-      className: 'text-base-content font-medium'
+      className: 'text-base-content font-medium',
+      render: (value, row) => (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenProfile(row);
+          }}
+          className="flex items-center gap-2.5 cursor-pointer group py-1"
+          title="Click to view full staff profile details"
+        >
+          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary font-bold flex items-center justify-center text-xs group-hover:bg-primary group-hover:text-primary-content transition-colors shrink-0">
+            {row.firstName?.[0]?.toUpperCase()}{row.lastName?.[0]?.toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <span className="font-semibold text-primary group-hover:underline block truncate">
+              {value}
+            </span>
+            <span className="text-[11px] text-base-content/50 block truncate">
+              ID: {row.id?.slice(0, 8)}...
+            </span>
+          </div>
+        </div>
+      )
     },
     {
       key: 'email',
@@ -381,6 +413,13 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
       className: 'text-base-content/70',
       render: (value, row) => (
         <div className="flex space-x-2">
+          <button
+            onClick={() => handleOpenProfile(row)}
+            className="btn btn-ghost btn-xs text-primary"
+            title="View Full Staff Profile"
+          >
+            <FaEye className="w-3 h-3" />
+          </button>
           <button
   onClick={() => handleToggleUserStatus(row.id, row.isDisabled)}
   className={`btn btn-ghost btn-xs ${row.isDisabled ? 'text-success' : 'text-warning'}`}
@@ -516,6 +555,26 @@ const handleToggleUserStatus = async (userId, currentIsDisabled) => {
         onClose={() => setIsEditModalOpen(false)}
         user={selectedUser}
         onUserUpdated={handleUserUpdated}
+      />
+
+      {/* Staff Profile Modal */}
+      <StaffProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => {
+          setIsProfileModalOpen(false);
+          setProfileUser(null);
+        }}
+        user={profileUser}
+        onUserUpdated={() => dispatch(fetchUsers())}
+        onToggleLeave={handleLeaveCheckboxClick}
+        onEdit={(u) => {
+          setSelectedUser(u);
+          setIsEditModalOpen(true);
+        }}
+        onResetPassword={(u) => {
+          setSelectedUser(u);
+          setIsResetPasswordModalOpen(true);
+        }}
       />
 
       {/* Change Password Modal */}

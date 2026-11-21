@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUserProfile } from '@/store/slices/authSlice';
 import usersAPI from '@/services/api/usersAPI';
@@ -27,6 +27,7 @@ import {
   FaSync,
   FaCheck,
   FaBan,
+  FaArrowLeft,
 } from 'react-icons/fa';
 
 const generateInitials = (firstName, lastName) => {
@@ -45,7 +46,15 @@ const formatRole = (role) => {
 
 const UserProfile = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { userId } = useParams();
   const { user } = useAppSelector((state) => state.auth);
+
+  // If a userId is in the URL and it differs from the logged-in user, we are viewing another staff member's profile
+  const isViewingOther = Boolean(userId && userId !== user?.id);
+  const [targetUser, setTargetUser] = useState(null);
+
+  const activeUser = isViewingOther ? (targetUser || {}) : user;
 
   const [isEditing, setIsEditing] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -92,24 +101,32 @@ const UserProfile = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (!isViewingOther && user) {
       populateForm(user);
     }
-  }, [user]);
+  }, [user, isViewingOther]);
 
   // Fetch fresh profile from API on mount
   useEffect(() => {
     const fetchLatestProfile = async () => {
       setIsLoadingProfile(true);
       try {
-        const res = await usersAPI.getProfile();
-        if (res?.data?.data) {
-          const freshData = res.data.data;
-          dispatch(updateUserProfile(freshData));
-          populateForm(freshData);
+        if (isViewingOther && userId) {
+          const res = await usersAPI.getUserById(userId);
+          const freshData = res?.data?.data || res?.data;
+          if (freshData) {
+            setTargetUser(freshData);
+            populateForm(freshData);
+          }
+        } else {
+          const res = await usersAPI.getProfile();
+          if (res?.data?.data) {
+            const freshData = res.data.data;
+            dispatch(updateUserProfile(freshData));
+            populateForm(freshData);
+          }
         }
       } catch (err) {
-        // Fall back gracefully to Redux persisted user
         console.warn('Could not refresh profile from server:', err?.message);
       } finally {
         setIsLoadingProfile(false);
@@ -117,36 +134,54 @@ const UserProfile = () => {
     };
 
     fetchLatestProfile();
-  }, [dispatch]);
+  }, [dispatch, isViewingOther, userId]);
 
   const userRole = String(user?.role || user?.accountType || '')
     .toLowerCase()
     .trim()
     .replace(/[_ ]/g, '-');
-  const isManager = ['super-admin', 'superadmin', 'human-resource', 'hr'].includes(userRole);
+  const isManager = ['super-admin', 'superadmin', 'human-resource', 'hr', 'admin'].includes(userRole);
+
+  const targetRole = String(activeUser?.role || activeUser?.accountType || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[_ ]/g, '-');
+  const isTargetManager = ['super-admin', 'superadmin', 'human-resource', 'hr', 'admin'].includes(targetRole);
+
+  // Super Admin, HR, and Admin profile pages do not show change password on their page, nor do staff profiles in view mode
+  const showChangePassword = !isManager && !isTargetManager && !isViewingOther;
 
   const [shiftRequests, setShiftRequests] = useState([]);
   const [allStaffRequests, setAllStaffRequests] = useState([]);
-  const [activeShiftTab, setActiveShiftTab] = useState(isManager ? 'staff_requests' : 'my_history');
+  const [activeShiftTab, setActiveShiftTab] = useState(
+    isViewingOther ? 'my_history' : isManager ? 'staff_requests' : 'my_history'
+  );
   const [isLoadingShiftRequests, setIsLoadingShiftRequests] = useState(false);
   const [reviewingId, setReviewingId] = useState(null);
 
   const fetchShiftRequests = React.useCallback(async () => {
     setIsLoadingShiftRequests(true);
     try {
-      const myRes = await shiftAccessAPI.getMyRequests();
-      setShiftRequests(myRes?.data?.data || []);
-
-      if (isManager) {
+      if (isViewingOther && userId) {
         const allRes = await shiftAccessAPI.getAllRequests();
-        setAllStaffRequests(allRes?.data?.data || []);
+        const allReqs = allRes?.data?.data || [];
+        setAllStaffRequests(allReqs);
+        setShiftRequests(allReqs.filter((r) => r.userId === userId || r.user?.id === userId));
+      } else {
+        const myRes = await shiftAccessAPI.getMyRequests();
+        setShiftRequests(myRes?.data?.data || []);
+
+        if (isManager) {
+          const allRes = await shiftAccessAPI.getAllRequests();
+          setAllStaffRequests(allRes?.data?.data || []);
+        }
       }
     } catch (err) {
       console.warn('Could not load shift access requests:', err?.message);
     } finally {
       setIsLoadingShiftRequests(false);
     }
-  }, [isManager]);
+  }, [isManager, isViewingOther, userId]);
 
   useEffect(() => {
     fetchShiftRequests();
@@ -218,17 +253,23 @@ const UserProfile = () => {
         },
       };
 
-      const res = await usersAPI.updateProfile(payload);
-      const updatedData = res?.data?.data || res?.data || payload;
+      if (isViewingOther && userId) {
+        const res = await usersAPI.updateUser(userId, payload);
+        const updatedData = res?.data?.data || res?.data || payload;
+        setTargetUser((prev) => ({ ...prev, ...updatedData, isProfileCompleted: true }));
+        toast.success('Staff profile updated successfully!');
+      } else {
+        const res = await usersAPI.updateProfile(payload);
+        const updatedData = res?.data?.data || res?.data || payload;
+        dispatch(
+          updateUserProfile({
+            ...updatedData,
+            isProfileCompleted: true,
+          })
+        );
+        toast.success('Profile updated successfully!');
+      }
 
-      dispatch(
-        updateUserProfile({
-          ...updatedData,
-          isProfileCompleted: true,
-        })
-      );
-
-      toast.success('Profile updated successfully!');
       setIsEditing(false);
     } catch (err) {
       const message =
@@ -244,23 +285,44 @@ const UserProfile = () => {
   };
 
   const handleCancel = () => {
-    populateForm(user);
+    populateForm(activeUser);
     setErrors({});
     setIsEditing(false);
   };
 
-  const isProfileComplete = Boolean(user?.isProfileCompleted);
+  const isProfileComplete = Boolean(activeUser?.isProfileCompleted);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 pb-12 animate-in fade-in duration-200">
+      {/* Admin / HR Return Navigation Pill */}
+      {isViewingOther && (
+        <div className="flex items-center justify-between pb-2 border-b border-base-200">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="btn btn-sm btn-ghost gap-2 text-xs font-semibold text-base-content/70 hover:text-primary"
+          >
+            <FaArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Staff Management</span>
+          </button>
+          <span className="badge badge-primary badge-outline text-xs font-semibold">
+            Administrative Staff View
+          </span>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-base-200 pb-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-base-content">
-            Staff Profile
+            {isViewingOther
+              ? `${activeUser?.firstName || 'Staff'} ${activeUser?.lastName || ''}'s Profile`
+              : 'Staff Profile'}
           </h1>
           <p className="text-xs sm:text-sm text-base-content/60 mt-1">
-            Manage your personal profile, contact information, and emergency records.
+            {isViewingOther
+              ? 'View complete personnel records, residential address, emergency contact, and shift history.'
+              : 'Manage your personal profile, contact information, and emergency records.'}
           </p>
         </div>
 
@@ -271,7 +333,7 @@ const UserProfile = () => {
               className="btn btn-primary btn-sm gap-2 font-semibold shadow-xs"
             >
               <FaEdit className="w-3.5 h-3.5" />
-              <span>Edit Profile</span>
+              <span>{isViewingOther ? 'Edit Staff Profile' : 'Edit Profile'}</span>
             </button>
           ) : (
             <button
@@ -283,14 +345,16 @@ const UserProfile = () => {
             </button>
           )}
 
-          <Link
-            to="/change-password"
-            className="btn btn-outline btn-sm gap-2 font-medium"
-            title="Update your account password"
-          >
-            <FaLock className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Change Password</span>
-          </Link>
+          {showChangePassword && (
+            <Link
+              to="/change-password"
+              className="btn btn-outline btn-sm gap-2 font-medium"
+              title="Update your account password"
+            >
+              <FaLock className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Change Password</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -319,7 +383,7 @@ const UserProfile = () => {
             <div className="relative">
               <div className="flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-2xl bg-base-100 p-1.5 shadow-lg border-2 border-base-200">
                 <div className="flex h-full w-full items-center justify-center rounded-xl bg-primary/10 text-primary font-black text-2xl sm:text-3xl">
-                  {generateInitials(user?.firstName, user?.lastName)}
+                  {generateInitials(activeUser?.firstName, activeUser?.lastName)}
                 </div>
               </div>
             </div>
@@ -327,19 +391,19 @@ const UserProfile = () => {
             {/* Name & Role */}
             <div className="space-y-1">
               <h2 className="text-xl sm:text-2xl font-bold text-base-content capitalize">
-                {user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Staff Member'}
+                {activeUser?.firstName ? `${activeUser.firstName} ${activeUser.lastName || ''}`.trim() : 'Staff Member'}
               </h2>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
                 <span className="badge badge-primary text-xs font-semibold">
-                  {formatRole(user?.role || user?.accountType)}
+                  {formatRole(activeUser?.role || activeUser?.accountType)}
                 </span>
-                {user?.shift && (
+                {activeUser?.shift && (
                   <span className="badge badge-outline text-xs capitalize flex items-center gap-1">
                     <FaClock className="w-2.5 h-2.5" />
-                    <span>{user.shift} Shift</span>
+                    <span>{activeUser.shift} Shift</span>
                   </span>
                 )}
-                {user?.isOnLeave && (
+                {activeUser?.isOnLeave && (
                   <span className="badge badge-error badge-outline text-xs font-semibold">
                     On Leave
                   </span>
@@ -351,7 +415,7 @@ const UserProfile = () => {
           {/* Quick Staff ID Badge */}
           <div className="flex items-center justify-center sm:justify-end gap-1 text-xs text-base-content/60 bg-base-200/50 rounded-lg p-2 px-3 border border-base-300">
             <FaIdBadge className="text-primary w-3.5 h-3.5" />
-            <span className="font-mono font-medium">ID: {user?.id?.slice(0, 8)}...</span>
+            <span className="font-mono font-medium">ID: {activeUser?.id?.slice(0, 8)}...</span>
           </div>
         </div>
       </div>
@@ -398,7 +462,7 @@ const UserProfile = () => {
                   ) : (
                     <div className="flex items-center gap-2 text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
                       <FaPhoneAlt className="text-base-content/40 text-xs shrink-0" />
-                      <span className="truncate">{user?.phoneNumber || 'No phone number'}</span>
+                      <span className="truncate">{activeUser?.phoneNumber || 'No phone number'}</span>
                     </div>
                   )}
                 </div>
@@ -432,7 +496,7 @@ const UserProfile = () => {
                   ) : (
                     <div className="flex items-center gap-2 text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
                       <FaEnvelope className="text-base-content/40 text-xs shrink-0" />
-                      <span className="truncate">{user?.email || 'Not provided'}</span>
+                      <span className="truncate">{activeUser?.email || 'Not provided'}</span>
                     </div>
                   )}
                 </div>
@@ -460,8 +524,8 @@ const UserProfile = () => {
                     <div className="flex items-center gap-2 text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
                       <FaCalendarAlt className="text-base-content/40 text-xs shrink-0" />
                       <span className="truncate">
-                        {user?.dob
-                          ? new Date(user.dob).toLocaleDateString('en-GB', {
+                        {activeUser?.dob
+                          ? new Date(activeUser.dob).toLocaleDateString('en-GB', {
                               day: 'numeric',
                               month: 'short',
                               year: 'numeric',
@@ -500,7 +564,7 @@ const UserProfile = () => {
                 ) : (
                   <div className="flex items-start gap-2 text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
                     <FaMapMarkerAlt className="text-base-content/40 text-xs mt-1 shrink-0" />
-                    <span>{user?.address || 'No residential address recorded'}</span>
+                    <span>{activeUser?.address || 'No residential address recorded'}</span>
                   </div>
                 )}
               </div>
@@ -534,7 +598,7 @@ const UserProfile = () => {
                     />
                   ) : (
                     <div className="text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
-                      {user?.nextOfKin?.name || 'Not provided'}
+                      {activeUser?.nextOfKin?.name || 'Not provided'}
                     </div>
                   )}
                 </div>
@@ -560,7 +624,7 @@ const UserProfile = () => {
                     </div>
                   ) : (
                     <div className="text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
-                      {user?.nextOfKin?.phone || 'Not provided'}
+                      {activeUser?.nextOfKin?.phone || 'Not provided'}
                     </div>
                   )}
                 </div>
@@ -579,7 +643,7 @@ const UserProfile = () => {
                     />
                   ) : (
                     <div className="text-sm font-medium text-base-content bg-base-200/40 p-2.5 rounded-lg border border-base-300">
-                      {user?.nextOfKin?.relationship || 'Not provided'}
+                      {activeUser?.nextOfKin?.relationship || 'Not provided'}
                     </div>
                   )}
                 </div>
@@ -630,21 +694,21 @@ const UserProfile = () => {
                 <div className="flex justify-between items-center py-1 border-b border-base-200/60">
                   <span className="text-base-content/60">Full Name</span>
                   <span className="font-semibold text-base-content capitalize">
-                    {user?.firstName} {user?.lastName}
+                    {activeUser?.firstName} {activeUser?.lastName}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center py-1 border-b border-base-200/60">
                   <span className="text-base-content/60">Role</span>
                   <span className="font-semibold text-primary">
-                    {formatRole(user?.role || user?.accountType)}
+                    {formatRole(activeUser?.role || activeUser?.accountType)}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center py-1 border-b border-base-200/60">
                   <span className="text-base-content/60">Shift</span>
                   <span className="font-semibold text-base-content capitalize">
-                    {user?.shift || 'Flexible / Unassigned'}
+                    {activeUser?.shift || 'Flexible / Unassigned'}
                   </span>
                 </div>
 
@@ -652,10 +716,10 @@ const UserProfile = () => {
                   <span className="text-base-content/60">Account Status</span>
                   <span
                     className={`badge badge-xs font-semibold ${
-                      user?.isDisabled ? 'badge-error' : 'badge-success text-white'
+                      activeUser?.isDisabled ? 'badge-error' : 'badge-success text-white'
                     }`}
                   >
-                    {user?.isDisabled ? 'Disabled' : 'Active'}
+                    {activeUser?.isDisabled ? 'Disabled' : 'Active'}
                   </span>
                 </div>
 
@@ -673,8 +737,8 @@ const UserProfile = () => {
                 <div className="flex justify-between items-center py-1">
                   <span className="text-base-content/60">Last Login</span>
                   <span className="font-semibold text-base-content">
-                    {user?.lastLogin
-                      ? new Date(user.lastLogin).toLocaleString('en-GB', {
+                    {activeUser?.lastLogin
+                      ? new Date(activeUser.lastLogin).toLocaleString('en-GB', {
                           day: 'numeric',
                           month: 'short',
                           hour: '2-digit',
@@ -686,23 +750,25 @@ const UserProfile = () => {
               </div>
             </div>
 
-            {/* Security Quick Link */}
-            <div className="card bg-base-100 shadow-sm border border-base-200 p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <FaLock className="text-primary text-sm" />
-                <h4 className="text-sm font-bold text-base-content">Account Security</h4>
+            {/* Security Quick Link - hidden on Super Admin and HR profile pages and view mode */}
+            {showChangePassword && (
+              <div className="card bg-base-100 shadow-sm border border-base-200 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <FaLock className="text-primary text-sm" />
+                  <h4 className="text-sm font-bold text-base-content">Account Security</h4>
+                </div>
+                <p className="text-xs text-base-content/60">
+                  It is recommended to use a strong password and update it regularly.
+                </p>
+                <Link
+                  to="/change-password"
+                  className="btn btn-outline btn-sm w-full gap-2 text-xs font-semibold"
+                >
+                  <FaLock className="w-3 h-3" />
+                  <span>Change Account Password</span>
+                </Link>
               </div>
-              <p className="text-xs text-base-content/60">
-                It is recommended to use a strong password and update it regularly.
-              </p>
-              <Link
-                to="/change-password"
-                className="btn btn-outline btn-sm w-full gap-2 text-xs font-semibold"
-              >
-                <FaLock className="w-3 h-3" />
-                <span>Change Account Password</span>
-              </Link>
-            </div>
+            )}
           </div>
         </div>
       </form>

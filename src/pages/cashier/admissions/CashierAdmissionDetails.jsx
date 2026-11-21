@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CashierLayout } from '@/layouts/cashier';
-import { FaCheckCircle, FaFileAlt, FaFileInvoice } from 'react-icons/fa';
+import { FaCheckCircle, FaFileAlt, FaFileInvoice, FaTag } from 'react-icons/fa';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { fetchPatientById, clearCurrentPatient } from '../../../store/slices/patientsSlice';
 import toast from 'react-hot-toast';
@@ -10,7 +10,7 @@ import admissionApi from '@/services/api/admissionApi';
 import { getBillingsByAdmissionId, getAllReceipts, createReceipt } from '@/services/api/billingAPI';
 import { getInvestigationByPatientId } from '@/services/api/investigationRequestAPI';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
-import { ReceiptModal } from '@/components/modals';
+import { ReceiptModal, AdjustDiscountModal } from '@/components/modals';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
@@ -21,6 +21,9 @@ const CashierAdmissionDetails = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { currentPatient, isLoading: patientLoading } = useAppSelector((state) => state.patients);
+  const { user } = useAppSelector((state) => state.auth);
+  const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
+  const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
 
   const [loading, setLoading] = useState(true);
   const [admission, setAdmission] = useState(null);
@@ -32,7 +35,9 @@ const CashierAdmissionDetails = () => {
   const [openRow, setOpenRow] = useState(null);
   const [showAllReceipts, setShowAllReceipts] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [selectedBillingId, setSelectedBillingId] = useState(null);
+  const [selectedBilling, setSelectedBilling] = useState(null);
   const [billDraft, setBillDraft] = useState(null);
 
   const toggleRow = (id) => {
@@ -448,15 +453,31 @@ const CashierAdmissionDetails = () => {
                         ) : bill.isCleared ? (
                           <button className="btn btn-sm btn-ghost" disabled>Completed</button>
                         ) : (
-                          <button
-                            onClick={() => {
-                              setIsReceiptModalOpen(true);
-                              setSelectedBillingId(bill.id);
-                            }}
-                            className="btn btn-sm btn-ghost"
-                          >
-                            Pay now
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setIsReceiptModalOpen(true);
+                                setSelectedBillingId(bill.id);
+                              }}
+                              className="btn btn-sm btn-ghost"
+                            >
+                              Pay now
+                            </button>
+                            {isMedicalDirector && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedBilling(bill);
+                                  setIsDiscountModalOpen(true);
+                                }}
+                                className="btn btn-xs btn-outline btn-warning gap-1"
+                                title="Medical Director: Grant or adjust discount"
+                              >
+                                <FaTag className="w-2.5 h-2.5" />
+                                <span>{Number(bill.discountAmount) > 0 ? 'Edit Discount' : 'Discount'}</span>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -617,6 +638,14 @@ const CashierAdmissionDetails = () => {
           bill={billings.find((b) => b.id === selectedBillingId)}
           patientId={admission?.patientId}
           onSubmit={handleReceiptSubmit}
+        />
+
+        <AdjustDiscountModal
+          isOpen={isDiscountModalOpen}
+          onClose={() => setIsDiscountModalOpen(false)}
+          billing={selectedBilling}
+          patientName={currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Admission Patient'}
+          onSuccess={fetchData}
         />
 
         {billDraft && (

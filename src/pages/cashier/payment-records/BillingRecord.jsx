@@ -1,82 +1,92 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DataTable } from '@/components/common';
 import { CashierLayout } from '@/layouts/cashier';
-import { FaEye, FaPrint } from 'react-icons/fa';
+import { FaEye, FaPrint, FaTag } from 'react-icons/fa';
 import { getAllBillings } from '@/services/api/billingAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import KolakLoader from '@/components/common/KolakLoader';
+import { useAppSelector } from '@/store/hooks';
+import AdjustDiscountModal from '@/components/modals/AdjustDiscountModal';
 
 const PaymentRecords = () => {
+  const { user } = useAppSelector((state) => state.auth);
+  const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
+  const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+
   const [paymentRecords, setPaymentRecords] = useState([]);
   const [selectedBilling, setSelectedBilling] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
+  const [discountBilling, setDiscountBilling] = useState(null);
+
+  const fetchBilling = async () => {
+    try {
+      setIsLoading(true);
+      const res = await getAllBillings();
+      const list = res?.data?.data ?? res?.data ?? [];
+      const billingList = Array.isArray(list) ? list : [];
+
+      // Check if any dependant is missing from joined relation
+      const missingDependantIds = [
+        ...new Set(
+          billingList
+            .filter(a => a.dependantId && !a.dependant)
+            .map(a => a.dependantId)
+        )
+      ];
+
+      let extraDependantMap = {};
+      if (missingDependantIds.length > 0) {
+        const dependantEntries = await Promise.all(
+          missingDependantIds.map(id =>
+            getDependantById(id)
+              .then(r => [id, r?.data?.data?.dependant || r?.data?.dependant || r?.data])
+              .catch(() => [id, null])
+          )
+        );
+        extraDependantMap = Object.fromEntries(dependantEntries);
+      }
+
+      const mapped = billingList.map((a) => {
+        const isForDependant = !!a.dependantId;
+        const dependant = isForDependant ? (a.dependant || extraDependantMap[a.dependantId]) : null;
+        const guardian = a.patient;
+
+        const name = isForDependant
+          ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
+          : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'));
+
+        const guardianName = isForDependant && guardian
+          ? `${guardian.firstName} ${guardian.lastName}`
+          : null;
+
+        return {
+          billingId: a.id,
+          name,
+          isForDependant,
+          guardianName,
+          outstandingBill: `₦ ${Number(a.outstandingBill || 0).toLocaleString()}`,
+          totalAmount: `₦ ${Number(a.totalAmount || 0).toLocaleString()}`,
+          itemDetails: a.itemDetails,
+          amount: `₦ ${Number(a.amountPaid || 0).toLocaleString()}`,
+          dateTime: formatNigeriaDateTime(a.createdAt),
+          raisedBy: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
+          cashierName: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
+          raw: a,
+        };
+      });
+      setPaymentRecords(mapped);
+    } catch (err) {
+      console.error('Failed to fetch billings:', err);
+      setPaymentRecords([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBilling = async () => {
-      try {
-        setIsLoading(true);
-        const res = await getAllBillings();
-        const list = res?.data?.data ?? res?.data ?? [];
-        const billingList = Array.isArray(list) ? list : [];
-
-        // Check if any dependant is missing from joined relation
-        const missingDependantIds = [
-          ...new Set(
-            billingList
-              .filter(a => a.dependantId && !a.dependant)
-              .map(a => a.dependantId)
-          )
-        ];
-
-        let extraDependantMap = {};
-        if (missingDependantIds.length > 0) {
-          const dependantEntries = await Promise.all(
-            missingDependantIds.map(id =>
-              getDependantById(id)
-                .then(r => [id, r?.data?.data?.dependant || r?.data?.dependant || r?.data])
-                .catch(() => [id, null])
-            )
-          );
-          extraDependantMap = Object.fromEntries(dependantEntries);
-        }
-
-        const mapped = billingList.map((a) => {
-          const isForDependant = !!a.dependantId;
-          const dependant = isForDependant ? (a.dependant || extraDependantMap[a.dependantId]) : null;
-          const guardian = a.patient;
-
-          const name = isForDependant
-            ? (dependant ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || 'Dependant' : 'Dependant')
-            : (guardian ? `${guardian.firstName} ${guardian.lastName}` : (a.opdPatient ? `${a.opdPatient.firstName} ${a.opdPatient.lastName}` : 'N/A'));
-
-          const guardianName = isForDependant && guardian
-            ? `${guardian.firstName} ${guardian.lastName}`
-            : null;
-
-          return {
-            billingId: a.id,
-            name,
-            isForDependant,
-            guardianName,
-            outstandingBill: `₦ ${Number(a.outstandingBill || 0).toLocaleString()}`,
-            totalAmount: `₦ ${Number(a.totalAmount || 0).toLocaleString()}`,
-            itemDetails: a.itemDetails,
-            amount: `₦ ${Number(a.amountPaid || 0).toLocaleString()}`,
-            dateTime: formatNigeriaDateTime(a.createdAt),
-            raisedBy: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
-            cashierName: a.raisedBy ? `${a.raisedBy.firstName} ${a.raisedBy.lastName}` : 'N/A',
-          };
-        });
-        setPaymentRecords(mapped);
-      } catch (err) {
-        console.error('Failed to fetch billings:', err);
-        setPaymentRecords([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchBilling();
   }, []);
 
@@ -280,29 +290,38 @@ const handlePrintReceipt = (billing) => {
       key: 'actions',
       title: 'Actions',
       className: 'text-base-content/70',
-   render: (value, row) => (
-  <div className="flex space-x-2">
+    render: (value, row) => (
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={() => handleViewDetails(row)}
+          className="btn btn-ghost btn-xs"
+          title="View Details"
+        >
+          <FaEye className="w-3 h-3" />
+        </button>
 
-    <button
-      onClick={() => handleViewDetails(row)}
-      className="btn btn-ghost btn-xs"
-      title="View Details"
-    >
-      <FaEye className="w-3 h-3" />
-    </button>
+        {isMedicalDirector && !row.raw?.isCleared && (
+          <button
+            onClick={() => {
+              setDiscountBilling(row.raw);
+              setIsDiscountModalOpen(true);
+            }}
+            className="btn btn-ghost btn-xs text-warning"
+            title="Grant / Adjust Medical Director Discount"
+          >
+            <FaTag className="w-3 h-3" />
+          </button>
+        )}
 
- 
-
-    <button
-      onClick={() => handlePrintReceipt(row)}
-      className="btn btn-ghost btn-xs"
-      title="Print"
-    >
-      <FaPrint className="w-3 h-3" />
-    </button>
-
-  </div>
-)
+        <button
+          onClick={() => handlePrintReceipt(row)}
+          className="btn btn-ghost btn-xs"
+          title="Print"
+        >
+          <FaPrint className="w-3 h-3" />
+        </button>
+      </div>
+    )
     }
   ], []);
 
@@ -451,11 +470,32 @@ const handlePrintReceipt = (billing) => {
                   <FaPrint className="w-4 h-4 mr-2" />
                   Print Receipt
                 </button>
+                {isMedicalDirector && !selectedBilling.raw?.isCleared && (
+                  <button
+                    onClick={() => {
+                      setDiscountBilling(selectedBilling.raw);
+                      setIsDiscountModalOpen(true);
+                    }}
+                    className="btn btn-outline btn-warning gap-1.5"
+                  >
+                    <FaTag className="w-3.5 h-3.5" />
+                    <span>Adjust Discount</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Adjust Discount Modal */}
+      <AdjustDiscountModal
+        isOpen={isDiscountModalOpen}
+        onClose={() => setIsDiscountModalOpen(false)}
+        billing={discountBilling}
+        patientName={discountBilling?.patient ? `${discountBilling.patient.firstName} ${discountBilling.patient.lastName}` : (discountBilling?.opdPatient ? `${discountBilling.opdPatient.firstName} ${discountBilling.opdPatient.lastName}` : 'Patient')}
+        onSuccess={fetchBilling}
+      />
     </CashierLayout>
   );
 };

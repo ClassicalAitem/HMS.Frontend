@@ -271,6 +271,13 @@ const AppRoutes = () => {
           </RoleBasedLayout>
         </ProtectedRoute>
       } />
+      <Route path="/profile/:userId" element={
+        <ProtectedRoute allowedRoles={['super-admin', 'superadmin', 'human-resource', 'hr', 'admin']}>
+          <RoleBasedLayout>
+            <UserProfile />
+          </RoleBasedLayout>
+        </ProtectedRoute>
+      } />
 
 
       {/*==============================================================================================================

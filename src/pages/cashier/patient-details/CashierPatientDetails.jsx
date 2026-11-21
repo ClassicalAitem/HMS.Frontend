@@ -9,12 +9,13 @@ import { getErrorMessage } from '@/utils/errorHandler';
 import { createReceipt, getAllBillings, getAllReceiptByPatientId } from '@/services/api/billingAPI';
 import { createPatientCredit, getPatientCredits } from '@/services/api/patientCreditAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
-import { ReceiptModal } from '@/components/modals';
+import { ReceiptModal, AdjustDiscountModal } from '@/components/modals';
 import SendPatientModal from '@/components/modals/SendPatientModal';
 import { formatNigeriaDate, formatNigeriaTime, formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import KolakLoader from '@/components/common/KolakLoader';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { FaTag } from 'react-icons/fa';
 
 
 const CashierPatientDetails = () => {
@@ -23,6 +24,10 @@ const CashierPatientDetails = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { currentPatient, isLoading, error } = useAppSelector((state) => state.patients);
+  const { user } = useAppSelector((state) => state.auth);
+  const userRole = String(user?.role || user?.accountType || '').toLowerCase().trim().replace(/[_ ]/g, '-');
+  const isMedicalDirector = ['medical-director', 'super-admin', 'superadmin', 'admin'].includes(userRole);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = useState(false);
   const [openRow, setOpenRow] = useState(null);
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
@@ -261,8 +266,9 @@ const CashierPatientDetails = () => {
 
   const totalOutstanding = billings.reduce((sum, bill) => {
     if (bill.isCleared) return sum;
-    const outstanding = Number(bill.outstandingBill) || 0;
-    return sum + (outstanding > 0 ? outstanding : Number(bill.totalAmount || 0));
+    const outstanding = Number(bill.outstandingBill);
+    if (Number.isFinite(outstanding) && outstanding >= 0) return sum + outstanding;
+    return sum + Number(bill.totalAmount || 0);
   }, 0);
 
   if (isLoading && !snapshot) {
@@ -398,36 +404,53 @@ const CashierPatientDetails = () => {
                       </td>
                       <td>
                         <div className="font-medium">
-                          ₦ {(bill.isCleared ? 0 : (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0)).toLocaleString()}
+                          ₦ {(bill.isCleared ? 0 : Number(bill.outstandingBill !== undefined ? bill.outstandingBill : (bill.totalAmount || 0))).toLocaleString()}
                         </div>
-                        {!bill.isCleared && Number(bill.discountAmount) > 0 && (
-                          <span className="text-[11px] text-base-content/60 block">
-                            (₦{Math.max(0, (Number(bill.outstandingBill) || Number(bill.totalAmount) || 0) - Number(bill.discountAmount)).toLocaleString()} with discount)
+                        {Number(bill.discountAmount) > 0 && (
+                          <span className="text-[11px] text-warning font-medium block">
+                            (Discount: ₦{Number(bill.discountAmount).toLocaleString()})
                           </span>
                         )}
                       </td>
                       <td className="text-success">{bill.raisedBy?.firstName || 'Staff'}{" "}{bill.raisedBy?.lastName || ''}</td>
                       <td className="text-success">{bill.raisedBy?.accountType || '—'}</td>
                       <td>
-                        {bill.isCleared ? (
-                          <button
-                            className="btn btn-sm btn-ghost"
-                            disabled
-                          >
-                            Completed
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setSelectedBillingId(bill.id);
-                              setSelectedBilling(bill);
-                              setIsReceiptModalOpen(true);
-                            }}
-                            className="btn btn-sm btn-ghost"
-                          >
-                            Pay now
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {bill.isCleared ? (
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              disabled
+                            >
+                              Completed
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedBillingId(bill.id);
+                                setSelectedBilling(bill);
+                                setIsReceiptModalOpen(true);
+                              }}
+                              className="btn btn-sm btn-ghost"
+                            >
+                              Pay now
+                            </button>
+                          )}
+
+                          {isMedicalDirector && !bill.isCleared && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBilling(bill);
+                                setIsDiscountModalOpen(true);
+                              }}
+                              className="btn btn-xs btn-outline btn-warning gap-1"
+                              title="Medical Director: Grant or adjust discount"
+                            >
+                              <FaTag className="w-2.5 h-2.5" />
+                              <span>{Number(bill.discountAmount) > 0 ? 'Edit Discount' : 'Discount'}</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
 
 
@@ -680,6 +703,23 @@ const CashierPatientDetails = () => {
           billing={selectedBilling}
           patientId={patientId}
           onSubmit={handleReceiptSubmit}
+        />
+
+        {/* Adjust Discount Modal */}
+        <AdjustDiscountModal
+          isOpen={isDiscountModalOpen}
+          onClose={() => setIsDiscountModalOpen(false)}
+          billing={selectedBilling}
+          patientName={patient ? `${patient.firstName} ${patient.lastName}` : 'Patient'}
+          onSuccess={async () => {
+            try {
+              const billingsRes = await getAllBillings({ patientId });
+              const billingsData = billingsRes?.data?.data || billingsRes?.data || [];
+              setBillings(filterSubjectRecords(Array.isArray(billingsData) ? billingsData : []));
+            } catch (err) {
+              console.error('Error refreshing billings after discount:', err);
+            }
+          }}
         />
       </div>
     </CashierLayout>
