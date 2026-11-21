@@ -33,7 +33,7 @@ const CashierAdmissionDetails = () => {
   const [loading, setLoading] = useState(true);
   const [admission, setAdmission] = useState(null);
   const [ledgerItems, setLedgerItems] = useState([]);
-  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], treatments: [] });
+  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], treatments: [], blood: [] });
   const [billings, setBillings] = useState([]);
   const [receipts, setReceipts] = useState([]);
   
@@ -180,11 +180,34 @@ const CashierAdmissionDetails = () => {
           });
         } catch (err) {}
 
+        let unbilledBlood = [];
+        try {
+          const bRes = await apiClient.get(`/blood-transfusions/patient/${admData.patientId}`);
+          const bloodOrders = Array.isArray(bRes.data?.data || bRes.data) ? (bRes.data?.data || bRes.data) : [];
+          bloodOrders.filter(b => !b.isBilled && (!b.admissionId || String(b.admissionId) === String(admissionId))).forEach(b => {
+            const units = Number(b.units) || 1;
+            const price = Number(b.amount) ? Number(b.amount) / units : 0;
+            const total = Number(b.amount) || (price * units);
+            unbilledBlood.push({
+              code: 'BLOOD_TRANSFUSION',
+              description: `${units} unit(s) of ${b.bloodGroup || 'Blood'} (${b.serviceName || 'Blood Transfusion'}) - Billed Separately`,
+              quantity: units,
+              unitPrice: price,
+              price,
+              total,
+              isBilled: false,
+              category: 'Blood Bank',
+              bloodTransfusionOrderId: b._id || b.id,
+            });
+          });
+        } catch (err) {}
+
         setLedgerItems([...masterBillItems]);
         setUnbilledGroups({
           labs: unbilledLabs,
           ivs: unbilledIvs,
-          treatments: unbilledTreatments
+          treatments: unbilledTreatments,
+          blood: unbilledBlood
         });
       }
     } catch (error) {
@@ -346,6 +369,16 @@ const CashierAdmissionDetails = () => {
       });
     }
 
+    if (unbilledGroups.blood && unbilledGroups.blood.length > 0) {
+      result.unshift({
+        id: 'unbilled_blood', pseudo: true, createdAt: null,
+        totalAmount: unbilledGroups.blood.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        outstandingBill: unbilledGroups.blood.reduce((acc, curr) => acc + (curr.total || curr.price || 0), 0),
+        raisedBy: { firstName: 'Blood Bank', lastName: '(Transfusions)', accountType: 'Separate from Procedure' },
+        isCleared: false, itemDetails: unbilledGroups.blood
+      });
+    }
+
     return result;
   }, [ledgerItems, billings, unbilledGroups]);
 
@@ -397,6 +430,22 @@ const CashierAdmissionDetails = () => {
           summarySubject={summarySubject}
           isViewingDependant={false}
         />
+
+        {/* Procedure Coverage Banner */}
+        {(admission?.coveredByProcedure || admission?.isProcedureLinked) && (
+          <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mt-6 flex items-start gap-3">
+            <span className="text-xl">🏥</span>
+            <div>
+              <h4 className="font-bold text-primary text-sm">
+                Surgical Procedure Covered Admission ({admission.procedureName || 'Procedure'})
+              </h4>
+              <p className="text-xs text-base-content/80 mt-0.5">
+                The inpatient ward stay is fully covered under the surgical procedure package.
+                Blood products and specialized transfusions are billed separately from the procedure money.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Outstanding Bills */}
         <div className="bg-base-100 rounded-xl shadow-lg p-6 mb-6 mt-6 min-w-0">

@@ -155,7 +155,7 @@ const AddProcedureModal = ({
       const result = await createAppointment(payload);
       const created = result?.data?.data ?? result?.data ?? result;
 
-      toast.success('Surgical procedure added successfully');
+      toast.success('Surgical procedure scheduled and post-op admission created for nurse bed assignment');
 
       if (onProcedureCreated) {
         onProcedureCreated(created);
@@ -206,6 +206,14 @@ const AddProcedureModal = ({
 
         {/* FORM */}
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
+          {/* Automatic Admission & Coverage Notice */}
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-3.5 flex items-start gap-3">
+            <FaHospital className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="text-xs text-base-content/80 leading-relaxed">
+              <span className="font-semibold text-primary">Automatic Ward Admission:</span> Creating this procedure will automatically generate a post-operative admission record. The ward stay is fully covered by this procedure fee (blood bank products billed separately). Nurses will assign the ward and bed upon confirmation.
+            </div>
+          </div>
+
           {/* PROCEDURE PICKER (from surgical service charges) */}
           <div className="form-control w-full relative">
             <label className="label py-1">

@@ -1,8 +1,8 @@
 import apiClient from './apiClient'
 
-export const getAdmissions = async () => {
+export const getAdmissions = async (params = {}) => {
   try {
-    const response = await apiClient.get('/admission')
+    const response = await apiClient.get('/admission', { params })
     return response.data ?? []
   } catch (err) {
     console.error('admissionAPI: getAdmissions error', err)

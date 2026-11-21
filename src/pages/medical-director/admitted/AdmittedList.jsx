@@ -122,12 +122,18 @@ const MDAdmittedList = () => {
         const targetId = admission.dependantId || admission.patientId
         const latestVitalInfo = vitalsMap.get(targetId)
 
-        // Resolve ward name (translates raw UUID to proper human-readable ward name)
-        const rawWardKey = String(admission.wardId || admission.ward || '')
-        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward'
-
         // Normalize bed number: avoid "Bed Bed X"
         const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        const hasValidBed = cleanBed && !cleanBed.toLowerCase().includes('unassigned')
+        const isConfirmedByNurse = !!(admission.confirmedAt && hasValidBed)
+
+        // Resolve ward name (translates raw UUID to proper human-readable ward name)
+        // Any admission that the nurses have not assigned bed or ward to yet should be blank
+        const rawWardKey = String(admission.wardId || admission.ward || '')
+        const resolvedWard = isConfirmedByNurse
+          ? (wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || '')
+          : ''
+        const finalBed = isConfirmedByNurse ? cleanBed : ''
 
         // Resolve linked billing & payment info for admission
         const admissionIdStr = String(admission._id || admission.id || '')
@@ -204,7 +210,8 @@ const MDAdmittedList = () => {
           displayId,
           name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
           ward: resolvedWard,
-          bedNumber: cleanBed,
+          bedNumber: finalBed,
+          isConfirmed: isConfirmedByNurse,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           lastVitalsTime: latestVitalInfo?.createdAt || null,
           relationshipType: isDependant ? source?.relationshipType : null,
@@ -461,14 +468,14 @@ const MDAdmittedList = () => {
                             </div>
                           </td>
                           <td>
-                            <div>
-                              <span className="font-medium text-base-content">{item.ward}</span>
-                              {item.bedNumber ? (
-                                <span className="ml-1.5 badge badge-ghost badge-xs">Bed {item.bedNumber}</span>
-                              ) : (
-                                <span className="ml-1.5 text-[11px] text-warning italic">No Bed</span>
-                              )}
-                            </div>
+                            {item.ward || item.bedNumber ? (
+                              <div>
+                                {item.ward && <span className="font-medium text-base-content">{item.ward}</span>}
+                                {item.bedNumber && (
+                                  <span className="ml-1.5 badge badge-ghost badge-xs">Bed {item.bedNumber}</span>
+                                )}
+                              </div>
+                            ) : null}
                           </td>
                           <td>
                             <span className="text-base-content/70">

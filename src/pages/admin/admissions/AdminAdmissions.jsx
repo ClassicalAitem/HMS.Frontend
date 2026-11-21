@@ -73,8 +73,13 @@ const AdminAdmissions = () => {
       .map((adm, idx) => {
         const patient = adm.patient || adm.dependant || {};
         const rawWard = String(adm.wardId || adm.ward?.id || adm.ward?._id || adm.ward || '');
-        const resolvedWard = wardMap.get(rawWard) || adm.ward?.name || adm.wardName || (rawWard && !rawWard.includes('-') ? rawWard : null) || 'General Ward';
         const cleanBed = String(adm.bedNumber || adm.bed || '').trim().replace(/^bed\s*/i, '');
+        const hasValidBed = cleanBed && !cleanBed.toLowerCase().includes('unassigned');
+        const isConfirmedByNurse = !!(adm.confirmedAt && hasValidBed);
+        const resolvedWard = isConfirmedByNurse
+          ? (wardMap.get(rawWard) || adm.ward?.name || adm.wardName || (rawWard && !rawWard.includes('-') ? rawWard : null) || '')
+          : '';
+        const finalBed = isConfirmedByNurse ? `Bed ${cleanBed}` : '';
         const doctor = adm.admittingDoctor || adm.doctor || {};
         const isDischarged = adm.status?.toLowerCase() === "discharged" || Boolean(adm.dischargeDate);
         const hospId = patient.hospitalId || adm.dependant?.patient?.hospitalId || adm.patientHospitalId || "—";
@@ -88,7 +93,7 @@ const AdminAdmissions = () => {
             adm.patientName ||
             "—",
           wardName: resolvedWard,
-          bedNumber: cleanBed ? `Bed ${cleanBed}` : "Unassigned Bed",
+          bedNumber: finalBed,
           doctorName:
             [doctor.firstName, doctor.lastName].filter(Boolean).join(" ").trim() ||
             doctor.fullName ||

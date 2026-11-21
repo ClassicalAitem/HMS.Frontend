@@ -173,16 +173,20 @@ const SuperAdminAdmittedList = () => {
 
       sortedAdmissions.forEach((adm) => {
         // Resolve ward name & bed number cleanly
-        const rawWard = String(adm.wardId || adm.ward?.id || adm.ward?._id || adm.ward || '')
-        const resolvedWard = wardMap.get(rawWard) || adm.ward?.name || adm.wardName || (rawWard && !rawWard.includes('-') ? rawWard : null) || 'Ward Unassigned'
         const cleanBed = String(adm.bedNumber || adm.bed?.bedNumber || '').trim().replace(/^bed\s*/i, '')
         const hasAssignedBed = !!cleanBed && !cleanBed.toLowerCase().includes('unassigned')
+        const isConfirmedByNurse = !!(adm.confirmedAt && hasAssignedBed)
+        const rawWard = String(adm.wardId || adm.ward?.id || adm.ward?._id || adm.ward || '')
+        const resolvedWard = isConfirmedByNurse
+          ? (wardMap.get(rawWard) || adm.ward?.name || adm.wardName || (rawWard && !rawWard.includes('-') ? rawWard : null) || '')
+          : ''
+        const finalBed = isConfirmedByNurse ? cleanBed : ''
 
         const admission = {
           ...adm,
           doctorName: adm.doctorName || doctorNames[doctorId] || null,
           wardName: resolvedWard,
-          bedNumber: cleanBed,
+          bedNumber: finalBed,
         }
         const isDep = !!adm.dependantId
         let person = null
@@ -526,8 +530,8 @@ const SuperAdminAdmittedList = () => {
                 adm.admittedByDoctor?.name ||
                 adm.doctorName ||
                 (adm.doctor ? `Dr. ${adm.doctor.firstName || ''} ${adm.doctor.lastName || ''}`.trim() : 'Attending Doctor')
-              const wardName = adm.wardName || adm.ward?.name || 'Ward Unassigned'
-              const bedNum = adm.bedNumber ? `Bed ${adm.bedNumber}` : 'Pending Bed'
+              const wardName = adm.wardName || adm.ward?.name || ''
+              const bedNum = adm.bedNumber ? `Bed ${adm.bedNumber}` : ''
               const isDischarged = adm.status === 'discharged'
 
               return (

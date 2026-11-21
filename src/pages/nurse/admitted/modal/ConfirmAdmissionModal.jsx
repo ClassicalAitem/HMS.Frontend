@@ -4,9 +4,30 @@ import toast from 'react-hot-toast';
 import { confirmAdmission, getAdmissions } from '@/services/api/admissionApi';
 import { getAllWards } from '@/services/api/wardAPI';
 
-const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
-  const [wards, setWards] = useState([]);
-  const [allAdmissions, setAllAdmissions] = useState([]);
+// Module-level cache so wards and active admissions persist across opens and do not re-block UI
+let memoryCachedWards = [];
+let memoryCachedAdmissions = [];
+
+const ConfirmAdmissionModal = ({
+  isOpen,
+  onClose,
+  item,
+  onConfirmed,
+  availableWards = [],
+  existingAdmissions = [],
+}) => {
+  const [wards, setWards] = useState(() => {
+    if (Array.isArray(availableWards) && availableWards.length > 0) {
+      return availableWards.filter((w) => !w.status || w.status === 'active');
+    }
+    return memoryCachedWards;
+  });
+  const [allAdmissions, setAllAdmissions] = useState(() => {
+    if (Array.isArray(existingAdmissions) && existingAdmissions.length > 0) {
+      return existingAdmissions;
+    }
+    return memoryCachedAdmissions;
+  });
   const [loadingData, setLoadingData] = useState(false);
   const [wardId, setWardId] = useState('');
   const [selectedBed, setSelectedBed] = useState('');
@@ -14,38 +35,77 @@ const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
   const [customBedInput, setCustomBedInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sync props whenever availableWards or existingAdmissions change
+  useEffect(() => {
+    if (Array.isArray(availableWards) && availableWards.length > 0) {
+      const active = availableWards.filter((w) => !w.status || w.status === 'active');
+      const list = active.length ? active : availableWards;
+      setWards(list);
+      memoryCachedWards = list;
+      setLoadingData(false);
+    }
+  }, [availableWards]);
+
+  useEffect(() => {
+    if (Array.isArray(existingAdmissions) && existingAdmissions.length > 0) {
+      setAllAdmissions(existingAdmissions);
+      memoryCachedAdmissions = existingAdmissions;
+    }
+  }, [existingAdmissions]);
+
   useEffect(() => {
     if (!isOpen) return;
+
+    // If wards and admissions are already present (from props or memory cache), no need to wait or block
+    const hasWards = wards.length > 0 || memoryCachedWards.length > 0;
+    const hasAdmissions = allAdmissions.length > 0 || memoryCachedAdmissions.length > 0;
+
+    if (hasWards && hasAdmissions) {
+      if (wards.length === 0 && memoryCachedWards.length > 0) {
+        setWards(memoryCachedWards);
+      }
+      if (allAdmissions.length === 0 && memoryCachedAdmissions.length > 0) {
+        setAllAdmissions(memoryCachedAdmissions);
+      }
+      setLoadingData(false);
+      return;
+    }
 
     let mounted = true;
     const loadData = async () => {
       try {
-        setLoadingData(true);
+        if (!hasWards) setLoadingData(true);
+
+        const fetchWardsPromise = !hasWards
+          ? getAllWards()
+          : Promise.resolve(wards.length ? wards : memoryCachedWards);
+
+        const fetchAdmissionsPromise = !hasAdmissions
+          ? getAdmissions({ status: 'active', limit: 100 })
+          : Promise.resolve(allAdmissions.length ? allAdmissions : memoryCachedAdmissions);
+
         const [wardsRes, admissionsRes] = await Promise.allSettled([
-          getAllWards(),
-          getAdmissions(),
+          fetchWardsPromise,
+          fetchAdmissionsPromise,
         ]);
 
-        const rawWards =
-          wardsRes.status === 'fulfilled'
-            ? (wardsRes.value?.data ?? wardsRes.value ?? [])
-            : [];
-        const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? []);
-        const activeWards = wardList.filter((w) => !w.status || w.status === 'active');
+        if (wardsRes.status === 'fulfilled' && !hasWards) {
+          const rawWards = wardsRes.value?.data ?? wardsRes.value ?? [];
+          const wardList = Array.isArray(rawWards) ? rawWards : (rawWards?.wards ?? []);
+          const activeWards = wardList.filter((w) => !w.status || w.status === 'active');
+          const finalList = activeWards.length ? activeWards : wardList;
+          memoryCachedWards = finalList;
+          if (mounted) setWards(finalList);
+        }
 
-        const rawAdmissions =
-          admissionsRes.status === 'fulfilled'
-            ? (admissionsRes.value?.data ?? admissionsRes.value ?? [])
-            : [];
-        const admissionsList = Array.isArray(rawAdmissions) ? rawAdmissions : [];
-
-        if (mounted) {
-          setWards(activeWards.length ? activeWards : wardList);
-          setAllAdmissions(admissionsList);
+        if (admissionsRes.status === 'fulfilled' && !hasAdmissions) {
+          const rawAdmissions = admissionsRes.value?.data ?? admissionsRes.value ?? [];
+          const admissionsList = Array.isArray(rawAdmissions) ? rawAdmissions : [];
+          memoryCachedAdmissions = admissionsList;
+          if (mounted) setAllAdmissions(admissionsList);
         }
       } catch (err) {
         console.error('Failed to load wards or admissions', err);
-        toast.error('Failed to load wards or active admissions');
       } finally {
         if (mounted) setLoadingData(false);
       }
@@ -55,7 +115,7 @@ const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
     return () => {
       mounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, wards.length, allAdmissions.length]);
 
   // Pre-fill recommended ward and reset bed selection when item or wards change
   useEffect(() => {
@@ -289,6 +349,20 @@ const ConfirmAdmissionModal = ({ isOpen, onClose, item, onConfirmed }) => {
             <span className="text-xs text-base-content/70">Admitting Patient:</span>
             <span className="text-sm font-bold text-base-content">{item.name}</span>
           </div>
+
+          {/* PROCEDURE COVERAGE NOTICE */}
+          {(item.admission?.isProcedureLinked || item.admission?.coveredByProcedure) && (
+            <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 flex items-start gap-2.5">
+              <FaHospital className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <span className="font-bold text-primary">Surgical Procedure Recovery:</span>
+                <p className="text-base-content/80 mt-0.5">
+                  Procedure: <span className="font-semibold">{item.admission.procedureName || 'Surgical Procedure'}</span>.
+                  The inpatient ward stay is covered by the procedure fee package (blood bank separate). Assign ward and bed to complete admission.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* PAYMENT STATUS ALERTS */}
           {paymentInfo.status === 'paid' && (

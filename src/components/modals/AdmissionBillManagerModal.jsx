@@ -20,7 +20,7 @@ const getId = (record) => record?._id || record?.id
 
 const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, dependantId, patientName }) => {
   const [billings, setBillings] = useState([])
-  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], treatments: [] })
+  const [unbilledGroups, setUnbilledGroups] = useState({ labs: [], ivs: [], treatments: [], blood: [] })
   const [admissionData, setAdmissionData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -36,13 +36,14 @@ const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, de
     const loadBillsAndUnbilledItems = async () => {
       setLoading(true)
       setError('')
-      const [billsResult, labsResult, chargesResult, ivsResult, treatmentResult, admResult] = await Promise.allSettled([
+      const [billsResult, labsResult, chargesResult, ivsResult, treatmentResult, admResult, bloodResult] = await Promise.allSettled([
         getBillingsByAdmissionId(admissionId),
         getInvestigationByPatientId(patientId),
         getServiceCharges(),
         apiClient.get(`/iv-fluid/patient/${patientId}`),
         apiClient.get(`/dispense/treatment-bill/preview/${admissionId}`),
         getAdmissionById(admissionId),
+        apiClient.get(`/blood-transfusions/patient/${patientId}`),
       ])
 
       if (!active) return
@@ -127,7 +128,29 @@ const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, de
 
       const treatmentData = treatmentResult.status === 'fulfilled' ? unwrap(treatmentResult.value) : null
       const treatments = Array.isArray(treatmentData?.itemDetails) ? treatmentData.itemDetails : []
-      setUnbilledGroups({ labs, ivs, treatments })
+
+      const rawBlood = bloodResult.status === 'fulfilled' ? toList(bloodResult.value) : []
+      const blood = rawBlood
+        .filter((order) => !order.isBilled && (!order.admissionId || String(order.admissionId) === String(admissionId)))
+        .map((order) => {
+          const units = Number(order.units) || 1
+          const price = Number(order.amount) ? Number(order.amount) / units : 0
+          const total = Number(order.amount) || (price * units)
+          return {
+            code: 'BLOOD_TRANSFUSION',
+            category: 'Blood Bank',
+            description: `${units} unit(s) of ${order.bloodGroup || 'Blood'} (${order.serviceName || 'Blood Transfusion'}) - Billed Separately`,
+            quantity: units,
+            price,
+            unitPrice: price,
+            total,
+            bloodTransfusionOrderId: getId(order),
+            serviceChargeId: order.serviceChargeId || undefined,
+            hasConfiguredPrice: total > 0,
+          }
+        })
+
+      setUnbilledGroups({ labs, ivs, treatments, blood })
       setLoading(false)
     }
 
@@ -211,6 +234,7 @@ const AdmissionBillManagerModal = ({ isOpen, onClose, admissionId, patientId, de
   if (!isOpen) return null
 
   const groups = [
+    { key: 'blood', title: 'Blood Bank & Transfusions (Billed Separately from Procedure)', items: unbilledGroups.blood || [] },
     { key: 'labs', title: 'Laboratory', items: unbilledGroups.labs },
     { key: 'ivs', title: 'IV Fluids', items: unbilledGroups.ivs },
     { key: 'treatments', title: 'Dispensed Medications & Consumables', items: unbilledGroups.treatments },

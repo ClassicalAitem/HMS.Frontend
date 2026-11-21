@@ -1,11 +1,20 @@
 import apiClient from "./apiClient";
 
+let wardsMemCache = null;
+
 export const getAllWards = async() => {
   try {
+    if (wardsMemCache && Array.isArray(wardsMemCache) && wardsMemCache.length > 0) {
+      return wardsMemCache;
+    }
     const response = await apiClient.get('/ward');
-    return response.data;
-
+    const data = response.data;
+    if (data) {
+      wardsMemCache = data;
+    }
+    return data;
   } catch (error) {
+    if (wardsMemCache) return wardsMemCache;
     console.error('❌ WardsAPI: Get Wards error occurred');
     console.error('📥 WardsAPI: Error response:', error.response);
     console.error('📥 WardsAPI: Error data:', error.response?.data);

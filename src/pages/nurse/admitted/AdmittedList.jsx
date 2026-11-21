@@ -26,6 +26,8 @@ const AdmittedList = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [confirmTarget, setConfirmTarget] = useState(null)
+  const [availableWards, setAvailableWards] = useState([])
+  const [allAdmissionsList, setAllAdmissionsList] = useState([])
 
   const loadData = async () => {
     try {
@@ -50,6 +52,9 @@ const AdmittedList = () => {
             return Array.isArray(raw) ? raw : []
           })()
         : []
+
+      setAvailableWards(wardList)
+      setAllAdmissionsList(allAdmissions)
 
       const allVitals = vitalsRes.status === 'fulfilled'
         ? (() => {
@@ -117,12 +122,18 @@ const AdmittedList = () => {
         const targetId = admission.dependantId || admission.patientId
         const latestVitalInfo = vitalsMap.get(targetId)
 
-        // Resolve ward name (translates raw UUID to proper human-readable ward name)
-        const rawWardKey = String(admission.wardId || admission.ward || '')
-        const resolvedWard = wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || 'General Ward'
-
         // Normalize bed number: avoid "Bed Bed X"
         const cleanBed = String(admission.bedNumber || '').trim().replace(/^bed\s*/i, '')
+        const hasValidBed = cleanBed && !cleanBed.toLowerCase().includes('unassigned')
+        const isConfirmedByNurse = !!(admission.confirmedAt && hasValidBed)
+
+        // Resolve ward name (translates raw UUID to proper human-readable ward name)
+        // Any admission that the nurses have not assigned bed or ward to yet should be blank
+        const rawWardKey = String(admission.wardId || admission.ward || '')
+        const resolvedWard = isConfirmedByNurse
+          ? (wardMap.get(rawWardKey) || admission.wardName || (rawWardKey && !rawWardKey.includes('-') ? rawWardKey : null) || '')
+          : ''
+        const finalBed = isConfirmedByNurse ? cleanBed : ''
 
         // Resolve linked billing & payment info for admission
         const admissionIdStr = String(admission._id || admission.id || '')
@@ -152,6 +163,39 @@ const AdmittedList = () => {
           if (consultBills.length > 0) matchedBills.push(...consultBills)
         }
 
+        // Match bills covering this procedure for procedure-linked admissions
+        const isProcedureLinked = !!(admission.isProcedureLinked || admission.coveredByProcedure || admission.surgeryId || admission.appointmentId)
+        const apptId = admission.appointmentId ? String(admission.appointmentId) : null
+        const surgId = admission.surgeryId ? String(admission.surgeryId) : null
+        const procName = admission.procedureName ? String(admission.procedureName).toLowerCase().trim() : null
+
+        if (isProcedureLinked) {
+          const procBills = allBillings.filter(b => {
+            const bPatient = String(b.patientId || b.patient?.id || b.patient?._id || '')
+            const bDep = b.dependantId ? String(b.dependantId) : null
+            const sameSubject = dependantIdStr ? bDep === dependantIdStr : bPatient === patientIdStr
+            if (!sameSubject) return false
+
+            return Array.isArray(b.itemDetails) && b.itemDetails.some(it => {
+              if (apptId && String(it.appointmentId || '') === apptId) return true
+              if (surgId && String(it.surgeryId || '') === surgId) return true
+              if (it.code === 'SURGERY') {
+                if (!procName) return true
+                const itDesc = String(it.description || '').toLowerCase()
+                return itDesc.includes(procName) || procName.includes(itDesc)
+              }
+              return false
+            })
+          })
+
+          procBills.forEach(pb => {
+            const pbId = String(pb.id || pb._id || '')
+            if (!matchedBills.some(mb => String(mb.id || mb._id || '') === pbId)) {
+              matchedBills.push(pb)
+            }
+          })
+        }
+
         let totalAmount = 0
         let totalPaid = 0
         let isCleared = false
@@ -172,6 +216,11 @@ const AdmittedList = () => {
           if (estimated > 0 && !admission.isBilled) totalAmount = estimated
         }
 
+        // If procedure-linked and no bills yet, track estimated procedure price
+        if (totalAmount === 0 && isProcedureLinked && Number(admission.procedurePrice) > 0) {
+          totalAmount = Number(admission.procedurePrice)
+        }
+
         let status = 'unbilled'
         if (isCleared || (totalAmount > 0 && totalPaid >= totalAmount) || !!admission.paidAt) {
           status = 'paid'
@@ -190,6 +239,9 @@ const AdmittedList = () => {
           paidAmount: totalPaid,
           outstandingAmount,
           isCleared: status === 'paid',
+          isProcedureCovered: isProcedureLinked,
+          procedureName: admission.procedureName || null,
+          procedurePrice: Number(admission.procedurePrice) || 0,
         }
 
         return {
@@ -200,7 +252,8 @@ const AdmittedList = () => {
           displayId,
           name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
           ward: resolvedWard,
-          bedNumber: cleanBed,
+          bedNumber: finalBed,
+          isConfirmed: isConfirmedByNurse,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           lastVitalsTime: latestVitalInfo?.createdAt || null,
           relationshipType: isDependant ? source?.relationshipType : null,
@@ -464,19 +517,26 @@ const AdmittedList = () => {
                           )}
                         </td>
                         <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-base-content">{item.ward}</span>
-                            {item.bedNumber ? (
-                              <span className="badge badge-outline badge-sm text-xs">
-                                Bed {item.bedNumber}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-base-content/40 italic">Unassigned Bed</span>
-                            )}
-                          </div>
+                          {item.ward || item.bedNumber ? (
+                            <div className="flex items-center gap-2">
+                              {item.ward && <span className="font-medium text-base-content">{item.ward}</span>}
+                              {item.bedNumber && (
+                                <span className="badge badge-outline badge-sm text-xs">
+                                  Bed {item.bedNumber}
+                                </span>
+                              )}
+                            </div>
+                          ) : null}
                         </td>
                         {activeTab === 'pending' ? (
                           <td className="py-3.5 px-4">
+                            {item.paymentInfo?.isProcedureCovered && (
+                              <div className="mb-1">
+                                <span className="badge badge-primary badge-xs font-semibold gap-1" title={item.paymentInfo.procedureName || 'Procedure Package'}>
+                                  🏥 Procedure Package
+                                </span>
+                              </div>
+                            )}
                             {item.paymentInfo?.status === 'paid' && (
                               <div className="flex flex-col gap-0.5">
                                 <span className="badge badge-success badge-sm font-semibold gap-1">
@@ -619,6 +679,8 @@ const AdmittedList = () => {
             onClose={() => setConfirmTarget(null)}
             item={confirmTarget}
             onConfirmed={loadData}
+            availableWards={availableWards}
+            existingAdmissions={allAdmissionsList}
           />
     </NurseLayout>
   )
@@ -695,7 +757,13 @@ const PendingCard = ({ item, onConfirm }) => {
         )}
       </div>
       <div className="text-xs text-base-content/70 space-y-1">
-        <p><span className="font-semibold text-base-content">Ward:</span> {item.ward}</p>
+        {paymentInfo?.isProcedureCovered && (
+          <div className="flex items-center gap-1.5 text-primary font-medium text-[11px] bg-primary/10 px-2 py-1 rounded-lg">
+            <span>🏥</span>
+            <span className="truncate">Procedure: {paymentInfo.procedureName || 'Surgical Procedure'} (Covered)</span>
+          </div>
+        )}
+        {item.ward && <p><span className="font-semibold text-base-content">Ward:</span> {item.ward}</p>}
         {item.bedNumber && <p><span className="font-semibold text-base-content">Bed:</span> {item.bedNumber}</p>}
       </div>
       <button

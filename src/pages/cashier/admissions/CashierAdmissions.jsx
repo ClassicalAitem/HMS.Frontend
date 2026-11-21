@@ -166,8 +166,10 @@ const CashierAdmissions = () => {
           : (source?.hospitalId || admission.patient?.hospitalId || patientMap.get(String(admission.patientId))?.hospitalId)
         const displayId = parentHospitalId || '—'
 
-        const resolvedWard = resolveWardName(admission)
         const cleanBed = resolveBedNumber(admission)
+        const isConfirmedByNurse = !!(admission.confirmedAt && cleanBed)
+        const resolvedWard = isConfirmedByNurse ? resolveWardName(admission) : ''
+        const finalBed = isConfirmedByNurse ? cleanBed : ''
 
         // Resolve linked billing & payment info for admission
         const admissionIdStr = String(admission._id || admission.id || '')
@@ -246,7 +248,7 @@ const CashierAdmissions = () => {
           name: `${source?.firstName || ''} ${source?.lastName || ''}`.trim() || 'Unknown',
           ward: resolvedWard,
           wardName: resolvedWard,
-          bedNumber: cleanBed,
+          bedNumber: finalBed,
           admittedAt: admission.confirmedAt || admission.admittedAt || admission.createdAt,
           relationshipType: isDependant ? source?.relationshipType : null,
           parentPatient,
@@ -393,16 +395,16 @@ const CashierAdmissions = () => {
                       </div>
                     </td>
                     <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-base-content">{item.ward}</span>
-                        {item.bedNumber ? (
-                          <span className="badge badge-outline badge-sm text-xs font-semibold">
-                            Bed {item.bedNumber}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-base-content/40 italic">Unassigned Bed</span>
-                        )}
-                      </div>
+                      {item.ward || item.bedNumber ? (
+                        <div className="flex items-center gap-2">
+                          {item.ward && <span className="font-medium text-base-content">{item.ward}</span>}
+                          {item.bedNumber && (
+                            <span className="badge badge-outline badge-sm text-xs font-semibold">
+                              Bed {item.bedNumber}
+                            </span>
+                          )}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="py-3.5 px-4">
                       {item.paymentInfo?.status === 'paid' && (
