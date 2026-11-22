@@ -35,8 +35,8 @@ const FrontdeskDashboard = () => {
     try {
       setStatsLoading(true);
       const [patientsRes, dependantsRes, appointmentsRes] = await Promise.allSettled([
-        getPatients({ limit: 500 }),
-        getDependants({ limit: 500 }),
+        getPatients(),
+        getDependants(),
         getAllAppointments(),
       ]);
 
