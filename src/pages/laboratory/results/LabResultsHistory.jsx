@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LaboratoryLayout from "@/layouts/laboratory";
 import KolakLoader from "@/components/common/KolakLoader";
-import { HmoStatusBadge } from "@/components/common";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import toast from "react-hot-toast";
 import { FiSearch, FiEye, FiRefreshCw } from "react-icons/fi";
@@ -56,12 +55,63 @@ const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString();
 };
 
+const isDateInPeriod = (dateVal, period, customStart, customEnd) => {
+  if (period === "all") return true;
+  if (!dateVal) return false;
+
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return false;
+
+  const now = new Date();
+
+  if (period === "today") {
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+
+  if (period === "week") {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return d >= startOfWeek && d <= endOfWeek;
+  }
+
+  if (period === "month") {
+    return (
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+
+  if (period === "custom") {
+    if (!customStart && !customEnd) return true;
+    const start = customStart ? new Date(`${customStart}T00:00:00`) : new Date(0);
+    const end = customEnd ? new Date(`${customEnd}T23:59:59.999`) : new Date(8640000000000000);
+    return d >= start && d <= end;
+  }
+
+  return true;
+};
+
 const LabResultsHistory = () => {
   const navigate = useNavigate();
   const [allLabResults, setAllLabResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const resultsPerPage = 10;
 
@@ -91,9 +141,12 @@ const LabResultsHistory = () => {
     const query = search.trim().toLowerCase();
     const baseList = Array.isArray(allLabResults) ? allLabResults : [];
 
-    return !query
-      ? baseList
-      : baseList.filter((result) => {
+    return baseList.filter((result) => {
+      if (!isDateInPeriod(result.completedAt || result.createdAt, periodFilter, customStartDate, customEndDate)) {
+        return false;
+      }
+      if (!query) return true;
+
           const patientInfo = extractPatientInfo(result);
           const patientName = patientInfo.name.toLowerCase();
           const testName = getTestName(result).toLowerCase();
@@ -107,7 +160,7 @@ const LabResultsHistory = () => {
             hospitalId.includes(query)
           );
         });
-  }, [allLabResults, search]);
+  }, [allLabResults, search, periodFilter, customStartDate, customEndDate]);
 
   const totalResults = filteredLabResults.length;
   const totalPages = Math.max(1, Math.ceil(totalResults / resultsPerPage));
@@ -159,32 +212,118 @@ const LabResultsHistory = () => {
           </div>
         )}
 
-        {/* Search bar */}
-        <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="relative w-full sm:w-96">
-            <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
-            <input
-              type="text"
-              placeholder="Search by patient name, ID, test type, or technician..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
-            />
-            {search && (
+        {/* Search & Period Filter */}
+        <div className="bg-base-100 p-4 rounded-xl border border-base-300/80 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="relative w-full sm:w-96">
+              <FiSearch className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40" />
+              <input
+                type="text"
+                placeholder="Search by patient name, ID, test type, or technician..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="input input-sm input-bordered w-full pl-9 bg-base-200/50 focus:bg-base-100"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <span className="text-xs text-base-content/60 self-end sm:self-auto">
+              Showing: <strong className="text-primary font-bold">{filteredLabResults.length}</strong> of {allLabResults.length} reports
+            </span>
+          </div>
+
+          {/* Period Filter */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-base-200 text-xs">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-semibold text-base-content/60 mr-1">Period:</span>
+              {[
+                { id: "all", label: "All Time" },
+                { id: "today", label: "Today" },
+                { id: "week", label: "This Week" },
+                { id: "month", label: "This Month" },
+                { id: "custom", label: "Custom Range" },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    setPeriodFilter(p.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`btn btn-xs rounded-full px-3 ${
+                    periodFilter === p.id
+                      ? "btn-neutral text-white font-bold"
+                      : "btn-ghost text-base-content/70"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            {(periodFilter !== "all" || search) && (
               <button
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40 hover:text-base-content"
+                onClick={() => {
+                  setPeriodFilter("all");
+                  setCustomStartDate("");
+                  setCustomEndDate("");
+                  setSearch("");
+                }}
+                className="btn btn-ghost btn-xs text-error"
               >
-                ✕
+                Reset Filters
               </button>
             )}
           </div>
-          <span className="text-xs text-base-content/60 self-end sm:self-auto">
-            Total Reports: <strong className="text-base-content">{allLabResults.length}</strong>
-          </span>
+
+          {/* Custom Date Pickers */}
+          {periodFilter === "custom" && (
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base-content/60">From:</span>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => {
+                    setCustomStartDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="input input-bordered input-xs rounded-lg"
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-base-content/60">To:</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => {
+                    setCustomEndDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="input input-bordered input-xs rounded-lg"
+                />
+              </div>
+              {(customStartDate || customEndDate) && (
+                <button
+                  onClick={() => {
+                    setCustomStartDate("");
+                    setCustomEndDate("");
+                  }}
+                  className="btn btn-ghost btn-xs text-error"
+                >
+                  Clear Dates
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Table / Cards */}
@@ -202,7 +341,6 @@ const LabResultsHistory = () => {
                       <tr>
                         <th>Patient Name</th>
                         <th>Type</th>
-                        <th>HMO Status</th>
                         <th>Test Type</th>
                         <th>Technician</th>
                         <th>Status</th>
@@ -239,9 +377,6 @@ const LabResultsHistory = () => {
                               >
                                 {patientInfo.type}
                               </span>
-                            </td>
-                            <td>
-                              <HmoStatusBadge status={result.hmoStatus} size="sm" />
                             </td>
                             <td className="text-sm font-medium max-w-xs truncate">
                               {testName}
@@ -292,7 +427,6 @@ const LabResultsHistory = () => {
                           <p className="font-bold text-base text-base-content">{patientInfo.name}</p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="badge badge-xs badge-outline">{patientInfo.type}</span>
-                            <HmoStatusBadge status={result.hmoStatus} size="sm" />
                           </div>
                         </div>
                         <span className="badge badge-success badge-sm shrink-0">

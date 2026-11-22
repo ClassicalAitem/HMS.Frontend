@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import LaboratoryLayout from "@/layouts/laboratory";
 import KolakLoader from "@/components/common/KolakLoader";
-import { HmoStatusBadge } from "@/components/common";
 import { getInvestigations } from "@/services/api/investigationRequestAPI";
 import { getLabResults } from "@/services/api/labResultsAPI";
 import AcceptTestRequestModal from "@/pages/laboratory/incoming/modals/AcceptTestRequestModal";
@@ -59,6 +58,54 @@ const getStatusBadge = (status) => {
   }
 };
 
+const isDateInPeriod = (dateVal, period, customStart, customEnd) => {
+  if (period === "all") return true;
+  if (!dateVal) return false;
+
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return false;
+
+  const now = new Date();
+
+  if (period === "today") {
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+
+  if (period === "week") {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return d >= startOfWeek && d <= endOfWeek;
+  }
+
+  if (period === "month") {
+    return (
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+
+  if (period === "custom") {
+    if (!customStart && !customEnd) return true;
+    const start = customStart ? new Date(`${customStart}T00:00:00`) : new Date(0);
+    const end = customEnd ? new Date(`${customEnd}T23:59:59.999`) : new Date(8640000000000000);
+    return d >= start && d <= end;
+  }
+
+  return true;
+};
+
 const OrderedLab = () => {
   const navigate = useNavigate();
   const [allInvestigations, setAllInvestigations] = useState([]);
@@ -66,6 +113,9 @@ const OrderedLab = () => {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [activeStatusFilter, setActiveStatusFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const resultsPerPage = 10;
   const [existingLabResults, setExistingLabResults] = useState({});
@@ -174,6 +224,11 @@ const OrderedLab = () => {
     const baseList = Array.isArray(allInvestigations) ? allInvestigations : [];
 
     return baseList.filter((inv) => {
+      // Period filter
+      if (!isDateInPeriod(inv.createdAt, periodFilter, customStartDate, customEndDate)) {
+        return false;
+      }
+
       // Status filter
       if (activeStatusFilter === "pending" && (inv.status === "completed" || inv.status === "processing")) return false;
       if (activeStatusFilter === "processing" && inv.status !== "processing" && inv.status !== "in_progress") return false;
@@ -192,7 +247,7 @@ const OrderedLab = () => {
 
       return true;
     });
-  }, [allInvestigations, search, activeStatusFilter]);
+  }, [allInvestigations, search, activeStatusFilter, periodFilter, customStartDate, customEndDate]);
 
   const paginatedInvestigations = useMemo(() => {
     const start = (currentPage - 1) * resultsPerPage;
@@ -255,7 +310,6 @@ const OrderedLab = () => {
                   { id: "pending", label: "Pending" },
                   { id: "processing", label: "In Progress" },
                   { id: "completed", label: "Completed" },
-                  { id: "hmo", label: "HMO Covered" },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -297,6 +351,80 @@ const OrderedLab = () => {
                 )}
               </div>
             </div>
+
+            {/* Period Filter Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-base-200 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-semibold text-base-content/60 mr-1">Period:</span>
+                {[
+                  { id: "all", label: "All Time" },
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "This Week" },
+                  { id: "month", label: "This Month" },
+                  { id: "custom", label: "Custom Range" },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setPeriodFilter(p.id);
+                      setCurrentPage(1);
+                    }}
+                    className={`btn btn-xs rounded-full px-3 ${
+                      periodFilter === p.id
+                        ? "btn-neutral text-white font-bold"
+                        : "btn-ghost text-base-content/70"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="text-base-content/60 font-medium">
+                Showing <strong className="text-primary">{filteredInvestigations.length}</strong> of {allInvestigations.length} requests
+              </div>
+            </div>
+
+            {/* Custom Range Date Pickers */}
+            {periodFilter === "custom" && (
+              <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base-content/60">From:</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="input input-bordered input-xs rounded-lg"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base-content/60">To:</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="input input-bordered input-xs rounded-lg"
+                  />
+                </div>
+                {(customStartDate || customEndDate) && (
+                  <button
+                    onClick={() => {
+                      setCustomStartDate("");
+                      setCustomEndDate("");
+                    }}
+                    className="btn btn-ghost btn-xs text-error"
+                  >
+                    Clear Dates
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Table / Cards */}
@@ -314,7 +442,6 @@ const OrderedLab = () => {
                       <tr>
                         <th>Patient Name</th>
                         <th>Type</th>
-                        <th>HMO Status</th>
                         <th>Test Names</th>
                         <th>Status</th>
                         <th>Date</th>
@@ -346,9 +473,6 @@ const OrderedLab = () => {
                               }`}>
                                 {patientInfo.type}
                               </span>
-                            </td>
-                            <td>
-                              <HmoStatusBadge status={inv.hmoStatus} size="sm" />
                             </td>
                             <td className="text-sm max-w-xs truncate">
                               {getTestNames(inv)}
@@ -385,8 +509,15 @@ const OrderedLab = () => {
                                   </>
                                 ) : (
                                   <>
-                                   
-                                
+                                    
+                                    <button
+                                      onClick={() => handleSendToDoctor(inv)}
+                                      disabled={isSending}
+                                      className="btn btn-xs btn-outline btn-ghost gap-1"
+                                    >
+                                      <FiSend className="w-3.5 h-3.5" />
+                                      {isSending ? "..." : "Doctor"}
+                                    </button>
                                   </>
                                 )}
                               </div>
@@ -414,7 +545,6 @@ const OrderedLab = () => {
                           <p className="font-bold text-base text-base-content">{patientInfo.name}</p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="badge badge-xs badge-outline">{patientInfo.type}</span>
-                            <HmoStatusBadge status={inv.hmoStatus} size="sm" />
                           </div>
                         </div>
                         <span className={`badge ${getStatusBadge(inv.status)} badge-sm shrink-0`}>

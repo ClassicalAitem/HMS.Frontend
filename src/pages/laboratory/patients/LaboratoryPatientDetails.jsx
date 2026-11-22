@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye } from 'react-icons/fa';
+import { FaArrowLeft, FaFlask, FaPlus, FaEdit, FaPlay, FaEye, FaUserMd } from 'react-icons/fa';
 import LaboratoryLayout from '@/layouts/laboratory';
 import KolakLoader from '@/components/common/KolakLoader';
 import SendPatientModal from '@/components/modals/SendPatientModal';
+import PatientDetailsCard from '@/components/common/PatientDetailsCard';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
@@ -222,10 +223,11 @@ const LaboratoryPatientDetails = () => {
         <KolakLoader fullscreen text="Loading patient laboratory details..." />
       )}
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+      <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        {/* Header Navigation */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Patient Details</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-base-content">Patient Laboratory Details</h1>
             <p className="text-sm text-base-content/60">{fullName}{dependantId ? ' · Dependant' : ''}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -257,114 +259,157 @@ const LaboratoryPatientDetails = () => {
           </div>
         </div>
 
-        <section className="grid gap-4 rounded-lg border border-base-300 bg-base-100 p-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div><p className="text-xs text-base-content/60">Hospital ID</p><p className="font-medium">{patient?.hospitalId || '—'}</p></div>
-          <div><p className="text-xs text-base-content/60">Gender</p><p className="font-medium capitalize">{subject?.gender || '—'}</p></div>
-          <div><p className="text-xs text-base-content/60">Phone</p><p className="font-medium">{subject?.phone || subject?.phoneNumber || patient?.phone || '—'}</p></div>
-          <div><p className="text-xs text-base-content/60">Status</p><p className="font-medium capitalize">{subject?.status || patient?.status || 'Unknown'}</p></div>
-        </section>
+        {/* Standard Patient Details Card */}
+        <PatientDetailsCard
+          patient={patient}
+          summarySubject={dependant || patient}
+          subject={dependant || patient}
+          isViewingDependant={Boolean(dependantId)}
+          guardian={dependant ? patient : null}
+        />
 
-        <section className="overflow-hidden rounded-lg border border-base-300 bg-base-100">
-          <div className="flex items-center gap-2 border-b border-base-200 px-4 py-3">
-            <FaFlask className="text-primary" aria-hidden="true" />
-            <h2 className="font-semibold">Laboratory Investigation Requests</h2>
-            <span className="badge badge-ghost badge-sm">{investigations.length}</span>
+        {/* Investigation Requests Section */}
+        <section className="overflow-hidden rounded-2xl border border-base-200 bg-base-100 shadow-sm">
+          <div className="flex items-center justify-between border-b border-base-200 px-5 py-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                <FaFlask className="w-5 h-5" aria-hidden="true" />
+              </div>
+              <div>
+                <h2 className="font-bold text-base text-base-content">Laboratory Investigation Requests</h2>
+                <p className="text-xs text-base-content/60">Ordered tests, clinician notes, and laboratory results</p>
+              </div>
+            </div>
+            <span className="badge badge-primary badge-outline font-bold text-xs">{investigations.length} requests</span>
           </div>
+
           {loading ? (
             <div className="py-12">
               <KolakLoader text="Loading investigations..." />
             </div>
           ) : investigations.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-base-content/60">No laboratory investigation requests found.</p>
+            <p className="px-4 py-12 text-center text-sm text-base-content/60">No laboratory investigation requests found for this patient.</p>
           ) : (
             <div className="overflow-x-auto max-h-[60vh] sm:max-h-[65vh] 2xl:max-h-[70vh]">
-              <table className="table table-zebra w-full">
-                <thead className="sticky top-0 bg-base-200 z-10">
-                  <tr><th>Investigation</th><th>Ordered Tests</th><th>Status</th><th>Priority</th><th>Requested</th></tr>
+              <table className="table table-zebra w-full text-xs">
+                <thead className="sticky top-0 bg-base-200/90 backdrop-blur-xs z-10 uppercase text-xs text-base-content/70">
+                  <tr>
+                    <th>Investigation</th>
+                    <th>Ordered Tests</th>
+                    <th>Requested By (Clinician)</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Requested Date</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {investigations.map((request) => (
-                    <tr key={request._id || request.id}>
-                      <td className="font-medium">{request.investigationType || request.type || 'Laboratory'}</td>
-                      <td>
-                        {Array.isArray(request.tests) && request.tests.length > 0 ? (
-                          <div className="flex min-w-max items-start gap-2">
-                            {hasPaymentReadyTest(request) && (
-                              <div className="flex items-center gap-2">
-                                {!isInvestigationClosed(request.status) ? (
-                                  <button
-                                    type="button"
-                                    className={`btn btn-outline btn-xs whitespace-nowrap ${labResultLookupFailed ? 'btn-disabled' : labResultsByInvestigationId[request._id || request.id] ? 'btn-warning' : 'btn-primary'}`}
-                                    disabled={labResultLookupFailed}
-                                    onClick={() => handleLabResultAction(request)}
-                                  >
-                                    {labResultsByInvestigationId[request._id || request.id]
-                                      ? <FaEdit aria-hidden="true" />
-                                      : <FaPlus aria-hidden="true" />}
-                                    {labResultLookupFailed
-                                      ? 'Unable to Check Result'
-                                      : labResultsByInvestigationId[request._id || request.id]
-                                        ? 'Edit Lab Result'
-                                        : 'Add Lab Result'}
-                                  </button>
-                                ) : normalizeRequestStatus(request.status) === 'cancelled' ? (
-                                  <span className="badge badge-sm badge-ghost">Cancelled</span>
-                                ) : normalizeRequestStatus(request.status) === 'completed' && !labResultsByInvestigationId[request._id || request.id] ? (
-                                  <span className="badge badge-sm badge-success">Completed</span>
-                                ) : null}
-                                
-                                {labResultsByInvestigationId[request._id || request.id] && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline btn-success btn-xs whitespace-nowrap"
-                                    onClick={() => {
-                                      const res = labResultsByInvestigationId[request._id || request.id];
-                                      navigate(`/dashboard/laboratory/results/${res._id || res.id}`);
-                                    }}
-                                  >
-                                    <FaEye aria-hidden="true" /> View Lab Result
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                            <details className="group min-w-48">
-                              <summary className="cursor-pointer select-none font-medium hover:text-primary">
-                                {request.tests.length} ordered {request.tests.length === 1 ? 'test' : 'tests'}
-                              </summary>
-                              <ul className="mt-2 space-y-2">
-                                {request.tests.map((test, index) => (
-                                  <li key={test?.id || test?._id || test?.code || index} className="flex min-w-64 items-center justify-between gap-3 rounded-md border border-base-200 bg-base-100 px-2 py-1.5">
-                                    <span className="min-w-0 text-sm">{typeof test === 'string' ? test : test.name || test.code || 'Test'}</span>
-                                    <TestPaymentBadge test={test} />
-                                  </li>
-                                ))}
-                              </ul>
-                            </details>
+                  {investigations.map((request) => {
+                    const reqDoctor =
+                      request.doctorName ||
+                      (request.doctor ? `${request.doctor.firstName || ''} ${request.doctor.lastName || ''}`.trim() : null) ||
+                      patient?.statusSenderName ||
+                      patient?.statusUser?.name ||
+                      'Attending Clinician';
+
+                    return (
+                      <tr key={request._id || request.id} className="hover:bg-base-200/40">
+                        <td className="font-bold text-base-content">
+                          {request.investigationType || request.type || 'Laboratory'}
+                        </td>
+                        <td>
+                          {Array.isArray(request.tests) && request.tests.length > 0 ? (
+                            <div className="flex min-w-max items-start gap-2">
+                              {hasPaymentReadyTest(request) && (
+                                <div className="flex items-center gap-2">
+                                  {!isInvestigationClosed(request.status) ? (
+                                    <button
+                                      type="button"
+                                      className={`btn btn-outline btn-xs whitespace-nowrap ${labResultLookupFailed ? 'btn-disabled' : labResultsByInvestigationId[request._id || request.id] ? 'btn-warning' : 'btn-primary'}`}
+                                      disabled={labResultLookupFailed}
+                                      onClick={() => handleLabResultAction(request)}
+                                    >
+                                      {labResultsByInvestigationId[request._id || request.id]
+                                        ? <FaEdit aria-hidden="true" />
+                                        : <FaPlus aria-hidden="true" />}
+                                      {labResultLookupFailed
+                                        ? 'Unable to Check Result'
+                                        : labResultsByInvestigationId[request._id || request.id]
+                                          ? 'Edit Lab Result'
+                                          : 'Add Lab Result'}
+                                    </button>
+                                  ) : normalizeRequestStatus(request.status) === 'cancelled' ? (
+                                    <span className="badge badge-sm badge-ghost">Cancelled</span>
+                                  ) : normalizeRequestStatus(request.status) === 'completed' && !labResultsByInvestigationId[request._id || request.id] ? (
+                                    <span className="badge badge-sm badge-success">Completed</span>
+                                  ) : null}
+                                  
+                                  {labResultsByInvestigationId[request._id || request.id] && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline btn-success btn-xs whitespace-nowrap"
+                                      onClick={() => {
+                                        const res = labResultsByInvestigationId[request._id || request.id];
+                                        navigate(`/dashboard/laboratory/results/${res._id || res.id}`);
+                                      }}
+                                    >
+                                      <FaEye aria-hidden="true" /> View Result
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              <details className="group min-w-48">
+                                <summary className="cursor-pointer select-none font-medium text-primary hover:underline">
+                                  {request.tests.length} ordered {request.tests.length === 1 ? 'test' : 'tests'}
+                                </summary>
+                                <ul className="mt-2 space-y-2">
+                                  {request.tests.map((test, index) => (
+                                    <li key={test?.id || test?._id || test?.code || index} className="flex min-w-64 items-center justify-between gap-3 rounded-md border border-base-200 bg-base-100 px-2 py-1.5 shadow-2xs">
+                                      <span className="min-w-0 text-xs font-medium text-base-content">{typeof test === 'string' ? test : test.name || test.code || 'Test'}</span>
+                                      <TestPaymentBadge test={test} />
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-1.5 font-semibold text-xs text-base-content">
+                            <FaUserMd className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span>{reqDoctor}</span>
                           </div>
-                        ) : '—'}
-                      </td>
-                      <td>
-                        <div className="flex min-w-max items-center gap-2">
-                          <span className={`badge badge-sm ${getStatusClass(request.status)}`}>{String(request.status || 'Unknown').replace(/_/g, ' ')}</span>
-                          {normalizeRequestStatus(request.status) === 'requested' && (
-                            <button
-                              type="button"
-                              className="btn btn-primary btn-xs whitespace-nowrap"
-                              disabled={updatingInvestigationId !== null}
-                              onClick={() => handleStartProcessing(request)}
-                            >
-                              {updatingInvestigationId === (request._id || request.id)
-                                ? <span className="loading loading-spinner loading-xs" />
-                                : <FaPlay aria-hidden="true" />}
-                              Start Processing
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="capitalize">{request.priority || 'Normal'}</td>
-                      <td>{request.createdAt ? formatNigeriaDateTime(request.createdAt) : '—'}</td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <div className="flex min-w-max items-center gap-2">
+                            <span className={`badge badge-sm font-semibold ${getStatusClass(request.status)}`}>
+                              {String(request.status || 'Unknown').replace(/_/g, ' ')}
+                            </span>
+                            {normalizeRequestStatus(request.status) === 'requested' && (
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-xs whitespace-nowrap gap-1 shadow-2xs"
+                                disabled={updatingInvestigationId !== null}
+                                onClick={() => handleStartProcessing(request)}
+                              >
+                                {updatingInvestigationId === (request._id || request.id)
+                                  ? <span className="loading loading-spinner loading-xs" />
+                                  : <FaPlay className="w-2.5 h-2.5" aria-hidden="true" />}
+                                Start Processing
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td className="capitalize">
+                          <span className={`badge badge-xs font-semibold ${String(request.priority).toLowerCase() === 'urgent' ? 'badge-error' : 'badge-ghost'}`}>
+                            {request.priority || 'Normal'}
+                          </span>
+                        </td>
+                        <td className="text-base-content/70">
+                          {request.createdAt ? formatNigeriaDateTime(request.createdAt) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
