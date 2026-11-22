@@ -1,58 +1,249 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FrontdeskLayout } from '@/layouts/frontdesk';
 import { 
-  UpcomingSurgeries, 
-  OverallDischarge, 
   RecentlyAttendedPatients
 } from '@/components/frontdesk';
 import KolakLoader from '@/components/common/KolakLoader';
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
-import { FaUserPlus, FaCalendarPlus } from 'react-icons/fa';
+import { 
+  FaUserPlus, 
+  FaCalendarPlus, 
+  FaUsers, 
+  FaUserCheck, 
+  FaCalendarCheck, 
+  FaHospitalUser,
+  FaReceipt
+} from 'react-icons/fa';
+import { RiRefreshLine } from 'react-icons/ri';
+import { getPatients } from '@/services/api/patientsAPI';
+import { getDependants } from '@/services/api/dependantAPI';
+import { getAllAppointments } from '@/services/api/appointmentsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
 const FrontdeskDashboard = () => {
   const { user, isLoading: authLoading } = useAppSelector((state) => state.auth);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    totalPatients: 0,
+    registeredToday: 0,
+    upcomingAppointments: 0,
+    attendedToday: 0,
+  });
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      setStatsLoading(true);
+      const [patientsRes, dependantsRes, appointmentsRes] = await Promise.allSettled([
+        getPatients({ limit: 500 }),
+        getDependants({ limit: 500 }),
+        getAllAppointments(),
+      ]);
+
+      const patients = patientsRes.status === 'fulfilled'
+        ? (Array.isArray(patientsRes.value?.data) ? patientsRes.value.data : (patientsRes.value?.data?.data ?? []))
+        : [];
+
+      const rawDependants = dependantsRes.status === 'fulfilled'
+        ? (dependantsRes.value?.data?.data ?? dependantsRes.value?.data ?? [])
+        : [];
+      const dependants = Array.isArray(rawDependants)
+        ? rawDependants
+        : (rawDependants?.dependants ?? []);
+
+      const totalPatients = patients.length + dependants.length;
+
+      const now = new Date();
+      const isToday = (dateVal) => {
+        if (!dateVal) return false;
+        const d = new Date(dateVal);
+        return (
+          d.getDate() === now.getDate() &&
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
+      };
+
+      const registeredToday =
+        patients.filter((p) => isToday(p.createdAt)).length +
+        dependants.filter((d) => isToday(d.createdAt)).length;
+
+      const attendedToday =
+        patients.filter((p) => isToday(p.updatedAt)).length +
+        dependants.filter((d) => isToday(d.updatedAt)).length;
+
+      const rawAppts = appointmentsRes.status === 'fulfilled'
+        ? (appointmentsRes.value?.data?.data ?? appointmentsRes.value?.data ?? [])
+        : [];
+      const apptsList = Array.isArray(rawAppts) ? rawAppts : [];
+      const upcomingAppointments = apptsList.filter((a) => {
+        const s = String(a.status || '').toLowerCase();
+        return s !== 'cancelled' && s !== 'completed';
+      }).length;
+
+      setMetrics({
+        totalPatients,
+        registeredToday,
+        upcomingAppointments,
+        attendedToday,
+      });
+    } catch (err) {
+      console.error('Failed to load frontdesk dashboard metrics:', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  const officerName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Front Desk Officer';
+  const currentDateStr = new Date().toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
   return (
     <FrontdeskLayout>
       {authLoading && <KolakLoader fullscreen />}
 
-      {/* Page Header: actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 2xl:mb-8 gap-4">
-        <div className="w-full md:w-2/3">
-          <h1 className="text-2xl sm:text-3xl font-regular">
-            Welcome, Front Desk <span className="font-bold text-primary">{`${[user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'}`}</span>
-          </h1>
-          <p className="text-sm mt-1 text-base-content/70">Manage patient registrations, appointments, and hospital operations.</p>
+      <div className="space-y-6">
+        {/* Modern Welcome Hero Card */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-6 sm:p-8 shadow-md border border-emerald-700/30">
+          {/* Subtle Decorative Pattern */}
+          <div className="absolute -right-8 -bottom-8 w-56 h-56 rounded-full bg-white/5 blur-2xl pointer-events-none" />
+          <div className="absolute right-32 -top-12 w-40 h-40 rounded-full bg-emerald-400/10 blur-xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="badge badge-sm bg-white/15 text-white border-none font-bold uppercase tracking-wider text-[11px] px-2.5 py-1">
+                  Front Desk Operations
+                </span>
+                <span className="text-xs text-emerald-200/90 font-medium flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live System Active
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                Welcome, {officerName}
+              </h1>
+              <p className="text-xs sm:text-sm text-emerald-100/80 max-w-xl">
+                {currentDateStr} · Manage patient check-ins, registrations, schedule doctor appointments, and coordinate hospital intake.
+              </p>
+            </div>
+
+            {/* Fast Action Buttons */}
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              <Link 
+                to="/frontdesk/registration" 
+                className="btn btn-sm bg-white hover:bg-emerald-50 text-emerald-900 font-bold border-none shadow-sm gap-1.5"
+              >
+                <FaUserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                <span>New Patient</span>
+              </Link>
+              <Link 
+                to="/frontdesk/appointments" 
+                className="btn btn-sm btn-outline border-white/40 text-white hover:bg-white/10 hover:border-white font-semibold gap-1.5"
+              >
+                <FaCalendarPlus className="w-3.5 h-3.5" />
+                <span>Appointments</span>
+              </Link>
+              <Link 
+                to="/frontdesk/payment-records" 
+                className="btn btn-sm btn-outline border-white/40 text-white hover:bg-white/10 hover:border-white font-semibold gap-1.5"
+              >
+                <FaReceipt className="w-3.5 h-3.5" />
+                <span>Payment Records</span>
+              </Link>
+              <button
+                type="button"
+                onClick={fetchDashboardStats}
+                disabled={statsLoading}
+                className="btn btn-sm btn-circle btn-ghost text-white/80 hover:text-white hover:bg-white/10"
+                title="Refresh stats"
+              >
+                <RiRefreshLine className={`w-4 h-4 ${statsLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Link to="/frontdesk/registration" className="btn btn-primary btn-sm shadow-sm">
-            <FaUserPlus className="mr-1" /> New Patient
-          </Link>
-          <Link to="/frontdesk/appointments" className="btn btn-outline btn-sm bg-base-100">
-            <FaCalendarPlus className="mr-1" /> Appointments
-          </Link>
+
+        {/* 4 KPI Metric Stat Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Total Patients */}
+          <div className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-xs hover:shadow-md transition-shadow flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-base-content/50">
+                Total Patients
+              </span>
+              <h3 className="text-2xl font-black text-base-content mt-1">
+                {statsLoading ? '—' : metrics.totalPatients.toLocaleString()}
+              </h3>
+              <p className="text-xs text-base-content/60 mt-0.5">Primary & dependants</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <FaUsers className="w-6 h-6" />
+            </div>
+          </div>
+
+          {/* Card 2: Registered Today */}
+          <div className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-xs hover:shadow-md transition-shadow flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-base-content/50">
+                Registered Today
+              </span>
+              <h3 className="text-2xl font-black text-emerald-600 mt-1">
+                {statsLoading ? '—' : metrics.registeredToday.toLocaleString()}
+              </h3>
+              <p className="text-xs text-base-content/60 mt-0.5">New intake records</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+              <FaUserCheck className="w-6 h-6" />
+            </div>
+          </div>
+
+          {/* Card 3: Upcoming Appointments */}
+          <div className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-xs hover:shadow-md transition-shadow flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-base-content/50">
+                Appointments
+              </span>
+              <h3 className="text-2xl font-black text-info mt-1">
+                {statsLoading ? '—' : metrics.upcomingAppointments.toLocaleString()}
+              </h3>
+              <p className="text-xs text-base-content/60 mt-0.5">Active doctor bookings</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-info/10 text-info flex items-center justify-center shrink-0">
+              <FaCalendarCheck className="w-6 h-6" />
+            </div>
+          </div>
+
+          {/* Card 4: Attended Today */}
+          <div className="bg-base-100 rounded-2xl p-5 border border-base-200 shadow-xs hover:shadow-md transition-shadow flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold uppercase tracking-wider text-base-content/50">
+                Attended Today
+              </span>
+              <h3 className="text-2xl font-black text-amber-600 mt-1">
+                {statsLoading ? '—' : metrics.attendedToday.toLocaleString()}
+              </h3>
+              <p className="text-xs text-base-content/60 mt-0.5">Checked-in & attended</p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+              <FaHospitalUser className="w-6 h-6" />
+            </div>
+          </div>
+        </div>
+
+        {/* Recently Attended To Patients Table */}
+        <div className="w-full">
+          <RecentlyAttendedPatients />
         </div>
       </div>
-
-      {/* Cards Grid - Responsive */}
-          <div className="grid grid-cols-1 gap-3 mb-3 sm:gap-4 sm:mb-4 lg:grid-cols-2 2xl:gap-6">
-            {/* Upcoming Surgeries */}
-            <div className="order-1">
-              <UpcomingSurgeries />
-            </div>
-            
-            {/* Overall Discharge Chart */}
-            <div className="order-2">
-              <OverallDischarge />
-            </div>
-          </div>
-          
-          <div className="flex flex-col gap-4">
-            {/* Recently Attended To Patients Table */}
-            <div className="flex flex-1 w-full min-h-0">   
-              <RecentlyAttendedPatients />
-            </div>
-          </div>
     </FrontdeskLayout>
   );
 };
