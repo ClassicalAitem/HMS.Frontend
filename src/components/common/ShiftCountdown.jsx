@@ -17,6 +17,7 @@ import shiftAccessAPI from '@/services/api/shiftAccessAPI';
 const EXEMPT_ROLES = [
   'super-admin',
   'superadmin',
+  'admin',
   'medical-director',
   'medical_director',
   'human-resource',
@@ -89,7 +90,8 @@ const ShiftCountdown = () => {
 
   const userRole = normalizeRole(user?.role || user?.accountType);
   const userShift = (user?.shift || '').toLowerCase().trim();
-  const isExempt = EXEMPT_ROLES.includes(userRole) || (!userShift || (userShift !== 'morning' && userShift !== 'night'));
+  // Only SuperAdmin, Medical Director, and HR are exempt from shift logout limits
+  const isExempt = EXEMPT_ROLES.includes(userRole);
 
   // Query backend for accurate shift lock status
   const fetchShiftStatus = useCallback(async () => {
@@ -105,9 +107,15 @@ const ShiftCountdown = () => {
         setNextAllowedTime(data.nextAllowedLoginTime || null);
         setPendingRequest(data.pendingRequest || null);
 
-        // If locked, reset acknowledged warning
         if (data.isLocked) {
           setIsWarningActive(false);
+        } else if (data.state === 'warning') {
+          setIsWarningActive(true);
+          if (data.secondsUntilLogout != null) {
+            setSecondsRemaining(data.secondsUntilLogout);
+          }
+        } else if (data.state === 'active') {
+          setIsLocked(false);
         }
       }
     } catch (err) {
@@ -122,7 +130,7 @@ const ShiftCountdown = () => {
     if (!isAuthenticated || !user || isExempt) return;
 
     fetchShiftStatus();
-    const interval = setInterval(fetchShiftStatus, 45000); // sync every 45s
+    const interval = setInterval(fetchShiftStatus, 40000); // sync every 40s
     return () => clearInterval(interval);
   }, [fetchShiftStatus, isAuthenticated, user, isExempt]);
 
@@ -155,7 +163,7 @@ const ShiftCountdown = () => {
     }
   }, [dispatch, navigate]);
 
-  // Client-side second-by-second countdown clock for active shift strictly in Africa/Lagos time (WAT)
+  // Client-side second-by-second countdown clock strictly in Africa/Lagos time (WAT)
   useEffect(() => {
     if (!isAuthenticated || !user || isExempt) {
       setSecondsRemaining(null);
@@ -173,22 +181,40 @@ const ShiftCountdown = () => {
       const lagos = getLagosDateTime(new Date());
       const currentTotalSec = lagos.totalSeconds;
 
-      if (userShift === 'morning') {
-        const morningStartSec = 7 * 3600; // 07:00 AM Lagos Time
+      // Determine active shift:
+      // Morning Shift: 08:00 AM to 06:30 PM (18:30)
+      // Night Shift: 05:00 PM (17:00) to 08:30 AM next morning
+      let activeShift = userShift === 'morning' || userShift === 'night' ? userShift : shiftStatus?.shift;
+      if (!activeShift) {
+        if (currentTotalSec >= 8 * 3600 && currentTotalSec < 17 * 3600) {
+          activeShift = 'morning';
+        } else if (currentTotalSec >= 17 * 3600 && currentTotalSec < 18 * 3600 + 30 * 60) {
+          activeShift = shiftStatus?.hasWorkedEndingShift ? 'morning' : 'night';
+        } else if (currentTotalSec >= 8 * 3600 && currentTotalSec < 8 * 3600 + 30 * 60) {
+          activeShift = shiftStatus?.hasWorkedEndingShift ? 'night' : 'morning';
+        } else {
+          activeShift = 'night';
+        }
+      }
+
+      if (activeShift === 'morning') {
+        const morningStartSec = 8 * 3600; // 08:00 AM Lagos Time
         const warningSec = 18 * 3600; // 18:00 / 6:00 PM Lagos Time
         const logoutSec = 18 * 3600 + 30 * 60; // 18:30 / 6:30 PM Lagos Time
 
-        // Morning Shift login is allowed from 7:00 AM to 6:30 PM in the evening
-        // Outside of 07:00 to 18:30: lock out
+        // Morning Shift login is allowed from 8:00 AM to 6:30 PM in the evening
         if (currentTotalSec >= logoutSec || currentTotalSec < morningStartSec) {
-          setIsLocked(true);
-          setLockoutReason(
-            'Morning Shift login is allowed from 7:00 AM to 6:30 PM (Lagos Time). Your shift ended at 6:30 PM.'
-          );
-          if (currentTotalSec >= logoutSec && currentTotalSec < logoutSec + 15) {
-            handleAutoLogout();
+          // If backend confirmed locked or user was active today:
+          if (shiftStatus?.isLocked || shiftStatus?.hasWorkedEndingShift || userShift === 'morning') {
+            setIsLocked(true);
+            setLockoutReason(
+              'Morning Shift login is allowed from 8:00 AM to 6:30 PM (Lagos Time). Your shift ended at 6:30 PM.'
+            );
+            if (currentTotalSec >= logoutSec && currentTotalSec < logoutSec + 15) {
+              handleAutoLogout();
+            }
+            return null;
           }
-          return null;
         }
 
         // Inside 30-min warning window (18:00 - 18:30 Lagos Time)
@@ -199,28 +225,31 @@ const ShiftCountdown = () => {
           return rem;
         }
 
-        // Active morning working window (07:00 - 18:00 Lagos Time)
-        setIsWarningActive(false);
-        setIsLocked(false);
-        return logoutSec - currentTotalSec;
+        // Active morning working window (08:00 - 18:00 Lagos Time)
+        if (currentTotalSec >= morningStartSec && currentTotalSec < warningSec) {
+          setIsWarningActive(false);
+          setIsLocked(false);
+          return logoutSec - currentTotalSec;
+        }
       }
 
-      if (userShift === 'night') {
+      if (activeShift === 'night') {
         const nightStartSec = 17 * 3600; // 17:00 / 5:00 PM Lagos Time
         const warningSec = 8 * 3600; // 08:00 AM Lagos Time
         const logoutSec = 8 * 3600 + 30 * 60; // 08:30 AM Lagos Time
 
         // Night Shift login is allowed from 5:00 PM to 8:30 AM next morning
-        // Outside of 17:00 to 08:30 (i.e. 08:30 to 17:00 in the daytime): lock out
         if (currentTotalSec >= logoutSec && currentTotalSec < nightStartSec) {
-          setIsLocked(true);
-          setLockoutReason(
-            'Night Shift login is allowed from 5:00 PM to 8:30 AM (Lagos Time). Your shift ended at 8:30 AM.'
-          );
-          if (currentTotalSec >= logoutSec && currentTotalSec < logoutSec + 15) {
-            handleAutoLogout();
+          if (shiftStatus?.isLocked || shiftStatus?.hasWorkedEndingShift || userShift === 'night') {
+            setIsLocked(true);
+            setLockoutReason(
+              'Night Shift login is allowed from 5:00 PM to 8:30 AM (Lagos Time). Your shift ended at 8:30 AM.'
+            );
+            if (currentTotalSec >= logoutSec && currentTotalSec < logoutSec + 15) {
+              handleAutoLogout();
+            }
+            return null;
           }
-          return null;
         }
 
         // Inside 30-min warning window (08:00 - 08:30 AM Lagos Time)
@@ -232,12 +261,14 @@ const ShiftCountdown = () => {
         }
 
         // Active night working window (17:00 to 08:00 AM Lagos Time)
-        setIsWarningActive(false);
-        setIsLocked(false);
-        if (currentTotalSec >= nightStartSec) {
-          return 24 * 3600 - currentTotalSec + logoutSec;
-        } else {
-          return logoutSec - currentTotalSec;
+        if (currentTotalSec >= nightStartSec || currentTotalSec < warningSec) {
+          setIsWarningActive(false);
+          setIsLocked(false);
+          if (currentTotalSec >= nightStartSec) {
+            return 24 * 3600 - currentTotalSec + logoutSec;
+          } else {
+            return logoutSec - currentTotalSec;
+          }
         }
       }
 
@@ -300,6 +331,11 @@ const ShiftCountdown = () => {
     return null;
   }
 
+  // Active shift label for UI
+  const currentShiftLabel = userShift === 'morning' || shiftStatus?.shift === 'morning'
+    ? 'Morning Shift (ends 6:30 PM)'
+    : 'Night Shift (ends 8:30 AM)';
+
   return (
     <>
       {/* =========================================================================
@@ -336,7 +372,7 @@ const ShiftCountdown = () => {
                   </p>
                 </div>
                 <span className="badge badge-error badge-outline text-xs capitalize font-semibold">
-                  {userShift} Shift
+                  {userShift || shiftStatus?.shift || 'Hospital'} Shift
                 </span>
               </div>
 
@@ -348,9 +384,9 @@ const ShiftCountdown = () => {
                 </p>
                 <p className="text-base-content/80">
                   {lockoutReason ||
-                    (userShift === 'morning'
-                      ? 'Your Morning Shift ended at 6:30 PM. Your account cannot access the system until your next shift begins tomorrow at 7:00 AM.'
-                      : 'Your Night Shift ended at 8:30 AM. Your account cannot access the system until your next shift begins this evening at 5:00 PM.')}
+                    (userShift === 'night'
+                      ? 'Your Night Shift ended at 8:30 AM. Your account cannot access the system until your next shift begins this evening at 5:00 PM.'
+                      : 'Your Morning Shift ended at 6:30 PM. Your account cannot access the system until your next shift begins tomorrow at 8:00 AM.')}
                 </p>
                 {nextAllowedTime && (
                   <p className="text-[11px] text-base-content/60 font-medium pt-1">
@@ -385,7 +421,7 @@ const ShiftCountdown = () => {
                     </button>
                   </div>
                   <p className="text-xs text-base-content/80">
-                    Your request for extra shift access is currently awaiting review by Super Admin or HR.
+                    Your request for rollover / double shift access is currently awaiting review by Super Admin or HR.
                   </p>
                   <p className="text-[11px] text-base-content/60 italic">
                     Reason: &ldquo;{pendingRequest.reason}&rdquo;
@@ -397,7 +433,7 @@ const ShiftCountdown = () => {
               {showRequestForm && (
                 <form onSubmit={handleSubmitRequest} className="rounded-xl bg-base-200/60 p-4 border border-base-300 space-y-3">
                   <h4 className="text-xs font-bold text-base-content uppercase tracking-wider">
-                    Request Extra Shift / Overtime Access
+                    Request Rollover / Double Shift Access
                   </h4>
 
                   <div>
@@ -409,7 +445,7 @@ const ShiftCountdown = () => {
                       onChange={(e) => setRequestType(e.target.value)}
                       className="select select-bordered select-sm w-full text-xs"
                     >
-                      <option value="double_shift">Double Shift (Full next shift)</option>
+                      <option value="double_shift">Rollover Shift (Full next shift)</option>
                       <option value="overtime">Emergency Overtime Extension</option>
                       <option value="shift_extension">Shift Handover Extension</option>
                     </select>
@@ -477,7 +513,7 @@ const ShiftCountdown = () => {
                       className="btn btn-primary btn-sm w-full sm:w-auto gap-1.5 font-semibold shadow-md"
                     >
                       <FaPaperPlane className="w-3 h-3" />
-                      <span>{pendingRequest ? 'Update Request' : 'Request Access'}</span>
+                      <span>{pendingRequest ? 'Update Request' : 'Request Rollover Shift'}</span>
                     </button>
                   )}
                 </div>
@@ -514,10 +550,10 @@ const ShiftCountdown = () => {
             <div className="p-6 space-y-4 text-center">
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs sm:text-sm text-base-content/80 leading-relaxed">
                 <p className="font-semibold text-base-content mb-1">
-                  Your {userShift === 'morning' ? 'Morning Shift (ends 6:30 PM)' : 'Night Shift (ends 8:30 AM)'} is finishing.
+                  Your {currentShiftLabel} is finishing.
                 </p>
                 <p>
-                  Please conclude and save any open consultations, prescriptions, or patient vitals.
+                  Please conclude and save any open consultations, laboratory tests, billing, or patient records.
                   You will be automatically logged out when the countdown reaches zero.
                 </p>
               </div>

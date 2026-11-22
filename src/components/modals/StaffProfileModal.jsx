@@ -510,7 +510,7 @@ const StaffProfileModal = ({
                   <FaClock className="text-primary w-3 h-3" />
                   <span>Hospital Shift Hours (Lagos WAT):</span>
                 </p>
-                <p>• Morning Shift: <strong>7:00 AM – 6:30 PM</strong></p>
+                <p>• Morning Shift: <strong>8:00 AM – 6:30 PM</strong></p>
                 <p>• Night Shift: <strong>5:00 PM – 8:30 AM</strong> next morning</p>
               </div>
             </div>
