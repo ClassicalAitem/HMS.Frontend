@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/superadmin/dashboard';
+import { SuperAdminLayout } from '@/layouts/superadmin';
 import {
   FaArrowLeft,
   FaShieldAlt,
@@ -14,10 +13,13 @@ import {
   FaCheckCircle,
   FaUsers,
   FaUserCheck,
+  FaDownload,
+  FaSearch,
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { getSecuritySettings, updateSecuritySettings } from '@/services/api/settingsAPI';
 import { usersAPI } from '@/services/api/usersAPI';
+import { exportRowsToCsv } from '@/pages/superadmin/reports/reportUtils';
 import { showErrorToast } from '@/utils/errorHandler';
 
 const HOSPITAL_ROLES_PERMISSIONS = [
@@ -479,18 +481,75 @@ const SecuritySettings = () => {
     </div>
   );
 
+  const [roleSearch, setRoleSearch] = useState('');
+
+  const filteredRoles = useMemo(() => {
+    const q = roleSearch.trim().toLowerCase();
+    if (!q) return HOSPITAL_ROLES_PERMISSIONS;
+    return HOSPITAL_ROLES_PERMISSIONS.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.description.toLowerCase().includes(q) ||
+        r.role.toLowerCase().includes(q) ||
+        r.permissions.some((p) => p.toLowerCase().includes(q))
+    );
+  }, [roleSearch]);
+
+  const handleExportRbac = () => {
+    if (!filteredRoles.length) {
+      toast.error('No roles to export');
+      return;
+    }
+    const cols = [
+      { key: 'name', label: 'Role Title' },
+      { key: 'role', label: 'Role Identifier' },
+      { key: 'description', label: 'Functional Scope' },
+      { key: 'activeUsers', label: 'Enrolled Staff Count' },
+      { key: 'permissions', label: 'Assigned Permissions' },
+    ];
+    const rows = filteredRoles.map((r) => ({
+      name: r.name,
+      role: r.role,
+      description: r.description,
+      activeUsers: userCountsByRole[r.role] || 0,
+      permissions: r.permissions.join('; '),
+    }));
+    exportRowsToCsv(rows, cols, `hospital_rbac_matrix_${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success(`Exported ${rows.length} hospital roles`);
+  };
+
   const renderAccessControl = () => (
     <div className="space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-base-200 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-base-200 pb-3">
         <div>
           <h4 className="text-base font-bold text-base-content flex items-center gap-2">
             <FaLock className="text-primary w-4 h-4" /> Role-Based Access Control (RBAC) Matrix
           </h4>
           <p className="text-xs text-base-content/60">Live personnel counts & authorized functional scope per hospital role</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="badge badge-primary badge-sm font-semibold">{usersList.length} Staff Enrolled</span>
+          <button
+            type="button"
+            onClick={handleExportRbac}
+            className="btn btn-outline btn-xs rounded-lg gap-1"
+            title="Export RBAC matrix to CSV"
+          >
+            <FaDownload className="w-3 h-3" />
+            <span>Export CSV</span>
+          </button>
         </div>
+      </div>
+
+      <div className="relative w-full sm:w-72">
+        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 w-3 h-3" />
+        <input
+          type="text"
+          placeholder="Filter roles or permissions..."
+          value={roleSearch}
+          onChange={(e) => setRoleSearch(e.target.value)}
+          className="input input-bordered input-xs rounded-lg pl-8 w-full bg-base-200/50"
+        />
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-base-200">
@@ -504,7 +563,7 @@ const SecuritySettings = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-base-200">
-            {HOSPITAL_ROLES_PERMISSIONS.map((r) => {
+            {filteredRoles.map((r) => {
               const count = userCountsByRole[r.role] || 0;
               return (
                 <tr key={r.role} className="hover:bg-base-200/40">
@@ -554,173 +613,170 @@ const SecuritySettings = () => {
   };
 
   return (
-    <div className="flex h-screen bg-base-300/20">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 h-full space-y-6">
-          {/* Page Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <SuperAdminLayout>
+      <div className="space-y-6 pb-12 max-w-7xl mx-auto">
+        {/* Sleek Modern Header Bar */}
+        <div className="bg-base-100 border border-base-200/80 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/superadmin/settings')}
+              className="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-primary hover:bg-base-200"
+              title="Back to Settings"
+            >
+              <FaArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black shrink-0">
+              <FaShieldAlt className="w-5 h-5" />
+            </div>
             <div>
-              <button
-                onClick={() => navigate('/superadmin/settings')}
-                className="flex items-center text-xs font-semibold text-base-content/70 hover:text-primary transition-colors mb-2"
-              >
-                <FaArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-                Back to Settings
-              </button>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Security & Access Policies</h1>
-                <span className="badge badge-primary badge-sm font-semibold">Institutional Governance</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-bold text-base-content">
+                  Security & Access Policies
+                </h1>
+                <span className="badge badge-xs badge-success gap-1 text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  RBAC Active
+                </span>
               </div>
-              <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">
-                Configure credential standards, 3-hour session rules, role-based access controls, and admin authentication
+              <p className="text-xs text-base-content/60">
+                Hospital credential requirements, session longevity, 2FA, and role authorization matrices
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar Navigation */}
-            <div className="lg:col-span-1">
-              <div className="p-3 bg-base-100 rounded-2xl border border-base-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-base-content/50 block px-3 py-2">
-                  Security Modules
-                </span>
-                {sections.map((section) => {
-                  const Icon = section.icon;
-                  const isActive = activeSection === section.id;
-                  return (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.id)}
-                      className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-left transition-all ${
-                        isActive
-                          ? 'bg-primary text-primary-content shadow-sm shadow-primary/30'
-                          : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
-                      <span>{section.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              <div className="p-6 bg-base-100 rounded-2xl border border-base-200 shadow-sm">
-                {renderActiveSection()}
-              </div>
-            </div>
-          </div>
-
-          {/* Change Password Card */}
-          <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-6 space-y-4">
-            <div className="border-b border-base-200 pb-3">
-              <h4 className="text-base font-bold text-base-content flex items-center gap-2">
-                <FaKey className="text-primary w-4 h-4" /> Change Super Admin Password
-              </h4>
-              <p className="text-xs text-base-content/60">Ensure you use a strong, unique passphrase with symbols and numbers</p>
-            </div>
-
-            <form onSubmit={handleChangePassword} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                  Current Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showCurrentPassword ? 'text' : 'password'}
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="input input-bordered input-sm rounded-xl w-full pr-9 text-xs"
-                    placeholder="Current password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
-                  >
-                    {showCurrentPassword ? <FaEyeSlash className="w-3.5 h-3.5" /> : <FaEye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                  New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="input input-bordered input-sm rounded-xl w-full pr-9 text-xs"
-                    placeholder="New strong password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
-                  >
-                    {showNewPassword ? <FaEyeSlash className="w-3.5 h-3.5" /> : <FaEye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-base-content/70 mb-1">
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="input input-bordered input-sm rounded-xl w-full pr-9 text-xs"
-                    placeholder="Repeat new password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
-                  >
-                    {showConfirmPassword ? <FaEyeSlash className="w-3.5 h-3.5" /> : <FaEye className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="sm:col-span-3 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={changingPassword}
-                  className="btn btn-primary btn-sm rounded-xl px-5 shadow-sm shadow-primary/20"
-                >
-                  {changingPassword ? <span className="loading loading-spinner loading-xs"></span> : <FaKey className="w-3.5 h-3.5 mr-1.5" />}
-                  Update Master Password
-                </button>
-              </div>
-            </form>
+          <div className="hidden lg:flex items-center gap-2 bg-base-200/60 px-3 py-1.5 rounded-xl border border-base-300/40 text-xs text-base-content/80 font-medium">
+            <FaLock className="w-3.5 h-3.5 text-primary" />
+            <span>Super Admin Root</span>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar Navigation */}
+          <div className="lg:col-span-1">
+            <div className="p-3 bg-base-100 rounded-2xl border border-base-200 shadow-sm space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-base-content/50 block px-3 py-2">
+                Security Modules
+              </span>
+              {sections.map((section) => {
+                const Icon = section.icon;
+                const isActive = activeSection === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-left transition-all ${
+                      isActive
+                        ? 'bg-primary text-primary-content shadow-sm shadow-primary/30'
+                        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{section.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <div className="p-6 bg-base-100 rounded-2xl border border-base-200 shadow-sm">
+              {renderActiveSection()}
+            </div>
+          </div>
+        </div>
+
+        {/* Change Password Card */}
+        <div className="bg-base-100 rounded-2xl border border-base-200 shadow-sm p-6 space-y-4">
+          <div className="border-b border-base-200 pb-3">
+            <h4 className="text-base font-bold text-base-content flex items-center gap-2">
+              <FaKey className="text-primary w-4 h-4" /> Change Super Admin Password
+            </h4>
+            <p className="text-xs text-base-content/60">Ensure you use a strong, unique passphrase with symbols and numbers</p>
+          </div>
+
+          <form onSubmit={handleChangePassword} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-base-content/70 mb-1">
+                Current Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="input input-bordered input-sm rounded-xl w-full pr-9 text-xs"
+                  placeholder="Current password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                >
+                  {showCurrentPassword ? <FaEyeSlash className="w-3.5 h-3.5" /> : <FaEye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-base-content/70 mb-1">
+                New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="input input-bordered input-sm rounded-xl w-full pr-9 text-xs"
+                  placeholder="New strong password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                >
+                  {showNewPassword ? <FaEyeSlash className="w-3.5 h-3.5" /> : <FaEye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-base-content/70 mb-1">
+                Confirm New Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="input input-bordered input-sm rounded-xl w-full pr-9 text-xs"
+                  placeholder="Repeat new password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                >
+                  {showConfirmPassword ? <FaEyeSlash className="w-3.5 h-3.5" /> : <FaEye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="sm:col-span-3 flex justify-end">
+              <button
+                type="submit"
+                disabled={changingPassword}
+                className="btn btn-primary btn-sm rounded-xl px-5 shadow-sm shadow-primary/20 text-white"
+              >
+                {changingPassword ? <span className="loading loading-spinner loading-xs"></span> : <FaKey className="w-3.5 h-3.5 mr-1.5" />}
+                Update Master Password
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </SuperAdminLayout>
   );
 };
 

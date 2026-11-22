@@ -159,29 +159,55 @@ const LaboratoryInventoryStocks = () => {
   }
 
   return (
-
-<SuperAdminLayout>
-
-          <div className="p-4 sm:p-6 space-y-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
+    <SuperAdminLayout>
+      <div className="space-y-6 pb-12 max-w-7xl mx-auto p-4 sm:p-6">
+        {/* Sleek Modern Header Bar */}
+        <div className="bg-base-100 border border-base-200/80 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={() => navigate('/superadmin/settings')}
-              className="flex items-center text-xs font-semibold text-base-content/70 hover:text-primary transition-colors mb-2"
+              className="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-primary hover:bg-base-200"
+              title="Back to Settings"
             >
-              <FaArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-              Back to Settings
+              <FaArrowLeft className="w-4 h-4" />
             </button>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl sm:text-3xl font-bold text-base-content">Laboratory Inventory & Supplies</h1>
-              <span className="badge badge-primary badge-sm font-semibold">Live Stock</span>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black shrink-0">
+              <FaBoxes className="w-5 h-5" />
             </div>
-            <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">Manage clinical laboratory reagents, test kits, consumables, and automated restock triggers</p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-bold text-base-content">
+                  Laboratory Inventory & Supplies
+                </h1>
+                <span className="badge badge-xs badge-success gap-1 text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Reagents Active
+                </span>
+              </div>
+              <p className="text-xs text-base-content/60">
+                Diagnostic reagents, test kits, consumables, and automated restock triggers
+              </p>
+            </div>
           </div>
+
           <div className="flex items-center gap-2.5">
-            <button className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20 flex items-center gap-1.5" onClick={() => setShowAdd(true)}>
-              <MdAdd className="w-4 h-4" /> Add New Supply
+            <button
+              type="button"
+              className="btn btn-ghost border border-base-300 btn-sm rounded-xl gap-1.5 text-base-content hover:bg-base-200"
+              onClick={() => exportCsv(filtered)}
+              title="Export laboratory inventory to CSV"
+            >
+              <FaDownload className="w-3.5 h-3.5 text-base-content/70" />
+              <span>Export CSV</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm rounded-xl px-4 shadow-xs text-white flex items-center gap-1.5"
+              onClick={() => setShowAdd(true)}
+            >
+              <MdAdd className="w-4 h-4" />
+              <span>Add Supply</span>
             </button>
           </div>
         </div>

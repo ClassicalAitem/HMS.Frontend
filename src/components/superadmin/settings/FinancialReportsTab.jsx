@@ -28,8 +28,8 @@ const FinancialReportsTab = () => {
     try {
       setLoading(true);
       const [receiptsRes, billingsRes] = await Promise.all([
-        getAllReceipts({ sort: 'createdAt:desc' }),
-        getAllBillings(),
+        getAllReceipts({ sort: 'createdAt:desc', limit: 'all' }),
+        getAllBillings({ limit: 'all' }),
       ]);
 
       const rawReceipts = receiptsRes?.data?.data ?? receiptsRes?.data ?? [];
@@ -174,7 +174,7 @@ const FinancialReportsTab = () => {
         : r.patientName || 'Medical Patient',
       amountPaid: r.amountPaid,
       paymentMethod: r.paymentMethod || 'Cash',
-      paidAt: r.paidAt ? formatNigeriaDate(r.paidAt) : '—',
+      paidAt: (r.paidAt || r.createdAt) ? formatNigeriaDate(r.paidAt || r.createdAt) : '—',
       cashier: r.cashierName || r.attendedBy || 'Cashier Desk',
     }));
 

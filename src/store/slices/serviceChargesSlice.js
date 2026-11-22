@@ -75,7 +75,14 @@ const serviceChargesSlice = createSlice({
       })
       .addCase(fetchServiceCharges.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.serviceCharges = action.payload;
+        const payload = action.payload;
+        state.serviceCharges = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload?.data?.data)
+          ? payload.data.data
+          : [];
       })
       .addCase(fetchServiceCharges.rejected, (state, action) => {
         state.isLoading = false;
@@ -89,7 +96,11 @@ const serviceChargesSlice = createSlice({
       })
       .addCase(createServiceCharge.fulfilled, (state, action) => {
         state.creating = false;
-        state.serviceCharges.push(action.payload);
+        const item = action.payload?.data || action.payload;
+        if (!Array.isArray(state.serviceCharges)) {
+          state.serviceCharges = [];
+        }
+        state.serviceCharges.push(item);
       })
       .addCase(createServiceCharge.rejected, (state, action) => {
         state.creating = false;
@@ -103,9 +114,12 @@ const serviceChargesSlice = createSlice({
       })
       .addCase(updateServiceCharge.fulfilled, (state, action) => {
         state.updating = false;
-        const index = state.serviceCharges.findIndex(charge => charge.id === action.payload.id);
-        if (index !== -1) {
-          state.serviceCharges[index] = action.payload;
+        const updated = action.payload?.data || action.payload;
+        if (Array.isArray(state.serviceCharges)) {
+          const index = state.serviceCharges.findIndex(charge => charge.id === updated.id);
+          if (index !== -1) {
+            state.serviceCharges[index] = updated;
+          }
         }
       })
       .addCase(updateServiceCharge.rejected, (state, action) => {
@@ -117,6 +131,12 @@ const serviceChargesSlice = createSlice({
       .addCase(deleteServiceCharge.pending, (state) => {
         state.deleting = true;
         state.error = null;
+      })
+      .addCase(deleteServiceCharge.fulfilled, (state, action) => {
+        state.deleting = false;
+        if (Array.isArray(state.serviceCharges)) {
+          state.serviceCharges = state.serviceCharges.filter(charge => charge.id !== action.payload.id);
+        }
       })
       .addCase(deleteServiceCharge.fulfilled, (state, action) => {
         state.deleting = false;

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header } from '@/components/common';
-import { Sidebar } from '@/components/superadmin/dashboard';
+import { SuperAdminLayout } from '@/layouts/superadmin';
 import {
   FaArrowLeft,
   FaDownload,
@@ -255,68 +254,60 @@ const AuditLogs = () => {
   };
 
   return (
-    <div className="flex h-screen bg-base-300/20">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-opacity-50 lg:hidden" onClick={closeSidebar} />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <Sidebar onCloseSidebar={closeSidebar} />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex overflow-hidden flex-col flex-1">
-        <Header onToggleSidebar={toggleSidebar} />
-
-        <div className="flex overflow-y-auto flex-col p-4 sm:p-6 h-full space-y-6">
-          {/* Page Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <SuperAdminLayout>
+      <div className="space-y-6 pb-12 max-w-7xl mx-auto">
+        {/* Navigation Breadcrumb */}
+        {/* Sleek Modern Header Bar */}
+        <div className="bg-base-100 border border-base-200/80 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/superadmin/settings')}
+              className="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-primary hover:bg-base-200"
+              title="Back to Settings"
+            >
+              <FaArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black shrink-0">
+              <FaShieldAlt className="w-5 h-5" />
+            </div>
             <div>
-              <button
-                onClick={() => navigate('/superadmin/settings')}
-                className="flex items-center text-xs font-semibold text-base-content/70 hover:text-primary transition-colors mb-2"
-              >
-                <FaArrowLeft className="w-3.5 h-3.5 mr-1.5" />
-                Back to Settings
-              </button>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-bold text-base-content">
-                  System Audit & Attendance
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-bold text-base-content">
+                  System Audit & Attendance Logs
                 </h1>
-                <span className="badge badge-primary badge-sm font-bold">Logs Trail</span>
+                <span className="badge badge-xs badge-success gap-1 text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Audit
+                </span>
               </div>
-              <p className="text-xs sm:text-sm text-base-content/70 mt-0.5">
-                Monitor clinical operations and staff check-in/out records
+              <p className="text-xs text-base-content/60">
+                Ledger of user logins, permissions, clinical operations, and biometric attendance records
               </p>
             </div>
-
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => {
-                  fetchStats();
-                  fetchLogs();
-                  toast.success('Audit records refreshed');
-                }}
-                className="btn btn-outline btn-sm rounded-xl"
-                title="Refresh logs"
-              >
-                <FaSyncAlt className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={handleExportLogs}
-                className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20"
-              >
-                <FaDownload className="w-3.5 h-3.5 mr-1.5" />
-                Export CSV
-              </button>
-            </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                fetchStats();
+                fetchLogs();
+                toast.success('Audit records refreshed');
+              }}
+              className="btn btn-ghost border border-base-300 btn-sm rounded-xl text-base-content hover:bg-base-200"
+              title="Refresh logs"
+            >
+              <FaSyncAlt className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={handleExportLogs}
+              className="btn btn-primary btn-sm rounded-xl px-4 shadow-xs text-white flex items-center gap-1.5"
+            >
+              <FaDownload className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
 
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -712,9 +703,8 @@ const AuditLogs = () => {
             </div>
           </div>
           )}
-        </div>
       </div>
-    </div>
+    </SuperAdminLayout>
   );
 };
 

@@ -15,6 +15,8 @@ import {
   FaChevronDown,
   FaChevronRight,
   FaSyncAlt,
+  FaCalendarAlt,
+  FaUndo,
 } from 'react-icons/fa';
 import KolakLoader from '@/components/common/KolakLoader';
 import AdjustDiscountModal from '@/components/modals/AdjustDiscountModal';
@@ -22,6 +24,7 @@ import { getAllBillings } from '@/services/api/billingAPI';
 import { getDependantById } from '@/services/api/dependantAPI';
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils';
 import { getDiscountDisplay } from '@/utils/discountUtils';
+import { isDateInPeriod } from '@/pages/superadmin/reports/reportUtils';
 import toast from 'react-hot-toast';
 
 const SuperAdminBillings = () => {
@@ -31,6 +34,9 @@ const SuperAdminBillings = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all'); // all, patient, dependant
   const [statusFilter, setStatusFilter] = useState('all'); // all, outstanding, cleared, discounted
+  const [period, setPeriod] = useState('all'); // all, today, week, month, 1_month, 3_months, custom
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [openRowId, setOpenRowId] = useState(null);
 
   // Discount modal state
@@ -165,6 +171,14 @@ const SuperAdminBillings = () => {
       if (statusFilter === 'cleared' && (!bill.isCleared && out > 0)) return false;
       if (statusFilter === 'discounted' && !hasDiscount) return false;
 
+      // Period Date filter
+      if (period !== 'all') {
+        const billDate = bill.createdAt || bill.date || bill.updatedAt;
+        if (!isDateInPeriod(billDate, period, customStartDate, customEndDate)) {
+          return false;
+        }
+      }
+
       // Text search
       if (q) {
         const name = (bill._subjectName || '').toLowerCase();
@@ -184,7 +198,24 @@ const SuperAdminBillings = () => {
 
       return true;
     });
-  }, [billings, searchTerm, subjectFilter, statusFilter]);
+  }, [billings, searchTerm, subjectFilter, statusFilter, period, customStartDate, customEndDate]);
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setSubjectFilter('all');
+    setStatusFilter('all');
+    setPeriod('all');
+    setCustomStartDate('');
+    setCustomEndDate('');
+  };
+
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    subjectFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    period !== 'all' ||
+    customStartDate !== '' ||
+    customEndDate !== '';
 
   const handleOpenDiscountModal = (bill) => {
     setSelectedBilling(bill);
@@ -322,6 +353,59 @@ const SuperAdminBillings = () => {
                 <option value="discounted">Discounted Bills Only</option>
               </select>
             </div>
+
+            {/* Date Period Filter */}
+            <div className="flex items-center gap-1.5 text-xs text-base-content/70">
+              <FaCalendarAlt className="w-3 h-3 text-primary" />
+              <span>Period:</span>
+              <select
+                className="select select-bordered select-xs"
+                value={period}
+                onChange={(e) => setPeriod(e.target.value)}
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="1_month">Last 1 Month</option>
+                <option value="3_months">Last 3 Months</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+
+            {/* Custom Date Range Picker */}
+            {period === 'custom' && (
+              <div className="flex items-center gap-1 text-xs">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="input input-bordered input-xs"
+                  title="Start Date"
+                />
+                <span className="text-base-content/50 text-[10px]">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="input input-bordered input-xs"
+                  title="End Date"
+                />
+              </div>
+            )}
+
+            {/* Reset Filter Button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="btn btn-ghost btn-xs text-xs gap-1 text-error hover:bg-error/10"
+                title="Reset all filters"
+              >
+                <FaUndo className="w-2.5 h-2.5" />
+                <span>Reset</span>
+              </button>
+            )}
           </div>
         </div>
 

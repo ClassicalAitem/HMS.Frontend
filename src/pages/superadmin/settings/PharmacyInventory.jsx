@@ -1,6 +1,26 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MdAdd } from 'react-icons/md'
-import { FaTrash, FaFileUpload } from 'react-icons/fa'
+import { 
+  FaTrash, 
+  FaFileUpload, 
+  FaFileDownload, 
+  FaArrowLeft, 
+  FaShieldAlt, 
+  FaPills, 
+  FaSearch, 
+  FaTimes, 
+  FaBoxes, 
+  FaCheckCircle, 
+  FaExclamationTriangle, 
+  FaClock, 
+  FaBan, 
+  FaEdit, 
+  FaSyncAlt, 
+  FaLayerGroup 
+} from 'react-icons/fa'
+import { RiRefreshLine } from 'react-icons/ri'
+import { GiMedicines } from 'react-icons/gi'
 import toast from 'react-hot-toast'
 import {
   getInventories,
@@ -11,6 +31,8 @@ import {
   deleteInventory,
 } from '@/services/api/inventoryAPI'
 import { SuperAdminLayout } from '@/layouts/superadmin'
+import KolakLoader from '@/components/common/KolakLoader'
+import { EmptyState } from '@/components/common'
 import { getErrorMessage, showErrorToast } from '@/utils/errorHandler'
 
 const UNIT_LABELS = {
@@ -45,8 +67,7 @@ const pricePerUnit = (item) => {
   return sellingPrice / packSize
 }
 
-// Builds a compact page list like [1, '...', 4, 5, 6, '...', 35] —
-// always shows first, last, current, and one neighbor on each side.
+// Builds a compact page list like [1, '...', 4, 5, 6, '...', 35]
 const getPageNumbers = (current, total) => {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
 
@@ -62,9 +83,46 @@ const getPageNumbers = (current, total) => {
   return pages
 }
 
+const getExpiryStatus = (expiryDate) => {
+  if (!expiryDate) return { text: 'No expiry', badgeClass: 'bg-base-200 text-base-content/50', days: null }
+  const exp = new Date(expiryDate).getTime()
+  if (isNaN(exp)) return { text: 'Invalid date', badgeClass: 'bg-base-200 text-base-content/50', days: null }
+  const now = Date.now()
+  const days = Math.ceil((exp - now) / (1000 * 60 * 60 * 24))
+
+  if (days < 0) {
+    return { text: `Expired (${Math.abs(days)}d ago)`, badgeClass: 'bg-error text-white font-bold', days }
+  }
+  if (days <= 30) {
+    return { text: `Expiring in ${days}d`, badgeClass: 'bg-warning/20 text-warning-content border border-warning/40 font-bold', days }
+  }
+  if (days <= 90) {
+    return { text: `${days} days left`, badgeClass: 'bg-info/15 text-info border border-info/30 font-medium', days }
+  }
+  return { 
+    text: new Date(expiryDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), 
+    badgeClass: 'bg-base-200 text-base-content/70', 
+    days 
+  }
+}
+
+const getStockStatus = (item) => {
+  const stock = Number(item.stock) || 0
+  const reorder = Number(item.reorderLevel) || 0
+  if (stock === 0) {
+    return { label: 'Out of Stock', badgeClass: 'bg-error/15 text-error border border-error/30 font-bold', level: 'out' }
+  }
+  if (stock <= reorder) {
+    return { label: `Low Stock (${stock})`, badgeClass: 'bg-warning/15 text-warning-content border border-warning/30 font-bold', level: 'low' }
+  }
+  return { label: `In Stock (${stock})`, badgeClass: 'bg-success/15 text-success border border-success/30 font-semibold', level: 'ok' }
+}
+
 const InventoryStocks = () => {
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -74,32 +132,42 @@ const InventoryStocks = () => {
   const [deleting, setDeleting] = useState(null)
   const [activeTab, setActiveTab] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 7
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  const fetch = async () => {
-    setLoading(true)
+  const fetchInventoryData = useCallback(async (isManual = false) => {
+    if (isManual) setRefreshing(true)
+    else setLoading(true)
     setError(null)
     try {
       const res = await getInventories()
-      const list = Array.isArray(res?.data) ? res.data : (res?.data ?? [])
+      const list = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.data)
+            ? res.data.data
+            : []
       setItems(list)
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to load inventory'))
       showErrorToast(err, 'Failed to load inventory')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { fetch() }, [])
+  useEffect(() => {
+    fetchInventoryData()
+  }, [fetchInventoryData])
 
   const handleDelete = async (item) => {
     if (!window.confirm(`Are you sure you want to delete "${item.name}"? This cannot be undone.`)) return
     setDeleting(item._id)
     try {
       await deleteInventory(item._id)
-      toast.success('Item deleted')
-      await fetch()
+      toast.success('Item deleted successfully')
+      await fetchInventoryData()
     } catch (e) {
       showErrorToast(e, 'Failed to delete item')
     } finally {
@@ -107,51 +175,73 @@ const InventoryStocks = () => {
     }
   }
 
+  // Aggregate stock counts
   const totalItems = items.length
-  const inStockCount = items.filter(i => Number(i.stock) > 0).length
-  const lowStockCount = items.filter(i => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0)).length
-  const expiringSoonCount = items.filter(i => {
-    if (!i.expiryDate) return false
-    const diff = (new Date(i.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-    return diff <= 30 && diff >= 0
-  }).length
-  const expiredCount = items.filter(i => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now()).length
+  const inStockCount = useMemo(() => items.filter((i) => Number(i.stock) > 0).length, [items])
+  const lowStockCount = useMemo(() => items.filter((i) => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0)).length, [items])
+  const outOfStockCount = useMemo(() => items.filter((i) => Number(i.stock) === 0).length, [items])
+  const expiringSoonCount = useMemo(() => {
+    return items.filter((i) => {
+      if (!i.expiryDate) return false
+      const diff = (new Date(i.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      return diff <= 30 && diff >= 0
+    }).length
+  }, [items])
+  const expiredCount = useMemo(() => {
+    return items.filter((i) => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now()).length
+  }, [items])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    let list = items.filter(i =>
+    let list = items.filter((i) =>
       !q ||
       (i.name || '').toLowerCase().includes(q) ||
       (i.strength || '').toLowerCase().includes(q) ||
-      (i.form || '').toLowerCase().includes(q)
+      (i.form || '').toLowerCase().includes(q) ||
+      (i.batchNumber || '').toLowerCase().includes(q) ||
+      (i.supplier || '').toLowerCase().includes(q)
     )
-    if (activeTab === 'low') list = list.filter(i => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0))
-    if (activeTab === 'out') list = list.filter(i => Number(i.stock) === 0)
-    if (activeTab === 'recent') {
-      list = list.slice().sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
-    }
-    if (activeTab === 'expiring') {
-      list = list.filter(i => {
+
+    if (activeTab === 'in_stock') {
+      list = list.filter((i) => Number(i.stock) > 0)
+    } else if (activeTab === 'low') {
+      list = list.filter((i) => Number(i.stock) > 0 && Number(i.stock) <= Number(i.reorderLevel || 0))
+    } else if (activeTab === 'out') {
+      list = list.filter((i) => Number(i.stock) === 0)
+    } else if (activeTab === 'expiring') {
+      list = list.filter((i) => {
         if (!i.expiryDate) return false
         const diff = (new Date(i.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         return diff <= 30 && diff >= 0
       })
+    } else if (activeTab === 'expired') {
+      list = list.filter((i) => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now())
+    } else if (activeTab === 'recent') {
+      list = list.slice().sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
     }
-    if (activeTab === 'expired') {
-      list = list.filter(i => i.expiryDate && new Date(i.expiryDate).getTime() < Date.now())
-    }
+
     if (activeTab !== 'recent') {
       list = list.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
     }
     return list
   }, [items, search, activeTab])
 
+  // Reset page when filtering
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, activeTab, itemsPerPage])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage))
   const startIndex = (currentPage - 1) * itemsPerPage
   const pageItems = filtered.slice(startIndex, startIndex + itemsPerPage)
 
   const exportCsv = (list) => {
     try {
-      const rows = list.map(i => ({
+      if (list.length === 0) {
+        toast.error('No items to export')
+        return
+      }
+      const rows = list.map((i) => ({
         id: i._id,
         name: i.name,
         strength: i.strength || '',
@@ -169,27 +259,26 @@ const InventoryStocks = () => {
         description: i.description || '',
       }))
       const header = Object.keys(rows[0] || {}).join(',') + '\n'
-      const csv = header + rows.map(r => Object.values(r).map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+      const csv = header + rows.map((r) => Object.values(r).map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
       const blob = new Blob([csv], { type: 'text/csv' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'inventory.csv'
+      a.download = `pharmacy_inventory_${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
+      toast.success('Inventory exported successfully')
     } catch (e) {
       showErrorToast(e, 'Export failed')
     }
   }
 
-  const lowStock = (i) => (Number(i.stock) === 0 ? 'out' : (Number(i.stock) <= Number(i.reorderLevel || 0) ? 'low' : 'ok'))
-
   const handleAdd = async (payload) => {
     const p = createInventory(payload)
-    toast.promise(p, { loading: 'Creating item...', success: 'Item created', error: (e) => getErrorMessage(e, 'Failed creating item') })
+    toast.promise(p, { loading: 'Creating item...', success: 'Item created successfully', error: (e) => getErrorMessage(e, 'Failed creating item') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setShowAdd(false)
     } catch (error) {
       console.error(error)
@@ -198,10 +287,10 @@ const InventoryStocks = () => {
 
   const handleEdit = async (id, payload) => {
     const p = updateInventory(id, payload)
-    toast.promise(p, { loading: 'Updating item...', success: 'Item updated', error: (e) => getErrorMessage(e, 'Failed updating item') })
+    toast.promise(p, { loading: 'Updating item...', success: 'Item updated successfully', error: (e) => getErrorMessage(e, 'Failed updating item') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setEditing(null)
     } catch (error) {
       console.error(error)
@@ -210,10 +299,10 @@ const InventoryStocks = () => {
 
   const handleRestock = async (id, payload) => {
     const p = restockInventory(id, payload)
-    toast.promise(p, { loading: 'Restocking...', success: 'Restocked', error: (e) => getErrorMessage(e, 'Failed to restock item') })
+    toast.promise(p, { loading: 'Restocking...', success: 'Restocked successfully', error: (e) => getErrorMessage(e, 'Failed to restock item') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setRestockingFor(null)
     } catch (error) {
       console.error(error)
@@ -225,7 +314,7 @@ const InventoryStocks = () => {
     toast.promise(p, { loading: 'Reducing stock...', success: 'Stock reduced successfully', error: (e) => getErrorMessage(e, 'Failed to reduce stock') })
     try {
       await p
-      fetch()
+      fetchInventoryData()
       setRestockingFor(null)
     } catch (error) {
       console.error(error)
@@ -234,176 +323,609 @@ const InventoryStocks = () => {
 
   return (
     <SuperAdminLayout>
-  <div className="flex h-full flex-col gap-4 overflow-y-auto">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-primary">Inventory & Stocks</h1>
-            <p className="text-xs text-base-content/70">Manage medicines, restock and view transactions</p>
-          </div>
+      {loading && <KolakLoader fullscreen />}
+      <div className="space-y-6 pb-12 max-w-7xl mx-auto">
+        {/* Sleek Modern Header Bar */}
+        <div className="bg-base-100 border border-base-200/80 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <input className="input input-sm input-bordered" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-            <button className="btn btn-outline btn-sm flex items-center gap-2" onClick={() => setShowCsvUpload(true)}><FaFileUpload /> Import CSV</button>
-            <button className="btn btn-primary btn-sm flex items-center gap-2" onClick={() => setShowAdd(true)}><MdAdd /> Add new item</button>
+            <button
+              type="button"
+              onClick={() => navigate('/superadmin/settings')}
+              className="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-primary hover:bg-base-200"
+              title="Back to Settings"
+            >
+              <FaArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="w-10 h-10 rounded-xl bg-[#00943C]/10 text-[#00943C] flex items-center justify-center font-black shrink-0">
+              <GiMedicines size={24} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-bold text-base-content">
+                  Pharmacy Inventory & Stocks
+                </h1>
+                <span className="badge badge-xs badge-success gap-1 text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Live Sync
+                </span>
+              </div>
+              <p className="text-xs text-base-content/60">
+                Manage hospital pharmacy stock, restock medications, and track batch expiries
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => fetchInventoryData(true)}
+              disabled={refreshing}
+              className="btn btn-outline border-base-300 hover:border-primary hover:bg-primary/5 hover:text-primary btn-sm gap-2 rounded-xl"
+              title="Refresh inventory list"
+            >
+              <RiRefreshLine className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="text-xs font-semibold">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+
+            <button
+              onClick={() => exportCsv(filtered)}
+              className="btn btn-outline border-base-300 hover:border-success hover:bg-success/5 hover:text-success btn-sm gap-1.5 rounded-xl"
+              title="Export filtered items to CSV"
+            >
+              <FaFileDownload className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold">Export CSV</span>
+            </button>
+
+            <button
+              onClick={() => setShowCsvUpload(true)}
+              className="btn btn-outline border-base-300 hover:border-primary hover:bg-primary/5 hover:text-primary btn-sm gap-1.5 rounded-xl"
+              title="Bulk import items from CSV"
+            >
+              <FaFileUpload className="w-3.5 h-3.5" />
+              <span className="text-xs font-semibold">Import CSV</span>
+            </button>
+
+            <button
+              onClick={() => setShowAdd(true)}
+              className="btn btn-primary btn-sm gap-1.5 font-bold shadow-xs text-white rounded-xl"
+            >
+              <MdAdd className="w-4 h-4" />
+              <span className="text-xs">Add New Item</span>
+            </button>
           </div>
         </div>
 
-        <div className="rounded-xl bg-base-100 border border-base-300 p-4">
+        {/* TOP 5 KPI STAT CARDS WITH INTERACTIVE FILTERING */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          {/* 1. Total Items */}
+          <div
+            onClick={() => setActiveTab('all')}
+            className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+              activeTab === 'all'
+                ? 'border-primary ring-2 ring-primary/20 bg-primary/5'
+                : 'border-base-200 hover:border-base-content/30'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Total Items</span>
+                <div className="text-2xl sm:text-3xl font-black text-base-content mt-1">
+                  {totalItems}
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-base-200 text-base-content">
+                <FaBoxes className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-base-content/60 flex items-center justify-between">
+              <span>Unique medicines</span>
+              {activeTab === 'all' && <span className="badge badge-primary badge-xs font-bold">Active</span>}
+            </div>
+          </div>
+
+          {/* 2. In Stock */}
+          <div
+            onClick={() => setActiveTab('in_stock')}
+            className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+              activeTab === 'in_stock'
+                ? 'border-success ring-2 ring-success/20 bg-success/5'
+                : 'border-base-200 hover:border-base-content/30'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">In Stock</span>
+                <div className="text-2xl sm:text-3xl font-black text-success mt-1">
+                  {inStockCount}
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-success/10 text-success">
+                <FaCheckCircle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-success font-medium flex items-center justify-between">
+              <span>{totalItems ? Math.round((inStockCount / totalItems) * 100) : 0}% available</span>
+              {activeTab === 'in_stock' && <span className="badge badge-success badge-xs font-bold text-white">Active</span>}
+            </div>
+          </div>
+
+          {/* 3. Low Stock */}
+          <div
+            onClick={() => setActiveTab('low')}
+            className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+              activeTab === 'low'
+                ? 'border-warning ring-2 ring-warning/20 bg-warning/5'
+                : 'border-base-200 hover:border-base-content/30'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Low Stock</span>
+                <div className="text-2xl sm:text-3xl font-black text-warning mt-1">
+                  {lowStockCount}
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-warning/10 text-warning">
+                <FaExclamationTriangle className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-warning-content/80 font-medium flex items-center justify-between">
+              <span>Needs reorder</span>
+              {activeTab === 'low' && <span className="badge badge-warning badge-xs font-bold">Active</span>}
+            </div>
+          </div>
+
+          {/* 4. Expiring Soon */}
+          <div
+            onClick={() => setActiveTab('expiring')}
+            className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
+              activeTab === 'expiring'
+                ? 'border-info ring-2 ring-info/20 bg-info/5'
+                : 'border-base-200 hover:border-base-content/30'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Expiring Soon</span>
+                <div className="text-2xl sm:text-3xl font-black text-info mt-1">
+                  {expiringSoonCount}
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-info/10 text-info">
+                <FaClock className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-info font-medium flex items-center justify-between">
+              <span>Within 30 days</span>
+              {activeTab === 'expiring' && <span className="badge badge-info badge-xs font-bold text-white">Active</span>}
+            </div>
+          </div>
+
+          {/* 5. Expired */}
+          <div
+            onClick={() => setActiveTab('expired')}
+            className={`p-4 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between col-span-2 sm:col-span-1 ${
+              activeTab === 'expired'
+                ? 'border-error ring-2 ring-error/20 bg-error/5'
+                : 'border-base-200 hover:border-base-content/30'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Expired</span>
+                <div className="text-2xl sm:text-3xl font-black text-error mt-1">
+                  {expiredCount}
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-error/10 text-error">
+                <FaBan className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-base-200/60 text-[11px] text-error font-medium flex items-center justify-between">
+              <span>Past shelf life</span>
+              {activeTab === 'expired' && <span className="badge badge-error badge-xs font-bold text-white">Active</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN CARD: TOOLBAR + TABLE */}
+        <div className="card bg-base-100 border border-base-200 shadow-sm overflow-hidden rounded-2xl">
+          {/* FILTER TOOLBAR */}
+          <div className="p-4 sm:p-5 bg-base-100 border-b border-base-200 flex flex-col gap-3.5">
+            {/* Row 1: Search + Quick Stats */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base-content/40 w-3.5 h-3.5" />
+                <input
+                  type="text"
+                  placeholder="Search medication, strength, form, batch number, supplier..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="input input-sm input-bordered w-full pl-9 pr-8 text-xs rounded-xl"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content"
+                  >
+                    <FaTimes className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 self-end md:self-auto">
+                <span className="text-xs text-base-content/60 font-medium">
+                  Showing <strong className="text-primary font-bold">{filtered.length}</strong> of{' '}
+                  <strong className="text-base-content">{totalItems}</strong> medications
+                </span>
+
+                {/* Rows per page selector */}
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="select select-bordered select-xs text-xs rounded-lg"
+                  aria-label="Items per page"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Row 2: Category Filter Tabs */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-2.5 border-t border-base-200">
+              <span className="text-xs font-semibold text-base-content/60 mr-1.5 flex items-center gap-1">
+                <FaLayerGroup className="w-3 h-3 text-primary" /> Filter:
+              </span>
+
+              {[
+                { key: 'all', label: 'All Items', count: totalItems },
+                { key: 'in_stock', label: 'In Stock', count: inStockCount },
+                { key: 'low', label: 'Low Stock', count: lowStockCount, warn: lowStockCount > 0 },
+                { key: 'out', label: 'Out of Stock', count: outOfStockCount, danger: outOfStockCount > 0 },
+                { key: 'expiring', label: 'Expiring Soon', count: expiringSoonCount, info: expiringSoonCount > 0 },
+                { key: 'expired', label: 'Expired', count: expiredCount, danger: expiredCount > 0 },
+                { key: 'recent', label: 'Recent Activity', count: null },
+              ].map(({ key, label, count, warn, danger, info }) => {
+                const isActive = activeTab === key
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveTab(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-primary text-primary-content shadow-xs'
+                        : 'bg-base-200 text-base-content/70 hover:text-base-content hover:bg-base-300'
+                    }`}
+                  >
+                    <span>{label}</span>
+                    {count !== null && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          isActive
+                            ? 'bg-primary-content/20 text-primary-content'
+                            : danger
+                              ? 'bg-error/20 text-error'
+                              : warn
+                                ? 'bg-warning/20 text-warning-content'
+                                : info
+                                  ? 'bg-info/20 text-info'
+                                  : 'bg-base-300 text-base-content/60'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="btn btn-ghost btn-xs text-error font-medium ml-auto"
+                >
+                  Clear Search
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* CONTENT AREA */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (<div key={i} className="h-40 rounded-xl bg-base-200 animate-pulse" />))}
+            <div className="py-20 flex justify-center">
+              <KolakLoader />
             </div>
           ) : error ? (
-            <div className="text-sm text-error">Failed to load inventory.</div>
+            <div className="py-16 text-center text-sm text-error">
+              {error}
+              <div className="mt-3">
+                <button onClick={() => fetchInventoryData(true)} className="btn btn-sm btn-outline btn-error">
+                  Try Again
+                </button>
+              </div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-16">
+              <EmptyState
+                title="No medications found"
+                description={
+                  search
+                    ? `No inventory items matched "${search}".`
+                    : activeTab !== 'all'
+                      ? `No items found under the "${activeTab}" filter category.`
+                      : 'No medicines recorded in the inventory yet.'
+                }
+                actionLabel={search || activeTab !== 'all' ? 'Reset Filters' : 'Add First Item'}
+                onAction={() => {
+                  if (search || activeTab !== 'all') {
+                    setSearch('')
+                    setActiveTab('all')
+                  } else {
+                    setShowAdd(true)
+                  }
+                }}
+              />
+            </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
-                <StatCard label="Total Items" value={totalItems} sub="Unique medications" />
-                <StatCard label="In Stock" value={inStockCount} sub={`${totalItems ? Math.round((inStockCount / totalItems) * 100) : 0}% availability`} subClass="text-success/70" />
-                <StatCard label="Low Stock" value={lowStockCount} sub="Needs reordering" subClass="text-warning/70" />
-                <StatCard label="Expiring Soon" value={expiringSoonCount} sub="Within 30 days" subClass="text-error/70" />
-                <StatCard label="Expired" value={expiredCount} sub="Past expiry date" subClass="text-error/70" />
-              </div>
-
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {[
-                    ['all', 'All Items'],
-                    ['low', 'Low Stock'],
-                    ['out', 'Out of Stock'],
-                    ['expiring', 'Expiring Soon'],
-                    ['expired', 'Expired'],
-                    ['recent', 'Recent Activity'],
-                  ].map(([key, label]) => (
-                    <button
-                      key={key}
-                      className={`px-2 py-1 rounded ${activeTab === key ? 'bg-primary text-primary-content' : 'bg-base-200'}`}
-                      onClick={() => { setActiveTab(key); setCurrentPage(1) }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input className="input input-sm input-bordered" placeholder="Search Medications..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }} />
-                  <button className="btn btn-outline btn-sm" onClick={() => exportCsv(filtered)}>Export</button>
-                </div>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="block md:hidden">
-                <div className="grid grid-cols-1 gap-4">
-                  {pageItems.map(item => (
-                    <div key={item._id} className="p-4 rounded-xl border flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <div className="font-medium">{item.name}</div>
-                        <div className={`text-xs px-2 py-1 rounded ${lowStock(item) === 'out' ? 'bg-error/10 text-error' : lowStock(item) === 'low' ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}>
-                          {lowStock(item) === 'out' ? 'Out of stock' : lowStock(item) === 'low' ? 'Low stock' : 'In stock'}
-                        </div>
-                      </div>
-                      <div className="text-sm text-base-content/70">{item.form} {item.strength}</div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div>Stock: <span className="font-medium">{item.stock ?? 0} {UNIT_LABELS[item.unit] || 'tablet'}</span></div>
-                        <div>Pack: <span className="font-medium">{item.packSize ?? 1} {UNIT_LABELS[item.unit] || 'tablet'}/pack</span></div>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <div>Pack price: <span className="font-medium">₦{item.sellingPrice ?? '—'}</span></div>
-                        <div>Per unit: <span className="font-medium">₦{pricePerUnit(item).toFixed(2)}</span></div>
-                      </div>
-                      <div className="flex justify-end gap-2 mt-2">
-                        <button className="btn btn-ghost btn-sm" onClick={() => setEditing(item)}>Edit</button>
-                        <button className="btn btn-outline btn-sm" onClick={() => setRestockingFor(item)}>Restock</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Desktop table */}
+              {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="table w-full">
+                <table className="table w-full text-xs">
                   <thead>
-                    <tr className="bg-base-200">
-                      <th>Item</th>
-                      <th>Form / Strength</th>
-                      <th>Unit</th>
-                      <th>Pack Size</th>
-                      <th>Stock</th>
-                      <th>Reorder Level</th>
-                      <th>Pack Price</th>
-                      <th>Price / Unit</th>
-                      <th>Expiry Date</th>
-                      <th>Actions</th>
+                    <tr className="bg-base-200/60 border-b border-base-200 text-base-content/60 uppercase tracking-wider text-[11px]">
+                      <th className="py-3 px-4 font-bold">Medication</th>
+                      <th className="py-3 px-3 font-bold">Category & Form</th>
+                      <th className="py-3 px-3 font-bold">Batch & Expiry</th>
+                      <th className="py-3 px-3 font-bold">Stock Status</th>
+                      <th className="py-3 px-3 font-bold">Pack Size</th>
+                      <th className="py-3 px-3 font-bold">Pack Price</th>
+                      <th className="py-3 px-3 font-bold">Price / Unit</th>
+                      <th className="py-3 px-4 text-right font-bold">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {pageItems.map(item => (
-                      <tr key={item._id}>
-                        <td>{item.name}</td>
-                        <td>{item.form} {item.strength}</td>
-                        <td>{UNIT_LABELS[item.unit] || 'Tablet'}</td>
-                        <td>{item.packSize ?? 1}</td>
-                        <td>{item.stock ?? 0}</td>
-                        <td>{item.reorderLevel ?? 0}</td>
-                        <td>{item.sellingPrice != null ? `₦${item.sellingPrice}` : '—'}</td>
-                        <td>₦{pricePerUnit(item).toFixed(2)}</td>
-                        <td>{item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '—'}</td>
-                        <td>
-                          <div className="flex gap-2">
-                            <button className="btn btn-ghost btn-xs" onClick={() => setEditing(item)}>Edit</button>
-                            <button className="btn btn-outline btn-xs" onClick={() => setRestockingFor(item)}>Restock</button>
-                            <button
-                              disabled={deleting === item._id}
-                              onClick={() => handleDelete(item)}
-                              className="btn btn-ghost btn-xs text-error"
-                              title="Delete Item"
-                            >
-                              <FaTrash className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-base-200">
+                    {pageItems.map((item) => {
+                      const stockStat = getStockStatus(item)
+                      const expiryStat = getExpiryStatus(item.expiryDate)
+                      const unitName = UNIT_LABELS[item.unit] || item.unit || 'Tablet'
+                      const packSizeNum = Number(item.packSize) || 1
+                      const reorderNum = Number(item.reorderLevel) || 0
+
+                      return (
+                        <tr key={item._id} className="hover:bg-base-200/40 transition-colors">
+                          {/* Medication Name & Supplier */}
+                          <td className="py-3 px-4 min-w-[180px]">
+                            <div className="font-bold text-sm text-base-content">{item.name}</div>
+                            <div className="text-[11px] text-base-content/50 flex items-center gap-1.5 mt-0.5">
+                              {item.supplier ? (
+                                <span>Supplier: {item.supplier}</span>
+                              ) : (
+                                <span className="italic">No supplier listed</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Category & Form */}
+                          <td className="py-3 px-3 min-w-[130px]">
+                            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-base-200 text-base-content/80 font-semibold text-[11px]">
+                              <FaPills className="w-2.5 h-2.5 text-primary opacity-80" />
+                              <span>{item.form || 'Tablet'}</span>
+                            </div>
+                            {item.strength && (
+                              <div className="text-[11px] font-medium text-base-content/60 mt-0.5">
+                                {item.strength}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Batch & Expiry */}
+                          <td className="py-3 px-3 min-w-[140px]">
+                            <div className="font-mono text-[11px] font-bold text-base-content/80">
+                              {item.batchNumber ? `Batch: ${item.batchNumber}` : <span className="text-base-content/40 italic">No batch</span>}
+                            </div>
+                            <div className="mt-1">
+                              <span className={`badge badge-xs px-2 py-0.5 text-[10px] ${expiryStat.badgeClass}`}>
+                                {expiryStat.text}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Stock Status + Indicator */}
+                          <td className="py-3 px-3 min-w-[150px]">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`badge badge-sm py-1 px-2 text-[11px] ${stockStat.badgeClass}`}>
+                                {stockStat.label}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-base-content/50 mt-1">
+                              Reorder at: <strong className="text-base-content/70">{reorderNum}</strong> {unitName}s
+                            </div>
+                          </td>
+
+                          {/* Pack Size */}
+                          <td className="py-3 px-3 font-semibold text-base-content/80">
+                            {packSizeNum} {unitName}{packSizeNum > 1 ? 's' : ''}/pack
+                          </td>
+
+                          {/* Pack Price */}
+                          <td className="py-3 px-3 font-bold text-base-content">
+                            {item.sellingPrice != null ? `₦${Number(item.sellingPrice).toLocaleString()}` : '—'}
+                          </td>
+
+                          {/* Price / Unit */}
+                          <td className="py-3 px-3 font-semibold text-primary">
+                            ₦{pricePerUnit(item).toFixed(2)}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setRestockingFor(item)}
+                                className="btn btn-outline border-primary/40 hover:bg-primary hover:border-primary text-primary hover:text-white btn-xs font-semibold gap-1"
+                                title="Restock or reduce stock"
+                              >
+                                <FaSyncAlt className="w-2.5 h-2.5" />
+                                <span>Restock</span>
+                              </button>
+                              <button
+                                onClick={() => setEditing(item)}
+                                className="btn btn-ghost btn-xs text-base-content/70 hover:text-base-content gap-1 font-semibold"
+                                title="Edit medication details"
+                              >
+                                <FaEdit className="w-2.5 h-2.5" />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                disabled={deleting === item._id}
+                                onClick={() => handleDelete(item)}
+                                className="btn btn-ghost btn-xs text-error hover:bg-error/10 gap-1 font-semibold"
+                                title="Delete Item"
+                              >
+                                {deleting === item._id ? (
+                                  <span className="loading loading-spinner loading-xs" />
+                                ) : (
+                                  <FaTrash className="w-2.5 h-2.5" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
 
-              <div className="mt-4 flex items-center justify-between text-xs text-base-content/60">
-                <div>
-                  Showing Result for {
-                    { all: 'All Items', low: 'Low Stock', out: 'Out of Stock', expiring: 'Expiring Soon', expired: 'Expired Items', recent: 'Recent Activity' }[activeTab]
-                  } ({filtered.length} Total)
-                </div>
-                <div className="join">
-                  <button
-                    className="join-item btn btn-ghost btn-xs"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  >
-                    Prev
-                  </button>
+              {/* Mobile Cards View */}
+              <div className="block md:hidden divide-y divide-base-200">
+                {pageItems.map((item) => {
+                  const stockStat = getStockStatus(item)
+                  const expiryStat = getExpiryStatus(item.expiryDate)
+                  const unitName = UNIT_LABELS[item.unit] || item.unit || 'Tablet'
+                  const packSizeNum = Number(item.packSize) || 1
 
-                  {getPageNumbers(currentPage, Math.max(1, Math.ceil(filtered.length / itemsPerPage))).map((page, idx) =>
-                    page === '...' ? (
-                      <button key={`ellipsis-${idx}`} className="join-item btn btn-ghost btn-xs btn-disabled">…</button>
-                    ) : (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`join-item btn btn-ghost btn-xs ${currentPage === page ? 'bg-primary text-white' : ''}`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
+                  return (
+                    <div key={item._id} className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-base text-base-content">{item.name}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-xs text-base-content/60">
+                            <span className="font-semibold">{item.form || 'Tablet'}</span>
+                            {item.strength && <span>• {item.strength}</span>}
+                          </div>
+                        </div>
+                        <span className={`badge badge-sm py-1 px-2 text-[11px] ${stockStat.badgeClass}`}>
+                          {stockStat.label}
+                        </span>
+                      </div>
 
-                  <button
-                    className="join-item btn btn-ghost btn-xs"
-                    disabled={currentPage === Math.max(1, Math.ceil(filtered.length / itemsPerPage))}
-                    onClick={() => setCurrentPage((p) => Math.min(Math.max(1, Math.ceil(filtered.length / itemsPerPage)), p + 1))}
-                  >
-                    Next
-                  </button>
+                      {/* Middle info grid */}
+                      <div className="grid grid-cols-2 gap-2 text-xs bg-base-200/40 p-2.5 rounded-xl border border-base-200">
+                        <div>
+                          <span className="text-base-content/50">Stock: </span>
+                          <strong className="text-base-content font-bold">{item.stock ?? 0} {unitName}s</strong>
+                        </div>
+                        <div>
+                          <span className="text-base-content/50">Pack Size: </span>
+                          <span className="text-base-content font-medium">{packSizeNum} {unitName}/pack</span>
+                        </div>
+                        <div>
+                          <span className="text-base-content/50">Pack Price: </span>
+                          <span className="text-base-content font-bold">₦{item.sellingPrice ?? '—'}</span>
+                        </div>
+                        <div>
+                          <span className="text-base-content/50">Unit Price: </span>
+                          <span className="text-primary font-bold">₦{pricePerUnit(item).toFixed(2)}</span>
+                        </div>
+                        <div className="col-span-2 flex items-center justify-between pt-1 border-t border-base-200">
+                          <span className="text-base-content/50 font-mono text-[11px]">
+                            {item.batchNumber ? `Batch: ${item.batchNumber}` : 'No batch'}
+                          </span>
+                          <span className={`badge badge-xs ${expiryStat.badgeClass}`}>
+                            {expiryStat.text}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          onClick={() => setEditing(item)}
+                          className="btn btn-ghost btn-xs text-base-content/70 font-semibold"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setRestockingFor(item)}
+                          className="btn btn-primary btn-xs font-semibold gap-1"
+                        >
+                          <FaSyncAlt className="w-2.5 h-2.5" />
+                          <span>Restock</span>
+                        </button>
+                        <button
+                          disabled={deleting === item._id}
+                          onClick={() => handleDelete(item)}
+                          className="btn btn-ghost btn-xs text-error font-semibold"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* PAGINATION BAR */}
+              <div className="p-4 border-t border-base-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-base-100">
+                <div className="text-xs text-base-content/60">
+                  Showing <strong className="text-base-content">{startIndex + 1}</strong> to{' '}
+                  <strong className="text-base-content">{Math.min(startIndex + itemsPerPage, filtered.length)}</strong> of{' '}
+                  <strong className="text-base-content">{filtered.length}</strong> items
                 </div>
+
+                {totalPages > 1 && (
+                  <div className="join">
+                    <button
+                      className="join-item btn btn-sm btn-outline border-base-300"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    >
+                      «
+                    </button>
+
+                    {getPageNumbers(currentPage, totalPages).map((p, idx) =>
+                      p === '...' ? (
+                        <button key={`ellipsis-${idx}`} className="join-item btn btn-sm btn-disabled pointer-events-none">
+                          …
+                        </button>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`join-item btn btn-sm ${
+                            currentPage === p
+                              ? 'bg-primary text-white font-bold border-primary'
+                              : 'btn-outline border-base-300'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )}
+
+                    <button
+                      className="join-item btn btn-sm btn-outline border-base-300"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      »
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -414,7 +936,7 @@ const InventoryStocks = () => {
           <InventoryCsvUploadModal
             items={items}
             onClose={() => setShowCsvUpload(false)}
-            onUploadSuccess={() => { fetch(); setShowCsvUpload(false) }}
+            onUploadSuccess={() => { fetchInventoryData(); setShowCsvUpload(false) }}
           />
         )}
         {editing && <InventoryFormModal item={editing} onClose={() => setEditing(null)} onSubmit={(payload) => handleEdit(editing._id, payload)} />}
@@ -432,16 +954,6 @@ const InventoryStocks = () => {
 }
 
 export default InventoryStocks
-
-function StatCard({ label, value, sub, subClass = 'text-base-content/60' }) {
-  return (
-    <div className="p-2 rounded-xl bg-base-100 border border-base-300">
-      <div className="text-sm text-base-content/70">{label}</div>
-      <div className="text-3xl font-bold">{value}</div>
-      <div className={`text-xs ${subClass}`}>{sub}</div>
-    </div>
-  )
-}
 
 // --- Inline modal components ---
 

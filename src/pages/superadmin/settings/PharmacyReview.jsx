@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppSelector } from '@/store/hooks'
 import { SuperAdminLayout } from '@/layouts/superadmin'
 import { getPatients, getPatientById } from '@/services/api/patientsAPI'
@@ -9,7 +10,9 @@ import { getAllBillings } from '@/services/api/billingAPI'
 import dispensesAPI from '@/services/api/dispensesAPI'
 import { calculateDispenseQuantity } from '@/utils/prescriptionsCalculator'
 import { formatNigeriaDateTime } from '@/utils/formatDateTimeUtils'
+import { exportRowsToCsv } from '@/pages/superadmin/reports/reportUtils'
 import { DispenseConfirmModal } from '@/components/modals'
+import { FaArrowLeft, FaShieldAlt, FaDownload, FaPills, FaFilter, FaSearch, FaUserInjured } from 'react-icons/fa'
 import toast from 'react-hot-toast'
 import { getErrorMessage } from '@/utils/errorHandler'
 
@@ -112,13 +115,41 @@ const PharmacyReview = () => {
     return () => { mounted = false }
   }, [])
 
+  const [typeFilter, setTypeFilter] = useState('all');
+  const navigate = useNavigate();
+
   const filteredCandidates = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return candidates
-    return candidates.filter((c) =>
+    let list = candidates;
+    if (typeFilter === 'patient') list = list.filter((c) => c.type === 'patient');
+    if (typeFilter === 'dependant') list = list.filter((c) => c.type === 'dependant');
+
+    const q = search.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((c) =>
       [c.name, c.hospitalId].filter(Boolean).join(' ').toLowerCase().includes(q)
-    )
-  }, [candidates, search])
+    );
+  }, [candidates, search, typeFilter]);
+
+  const handleExportCandidates = () => {
+    if (!filteredCandidates.length) {
+      toast.error('No candidate reviews to export');
+      return;
+    }
+    const cols = [
+      { key: 'name', label: 'Patient / Dependant Name' },
+      { key: 'type', label: 'Subject Type' },
+      { key: 'hospitalId', label: 'Hospital ID' },
+      { key: 'rejectedCount', label: 'HMO-Rejected Items Count' },
+    ];
+    const rows = filteredCandidates.map((c) => ({
+      name: c.name,
+      type: c.type === 'dependant' ? `Dependant (${c.relationshipType || ''})` : 'Primary Patient',
+      hospitalId: c.hospitalId,
+      rejectedCount: c.rejectedCount,
+    }));
+    exportRowsToCsv(rows, cols, `pharmacy_hmo_rejected_reviews_${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success(`Exported ${rows.length} candidate review records`);
+  };
 
   // Step 2 — load full prescription/inventory/billing detail for whichever
   // patient or dependant was selected from the left-hand list.
@@ -305,24 +336,83 @@ const PharmacyReview = () => {
 
   return (
     <SuperAdminLayout>
-      <div className="p-6">
-        <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-primary">Pharmacy Review</h1>
-          <p className="text-sm text-base-content/70">
-            Patients and dependants with HMO-rejected medications. Override and dispense here
-            if the patient agrees to pay directly.
-          </p>
+      <div className="space-y-6 pb-12 max-w-7xl mx-auto p-4 sm:p-6">
+        {/* Sleek Modern Header Bar */}
+        <div className="bg-base-100 border border-base-200/80 px-5 py-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/superadmin/settings')}
+              className="btn btn-ghost btn-sm btn-square rounded-xl text-base-content/70 hover:text-primary hover:bg-base-200"
+              title="Back to Settings"
+            >
+              <FaArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black shrink-0">
+              <FaPills className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg font-bold text-base-content">
+                  Pharmacy Reviews & HMO Overrides
+                </h1>
+                <span className="badge badge-xs badge-warning gap-1 text-[11px] font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Override Gateway
+                </span>
+              </div>
+              <p className="text-xs text-base-content/60">
+                Review and override HMO-rejected prescription items for self-pay or hospital compassionate clearance
+              </p>
+            </div>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-2 bg-base-200/60 px-3 py-1.5 rounded-xl border border-base-300/40 text-xs text-base-content/80 font-medium">
+            <FaShieldAlt className="w-3.5 h-3.5 text-primary" />
+            <span>{candidates.length} Cases Flagged</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Left — candidate list */}
-          <div className="lg:col-span-1 rounded-xl bg-base-100 border border-base-300 p-4">
-            <input
-              className="input input-sm input-bordered w-full mb-3"
-              placeholder="Search by name or hospital ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="lg:col-span-1 rounded-2xl bg-base-100 border border-base-200 p-4 sm:p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-bold text-base-content flex items-center gap-1.5">
+                <FaUserInjured className="text-primary w-4 h-4" />
+                <span>Flagged Patients</span>
+                <span className="badge badge-sm badge-neutral">{filteredCandidates.length}</span>
+              </h2>
+              <button
+                type="button"
+                onClick={handleExportCandidates}
+                className="btn btn-ghost btn-xs text-xs gap-1"
+                title="Export list to CSV"
+              >
+                <FaDownload className="w-3 h-3" />
+                <span>Export</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-base-content/40 w-3 h-3" />
+                <input
+                  className="input input-sm input-bordered w-full pl-8 rounded-xl bg-base-200/50"
+                  placeholder="Search name, ID..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <select
+                className="select select-bordered select-xs rounded-xl"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <option value="all">All</option>
+                <option value="patient">Patients</option>
+                <option value="dependant">Dependants</option>
+              </select>
+            </div>
 
             {loading ? (
               <div className="space-y-2">

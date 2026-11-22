@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { FaPlus, FaMapMarkerAlt, FaEdit, FaTrash, FaBed, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaMapMarkerAlt, FaEdit, FaTrash, FaBed, FaSearch, FaDownload } from 'react-icons/fa';
 import { AddWardModal, EditWardModal } from '@/components/modals';
 import { getAllWards, deleteWard } from '@/services/api/wardAPI';
+import { exportRowsToCsv } from '@/pages/superadmin/reports/reportUtils';
 import { showErrorToast } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
@@ -67,6 +68,38 @@ const WardsTab = () => {
     });
   }, [wards, searchTerm]);
 
+  const handleExport = () => {
+    if (!filteredWards.length) {
+      toast.error('No wards to export');
+      return;
+    }
+    const cols = [
+      { key: 'name', label: 'Ward Name' },
+      { key: 'department', label: 'Department' },
+      { key: 'floor', label: 'Floor Location' },
+      { key: 'totalBeds', label: 'Total Capacity' },
+      { key: 'occupied', label: 'Occupied Beds' },
+      { key: 'available', label: 'Available Beds' },
+      { key: 'status', label: 'Status' },
+    ];
+    const rows = filteredWards.map((w) => {
+      const beds = Array.isArray(w.beds) ? w.beds : [];
+      const occupied = beds.filter((b) => b.isOccupied).length;
+      const total = w.totalBeds || beds.length || 0;
+      return {
+        name: w.name || 'Untitled Ward',
+        department: w.department?.name || '—',
+        floor: w.floorLocation || '—',
+        totalBeds: total,
+        occupied: occupied,
+        available: Math.max(0, total - occupied),
+        status: w.status || 'Active',
+      };
+    });
+    exportRowsToCsv(rows, cols, `inpatient_wards_${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success(`Exported ${rows.length} inpatient wards`);
+  };
+
   const getStatusBadgeClass = (status) => {
     const s = String(status || '').toLowerCase();
     switch (s) {
@@ -105,8 +138,17 @@ const WardsTab = () => {
             />
           </div>
           <button
+            type="button"
+            onClick={handleExport}
+            className="btn btn-outline btn-sm rounded-xl gap-1.5"
+            title="Export wards to CSV"
+          >
+            <FaDownload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <button
             onClick={handleAddWard}
-            className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20"
+            className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20 text-white"
           >
             <FaPlus className="w-3.5 h-3.5 mr-1.5" />
             Add Ward

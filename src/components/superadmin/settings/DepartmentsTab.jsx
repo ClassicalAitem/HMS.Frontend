@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { FaPlus, FaBuilding, FaEdit, FaTrash, FaSearch, FaUserTie } from 'react-icons/fa';
+import { FaPlus, FaBuilding, FaEdit, FaTrash, FaSearch, FaUserTie, FaDownload } from 'react-icons/fa';
 import { AddDepartmentModal, EditDepartmentModal } from '@/components/modals';
 import { getAllDepartments, deleteDepartment } from '@/services/api/departmentAPI';
+import { exportRowsToCsv } from '@/pages/superadmin/reports/reportUtils';
 import { showErrorToast } from '@/utils/errorHandler';
 import toast from 'react-hot-toast';
 
@@ -68,6 +69,27 @@ const DepartmentsTab = () => {
     });
   }, [departments, searchTerm]);
 
+  const handleExport = () => {
+    if (!filteredDepartments.length) {
+      toast.error('No departments to export');
+      return;
+    }
+    const cols = [
+      { key: 'name', label: 'Department Name' },
+      { key: 'head', label: 'Head of Department' },
+      { key: 'description', label: 'Description' },
+    ];
+    const rows = filteredDepartments.map((d) => ({
+      name: d.name || 'Untitled',
+      head: d.headOfDepartment
+        ? `${d.headOfDepartment.firstName || ''} ${d.headOfDepartment.lastName || ''}`.trim()
+        : '—',
+      description: d.description || '—',
+    }));
+    exportRowsToCsv(rows, cols, `departments_${new Date().toISOString().slice(0, 10)}.csv`);
+    toast.success(`Exported ${rows.length} departments`);
+  };
+
   return (
     <div className="bg-base-100 rounded-2xl shadow-sm border border-base-200 p-6 sm:p-8 space-y-6">
       {/* Header and Controls */}
@@ -92,8 +114,17 @@ const DepartmentsTab = () => {
             />
           </div>
           <button
+            type="button"
+            onClick={handleExport}
+            className="btn btn-outline btn-sm rounded-xl gap-1.5"
+            title="Export departments to CSV"
+          >
+            <FaDownload className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+          <button
             onClick={handleAddDepartment}
-            className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20"
+            className="btn btn-primary btn-sm rounded-xl px-4 shadow-sm shadow-primary/20 text-white"
           >
             <FaPlus className="w-3.5 h-3.5 mr-1.5" />
             Add Department

@@ -1,10 +1,77 @@
 export const reportDateRangeOptions = [
   { value: 'all', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+  { value: 'month', label: 'This month' },
   { value: '1_month', label: 'Last 1 month' },
   { value: '3_months', label: 'Last 3 months' },
   { value: '6_months', label: 'Last 6 months' },
   { value: 'custom', label: 'Custom range' },
 ];
+
+export const isDateInPeriod = (dateStr, period, customStart, customEnd) => {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+
+  const now = new Date();
+
+  if (period === 'today') {
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+
+  if (period === 'week') {
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    return d >= startOfWeek && d <= endOfWeek;
+  }
+
+  if (period === 'month') {
+    return (
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }
+
+  if (period === '1_month') {
+    const oneMonthAgo = new Date(now);
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    return d >= oneMonthAgo && d <= now;
+  }
+
+  if (period === '3_months') {
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    return d >= threeMonthsAgo && d <= now;
+  }
+
+  if (period === '6_months') {
+    const sixMonthsAgo = new Date(now);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    return d >= sixMonthsAgo && d <= now;
+  }
+
+  if (period === 'custom') {
+    if (!customStart && !customEnd) return true;
+    const start = customStart ? new Date(`${customStart}T00:00:00`) : new Date(0);
+    const end = customEnd ? new Date(`${customEnd}T23:59:59.999`) : new Date(8640000000000000);
+    return d >= start && d <= end;
+  }
+
+  return true; // 'all'
+};
 
 const normalizeDateValue = (value) => {
   if (!value) return '';
@@ -70,12 +137,14 @@ export const isWithinDateRange = (value, range) => {
 
 export const exportRowsToCsv = (rows, columns, fileName) => {
   const header = columns.map((column) => column.label);
-  const body = rows.map((row) => columns.map((column) => {
-    const value = row[column.key];
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (value === null || value === undefined) return '';
-    return String(value).replace(/"/g, '""');
-  }));
+  const body = rows.map((row) =>
+    columns.map((column) => {
+      const value = row[column.key];
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (value === null || value === undefined) return '';
+      return String(value).replace(/"/g, '""');
+    })
+  );
 
   const csv = [header, ...body]
     .map((row) => row.map((value) => `"${value}"`).join(','))
