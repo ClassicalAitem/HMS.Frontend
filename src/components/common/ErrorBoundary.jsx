@@ -14,24 +14,34 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an unhandled error:", error, errorInfo);
 
-    // If chunk loading failed (e.g. new deployment or stale dev chunk), reload page once
+    // If chunk loading failed (e.g. new deployment or stale dev chunk), reload page
     const isChunkError =
       error?.message?.includes("Failed to fetch dynamically imported module") ||
       error?.message?.includes("Importing a module script failed") ||
+      error?.name === "ChunkLoadError" ||
       error?.message?.includes("Cannot read properties of null (reading 'useContext')");
 
-    if (isChunkError && !sessionStorage.getItem("chunk_reload_attempted")) {
-      sessionStorage.setItem("chunk_reload_attempted", "true");
-      window.location.reload();
+    if (isChunkError) {
+      const now = Date.now();
+      const lastReload = parseInt(sessionStorage.getItem("chunk_reload_time") || "0", 10);
+      if (now - lastReload > 8000) {
+        sessionStorage.setItem("chunk_reload_time", String(now));
+        window.location.reload();
+      }
     }
   }
 
   handleReload = () => {
+    sessionStorage.removeItem("chunk_reload_time");
     sessionStorage.removeItem("chunk_reload_attempted");
-    window.location.reload();
+    // Cache-bust reload to ensure latest bundles are fetched from server
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', Date.now().toString());
+    window.location.replace(url.toString());
   };
 
   handleGoLogin = () => {
+    sessionStorage.removeItem("chunk_reload_time");
     sessionStorage.removeItem("chunk_reload_attempted");
     window.location.href = "/login";
   };

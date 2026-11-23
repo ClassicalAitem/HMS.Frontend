@@ -3,9 +3,18 @@ import { createRoot } from 'react-dom/client';
 import './styles/index.css';
 import App from './App.jsx';
 
+// Handle dynamic import failures when a new production build replaces chunk hashes
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  const now = Date.now();
+  const lastReload = parseInt(sessionStorage.getItem('chunk_reload_time') || '0', 10);
+  if (now - lastReload > 8000) {
+    sessionStorage.setItem('chunk_reload_time', String(now));
+    window.location.reload();
+  }
+});
+
 // Prevent Vite dev server from forcibly reloading the application when the user switches browser tabs.
-// When a browser tab is inactive, Chrome/Edge throttles timers and drops the HMR WebSocket connection.
-// By intercepting 'vite:ws:disconnect' and 'vite:beforeFullReload', we suppress the unwanted location.reload().
 if (import.meta.hot) {
   // Silent handling of disconnects to avoid unhandled runtime errors in dev mode
   import.meta.hot.on('vite:ws:disconnect', () => {

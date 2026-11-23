@@ -134,13 +134,10 @@ const serviceChargesSlice = createSlice({
       })
       .addCase(deleteServiceCharge.fulfilled, (state, action) => {
         state.deleting = false;
+        const targetId = action.payload?.id || action.payload?._id || action.payload;
         if (Array.isArray(state.serviceCharges)) {
-          state.serviceCharges = state.serviceCharges.filter(charge => charge.id !== action.payload.id);
+          state.serviceCharges = state.serviceCharges.filter(charge => (charge.id || charge._id) !== targetId);
         }
-      })
-      .addCase(deleteServiceCharge.fulfilled, (state, action) => {
-        state.deleting = false;
-        state.serviceCharges = state.serviceCharges.filter(charge => charge.id !== action.payload.id);
       })
       .addCase(deleteServiceCharge.rejected, (state, action) => {
         state.deleting = false;
