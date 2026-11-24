@@ -49,9 +49,16 @@ const getUnitOptions = (medicationType, selectedDrug) => {
   if (medicationType === 'infusion') return [{ value: 'ml', label: 'ml' }];
   if (medicationType === 'cream') return [{ value: 'tablet', label: 'tube(s)' }];
   if (medicationType === 'injection' || medicationType === 'subcutaneous') {
-    const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
-    const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
-    return hasConcentration ? [{ value: 'mg', label: 'mg' }, physicalOpt] : [physicalOpt];
+    const options = [
+      { value: 'ml', label: 'ml' },
+      { value: 'mg', label: 'mg' },
+    ];
+    if (selectedDrug?.unit === 'iu') {
+      options.unshift({ value: 'iu', label: 'IU' });
+    } else if (selectedDrug?.unit === 'ampoule') {
+      options.push({ value: 'ampoule', label: 'ampoule(s)' });
+    }
+    return options;
   }
   return [{ value: 'unit', label: 'unit' }];
 };
@@ -404,7 +411,15 @@ const PrescribeDrugsModal = ({ isOpen, onClose, onQueue, initialMedications }) =
                   ) : preview ? (
                     <div className="mt-3 p-3 rounded-lg bg-success/10 border border-success/30 text-sm flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        Prescribed: <span className="font-medium">{Number(preview.prescribedQuantity).toFixed(2)} {preview.unit}</span>
+                        Prescribed: <span className="font-medium">{Number.isInteger(Number(preview.prescribedQuantity)) ? preview.prescribedQuantity : Number(preview.prescribedQuantity).toFixed(2)} {preview.unit}</span>
+                        {preview.bottlesNeeded && (
+                          <span className="text-base-content/80 ml-2 font-medium">
+                            (Billed: {preview.bottlesNeeded} {preview.displayUnit || 'bottle'}{preview.bottlesNeeded > 1 ? 's' : ''})
+                          </span>
+                        )}
+                        <span className="text-base-content/60 ml-2">
+                          {preview.isSingleUnit || preview.bottlesNeeded ? `(@ ${currency(preview.unitPrice)} each)` : `(@ ${currency(preview.unitPrice)}/unit)`}
+                        </span>
                       </div>
                       <div className="font-semibold text-success">{currency(preview.lineTotal)}</div>
                     </div>

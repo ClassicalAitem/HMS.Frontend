@@ -6,7 +6,26 @@ const UNIT_LABELS = {
   ml: 'ml',
   iu: 'IU',
   ampoule: 'Ampoule',
+  tube: 'Tube',
 };
+
+export const ALL_FORMS = [
+  'Caplet', 'Capsule', 'Chewable tablet', 'Cream', 'Delayed-release tablet',
+  'Dispersible tablet', 'Drops', 'Ear drops', 'Effervescent tablet', 'Enema',
+  'Enteric-coated tablet', 'Enzymatic preparation', 'Extended-release capsule',
+  'Extended-release tablet', 'Eye drops', 'Eye gel', 'Eye ointment',
+  'Eye suspension', 'Film-coated tablet', 'Gel', 'Granules', 'Gutt',
+  'Implant', 'Infusion', 'Inhalation', 'Inhalation capsule', 'Inhalation liquid',
+  'Inhalation powder', 'Inhaler', 'Injection', 'Injection concentrate',
+  'Injection diluent', 'Injection/infusion', 'Lotion', 'Medical gas',
+  'Modified-release tablet', 'Mouthwash', 'Nail lacquer', 'Nasal drops',
+  'Nasal spray', 'Nebulizer solution', 'Nebulizer suspension', 'Ointment',
+  'Oral gel', 'Oral solution', 'Oral suspension', 'Oral syrup',
+  'Orally disintegrating tablet', 'Powder', 'Scored tablet', 'Shampoo',
+  'Solution', 'Sublingual spray', 'Sublingual tablet', 'Suppository',
+  'Suspension', 'Syrup', 'Tablet', 'Topical cream', 'Topical solution',
+  'Topical suspension', 'Vaginal capsule', 'Vaginal cream', 'Vaginal tablet'
+];
 
 export function InventoryFormModal({ item, title, onClose, onSubmit }) {
   const isEdit = !!item?._id;
@@ -104,43 +123,58 @@ export function InventoryFormModal({ item, title, onClose, onSubmit }) {
                 value={form.form}
                 onChange={(e) => {
                   const nextForm = e.target.value;
-                  const nextUnit = nextForm === 'Tablet' ? 'tablet' : nextForm === 'Cream' ? 'tube' : nextForm === 'Gutt' || nextForm === 'Infusion' ? 'ml' : nextForm === 'Syrup' ? 'ml' : nextForm === 'Injection' ? (form.unit === 'tablet' || form.unit === 'tube' ? 'ml' : form.unit) : form.unit;
+                  let nextUnit = form.unit;
+                  const lower = nextForm.toLowerCase();
+                  if (lower.includes('tablet') || lower.includes('caplet') || lower.includes('capsule') || lower.includes('suppository') || lower.includes('implant')) {
+                    nextUnit = 'tablet';
+                  } else if (lower.includes('cream') || lower.includes('ointment') || lower.includes('gel')) {
+                    nextUnit = 'tube';
+                  } else if (lower.includes('syrup') || lower.includes('suspension') || lower.includes('solution') || lower.includes('drops') || lower.includes('infusion') || lower.includes('gutt') || lower.includes('injection') || lower.includes('spray') || lower.includes('inhaler') || lower.includes('lacquer') || lower.includes('mouthwash') || lower.includes('shampoo')) {
+                    nextUnit = (form.unit === 'tablet' || form.unit === 'tube') ? 'ml' : form.unit;
+                  }
                   setForm({ ...form, form: nextForm, unit: nextUnit });
                 }}
               >
                 <option value="">Select form</option>
-                <option value="Tablet">Tablet</option>
-                <option value="Syrup">Syrup</option>
-                <option value="Gutt">Gutt</option>
-                <option value="Cream">Cream</option>
-                <option value="Infusion">Infusion</option>
-                <option value="Injection">Injection</option>
-                <option value="Suspension">Suspension</option>
+                {ALL_FORMS.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
               </select>
             </div> 
 
           <div className="flex gap-2">
-            <input className="input input-bordered flex-1" placeholder="Strength" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
+            <input className="input input-bordered flex-1" placeholder="Strength (e.g. 50mg/2ml)" value={form.strength} onChange={(e) => setForm({ ...form, strength: e.target.value })} />
             <select className="select select-bordered flex-1" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })}>
                 <option value="tablet">Tablet (counted individually)</option>
                 <option value="tube">Tube (counted individually)</option>
-                <option value="ml">Liquid — ml (syrup, injection)</option>
-                <option value="iu">IU (injection)</option>
-                <option value="ampoule">Ampoule (injection, counted individually)</option>
+                <option value="ml">Liquid — ml (syrup, injection, vial)</option>
+                <option value="iu">IU (insulin/injection)</option>
+                <option value="ampoule">Ampoule (injection)</option>
               </select>
           </div>
 
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-xs text-base-content/60 block mb-1">
-                {form.unit === 'ampoule' ? 'Pack size — ampoules per pack' : form.unit === 'tablet' ? 'Pack size — tablets per pack (usually 1)' : form.unit === 'tube' ? 'Pack size — tubes per pack (usually 1)' : 'Pack size — volume of ONE bottle/vial'}
+                {form.unit === 'ampoule' || form.form === 'Injection'
+                  ? 'Container volume (ml per bottle/ampoule)'
+                  : form.unit === 'tablet'
+                  ? 'Pack size — tablets per pack (usually 1)'
+                  : form.unit === 'tube'
+                  ? 'Pack size — tubes per pack (usually 1)'
+                  : 'Bottle volume (ml per bottle/vial)'}
               </label>
-              <input className="input input-bordered w-full" placeholder={form.unit === 'tablet' || form.unit === 'tube' ? 'e.g. 1' : 'e.g. 75 = 75ml bottle'} value={form.packSize} onChange={(e) => setForm({ ...form, packSize: e.target.value })} />
+              <input
+                className="input input-bordered w-full"
+                placeholder={form.unit === 'tablet' || form.unit === 'tube' ? 'e.g. 1' : form.unit === 'ampoule' || form.form === 'Injection' ? 'e.g. 2 for 2ml ampoule, 10 for 10ml vial' : 'e.g. 75 = 75ml bottle'}
+                value={form.packSize}
+                onChange={(e) => setForm({ ...form, packSize: e.target.value })}
+              />
             </div>
             <div className="flex-1">
               <label className="text-xs text-base-content/60 block mb-1">Concentration (optional, for mg dosing)</label>
               <div className="flex items-center gap-1">
-                <input className="input input-bordered input-sm flex-1" placeholder="Amount e.g. 500" value={form.concentrationAmount} onChange={(e) => setForm({ ...form, concentrationAmount: e.target.value })} />
+                <input className="input input-bordered input-sm flex-1" placeholder="Amount e.g. 50" value={form.concentrationAmount} onChange={(e) => setForm({ ...form, concentrationAmount: e.target.value })} />
                 <select className="select select-bordered select-sm w-20 px-1" value={form.concentrationUnit || 'mg'} onChange={(e) => setForm({ ...form, concentrationUnit: e.target.value })}>
                   <option value="mg">mg</option>
                   <option value="g">g</option>
@@ -148,7 +182,7 @@ export function InventoryFormModal({ item, title, onClose, onSubmit }) {
                 </select>
                 <span className="text-xs whitespace-nowrap">per</span>
                 <input className="input input-bordered input-sm w-16" placeholder="1" value={form.concentrationPer} onChange={(e) => setForm({ ...form, concentrationPer: e.target.value })} />
-                <span className="text-xs">{form.unit}</span>
+                <span className="text-xs">{form.form === 'Injection' || form.unit === 'ampoule' ? 'ml' : form.unit}</span>
               </div>
             </div>
           </div>

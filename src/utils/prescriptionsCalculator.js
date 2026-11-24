@@ -3,13 +3,30 @@
 // Single source of truth for turning a prescription line (dosage + frequency +
 // duration) into a real quantity and price, given the matched inventory item.
 //
-// Rules (locked in with pharmacist, Aug 2026):
+// Rules:
 //  - TABLET:    quantity = amount x timesPerDay x days. Billed & stocked exactly.
 //  - SYRUP:     bottles go home with the patient, never reused. Round UP to
 //               whole bottles for both billing and stock. The *prescribed* ml
 //               is still tracked separately so charts show the real dose.
-//  - INJECTION: administered in-house, vial stays open between patients.
-//               Billed and stocked at the EXACT ml/IU used — no rounding.
+//  - INJECTION: both ampoule and vial injections are billed for whole bottles/containers
+//               (regardless of partial use, e.g. 6ml out of 10ml vial -> 1 bottle,
+//               12ml out of 10ml -> 2 bottles). The prescribed amount stays intact.
+//               EXEMPTIONS: specific inventory IDs configured in EXEMPT_INJECTION_IDS
+//               are billed and stocked per ml based on exact fractional volume used.
+
+export const EXEMPT_INJECTION_IDS = new Set([
+  '69e735e954bcf5acd5e9a673', // Streptomycin
+  '69a0c2248e0a0d2588c3b05c', // Paracetamol
+  '6accee22b9b47d4ff44adc46', // Vitamin B- COMPLEX
+  '69e735e654bcf5acd5e9a5d6', // Chloroquine (production)
+  '6ae24e45d94eb5a3cd3a0b58', // Chloroquine (development/test)
+]);
+
+export function isExemptInjection(inventory) {
+  if (!inventory) return false;
+  const id = String(inventory._id || inventory.id || inventory.inventoryId || '');
+  return Boolean(id && EXEMPT_INJECTION_IDS.has(id));
+}
 
 export const FREQUENCY_TIMES_PER_DAY = {
   STAT: 1,
@@ -256,6 +273,23 @@ function getBaseMgWeight(amount, unit) {
   return null;
 }
 
+export function getInjectionCapacity(inventory) {
+  if (!inventory) return 1;
+  const conc = getConcentration(inventory);
+  const concPer = conc?.per ? Number(conc.per) : 0;
+  const rawPackSize = Number(inventory.packSize);
+
+  // If packSize is explicitly entered and > 1 (e.g. 30ml bottle of Chloroquine or 10ml vial)
+  if (rawPackSize > 1) {
+    return rawPackSize;
+  }
+  // Otherwise if concentration specifies the volume (e.g. 2ml in 50mg/2ml, or 10ml in 5g/10ml)
+  if (concPer > 0) {
+    return concPer;
+  }
+  return rawPackSize > 0 ? rawPackSize : 1;
+}
+
 // Converts a dosage entered in `dosageUnit` into the inventory item's own
 // `unit`. Returns null if the conversion isn't possible (e.g. mg requested
 // but the drug has no concentration set in inventory).
@@ -263,18 +297,34 @@ function convertToInventoryUnit(amount, dosageUnit, inventory) {
   if (!inventory || !inventory.unit) return null;
   const invUnit = inventory.unit;
   if (dosageUnit === invUnit) return amount;
-  
+
+  // Cross conversion for injections (ampoule vs ml)
+  if ((invUnit === 'ampoule' || invUnit === 'ml') && (dosageUnit === 'ml' || dosageUnit === 'ampoule')) {
+    const containerVolume = getInjectionCapacity(inventory);
+    if (invUnit === 'ampoule' && dosageUnit === 'ml') {
+      return amount / containerVolume;
+    }
+    if (invUnit === 'ml' && dosageUnit === 'ampoule') {
+      return amount * containerVolume;
+    }
+  }
+
   const dosageMg = getBaseMgWeight(amount, dosageUnit);
   if (dosageMg !== null) {
     const concentration = getConcentration(inventory);
     if (!concentration) return null;
-    
+
     const concMg = getBaseMgWeight(concentration.amount, concentration.unit || 'mg');
     if (concMg !== null && concMg > 0) {
-      return (dosageMg / concMg) * concentration.per;
+      const volumeMl = (dosageMg / concMg) * concentration.per;
+      if (invUnit === 'ampoule') {
+        const containerVolume = getInjectionCapacity(inventory);
+        return volumeMl / containerVolume;
+      }
+      return volumeMl;
     }
   }
-  
+
   return null;
 }
 
@@ -401,21 +451,55 @@ export function calculatePrescriptionLine({
   const invUnit = resolveInventoryUnit(medicationType, inventory);
   const unitPrice = packSize > 0 ? sellingPrice / packSize : 0;
 
-  if ((medicationType === "injection" || medicationType === "subcutaneous") && invUnit !== "ampoule") {
-    // Shared vial (ml/iu) — bill the exact fractional amount, nothing wasted.
+  const isInjection = medicationType === "injection" || medicationType === "subcutaneous";
+
+  if (isInjection) {
+    const isExempt = isExemptInjection(inventory);
+    const containerCapacity = getInjectionCapacity(inventory);
+
+    if (isExempt) {
+      // Exempt injection (shared vial) — bill the exact fractional amount (per ml)
+      const totalInMl = invUnit === 'ampoule' ? totalInInventoryUnit * containerCapacity : totalInInventoryUnit;
+      const perMlPrice = containerCapacity > 0 ? sellingPrice / containerCapacity : sellingPrice;
+      const lineTotal = totalInMl * perMlPrice;
+      return {
+        prescribedQuantity: totalInMl,
+        billedQuantity: totalInMl,
+        bottlesNeeded: null,
+        unit: 'ml',
+        unitPrice: perMlPrice,
+        lineTotal,
+        stockDeductionQty: invUnit === 'ampoule' ? totalInInventoryUnit : totalInMl,
+        convertible: true,
+        isSingleUnit: false,
+        isExemptInjection: true,
+      };
+    }
+
+    // Standard injection (both ampoules and vials) — patient pays for whole container(s).
+    // If invUnit is 'ampoule', totalInInventoryUnit is already in ampoules!
+    // If invUnit is 'ml', totalInInventoryUnit is in ml, so divide by containerCapacity.
+    const divisor = invUnit === 'ampoule' ? 1 : (containerCapacity > 0 ? containerCapacity : 1);
+    const containers = totalInInventoryUnit > 0 ? Math.ceil(totalInInventoryUnit / divisor) : 0;
+    const lineTotal = containers * sellingPrice;
+    const displayUnit = invUnit === "ampoule" ? "ampoule" : "bottle";
+
     return {
       prescribedQuantity: totalInInventoryUnit,
-      billedQuantity: totalInInventoryUnit,
+      billedQuantity: containers,
+      bottlesNeeded: containers,
+      displayUnit,
       unit: invUnit,
-      unitPrice,
-      lineTotal: totalInInventoryUnit * unitPrice,
-      stockDeductionQty: totalInInventoryUnit,
+      unitPrice: sellingPrice,
+      lineTotal,
+      stockDeductionQty: invUnit === "ampoule" ? containers : (rawUnit === "ml" && containerCapacity > 1 ? containers * containerCapacity : containers),
       convertible: true,
       isSingleUnit: false,
+      isExemptInjection: false,
     };
   }
 
-  // tablet, or injection with invUnit === 'ampoule': discrete, non-returnable units
+  // Tablet, capsule, suppository: discrete, non-returnable units
   const quantity = Math.ceil(totalInInventoryUnit);
   return {
     prescribedQuantity: quantity,

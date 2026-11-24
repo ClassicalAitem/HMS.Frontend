@@ -75,9 +75,17 @@ const getUnitOptions = (medicationType, selectedDrug) => {
       : [{ value: 'tube', label: 'tube(s)' }];
   }
   if (medicationType === 'injection' || medicationType === 'subcutaneous') {
-    const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
-    const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
-    return hasConcentration ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, physicalOpt] : [physicalOpt];
+    const options = [
+      { value: 'ml', label: 'ml' },
+      { value: 'mg', label: 'mg' },
+      { value: 'g', label: 'g' },
+    ];
+    if (selectedDrug?.unit === 'iu') {
+      options.unshift({ value: 'iu', label: 'IU' });
+    } else if (selectedDrug?.unit === 'ampoule') {
+      options.push({ value: 'ampoule', label: 'ampoule(s)' });
+    }
+    return options;
   }
   return [{ value: 'unit', label: 'unit' }];
 };
@@ -638,7 +646,7 @@ const WritePrescription = () => {
                                   {selectedDrug?.stock !== undefined && (
                                     <p className="text-xs mt-1">
                                       Stock: <span className={selectedDrug.stock > 0 ? 'text-success font-semibold' : 'text-warning font-semibold'}>{selectedDrug.stock}</span> {selectedDrug.unit || getUnitOptions(medicationType, null)[0]?.value}
-                                      {selectedDrug.packSize > 1 && ` (packs of ${selectedDrug.packSize})`}
+                                      {selectedDrug.packSize > 1 && (['ml', 'ampoule'].includes(selectedDrug.unit) || String(selectedDrug.form || '').toLowerCase().includes('injection') ? ` (${selectedDrug.packSize}ml per bottle)` : ` (packs of ${selectedDrug.packSize})`)}
                                     </p>
                                   )}
                                 </div>
@@ -779,8 +787,13 @@ const WritePrescription = () => {
                             <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/30 text-sm flex flex-wrap items-center justify-between gap-2">
                               <div>
                                 Prescribed: <span className="font-medium">{Number.isInteger(Number(preview.prescribedQuantity)) ? preview.prescribedQuantity : Number(preview.prescribedQuantity).toFixed(2)} {preview.unit}</span>
+                                {preview.bottlesNeeded && (
+                                  <span className="text-base-content/80 ml-2 font-medium">
+                                    (Billed: {preview.bottlesNeeded} {preview.displayUnit || 'bottle'}{preview.bottlesNeeded > 1 ? 's' : ''})
+                                  </span>
+                                )}
                                 <span className="text-base-content/60 ml-2">
-                                  {preview.isSingleUnit ? `(@ ${currency(preview.unitPrice)} each)` : `(@ ${currency(preview.unitPrice)}/unit)`}
+                                  {preview.isSingleUnit || preview.bottlesNeeded ? `(@ ${currency(preview.unitPrice)} each)` : `(@ ${currency(preview.unitPrice)}/unit)`}
                                 </span>
                               </div>
                               <div className="font-semibold text-success">{currency(preview.lineTotal)}</div>
