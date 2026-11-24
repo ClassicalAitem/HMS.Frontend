@@ -353,21 +353,21 @@ const CashierDashboard = () => {
               </div>
             </div>
 
-            {/* Card 2: Today's Revenue Collected */}
+            {/* Card 2: Today's Receipts */}
             <div className="p-5 rounded-2xl bg-base-100 border border-base-300 shadow-xs flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <div className="min-w-0 pr-2">
-                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Today's Revenue</span>
-                  <div className="text-2xl sm:text-3xl font-black text-success mt-1 truncate">
-                    ₦{stats.todayRevenue.toLocaleString()}
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Today's Receipts</span>
+                  <div className="text-3xl font-black text-success mt-1">
+                    {stats.todayReceiptsCount}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-success/10 text-success flex-shrink-0">
-                  <FaMoneyBillWave className="w-5 h-5" />
+                  <FaReceipt className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-base-200/60 text-xs text-base-content/60 flex items-center justify-between">
-                <span>{stats.todayReceiptsCount} receipts issued today</span>
+                <span>Receipts issued today</span>
                 <span className="badge badge-success badge-xs text-white font-bold">Today</span>
               </div>
             </div>
@@ -386,12 +386,12 @@ const CashierDashboard = () => {
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-base-200/60 text-xs text-base-content/60 flex items-center justify-between">
-                <span className="truncate">₦{stats.totalOutstandingAmount.toLocaleString()} unpaid</span>
+                <span className="truncate">Awaiting payment settlement</span>
                 <span className="badge badge-warning badge-xs font-bold">Unpaid</span>
               </div>
             </div>
 
-            {/* Card 4: Total Revenue Recorded */}
+            {/* Card 4: Processed Receipts */}
             <div
               onClick={() => setActiveTab("recent_receipts")}
               className={`p-5 rounded-2xl bg-base-100 border transition-all cursor-pointer shadow-xs flex flex-col justify-between ${
@@ -402,9 +402,9 @@ const CashierDashboard = () => {
             >
               <div className="flex items-start justify-between">
                 <div className="min-w-0 pr-2">
-                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Total Revenue</span>
-                  <div className="text-2xl sm:text-3xl font-black text-info mt-1 truncate">
-                    ₦{stats.totalRevenue.toLocaleString()}
+                  <span className="text-xs font-semibold text-base-content/60 uppercase tracking-wider">Processed Receipts</span>
+                  <div className="text-3xl font-black text-info mt-1">
+                    {recentReceipts.length}
                   </div>
                 </div>
                 <div className="p-3 rounded-xl bg-info/10 text-info flex-shrink-0">
@@ -412,7 +412,7 @@ const CashierDashboard = () => {
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-base-200/60 text-xs text-base-content/60 flex items-center justify-between">
-                <span>{recentReceipts.length} total transactions</span>
+                <span>Recorded payment transactions</span>
                 {activeTab === "recent_receipts" && (
                   <span className="badge badge-info badge-xs text-white font-bold">Active</span>
                 )}

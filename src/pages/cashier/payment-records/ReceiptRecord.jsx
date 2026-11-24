@@ -238,8 +238,12 @@ const ReceiptRecord = () => {
     let totalCollected = 0;
     let paidCount = 0;
     let pendingCount = 0;
+    let todayCount = 0;
 
     paymentRecords.forEach((r) => {
+      if (isDateInPeriod(r.rawDate, 'today')) {
+        todayCount += 1;
+      }
       if (r.statusLower === 'paid' || r.statusLower === 'completed') {
         totalCollected += r.amountNum || 0;
         paidCount += 1;
@@ -253,6 +257,7 @@ const ReceiptRecord = () => {
       totalCollected,
       paidCount,
       pendingCount,
+      todayCount,
     };
   }, [paymentRecords]);
 
@@ -578,15 +583,15 @@ const ReceiptRecord = () => {
           <div className="bg-base-100 rounded-2xl p-4 sm:p-5 border border-base-200 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider font-semibold text-base-content/60">
-                Total Collected
+                Today's Receipts
               </p>
-              <h3 className="text-2xl font-black text-primary mt-1">
-                ₦{summaryMetrics.totalCollected.toLocaleString()}
+              <h3 className="text-2xl font-black text-emerald-600 mt-1">
+                {summaryMetrics.todayCount}
               </h3>
-              <p className="text-xs text-base-content/60 mt-0.5">Confirmed revenue</p>
+              <p className="text-xs text-base-content/60 mt-0.5">Receipts issued today</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <FaMoneyBillWave className="w-6 h-6" />
+              <FaCheckCircle className="w-6 h-6" />
             </div>
           </div>
 

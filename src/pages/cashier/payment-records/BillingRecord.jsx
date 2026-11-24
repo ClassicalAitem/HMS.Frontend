@@ -213,8 +213,12 @@ const BillingRecord = () => {
     let totalBilled = 0;
     let totalOutstanding = 0;
     let clearedCount = 0;
+    let todayCount = 0;
 
     paymentRecords.forEach((r) => {
+      if (isDateInPeriod(r.rawDate, 'today')) {
+        todayCount += 1;
+      }
       totalBilled += r.totalAmountNum || 0;
       totalOutstanding += r.outstandingBillNum || 0;
       if (r.isSettled) clearedCount += 1;
@@ -226,6 +230,7 @@ const BillingRecord = () => {
       totalOutstanding,
       clearedCount,
       pendingCount: totalRecords - clearedCount,
+      todayCount,
     };
   }, [paymentRecords]);
 
@@ -556,31 +561,31 @@ const BillingRecord = () => {
           <div className="bg-base-100 rounded-2xl p-4 sm:p-5 border border-base-200 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider font-semibold text-base-content/60">
-                Total Billed
+                Today's Billings
               </p>
-              <h3 className="text-2xl font-black text-primary mt-1">
-                ₦{summaryMetrics.totalBilled.toLocaleString()}
+              <h3 className="text-2xl font-black text-emerald-600 mt-1">
+                {summaryMetrics.todayCount}
               </h3>
-              <p className="text-xs text-base-content/60 mt-0.5">Gross billed value</p>
+              <p className="text-xs text-base-content/60 mt-0.5">Invoices raised today</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <FaMoneyBillWave className="w-6 h-6" />
+              <FaCalendarAlt className="w-6 h-6" />
             </div>
           </div>
 
           <div className="bg-base-100 rounded-2xl p-4 sm:p-5 border border-base-200 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider font-semibold text-base-content/60">
-                Total Outstanding
+                Pending Accounts
               </p>
-              <h3 className="text-2xl font-black text-error mt-1">
-                ₦{summaryMetrics.totalOutstanding.toLocaleString()}
+              <h3 className="text-2xl font-black text-warning mt-1">
+                {summaryMetrics.pendingCount}
               </h3>
               <p className="text-xs text-base-content/60 mt-0.5">
-                {summaryMetrics.pendingCount} accounts pending
+                Awaiting payment settlement
               </p>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-error/10 text-error flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-warning/10 text-warning flex items-center justify-center">
               <FaClock className="w-6 h-6" />
             </div>
           </div>

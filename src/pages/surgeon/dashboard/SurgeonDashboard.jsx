@@ -25,6 +25,10 @@ const SurgeonDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAppSelector((state) => state.auth);
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
   const [incomingRequests, setIncomingRequests] = useState([]);
@@ -133,14 +137,27 @@ const SurgeonDashboard = () => {
 
   return (
     <div className="flex h-screen bg-base-200/50">
-      <Sidebar />
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <Sidebar onCloseSidebar={closeSidebar} />
+      </div>
 
       <div className="flex overflow-hidden flex-col flex-1">
-        <Header />
+        <Header onToggleSidebar={toggleSidebar} />
 
-        <div className="overflow-y-auto flex flex-col gap-6 p-4 sm:p-6 lg:p-8 h-full">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
           {/* WELCOME HERO BANNER */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary/95 via-primary/85 to-indigo-600 text-white p-6 sm:p-8 shadow-xl">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 shadow-md border border-white/10 shrink-0">
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-xs font-semibold uppercase tracking-wider mb-3">

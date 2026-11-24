@@ -14,20 +14,37 @@ import toast from 'react-hot-toast';
 const GlobalShortcutManager = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isAuthenticated, token } = useAppSelector((state) => state.auth);
+
+  // Shortcuts should ONLY be active when a valid authenticated session exists and not on auth pages
+  const isAuthPath = ['/login', '/forgot-password', '/change-password', '/change-password-default'].includes(location.pathname);
+  const isLoggedIn = Boolean(isAuthenticated && (token || localStorage.getItem('token')) && user && !isAuthPath);
+
   const normalizedRole = (user?.role || user?.accountType || '').toLowerCase().trim().replace(/_/g, '-');
   const staffName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
 
   const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  // Expose cheat sheet toggle on window
+  // Automatically reset any open modals when user logs out
   useEffect(() => {
+    if (!isLoggedIn) {
+      setIsCheatSheetOpen(false);
+      setIsLogoutModalOpen(false);
+    }
+  }, [isLoggedIn]);
+
+  // Expose cheat sheet toggle on window only when authenticated
+  useEffect(() => {
+    if (!isLoggedIn) {
+      delete window.openShortcutsGuide;
+      return;
+    }
     window.openShortcutsGuide = () => setIsCheatSheetOpen(true);
     return () => {
       delete window.openShortcutsGuide;
     };
-  }, []);
+  }, [isLoggedIn]);
 
   const getDashboardPath = useCallback(() => {
     switch (normalizedRole) {
@@ -96,7 +113,10 @@ const GlobalShortcutManager = () => {
   }, [normalizedRole]);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
+
     const handleKeyDown = (e) => {
+      if (!isLoggedIn) return;
       const isCtrlOrCmd = e.ctrlKey || e.metaKey;
       const key = (e.key || '').toLowerCase();
       const code = e.code || '';
@@ -319,7 +339,11 @@ const GlobalShortcutManager = () => {
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [getDashboardPath, getRoleIncomingPath, location.pathname, navigate, normalizedRole, staffName]);
+  }, [isLoggedIn, getDashboardPath, getRoleIncomingPath, location.pathname, navigate, normalizedRole, staffName]);
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   return (
     <>
