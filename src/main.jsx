@@ -6,6 +6,7 @@ import App from './App.jsx';
 // Handle dynamic import failures when a new production build replaces chunk hashes
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
+  if (import.meta.env.DEV) return;
   const now = Date.now();
   const lastReload = parseInt(sessionStorage.getItem('chunk_reload_time') || '0', 10);
   if (now - lastReload > 8000) {

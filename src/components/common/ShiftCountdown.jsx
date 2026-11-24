@@ -109,10 +109,14 @@ const ShiftCountdown = () => {
 
         if (data.isLocked) {
           setIsWarningActive(false);
+          handleAutoLogout();
         } else if (data.state === 'warning') {
           setIsWarningActive(true);
           if (data.secondsUntilLogout != null) {
             setSecondsRemaining(data.secondsUntilLogout);
+            if (data.secondsUntilLogout <= 0) {
+              handleAutoLogout();
+            }
           }
         } else if (data.state === 'active') {
           setIsLocked(false);
@@ -141,7 +145,15 @@ const ShiftCountdown = () => {
 
     try {
       await shiftAccessAPI.recordShiftEnd().catch(() => {});
-      await dispatch(logoutUser());
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('persist:root');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('changePasswordUserId');
+      } catch {}
+      await dispatch(logoutUser()).catch(() => {});
       toast.dismiss();
       toast.error('Your shift has ended and your account has been logged out for the scheduled resting period.', {
         id: 'shift-logout',
@@ -157,11 +169,11 @@ const ShiftCountdown = () => {
           boxShadow: '0 15px 30px -5px rgba(0, 0, 0, 0.4)',
         },
       });
-      navigate('/login', { replace: true });
+      window.location.replace('/login');
     } catch {
-      navigate('/login', { replace: true });
+      window.location.replace('/login');
     }
-  }, [dispatch, navigate]);
+  }, [dispatch]);
 
   // Client-side second-by-second countdown clock strictly in Africa/Lagos time (WAT)
   useEffect(() => {
@@ -202,21 +214,6 @@ const ShiftCountdown = () => {
         const warningSec = 18 * 3600; // 18:00 / 6:00 PM Lagos Time
         const logoutSec = 18 * 3600 + 30 * 60; // 18:30 / 6:30 PM Lagos Time
 
-        // Morning Shift login is allowed from 8:00 AM to 6:30 PM in the evening
-        if (currentTotalSec >= logoutSec || currentTotalSec < morningStartSec) {
-          // If backend confirmed locked or user was active today:
-          if (shiftStatus?.isLocked || shiftStatus?.hasWorkedEndingShift || userShift === 'morning') {
-            setIsLocked(true);
-            setLockoutReason(
-              'Morning Shift login is allowed from 8:00 AM to 6:30 PM (Lagos Time). Your shift ended at 6:30 PM.'
-            );
-            if (currentTotalSec >= logoutSec && currentTotalSec < logoutSec + 15) {
-              handleAutoLogout();
-            }
-            return null;
-          }
-        }
-
         // Inside 30-min warning window (18:00 - 18:30 Lagos Time)
         if (currentTotalSec >= warningSec && currentTotalSec < logoutSec) {
           const rem = logoutSec - currentTotalSec;
@@ -231,26 +228,23 @@ const ShiftCountdown = () => {
           setIsLocked(false);
           return logoutSec - currentTotalSec;
         }
+
+        // Shift ended (past 6:30 PM / 18:30 or before 8:00 AM Lagos Time)
+        if (currentTotalSec >= logoutSec || currentTotalSec < morningStartSec) {
+          setIsWarningActive(false);
+          setIsLocked(true);
+          setLockoutReason(
+            'Morning Shift login is allowed from 8:00 AM to 6:30 PM (Lagos Time). Your shift ended at 6:30 PM.'
+          );
+          handleAutoLogout();
+          return 0;
+        }
       }
 
       if (activeShift === 'night') {
         const nightStartSec = 17 * 3600; // 17:00 / 5:00 PM Lagos Time
         const warningSec = 8 * 3600; // 08:00 AM Lagos Time
         const logoutSec = 8 * 3600 + 30 * 60; // 08:30 AM Lagos Time
-
-        // Night Shift login is allowed from 5:00 PM to 8:30 AM next morning
-        if (currentTotalSec >= logoutSec && currentTotalSec < nightStartSec) {
-          if (shiftStatus?.isLocked || shiftStatus?.hasWorkedEndingShift || userShift === 'night') {
-            setIsLocked(true);
-            setLockoutReason(
-              'Night Shift login is allowed from 5:00 PM to 8:30 AM (Lagos Time). Your shift ended at 8:30 AM.'
-            );
-            if (currentTotalSec >= logoutSec && currentTotalSec < logoutSec + 15) {
-              handleAutoLogout();
-            }
-            return null;
-          }
-        }
 
         // Inside 30-min warning window (08:00 - 08:30 AM Lagos Time)
         if (currentTotalSec >= warningSec && currentTotalSec < logoutSec) {
@@ -270,6 +264,17 @@ const ShiftCountdown = () => {
             return logoutSec - currentTotalSec;
           }
         }
+
+        // Shift ended (past 08:30 AM and before 5:00 PM Lagos Time)
+        if (currentTotalSec >= logoutSec && currentTotalSec < nightStartSec) {
+          setIsWarningActive(false);
+          setIsLocked(true);
+          setLockoutReason(
+            'Night Shift login is allowed from 5:00 PM to 8:30 AM (Lagos Time). Your shift ended at 8:30 AM.'
+          );
+          handleAutoLogout();
+          return 0;
+        }
       }
 
       return null;
@@ -278,10 +283,16 @@ const ShiftCountdown = () => {
     const timer = setInterval(() => {
       const rem = calculateClientSeconds();
       setSecondsRemaining(rem);
+      if (rem !== null && rem <= 0) {
+        handleAutoLogout();
+      }
     }, 1000);
 
     const initialRem = calculateClientSeconds();
     setSecondsRemaining(initialRem);
+    if (initialRem !== null && initialRem <= 0) {
+      handleAutoLogout();
+    }
 
     return () => clearInterval(timer);
   }, [isAuthenticated, user, isExempt, userShift, shiftStatus, handleAutoLogout]);
@@ -312,9 +323,31 @@ const ShiftCountdown = () => {
     }
   };
 
-  const handleManualLogout = () => {
-    dispatch(logoutUser());
-    navigate('/login');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleManualLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    const toastId = toast.loading('Logging you out...');
+    try {
+      setIsLocked(false);
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('persist:root');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('changePasswordUserId');
+      } catch {}
+      await dispatch(logoutUser()).catch(() => {});
+      toast.success('Logged out successfully', { id: toastId });
+      window.location.replace('/login');
+    } catch (err) {
+      console.error('Logout failed:', err);
+      window.location.replace('/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   // Format seconds into MM:SS
@@ -499,10 +532,20 @@ const ShiftCountdown = () => {
                 <button
                   type="button"
                   onClick={handleManualLogout}
+                  disabled={isLoggingOut}
                   className="btn btn-outline btn-error btn-sm w-full sm:w-auto gap-2"
                 >
-                  <FaSignOutAlt className="w-3.5 h-3.5" />
-                  <span>Log Out</span>
+                  {isLoggingOut ? (
+                    <>
+                      <span className="loading loading-spinner loading-xs" />
+                      <span>Logging out...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaSignOutAlt className="w-3.5 h-3.5" />
+                      <span>Log Out</span>
+                    </>
+                  )}
                 </button>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">

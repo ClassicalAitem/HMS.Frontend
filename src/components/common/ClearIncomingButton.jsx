@@ -17,7 +17,14 @@ import ConfirmationModal from '@/components/modals/ConfirmationModal';
  * - onCleared: () => void — called after a successful clear, e.g. to refresh the list
  * - label: button text, default "Clear"
  */
-const ClearItemButton = ({ item, onClear, onCleared, label = 'Clear' }) => {
+const ClearItemButton = ({
+  item,
+  onClear,
+  updateStatusFn,
+  onCleared,
+  label = 'Clear',
+  className = 'btn btn-xs btn-outline btn-error gap-1',
+}) => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
@@ -25,7 +32,10 @@ const ClearItemButton = ({ item, onClear, onCleared, label = 'Clear' }) => {
     setIsClearing(true);
     setIsConfirmOpen(false);
     try {
-      await onClear(item);
+      const clearFn = onClear || updateStatusFn;
+      if (clearFn) {
+        await clearFn(item);
+      }
       toast.success(`${item?.name || 'Entry'} cleared from queue`);
       if (onCleared) onCleared();
     } catch (err) {
@@ -41,7 +51,7 @@ const ClearItemButton = ({ item, onClear, onCleared, label = 'Clear' }) => {
       <button
         onClick={() => setIsConfirmOpen(true)}
         disabled={isClearing}
-        className="btn btn-sm btn-outline text-error"
+        className={className}
         title="Remove from queue"
       >
         {isClearing ? <span className="loading loading-spinner loading-xs" /> : (

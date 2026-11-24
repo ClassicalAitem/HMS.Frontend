@@ -54,6 +54,8 @@ const Login = () => {
   // Redirect if user is already authenticated
   useEffect(() => {
     if (showSuccessModal) return; // Allow smooth login modal and timeout transition without double-navigate race
+    const localToken = localStorage.getItem('token');
+    if (!localToken) return; // Do not auto-redirect if token is missing from localStorage (e.g. during or after logout)
     if (isAuthenticated && user) {
       let expired = false;
       try {

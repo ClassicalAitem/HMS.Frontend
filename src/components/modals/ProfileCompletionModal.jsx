@@ -153,8 +153,29 @@ const ProfileCompletionModal = () => {
     }
   };
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    const toastId = toast.loading('Logging you out...');
+    try {
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('persist:root');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('changePasswordUserId');
+      } catch {}
+      await dispatch(logoutUser()).catch(() => {});
+      toast.success('Logged out successfully', { id: toastId });
+      window.location.replace('/login');
+    } catch {
+      window.location.replace('/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -371,11 +392,12 @@ const ProfileCompletionModal = () => {
             <button
               type="button"
               onClick={handleLogout}
+              disabled={isLoggingOut}
               className="btn btn-ghost btn-sm text-xs text-error gap-1.5 w-full sm:w-auto"
               title="Sign out of current account"
             >
               <FaSignOutAlt className="w-3.5 h-3.5" />
-              <span>Log out instead</span>
+              <span>{isLoggingOut ? 'Logging out...' : 'Log out instead'}</span>
             </button>
 
             <button

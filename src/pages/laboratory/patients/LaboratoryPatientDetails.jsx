@@ -253,8 +253,21 @@ const LaboratoryPatientDetails = () => {
                 buttonClassName="btn btn-primary btn-sm flex items-center gap-2"
               />
             )}
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard/laboratory/patients')}>
-              <FaArrowLeft aria-hidden="true" /> Back to Patients
+            <button
+              type="button"
+              className="btn btn-outline border-base-300 btn-sm gap-1.5"
+              onClick={() => navigate('/dashboard/laboratory/incoming')}
+            >
+              <FaArrowLeft aria-hidden="true" />
+              <span>Back to Incoming</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm gap-1.5"
+              onClick={() => navigate('/dashboard/laboratory/patients')}
+            >
+              <FaArrowLeft aria-hidden="true" />
+              <span>Back to Patients</span>
             </button>
           </div>
         </div>
@@ -296,7 +309,7 @@ const LaboratoryPatientDetails = () => {
                   <tr>
                     <th>Investigation</th>
                     <th>Ordered Tests</th>
-                    <th>Requested By (Clinician)</th>
+                    <th>Requested By</th>
                     <th>Status</th>
                     <th>Priority</th>
                     <th>Requested Date</th>

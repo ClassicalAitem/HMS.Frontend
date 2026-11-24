@@ -82,7 +82,11 @@ export const NotificationProvider = ({ children }) => {
     connectSocket({ userId, role });
 
     refreshQueueCount();
-    refreshLabReadyCount();
+    const normalizedRole = String(role).toLowerCase().trim().replace(/[_ ]/g, '-');
+    const isClinicalPrescriber = ['doctor', 'medical-director', 'nurse'].includes(normalizedRole);
+    if (isClinicalPrescriber) {
+      refreshLabReadyCount();
+    }
 
     const socket = getSocket();
 
@@ -99,7 +103,9 @@ export const NotificationProvider = ({ children }) => {
       setLastUpdate(Date.now());
       setIncomingUpdate((update) => update + 1);
       refreshQueueCount();
-      refreshLabReadyCount();
+      if (isClinicalPrescriber) {
+        refreshLabReadyCount();
+      }
       if (document.visibilityState !== 'visible') return;
 
       const name = payload?.subjectName || "Unknown Patient";
