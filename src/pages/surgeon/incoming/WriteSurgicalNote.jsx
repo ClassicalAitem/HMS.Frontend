@@ -78,9 +78,17 @@ const getUnitOptions = (medicationType, selectedDrug) => {
       : [{ value: 'tube', label: 'tube(s)' }];
   }
   if (medicationType === 'injection' || medicationType === 'subcutaneous') {
-    const invUnit = selectedDrug?.unit === 'iu' ? 'iu' : selectedDrug?.unit === 'ampoule' ? 'ampoule' : 'ml';
-    const physicalOpt = { value: invUnit, label: invUnit === 'iu' ? 'IU' : invUnit === 'ampoule' ? 'ampoule(s)' : 'ml' };
-    return hasConcentration ? [{ value: 'mg', label: 'mg' }, { value: 'g', label: 'g' }, physicalOpt] : [physicalOpt];
+    const options = [
+      { value: 'ml', label: 'ml' },
+      { value: 'mg', label: 'mg' },
+      { value: 'g', label: 'g' },
+    ];
+    if (selectedDrug?.unit === 'iu') {
+      options.unshift({ value: 'iu', label: 'IU' });
+    } else if (selectedDrug?.unit === 'ampoule') {
+      options.push({ value: 'ampoule', label: 'ampoule(s)' });
+    }
+    return options;
   }
   return [{ value: 'unit', label: 'unit' }];
 };

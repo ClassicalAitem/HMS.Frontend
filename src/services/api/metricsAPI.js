@@ -1,8 +1,8 @@
 import apiClient from './apiClient';
 
 // Get metrics data
-export const getMetrics = async () => {
-  const response = await apiClient.get('/metrics');
+export const getMetrics = async (params) => {
+  const response = await apiClient.get('/metrics', { params });
   return response.data;
 };
 

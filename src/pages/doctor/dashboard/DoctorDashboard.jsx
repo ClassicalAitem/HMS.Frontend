@@ -16,7 +16,6 @@ import {
   FaStethoscope,
 } from "react-icons/fa";
 import { RiArrowLeftRightFill, RiArrowRightLine } from "react-icons/ri";
-import { TbCalendarPlus } from "react-icons/tb";
 import { EmptyState, PatientStatusBadge } from "@/components/common";
 
 const DOCTOR_STATUSES = new Set([
@@ -40,13 +39,14 @@ const DoctorDashboard = () => {
       try {
         setLoading(true);
         const [metricsRes, patientsRes, dependantsRes] = await Promise.allSettled([
-          getMetrics(),
+          getMetrics({ type: "doctor" }),
           getPatients(),
           getDependants(),
         ]);
 
+        const metricsData = metricsRes.status === "fulfilled" ? (metricsRes.value?.data || {}) : {};
         if (metricsRes.status === "fulfilled") {
-          setMetrics(metricsRes.value?.data || {});
+          setMetrics(metricsData);
         }
 
         const patients =
@@ -111,7 +111,7 @@ const DoctorDashboard = () => {
         });
 
         if (mounted) {
-          setIncomingTotal(merged.length);
+          setIncomingTotal(metricsData.consultationQueueCount !== undefined ? metricsData.consultationQueueCount : merged.length);
           setIncomingPatients(merged.slice(0, 4));
         }
       } catch (e) {
@@ -187,26 +187,7 @@ const DoctorDashboard = () => {
 
       {/* 4 Sleek KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Today's Appointments */}
-        <div
-          onClick={() => navigate("/dashboard/doctor/appointments")}
-          className="bg-base-100 border border-base-200 hover:border-primary/40 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/60">
-              Appointments
-            </span>
-            <p className="text-2xl sm:text-3xl font-extrabold text-primary">
-              {loading ? "—" : Number(metrics?.totalTodayAppointment || 0)}
-            </p>
-            <p className="text-[11px] text-base-content/50">Scheduled for today</p>
-          </div>
-          <div className="p-3.5 rounded-xl bg-primary/10 text-primary">
-            <TbCalendarPlus className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 2: Incoming Queue Waiting */}
+        {/* Card 1: Incoming Queue Waiting */}
         <div
           onClick={() => navigate("/dashboard/doctor/incoming")}
           className="bg-base-100 border border-base-200 hover:border-primary/40 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
@@ -215,7 +196,7 @@ const DoctorDashboard = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-base-content/60">
               Incoming Queue
             </span>
-            <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
+            <p className="text-2xl sm:text-3xl font-extrabold text-primary">
               {loading ? "—" : incomingTotal}
             </p>
             <p className="text-[11px] text-base-content/50">Awaiting consultation</p>
@@ -225,7 +206,45 @@ const DoctorDashboard = () => {
           </div>
         </div>
 
-        {/* Card 3: Admitted Inpatients */}
+        {/* Card 2: Today's Consultations */}
+        <div
+          onClick={() => navigate("/dashboard/doctor/attended-today")}
+          className="bg-base-100 border border-base-200 hover:border-primary/40 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
+        >
+          <div className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/60">
+              Today's Consultations
+            </span>
+            <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
+              {loading ? "—" : Number(metrics?.todayConsultations || 0)}
+            </p>
+            <p className="text-[11px] text-base-content/50">Completed today</p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-primary/10 text-primary">
+            <FaStethoscope className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Card 3: Total Consultations */}
+        <div
+          onClick={() => navigate("/dashboard/doctor/attended-today")}
+          className="bg-base-100 border border-base-200 hover:border-primary/40 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
+        >
+          <div className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/60">
+              Total Consultations
+            </span>
+            <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
+              {loading ? "—" : Number(metrics?.totalConsultations || 0)}
+            </p>
+            <p className="text-[11px] text-base-content/50">All clinical records</p>
+          </div>
+          <div className="p-3.5 rounded-xl bg-primary/10 text-primary">
+            <FaUserCheck className="w-6 h-6" />
+          </div>
+        </div>
+
+        {/* Card 4: Admitted Inpatients */}
         <div
           onClick={() => navigate("/dashboard/doctor/admitted")}
           className="bg-base-100 border border-base-200 hover:border-primary/40 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
@@ -241,25 +260,6 @@ const DoctorDashboard = () => {
           </div>
           <div className="p-3.5 rounded-xl bg-primary/10 text-primary">
             <FaBed className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Card 4: Patients Discharged */}
-        <div
-          onClick={() => navigate("/dashboard/doctor/attended-today")}
-          className="bg-base-100 border border-base-200 hover:border-primary/40 shadow-sm rounded-2xl p-4 sm:p-5 flex items-center justify-between cursor-pointer transition-all hover:shadow-md"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-base-content/60">
-              Discharged Patients
-            </span>
-            <p className="text-2xl sm:text-3xl font-extrabold text-base-content">
-              {loading ? "—" : Number(metrics?.totalDischargedPatients || 0)}
-            </p>
-            <p className="text-[11px] text-base-content/50">Completed ward stays</p>
-          </div>
-          <div className="p-3.5 rounded-xl bg-primary/10 text-primary">
-            <FaUserCheck className="w-6 h-6" />
           </div>
         </div>
       </div>
