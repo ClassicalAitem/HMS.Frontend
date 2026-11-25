@@ -30,37 +30,6 @@ const normalizeRole = (role) =>
     .trim()
     .replace(/[_ ]/g, '-');
 
-/**
- * Extracts date and time strictly in Africa/Lagos (UTC+1, WAT).
- * Guarantees hospital shift enforcement matches Lagos time regardless of local device timezone.
- */
-const getLagosDateTime = (date = new Date()) => {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Africa/Lagos',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
-
-  const parts = formatter.formatToParts(date);
-  const map = {};
-  for (const p of parts) map[p.type] = p.value;
-
-  const hour = parseInt(map.hour, 10) === 24 ? 0 : parseInt(map.hour, 10);
-  const minute = parseInt(map.minute, 10);
-  const second = parseInt(map.second, 10);
-  const year = parseInt(map.year, 10);
-  const month = parseInt(map.month, 10);
-  const day = parseInt(map.day, 10);
-
-  const totalSeconds = hour * 3600 + minute * 60 + second;
-  return { year, month, day, hour, minute, second, totalSeconds };
-};
-
 const ShiftCountdown = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,6 +57,8 @@ const ShiftCountdown = () => {
 
   const isLoggingOutRef = useRef(false);
   const preWarningCheckedForRef = useRef(null);
+  const syncAnchorRef = useRef(null);
+  const verifyingLogoutRef = useRef(false);
 
   const userRole = normalizeRole(user?.role || user?.accountType);
   const userShift = (user?.shift || '').toLowerCase().trim();
@@ -108,19 +79,35 @@ const ShiftCountdown = () => {
         setNextAllowedTime(data.nextAllowedLoginTime || null);
         setPendingRequest(data.pendingRequest || null);
 
-        if (data.isLocked) {
+        if (typeof data.secondsUntilLogout === 'number') {
+          syncAnchorRef.current = {
+            secondsUntilLogout: data.secondsUntilLogout,
+            perfNow: performance.now(),
+          };
+          setSecondsRemaining(data.secondsUntilLogout);
+        } else {
+          syncAnchorRef.current = null;
+          setSecondsRemaining(null);
+        }
+
+        if (data.hasActiveOverride) {
+          verifyingLogoutRef.current = false;
+          setIsLocked(false);
+          setIsWarningActive(false);
+        } else if (data.isLocked) {
           setIsWarningActive(false);
           handleAutoLogout();
         } else if (data.state === 'warning') {
           setIsWarningActive(true);
-          if (data.secondsUntilLogout != null) {
-            setSecondsRemaining(data.secondsUntilLogout);
-            if (data.secondsUntilLogout <= 0) {
-              handleAutoLogout();
-            }
+          if (data.secondsUntilLogout != null && data.secondsUntilLogout <= 0) {
+            handleAutoLogout();
+          } else {
+            verifyingLogoutRef.current = false;
           }
         } else if (data.state === 'active') {
+          verifyingLogoutRef.current = false;
           setIsLocked(false);
+          setIsWarningActive(false);
         }
       }
     } catch (err) {
@@ -199,7 +186,7 @@ const ShiftCountdown = () => {
     }
   }, [dispatch]);
 
-  // Client-side second-by-second countdown clock strictly in Africa/Lagos time (WAT)
+  // Monotonic second-by-second countdown anchored to server secondsUntilLogout (immune to device clock manipulation)
   useEffect(() => {
     if (!isAuthenticated || !user || isExempt) {
       setSecondsRemaining(null);
@@ -213,113 +200,29 @@ const ShiftCountdown = () => {
       return;
     }
 
-    const calculateClientSeconds = () => {
-      const lagos = getLagosDateTime(new Date());
-      const currentTotalSec = lagos.totalSeconds;
+    const tick = () => {
+      const anchor = syncAnchorRef.current;
+      if (!anchor) return;
 
-      // Determine active shift:
-      // Morning Shift: 08:00 AM to 06:30 PM (18:30)
-      // Night Shift: 05:00 PM (17:00) to 08:30 AM next morning
-      let activeShift = userShift === 'morning' || userShift === 'night' ? userShift : shiftStatus?.shift;
-      if (!activeShift) {
-        if (currentTotalSec >= 8 * 3600 && currentTotalSec < 17 * 3600) {
-          activeShift = 'morning';
-        } else if (currentTotalSec >= 17 * 3600 && currentTotalSec < 18 * 3600 + 30 * 60) {
-          activeShift = shiftStatus?.hasWorkedEndingShift ? 'morning' : 'night';
-        } else if (currentTotalSec >= 8 * 3600 && currentTotalSec < 8 * 3600 + 30 * 60) {
-          activeShift = shiftStatus?.hasWorkedEndingShift ? 'night' : 'morning';
-        } else {
-          activeShift = 'night';
-        }
+      const elapsedSec = Math.floor((performance.now() - anchor.perfNow) / 1000);
+      const rem = Math.max(0, anchor.secondsUntilLogout - elapsedSec);
+      setSecondsRemaining(rem);
+
+      if (rem > 0 && rem <= 1800) {
+        setIsWarningActive(true);
       }
 
-      if (activeShift === 'morning') {
-        const morningStartSec = 8 * 3600; // 08:00 AM Lagos Time
-        const warningSec = 18 * 3600; // 18:00 / 6:00 PM Lagos Time
-        const logoutSec = 18 * 3600 + 30 * 60; // 18:30 / 6:30 PM Lagos Time
-
-        // Inside 30-min warning window (18:00 - 18:30 Lagos Time)
-        if (currentTotalSec >= warningSec && currentTotalSec < logoutSec) {
-          const rem = logoutSec - currentTotalSec;
-          setIsWarningActive(true);
-          setIsLocked(false);
-          return rem;
-        }
-
-        // Active morning working window (08:00 - 18:00 Lagos Time)
-        if (currentTotalSec >= morningStartSec && currentTotalSec < warningSec) {
-          setIsWarningActive(false);
-          setIsLocked(false);
-          return logoutSec - currentTotalSec;
-        }
-
-        // Shift ended (past 6:30 PM / 18:30 or before 8:00 AM Lagos Time)
-        if (currentTotalSec >= logoutSec || currentTotalSec < morningStartSec) {
-          setIsWarningActive(false);
-          setIsLocked(true);
-          setLockoutReason(
-            'Morning Shift login is allowed from 8:00 AM to 6:30 PM (Lagos Time). Your shift ended at 6:30 PM.'
-          );
-          handleAutoLogout();
-          return 0;
-        }
+      if (rem <= 0 && !verifyingLogoutRef.current) {
+        verifyingLogoutRef.current = true;
+        fetchShiftStatus();
       }
-
-      if (activeShift === 'night') {
-        const nightStartSec = 17 * 3600; // 17:00 / 5:00 PM Lagos Time
-        const warningSec = 8 * 3600; // 08:00 AM Lagos Time
-        const logoutSec = 8 * 3600 + 30 * 60; // 08:30 AM Lagos Time
-
-        // Inside 30-min warning window (08:00 - 08:30 AM Lagos Time)
-        if (currentTotalSec >= warningSec && currentTotalSec < logoutSec) {
-          const rem = logoutSec - currentTotalSec;
-          setIsWarningActive(true);
-          setIsLocked(false);
-          return rem;
-        }
-
-        // Active night working window (17:00 to 08:00 AM Lagos Time)
-        if (currentTotalSec >= nightStartSec || currentTotalSec < warningSec) {
-          setIsWarningActive(false);
-          setIsLocked(false);
-          if (currentTotalSec >= nightStartSec) {
-            return 24 * 3600 - currentTotalSec + logoutSec;
-          } else {
-            return logoutSec - currentTotalSec;
-          }
-        }
-
-        // Shift ended (past 08:30 AM and before 5:00 PM Lagos Time)
-        if (currentTotalSec >= logoutSec && currentTotalSec < nightStartSec) {
-          setIsWarningActive(false);
-          setIsLocked(true);
-          setLockoutReason(
-            'Night Shift login is allowed from 5:00 PM to 8:30 AM (Lagos Time). Your shift ended at 8:30 AM.'
-          );
-          handleAutoLogout();
-          return 0;
-        }
-      }
-
-      return null;
     };
 
-    const timer = setInterval(() => {
-      const rem = calculateClientSeconds();
-      setSecondsRemaining(rem);
-      if (rem !== null && rem <= 0) {
-        handleAutoLogout();
-      }
-    }, 1000);
-
-    const initialRem = calculateClientSeconds();
-    setSecondsRemaining(initialRem);
-    if (initialRem !== null && initialRem <= 0) {
-      handleAutoLogout();
-    }
+    const timer = setInterval(tick, 1000);
+    tick();
 
     return () => clearInterval(timer);
-  }, [isAuthenticated, user, isExempt, userShift, shiftStatus, handleAutoLogout]);
+  }, [isAuthenticated, user, isExempt, shiftStatus, fetchShiftStatus]);
 
   // Submit Shift Access / Double Shift Request
   const handleSubmitRequest = async (e) => {
