@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import chatAPI from "@/services/api/chatAPI";
 import { getPatients } from "@/services/api/patientsAPI";
+import { getDependants } from "@/services/api/dependantAPI";
 import {
   FaBullhorn,
   FaTimes,
@@ -9,6 +10,8 @@ import {
   FaSpinner,
   FaSearch,
   FaHospitalUser,
+  FaUsers,
+  FaUser,
 } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 
@@ -52,7 +55,7 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Debounced patient search
+  // Debounced patient and dependant search
   useEffect(() => {
     if (!patientSearchQuery.trim() || selectedPatient) {
       setPatientResults([]);
@@ -63,11 +66,61 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
     setIsSearchingPatient(true);
     const timeout = setTimeout(async () => {
       try {
-        const res = await getPatients({ search: patientSearchQuery.trim(), limit: 6 });
-        const list = Array.isArray(res?.data) ? res.data : [];
-        setPatientResults(list);
+        const [patientsRes, dependantsRes] = await Promise.allSettled([
+          getPatients({ search: patientSearchQuery.trim(), limit: 6 }),
+          getDependants({ search: patientSearchQuery.trim(), limit: 6 }),
+        ]);
+
+        const patientsList =
+          patientsRes.status === "fulfilled" && Array.isArray(patientsRes.value?.data)
+            ? patientsRes.value.data.map((p) => {
+                const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim() || "Patient";
+                const hospId = p.hospitalId || p.id?.slice(0, 8);
+                return {
+                  id: p.id,
+                  type: "patient",
+                  name: fullName,
+                  hospitalId: hospId,
+                  tag: `${fullName} (${hospId})`,
+                  badgeLabel: "Principal Patient",
+                  detail: `Hospital ID: ${hospId}`,
+                };
+              })
+            : [];
+
+        const rawDeps =
+          dependantsRes.status === "fulfilled"
+            ? Array.isArray(dependantsRes.value?.data?.data)
+              ? dependantsRes.value.data.data
+              : Array.isArray(dependantsRes.value?.data)
+              ? dependantsRes.value.data
+              : []
+            : [];
+
+        const dependantsList = rawDeps.map((d) => {
+          const depName = `${d.firstName || ""} ${d.lastName || ""}`.trim() || "Dependant";
+          const principal = d.patient;
+          const principalName = principal
+            ? `${principal.firstName || ""} ${principal.lastName || ""}`.trim()
+            : "";
+          const principalHospId = principal?.hospitalId || "";
+          const relationship = d.relationshipType || "Dependant";
+          return {
+            id: d.id,
+            type: "dependant",
+            name: depName,
+            relationship,
+            principalName,
+            hospitalId: principalHospId,
+            tag: `${depName} (DEP: ${relationship} of ${principalName || "Principal"}${principalHospId ? ` - ${principalHospId}` : ""})`,
+            badgeLabel: `Dependant • ${relationship}`,
+            detail: `Principal: ${principalName || "Unknown"} (${principalHospId || "No ID"})`,
+          };
+        });
+
+        setPatientResults([...patientsList, ...dependantsList]);
       } catch (err) {
-        console.error("Failed to search patients for broadcast tag:", err);
+        console.error("Failed to search patients and dependants for broadcast tag:", err);
         setPatientResults([]);
       } finally {
         setIsSearchingPatient(false);
@@ -93,17 +146,9 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
 
   if (!isOpen) return null;
 
-  const handleSelectPatient = (patient) => {
-    const fullName = `${patient.firstName || ""} ${patient.lastName || ""}`.trim();
-    const hospId = patient.hospitalId || patient.id?.slice(0, 8);
-    const tagged = {
-      id: patient.id,
-      hospitalId: hospId,
-      name: fullName,
-      tag: `${fullName} (${hospId})`,
-    };
-    setSelectedPatient(tagged);
-    setPatientRefId(tagged.tag);
+  const handleSelectPatient = (item) => {
+    setSelectedPatient(item);
+    setPatientRefId(item.tag || item.name);
     setPatientSearchQuery("");
     setIsDropdownOpen(false);
   };
@@ -227,15 +272,32 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
             </label>
 
             {selectedPatient ? (
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary/10 border border-primary/30 text-primary">
+              <div className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                selectedPatient.type === "dependant"
+                  ? "bg-secondary/15 border-secondary/30 text-secondary"
+                  : "bg-primary/10 border-primary/30 text-primary"
+              }`}>
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold">
-                    <FaHospitalUser className="text-xs" />
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                    selectedPatient.type === "dependant"
+                      ? "bg-secondary/20 text-secondary"
+                      : "bg-primary/20 text-primary"
+                  }`}>
+                    {selectedPatient.type === "dependant" ? <FaUsers /> : <FaHospitalUser />}
                   </div>
                   <div>
-                    <div className="font-bold text-xs">{selectedPatient.name}</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-xs">{selectedPatient.name}</span>
+                      <span className={`badge badge-2xs text-[8px] font-semibold uppercase ${
+                        selectedPatient.type === "dependant"
+                          ? "badge-secondary badge-outline"
+                          : "badge-primary badge-outline"
+                      }`}>
+                        {selectedPatient.badgeLabel || (selectedPatient.type === "dependant" ? "Dependant" : "Principal")}
+                      </span>
+                    </div>
                     <div className="text-[10px] text-base-content/70 font-mono">
-                      Hospital ID: {selectedPatient.hospitalId || "N/A"}
+                      {selectedPatient.detail || `Hospital ID: ${selectedPatient.hospitalId || "N/A"}`}
                     </div>
                   </div>
                 </div>
@@ -243,7 +305,7 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
                   type="button"
                   onClick={handleRemovePatientTag}
                   className="btn btn-ghost btn-circle btn-xs text-base-content/60 hover:text-error"
-                  title="Remove patient tag"
+                  title="Remove tag"
                 >
                   <FaTimes />
                 </button>
@@ -254,7 +316,7 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
                   <FaSearch className="absolute left-3 text-base-content/40 text-xs" />
                   <input
                     type="text"
-                    placeholder="Search by name or Hospital ID to tag patient..."
+                    placeholder="Search by name or Hospital ID to tag patient or dependant..."
                     value={patientSearchQuery}
                     onChange={(e) => {
                       setPatientSearchQuery(e.target.value);
@@ -286,39 +348,49 @@ export const BroadcastModal = ({ isOpen, onClose, onBroadcastSent }) => {
 
                 {/* Dropdown search results */}
                 {isDropdownOpen && patientSearchQuery.trim() && (
-                  <div className="absolute left-0 right-0 top-full mt-1 rounded-xl bg-base-100 shadow-xl border border-base-300 p-1.5 z-50 max-h-48 overflow-y-auto space-y-1">
+                  <div className="absolute left-0 right-0 top-full mt-1 rounded-xl bg-base-100 shadow-xl border border-base-300 p-1.5 z-50 max-h-52 overflow-y-auto space-y-1">
                     {patientResults.length === 0 ? (
                       <div className="py-3 px-2 text-center text-xs text-base-content/50">
                         {isSearchingPatient
                           ? "Searching hospital records..."
-                          : `No patient found for "${patientSearchQuery}". Manual reference will be used.`}
+                          : `No patient or dependant found for "${patientSearchQuery}". Manual reference will be used.`}
                       </div>
                     ) : (
                       patientResults.map((p) => {
-                        const fullName = `${p.firstName || ""} ${p.lastName || ""}`.trim();
-                        const hospId = p.hospitalId || p.id?.slice(0, 8);
+                        const isDep = p.type === "dependant";
                         return (
                           <button
-                            key={p.id}
+                            key={`${p.type}-${p.id}`}
                             type="button"
                             onClick={() => handleSelectPatient(p)}
-                            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-base-200/80 transition text-left group"
+                            className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-base-200/80 transition text-left group gap-2"
                           >
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center text-xs">
-                                <FaHospitalUser />
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs shrink-0 ${
+                                isDep
+                                  ? "bg-secondary/15 text-secondary border border-secondary/30"
+                                  : "bg-primary/10 text-primary border border-primary/20"
+                              }`}>
+                                {isDep ? <FaUsers /> : <FaHospitalUser />}
                               </div>
-                              <div>
-                                <div className="text-xs font-semibold text-base-content group-hover:text-primary transition">
-                                  {fullName}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-xs font-semibold text-base-content group-hover:text-primary transition truncate">
+                                    {p.name}
+                                  </span>
+                                  <span className={`badge badge-2xs text-[8px] font-semibold uppercase ${
+                                    isDep ? "badge-secondary badge-outline" : "badge-primary badge-outline"
+                                  }`}>
+                                    {p.badgeLabel}
+                                  </span>
                                 </div>
-                                <div className="text-[10px] text-base-content/50 font-mono">
-                                  ID: {hospId}
+                                <div className="text-[10px] text-base-content/60 truncate font-mono mt-0.5">
+                                  {p.detail}
                                 </div>
                               </div>
                             </div>
-                            <span className="badge badge-xs badge-ghost text-[9px] group-hover:badge-primary transition">
-                              Tag Patient
+                            <span className="badge badge-xs badge-ghost text-[9px] group-hover:badge-primary transition shrink-0">
+                              Select
                             </span>
                           </button>
                         );

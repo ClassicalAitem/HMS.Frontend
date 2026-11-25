@@ -434,6 +434,10 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
     setShowMentionMenu(false);
     setSending(true);
 
+    if (messageInputRef.current) {
+      messageInputRef.current.style.height = "auto";
+    }
+
     try {
       const socket = getSocket();
       socket.emit("chat:stop_typing", {
@@ -483,6 +487,10 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
     const val = e.target.value;
     setInputText(val);
 
+    // Auto-adjust height up to max 120px
+    e.target.style.height = "auto";
+    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+
     // Detect @mention trigger in group chat
     const cursor = e.target.selectionStart || val.length;
     const textBeforeCursor = val.slice(0, cursor);
@@ -511,6 +519,20 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
         userId: currentUserId,
       });
     }, 1500);
+  };
+
+  const handleKeyDown = (e) => {
+    // Shift + Enter: Allow natural newline in textarea
+    if (e.key === "Enter" && e.shiftKey) {
+      return;
+    }
+    // Enter without Shift: Send message
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if ((inputText.trim() || selectedPatient) && !sending) {
+        handleSendMessage(e);
+      }
+    }
   };
 
   const handleSelectMention = (member) => {
@@ -1153,20 +1175,21 @@ export const ChatDrawer = ({ isOpen, onClose }) => {
                   </div>
                   <form
                     onSubmit={handleSendMessage}
-                    className="p-3 flex items-center gap-2"
+                    className="p-3 flex items-end gap-2"
                   >
-                    <input
+                    <textarea
                       ref={messageInputRef}
-                      type="text"
-                      placeholder="Type a message... use @ to tag (Enter to send)"
+                      rows={1}
+                      placeholder="Type a message... (Press Enter to send, Shift+Enter for new line)"
                       value={inputText}
                       onChange={handleInputChange}
-                      className="input input-sm flex-1 bg-base-200/80 border border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary"
+                      onKeyDown={handleKeyDown}
+                      className="textarea textarea-bordered textarea-sm flex-1 bg-base-200/80 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary resize-none py-2 max-h-32 leading-relaxed"
                     />
                     <button
                       type="submit"
-                      disabled={!inputText.trim() || sending}
-                      className={`btn btn-sm btn-circle shrink-0 ${
+                      disabled={(!inputText.trim() && !selectedPatient) || sending}
+                      className={`btn btn-sm btn-circle shrink-0 mb-0.5 ${
                         editingMessage ? "btn-warning" : "btn-primary"
                       }`}
                       title={editingMessage ? "Save edit" : "Send message"}
