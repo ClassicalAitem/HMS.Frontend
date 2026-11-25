@@ -935,7 +935,14 @@ useEffect(() => {
                   <button
                     className="btn btn-outline btn-sm"
                     disabled={!latestLab}
-                    onClick={() => latestLab && navigate(`/dashboard/hmo/labResults/${latestLab?._id || latestLab?.id}`)}
+                    onClick={() => latestLab && navigate(`/dashboard/hmo/labResults/${latestLab?._id || latestLab?.id}`, {
+                      state: {
+                        from: fromIncoming ? "incoming" : "patients",
+                        patientSnapshot: patient,
+                        dependantId,
+                        dependantSnapshot: isViewingDependant ? (subject || dependantSnapshot) : null,
+                      }
+                    })}
                   >
                     View Lab Result
                   </button>

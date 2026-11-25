@@ -17,118 +17,56 @@ const ViewAllLabResults = () => {
   const fromIncoming = location?.state?.from === 'incoming';
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(!location?.state?.patientSnapshot);
+  const [patient, setPatient] = useState(location?.state?.patientSnapshot || null);
   const [labResults, setLabResults] = useState([]);
-  const [dependantCache, setDependantCache] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const dependantId = location?.state?.dependantId || null;
-const dependantSnapshot = location?.state?.dependantSnapshot || null;
-const isViewingDependant = !!dependantId;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
   const itemsPerPage = 10;
 
   const patientName = useMemo(() => (
     patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
   ), [patient]);
 
-  // Fetch patient data
+  // Combined fast parallel data loader
   useEffect(() => {
     let mounted = true;
-    const loadPatient = async () => {
+    const loadData = async () => {
       try {
-        const res = await getPatientById(patientId);
-        const pData = res?.data ?? res;
-        if (mounted) setPatient(pData);
+        setLoading(true);
+
+        const promises = [getLabResults({ patientId })];
+        if (!patient && patientId) {
+          promises.push(getPatientById(patientId));
+        }
+
+        const [labRes, patRes] = await Promise.allSettled(promises);
+
+        if (mounted && labRes.status === "fulfilled") {
+          const rawData = labRes.value?.data ?? labRes.value ?? [];
+          const list = Array.isArray(rawData) ? rawData : [];
+          const scoped = isViewingDependant
+            ? list.filter((r) => r.dependantId === dependantId)
+            : list.filter((r) => !r.dependantId);
+          setLabResults(scoped);
+        }
+
+        if (mounted && patRes && patRes.status === "fulfilled") {
+          const pData = patRes.value?.data ?? patRes.value;
+          if (pData) setPatient(pData);
+        }
       } catch (err) {
-        console.error('Failed to load patient:', err);
-        if (mounted) toast.error('Failed to load patient data');
+        console.error("Failed to load lab data:", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
-    if (patientId) loadPatient();
+
+    if (patientId) loadData();
     return () => { mounted = false; };
-  }, [patientId]);
-
-  // Fetch lab results
-useEffect(() => {
-  let mounted = true;
-  const loadLabResults = async () => {
-    try {
-      setLoading(true);
-      const res = await getLabResults({ patientId });
-      const rawData = res?.data ?? res ?? [];
-      const list = Array.isArray(rawData) ? rawData : [];
-      const scoped = isViewingDependant
-        ? list.filter(r => r.dependantId === dependantId)
-        : list.filter(r => !r.dependantId);
-      if (mounted) setLabResults(scoped);
-    } catch (err) {
-      console.error('Failed to load lab results:', err);
-      if (mounted) setLabResults([]);
-    } finally {
-      if (mounted) setLoading(false);
-    }
-  };
-
-  if (patientId) loadLabResults();
-  return () => { mounted = false; };
-}, [patientId, isViewingDependant, dependantId]);
-  // Fetch dependants on-demand as we encounter them in lab results
-  useEffect(() => {
-    if (!labResults.length) return;
-
-    const dependantIdsNeeded = [
-      ...new Set(
-        labResults
-          .map(r => r?.dependantId)
-          .filter(Boolean)
-      )
-    ];
-
-    if (!dependantIdsNeeded.length) return;
-
-    const fetchDependants = async () => {
-      try {
-        const results = await Promise.all(
-          dependantIdsNeeded.map(id => getDependantById(id))
-        );
-
-        const newCache = {};
-
-        results.forEach((res, index) => {
-          const id = dependantIdsNeeded[index];
-          const data = res?.data?.dependant ?? res?.dependant ?? res;
-          newCache[id] = data;
-        });
-
-        setDependantCache(prev => ({
-          ...prev,
-          ...newCache
-        }));
-      } catch (err) {
-        console.error("Dependant fetch error:", err);
-      }
-    };
-
-    fetchDependants();
-  }, [labResults]);
-
-  useEffect(() => {
-  let mounted = true;
-  const loadCurrentDependant = async () => {
-    if (!isViewingDependant || !dependantId) return;
-    try {
-      const res = await getDependantById(dependantId);
-      const dep = res?.data?.data?.dependant ?? res?.data?.dependant ?? res?.data ?? res;
-      if (mounted && dep) {
-        setDependantCache(prev => ({ ...prev, [dependantId]: dep }));
-      }
-    } catch (err) {
-      console.error('Failed to load current dependant', err);
-    }
-  };
-  loadCurrentDependant();
-  return () => { mounted = false; };
-}, [isViewingDependant, dependantId]);
+  }, [patientId, isViewingDependant, dependantId]);
 
   // Format lab result rows
 const resultRows = useMemo(() => (
@@ -154,13 +92,13 @@ const resultRows = useMemo(() => (
 
         const isDependant = !!result?.dependantId;
         const dependant = isDependant
-          ? dependantCache[result.dependantId] || (result.dependantId === dependantId ? dependantSnapshot : null)
+          ? result.dependant || (result.dependantId === dependantId ? dependantSnapshot : null)
           : null;
 
         const forName = isDependant
           ? dependant
-            ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || dependant.fullName || 'Loading...'
-            : 'Loading...'
+            ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || dependant.fullName || 'Dependant'
+            : 'Dependant'
           : patientName;
 
         const forType = isDependant ? 'Dependant' : 'Patient';
@@ -179,7 +117,7 @@ const resultRows = useMemo(() => (
         };
       })
     : []
-), [labResults, dependantCache, patientName, dependantId, dependantSnapshot]);
+), [labResults, patientName, dependantId, dependantSnapshot]);
   // Pagination
   const paginationData = useMemo(() => {
     const totalItems = resultRows.length;

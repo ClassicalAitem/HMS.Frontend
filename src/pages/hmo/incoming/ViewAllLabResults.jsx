@@ -1,0 +1,352 @@
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { getPatientById } from '@/services/api/patientsAPI';
+import { getDependantById } from '@/services/api/dependantAPI';
+import { getLabResults } from '@/services/api/labResultsAPI';
+import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
+import toast from 'react-hot-toast';
+import { FaFlask, FaArrowLeft } from 'react-icons/fa';
+import { HmoLayout } from '@/layouts/hmo';
+
+export const HmoViewAllLabResults = () => {
+  const { patientId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromIncoming = location?.state?.from === 'incoming';
+
+  const [loading, setLoading] = useState(!location?.state?.patientSnapshot);
+  const [patient, setPatient] = useState(location?.state?.patientSnapshot || null);
+  const [labResults, setLabResults] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const dependantId = location?.state?.dependantId || null;
+  const dependantSnapshot = location?.state?.dependantSnapshot || null;
+  const isViewingDependant = !!dependantId;
+  const itemsPerPage = 10;
+
+  const patientName = useMemo(() => (
+    patient?.fullName || `${patient?.firstName || ""} ${patient?.lastName || ""}`.trim()
+  ), [patient]);
+
+  // Combined fast parallel data loader
+  useEffect(() => {
+    let mounted = true;
+    const loadData = async () => {
+      try {
+        setLoading(true);
+
+        const promises = [getLabResults({ patientId })];
+        if (!patient && patientId) {
+          promises.push(getPatientById(patientId));
+        }
+
+        const [labRes, patRes] = await Promise.allSettled(promises);
+
+        if (mounted && labRes.status === "fulfilled") {
+          const rawData = labRes.value?.data ?? labRes.value ?? [];
+          const list = Array.isArray(rawData) ? rawData : [];
+          const scoped = isViewingDependant
+            ? list.filter((r) => r.dependantId === dependantId)
+            : list.filter((r) => !r.dependantId);
+          setLabResults(scoped);
+        }
+
+        if (mounted && patRes && patRes.status === "fulfilled") {
+          const pData = patRes.value?.data ?? patRes.value;
+          if (pData) setPatient(pData);
+        }
+      } catch (err) {
+        console.error("Failed to load lab data:", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    if (patientId) loadData();
+    return () => { mounted = false; };
+  }, [patientId, isViewingDependant, dependantId]);
+
+  // Format lab result rows
+  const resultRows = useMemo(() => (
+    Array.isArray(labResults)
+      ? labResults.map((result) => {
+          const form = result?.form || {};
+
+          const testCategories = [
+            { name: 'Haematology', data: form.haematology },
+            { name: 'WBC Differential', data: form.wbcDifferential },
+            { name: 'Serology', data: form.serology },
+            { name: 'Urinalysis', data: form.urinalysis },
+            { name: 'Kidney Function', data: form.kidneyFunctionTest },
+            { name: 'Liver Function', data: form.liverFunctionTest },
+            { name: 'Diabetes Screening', data: form.diabetesScreening },
+            { name: 'Lipid Profile', data: form.lipidProfile },
+            { name: 'Others', data: form.others },
+          ];
+
+          const completedTests = testCategories
+            .filter((cat) => cat.data && Object.values(cat.data).some((v) => v !== ''))
+            .map((cat) => cat.name);
+
+          const isDependant = !!result?.dependantId;
+          const dependant = isDependant
+            ? result.dependant || (result.dependantId === dependantId ? dependantSnapshot : null)
+            : null;
+
+          const forName = isDependant
+            ? dependant
+              ? `${dependant.firstName || ''} ${dependant.lastName || ''}`.trim() || dependant.fullName || 'Dependant'
+              : 'Dependant'
+            : patientName;
+
+          const forType = isDependant ? 'Dependant' : 'Patient';
+
+          return {
+            _id: result._id || result.id,
+            labNo: form.labNo || '—',
+            specimen: form.natureOfSpecimen || '—',
+            date: result.createdAt ? formatNigeriaDate(result.createdAt) : '—',
+            remarks: result.remarks || '—',
+            completedTests,
+            completedTestsCount: completedTests.length,
+            isForDependant: isDependant,
+            forName,
+            forType,
+          };
+        })
+      : []
+  ), [labResults, patientName, dependantId, dependantSnapshot]);
+
+  // Pagination
+  const paginationData = useMemo(() => {
+    const totalItems = resultRows.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    const paginatedItems = resultRows.slice(startIdx, startIdx + itemsPerPage);
+    return { paginatedItems, totalPages, totalItems };
+  }, [resultRows, currentPage]);
+
+  const handleBackToPatient = () => {
+    navigate(`/dashboard/hmo/incoming/${patientId}`, {
+      state: {
+        from: fromIncoming ? "incoming" : "patients",
+        patientSnapshot: patient,
+        dependantId,
+        dependantSnapshot: isViewingDependant ? dependantSnapshot : null,
+      },
+    });
+  };
+
+  return (
+    <HmoLayout>
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden space-y-4">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-base-200 pb-4">
+          <div>
+            <div className="flex items-center gap-2 sm:gap-3 mb-1">
+              <div className="bg-info/10 p-2 sm:p-3 rounded-full text-info shrink-0">
+                <FaFlask className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-base-content">All Lab Results (HMO View)</h1>
+            </div>
+            <p className="text-sm text-base-content/70">
+              {isViewingDependant ? 'Dependant' : 'Patient'}:{' '}
+              <span className="font-semibold text-base-content">
+                {isViewingDependant
+                  ? (dependantSnapshot?.fullName || `${dependantSnapshot?.firstName || ''} ${dependantSnapshot?.lastName || ''}`.trim() || 'Dependant')
+                  : (patientName || 'Loading...')}
+              </span>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline gap-1.5"
+              onClick={handleBackToPatient}
+            >
+              <FaArrowLeft className="text-xs" /> Back to Review
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost border border-base-300 gap-1.5"
+              onClick={() => navigate('/dashboard/hmo/incoming')}
+            >
+              Incoming Queue
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost border border-base-300 gap-1.5"
+              onClick={() => navigate('/dashboard/hmo/lab-results')}
+            >
+              Lab Results
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <div className="loading loading-spinner loading-lg text-primary"></div>
+          </div>
+        ) : (
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4 sm:p-6">
+              {/* Mobile View: Cards */}
+              <div className="block md:hidden space-y-3">
+                {paginationData.paginatedItems.length > 0 ? (
+                  paginationData.paginatedItems.map((row, idx) => (
+                    <div key={idx} className="border border-base-200 rounded-xl p-4 space-y-3 bg-base-100 shadow-xs">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <span className="badge badge-sm badge-outline mb-1">
+                            {row.forType}
+                          </span>
+                          <p className="font-semibold text-base text-base-content">{row.forName}</p>
+                          <p className="text-xs text-base-content/60 font-mono">Lab No: {row.labNo}</p>
+                        </div>
+                        <span className="text-xs text-base-content/60 font-medium">{row.date}</span>
+                      </div>
+
+                      {row.completedTests.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {row.completedTests.map((t, tIdx) => (
+                            <span key={tIdx} className="badge badge-xs badge-info badge-outline">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-base-200 flex justify-end">
+                        <button
+                          className="btn btn-sm btn-primary w-full sm:w-auto"
+                          onClick={() => navigate(`/dashboard/hmo/labResults/${row._id}`, {
+                            state: {
+                              patientId,
+                              from: 'view-all-lab-results',
+                              dependantId,
+                            },
+                          })}
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 text-base-content/70">
+                    No lab results found for this patient.
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop View: Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="table w-full">
+                  <thead>
+                    <tr className="bg-base-200/50">
+                      <th>Patient / Subject</th>
+                      <th>Lab No</th>
+                      <th>Specimen</th>
+                      <th>Tests Performed</th>
+                      <th>Date</th>
+                      <th className="text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginationData.paginatedItems.length > 0 ? (
+                      paginationData.paginatedItems.map((row, idx) => (
+                        <tr key={idx} className="hover">
+                          <td>
+                            <div className="font-semibold text-base-content">{row.forName}</div>
+                            <span className="badge badge-xs badge-ghost">{row.forType}</span>
+                          </td>
+                          <td className="font-mono text-xs">{row.labNo}</td>
+                          <td className="text-xs">{row.specimen}</td>
+                          <td>
+                            <div className="flex flex-wrap gap-1 max-w-xs">
+                              {row.completedTests.length > 0 ? (
+                                row.completedTests.map((testName, tIdx) => (
+                                  <span key={tIdx} className="badge badge-xs badge-info badge-outline">
+                                    {testName}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-base-content/40">General</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="text-xs text-base-content/70">{row.date}</td>
+                          <td className="text-right">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline btn-primary"
+                              onClick={() => navigate(`/dashboard/hmo/labResults/${row._id}`, {
+                                state: {
+                                  patientId,
+                                  from: 'view-all-lab-results',
+                                  dependantId,
+                                },
+                              })}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="py-12 text-center text-base-content/60">
+                          No lab results found for this patient.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {paginationData.totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t border-base-200">
+                  <span className="text-xs sm:text-sm text-base-content/70">
+                    Page {currentPage} of {paginationData.totalPages} ({paginationData.totalItems} total results)
+                  </span>
+                  <div className="flex flex-wrap justify-center gap-1 sm:gap-2">
+                    <button
+                      className="btn btn-xs sm:btn-sm btn-outline"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    >
+                      Prev
+                    </button>
+                    {Array.from({ length: Math.min(paginationData.totalPages, 5) }).map((_, i) => {
+                      const page = i + 1;
+                      return (
+                        <button
+                          key={page}
+                          className={`btn btn-xs sm:btn-sm ${
+                            currentPage === page ? 'btn-active btn-primary' : 'btn-outline'
+                          }`}
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                    <button
+                      className="btn btn-xs sm:btn-sm btn-outline"
+                      disabled={currentPage === paginationData.totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(paginationData.totalPages, p + 1))}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </HmoLayout>
+  );
+};
+
+export default HmoViewAllLabResults;
