@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaTimes, FaUser, FaCalendarAlt, FaClock, FaStethoscope, FaNotesMedical, FaIdBadge, FaBarcode } from 'react-icons/fa';
 import { getAppointmentById, updateAppointment } from '@/services/api/appointmentsAPI';
+import { getSurgeryById } from '@/services/api/surgeryAPI';
 import { getPatientById } from '@/services/api/patientsAPI';
 import { toast } from 'react-hot-toast';
 import PatientCardTypeInfo from '@/components/common/PatientCardTypeInfo';
@@ -22,7 +23,7 @@ const Field = ({ label, children }) => (
   </div>
 );
 
-const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) => {
+const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, procedureData = null, onUpdated }) => {
   const navigate = useNavigate();
   const currentUser = useAppSelector((state) => state.auth.user);
   const isSurgeonUser = (currentUser?.role || '').toLowerCase() === 'surgeon';
@@ -38,13 +39,72 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
   const isInjectionFollowup = (appointment?.appointmentType || '').toLowerCase().includes('injection');
 
   useEffect(() => {
-    if (isOpen && appointmentId) {
+    if (isOpen && procedureData && !procedureData.appointmentType) {
+      loadFromProcedureData(procedureData);
+    } else if (isOpen && appointmentId) {
       fetchAppointmentDetails();
     } else if (!isOpen) {
       setAppointment(null);
       setPatient(null);
     }
-  }, [isOpen, appointmentId]);
+  }, [isOpen, appointmentId, procedureData]);
+
+  const loadSubjectDetails = async (record) => {
+    if (record.dependantId) {
+      try {
+        const dr = await getDependantById(record.dependantId);
+        const dependantData = dr?.data?.data?.dependant ?? dr?.data?.dependant ?? dr?.data ?? dr;
+        if (dependantData) {
+          setPatient({ ...dependantData, isDependant: true, parentPatientId: record.patientId || dependantData?.patientId });
+        } else {
+          setPatient(null);
+        }
+      } catch (dependantError) {
+        console.error('Error fetching dependant details:', dependantError);
+        setPatient(null);
+      }
+    } else if (record.patientId) {
+      try {
+        const pr = await getPatientById(record.patientId);
+        const patientData = pr?.data ?? pr;
+        if (patientData) {
+          setPatient({ ...patientData, isDependant: false });
+        } else {
+          setPatient(null);
+        }
+      } catch (patientError) {
+        console.error('Error fetching patient details:', patientError);
+        setPatient(null);
+      }
+    }
+  };
+
+  const loadFromProcedureData = async (proc) => {
+    try {
+      setLoading(true);
+      let record = proc;
+      const procId = proc._id || proc.id;
+      if (procId && !proc.procedureName) {
+        try {
+          const sRes = await getSurgeryById(procId);
+          record = sRes?.data?.data ?? sRes?.data ?? proc;
+        } catch {}
+      }
+      const normalized = {
+        ...record,
+        appointmentType: 'surgery',
+        appointmentDate: record.scheduledDate || record.appointmentDate || record.createdAt,
+        appointmentTime: record.startTime || record.appointmentTime || '',
+      };
+      setAppointment(normalized);
+      await loadSubjectDetails(normalized);
+    } catch (err) {
+      console.error('Error loading procedure details:', err);
+      setAppointment(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchAppointmentDetails = async () => {
     try {
@@ -54,34 +114,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointmentId, onUpdated }) 
       if (response?.data?.data) {
         const appointmentData = response.data.data;
         setAppointment(appointmentData);
-
-        if (appointmentData.dependantId) {
-          try {
-            const dr = await getDependantById(appointmentData.dependantId);
-            const dependantData = dr?.data?.data?.dependant ?? dr?.data?.dependant ?? dr?.data ?? dr;
-            if (dependantData) {
-              setPatient({ ...dependantData, isDependant: true, parentPatientId: appointmentData.patientId || dependantData?.patientId });
-            } else {
-              setPatient(null);
-            }
-          } catch (dependantError) {
-            console.error('Error fetching dependant details:', dependantError);
-            setPatient(null);
-          }
-        } else if (appointmentData.patientId) {
-          try {
-            const pr = await getPatientById(appointmentData.patientId);
-            const patientData = pr?.data ?? pr;
-            if (patientData) {
-              setPatient({ ...patientData, isDependant: false });
-            } else {
-              setPatient(null);
-            }
-          } catch (patientError) {
-            console.error('Error fetching patient details:', patientError);
-            setPatient(null);
-          }
-        }
+        await loadSubjectDetails(appointmentData);
       } else {
         setAppointment(null);
         setPatient(null);

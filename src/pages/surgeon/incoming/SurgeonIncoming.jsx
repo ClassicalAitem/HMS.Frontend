@@ -70,7 +70,8 @@ const SurgeonIncoming = () => {
           return type === "surgery" || type === "surgical" || dept === "surgeon" || dept === "surgery" || Boolean(a?.procedureName);
         });
 
-        const mapped = surgicalAppointments.map((appt) => {
+        const matchedSurgeryIds = new Set();
+        const mappedFromAppointments = surgicalAppointments.map((appt) => {
           let patientName = "Unknown Patient";
           let patientHospitalId = "—";
           if (appt?.patient) {
@@ -97,6 +98,10 @@ const SurgeonIncoming = () => {
             return ptMatch && procMatch;
           }) || null;
 
+          if (matchedSurgery) {
+            matchedSurgeryIds.add(String(matchedSurgery._id || matchedSurgery.id));
+          }
+
           return {
             id: appt?._id || appt?.id,
             patientName,
@@ -114,13 +119,39 @@ const SurgeonIncoming = () => {
             surgery: matchedSurgery,
           };
         }).filter(item => {
-          // Only show items that are actually in progress or have a surgical note started.
-          // Hide items that are merely 'scheduled' without a surgical note.
           if (item.status === 'scheduled' && !item.surgery) {
             return false;
           }
           return true;
         });
+
+        const standaloneSurgeries = surgeries
+          .filter((s) => !matchedSurgeryIds.has(String(s._id || s.id)))
+          .map((s) => {
+            const p = s.dependant || s.patient;
+            const patientName = p
+              ? (p.fullName || `${p.firstName || ""} ${p.lastName || ""}`.trim() || "Unknown Patient")
+              : (s.patientId ? `Patient (${s.patientId})` : "Unknown Patient");
+            const patientHospitalId = s.patient?.hospitalId || s.patientId || "—";
+            return {
+              id: s._id || s.id,
+              patientName,
+              patientId: patientHospitalId,
+              rawPatientId: s.patientId || (s.patient && (s.patient._id || s.patient.id)),
+              procedureName: s.procedureName || "Surgical Procedure",
+              type: "surgical",
+              status: s.status || "scheduled",
+              createdAt: s.scheduledDate
+                ? formatNigeriaDate(s.scheduledDate)
+                : s.createdAt
+                ? formatNigeriaDateTime(s.createdAt)
+                : "—",
+              snapshot: s,
+              surgery: s,
+            };
+          });
+
+        const mapped = [...standaloneSurgeries, ...mappedFromAppointments];
 
         if (mounted) setItems(mapped);
       } catch (err) {

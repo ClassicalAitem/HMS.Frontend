@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { FaTimes } from 'react-icons/fa';
 import { getPatients } from '@/services/api/patientsAPI';
-import { getAllComplaint } from '@/services/api/medicalRecordAPI';
 import { toast } from 'react-hot-toast';
 import { getAllDependantsForPatient } from '@/services/api/dependantAPI';
 import { getErrorMessage } from '@/utils/errorHandler';
@@ -14,41 +13,12 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     appointmentTime: '',
     department: '',
     appointmentType: 'consultation',
-    procedureName: '',
-    procedureCode: '',
     notes: ''
   });
-
-  const [complaints, setComplaints] = useState([]);
-
-  useEffect(() => {
-    const fetchComplaints = async () => {
-      try {
-        const res = await getAllComplaint();
-        if(res || Array.isArray(res)) {
-
-          setComplaints(prev => ({
-            ...prev,
-            surgical: res.filter(c => c.category === 'surgical'),
-          }));
-        }
-      } catch (e) {
-        toast.error('Failed to load complaints');
-      }
-    };
-
-    if (isOpen) {
-      fetchComplaints();
-    }
-  }, [isOpen]);
-
 
   // Validation state
   const [dateError, setDateError] = useState('');
   const [timeError, setTimeError] = useState('');
-  const [procedureError, setProcedureError] = useState({ name: '', code: '' });
-
-  const isSurgery = formData.appointmentType === 'surgery';
 
   // Get today's date for min attribute
   const getTodayDate = () => {
@@ -231,44 +201,13 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
     return true;
   };
 
-  const validateProcedureFields = () => {
-    if (!isSurgery) return true;
-    const errors = { name: '', code: '' };
-    let valid = true;
-
-    if (!formData.procedureName.trim()) {
-      errors.name = 'Procedure name is required for surgery';
-      valid = false;
-    }
-    if (!formData.procedureCode.trim()) {
-      errors.code = 'Procedure code is required for surgery';
-      valid = false;
-    }
-
-    setProcedureError(errors);
-    return valid;
-  };
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      // Clear procedure fields when switching away from surgery
-      ...(name === 'appointmentType' && value !== 'surgery' && {
-        procedureName: '',
-        procedureCode: '',
-      }),
     }));
-
-    // Clear procedure errors on change
-    if (name === 'procedureName') {
-      setProcedureError(prev => ({ ...prev, name: value.trim() ? '' : prev.name }));
-    }
-    if (name === 'procedureCode') {
-      setProcedureError(prev => ({ ...prev, code: value.trim() ? '' : prev.code }));
-    }
 
     if (name === 'appointmentDate') {
       validateDate(value);
@@ -288,8 +227,6 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
         appointmentTime: '',
         department: '',
         appointmentType: 'consultation',
-        procedureName: '',
-        procedureCode: '',
         notes: ''
       });
       setQuery('');
@@ -298,7 +235,6 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
       setSubjectType('patient');
       setDateError('');
       setTimeError('');
-      setProcedureError({ name: '', code: '' });
     };
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -322,15 +258,9 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
 
     const isDateValid = validateDate(formData.appointmentDate);
     const isTimeValid = validateTime(formData.appointmentDate, formData.appointmentTime);
-    const isProcedureValid = validateProcedureFields();
 
     if (!isDateValid || !isTimeValid) {
       toast.error('Please fix the appointment date and time');
-      return;
-    }
-
-    if (!isProcedureValid) {
-      toast.error('Please fill in all required surgery fields');
       return;
     }
 
@@ -535,60 +465,8 @@ const BookAppointmentModal = ({ isOpen, onClose, onSubmit }) => {
                 <option value="emergency">Emergency</option>
                 <option value="lab_test">Lab Test</option>
                 <option value="vaccination">Vaccination</option>
-                <option value="surgery">Surgery</option>
               </select>
             </div>
-
-            {/* Surgery Fields — conditionally rendered */}
-            {isSurgery && (
-              <div className="p-4 space-y-4 rounded-lg border border-warning/40 bg-warning/5">
-                <p className="flex gap-2 items-center text-xs font-medium text-warning">
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
-                  </svg>
-                  Surgery requires procedure details
-                </p>
-
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-base-content">
-                    Procedure Name <span className="text-error">*</span>
-                  </label>
-                  <select
-                    name="procedureName"
-                    value={formData.procedureName}
-                    onChange={handleInputChange}
-                    className={`w-full select select-bordered ${procedureError.name ? 'select-error' : ''}`}
-                  >
-                    <option value="">Select a procedure</option>
-                    {complaints.surgical?.map((item, idx) => (
-                      <option key={item.name} value={item.name}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                  {procedureError.name && (
-                    <p className="mt-1 text-xs text-error">{procedureError.name}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-base-content">
-                    Procedure Code <span className="text-error">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="procedureCode"
-                    value={formData.procedureCode}
-                    onChange={handleInputChange}
-                    placeholder="e.g. ICD-10: K35.89"
-                    className={`w-full input input-bordered ${procedureError.code ? 'input-error' : ''}`}
-                  />
-                  {procedureError.code && (
-                    <p className="mt-1 text-xs text-error">{procedureError.code}</p>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Notes */}
             <div>

@@ -48,6 +48,7 @@ import AddFamilyHistoryModal from './modals/AddFamilyHistoryModal';
 import AddHistoryModal from './modals/AddHistoryModal';
 import { getAllComplaint } from '@/services/api/medicalRecordAPI';
 import { getInventories } from '@/services/api/inventoryAPI';
+import { getAllSurgeries } from '@/services/api/surgeryAPI';
 import { IoCloseCircleOutline } from 'react-icons/io5';
 import { FaTrash, FaEdit } from 'react-icons/fa';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
@@ -407,30 +408,48 @@ const ViewConsultation = () => {
   const loadProcedures = useCallback(async () => {
     if (!consultationId && !patientId) return;
     try {
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
-      const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-      const targetPatientId = patientId || consultation?.patientId || consultation?.patient?._id || consultation?.patient?.id;
-      const surgicalForThisConsultation = list.filter((a) => {
-        const isSurgery = (a.appointmentType || '').toLowerCase() === 'surgery';
-        if (!isSurgery) return false;
+      const [surgRes, apptRes] = await Promise.allSettled([
+        getAllSurgeries(),
+        getAllAppointments(),
+      ]);
 
-        // Match by consultationId if present
-        if (consultationId && String(a.consultationId || '') === String(consultationId)) {
+      const rawSurgs = surgRes.status === 'fulfilled' ? (surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? []) : [];
+      const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+
+      const rawAppts = apptRes.status === 'fulfilled' ? (apptRes.value?.data?.data ?? apptRes.value?.data ?? []) : [];
+      const apptList = Array.isArray(rawAppts) ? rawAppts : (rawAppts.appointments ?? []);
+
+      const targetPatientId = patientId || consultation?.patientId || consultation?.patient?._id || consultation?.patient?.id;
+
+      const matchesTarget = (rec) => {
+        if (consultationId && String(rec.consultationId || '') === String(consultationId)) {
           return true;
         }
-
-        // Or match by patientId / dependantId
-        if (targetPatientId && String(a.patientId || '') === String(targetPatientId)) {
+        if (targetPatientId && String(rec.patientId || '') === String(targetPatientId)) {
           if (dependantId) {
-            return String(a.dependantId || '') === String(dependantId);
+            return String(rec.dependantId || '') === String(dependantId);
           }
-          return !a.dependantId;
+          return !rec.dependantId;
         }
-
         return false;
+      };
+
+      const matchedSurgeries = surgList.filter(matchesTarget).map((s) => ({
+        ...s,
+        appointmentDate: s.scheduledDate || s.createdAt,
+        appointmentTime: s.startTime || '',
+      }));
+
+      const linkedApptIds = new Set(matchedSurgeries.map((s) => String(s.appointmentId || '')).filter(Boolean));
+      const legacySurgicalAppts = apptList.filter((a) => {
+        const isSurgery = (a.appointmentType || '').toLowerCase() === 'surgery';
+        if (!isSurgery) return false;
+        const aId = String(a._id || a.id || '');
+        if (aId && linkedApptIds.has(aId)) return false;
+        return matchesTarget(a);
       });
-      setProcedures(surgicalForThisConsultation);
+
+      setProcedures([...matchedSurgeries, ...legacySurgicalAppts]);
     } catch (err) {
       console.error('Failed to load procedures', err);
     }
@@ -1442,6 +1461,11 @@ const getInventoryMatch = (medication) => {
         isOpen={isProcedureDetailsOpen}
         onClose={() => setIsProcedureDetailsOpen(false)}
         appointmentId={selectedProcedureId}
+        procedureData={
+          procedures.find(
+            (p) => (p._id || p.id || p.appointmentId) === selectedProcedureId,
+          ) || null
+        }
         onUpdated={(updated) => {
           setProcedures((prev) =>
             prev.map((p) =>
@@ -2376,9 +2400,6 @@ const getInventoryMatch = (medication) => {
                                   <div key={item._id || itemIndex} className="border border-base-200 rounded-lg p-3">
                                     <div className="flex items-center justify-between text-sm">
                                       <span className="font-medium">{item.name}</span>
-                                      <span className="text-base-content/70">
-                                        ₦{Number(item.amount || 0).toLocaleString()}
-                                      </span>
                                     </div>
                                     {Array.isArray(item.admissionCovered) && item.admissionCovered.length > 0 ? (
                                       <ul className="list-disc list-inside mt-2 ml-1 text-sm text-base-content/70 space-y-0.5">
@@ -2605,9 +2626,6 @@ const getInventoryMatch = (medication) => {
                                 {admission.admissions?.map((item, itemIndex) => (
                                   <div key={item._id || itemIndex} className="flex items-center justify-between text-sm">
                                     <span className="font-medium">{item.name}</span>
-                                    <span className="text-base-content/70">
-                                      ₦{Number(item.amount || 0).toLocaleString()}
-                                    </span>
                                   </div>
                                 ))}
                               </div>

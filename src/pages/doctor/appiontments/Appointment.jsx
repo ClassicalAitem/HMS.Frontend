@@ -9,6 +9,8 @@ import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getAllSurgeries } from '@/services/api/surgeryAPI';
+import { mergeAppointmentsAndSurgeries } from '@/utils/appointmentSurgeryMerge';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
@@ -93,8 +95,8 @@ const Appointment = () => {
           if (window.__appointmentsLoadInFlight) return;
           window.__appointmentsLoadInFlight = true;
         }
-        const res = await toast.promise(
-          getAllAppointments(),
+        const [res, surgRes] = await toast.promise(
+          Promise.all([getAllAppointments(), getAllSurgeries().catch(() => [])]),
           {
             loading: 'Loading appointments...',
             success: 'Appointments loaded',
@@ -104,7 +106,10 @@ const Appointment = () => {
         );
         const raw = res?.data?.data ?? res?.data ?? [];
         const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-        const mapped = list.map((a, idx) => ({
+        const rawSurgs = surgRes?.data?.data ?? surgRes?.data ?? surgRes ?? [];
+        const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+        const merged = mergeAppointmentsAndSurgeries(list, surgList);
+        const mapped = merged.map((a, idx) => ({
           id: a?.id || a?._id || a?.appointmentId || idx + 1,
           appointmentId: a?.id || a?._id || a?.appointmentId,
           patientId: a?.patientId,
@@ -115,8 +120,12 @@ const Appointment = () => {
           date: a?.appointmentDate || a?.date,
           time: a?.appointmentTime || a?.time, 
           appointmentType: a?.appointmentType || 'consultation',
+          procedureName: a?.procedureName || '',
+          procedureCode: a?.procedureCode || '',
           department: a?.department || 'doctor',
           status: a?.status || 'Active',
+          isSurgeryRecord: !!a?.isSurgeryRecord,
+          raw: a?.raw || a,
           createdAt: a?.createdAt,
         }));
         setAppointments(mapped);
@@ -482,6 +491,7 @@ const Appointment = () => {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
+        procedureData={appointments.find(a => a.id === selectedAppointmentId && a.isSurgeryRecord)?.raw || null}
         onUpdated={(updated) => {
           setAppointments(prev => prev.map(a => (
             a.id === (updated?.id || updated?._id || updated?.appointmentId) ?

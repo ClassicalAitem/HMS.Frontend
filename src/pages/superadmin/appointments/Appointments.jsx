@@ -16,6 +16,8 @@ import {
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getAllSurgeries } from '@/services/api/surgeryAPI';
+import { mergeAppointmentsAndSurgeries } from '@/utils/appointmentSurgeryMerge';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { getErrorMessage } from '@/utils/errorHandler';
@@ -94,11 +96,17 @@ const Appointments = () => {
   const fetchAppointmentsData = async () => {
     try {
       setIsLoading(true);
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
+      const [res, surgRes] = await Promise.allSettled([
+        getAllAppointments(),
+        getAllSurgeries(),
+      ]);
+      const raw = res.status === 'fulfilled' ? (res.value?.data?.data ?? res.value?.data ?? []) : [];
       const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
+      const rawSurgs = surgRes.status === 'fulfilled' ? (surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? []) : [];
+      const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+      const merged = mergeAppointmentsAndSurgeries(list, surgList);
 
-      const mapped = list.map((a, idx) => ({
+      const mapped = merged.map((a, idx) => ({
         id: a?.id || a?._id || a?.appointmentId || idx + 1,
         rawId: a?._id || a?.id,
         patientId: a?.patientId,
@@ -115,9 +123,13 @@ const Appointments = () => {
         date: a?.appointmentDate || a?.date,
         time: a?.appointmentTime || a?.time || '—', 
         appointmentType: a?.appointmentType || 'Consultation',
+        procedureName: a?.procedureName || '',
+        procedureCode: a?.procedureCode || '',
         department: a?.department || 'General Practice',
         status: (a?.status || 'Scheduled').toLowerCase(),
         notes: a?.notes || a?.reason || '—',
+        isSurgeryRecord: !!a?.isSurgeryRecord,
+        raw: a?.raw || a,
         createdAt: a?.createdAt,
       }));
 
@@ -584,6 +596,7 @@ const Appointments = () => {
             setSelectedAppointmentId(null);
           }}
           appointmentId={selectedAppointmentId}
+          procedureData={appointments.find(a => (a.id === selectedAppointmentId || a.rawId === selectedAppointmentId) && a.isSurgeryRecord)?.raw || null}
           onUpdate={fetchAppointmentsData}
         />
       )}

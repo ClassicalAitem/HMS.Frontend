@@ -9,7 +9,7 @@ import {
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { getServiceCharges } from '@/services/api/serviceChargesAPI';
-import { createAppointment } from '@/services/api/appointmentsAPI';
+import { createSurgery } from '@/services/api/surgeryAPI';
 
 const AddProcedureModal = ({
   isOpen,
@@ -140,9 +140,8 @@ const AddProcedureModal = ({
         patientId,
         dependantId: dependantId || undefined,
         consultationId: consultationId || undefined,
-        appointmentType: 'surgery',
-        appointmentDate: form.appointmentDate,
-        appointmentTime: form.appointmentTime,
+        scheduledDate: form.appointmentDate,
+        startTime: form.appointmentTime || '09:00',
         procedureName: form.procedureName,
         procedureCode: finalCode || undefined,
         serviceChargeId: finalServiceChargeId || undefined,
@@ -152,7 +151,7 @@ const AddProcedureModal = ({
         status: 'scheduled',
       };
 
-      const result = await createAppointment(payload);
+      const result = await createSurgery(payload);
       const created = result?.data?.data ?? result?.data ?? result;
 
       toast.success('Surgical procedure scheduled and post-op admission created for nurse bed assignment');

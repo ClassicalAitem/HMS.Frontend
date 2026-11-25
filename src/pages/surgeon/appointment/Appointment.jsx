@@ -9,6 +9,8 @@ import { FaCalendarAlt, FaPlus, FaFileMedical, FaEye } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getAllSurgeries } from '@/services/api/surgeryAPI';
+import { mergeAppointmentsAndSurgeries } from '@/utils/appointmentSurgeryMerge';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 
@@ -86,11 +88,17 @@ const Appointments = () => {
 
   const loadAppointments = async () => {
     try {
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
+      const [res, surgRes] = await Promise.allSettled([
+        getAllAppointments(),
+        getAllSurgeries(),
+      ]);
+      const raw = res.status === 'fulfilled' ? (res.value?.data?.data ?? res.value?.data ?? []) : [];
       const list = Array.isArray(raw) ? raw : raw.appointments ?? [];
+      const rawSurgs = surgRes.status === 'fulfilled' ? (surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? []) : [];
+      const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+      const merged = mergeAppointmentsAndSurgeries(list, surgList);
 
-      const mapped = list.map((a, idx) => ({
+      const mapped = merged.map((a, idx) => ({
         id: a?.id || a?._id || a?.appointmentId || idx + 1,
         patientId: a?.patient?.hospitalId || a?.patientId,
         dependantId: a?.dependantId || null,
@@ -105,7 +113,8 @@ const Appointments = () => {
         procedureCode: a?.procedureCode || '',
         department: a?.department || 'surgeon',
         status: a?.status || 'scheduled',
-        raw: a,
+        isSurgeryRecord: !!a?.isSurgeryRecord,
+        raw: a?.raw || a,
       }));
 
       setAppointments(mapped);
@@ -525,6 +534,7 @@ const Appointments = () => {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
+        procedureData={appointments.find(a => a.id === selectedAppointmentId && a.isSurgeryRecord)?.raw || null}
         onUpdated={(updated) => {
           setAppointments((prev) =>
             prev.map((a) =>

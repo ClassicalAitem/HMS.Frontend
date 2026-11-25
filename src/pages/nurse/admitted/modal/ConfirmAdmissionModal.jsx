@@ -365,57 +365,73 @@ const ConfirmAdmissionModal = ({
           )}
 
           {/* PAYMENT STATUS ALERTS */}
-          {paymentInfo.status === 'paid' && (
-            <div className="alert alert-success text-xs py-2.5 rounded-xl border border-success/20">
-              <div>
-                <span className="font-bold">Admission Bill Paid in Full</span>
-                {paymentInfo.totalAmount > 0 && (
-                  <span className="block text-[11px] opacity-90 mt-0.5">
-                    Total amount confirmed: ₦{paymentInfo.totalAmount.toLocaleString()}
-                  </span>
+          {(() => {
+            const isProc = !!(item.admission?.isProcedureLinked || item.admission?.coveredByProcedure || paymentInfo.isProcedureCovered);
+            const labelPrefix = isProc ? 'Procedure Package' : 'Admission';
+            return (
+              <>
+                {paymentInfo.status === 'paid' && (
+                  <div className="alert alert-success text-xs py-2.5 rounded-xl border border-success/20">
+                    <div>
+                      <span className="font-bold">
+                        {isProc ? 'Procedure Package Paid in Full' : 'Admission Bill Paid in Full'}
+                      </span>
+                      {paymentInfo.totalAmount > 0 && (
+                        <span className="block text-[11px] opacity-90 mt-0.5">
+                          Total amount confirmed: ₦{paymentInfo.totalAmount.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
-          )}
 
-          {paymentInfo.status === 'partial' && (
-            <div className="alert alert-info text-xs py-2.5 rounded-xl border border-info/20">
-              <div>
-                <span className="font-bold">Partial Payment Received</span>
-                <span className="block text-[11px] opacity-90 mt-0.5">
-                  Paid: ₦{paymentInfo.paidAmount.toLocaleString()} of ₦
-                  {paymentInfo.totalAmount.toLocaleString()} (Remaining: ₦
-                  {paymentInfo.outstandingAmount.toLocaleString()}). You may proceed to admit this patient.
-                </span>
-              </div>
-            </div>
-          )}
+                {paymentInfo.status === 'partial' && (
+                  <div className="alert alert-info text-xs py-2.5 rounded-xl border border-info/20">
+                    <div>
+                      <span className="font-bold">
+                        {isProc ? 'Procedure Package Partial Payment Received' : 'Partial Payment Received'}
+                      </span>
+                      <span className="block text-[11px] opacity-90 mt-0.5">
+                        Paid: ₦{paymentInfo.paidAmount.toLocaleString()} of ₦
+                        {paymentInfo.totalAmount.toLocaleString()} (Remaining: ₦
+                        {paymentInfo.outstandingAmount.toLocaleString()}). You may proceed to admit this patient.
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-          {paymentInfo.status === 'unpaid' && (
-            <div className="alert alert-warning text-xs py-2.5 rounded-xl border border-warning/20">
-              <div>
-                <span className="font-bold">Awaiting Payment</span>
-                <span className="block text-[11px] opacity-90 mt-0.5">
-                  Billed amount: ₦
-                  {paymentInfo.totalAmount > 0
-                    ? paymentInfo.totalAmount.toLocaleString()
-                    : 'Pending'}
-                  . You can still assign a bed and admit the patient at clinical discretion.
-                </span>
-              </div>
-            </div>
-          )}
+                {paymentInfo.status === 'unpaid' && (
+                  <div className="alert alert-warning text-xs py-2.5 rounded-xl border border-warning/20">
+                    <div>
+                      <span className="font-bold">
+                        {isProc ? 'Procedure Package Awaiting Payment' : 'Awaiting Payment'}
+                      </span>
+                      <span className="block text-[11px] opacity-90 mt-0.5">
+                        {isProc ? 'Procedure package amount' : 'Billed amount'}: ₦
+                        {paymentInfo.totalAmount > 0
+                          ? paymentInfo.totalAmount.toLocaleString()
+                          : 'Pending'}
+                        . You can still assign a bed and admit the patient at clinical discretion.
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-          {paymentInfo.status === 'unbilled' && (
-            <div className="alert alert-warning text-xs py-2.5 rounded-xl border border-warning/20">
-              <div>
-                <span className="font-bold">Admission Not Yet Billed</span>
-                <span className="block text-[11px] opacity-90 mt-0.5">
-                  No bill has been submitted to Cashier or HMO yet. You can still assign a bed and admit the patient at clinical discretion.
-                </span>
-              </div>
-            </div>
-          )}
+                {paymentInfo.status === 'unbilled' && (
+                  <div className="alert alert-warning text-xs py-2.5 rounded-xl border border-warning/20">
+                    <div>
+                      <span className="font-bold">{labelPrefix} Not Yet Billed</span>
+                      <span className="block text-[11px] opacity-90 mt-0.5">
+                        {isProc
+                          ? 'No procedure bill has been submitted to Cashier or HMO yet. You can still assign a bed and admit the patient at clinical discretion.'
+                          : 'No bill has been submitted to Cashier or HMO yet. You can still assign a bed and admit the patient at clinical discretion.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* WARD SELECTION */}
           <div className="form-control w-full">

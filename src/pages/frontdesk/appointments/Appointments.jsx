@@ -9,6 +9,8 @@ import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getAllSurgeries } from '@/services/api/surgeryAPI';
+import { mergeAppointmentsAndSurgeries } from '@/utils/appointmentSurgeryMerge';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import { getErrorMessage } from '@/utils/errorHandler';
@@ -99,18 +101,27 @@ const Appointments = () => {
       date: a?.appointmentDate || a?.date,
       time: a?.appointmentTime || a?.time, 
       appointmentType: a?.appointmentType || 'consultation',
+      procedureName: a?.procedureName || '',
+      procedureCode: a?.procedureCode || '',
       department: a?.department || 'doctor',
       status: a?.status || 'Active',
+      isSurgeryRecord: !!a?.isSurgeryRecord,
+      raw: a?.raw || a,
       createdAt: a?.createdAt,
     }));
   }, []);
 
   const fetchAppointmentsData = useCallback(async () => {
     try {
-      const res = await getAllAppointments();
-      const raw = res?.data?.data ?? res?.data ?? [];
+      const [appRes, surgRes] = await Promise.allSettled([
+        getAllAppointments(),
+        getAllSurgeries(),
+      ]);
+      const raw = appRes.status === 'fulfilled' ? (appRes.value?.data?.data ?? appRes.value?.data ?? []) : [];
       const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-      setAppointments(mapAppointmentList(list));
+      const rawSurgs = surgRes.status === 'fulfilled' ? (surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? []) : [];
+      const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+      setAppointments(mapAppointmentList(mergeAppointmentsAndSurgeries(list, surgList)));
     } catch (err) {
       toast.error(getErrorMessage(err, 'Failed to load appointments'));
     }
@@ -122,17 +133,20 @@ const Appointments = () => {
     const loadInitialData = async () => {
       setIsLoading(true);
       try {
-        const [appRes, patRes] = await Promise.allSettled([
+        const [appRes, surgRes, patRes] = await Promise.allSettled([
           getAllAppointments(),
+          getAllSurgeries(),
           getPatients()
         ]);
 
         if (!mounted) return;
 
-        if (appRes.status === 'fulfilled') {
-          const raw = appRes.value?.data?.data ?? appRes.value?.data ?? [];
+        if (appRes.status === 'fulfilled' || surgRes.status === 'fulfilled') {
+          const raw = appRes.status === 'fulfilled' ? (appRes.value?.data?.data ?? appRes.value?.data ?? []) : [];
           const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-          setAppointments(mapAppointmentList(list));
+          const rawSurgs = surgRes.status === 'fulfilled' ? (surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? []) : [];
+          const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+          setAppointments(mapAppointmentList(mergeAppointmentsAndSurgeries(list, surgList)));
         }
 
         if (patRes.status === 'fulfilled') {
@@ -449,6 +463,7 @@ const Appointments = () => {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
+        procedureData={appointments.find(a => a.id === selectedAppointmentId && a.isSurgeryRecord)?.raw || null}
         onUpdated={(updated) => {
           setAppointments(prev => prev.map(a => (
             a.id === (updated?.id || updated?._id || updated?.appointmentId) ?

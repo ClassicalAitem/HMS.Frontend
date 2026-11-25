@@ -9,6 +9,8 @@ import { FaCalendarAlt, FaChevronDown } from 'react-icons/fa';
 import { PiSlidersLight } from 'react-icons/pi';
 import { toast } from 'react-hot-toast';
 import { getAllAppointments, createAppointment } from '@/services/api/appointmentsAPI';
+import { getAllSurgeries } from '@/services/api/surgeryAPI';
+import { mergeAppointmentsAndSurgeries } from '@/utils/appointmentSurgeryMerge';
 import { getPatients } from '@/services/api/patientsAPI';
 import { formatNigeriaDate } from '@/utils/formatDateTimeUtils';
 import KolakLoader from '@/components/common/KolakLoader';
@@ -93,8 +95,9 @@ const Appointment = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const [apptsRes, patientsRes] = await Promise.allSettled([
+        const [apptsRes, surgRes, patientsRes] = await Promise.allSettled([
           getAllAppointments(),
+          getAllSurgeries(),
           getPatients(),
         ]);
 
@@ -110,10 +113,13 @@ const Appointment = () => {
           setPatientsById(map);
         }
 
-        if (mounted && apptsRes.status === 'fulfilled') {
-          const raw = apptsRes.value?.data?.data ?? apptsRes.value?.data ?? [];
+        if (mounted && (apptsRes.status === 'fulfilled' || surgRes.status === 'fulfilled')) {
+          const raw = apptsRes.status === 'fulfilled' ? (apptsRes.value?.data?.data ?? apptsRes.value?.data ?? []) : [];
           const list = Array.isArray(raw) ? raw : (raw.appointments ?? []);
-          const mapped = list.map((a, idx) => ({
+          const rawSurgs = surgRes.status === 'fulfilled' ? (surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? []) : [];
+          const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+          const merged = mergeAppointmentsAndSurgeries(list, surgList);
+          const mapped = merged.map((a, idx) => ({
             id: a?.id || a?._id || a?.appointmentId || idx + 1,
             appointmentId: a?.id || a?._id || a?.appointmentId,
             patientId: a?.patientId || a?.patient?.id || a?.patient?._id || a?.dependant?.patientId,
@@ -124,10 +130,13 @@ const Appointment = () => {
             date: a?.appointmentDate || a?.date,
             time: a?.appointmentTime || a?.time, 
             appointmentType: a?.appointmentType || 'consultation',
+            procedureName: a?.procedureName || '',
+            procedureCode: a?.procedureCode || '',
             department: a?.department || 'doctor',
             status: a?.status || 'Active',
+            isSurgeryRecord: !!a?.isSurgeryRecord,
             createdAt: a?.createdAt,
-            raw: a,
+            raw: a?.raw || a,
           }));
           setAppointments(mapped);
         }
@@ -479,6 +488,7 @@ const Appointment = () => {
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
         appointmentId={selectedAppointmentId}
+        procedureData={appointments.find(a => a.id === selectedAppointmentId && a.isSurgeryRecord)?.raw || null}
         onUpdated={(updated) => {
           setAppointments(prev => prev.map(a => (
             a.id === (updated?.id || updated?._id || updated?.appointmentId) ?

@@ -87,6 +87,7 @@ const ShiftCountdown = () => {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   const isLoggingOutRef = useRef(false);
+  const preWarningCheckedForRef = useRef(null);
 
   const userRole = normalizeRole(user?.role || user?.accountType);
   const userShift = (user?.shift || '').toLowerCase().trim();
@@ -129,14 +130,37 @@ const ShiftCountdown = () => {
     }
   }, [isAuthenticated, user, isExempt]);
 
-  // Initial status check & periodic sync
+  // Initial status check on mount / auth change
   useEffect(() => {
     if (!isAuthenticated || !user || isExempt) return;
 
     fetchShiftStatus();
-    const interval = setInterval(fetchShiftStatus, 40000); // sync every 40s
-    return () => clearInterval(interval);
   }, [fetchShiftStatus, isAuthenticated, user, isExempt]);
+
+  // Schedule a single backend status sync 1 minute before the 30-minute warning window
+  useEffect(() => {
+    if (!isAuthenticated || !user || isExempt || !shiftStatus) return;
+    if (shiftStatus.isLocked || shiftStatus.hasActiveOverride || shiftStatus.state !== 'active') return;
+
+    const shiftKey = shiftStatus.autoLogoutTime || shiftStatus.warningStartTime || 'current';
+    if (preWarningCheckedForRef.current === shiftKey) return;
+
+    let delayMs = null;
+    if (typeof shiftStatus.secondsUntilLogout === 'number') {
+      delayMs = (shiftStatus.secondsUntilLogout - 31 * 60) * 1000;
+    } else if (shiftStatus.warningStartTime) {
+      delayMs = new Date(shiftStatus.warningStartTime).getTime() - 60 * 1000 - Date.now();
+    }
+
+    if (delayMs === null || delayMs <= 0) return;
+
+    const timeout = setTimeout(() => {
+      preWarningCheckedForRef.current = shiftKey;
+      fetchShiftStatus();
+    }, delayMs);
+
+    return () => clearTimeout(timeout);
+  }, [fetchShiftStatus, isAuthenticated, user, isExempt, shiftStatus]);
 
   // Handle Logout Execution
   const handleAutoLogout = useCallback(async () => {

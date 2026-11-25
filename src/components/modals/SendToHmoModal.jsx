@@ -16,6 +16,7 @@ import { getInvestigationByPatientId } from '@/services/api/investigationRequest
 import { getPrescriptionByPatientId } from '@/services/api/prescriptionsAPI';
 import { getAdmissionByPatientId } from '@/services/api/admissionApi';
 import { getAllAppointments } from '@/services/api/appointmentsAPI';
+import { getSurgeryByPatientId } from '@/services/api/surgeryAPI';
 
 const billItemSchema = yup.object({
   serviceChargeId: yup.string().nullable().optional(),
@@ -23,6 +24,7 @@ const billItemSchema = yup.object({
   prescriptionId: yup.string().nullable().optional(),
   admissionId: yup.string().nullable().optional(),
   appointmentId: yup.string().nullable().optional(),
+  surgeryId: yup.string().nullable().optional(),
   procedureId: yup.string().nullable().optional(),
   code: yup.string().required('Item code is required'),
   description: yup.string().required('Description is required'),
@@ -226,13 +228,14 @@ const SendToHmoModal = ({
       let isSubscribed = true;
       const loadUnbilledItems = async () => {
         try {
-          const [invRes, presRes, admRes, apptRes, scRes, pharmRes] = await Promise.allSettled([
+          const [invRes, presRes, admRes, apptRes, scRes, pharmRes, surgRes] = await Promise.allSettled([
             getInvestigationByPatientId(patientId),
             getPrescriptionByPatientId(patientId),
             getAdmissionByPatientId(patientId),
             getAllAppointments(),
             getServiceCharges(),
             getInventories(),
+            getSurgeryByPatientId(patientId),
           ]);
 
           if (!isSubscribed) return;
@@ -437,7 +440,42 @@ const SendToHmoModal = ({
             });
           }
 
-          // 4. Procedures / Surgical Appointments
+          // 4. Procedures / Surgeries (dedicated Surgery records + legacy surgical appointments)
+          const billedApptIdsFromSurgeries = new Set();
+          if (surgRes.status === 'fulfilled') {
+            const rawSurgs = surgRes.value?.data?.data ?? surgRes.value?.data ?? surgRes.value ?? [];
+            const surgList = Array.isArray(rawSurgs) ? rawSurgs : [];
+            const filteredSurgs = surgList.filter(s => {
+              if (dependantId) return String(s.dependantId || '') === String(dependantId);
+              return !s.dependantId;
+            }).filter(s => !s.isBilled && !s.billId && String(s.status || '').toLowerCase() !== 'cancelled')
+            .filter(s => {
+              if (consultationId && s.consultationId) {
+                return String(s.consultationId) === String(consultationId);
+              }
+              return true;
+            });
+
+            filteredSurgs.forEach(s => {
+              if (s.appointmentId) billedApptIdsFromSurgeries.add(String(s.appointmentId));
+              const charge = findCharge(s.procedureName, s.serviceChargeId);
+              autoItems.push({
+                serviceChargeId: s.serviceChargeId || charge?.id || charge?._id || null,
+                investigationId: null,
+                prescriptionId: null,
+                admissionId: s.admissionId || null,
+                appointmentId: s.appointmentId || null,
+                surgeryId: s._id || s.id || null,
+                procedureId: s._id || s.id || null,
+                code: 'SURGERY',
+                description: s.procedureName || 'Surgical Procedure',
+                quantity: 1,
+                price: Number(s.price || charge?.amount || charge?.price || 0),
+                isAuto: true,
+              });
+            });
+          }
+
           if (apptRes.status === 'fulfilled') {
             const rawAppts = apptRes.value?.data?.data ?? apptRes.value?.data ?? [];
             const apptList = Array.isArray(rawAppts) ? rawAppts : (rawAppts.appointments ?? []);
@@ -447,6 +485,8 @@ const SendToHmoModal = ({
             const surgicalAppts = apptList.filter(a => {
               const isSurg = (a.appointmentType || '').toLowerCase() === 'surgery';
               if (!isSurg) return false;
+              const aId = String(a.id || a._id || '');
+              if (aId && billedApptIdsFromSurgeries.has(aId)) return false;
               if (targetDepId) {
                 return String(a.dependantId || '') === targetDepId;
               }

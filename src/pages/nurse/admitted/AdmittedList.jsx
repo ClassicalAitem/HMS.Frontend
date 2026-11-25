@@ -170,6 +170,7 @@ const AdmittedList = () => {
         const procName = admission.procedureName ? String(admission.procedureName).toLowerCase().trim() : null
 
         if (isProcedureLinked) {
+          const scId = admission.serviceChargeId ? String(admission.serviceChargeId) : null
           const procBills = allBillings.filter(b => {
             const bPatient = String(b.patientId || b.patient?.id || b.patient?._id || '')
             const bDep = b.dependantId ? String(b.dependantId) : null
@@ -179,7 +180,8 @@ const AdmittedList = () => {
             return Array.isArray(b.itemDetails) && b.itemDetails.some(it => {
               if (apptId && String(it.appointmentId || '') === apptId) return true
               if (surgId && String(it.surgeryId || '') === surgId) return true
-              if (it.code === 'SURGERY') {
+              if (scId && String(it.serviceChargeId || '') === scId) return true
+              if (String(it.code || '').toUpperCase() === 'SURGERY') {
                 if (!procName) return true
                 const itDesc = String(it.description || '').toLowerCase()
                 return itDesc.includes(procName) || procName.includes(itDesc)
@@ -533,7 +535,7 @@ const AdmittedList = () => {
                             {item.paymentInfo?.isProcedureCovered && (
                               <div className="mb-1">
                                 <span className="badge badge-primary badge-xs font-semibold gap-1" title={item.paymentInfo.procedureName || 'Procedure Package'}>
-                                  🏥 Procedure Package
+                                  🏥 {item.paymentInfo.procedureName || 'Procedure Package'}
                                 </span>
                               </div>
                             )}
