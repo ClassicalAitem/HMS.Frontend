@@ -7,7 +7,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { store, persistor } from './store';
 import AppRoutes from './routes/AppRoutes';
-import ShiftCountdown from './components/common/ShiftCountdown';
 import AutoLogoutHandler from './components/common/AutoLogoutHandler';
 import GlobalShortcutManager from './components/common/GlobalShortcutManager';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -29,7 +28,6 @@ function App() {
               <div className="App">
                 <GlobalShortcutManager />
                 <AutoLogoutHandler />
-                <ShiftCountdown />
                 <NurseMedicationAlertManager />
                 <ProfileCompletionModal />
                 <ErrorBoundary>
