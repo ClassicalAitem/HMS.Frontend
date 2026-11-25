@@ -40,6 +40,12 @@ class ErrorBoundary extends React.Component {
     window.location.replace(url.toString());
   };
 
+  handleGoDashboard = () => {
+    sessionStorage.removeItem("chunk_reload_time");
+    sessionStorage.removeItem("chunk_reload_attempted");
+    window.location.href = "/";
+  };
+
   handleGoLogin = () => {
     sessionStorage.removeItem("chunk_reload_time");
     sessionStorage.removeItem("chunk_reload_attempted");
@@ -55,22 +61,40 @@ class ErrorBoundary extends React.Component {
               <FaExclamationTriangle className="w-8 h-8" />
             </div>
             <h2 className="text-xl font-bold text-base-content mb-2">Something went wrong</h2>
-            <p className="text-sm text-base-content/70 mb-6">
+            <p className="text-sm text-base-content/70 mb-4">
               A temporary interface loading issue occurred. Please refresh the page to continue working.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+
+            {this.state.error && (
+              <details className="text-left mb-6 bg-base-200/80 p-3 rounded-xl border border-base-300">
+                <summary className="text-[11px] font-semibold text-base-content/60 cursor-pointer select-none">
+                  Technical Details
+                </summary>
+                <div className="mt-2 text-[10px] font-mono text-error break-all max-h-32 overflow-y-auto">
+                  {this.state.error.toString()}
+                </div>
+              </details>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={this.handleReload}
-                className="btn btn-primary flex-1 gap-2 text-white font-medium shadow-sm"
+                className="btn btn-primary flex-1 gap-2 text-white font-medium text-xs shadow-sm"
               >
-                <FaRedoAlt className="w-4 h-4" />
+                <FaRedoAlt className="w-3.5 h-3.5" />
                 Reload Page
               </button>
               <button
-                onClick={this.handleGoLogin}
-                className="btn btn-ghost flex-1 text-base-content/70"
+                onClick={this.handleGoDashboard}
+                className="btn btn-outline btn-primary flex-1 text-xs"
               >
-                Back to Login
+                Dashboard
+              </button>
+              <button
+                onClick={this.handleGoLogin}
+                className="btn btn-ghost flex-1 text-xs text-base-content/70"
+              >
+                Login
               </button>
             </div>
           </div>

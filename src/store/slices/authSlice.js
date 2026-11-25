@@ -69,6 +69,22 @@ export const loginUser = createAsyncThunk(
           message: message
         });
       }
+
+      // Handle 403 shift lockout error (shift ended / outside working hours)
+      const errorPayload = error.response?.data?.message || error.response?.data?.data || error.response?.data;
+      if (
+        error.response?.status === 403 &&
+        (errorPayload?.isShiftLocked || error.response?.data?.isShiftLocked)
+      ) {
+        return rejectWithValue({
+          type: 'shift_locked',
+          message:
+            typeof errorPayload === 'object'
+              ? errorPayload.message || errorPayload.lockoutReason || 'Your shift has ended.'
+              : errorPayload || 'Your shift has ended.',
+          shiftData: errorPayload,
+        });
+      }
       
       return rejectWithValue(getErrorMessage(error, 'Login failed'));
     }

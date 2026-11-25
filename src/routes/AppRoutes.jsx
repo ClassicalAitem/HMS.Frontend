@@ -7,8 +7,10 @@ import ChangePassword from "@/pages/auth/ChangePassword";
 import ChangePasswordDefault from "@/pages/auth/ChangePasswordDefault";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import RoleBasedLayout from "@/layouts/RoleBasedLayout";
+import ErrorBoundary from "@/components/common/ErrorBoundary";
 
 const UserProfile = lazy(() => import("@/pages/profile/UserProfile"));
+const MessagesPage = lazy(() => import("@/pages/messages/MessagesPage"));
 
 const SystemLogsPage = lazy(() => import("@/pages/developer/SystemLogsPage"));
 const SystemHealthPage = lazy(() => import("@/pages/developer/SystemHealthPage"));
@@ -220,6 +222,7 @@ const HMOLabResultDetails = lazy(() => import("@/pages/hmo/incoming/labResult"))
 const IncomingLabResults = lazy(() => import("@/pages/doctor/labResults/IncomingLabResult"));
 const NurseIncomingLabResults = lazy(() => import("@/pages/nurse/labResults/IncomingLabResult"));
 const HmoIncomingLabResults = lazy(() => import("@/pages/hmo/labResults/IncomingLabResult"));
+const HmoViewAllLabResults = lazy(() => import("@/pages/hmo/incoming/ViewAllLabResults"));
 const PharmacistAttendedToday = lazy(() => import("@/pages/pharmacist/attendedToday/AttendedToday"));
 const PharmacyAdmissions = lazy(() => import("@/pages/pharmacist/admissions/PharmacyAdmissions"));
 const PharmacyAdmittedPatient = lazy(() => import("@/pages/pharmacist/admissions/PharmacyAdmittedPatient"));
@@ -276,6 +279,15 @@ const AppRoutes = () => {
         <ProtectedRoute allowedRoles={['super-admin', 'superadmin', 'human-resource', 'hr', 'admin']}>
           <RoleBasedLayout>
             <UserProfile />
+          </RoleBasedLayout>
+        </ProtectedRoute>
+      } />
+      <Route path="/messages" element={
+        <ProtectedRoute>
+          <RoleBasedLayout>
+            <ErrorBoundary>
+              <MessagesPage />
+            </ErrorBoundary>
           </RoleBasedLayout>
         </ProtectedRoute>
       } />
@@ -872,6 +884,11 @@ const AppRoutes = () => {
         <Route path="/dashboard/hmo/labResults/:labResultId" element={
         <ProtectedRoute allowedRoles={['hmo']}>
           <HMOLabResultDetails />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard/hmo/view-lab-results/:patientId" element={
+        <ProtectedRoute allowedRoles={['hmo']}>
+          <HmoViewAllLabResults />
         </ProtectedRoute>
       } />
       

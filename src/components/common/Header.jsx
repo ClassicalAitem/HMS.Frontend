@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAppSelector } from "@/store/hooks";
-import { FaBars, FaSearch, FaKeyboard, FaTimes, FaUserCircle } from "react-icons/fa";
+import { FaBars, FaSearch, FaKeyboard, FaTimes, FaUserCircle, FaComments } from "react-icons/fa";
 import { SlRefresh } from "react-icons/sl";
 import ThemeSwitcher from "./ThemeSwitcher";
 import HospitalFavicon from "@/assets/images/favicon.svg";
+import useChatSocket from "@/hook/useChatSocket";
+import ChatDrawer from "@/components/chat/ChatDrawer";
 
 export const getRolePatientsPath = (role = "") => {
   const norm = (role || "").toLowerCase().trim().replace(/_/g, "-");
@@ -55,6 +57,8 @@ const Header = ({ onToggleSidebar }) => {
   const urlSearch = searchParams.get("search") || searchParams.get("q") || "";
   const [headerSearch, setHeaderSearch] = useState(() => urlSearch || "");
   const [isSearchExpanded, setIsSearchExpanded] = useState(() => Boolean(urlSearch));
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const { unreadCount } = useChatSocket();
   const inputRef = useRef(null);
 
   // Sync with URL param if it changes
@@ -278,6 +282,23 @@ const Header = ({ onToggleSidebar }) => {
             </button>
             <ThemeSwitcher className="2xl:h-4 2xl:w-4" />
             <button
+              onClick={() => setIsChatOpen(true)}
+              className={`btn btn-ghost btn-circle btn-sm relative ${
+                location.pathname === '/messages'
+                  ? 'text-primary bg-primary/10'
+                  : 'text-base-content/70 hover:text-base-content'
+              }`}
+              title="Hospital Messages & Role Chats"
+              aria-label="Messages"
+            >
+              <FaComments className="h-4 w-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-content shadow-xs animate-pulse">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => navigate('/profile')}
               className={`btn btn-ghost btn-circle btn-sm ${
                 location.pathname === '/profile'
@@ -300,6 +321,8 @@ const Header = ({ onToggleSidebar }) => {
           </div>
         </div>
       </header>
+
+      <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
 };

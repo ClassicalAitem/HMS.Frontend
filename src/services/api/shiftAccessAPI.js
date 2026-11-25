@@ -7,9 +7,15 @@ export const shiftAccessAPI = {
     return response;
   },
 
-  // Staff submits a request for double shift / overtime access
+  // Staff submits a request for double shift / overtime access (authenticated)
   requestAccess: async (data) => {
     const response = await apiClient.post('/shift-access/request', data);
+    return response;
+  },
+
+  // Staff submits overtime / double shift request by email (from login page when unauthenticated)
+  requestAccessByEmail: async (data) => {
+    const response = await apiClient.post('/shift-access/request-by-email', data);
     return response;
   },
 
